@@ -4,7 +4,11 @@ AC_INIT(stun, 0.0.1)
 AC_CONFIG_SRCDIR([.])
 AC_CONFIG_HEADER([config.h])
 AM_INIT_AUTOMAKE
-AC_CONFIG_FILES([Makefile tests/Makefile])
+AC_CONFIG_FILES([
+	Makefile
+	tests/Makefile
+	stun/Makefile
+	])
 
 # Checks for programs.
 

@@ -1,3 +1,3 @@
 
-SUBDIRS = tests
+SUBDIRS = stun tests
 
