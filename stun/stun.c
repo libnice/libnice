@@ -93,7 +93,7 @@ stun_attribute_dump(StunAttribute *attr)
           (attr->address.ip & 0x000000ff) >>  0,
           attr->address.port);
     default:
-      return NULL;
+      return g_strdup_printf("UNKNOWN (%d)", attr->type);
   }
 }
 

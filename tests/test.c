@@ -40,6 +40,22 @@ START_TEST (test_attribute_dump)
 }
 END_TEST
 
+START_TEST (test_attribute_dump_unknown)
+{
+  gchar *dump;
+
+  StunAttribute *attr = stun_attribute_unpack(4,
+    "\x00\xff" // type
+    "\x00\x00" // length
+    );
+
+  dump = stun_attribute_dump(attr);
+  fail_unless(0 == strcmp(dump, "UNKNOWN (255)"));
+  g_free(dump);
+  stun_attribute_free(attr);
+}
+END_TEST
+
 START_TEST (test_attribute_unpack)
 {
   StunAttribute *attr = stun_attribute_unpack(12,
@@ -150,6 +166,10 @@ stun_suite(void)
 
   tcase = tcase_create("attribute dump");
   tcase_add_test(tcase, test_attribute_dump);
+  suite_add_tcase(suite, tcase);
+
+  tcase = tcase_create("attribute dump unknown");
+  tcase_add_test(tcase, test_attribute_dump_unknown);
   suite_add_tcase(suite, tcase);
 
   tcase = tcase_create("attribute unpack");
