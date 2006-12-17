@@ -97,11 +97,12 @@ START_TEST (test_message_pack)
     "\x08\x09\x0a\x0b"
     "\x0c\x0d\x0e\x0f", 16));
   fail_unless(0 == memcmp(packed + 20,
-    "\x00\x01"
-    "\x00\x08"
-    "\x00\x01"
-    "\x09\x29"
-    "\x02\x03\x04\x05", 12));
+    "\x00\x01"          // type
+    "\x00\x08"          // length
+    "\x00\x01"          // padding, address family
+    "\x09\x29"          // port
+    "\x02\x03\x04\x05", // IP address
+    12));
 
   g_free(packed);
   stun_message_free(msg);
