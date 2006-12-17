@@ -17,7 +17,9 @@ AC_PROG_RANLIB
 
 # Checks for libraries.
 
-AM_PATH_CHECK()
+PKG_CHECK_MODULES(CHECK, [dnl
+	check >= 0.9.4 dnl
+	])
 
 PKG_CHECK_MODULES(GLIB, [glib-2.0 >= 2.4, gobject-2.0 >= 2.4])
 
