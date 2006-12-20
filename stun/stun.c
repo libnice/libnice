@@ -51,9 +51,7 @@ stun_attribute_unpack(guint length, const gchar *s)
       attr->address.ip = ntohl(*(guint32 *)(s + 8));
       break;
     default:
-      g_assert_not_reached();
-      stun_attribute_free(attr);
-      return NULL;
+      break;
   }
 
   return attr;
