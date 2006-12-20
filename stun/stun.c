@@ -174,7 +174,7 @@ stun_message_pack(StunMessage *msg, gchar **packed)
   GString *tmp = g_string_new("");
   unsigned int packed_type;
   guint16 packed_length;
-  guint length = 20;
+  guint length = 0;
 
   if (msg->attributes) {
     StunAttribute **attr;
@@ -205,7 +205,7 @@ stun_message_pack(StunMessage *msg, gchar **packed)
   }
 
   *packed = g_string_free(tmp, FALSE);
-  return length;
+  return length + 20;
 }
 
 gchar *

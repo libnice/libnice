@@ -90,7 +90,7 @@ START_TEST (test_message_pack)
   fail_unless(packed != NULL);
   fail_unless(length == 32);
   fail_unless(0 == memcmp(packed + 0, "\x00\x01", 2));
-  fail_unless(0 == memcmp(packed + 2, "\x00\x20", 2));
+  fail_unless(0 == memcmp(packed + 2, "\x00\x0c", 2));
   fail_unless(0 == memcmp(packed + 4,
     "\x00\x01\x02\x03"
     "\x04\x05\x06\x07"
