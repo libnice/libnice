@@ -35,11 +35,23 @@
 \.cvsignore$
 (^|/)Thumbs\.db$
 (^|/)autom4te\.cache($|/)
+
+# autofoo files
 ^missing
 ^install-sh$
 ^configure$
 ^depcomp$
 ^aclocal.m4$
 ^compile$
-^\.deps$
-(^|.*/)Makefile.in
+^config.h$
+^config.log$
+^config.status$
+^config.status$
+^stamp-h1$
+(^|/)Makefile.in
+(^|/)Makefile
+(^|/)\.deps$
+
+# stun/ stuff
+^stun/libstun.a$
+^stun/stun-client$
