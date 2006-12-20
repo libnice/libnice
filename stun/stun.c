@@ -219,6 +219,9 @@ stun_message_dump (StunMessage *msg)
     case STUN_MESSAGE_BINDING_REQUEST:
       name = "BINDING-REQUEST";
       break;
+    case STUN_MESSAGE_BINDING_RESPONSE:
+      name = "BINDING-RESPONSE";
+      break;
     default:
       return NULL;
   }
