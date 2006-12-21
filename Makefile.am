@@ -1,3 +1,3 @@
 
-SUBDIRS = stun tests
+SUBDIRS = local stun tests
 

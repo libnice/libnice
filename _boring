@@ -55,3 +55,7 @@
 # stun/ stuff
 ^stun/libstun.a$
 ^stun/stun-client$
+
+# local/ stuff
+^local/liblocal.a$
+^local/list-local-interfaces$
