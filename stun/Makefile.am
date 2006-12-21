@@ -1,5 +1,5 @@
 
-AM_CFLAGS = -Wall $(GLIB_CFLAGS)
+AM_CFLAGS = -Wall -Werror $(GLIB_CFLAGS)
 
 libstun_a_SOURCES = stun.c
 
