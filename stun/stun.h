@@ -27,21 +27,17 @@ typedef enum {
   STUN_ATTRIBUTE_REFLECTED_FROM     = 0xb
 } StunAttributeType;
 
-typedef struct _StunAttributeAddress StunAttributeAddress;
-
-struct _StunAttributeAddress {
-  guint8 padding;
-  guint8 af;
-  guint16 port;
-  guint32 ip;
-};
-
 typedef struct _StunAttribute StunAttribute;
 
 struct _StunAttribute {
   guint16 type;
   guint16 length;
-  StunAttributeAddress address;
+  struct {
+    guint8 padding;
+    guint8 af;
+    guint16 port;
+    guint32 ip;
+  } address;
 };
 
 typedef struct _StunMessage StunMessage;
