@@ -26,7 +26,7 @@ resolve (const gchar *name, struct hostent *ret)
 int
 main (void)
 {
-  struct hostent he1, *he;
+  struct hostent he;
   struct sockaddr_in sin;
   guint sock;
   gchar *packed;
@@ -35,13 +35,12 @@ main (void)
   StunMessage *msg;
   StunAttribute **attr;
 
-  he = &he1;
-  g_assert (resolve(server, he));
-  g_assert (he->h_addr_list != NULL);
+  g_assert (resolve(server, &he));
+  g_assert (he.h_addr_list != NULL);
 
   sin.sin_family = AF_INET;
   sin.sin_port = htons (port);
-  memcpy (&sin.sin_addr, he->h_addr_list[0], sizeof (struct in_addr));
+  memcpy (&sin.sin_addr, he.h_addr_list[0], sizeof (struct in_addr));
 
   sock = socket (AF_INET, SOCK_DGRAM, 0);
   connect (sock, (struct sockaddr *) &sin, sizeof (struct sockaddr));
