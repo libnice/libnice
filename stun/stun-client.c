@@ -7,7 +7,7 @@
 
 #include <stun.h>
 
-const gchar *server = "stun.fwdnet.net";
+static gchar *server = "stun.fwdnet.net";
 const guint port = 3478;
 
 static gboolean
@@ -24,7 +24,7 @@ resolve (const gchar *name, struct hostent *ret)
 }
 
 int
-main (void)
+main (int argc, char **argv)
 {
   struct hostent he;
   struct sockaddr_in sin;
@@ -34,6 +34,9 @@ main (void)
   gchar buffer[256];
   StunMessage *msg;
   StunAttribute **attr;
+
+  if (argc > 1)
+    server = argv[1];
 
   if (!resolve(server, &he))
     {
