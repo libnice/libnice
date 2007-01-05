@@ -48,8 +48,8 @@
 ^config.status$
 ^config.status$
 ^stamp-h1$
-(^|/)Makefile.in
-(^|/)Makefile
+(^|/)Makefile.in$
+(^|/)Makefile$
 (^|/)\.deps$
 
 # stun/ stuff
