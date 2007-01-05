@@ -35,7 +35,12 @@ main (void)
   StunMessage *msg;
   StunAttribute **attr;
 
-  g_assert (resolve(server, &he));
+  if (!resolve(server, &he))
+    {
+      g_debug ("failed to resolve %s\n", server);
+      return 1;
+    }
+
   g_assert (he.h_addr_list != NULL);
 
   sin.sin_family = AF_INET;
