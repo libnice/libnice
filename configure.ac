@@ -8,6 +8,7 @@ AC_CONFIG_FILES([
 	Makefile
 	tests/Makefile
 	stun/Makefile
+	local/Makefile
 	])
 
 # Checks for programs.
