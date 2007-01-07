@@ -1,0 +1,9 @@
+
+Nice: GLib ICE library
+----------------------
+
+Requires:
+
+ glib >= 2.10
+ check >= 0.9.4 (for make check)
+
