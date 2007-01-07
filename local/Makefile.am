@@ -1,7 +1,7 @@
 
 AM_CFLAGS = -Wall -Werror $(GLIB_CFLAGS)
 
-liblocal_a_SOURCES = local.c
+liblocal_a_SOURCES = local.h local.c
 
 noinst_LIBRARIES = liblocal.a
 
