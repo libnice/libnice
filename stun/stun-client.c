@@ -1,6 +1,8 @@
 
+#include <errno.h>
 #include <netdb.h>
 #include <string.h>
+#include <sys/select.h>
 #include <sys/socket.h>
 
 #include <glib.h>
@@ -28,10 +30,13 @@ main (int argc, char **argv)
 {
   struct hostent he;
   struct sockaddr_in sin;
+  struct timeval tv;
+  fd_set fds;
   guint sock;
   gchar *packed;
   guint length;
   gchar buffer[256];
+  gint ret;
   StunMessage *msg;
   StunAttribute **attr;
 
@@ -67,6 +72,24 @@ main (int argc, char **argv)
   send (sock, packed, length, 0);
   g_free (packed);
   stun_message_free (msg);
+
+  FD_ZERO (&fds);
+  FD_SET (sock, &fds);
+  tv.tv_sec = 5;
+  tv.tv_usec = 0;
+
+  ret = select (sock + 1, &fds, NULL, NULL, &tv);
+
+  if (ret < 0)
+    {
+      g_print ("error: %s", g_strerror (errno));
+      return 1;
+    }
+  else if (ret == 0)
+    {
+      g_print ("timeout\n");
+      return 1;
+    }
 
   length = recv (sock, buffer, 256, 0);
   msg = stun_message_unpack (length, buffer);
