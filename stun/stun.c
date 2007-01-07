@@ -32,7 +32,7 @@ stun_attribute_mapped_address_new (guint32 ip, guint16 port)
 void
 stun_attribute_free (StunAttribute *attr)
 {
-  g_slice_free1 (sizeof (StunAttribute), attr);
+  g_slice_free (StunAttribute, attr);
 }
 
 StunAttribute *
@@ -122,7 +122,7 @@ stun_message_free (StunMessage *msg)
     g_free (msg->attributes);
   }
 
-  g_slice_free1 (sizeof (StunMessage), msg);
+  g_slice_free (StunMessage, msg);
 }
 
 StunMessage *
