@@ -49,28 +49,28 @@ struct _StunMessage {
 };
 
 StunAttribute *
-stun_attribute_mapped_address_new(guint32 ip_address, guint16 port);
+stun_attribute_mapped_address_new (guint32 ip_address, guint16 port);
 void
-stun_attribute_free(StunAttribute *attr);
+stun_attribute_free (StunAttribute *attr);
 guint
-stun_attribute_pack(StunAttribute *attr, gchar **ret);
+stun_attribute_pack (StunAttribute *attr, gchar **ret);
 gchar *
-stun_attribute_dump(StunAttribute *attr);
+stun_attribute_dump (StunAttribute *attr);
 StunAttribute *
-stun_attribute_unpack(guint length, const gchar *s);
+stun_attribute_unpack (guint length, const gchar *s);
 
 StunMessage *
-stun_message_new(guint type);
+stun_message_new (guint type);
 StunMessage *
-stun_message_binding_request_new();
+stun_message_binding_request_new ();
 void
-stun_message_free(StunMessage *msg);
+stun_message_free (StunMessage *msg);
 guint
-stun_message_pack(StunMessage *msg, gchar **packed);
+stun_message_pack (StunMessage *msg, gchar **packed);
 gchar *
 stun_message_dump (StunMessage *msg);
 StunMessage *
-stun_message_unpack(guint length, gchar *s);
+stun_message_unpack (guint length, gchar *s);
 
 #endif /* __STUN_H__ */
 
