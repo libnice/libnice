@@ -95,7 +95,7 @@ stun_attribute_dump(StunAttribute *attr)
   }
 }
 
-static StunMessage *
+StunMessage *
 stun_message_new(guint type)
 {
   StunMessage *msg = g_slice_alloc0(sizeof(StunMessage));

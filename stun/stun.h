@@ -60,6 +60,8 @@ StunAttribute *
 stun_attribute_unpack(guint length, const gchar *s);
 
 StunMessage *
+stun_message_new(guint type);
+StunMessage *
 stun_message_binding_request_new();
 void
 stun_message_free(StunMessage *msg);
