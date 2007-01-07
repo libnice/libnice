@@ -35,6 +35,7 @@
 \.cvsignore$
 (^|/)Thumbs\.db$
 (^|/)autom4te\.cache($|/)
+(^|/)core$
 
 # autofoo files
 ^missing
