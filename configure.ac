@@ -9,6 +9,7 @@ AC_CONFIG_FILES([
 	tests/Makefile
 	stun/Makefile
 	local/Makefile
+	udp/Makefile
 	])
 
 # Checks for programs.

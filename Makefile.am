@@ -1,3 +1,3 @@
 
-SUBDIRS = local stun tests
+SUBDIRS = local stun tests udp
 
