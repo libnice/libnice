@@ -25,7 +25,7 @@ GSList *
 list_local_interfaces ()
 {
   char buf[1024];
-  guint sock;
+  gint sock;
   guint i;
   GSList *ret = NULL;
   struct ifconf ifc;
