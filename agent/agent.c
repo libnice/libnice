@@ -384,13 +384,6 @@ ice_agent_push_event (Agent *agent, Event *ev)
 }
 
 
-//void
-//ice_agent_add_component (MediaType type)
-//{
-//  /* generate candidates for component × local interfaces */
-//}
-
-
 static void
 ice_agent_add_local_host_candidate (
   Agent *agent,
