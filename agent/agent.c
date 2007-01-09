@@ -22,7 +22,7 @@ enum address_type
 
 struct _address
 {
-  enum address_type type;
+  AddressType type;
   union
   {
     guint32 addr_ipv4;
@@ -131,7 +131,7 @@ address_is_private (Address *a)
 
 
 Candidate *
-candidate_new (enum candidate_type type)
+candidate_new (CandidateType type)
 {
   Candidate *candidate;
 
@@ -158,6 +158,9 @@ candidate_free (Candidate *candidate)
  * obtain a candidate for it.  If an agent is using both RTP and RTCP, it
  * would end up with 2*K host candidates if an agent has K interfaces.
  */
+
+typedef enum component_type ComponentType;
+
 enum component_type
 {
   COMPONENT_TYPE_RTP,
@@ -169,13 +172,13 @@ typedef struct _component Component;
 
 struct _component
 {
-  enum component_type type;
+  ComponentType type;
   guint id;
 };
 
 
 static Component *
-component_new (enum component_type type)
+component_new (ComponentType type)
 {
   Component *component;
 
@@ -199,14 +202,14 @@ typedef struct _stream Stream;
 
 struct _stream
 {
-  enum media_type type;
+  MediaType type;
   /* XXX: streams can have multiple components */
   Component *component;
 };
 
 
 Stream *
-stream_new (enum media_type type)
+stream_new (MediaType type)
 {
   Stream *stream;
 
@@ -237,6 +240,8 @@ struct _candidate_pair
 };
 
 
+typedef enum check_state CheckState;
+
 /* ICE12 §6.7 (p24) */
 enum check_state
 {
@@ -247,6 +252,8 @@ enum check_state
   CHECK_STATE_FROZEN,
 };
 
+
+typedef enum check_list_state CheckListState;
 
 enum check_list_state
 {
@@ -286,7 +293,7 @@ candidate_pair_priority (
 
 
 static Event *
-event_new (enum event_type type)
+event_new (EventType type)
 {
   Event *ev;
 
@@ -378,7 +385,7 @@ ice_agent_push_event (Agent *agent, Event *ev)
 
 
 //void
-//ice_agent_add_component (enum media_type type)
+//ice_agent_add_component (MediaType type)
 //{
 //  /* generate candidates for component × local interfaces */
 //}
@@ -428,7 +435,7 @@ ice_agent_set_candidate_port (Agent *agent, guint candidate_id, guint port)
 
 
 void
-ice_agent_add_stream (Agent *agent, enum media_type type)
+ice_agent_add_stream (Agent *agent, MediaType type)
 {
   Stream *stream;
   GSList *i;

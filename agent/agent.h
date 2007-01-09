@@ -2,6 +2,8 @@
 #ifndef _AGENT_H
 #define _AGENT_H
 
+typedef enum media_type MediaType;
+
 enum media_type
 {
   MEDIA_TYPE_AUDIO,
@@ -25,6 +27,7 @@ address_free (Address *addr);
 
 /*** candidate ***/
 
+typedef enum candidate_type CandidateType;
 
 enum candidate_type
 {
@@ -39,7 +42,7 @@ typedef struct _candidate Candidate;
 
 struct _candidate
 {
-  enum candidate_type type;
+  CandidateType type;
   guint id;
   Address *addr;
   Address *base_addr;
@@ -56,6 +59,8 @@ struct _candidate
 /*** event ***/
 
 
+typedef enum event_type EventType;
+
 enum event_type
 {
   EVENT_REQUEST_PORT,
@@ -69,7 +74,7 @@ typedef struct _event Event;
 
 struct _event
 {
-  enum event_type type;
+  EventType type;
 
   union {
     struct {
@@ -112,7 +117,7 @@ ice_agent_pop_event (Agent *agent);
 void
 ice_agent_add_local_address (Agent *agent, Address *addr);
 void
-ice_agent_add_stream (Agent *agent, enum media_type type);
+ice_agent_add_stream (Agent *agent, MediaType type);
 void
 ice_agent_set_candidate_port (Agent *agent, guint candidate_id, guint port);
 void
