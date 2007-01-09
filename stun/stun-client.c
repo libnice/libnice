@@ -20,7 +20,7 @@ resolve (const gchar *name, struct hostent *ret)
   struct hostent *he;
   gchar buf[1024];
 
-  res = gethostbyname_r (server, ret, buf, sizeof (buf) / sizeof (gchar), &he,
+  res = gethostbyname_r (name, ret, buf, sizeof (buf) / sizeof (gchar), &he,
       &h_errno);
   return (res == 0);
 }
