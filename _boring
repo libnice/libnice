@@ -61,3 +61,9 @@
 # local/ stuff
 ^local/liblocal.a$
 ^local/list-local-interfaces$
+
+# udp/ stuff
+^udp/libudp.a$
+^udp/udp-client$
+^udp/udp-echo-server$
+
