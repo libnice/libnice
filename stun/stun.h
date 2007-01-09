@@ -59,6 +59,8 @@ stun_attribute_dump (StunAttribute *attr);
 StunAttribute *
 stun_attribute_unpack (guint length, const gchar *s);
 
+void
+stun_message_init (StunMessage *msg, guint type);
 StunMessage *
 stun_message_new (guint type);
 StunMessage *
