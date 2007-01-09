@@ -39,6 +39,7 @@ main (void)
       g_print (buf);
     }
 
+  sock.close (&sock);
   return 0;
 }
 
