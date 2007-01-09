@@ -57,6 +57,7 @@
 ^stun/libstun.a$
 ^stun/stun-client$
 ^stun/stun-server$
+^stun/test$
 
 # local/ stuff
 ^local/liblocal.a$
