@@ -53,6 +53,10 @@
 (^|/)Makefile$
 (^|/)\.deps$
 
+# agent/ stuff
+^agent/libagent.a$
+^agent/test$
+
 # stun/ stuff
 ^stun/libstun.a$
 ^stun/stun-client$
