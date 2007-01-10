@@ -130,7 +130,7 @@ address_is_private (Address *a)
  * candidates, server reflexive candidates, and relayed candidates. */
 
 
-Candidate *
+static Candidate *
 candidate_new (CandidateType type)
 {
   Candidate *candidate;
@@ -141,7 +141,7 @@ candidate_new (CandidateType type)
 }
 
 
-void
+static void
 candidate_free (Candidate *candidate)
 {
   address_free (candidate->addr);
