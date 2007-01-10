@@ -134,10 +134,10 @@ stun_message_free (StunMessage *msg)
 StunMessage *
 stun_message_unpack (guint length, gchar *s)
 {
-  gchar *t;
   guint attr_length;
   guint n_attributes = 0;
   guint i;
+  guint offset;
   StunAttribute *attr;
   StunMessage *msg = stun_message_new (STUN_MESSAGE_BINDING_REQUEST);
 
@@ -152,8 +152,8 @@ stun_message_unpack (guint length, gchar *s)
 
   /* count the number of attributes */
 
-  for (t = s + 20; t - s < length; t += attr_length + 4) {
-    attr_length = ntohs (*(guint16 *)(t + 2));
+  for (offset = 20; offset < length; offset += attr_length + 4) {
+    attr_length = ntohs (*(guint16 *)(s + offset + 2));
     n_attributes++;
   }
 
@@ -164,9 +164,9 @@ stun_message_unpack (guint length, gchar *s)
 
   /* unpack attributes */
 
-  for (i = 0, t = s + 20; i < n_attributes; i++, t += attr_length + 4) {
-    attr_length = ntohs (*(guint16 *)(t + 2));
-    attr = msg->attributes[i] = stun_attribute_unpack (attr_length, t);
+  for (i = 0, offset = 20; i < n_attributes; i++, offset += attr_length + 4) {
+    attr_length = ntohs (*(guint16 *)(s + offset + 2));
+    attr = msg->attributes[i] = stun_attribute_unpack (attr_length, s + offset);
   }
 
   return msg;
