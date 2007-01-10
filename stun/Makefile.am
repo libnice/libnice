@@ -1,7 +1,7 @@
 
 AM_CFLAGS = -Wall -Werror $(GLIB_CFLAGS)
 
-libstun_a_SOURCES = stun.c
+libstun_a_SOURCES = stun.h stun.c
 
 noinst_LIBRARIES = libstun.a
 
