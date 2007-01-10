@@ -105,6 +105,7 @@ struct _agent
   guint next_candidate_id;
   GSList *local_addresses;
   GSList *local_candidates;
+  GSList *remote_candidates;
   GSList *streams;
   GSList *events;
 };
@@ -122,7 +123,12 @@ void
 ice_agent_set_candidate_port (Agent *agent, guint candidate_id, guint port);
 void
 ice_agent_free (Agent *agent);
-
+void
+ice_agent_add_remote_candidate (
+  Agent *agent,
+  CandidateType type,
+  Address *addr,
+  guint port);
 
 #endif /* _AGENT_H */
 

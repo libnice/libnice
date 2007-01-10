@@ -464,10 +464,26 @@ ice_agent_add_local_address (Agent *agent, Address *addr)
 
 
 void
-ice_agent_add_remote_candidate (Agent *a, Candidate *c)
+ice_agent_add_remote_candidate (
+  Agent *agent,
+  CandidateType type,
+  Address *addr,
+  guint port)
 {
   /* append to agent->remote_candidates */
-  /* for each component, generate a new check with the new candidate */
+
+  Candidate *candidate;
+
+  candidate = candidate_new (type);
+  /* do remote candidates need IDs? */
+  candidate->id = 0;
+  candidate->addr = address_dup (addr);
+  candidate->port = port;
+
+  agent->remote_candidates = g_slist_append (agent->remote_candidates,
+      candidate);
+
+  /* later: for each component, generate a new check with the new candidate */
 }
 
 
@@ -514,7 +530,6 @@ ice_agent_free (Agent *agent)
   g_slist_free (agent->local_candidates);
   agent->local_candidates = NULL;
 
-  /*
   for (i = agent->remote_candidates; i; i = i->next)
     {
       Candidate *c = (Candidate *) i->data;
@@ -524,7 +539,6 @@ ice_agent_free (Agent *agent)
 
   g_slist_free (agent->remote_candidates);
   agent->remote_candidates = NULL;
-  */
 
   for (i = agent->streams; i; i = i->next)
     {
