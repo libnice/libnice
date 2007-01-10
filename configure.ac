@@ -25,8 +25,8 @@ PKG_CHECK_MODULES(CHECK, [dnl
 	])
 
 PKG_CHECK_MODULES(GLIB, [dnl
-	glib-2.0 >= 2.4 dnl
-	gobject-2.0 >= 2.4 dnl
+	glib-2.0 >= 2.10 dnl
+	gobject-2.0 >= 2.10 dnl
 	])
 
 AC_OUTPUT
