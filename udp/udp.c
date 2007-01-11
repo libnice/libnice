@@ -23,7 +23,7 @@
 /*** UDPSocket ***/
 
 static gint
-udp_socket_recv (
+socket_recv (
   UDPSocket *sock,
   struct sockaddr_in *from,
   guint len,
@@ -39,7 +39,7 @@ udp_socket_recv (
 }
 
 static gboolean
-udp_socket_send (
+socket_send (
   UDPSocket *sock,
   struct sockaddr_in *to,
   guint len,
@@ -51,7 +51,7 @@ udp_socket_send (
 }
 
 static void
-udp_socket_close (UDPSocket *sock)
+socket_close (UDPSocket *sock)
 {
   close (sock->fileno);
 }
@@ -63,7 +63,7 @@ udp_socket_close (UDPSocket *sock)
  * port bound to will be set in sock->port.
  */
 static gboolean
-udp_socket_manager_init_socket (
+socket_manager_init_socket (
   UDPSocketManager *man,
   UDPSocket *sock,
   struct sockaddr_in *sin)
@@ -92,28 +92,28 @@ udp_socket_manager_init_socket (
 
   sock->fileno = sockfd;
   sock->port = ntohs (name.sin_port);
-  sock->send = udp_socket_send;
-  sock->recv = udp_socket_recv;
-  sock->close = udp_socket_close;
+  sock->send = socket_send;
+  sock->recv = socket_recv;
+  sock->close = socket_close;
   return TRUE;
 }
 
 static void
-udp_socket_manager_select (UDPPacketRecvFunc cb)
+socket_manager_select (UDPPacketRecvFunc cb)
 {
   g_assert_not_reached ();
 }
 
 static void
-udp_socket_manager_close (UDPSocketManager *man)
+socket_manager_close (UDPSocketManager *man)
 {
 }
 
 void
 udp_socket_manager_init (UDPSocketManager *man)
 {
-  man->init = udp_socket_manager_init_socket;
-  man->select = udp_socket_manager_select;
-  man->close = udp_socket_manager_close;
+  man->init = socket_manager_init_socket;
+  man->select = socket_manager_select;
+  man->close = socket_manager_close;
 }
 
