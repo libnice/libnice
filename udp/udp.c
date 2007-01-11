@@ -63,7 +63,10 @@ udp_socket_close (struct UDPSocket *sock)
  * port bound to will be set in sock->port.
  */
 static gboolean
-udp_socket_manager_init_socket (struct UDPSocket *sock, struct sockaddr_in *sin)
+udp_socket_manager_init_socket (
+  struct UDPSocketManager *man,
+  struct UDPSocket *sock,
+  struct sockaddr_in *sin)
 {
   gint sockfd;
   struct sockaddr_in name;

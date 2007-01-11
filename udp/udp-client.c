@@ -17,7 +17,7 @@ main (void)
 
   udp_socket_manager_init (&man);
 
-  if (!man.init (&sock, NULL))
+  if (!man.init (&man, &sock, NULL))
     g_assert_not_reached ();
 
   if (inet_pton (AF_INET, "127.0.0.1", &(sin.sin_addr)) < 0)

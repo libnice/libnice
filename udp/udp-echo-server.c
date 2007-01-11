@@ -17,7 +17,7 @@ main (void)
   sin.sin_addr.s_addr = INADDR_ANY;
   sin.sin_port = htons (9999);
 
-  if (!man.init (&sock, &sin))
+  if (!man.init (&man, &sock, &sin))
     g_assert_not_reached ();
 
   for (;;)
