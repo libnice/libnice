@@ -30,6 +30,28 @@ struct _UDPSocketManager
 
 void
 udp_socket_manager_init (UDPSocketManager *man);
+gboolean
+udp_socket_manager_alloc_socket (
+  UDPSocketManager *man,
+  UDPSocket *sock,
+  struct sockaddr_in *sin);
+void
+udp_socket_manager_close (UDPSocketManager *man);
+
+guint
+udp_socket_recv (
+  UDPSocket *sock,
+  struct sockaddr_in *sin,
+  guint len,
+  gchar *buf);
+void
+udp_socket_send (
+  UDPSocket *sock,
+  struct sockaddr_in *sin,
+  guint len,
+  gchar *buf);
+void
+udp_socket_close (UDPSocket *sock);
 
 #endif /* _UDP_H */
 

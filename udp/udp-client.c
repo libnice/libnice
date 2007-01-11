@@ -17,7 +17,7 @@ main (void)
 
   udp_socket_manager_init (&man);
 
-  if (!man.init (&man, &sock, NULL))
+  if (!udp_socket_manager_alloc_socket (&man, &sock, NULL))
     g_assert_not_reached ();
 
   if (inet_pton (AF_INET, "127.0.0.1", &(sin.sin_addr)) < 0)
@@ -34,12 +34,13 @@ main (void)
       if (fgets (buf, sizeof (buf), stdin) == NULL)
         break;
 
-      sock.send (&sock, &sin, strlen (buf), buf);
-      length = sock.recv (&sock, NULL, sizeof (buf), buf);
+      udp_socket_send (&sock, &sin, strlen (buf), buf);
+      length = udp_socket_recv (&sock, NULL, sizeof (buf), buf);
       g_print (buf);
     }
 
-  sock.close (&sock);
+  udp_socket_close (&sock);
+  udp_socket_manager_close (&man);
   return 0;
 }
 

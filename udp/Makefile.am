@@ -1,7 +1,7 @@
 
 AM_CFLAGS = -Wall -Werror $(GLIB_CFLAGS)
 
-libudp_a_SOURCES = udp.h udp.c
+libudp_a_SOURCES = udp.h udp.c udp-generic.c
 
 noinst_LIBRARIES = libudp.a
 
