@@ -11,3 +11,8 @@ udp_client_LDADD = libudp.a $(GLIB_LIBS)
 
 udp_echo_server_LDADD = libudp.a $(GLIB_LIBS)
 
+test-echo.sh::
+	chmod +x $@
+
+TESTS = test-echo.sh
+
