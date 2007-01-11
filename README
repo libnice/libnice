@@ -26,3 +26,9 @@ Requires:
  glib >= 2.10
  check >= 0.9.4 (for make check)
 
+Limitations:
+
+ - ICE agent only supports passive operation
+ - no support for RTCP
+ - no support for IPv6
+
