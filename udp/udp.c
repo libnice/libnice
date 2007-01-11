@@ -104,7 +104,7 @@ udp_socket_manager_select (UDPPacketRecvFunc cb)
   g_assert_not_reached ();
 }
 
-void
+static void
 udp_socket_manager_close (struct UDPSocketManager *man)
 {
 }
