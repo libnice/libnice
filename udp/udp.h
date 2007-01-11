@@ -26,8 +26,5 @@ struct UDPSocketManager
 void
 udp_socket_manager_init (struct UDPSocketManager *man);
 
-void
-udp_socket_manager_deinit (struct UDPSocketManager *man);
-
 #endif /* _UDP_H */
 
