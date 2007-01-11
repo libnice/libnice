@@ -21,6 +21,7 @@ struct UDPSocketManager
   gboolean (*init) (struct UDPSocketManager *man, struct UDPSocket *sock,
       struct sockaddr_in *sin);
   void (*select) (UDPPacketRecvFunc cb);
+  void (*close) (struct UDPSocketManager *man);
 };
 
 void

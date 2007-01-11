@@ -105,14 +105,15 @@ udp_socket_manager_select (UDPPacketRecvFunc cb)
 }
 
 void
+udp_socket_manager_close (struct UDPSocketManager *man)
+{
+}
+
+void
 udp_socket_manager_init (struct UDPSocketManager *man)
 {
   man->init = udp_socket_manager_init_socket;
   man->select = udp_socket_manager_select;
-}
-
-void
-udp_socket_manager_close (struct UDPSocketManager *man)
-{
+  man->close = udp_socket_manager_close;
 }
 
