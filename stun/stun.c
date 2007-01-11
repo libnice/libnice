@@ -10,7 +10,7 @@
 static StunAttribute *
 stun_attribute_new (guint type)
 {
-  StunAttribute *attr = g_slice_alloc (sizeof (StunAttribute));
+  StunAttribute *attr = g_slice_new (StunAttribute);
 
   attr->type = type;
   return attr;
@@ -114,7 +114,7 @@ stun_message_init (StunMessage *msg, guint type)
 StunMessage *
 stun_message_new (guint type)
 {
-  StunMessage *msg = g_slice_alloc0 (sizeof (StunMessage));
+  StunMessage *msg = g_slice_new0 (StunMessage);
 
   stun_message_init (msg, type);
   return msg;
