@@ -24,7 +24,7 @@
 
 static gint
 udp_socket_recv (
-  struct UDPSocket *sock,
+  UDPSocket *sock,
   struct sockaddr_in *from,
   guint len,
   gchar *buf)
@@ -40,7 +40,7 @@ udp_socket_recv (
 
 static gboolean
 udp_socket_send (
-  struct UDPSocket *sock,
+  UDPSocket *sock,
   struct sockaddr_in *to,
   guint len,
   gchar *buf)
@@ -51,7 +51,7 @@ udp_socket_send (
 }
 
 static void
-udp_socket_close (struct UDPSocket *sock)
+udp_socket_close (UDPSocket *sock)
 {
   close (sock->fileno);
 }
@@ -64,8 +64,8 @@ udp_socket_close (struct UDPSocket *sock)
  */
 static gboolean
 udp_socket_manager_init_socket (
-  struct UDPSocketManager *man,
-  struct UDPSocket *sock,
+  UDPSocketManager *man,
+  UDPSocket *sock,
   struct sockaddr_in *sin)
 {
   gint sockfd;
@@ -105,12 +105,12 @@ udp_socket_manager_select (UDPPacketRecvFunc cb)
 }
 
 static void
-udp_socket_manager_close (struct UDPSocketManager *man)
+udp_socket_manager_close (UDPSocketManager *man)
 {
 }
 
 void
-udp_socket_manager_init (struct UDPSocketManager *man)
+udp_socket_manager_init (UDPSocketManager *man)
 {
   man->init = udp_socket_manager_init_socket;
   man->select = udp_socket_manager_select;

@@ -11,8 +11,8 @@
 gint
 main (void)
 {
-  struct UDPSocketManager man;
-  struct UDPSocket sock;
+  UDPSocketManager man;
+  UDPSocket sock;
   struct sockaddr_in sin;
 
   udp_socket_manager_init (&man);
