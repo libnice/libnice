@@ -35,13 +35,10 @@ stun_attribute_free (StunAttribute *attr)
   g_slice_free (StunAttribute, attr);
 }
 
-StunAttribute *
-stun_attribute_unpack (guint length, const gchar *s)
+static void
+_stun_attribute_unpack (StunAttribute *attr, guint length, const gchar *s)
 {
-  StunAttribute *attr;
-
-  g_assert (length);
-  attr = stun_attribute_new (ntohs (*(guint16 *)s));
+  attr->type = ntohs (*(guint16 *) s);
 
   switch (attr->type)
     {
@@ -54,6 +51,16 @@ stun_attribute_unpack (guint length, const gchar *s)
       default:
         break;
     }
+}
+
+StunAttribute *
+stun_attribute_unpack (guint length, const gchar *s)
+{
+  StunAttribute *attr;
+
+  g_assert (length);
+  attr = stun_attribute_new (0);
+  _stun_attribute_unpack (attr, length, s);
 
   return attr;
 }
