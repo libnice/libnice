@@ -18,7 +18,10 @@ main (void)
   sin.sin_port = htons (9999);
 
   if (!man.init (&man, &sock, &sin))
-    g_assert_not_reached ();
+    {
+      g_debug ("failed to find to port 9999: server already running?");
+      return 1;
+    }
 
   for (;;)
     {
