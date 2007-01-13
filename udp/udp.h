@@ -13,6 +13,7 @@ struct _UDPSocket
   gboolean (*send) (UDPSocket *sock, struct sockaddr_in *to, guint len,
       gchar *buf);
   void (*close) (UDPSocket *sock);
+  void *priv;
 };
 
 typedef gboolean (*UDPPacketRecvFunc) (struct sockaddr_in *from, guint len,
@@ -26,6 +27,7 @@ struct _UDPSocketManager
       struct sockaddr_in *sin);
   void (*select) (UDPPacketRecvFunc cb);
   void (*close) (UDPSocketManager *man);
+  void *priv;
 };
 
 void
