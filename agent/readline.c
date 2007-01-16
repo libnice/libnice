@@ -1,0 +1,30 @@
+
+#include <unistd.h>
+
+#include <glib.h>
+
+gchar *
+readline (guint fileno)
+{
+  gchar buf[1024];
+  guint i;
+
+  for (i = 0; i < sizeof (buf); i++)
+    {
+      guint ret;
+
+      ret = read (fileno, buf + i, 1);
+
+      if (ret == -1)
+        return NULL;
+
+      if (ret == 0 || buf[i] == '\n')
+        {
+          buf[i] = '\0';
+          return g_strdup (buf);
+        }
+    }
+
+  return NULL;
+}
+

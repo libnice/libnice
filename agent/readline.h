@@ -1,0 +1,4 @@
+
+gchar *
+readline (guint fileno);
+
