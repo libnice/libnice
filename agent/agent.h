@@ -56,6 +56,12 @@ struct _candidate
 };
 
 
+Candidate *
+candidate_new (CandidateType type);
+void
+candidate_free (Candidate *candidate);
+
+
 /*** event ***/
 
 
