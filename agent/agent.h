@@ -18,9 +18,13 @@ typedef struct _address Address;
 
 
 Address *
+address_new_ipv4 (guint32 addr_ipv4);
+Address *
 address_new_ipv4_from_string (gchar *str);
 gboolean
 address_equal (Address *a, Address *b);
+gchar *
+address_to_string (Address *addr);
 void
 address_free (Address *addr);
 
