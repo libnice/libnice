@@ -93,6 +93,7 @@ fake_close (UDPSocket *sock)
   g_slice_free (UDPFakeSocketPriv, priv);
 }
 
+/* XXX: copied INADDR_ANY to sock->addr rather than using a valid address */
 static gboolean
 fake_socket_init (
   UDPSocketManager *man,
