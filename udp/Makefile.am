@@ -1,9 +1,14 @@
 
 AM_CFLAGS = -Wall -Werror $(GLIB_CFLAGS)
 
-libudp_la_SOURCES = udp.h udp.c udp-generic.c udp-fake.h udp-fake.c
-
 noinst_LTLIBRARIES = libudp.la
+
+libudp_la_SOURCES = \
+	udp.h \
+	udp.c \
+	udp-generic.c \
+	udp-fake.h \
+	udp-fake.c
 
 noinst_PROGRAMS = udp-client udp-echo-server
 
