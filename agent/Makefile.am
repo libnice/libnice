@@ -5,7 +5,7 @@ libagent_la_SOURCES = agent.h agent.c
 
 noinst_LTLIBRARIES = libagent.la
 
-noinst_PROGRAMS = test test-readline test-util
+check_PROGRAMS = test test-readline test-util
 
 test_LDADD = libagent.la $(GLIB_LIBS)
 
