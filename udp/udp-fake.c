@@ -2,6 +2,7 @@
 #include <string.h>
 
 #include <arpa/inet.h>
+#include <unistd.h>
 
 #include <glib.h>
 
@@ -20,8 +21,9 @@ typedef struct _UDPFakeSocketManagerPriv UDPFakeSocketManagerPriv;
 
 struct _UDPFakeSocketManagerPriv
 {
-  GSList *recv_queue;
   GSList *send_queue;
+  guint recv_pipe_in;
+  guint recv_pipe_out;
 };
 
 static void *
@@ -70,28 +72,20 @@ fake_recv (
   guint len,
   gchar *buf)
 {
-  Packet *packet;
   UDPSocketManager *man;
   UDPFakeSocketManagerPriv *priv;
 
   man = (UDPSocketManager *) sock->priv;
   priv = (UDPFakeSocketManagerPriv *) man->priv;
-  packet = (Packet *) _g_slist_pop (&priv->recv_queue);
 
-  if (packet == NULL)
-    {
-      g_debug ("recv queue underflow");
-      return 0;
-    }
-
-  len = packet->len;
-  memcpy (buf, packet->buf, len);
-  memcpy (from, &(packet->sin), sizeof (*from));
-  g_slice_free (Packet, packet);
+  read (priv->recv_pipe_out, from, sizeof (struct sockaddr_in));
+  read (priv->recv_pipe_out, &len, sizeof (guint));
+  read (priv->recv_pipe_out, buf, len);
 
   return len;
 }
 
+/* XXX: set a port in sin */
 static gboolean
 fake_socket_init (
   UDPSocketManager *man,
@@ -111,16 +105,12 @@ udp_fake_socket_manager_push_recv (
   guint len,
   gchar *buf)
 {
-  Packet *packet;
   UDPFakeSocketManagerPriv *priv;
 
-  packet = g_slice_new0 (Packet);
-  packet->len = len;
-  packet->sin = *from;
-  strncpy (packet->buf, buf, len);
-
   priv = (UDPFakeSocketManagerPriv *) man->priv;
-  priv->recv_queue = g_slist_append (priv->recv_queue, packet);
+  write (priv->recv_pipe_in, from, sizeof (struct sockaddr_in));
+  write (priv->recv_pipe_in, &len, sizeof (guint));
+  write (priv->recv_pipe_in, buf, len);
 }
 
 guint
@@ -146,15 +136,31 @@ udp_fake_socket_manager_pop_send (
 static void
 fake_socket_manager_close (UDPSocketManager *man)
 {
-  g_slice_free (UDPFakeSocketManagerPriv, man->priv);
+  UDPFakeSocketManagerPriv *priv;
+
+  priv = (UDPFakeSocketManagerPriv *) man->priv;
+  close (priv->recv_pipe_out);
+  close (priv->recv_pipe_in);
+  g_slice_free (UDPFakeSocketManagerPriv, priv);
 }
 
 void
 udp_fake_socket_manager_init (UDPSocketManager *man)
 {
+  int fds[2];
+  UDPFakeSocketManagerPriv *priv;
+
+  if (pipe (fds) == -1)
+    /* XXX: this function should return boolean */
+    return;
+
+  priv = g_slice_new0 (UDPFakeSocketManagerPriv);
+  priv->recv_pipe_out = fds[0];
+  priv->recv_pipe_in = fds[1];
+
   man->init = fake_socket_init;
   man->select = NULL;
   man->close = fake_socket_manager_close;
-  man->priv = g_slice_new0 (UDPFakeSocketManagerPriv);
+  man->priv = priv;
 }
 
