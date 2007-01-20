@@ -1,9 +1,9 @@
 
 AM_CFLAGS = -Wall -Werror $(GLIB_CFLAGS)
 
-libagent_la_SOURCES = agent.h agent.c
-
 noinst_LTLIBRARIES = libagent.la
+
+libagent_la_SOURCES = agent.h agent.c
 
 check_PROGRAMS = test test-readline test-util
 
