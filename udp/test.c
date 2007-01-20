@@ -19,6 +19,8 @@ main (void)
 
   udp_fake_socket_manager_init (&man);
 
+  memset (buf, '\0', 1024);
+
   /* create fake socket */
 
   sin.sin_addr.s_addr = INADDR_ANY;
