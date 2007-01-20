@@ -45,13 +45,15 @@
 ^aclocal.m4$
 ^compile$
 ^config.h$
+^config.guess$
 ^config.log$
 ^config.status$
-^config.status$
+^config.sub$
 ^stamp-h1$
 (^|/)Makefile.in$
 (^|/)Makefile$
 (^|/)\.deps$
+^ltmain.sh$
 
 # agent/ stuff
 ^agent/libagent.a$
