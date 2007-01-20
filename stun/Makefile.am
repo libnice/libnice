@@ -5,11 +5,13 @@ libstun_la_SOURCES = stun.h stun.c
 
 noinst_LTLIBRARIES = libstun.la
 
-noinst_PROGRAMS = stun-client stun-server test
+noinst_PROGRAMS = stun-client stun-server
 
 stun_client_LDADD = libstun.la $(GLIB_LIBS)
 
 stun_server_LDADD = libstun.la $(GLIB_LIBS)
+
+check_PROGRAMS = test
 
 test_LDADD = libstun.la $(GLIB_LIBS) $(CHECK_LIBS)
 
