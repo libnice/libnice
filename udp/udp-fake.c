@@ -93,7 +93,6 @@ fake_close (UDPSocket *sock)
   g_slice_free (UDPFakeSocketPriv, priv);
 }
 
-/* XXX: set a port in sin */
 static gboolean
 fake_socket_init (
   UDPSocketManager *man,
@@ -101,6 +100,7 @@ fake_socket_init (
   struct sockaddr_in *sin)
 {
   int fds[2];
+  static int port = 1;
   UDPFakeSocketPriv *priv;
 
   if (pipe (fds) == -1)
@@ -111,6 +111,14 @@ fake_socket_init (
   priv->recv_pipe_in = fds[1];
 
   sock->fileno = priv->recv_pipe_out;
+  sock->addr.sin_family = sin->sin_family;
+  sock->addr.sin_addr = sin->sin_addr;
+
+  if (sin->sin_port == 0)
+    sock->addr.sin_port = htons (port++);
+  else
+    sock->addr.sin_port = sin->sin_port;
+
   sock->send = fake_send;
   sock->recv = fake_recv;
   sock->priv = priv;
