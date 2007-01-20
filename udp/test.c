@@ -33,7 +33,7 @@ main (void)
   len = 5;
   sin.sin_addr.s_addr = htonl (0x01020304);
   sin.sin_port = htons (2345);
-  udp_fake_socket_manager_push_recv (&man, &sin, len, buf);
+  udp_fake_socket_push_recv (&sock, &sin, len, buf);
 
   memset (buf, '\0', 5);
   memset (&sin, '\0', sizeof (sin));
@@ -53,13 +53,14 @@ main (void)
   memset (buf, '\0', len);
   memset (&sin, '\0', sizeof (sin));
 
-  len = udp_fake_socket_manager_pop_send (&man, &sin, sizeof (buf), buf);
+  len = udp_fake_socket_pop_send (&sock, &sin, sizeof (buf), buf);
   g_assert (len == 4);
   g_assert (strcmp (buf, "lala"));
   g_assert (ntohl (sin.sin_addr.s_addr) == 0x01020304);
   g_assert (ntohs (sin.sin_port) == 2345);
 
-  man.close (&man);
+  udp_socket_close (&sock);
+  udp_socket_manager_close (&man);
   return 0;
 }
 
