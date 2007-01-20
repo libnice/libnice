@@ -11,8 +11,7 @@ typedef struct _Packet Packet;
 
 struct _Packet
 {
-  struct sockaddr_in from;
-  struct sockaddr_in to;
+  struct sockaddr_in sin;
   guint len;
   gchar buf[1024];
 };
@@ -54,7 +53,7 @@ fake_send (
 
   packet = g_slice_new0 (Packet);
   packet->len = len;
-  packet->to = *to;
+  packet->sin = *to;
   strncpy (packet->buf, buf, len);
 
   man = (UDPSocketManager *) sock->priv;
@@ -87,7 +86,7 @@ fake_recv (
 
   len = packet->len;
   memcpy (buf, packet->buf, len);
-  memcpy (from, &(packet->from), sizeof (*from));
+  memcpy (from, &(packet->sin), sizeof (*from));
   g_slice_free (Packet, packet);
 
   return len;
@@ -117,7 +116,7 @@ udp_fake_socket_manager_push_recv (
 
   packet = g_slice_new0 (Packet);
   packet->len = len;
-  packet->from = *from;
+  packet->sin = *from;
   strncpy (packet->buf, buf, len);
 
   priv = (UDPFakeSocketManagerPriv *) man->priv;
@@ -140,7 +139,7 @@ udp_fake_socket_manager_pop_send (
   if (!packet)
     return 0;
 
-  *to = packet->to;
+  *to = packet->sin;
   return packet->len;
 }
 
