@@ -110,6 +110,7 @@ fake_socket_init (
   priv->recv_pipe_out = fds[0];
   priv->recv_pipe_in = fds[1];
 
+  sock->fileno = priv->recv_pipe_out;
   sock->send = fake_send;
   sock->recv = fake_recv;
   sock->priv = priv;
