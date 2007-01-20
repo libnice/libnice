@@ -69,8 +69,7 @@ socket_manager_init_socket (
   struct sockaddr_in *sin)
 {
   gint sockfd;
-  struct sockaddr_in name;
-  guint name_len = sizeof (name);
+  guint name_len = sizeof (struct sockaddr_in);
 
   sockfd = socket (PF_INET, SOCK_DGRAM, 0);
 
@@ -84,14 +83,13 @@ socket_manager_init_socket (
         return FALSE;
       }
 
-  if (getsockname (sockfd, (struct sockaddr *) &name, &name_len) != 0)
+  if (getsockname (sockfd, (struct sockaddr *) &(sock->addr), &name_len) != 0)
     {
       close (sockfd);
       return FALSE;
     }
 
   sock->fileno = sockfd;
-  sock->port = ntohs (name.sin_port);
   sock->send = socket_send;
   sock->recv = socket_recv;
   sock->close = socket_close;

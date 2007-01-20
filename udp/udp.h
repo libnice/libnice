@@ -6,8 +6,8 @@ typedef struct _UDPSocket UDPSocket;
 
 struct _UDPSocket
 {
+  struct sockaddr_in addr;
   guint fileno;
-  guint port;
   gint (*recv) (UDPSocket *sock, struct sockaddr_in *from, guint len,
       gchar *buf);
   gboolean (*send) (UDPSocket *sock, struct sockaddr_in *to, guint len,
