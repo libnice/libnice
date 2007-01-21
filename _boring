@@ -53,24 +53,33 @@
 (^|/)Makefile.in$
 (^|/)Makefile$
 (^|/)\.deps$
+(^|/)\.libs$
 ^ltmain.sh$
+^libtool$
+\.lo$
 
 # agent/ stuff
-^agent/libagent.a$
+^agent/libagent.la$
 ^agent/test$
+^agent/test-readline$
+^agent/test-util$
 
 # stun/ stuff
-^stun/libstun.a$
+^stun/libstun.la$
 ^stun/stun-client$
 ^stun/stun-server$
 ^stun/test$
 
 # local/ stuff
-^local/liblocal.a$
+^local/liblocal.la$
 ^local/list-local-interfaces$
 
 # udp/ stuff
-^udp/libudp.a$
+^udp/libudp.la$
 ^udp/udp-client$
 ^udp/udp-echo-server$
+^udp/test$
+
+# nice/ stuff
+^nice/libnice.la$
 
