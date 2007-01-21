@@ -18,7 +18,12 @@ readline (guint fileno)
       if (ret == -1)
         return NULL;
 
-      if (ret == 0 || buf[i] == '\n')
+      if (ret == 0 && i == 0)
+        {
+          /* EOF on first read */
+          return NULL;
+        }
+      else if (ret == 0 || buf[i] == '\n')
         {
           buf[i] = '\0';
           return g_strdup (buf);

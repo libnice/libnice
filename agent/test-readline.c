@@ -13,9 +13,16 @@ read (int fd, void *buf, size_t count)
   gchar *line = "test\n";
 
   g_assert (count == 1);
-  g_assert (offset < 5);
-  * (gchar *) buf = line[offset++];
-  return 1;
+
+  if (offset < 5)
+    {
+      * (gchar *) buf = line[offset++];
+      return 1;
+    }
+  else
+    {
+      return 0;
+    }
 }
 
 int
@@ -25,6 +32,8 @@ main (void)
 
   line = readline (0);
   g_assert (0 == strcmp (line, "test"));
+  line = readline (0);
+  g_assert (line == NULL);
   return 0;
 }
 
