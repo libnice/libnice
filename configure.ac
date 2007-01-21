@@ -11,6 +11,7 @@ AC_CONFIG_FILES([
 	stun/Makefile
 	local/Makefile
 	udp/Makefile
+	nice/Makefile
 	])
 
 # Checks for programs.
