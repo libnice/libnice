@@ -64,7 +64,7 @@ stun_message_init (StunMessage *msg, guint type);
 StunMessage *
 stun_message_new (guint type);
 StunMessage *
-stun_message_binding_request_new ();
+stun_message_binding_request_new (void);
 void
 stun_message_free (StunMessage *msg);
 guint
