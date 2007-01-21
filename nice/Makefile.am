@@ -11,5 +11,5 @@ libnice_la_LIBADD = \
 	../stun/libstun.la \
 	../agent/libagent.la
 
-libnice_la_LDFLAGS = -Wl,--version-script,libnice.ver
+libnice_la_LDFLAGS = -Wl,--version-script,$(srcdir)/libnice.ver
 
