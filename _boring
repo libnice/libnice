@@ -45,6 +45,7 @@
 ^aclocal.m4$
 ^compile$
 ^config.h$
+^config.h.in$
 ^config.guess$
 ^config.log$
 ^config.status$
