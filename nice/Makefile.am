@@ -13,3 +13,23 @@ libnice_la_LIBADD = \
 
 libnice_la_LDFLAGS = -Wl,--version-script,$(srcdir)/libnice.ver
 
+noinst_PROGRAMS = ice-test-server
+
+AM_CFLAGS = -Wall -Werror \
+	-I $(top_srcdir)/agent \
+	-I $(top_srcdir)/udp \
+	-I $(top_srcdir)/stun \
+	$(GLIB_CFLAGS)
+
+ice_test_server_SOURCES = ice-test-server.c \
+	$(top_srcdir)/agent/readline.h \
+	$(top_srcdir)/agent/readline.c \
+	$(top_srcdir)/agent/util.h \
+	$(top_srcdir)/agent/util.c
+
+ice_test_server_LDADD = \
+	$(top_builddir)/agent/libagent.la \
+	$(top_builddir)/udp/libudp.la \
+	$(top_builddir)/stun/libstun.la \
+	$(GLIB_LIBS)
+
