@@ -11,25 +11,6 @@
 
 /*** address ***/
 
-typedef enum address_type AddressType;
-
-enum address_type
-{
-  ADDRESS_TYPE_IPV4,
-  ADDRESS_TYPE_IPV6,
-};
-
-
-struct _address
-{
-  AddressType type;
-  union
-  {
-    guint32 addr_ipv4;
-    guchar addr_ipv6[16];
-  };
-};
-
 
 Address *
 address_new_ipv4 (guint32 addr_ipv4)

@@ -14,8 +14,26 @@ enum media_type
 /*** address ***/
 
 
+typedef enum address_type AddressType;
+
+enum address_type
+{
+  ADDRESS_TYPE_IPV4,
+  ADDRESS_TYPE_IPV6,
+};
+
 typedef struct _address Address;
 
+/* XXX: need access to fields to convert to sockaddr_in */
+struct _address
+{
+  AddressType type;
+  union
+  {
+    guint32 addr_ipv4;
+    guchar addr_ipv6[16];
+  };
+};
 
 Address *
 address_new_ipv4 (guint32 addr_ipv4);
