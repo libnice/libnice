@@ -1,6 +1,7 @@
 
 AM_CFLAGS = -Wall -Werror \
 	-I $(top_srcdir)/udp \
+	-I $(top_srcdir)/stun \
 	$(GLIB_CFLAGS)
 
 noinst_LTLIBRARIES = libagent.la
@@ -11,7 +12,13 @@ libagent_la_LIBADD = \
 	$(top_builddir)/udp/libudp.la \
 	$(top_builddir)/stun/libstun.la
 
-check_PROGRAMS = test test-readline test-util test-add-stream test-recv
+check_PROGRAMS = \
+	test \
+	test-readline \
+	test-util \
+	test-add-stream \
+	test-recv \
+	test-stun
 
 test_LDADD = libagent.la $(GLIB_LIBS)
 
@@ -27,5 +34,7 @@ test_add_stream_LDADD = libagent.la $(GLIB_LIBS)
 
 test_recv_LDADD = libagent.la $(GLIB_LIBS)
 
-TESTS = test test-readline test-util test-add-stream test-recv
+test_stun_LDADD = libagent.la $(GLIB_LIBS)
+
+TESTS = $(check_PROGRAMS)
 

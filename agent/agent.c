@@ -7,6 +7,7 @@
 
 #include <glib.h>
 
+#include <stun.h>
 #include <udp.h>
 
 #include <agent.h>
@@ -558,7 +559,31 @@ ice_agent_recv (
     }
   else
     {
-      /* maybe STUN */
+      StunMessage *msg;
+
+      msg = stun_message_unpack (len, buf);
+
+      if (msg == NULL)
+        return;
+
+      if (msg->type == STUN_MESSAGE_BINDING_REQUEST)
+        {
+          StunMessage *response;
+          guint len;
+          gchar *packed;
+
+          response = stun_message_new (STUN_MESSAGE_BINDING_RESPONSE);
+          response->attributes = g_malloc0 (2 * sizeof (StunAttribute));
+          response->attributes[0] = stun_attribute_mapped_address_new (
+              ntohl (from.sin_addr.s_addr), ntohs (from.sin_port));
+          len = stun_message_pack (response, &packed);
+          udp_socket_send (&(candidate->sock), &from, len, packed);
+
+          g_free (packed);
+          stun_message_free (response);
+        }
+
+      stun_message_free (msg);
     }
 }
 
