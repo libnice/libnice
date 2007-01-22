@@ -72,7 +72,8 @@ struct _candidate
   guint16 port;
   guint32 priority;
   // Stream *stream;
-  // guint component_id;
+  guint stream_id;
+  guint component_id;
   // guint generation;
   // gchar *foundation;
   UDPSocket sock;
