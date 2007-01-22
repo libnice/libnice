@@ -146,8 +146,6 @@ candidate_new (CandidateType type)
 void
 candidate_free (Candidate *candidate)
 {
-  address_free (candidate->addr);
-  address_free (candidate->base_addr);
   g_slice_free (Candidate, candidate);
 }
 
@@ -376,8 +374,8 @@ ice_agent_add_local_host_candidate (
   candidate->id = agent->next_candidate_id++;
   candidate->stream_id = stream_id;
   candidate->component_id = component_id;
-  candidate->addr = address_dup (address);
-  candidate->base_addr = address_dup (address);
+  candidate->addr = *address;
+  candidate->base_addr = *address;
   agent->local_candidates = g_slist_append (agent->local_candidates,
       candidate);
 
@@ -448,7 +446,7 @@ ice_agent_add_remote_candidate (
   candidate = candidate_new (type);
   /* do remote candidates need IDs? */
   candidate->id = 0;
-  candidate->addr = address_dup (addr);
+  candidate->addr = *addr;
   candidate->port = port;
 
   agent->remote_candidates = g_slist_append (agent->remote_candidates,

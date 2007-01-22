@@ -68,8 +68,8 @@ struct _candidate
 {
   CandidateType type;
   guint id;
-  Address *addr;
-  Address *base_addr;
+  Address addr;
+  Address base_addr;
   // guint sock;
   guint16 port;
   guint32 priority;

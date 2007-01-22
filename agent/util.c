@@ -75,7 +75,7 @@ candidate_from_string (const gchar *s)
   candidate = candidate_new (type);
   addr = address_new ();
   address_set_ipv4 (addr, ntohl (ip));
-  candidate->addr = addr;
+  candidate->addr = *addr;
   candidate->port = port;
 
   return candidate;
@@ -87,9 +87,6 @@ candidate_to_string (Candidate *candidate)
   gchar *addr_tmp;
   gchar *ret;
   gchar type;
-
-  if (!candidate->addr)
-    return NULL;
 
   switch (candidate->type)
     {
@@ -109,7 +106,7 @@ candidate_to_string (Candidate *candidate)
       return NULL;
     }
 
-  addr_tmp = address_to_string (candidate->addr);
+  addr_tmp = address_to_string (&(candidate->addr));
   ret = g_strdup_printf ("%c/%s/%d", type, addr_tmp, candidate->port);
   g_free (addr_tmp);
   return ret;

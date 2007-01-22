@@ -23,7 +23,7 @@ main (void)
   g_assert (address_set_ipv4_from_string (&addr, "192.168.0.1"));
   candidate = candidate_from_string ("H/192.168.0.1/1234");
   g_assert (candidate != NULL);
-  g_assert (address_equal (&addr, candidate->addr));
+  g_assert (address_equal (&addr, &(candidate->addr)));
   g_assert (candidate->port == 1234);
 
   str = candidate_to_string (candidate);

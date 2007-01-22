@@ -51,7 +51,7 @@ main (void)
   g_assert (agent->local_candidates != NULL);
   g_assert (g_slist_length (agent->local_candidates) == 1);
   candidate = (Candidate *) agent->local_candidates->data;
-  g_assert (address_equal (candidate->addr, &addr_local));
+  g_assert (address_equal (&(candidate->addr), &addr_local));
   g_assert (candidate->id == 1);
   /* fake socket manager uses incremental port numbers starting at 1 */
   g_assert (candidate->port == 1);
@@ -62,7 +62,7 @@ main (void)
   g_assert (agent->remote_candidates != NULL);
   g_assert (g_slist_length (agent->remote_candidates) == 1);
   candidate = (Candidate *) agent->remote_candidates->data;
-  g_assert (address_equal (candidate->addr, &addr_remote));
+  g_assert (address_equal (&(candidate->addr), &addr_remote));
   g_assert (candidate->port == 2345);
 
   /* check there's no unexpected events, and clean up */
