@@ -195,7 +195,7 @@ struct _stream
 };
 
 
-Stream *
+static Stream *
 stream_new (MediaType type)
 {
   Stream *stream;
