@@ -1,8 +1,9 @@
 
 Nice: GLib ICE library
-----------------------
+======================
 
-Copyright:
+Copyright
+---------
 
  (C) 2006, 2007 Collabora Ltd.
  (C) 2006, 2007 Nokia Corporation
@@ -21,14 +22,26 @@ Copyright:
   along with this library; if not, write to the Free Software Foundation,
   Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
-Requires:
+Requirements
+------------
 
  glib >= 2.10
  check >= 0.9.4 (for make check)
+ pkg-config
 
-Limitations:
+Limitations
+-----------
 
  - ICE agent only supports passive operation
  - no support for RTCP
  - no support for IPv6
+
+Structure
+---------
+
+ local/ - local address gathering code
+ stun/  - STUN implementation
+ udp/   - UDP abstraction layer
+ agent/ - ICE agent
+ nice/  - libnice
 
