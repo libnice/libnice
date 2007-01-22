@@ -34,7 +34,7 @@ address_new_ipv4_from_string (gchar *str)
   struct in_addr iaddr;
 
   if (inet_aton (str, &iaddr) != 0)
-    return address_new_ipv4 (iaddr.s_addr);
+    return address_new_ipv4 (ntohl (iaddr.s_addr));
   else
     /* invalid address */
     return NULL;
@@ -45,10 +45,14 @@ gchar *
 address_to_string (Address *addr)
 {
   struct in_addr iaddr;
+  gchar ip_str[INET_ADDRSTRLEN];
+  const gchar *ret;
 
   g_assert (addr->type == ADDRESS_TYPE_IPV4);
-  iaddr.s_addr = addr->addr_ipv4;
-  return g_strdup (inet_ntoa (iaddr));
+  iaddr.s_addr = htonl (addr->addr_ipv4);
+  ret = inet_ntop (AF_INET, &iaddr, ip_str, INET_ADDRSTRLEN);
+  g_assert (ret);
+  return g_strdup (ip_str);
 }
 
 
