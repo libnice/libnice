@@ -62,7 +62,13 @@ address_to_string (Address *addr)
 gboolean
 address_equal (Address *a, Address *b)
 {
-  return memcmp (a, b, sizeof (Address)) == 0;
+  if (a->type != b->type)
+    return FALSE;
+
+  if (a->type == ADDRESS_TYPE_IPV4)
+    return a->addr_ipv4 == b->addr_ipv4;
+
+  g_assert_not_reached ();
 }
 
 
