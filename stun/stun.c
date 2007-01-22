@@ -49,6 +49,7 @@ _stun_attribute_unpack (StunAttribute *attr, guint length, const gchar *s)
         attr->address.ip = ntohl (*(guint32 *)(s + 8));
         break;
       default:
+        /* unknown attribute; we can only unpack the type */
         break;
     }
 }
