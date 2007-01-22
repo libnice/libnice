@@ -55,7 +55,7 @@ fake_send (
   packet = g_slice_new0 (Packet);
   packet->len = len;
   packet->sin = *to;
-  strncpy (packet->buf, buf, len);
+  memcpy (packet->buf, buf, len);
 
   priv = (UDPFakeSocketPriv *) sock->priv;
   priv->send_queue = g_slist_append (priv->send_queue, packet);
@@ -157,6 +157,7 @@ udp_fake_socket_pop_send (
   if (!packet)
     return 0;
 
+  memcpy (buf, packet->buf, MIN (len, packet->len));
   len = packet->len;
   *to = packet->sin;
   g_slice_free (Packet, packet);
