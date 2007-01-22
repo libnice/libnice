@@ -62,7 +62,10 @@
 # agent/ stuff
 ^agent/libagent.la$
 ^agent/test$
+^agent/test-add-stream$
 ^agent/test-readline$
+^agent/test-recv$
+^agent/test-stun$
 ^agent/test-util$
 
 # stun/ stuff
@@ -83,4 +86,6 @@
 
 # nice/ stuff
 ^nice/libnice.la$
+^nice/ice-test-server$
+
 
