@@ -129,6 +129,7 @@ typedef struct _agent Agent;
 struct _agent
 {
   guint next_candidate_id;
+  guint next_stream_id;
   UDPSocketManager *sockmgr;
   GSList *local_addresses;
   GSList *local_candidates;
@@ -144,7 +145,7 @@ Event *
 ice_agent_pop_event (Agent *agent);
 void
 ice_agent_add_local_address (Agent *agent, Address *addr);
-void
+guint
 ice_agent_add_stream (Agent *agent, MediaType type);
 void
 ice_agent_free (Agent *agent);

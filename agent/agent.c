@@ -190,6 +190,7 @@ typedef struct _stream Stream;
 struct _stream
 {
   MediaType type;
+  guint id;
   /* XXX: streams can have multiple components */
   Component *component;
 };
@@ -316,6 +317,7 @@ ice_agent_new (UDPSocketManager *mgr)
   agent = g_slice_new0 (Agent);
   agent->sockmgr = mgr;
   agent->next_candidate_id = 1;
+  agent->next_stream_id = 1;
   return agent;
 }
 
@@ -369,13 +371,14 @@ ice_agent_add_local_host_candidate (
 }
 
 
-void
+guint
 ice_agent_add_stream (Agent *agent, MediaType type)
 {
   Stream *stream;
   GSList *i;
 
   stream = stream_new (type);
+  stream->id = agent->next_stream_id++;
   agent->streams = g_slist_append (agent->streams, stream);
 
   /* generate a local host candidate for each local address */
@@ -389,6 +392,8 @@ ice_agent_add_stream (Agent *agent, MediaType type)
       /* XXX: need to check for redundant candidates? */
       /* later: send STUN requests to obtain server-reflexive candidates */
     }
+
+  return stream->id;
 }
 
 
