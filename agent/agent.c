@@ -193,6 +193,7 @@ struct _stream
   guint id;
   /* XXX: streams can have multiple components */
   Component *component;
+  void (*handle_recv) (Agent *agent, guint stream_id, guint len, gchar *buf);
 };
 
 
@@ -375,13 +376,17 @@ ice_agent_add_local_host_candidate (
 
 
 guint
-ice_agent_add_stream (Agent *agent, MediaType type)
+ice_agent_add_stream (
+  Agent *agent,
+  MediaType type,
+  void (*handle_recv) (Agent *agent, guint stream_id, guint len, gchar *buf))
 {
   Stream *stream;
   GSList *i;
 
   stream = stream_new (type);
   stream->id = agent->next_stream_id++;
+  stream->handle_recv = handle_recv;
   agent->streams = g_slist_append (agent->streams, stream);
 
   /* generate a local host candidate for each local address */

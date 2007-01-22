@@ -31,7 +31,7 @@ make_agent (
   ice_agent_add_local_address (agent, addr_local);
   address_free (addr_local);
 
-  ice_agent_add_stream (agent, MEDIA_TYPE_AUDIO);
+  ice_agent_add_stream (agent, MEDIA_TYPE_AUDIO, NULL);
 
   g_assert (agent->local_candidates != NULL);
   candidate = (Candidate *) agent->local_candidates->data;

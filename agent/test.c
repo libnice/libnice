@@ -8,6 +8,12 @@
 
 #include <agent.h>
 
+void
+handle_recv (Agent *agent, guint stream_id, guint len, gchar *buf)
+{
+  g_assert_not_reached ();
+}
+
 gint
 main (void)
 {
@@ -39,7 +45,7 @@ main (void)
   g_assert (agent->local_candidates == NULL);
 
   /* add an audio stream */
-  ice_agent_add_stream (agent, MEDIA_TYPE_AUDIO);
+  ice_agent_add_stream (agent, MEDIA_TYPE_AUDIO, handle_recv);
 
   /* adding a stream should cause host candidates to be generated */
   g_assert (agent->local_candidates != NULL);
