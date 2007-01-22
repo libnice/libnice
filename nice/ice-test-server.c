@@ -8,10 +8,16 @@
 #include <glib.h>
 
 #include <udp.h>
-#include <agent.h>
 #include <stun.h>
+#include <agent.h>
 #include <readline.h>
 #include <util.h>
+
+static void
+handle_recv (Agent *agent, guint stream_id, guint len, gchar *buf)
+{
+  g_debug ("got media");
+}
 
 /* create an agent and give it one fixed local IP address */
 static gboolean
@@ -30,7 +36,7 @@ make_agent (
   address_set_ipv4_from_string (&addr_local, ip);
   ice_agent_add_local_address (agent, &addr_local);
 
-  ice_agent_add_stream (agent, MEDIA_TYPE_AUDIO, NULL);
+  ice_agent_add_stream (agent, MEDIA_TYPE_AUDIO, handle_recv);
 
   g_assert (agent->local_candidates != NULL);
   candidate = (Candidate *) agent->local_candidates->data;
@@ -42,60 +48,6 @@ make_agent (
   *ret_sock = &(candidate->sock);
 
   return TRUE;
-}
-
-static void
-handle_udp_read (UDPSocket *sock)
-{
-  struct sockaddr_in from;
-  gchar buf[1024];
-  guint len;
-
-  g_debug ("got UDP data");
-
-  len = udp_socket_recv (sock, &from, 1024, buf);
-
-  if (len == 0)
-    return;
-
-  if ((buf[0] & 0xc0) == 0x80)
-    {
-      /* looks like RTP */
-
-      g_debug ("got media");
-    }
-  else
-    {
-      /* maybe STUN */
-
-      StunMessage *msg;
-
-      g_debug ("got STUN");
-
-      msg = stun_message_unpack (len, buf);
-
-      if (msg == NULL)
-        return;
-
-      if (msg->type == STUN_MESSAGE_BINDING_REQUEST)
-        {
-          StunMessage *response;
-          guint len;
-          gchar *packed;
-
-          response = stun_message_new (STUN_MESSAGE_BINDING_RESPONSE);
-          response->attributes = g_malloc0 (2 * sizeof (StunAttribute));
-          response->attributes[0] = stun_attribute_mapped_address_new (
-              ntohl (from.sin_addr.s_addr), ntohs (from.sin_port));
-          len = stun_message_pack (response, &packed);
-          udp_socket_send (sock, &from, len, packed);
-
-          g_free (packed);
-          stun_message_free (response);
-        }
-
-      stun_message_free (msg);
-    }
 }
 
 static gboolean
@@ -174,7 +126,8 @@ handle_connection (guint fileno, const struct sockaddr_in *sin, gpointer data)
           else if (i == sock->fileno)
             {
               /* UDP data */
-              handle_udp_read (sock);
+              /* XXX: candidate number is hardcoded */
+              ice_agent_recv (agent, 1);
             }
         }
     }
