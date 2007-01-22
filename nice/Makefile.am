@@ -24,6 +24,6 @@ ice_test_server_SOURCES = ice-test-server.c \
 	$(top_srcdir)/agent/util.c
 
 ice_test_server_LDADD = \
-	$(top_builddir)/agent/libagent.la \
+	libnice.la \
 	$(GLIB_LIBS)
 
