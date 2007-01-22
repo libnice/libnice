@@ -1,9 +1,7 @@
 
 lib_LTLIBRARIES = libnice.la
 
-libnice_la_SOURCES =
-
-EXTRA_libnice_la_SOURCES = libnice.ver
+libnice_la_SOURCES = libnice.ver
 
 libnice_la_LIBADD = \
 	$(top_builddir)/local/liblocal.la \
