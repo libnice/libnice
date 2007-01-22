@@ -5,6 +5,8 @@
 
 #include <glib.h>
 
+#include <udp.h>
+
 #include <agent.h>
 #include <util.h>
 

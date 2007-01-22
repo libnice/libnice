@@ -1,9 +1,13 @@
 
-AM_CFLAGS = -Wall -Werror $(GLIB_CFLAGS)
+AM_CFLAGS = -Wall -Werror \
+	-I $(top_srcdir)/udp \
+	$(GLIB_CFLAGS)
 
 noinst_LTLIBRARIES = libagent.la
 
 libagent_la_SOURCES = agent.h agent.c
+
+libagent_la_LIBADD = $(top_builddir)/udp/libudp.la
 
 check_PROGRAMS = test test-readline test-util
 

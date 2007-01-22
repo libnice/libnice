@@ -7,8 +7,8 @@
 
 #include <glib.h>
 
-#include <agent.h>
 #include <udp.h>
+#include <agent.h>
 #include <stun.h>
 #include <readline.h>
 #include <util.h>
@@ -23,11 +23,9 @@ make_agent (
 {
   Agent *agent;
   Address *addr_local;
-  Event *event;
-  UDPSocket *sock;
-  struct sockaddr_in sin;
+  Candidate *candidate;
 
-  agent = ice_agent_new ();
+  agent = ice_agent_new (mgr);
 
   addr_local = address_new_ipv4_from_string (ip);
   ice_agent_add_local_address (agent, addr_local);
@@ -35,37 +33,14 @@ make_agent (
 
   ice_agent_add_stream (agent, MEDIA_TYPE_AUDIO);
 
-  event = ice_agent_pop_event (agent);
-  g_assert (event != NULL);
-  g_assert (event->type == EVENT_REQUEST_PORT);
-
-  sin.sin_family = AF_INET;
-  sin.sin_addr.s_addr = INADDR_ANY;
-  sin.sin_port = 0;
-  sock = g_slice_new0 (UDPSocket);
-
-  if (!udp_socket_manager_alloc_socket (mgr, sock, &sin))
-    {
-      ice_agent_free (agent);
-      return FALSE;
-    }
-
+  g_assert (agent->local_candidates != NULL);
+  candidate = (Candidate *) agent->local_candidates->data;
   g_debug ("allocated socket %d port %d for candidate %d",
-      sock->fileno, ntohs (sock->addr.sin_port),
-      event->request_port.candidate_id);
-  ice_agent_set_candidate_port (agent, event->request_port.candidate_id,
-      ntohs (sock->addr.sin_port));
-  event_free (event);
-
-  event = ice_agent_pop_event (agent);
-  g_assert (event != NULL);
-  g_assert (event->type == EVENT_LOCAL_CANDIDATES_READY);
-
-  event = ice_agent_pop_event (agent);
-  g_assert (event == NULL);
+      candidate->sock.fileno, ntohs (candidate->sock.addr.sin_port),
+      candidate->id);
 
   *ret_agent = agent;
-  *ret_sock = sock;
+  *ret_sock = &(candidate->sock);
 
   return TRUE;
 }

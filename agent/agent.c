@@ -7,6 +7,8 @@
 
 #include <glib.h>
 
+#include <udp.h>
+
 #include <agent.h>
 
 /*** address ***/
@@ -277,6 +279,7 @@ candidate_pair_priority (
 /*** event ***/
 
 
+#if 0
 static Event *
 event_new (EventType type)
 {
@@ -286,43 +289,14 @@ event_new (EventType type)
   ev->type = type;
   return ev;
 }
+#endif
 
-
-static Event *
-event_new_request_port (Address *addr, guint candidate_id)
-{
-  Event *ev;
-
-  ev = event_new (EVENT_REQUEST_PORT);
-  ev->request_port.addr = address_dup (addr);
-  ev->request_port.candidate_id = candidate_id;
-  return ev;
-}
-
-
-static Event *
-event_new_local_candidates_ready ()
-{
-  return event_new (EVENT_LOCAL_CANDIDATES_READY);
-}
 
 void
 event_free (Event *ev)
 {
   switch (ev->type)
     {
-      case EVENT_REQUEST_PORT:
-        address_free (ev->request_port.addr);
-        break;
-
-      case EVENT_LOCAL_CANDIDATES_READY:
-        break;
-
-      case EVENT_REQUEST_STUN_QUERY:
-        address_free (ev->request_stun_query.from);
-        address_free (ev->request_stun_query.to);
-        break;
-
       case EVENT_CANDIDATE_SELECTED:
         break;
     }
@@ -335,11 +309,12 @@ event_free (Event *ev)
 
 
 Agent *
-ice_agent_new ()
+ice_agent_new (UDPSocketManager *mgr)
 {
   Agent *agent;
 
   agent = g_slice_new0 (Agent);
+  agent->sockmgr = mgr;
   agent->next_candidate_id = 1;
   return agent;
 }
@@ -376,6 +351,7 @@ ice_agent_add_local_host_candidate (
   Address *address)
 {
   Candidate *candidate;
+  struct sockaddr_in sin;
 
   candidate = candidate_new (CANDIDATE_TYPE_HOST);
   candidate->id = agent->next_candidate_id++;
@@ -384,31 +360,12 @@ ice_agent_add_local_host_candidate (
   agent->local_candidates = g_slist_append (agent->local_candidates,
       candidate);
 
-  /* request port for new candidate */
-  ice_agent_push_event (agent,
-      event_new_request_port (address, candidate->id));
-}
-
-
-/* XXX: check that ID given matches one of the candidates we have? */
-void
-ice_agent_set_candidate_port (Agent *agent, guint candidate_id, guint port)
-{
-  GSList *i;
-  gboolean local_candidates_ready = TRUE;
-
-  for (i = agent->local_candidates; i; i = i->next)
-    {
-      Candidate *c = (Candidate *) i->data;
-
-      if (c->id == candidate_id)
-        c->port = port;
-      else if (c->port == 0)
-        local_candidates_ready = FALSE;
-    }
-
-  if (local_candidates_ready)
-    ice_agent_push_event (agent, event_new_local_candidates_ready ());
+  sin.sin_family = AF_INET;
+  sin.sin_addr.s_addr = htonl (address->addr_ipv4);
+  sin.sin_port = 0;
+  /* XXX: handle error */
+  udp_socket_manager_alloc_socket (agent->sockmgr, &(candidate->sock), &sin);
+  candidate->port = ntohs (candidate->sock.addr.sin_port);
 }
 
 

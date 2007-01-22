@@ -75,6 +75,7 @@ struct _candidate
   // guint component_id;
   // guint generation;
   // gchar *foundation;
+  UDPSocket sock;
 };
 
 
@@ -91,9 +92,6 @@ typedef enum event_type EventType;
 
 enum event_type
 {
-  EVENT_REQUEST_PORT,
-  EVENT_LOCAL_CANDIDATES_READY,
-  EVENT_REQUEST_STUN_QUERY,
   EVENT_CANDIDATE_SELECTED,
 };
 
@@ -131,6 +129,7 @@ typedef struct _agent Agent;
 struct _agent
 {
   guint next_candidate_id;
+  UDPSocketManager *sockmgr;
   GSList *local_addresses;
   GSList *local_candidates;
   GSList *remote_candidates;
@@ -140,15 +139,13 @@ struct _agent
 
 
 Agent *
-ice_agent_new ();
+ice_agent_new (UDPSocketManager *mgr);
 Event *
 ice_agent_pop_event (Agent *agent);
 void
 ice_agent_add_local_address (Agent *agent, Address *addr);
 void
 ice_agent_add_stream (Agent *agent, MediaType type);
-void
-ice_agent_set_candidate_port (Agent *agent, guint candidate_id, guint port);
 void
 ice_agent_free (Agent *agent);
 void

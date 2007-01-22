@@ -1,5 +1,10 @@
 
+#include <arpa/inet.h>
+
 #include <glib.h>
+
+#include <udp.h>
+#include <udp-fake.h>
 
 #include <agent.h>
 
@@ -9,12 +14,14 @@ main (void)
   Agent *agent;
   Address *addr_local, *addr_remote;
   Candidate *candidate;
-  Event *event;
+  UDPSocketManager mgr;
+
+  udp_fake_socket_manager_init (&mgr);
 
   addr_local = address_new_ipv4_from_string ("192.168.0.1");
   addr_remote = address_new_ipv4_from_string ("192.168.0.2");
 
-  agent = ice_agent_new ();
+  agent = ice_agent_new (&mgr);
 
   g_assert (agent->local_addresses == NULL);
   g_assert (agent->local_candidates == NULL);
@@ -40,27 +47,8 @@ main (void)
   candidate = (Candidate *) agent->local_candidates->data;
   g_assert (address_equal (candidate->addr, addr_local));
   g_assert (candidate->id == 1);
-  g_assert (candidate->port == 0);
-
-  /* there should be a port request for the new candidate */
-  event = ice_agent_pop_event (agent);
-  g_assert (ice_agent_pop_event (agent) == NULL);
-  g_assert (event != NULL);
-  g_assert (event->type == EVENT_REQUEST_PORT);
-  g_assert (address_equal (event->request_port.addr, addr_local));
-  g_assert (event->request_port.candidate_id == 1);
-  event_free (event);
-
-  /* assign a port */
-  ice_agent_set_candidate_port (agent, 1, 1234);
-  g_assert (candidate->port == 1234);
-
-  /* expect event: local candidates ready */
-  event = ice_agent_pop_event (agent);
-  g_assert (ice_agent_pop_event (agent) == NULL);
-  g_assert (event != NULL);
-  g_assert (event->type == EVENT_LOCAL_CANDIDATES_READY);
-  event_free (event);
+  /* fake socket manager uses incremental port numbers starting at 1 */
+  g_assert (candidate->port == 1);
 
   /* add remote candidate */
   ice_agent_add_remote_candidate (agent, CANDIDATE_TYPE_HOST, addr_remote,
