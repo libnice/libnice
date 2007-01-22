@@ -7,7 +7,9 @@ noinst_LTLIBRARIES = libagent.la
 
 libagent_la_SOURCES = agent.h agent.c
 
-libagent_la_LIBADD = $(top_builddir)/udp/libudp.la
+libagent_la_LIBADD = \
+	$(top_builddir)/udp/libudp.la \
+	$(top_builddir)/stun/libstun.la
 
 check_PROGRAMS = test test-readline test-util test-add-stream test-recv
 

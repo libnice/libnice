@@ -7,7 +7,6 @@ EXTRA_libnice_la_SOURCES = libnice.ver
 
 libnice_la_LIBADD = \
 	../local/liblocal.la \
-	../stun/libstun.la \
 	../agent/libagent.la
 
 libnice_la_LDFLAGS = -Wl,--version-script,$(srcdir)/libnice.ver
@@ -28,6 +27,5 @@ ice_test_server_SOURCES = ice-test-server.c \
 
 ice_test_server_LDADD = \
 	$(top_builddir)/agent/libagent.la \
-	$(top_builddir)/stun/libstun.la \
 	$(GLIB_LIBS)
 
