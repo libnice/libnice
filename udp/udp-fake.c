@@ -86,7 +86,6 @@ fake_close (UDPSocket *sock)
 {
   UDPFakeSocketPriv *priv;
 
-  g_debug ("close");
   priv = (UDPFakeSocketPriv *) sock->priv;
   close (priv->recv_pipe_out);
   close (priv->recv_pipe_in);
