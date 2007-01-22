@@ -6,8 +6,8 @@ libnice_la_SOURCES =
 EXTRA_libnice_la_SOURCES = libnice.ver
 
 libnice_la_LIBADD = \
-	../local/liblocal.la \
-	../agent/libagent.la
+	$(top_builddir)/local/liblocal.la \
+	$(top_builddir)/agent/libagent.la
 
 libnice_la_LDFLAGS = -Wl,--version-script,$(srcdir)/libnice.ver
 
