@@ -159,6 +159,10 @@ ice_agent_add_remote_candidate (
   CandidateType type,
   Address *addr,
   guint port);
+void
+ice_agent_recv (
+  Agent *agent,
+  guint candidate_id);
 
 #endif /* _AGENT_H */
 

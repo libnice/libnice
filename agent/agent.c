@@ -443,6 +443,113 @@ ice_agent_add_remote_candidate (
 }
 
 
+static Candidate *
+_local_candidate_lookup (Agent *agent, guint candidate_id)
+{
+  GSList *i;
+
+  for (i = agent->local_candidates; i; i = i->next)
+    {
+      Candidate *c = (Candidate *) i->data;
+
+      if (c->id == candidate_id)
+        return c;
+    }
+
+  return NULL;
+}
+
+
+static Stream *
+_stream_lookup (Agent *agent, guint stream_id)
+{
+  GSList *i;
+
+  for (i = agent->streams; i; i = i->next)
+    {
+      Stream *s = (Stream *) i->data;
+
+      if (s->id == stream_id)
+        return s;
+    }
+
+  return NULL;
+}
+
+
+/**
+ * ice_agent_recv (agent, candidate)
+ *
+ * Tell the agent to try receiving a packet on @candidate's socket. This is
+ * useful for integrating the agent into a select()-loop. This function will
+ * block if the socket is blocking.
+ */
+void
+ice_agent_recv (
+  Agent *agent,
+  guint candidate_id)
+{
+  Candidate *candidate;
+  guint len;
+  gchar buf[1024];
+  struct sockaddr_in from;
+
+  /* XXX: this is a probably a good place to start optimizing, as it gets
+   * called once for each packet recieved
+   */
+
+  candidate = _local_candidate_lookup (agent, candidate_id);
+
+  if (candidate == NULL)
+    return;
+
+  len = udp_socket_recv (&(candidate->sock), &from,
+      sizeof (buf) / sizeof (gchar), buf);
+  g_assert (len > 0);
+
+  /* XXX: verify sender; maybe:
+   * 
+   * if (candidate->other != NULL)
+   *   {
+   *     if (from != candidate->other.addr)
+   *       // ignore packet from unexpected sender
+   *       return;
+   *   }
+   * else
+   *   {
+   *     // go through remote candidates, looking for one matching packet from
+   *     // address; if found, assign it to candidate->other and call handler,
+   *     // otherwise ignore it
+   *   }
+   *
+   * Perhaps remote socket affinity is superfluous and all we need is the
+   * second part.
+   * Perhaps we should also check whether this candidate is supposed to be
+   * active.
+   */
+
+  if ((buf[0] & 0xc0) == 0x80)
+    {
+      /* looks like RTP */
+      Stream *stream;
+
+      stream = _stream_lookup (agent, candidate->stream_id);
+
+      if (stream == NULL)
+        /* odd: a candidate that doesn't belong to a stream */
+        return;
+
+      /* XXX: should a NULL data handler be permitted? */
+      g_assert (stream->handle_recv != NULL);
+      stream->handle_recv (agent, candidate->stream_id, len, buf);
+    }
+  else
+    {
+      /* maybe STUN */
+    }
+}
+
+
 /*
 void
 ice_agent_set_stun_server (Address *addr, guint16 port)

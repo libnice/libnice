@@ -9,7 +9,7 @@ libagent_la_SOURCES = agent.h agent.c
 
 libagent_la_LIBADD = $(top_builddir)/udp/libudp.la
 
-check_PROGRAMS = test test-readline test-util test-add-stream
+check_PROGRAMS = test test-readline test-util test-add-stream test-recv
 
 test_LDADD = libagent.la $(GLIB_LIBS)
 
@@ -23,5 +23,7 @@ test_util_LDADD = libagent.la $(GLIB_LIBS)
 
 test_add_stream_LDADD = libagent.la $(GLIB_LIBS)
 
-TESTS = test test-readline test-util test-add-stream
+test_recv_LDADD = libagent.la $(GLIB_LIBS)
+
+TESTS = test test-readline test-util test-add-stream test-recv
 
