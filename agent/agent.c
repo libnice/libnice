@@ -349,7 +349,8 @@ ice_agent_push_event (Agent *agent, Event *ev)
 static void
 ice_agent_add_local_host_candidate (
   Agent *agent,
-  Component *component,
+  guint stream_id,
+  guint component_id,
   Address *address)
 {
   Candidate *candidate;
@@ -357,6 +358,8 @@ ice_agent_add_local_host_candidate (
 
   candidate = candidate_new (CANDIDATE_TYPE_HOST);
   candidate->id = agent->next_candidate_id++;
+  candidate->stream_id = stream_id;
+  candidate->component_id = component_id;
   candidate->addr = address_dup (address);
   candidate->base_addr = address_dup (address);
   agent->local_candidates = g_slist_append (agent->local_candidates,
@@ -387,7 +390,8 @@ ice_agent_add_stream (Agent *agent, MediaType type)
     {
       Address *addr = (Address *) i->data;
 
-      ice_agent_add_local_host_candidate (agent, stream->component, addr);
+      ice_agent_add_local_host_candidate (agent, stream->id,
+          stream->component->id, addr);
 
       /* XXX: need to check for redundant candidates? */
       /* later: send STUN requests to obtain server-reflexive candidates */
