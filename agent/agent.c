@@ -208,7 +208,7 @@ stream_new (MediaType type)
 }
 
 
-void
+static void
 stream_free (Stream *stream)
 {
   component_free (stream->component);
