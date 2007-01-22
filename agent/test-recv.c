@@ -26,7 +26,7 @@ int
 main (void)
 {
   Agent *agent;
-  Address *addr;
+  Address addr;
   Candidate *candidate;
   UDPSocketManager mgr;
   UDPSocket *sock;
@@ -36,9 +36,8 @@ main (void)
 
   /* set up agent */
   agent = ice_agent_new (&mgr);
-  addr = address_new_ipv4_from_string ("192.168.0.1");
-  ice_agent_add_local_address (agent, addr);
-  address_free (addr);
+  address_set_ipv4_from_string (&addr, "192.168.0.1");
+  ice_agent_add_local_address (agent, &addr);
   ice_agent_add_stream (agent, MEDIA_TYPE_AUDIO, handle_recv);
   g_assert (agent->local_candidates != NULL);
 

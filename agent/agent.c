@@ -15,32 +15,40 @@
 
 
 Address *
-address_new_ipv4 (guint32 addr_ipv4)
+address_new (void)
 {
-  Address *addr;
+  return g_slice_new0 (Address);
+}
 
-  addr = g_slice_new0 (Address);
+
+void
+address_set_ipv4 (Address *addr, guint32 addr_ipv4)
+{
   addr->type = ADDRESS_TYPE_IPV4;
   addr->addr_ipv4 = addr_ipv4;
-  return addr;
 }
 
 
 /**
- * address_new_ipv4_from_string ()
+ * address_set_ipv4_from_string ()
  *
- * Returns NULL on error.
+ * Returns FALSE on error.
  */
-Address *
-address_new_ipv4_from_string (gchar *str)
+gboolean
+address_set_ipv4_from_string (Address *addr, gchar *str)
 {
   struct in_addr iaddr;
 
   if (inet_aton (str, &iaddr) != 0)
-    return address_new_ipv4 (ntohl (iaddr.s_addr));
+    {
+      address_set_ipv4 (addr, ntohl (iaddr.s_addr));
+      return TRUE;
+    }
   else
-    /* invalid address */
-    return NULL;
+    {
+      /* invalid address */
+      return FALSE;
+    }
 }
 
 

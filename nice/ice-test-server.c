@@ -22,14 +22,13 @@ make_agent (
   UDPSocket **ret_sock)
 {
   Agent *agent;
-  Address *addr_local;
+  Address addr_local;
   Candidate *candidate;
 
   agent = ice_agent_new (mgr);
 
-  addr_local = address_new_ipv4_from_string (ip);
-  ice_agent_add_local_address (agent, addr_local);
-  address_free (addr_local);
+  address_set_ipv4_from_string (&addr_local, ip);
+  ice_agent_add_local_address (agent, &addr_local);
 
   ice_agent_add_stream (agent, MEDIA_TYPE_AUDIO, NULL);
 

@@ -36,15 +36,17 @@ struct _address
 };
 
 Address *
-address_new_ipv4 (guint32 addr_ipv4);
-Address *
-address_new_ipv4_from_string (gchar *str);
+address_new (void);
+void
+address_free (Address *addr);
+void
+address_set_ipv4 (Address *addr, guint32 addr_ipv4);
+gboolean
+address_set_ipv4_from_string (Address *addr, gchar *str);
 gboolean
 address_equal (Address *a, Address *b);
 gchar *
 address_to_string (Address *addr);
-void
-address_free (Address *addr);
 
 
 /*** candidate ***/

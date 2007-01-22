@@ -73,7 +73,8 @@ candidate_from_string (const gchar *s)
   port = strtol (last_slash + 1, NULL, 10);
 
   candidate = candidate_new (type);
-  addr = address_new_ipv4 (ntohl (ip));
+  addr = address_new ();
+  address_set_ipv4 (addr, ntohl (ip));
   candidate->addr = addr;
   candidate->port = port;
 
