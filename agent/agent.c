@@ -568,16 +568,6 @@ void
 ice_agent_set_stun_server (Address *addr, guint16 port)
 {
 }
-
-
-void
-ice_agent_handle_packet (
-  Agent *agent,
-  Address *from,
-  guint length,
-  gchar *buffer)
-{
-}
 */
 
 
@@ -628,29 +618,4 @@ ice_agent_free (Agent *agent)
 
   g_slice_free (Agent, agent);
 }
-
-
-/*
-void
-ice_agent_got_stun_response (
-  Agent *agent,
-  Address *from,
-  guint from_port,
-  Address *to,
-  guint to_port)
-{
-}
-
-
-void
-ice_agent_got_stun_request (
-  Agent *agent,
-  Address *from,
-  guint from_port,
-  Address *to,
-  guint to_port)
-{
-}
-*/
-
 

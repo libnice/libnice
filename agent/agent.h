@@ -70,10 +70,8 @@ struct _candidate
   guint id;
   Address addr;
   Address base_addr;
-  // guint sock;
   guint16 port;
   guint32 priority;
-  // Stream *stream;
   guint stream_id;
   guint component_id;
   // guint generation;
