@@ -20,6 +20,7 @@ address_new_ipv4 (guint32 addr_ipv4)
   Address *addr;
 
   addr = g_slice_new0 (Address);
+  addr->type = ADDRESS_TYPE_IPV4;
   addr->addr_ipv4 = addr_ipv4;
   return addr;
 }
