@@ -2,6 +2,9 @@
 libnice {
 global:
 	ice_*;
+	udp_*;
+	address_*;
+	candidate_*;
 };
 
 HIDDEN {
