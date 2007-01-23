@@ -38,3 +38,5 @@ test_stun_LDADD = libagent.la $(GLIB_LIBS)
 
 TESTS = $(check_PROGRAMS)
 
+pkginclude_HEADERS = agent.h
+
