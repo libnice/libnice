@@ -4,6 +4,8 @@ AM_CFLAGS = -Wall -Werror \
 	-I $(top_srcdir)/stun \
 	$(GLIB_CFLAGS)
 
+COMMON_LDADD = libagent.la $(GLIB_LIBS)
+
 noinst_LTLIBRARIES = libagent.la
 
 libagent_la_SOURCES = \
@@ -24,6 +26,8 @@ check_PROGRAMS = \
 	test-recv \
 	test-stun
 
+TESTS = $(check_PROGRAMS)
+
 test_LDADD = libagent.la $(GLIB_LIBS)
 
 test_readline_SOURCES = test-readline.c readline.h readline.c
@@ -32,15 +36,13 @@ test_readline_LDADD = $(GLIB_LIBS)
 
 test_util_SOURCES = test-util.c util.h util.c
 
-test_util_LDADD = libagent.la $(GLIB_LIBS)
+test_util_LDADD = $(COMMON_LDADD)
 
-test_add_stream_LDADD = libagent.la $(GLIB_LIBS)
+test_add_stream_LDADD = $(COMMON_LDADD)
 
-test_recv_LDADD = libagent.la $(GLIB_LIBS)
+test_recv_LDADD = $(COMMON_LDADD)
 
-test_stun_LDADD = libagent.la $(GLIB_LIBS)
-
-TESTS = $(check_PROGRAMS)
+test_stun_LDADD = $(COMMON_LDADD)
 
 pkginclude_HEADERS = agent.h
 
