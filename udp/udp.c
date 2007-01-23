@@ -58,10 +58,6 @@ socket_close (UDPSocket *sock)
 
 /*** UDPSocketManager ***/
 
-/* If sin is not NULL, the new socket will be bound to that IP address/port.
- * If sin->sin_port is 0, a port will be assigned at random. In all cases, the
- * port bound to will be set in sock->port.
- */
 static gboolean
 socket_manager_init_socket (
   UDPSocketManager *man,
