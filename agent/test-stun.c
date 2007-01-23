@@ -53,6 +53,7 @@ main (void)
 
   /* send binding request */
   breq = stun_message_new (STUN_MESSAGE_BINDING_REQUEST);
+  memcpy (breq->transaction_id, "0123456789abcdef", 16);
   packed_len = stun_message_pack (breq, &packed);
   udp_fake_socket_push_recv (sock, &from, packed_len, packed);
   g_free (packed);
@@ -63,6 +64,7 @@ main (void)
 
   /* construct expected response packet */
   bres = stun_message_new (STUN_MESSAGE_BINDING_RESPONSE);
+  memcpy (bres->transaction_id, "0123456789abcdef", 16);
   bres->attributes = g_malloc0 (2 * sizeof (StunAttribute *));
   bres->attributes[0] = stun_attribute_mapped_address_new (
     remote_addr.addr_ipv4, 5678);
