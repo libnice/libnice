@@ -2,6 +2,10 @@
 #ifndef _AGENT_H
 #define _AGENT_H
 
+
+#include "address.h"
+
+
 typedef enum media_type MediaType;
 
 enum media_type
@@ -9,44 +13,6 @@ enum media_type
   MEDIA_TYPE_AUDIO,
   MEDIA_TYPE_VIDEO,
 };
-
-
-/*** address ***/
-
-
-typedef enum address_type AddressType;
-
-enum address_type
-{
-  ADDRESS_TYPE_IPV4,
-  ADDRESS_TYPE_IPV6,
-};
-
-typedef struct _address Address;
-
-/* XXX: need access to fields to convert to sockaddr_in */
-struct _address
-{
-  AddressType type;
-  union
-  {
-    guint32 addr_ipv4;
-    guchar addr_ipv6[16];
-  };
-};
-
-Address *
-address_new (void);
-void
-address_free (Address *addr);
-void
-address_set_ipv4 (Address *addr, guint32 addr_ipv4);
-gboolean
-address_set_ipv4_from_string (Address *addr, gchar *str);
-gboolean
-address_equal (Address *a, Address *b);
-gchar *
-address_to_string (Address *addr);
 
 
 /*** candidate ***/

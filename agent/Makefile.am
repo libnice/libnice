@@ -6,7 +6,11 @@ AM_CFLAGS = -Wall -Werror \
 
 noinst_LTLIBRARIES = libagent.la
 
-libagent_la_SOURCES = agent.h agent.c
+libagent_la_SOURCES = \
+	address.h \
+	address.c \
+	agent.h \
+	agent.c
 
 libagent_la_LIBADD = \
 	$(top_builddir)/udp/libudp.la \
