@@ -36,6 +36,8 @@
 (^|/)Thumbs\.db$
 (^|/)autom4te\.cache($|/)
 (^|/)core$
+\.gc(no|da)$
+^lcov/
 
 # autofoo files
 ^missing
@@ -87,5 +89,4 @@
 # nice/ stuff
 ^nice/libnice.la$
 ^nice/ice-test-server$
-
 
