@@ -121,7 +121,7 @@ handle_connection (guint fileno, const struct sockaddr_in *sin, gpointer data)
               g_debug ("got TCP data");
 
               if (!handle_tcp_read (fileno))
-                goto EOF;
+                goto END;
             }
           else if (i == sock->fileno)
             {
@@ -132,7 +132,7 @@ handle_connection (guint fileno, const struct sockaddr_in *sin, gpointer data)
         }
     }
 
-EOF:
+END:
   g_debug ("connection closed");
 
   while (sockets != NULL)
