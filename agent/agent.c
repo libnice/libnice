@@ -95,8 +95,7 @@ struct _stream
   guint id;
   /* XXX: streams can have multiple components */
   Component *component;
-  void (*handle_recv) (
-      Agent *agent, guint stream_id, guint component_id, guint len, gchar *buf);
+  AgentRecvHandler handle_recv;
 };
 
 
@@ -282,8 +281,7 @@ guint
 ice_agent_add_stream (
   Agent *agent,
   MediaType type,
-  void (*handle_recv) (
-    Agent *agent, guint stream_id, guint component_id, guint len, gchar *buf))
+  AgentRecvHandler handle_recv)
 {
   Stream *stream;
   GSList *i;
