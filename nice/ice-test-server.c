@@ -158,9 +158,9 @@ END:
 
 static gboolean
 tcp_listen_loop (
-    guint port,
-    void (*handler) (guint sock, const struct sockaddr_in *sin, gpointer data),
-    gpointer data)
+  guint port,
+  void (*handler) (guint sock, const struct sockaddr_in *sin, gpointer data),
+  gpointer data)
 {
   guint sock;
   struct sockaddr_in sin;
@@ -185,7 +185,7 @@ tcp_listen_loop (
 
   if (listen (sock, 5) < 0)
     {
-      g_print("listen() failed: %s\n", g_strerror (errno));
+      g_print ("listen() failed: %s\n", g_strerror (errno));
       return FALSE;
     }
 
@@ -211,7 +211,7 @@ tcp_listen_loop (
 }
 
 int
-main(int argc, char **argv)
+main (int argc, char **argv)
 {
   if (argc != 2)
     {
