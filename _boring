@@ -37,7 +37,7 @@
 (^|/)autom4te\.cache($|/)
 (^|/)core$
 \.gc(no|da)$
-^lcov/
+^lcov($|/)
 
 # autofoo files
 ^missing
