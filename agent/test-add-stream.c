@@ -8,7 +8,12 @@
 #include <agent.h>
 
 void
-handle_recv (Agent *agent, guint stream_id, guint len, gchar *buf)
+handle_recv (
+  Agent *agent,
+  guint stream_id,
+  guint component_id,
+  guint len,
+  gchar *buf)
 {
   g_assert_not_reached ();
 }

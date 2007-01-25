@@ -116,7 +116,8 @@ guint
 ice_agent_add_stream (
   Agent *agent,
   MediaType type,
-  void (*handle_recv) (Agent *agent, guint stream_id, guint len, gchar *buf));
+  void (*handle_recv) (
+    Agent *agent, guint stream_id, guint component_id, guint len, gchar *buf));
 void
 ice_agent_free (Agent *agent);
 void

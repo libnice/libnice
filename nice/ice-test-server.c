@@ -14,7 +14,12 @@
 #include <util.h>
 
 static void
-handle_recv (Agent *agent, guint stream_id, guint len, gchar *buf)
+handle_recv (
+  Agent *agent,
+  guint stream_id,
+  guint component_id,
+  guint len,
+  gchar *buf)
 {
   g_debug ("got media");
 }

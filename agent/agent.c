@@ -95,7 +95,8 @@ struct _stream
   guint id;
   /* XXX: streams can have multiple components */
   Component *component;
-  void (*handle_recv) (Agent *agent, guint stream_id, guint len, gchar *buf);
+  void (*handle_recv) (
+      Agent *agent, guint stream_id, guint component_id, guint len, gchar *buf);
 };
 
 
@@ -281,7 +282,8 @@ guint
 ice_agent_add_stream (
   Agent *agent,
   MediaType type,
-  void (*handle_recv) (Agent *agent, guint stream_id, guint len, gchar *buf))
+  void (*handle_recv) (
+    Agent *agent, guint stream_id, guint component_id, guint len, gchar *buf))
 {
   Stream *stream;
   GSList *i;
@@ -447,7 +449,8 @@ ice_agent_recv (
 
       /* XXX: should a NULL data handler be permitted? */
       g_assert (stream->handle_recv != NULL);
-      stream->handle_recv (agent, candidate->stream_id, len, buf);
+      stream->handle_recv (agent, candidate->stream_id,
+          candidate->component_id, len, buf);
     }
   else if ((buf[0] & 0xc0) == 0)
     {

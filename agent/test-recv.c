@@ -13,10 +13,16 @@
 static gboolean cb_called = FALSE;
 
 void
-handle_recv (Agent *agent, guint stream_id, guint len, gchar *buf)
+handle_recv (
+  Agent *agent,
+  guint stream_id,
+  guint component_id,
+  guint len,
+  gchar *buf)
 {
   g_assert (cb_called == FALSE);
   g_assert (stream_id == 1);
+  g_assert (component_id == 1);
   g_assert (len == 7);
   g_assert (0 == strncmp (buf, "\x80lalala", 7));
   cb_called = TRUE;
