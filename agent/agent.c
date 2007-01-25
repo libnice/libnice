@@ -430,6 +430,10 @@ ice_agent_recv (
    * active.
    */
 
+ /* The top two bits of an RTP message are the version number; the current
+  * version number is 2. The top two bits of a STUN message are always 0.
+  */
+
   if ((buf[0] & 0xc0) == 0x80)
     {
       /* looks like RTP */
@@ -445,7 +449,7 @@ ice_agent_recv (
       g_assert (stream->handle_recv != NULL);
       stream->handle_recv (agent, candidate->stream_id, len, buf);
     }
-  else
+  else if ((buf[0] & 0xc0) == 0)
     {
       StunMessage *msg;
 
