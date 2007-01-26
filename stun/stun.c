@@ -32,7 +32,7 @@ stun_attribute_free (StunAttribute *attr)
   g_slice_free (StunAttribute, attr);
 }
 
-static void
+static gboolean
 _stun_attribute_unpack (StunAttribute *attr, guint length, const gchar *s)
 {
   attr->type = ntohs (*(guint16 *) s);
@@ -49,6 +49,8 @@ _stun_attribute_unpack (StunAttribute *attr, guint length, const gchar *s)
         /* unknown attribute; we can only unpack the type */
         break;
     }
+
+  return TRUE;
 }
 
 StunAttribute *
@@ -58,9 +60,11 @@ stun_attribute_unpack (guint length, const gchar *s)
 
   g_assert (length);
   attr = stun_attribute_new (0);
-  _stun_attribute_unpack (attr, length, s);
 
-  return attr;
+  if (_stun_attribute_unpack (attr, length, s))
+    return attr;
+  else
+    return NULL;
 }
 
 guint
