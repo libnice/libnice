@@ -35,21 +35,36 @@ stun_attribute_free (StunAttribute *attr)
 static gboolean
 _stun_attribute_unpack (StunAttribute *attr, guint length, const gchar *s)
 {
-  attr->type = ntohs (*(guint16 *) s);
+  guint type;
 
-  switch (attr->type)
+  if (length < 4)
+    /* must start with 16 bit type, 16 bit length */
+    return FALSE;
+
+  if (length % 4 != 0)
+    /* attributes must be aligned to 32 bits */
+    return FALSE;
+
+  type = ntohs (*(guint16 *) s);
+
+  switch (type)
     {
       case STUN_ATTRIBUTE_MAPPED_ADDRESS:
+        if (length != 12)
+          return FALSE;
+
         attr->address.af = (guint8) s[5];
         g_assert (attr->address.af == 1);
         attr->address.port = ntohs (*(guint16 *)(s + 6));
         attr->address.ip = ntohl (*(guint32 *)(s + 8));
         break;
+
       default:
         /* unknown attribute; we can only unpack the type */
         break;
     }
 
+  attr->type = type;
   return TRUE;
 }
 
@@ -58,7 +73,6 @@ stun_attribute_unpack (guint length, const gchar *s)
 {
   StunAttribute *attr;
 
-  g_assert (length);
   attr = stun_attribute_new (0);
 
   if (_stun_attribute_unpack (attr, length, s))

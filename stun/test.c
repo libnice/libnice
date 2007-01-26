@@ -108,6 +108,28 @@ START_TEST (test_attribute_unpack_unknown)
 }
 END_TEST
 
+START_TEST (test_attribute_unpack_wrong_length)
+{
+  StunAttribute *attr;
+
+  // attributes must be at least 4 bytes long
+  attr = stun_attribute_unpack (0, NULL);
+  fail_unless (NULL == attr);
+
+  // attributes must aligned to 32 bits
+  attr = stun_attribute_unpack (33, NULL);
+  fail_unless (NULL == attr);
+
+  attr = stun_attribute_unpack (8,
+      "\x00\x01" // type = MAPPED-ADDRESS
+      "\x00\x04" // length = 4 (invalid!)
+      "\x00\x01" // padding, address family
+      "\x09\x29" // port
+      );
+  fail_unless (NULL == attr);
+}
+END_TEST
+
 START_TEST (test_message_pack)
 {
   StunMessage *msg = stun_message_binding_request_new ();
@@ -216,6 +238,10 @@ stun_suite (void)
 
   tcase = tcase_create ("attribute unpack unknown");
   tcase_add_test (tcase, test_attribute_unpack_unknown);
+  suite_add_tcase (suite, tcase);
+
+  tcase = tcase_create ("attribute unpack unknown wrong length");
+  tcase_add_test (tcase, test_attribute_unpack_wrong_length);
   suite_add_tcase (suite, tcase);
 
   tcase = tcase_create ("message pack");
