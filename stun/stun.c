@@ -41,10 +41,6 @@ _stun_attribute_unpack (StunAttribute *attr, guint length, const gchar *s)
     /* must start with 16 bit type, 16 bit length */
     return FALSE;
 
-  if (length % 4 != 0)
-    /* attributes must be aligned to 32 bits */
-    return FALSE;
-
   type = ntohs (*(guint16 *) s);
 
   switch (type)
@@ -182,6 +178,8 @@ stun_message_unpack (guint length, gchar *s)
   for (offset = 20; offset < length; offset += attr_length)
     {
       attr_length = 4 + ntohs (*(guint16 *)(s + offset + 2));
+      /* pad to multiple of 4 bytes */
+      attr_length += 4 - (attr_length % 4);
       n_attributes++;
     }
 
@@ -197,6 +195,8 @@ stun_message_unpack (guint length, gchar *s)
       attr_length = 4 + ntohs (*(guint16 *)(s + offset + 2));
       attr = msg->attributes[i] = stun_attribute_unpack (attr_length,
           s + offset);
+      /* pad to multiple of 4 bytes */
+      attr_length += 4 - (attr_length % 4);
     }
 
   return msg;

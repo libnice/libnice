@@ -116,10 +116,6 @@ START_TEST (test_attribute_unpack_wrong_length)
   attr = stun_attribute_unpack (0, NULL);
   fail_unless (NULL == attr);
 
-  // attributes must aligned to 32 bits
-  attr = stun_attribute_unpack (33, NULL);
-  fail_unless (NULL == attr);
-
   attr = stun_attribute_unpack (8,
       "\x00\x01" // type = MAPPED-ADDRESS
       "\x00\x04" // length = 4 (invalid!)
