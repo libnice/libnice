@@ -4,6 +4,7 @@
 #include <arpa/inet.h>
 #include <string.h>
 
+G_GNUC_WARN_UNUSED_RESULT
 static StunAttribute *
 stun_attribute_new (guint type)
 {
@@ -32,6 +33,7 @@ stun_attribute_free (StunAttribute *attr)
   g_slice_free (StunAttribute, attr);
 }
 
+G_GNUC_WARN_UNUSED_RESULT
 static gboolean
 _stun_attribute_unpack (StunAttribute *attr, guint length, const gchar *s)
 {

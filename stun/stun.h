@@ -48,29 +48,38 @@ struct _StunMessage {
   StunAttribute **attributes;
 };
 
+G_GNUC_WARN_UNUSED_RESULT
 StunAttribute *
 stun_attribute_mapped_address_new (guint32 ip_address, guint16 port);
 void
 stun_attribute_free (StunAttribute *attr);
+G_GNUC_WARN_UNUSED_RESULT
 guint
 stun_attribute_pack (StunAttribute *attr, gchar **ret);
+G_GNUC_WARN_UNUSED_RESULT
 gchar *
 stun_attribute_dump (StunAttribute *attr);
+G_GNUC_WARN_UNUSED_RESULT
 StunAttribute *
 stun_attribute_unpack (guint length, const gchar *s);
 
 void
 stun_message_init (StunMessage *msg, guint type);
+G_GNUC_WARN_UNUSED_RESULT
 StunMessage *
 stun_message_new (guint type);
+G_GNUC_WARN_UNUSED_RESULT
 StunMessage *
 stun_message_binding_request_new (void);
 void
 stun_message_free (StunMessage *msg);
+G_GNUC_WARN_UNUSED_RESULT
 guint
 stun_message_pack (StunMessage *msg, gchar **packed);
+G_GNUC_WARN_UNUSED_RESULT
 gchar *
 stun_message_dump (StunMessage *msg);
+G_GNUC_WARN_UNUSED_RESULT
 StunMessage *
 stun_message_unpack (guint length, gchar *s);
 
