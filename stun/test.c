@@ -28,6 +28,24 @@ START_TEST (test_attribute_pack)
 }
 END_TEST
 
+START_TEST (test_attribute_pack_unknown)
+{
+  /* can't create an unknown attribute directly, so create a MAPPED-ADDRESS
+   * and change its type
+   */
+  StunAttribute *attr = stun_attribute_mapped_address_new (0x02030405, 2345);
+  gchar *packed = NULL;
+  guint length;
+
+  attr->type = 0xff;
+  length = stun_attribute_pack (attr, &packed);
+  fail_unless (0 == length);
+  fail_unless (NULL == packed);
+
+  stun_attribute_free (attr);
+}
+END_TEST
+
 START_TEST (test_attribute_dump)
 {
   StunAttribute *attr = stun_attribute_mapped_address_new (0x02030405, 2345);
@@ -71,6 +89,21 @@ START_TEST (test_attribute_unpack)
   fail_unless (attr->address.af == 1);
   fail_unless (attr->address.port == 2345);
   fail_unless (attr->address.ip == 0x02030405);
+  stun_attribute_free (attr);
+}
+END_TEST
+
+START_TEST (test_attribute_unpack_unknown)
+{
+  StunAttribute *attr = stun_attribute_unpack (8,
+      "\x00\xff" // type
+      "\x00\x04" // length
+      "\xff\xff" // some data
+      "\xff\xff"
+      );
+
+  fail_unless (NULL != attr);
+  fail_unless (attr->type == 0xff);
   stun_attribute_free (attr);
 }
 END_TEST
@@ -165,6 +198,10 @@ stun_suite (void)
   tcase_add_test (tcase, test_attribute_pack);
   suite_add_tcase (suite, tcase);
 
+  tcase = tcase_create ("attribute pack unknown");
+  tcase_add_test (tcase, test_attribute_pack_unknown);
+  suite_add_tcase (suite, tcase);
+
   tcase = tcase_create ("attribute dump");
   tcase_add_test (tcase, test_attribute_dump);
   suite_add_tcase (suite, tcase);
@@ -175,6 +212,10 @@ stun_suite (void)
 
   tcase = tcase_create ("attribute unpack");
   tcase_add_test (tcase, test_attribute_unpack);
+  suite_add_tcase (suite, tcase);
+
+  tcase = tcase_create ("attribute unpack unknown");
+  tcase_add_test (tcase, test_attribute_unpack_unknown);
   suite_add_tcase (suite, tcase);
 
   tcase = tcase_create ("message pack");
