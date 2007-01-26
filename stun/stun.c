@@ -4,9 +4,6 @@
 #include <arpa/inet.h>
 #include <string.h>
 
-/* remove */
-#include <stdio.h>
-
 static StunAttribute *
 stun_attribute_new (guint type)
 {
