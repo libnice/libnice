@@ -165,9 +165,9 @@ stun_message_unpack (guint length, gchar *s)
 
   /* count the number of attributes */
 
-  for (offset = 20; offset < length; offset += attr_length + 4)
+  for (offset = 20; offset < length; offset += attr_length)
     {
-      attr_length = ntohs (*(guint16 *)(s + offset + 2));
+      attr_length = 4 + ntohs (*(guint16 *)(s + offset + 2));
       n_attributes++;
     }
 
@@ -178,9 +178,9 @@ stun_message_unpack (guint length, gchar *s)
 
   /* unpack attributes */
 
-  for (i = 0, offset = 20; i < n_attributes; i++, offset += attr_length + 4)
+  for (i = 0, offset = 20; i < n_attributes; i++, offset += attr_length)
     {
-      attr_length = ntohs (*(guint16 *)(s + offset + 2));
+      attr_length = 4 + ntohs (*(guint16 *)(s + offset + 2));
       attr = msg->attributes[i] = stun_attribute_unpack (attr_length,
           s + offset);
     }
