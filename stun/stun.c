@@ -57,6 +57,19 @@ _stun_attribute_unpack (StunAttribute *attr, guint length, const gchar *s)
         attr->address.ip = ntohl (*(guint32 *)(s + 8));
         break;
 
+      case STUN_ATTRIBUTE_USERNAME:
+      case STUN_ATTRIBUTE_PASSWORD:
+        if (length - 4 > sizeof (attr->username) / sizeof (gchar))
+          return FALSE;
+
+        attr->length = length - 4;
+
+        if (type == STUN_ATTRIBUTE_USERNAME)
+          memcpy (attr->username, s + 4, attr->length);
+        else
+          memcpy (attr->password, s + 4, attr->length);
+        break;
+
       default:
         /* unknown attribute; we can only unpack the type */
         break;

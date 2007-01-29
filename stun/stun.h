@@ -34,12 +34,16 @@ typedef struct _StunAttribute StunAttribute;
 struct _StunAttribute {
   guint16 type;
   guint16 length;
-  struct {
-    guint8 padding;
-    guint8 af;
-    guint16 port;
-    guint32 ip;
-  } address;
+  union {
+    struct {
+      guint8 padding;
+      guint8 af;
+      guint16 port;
+      guint32 ip;
+    } address;
+    gchar username[128];
+    gchar password[128];
+  };
 };
 
 typedef struct _StunMessage StunMessage;

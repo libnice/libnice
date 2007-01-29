@@ -76,7 +76,9 @@ END_TEST
 
 START_TEST (test_attribute_unpack)
 {
-  StunAttribute *attr = stun_attribute_unpack (12,
+  StunAttribute *attr;
+
+  attr = stun_attribute_unpack (12,
     "\x00\x01"         // type
     "\x00\x08"         // length
     "\x00\x01"         // padding, address family
@@ -86,9 +88,35 @@ START_TEST (test_attribute_unpack)
 
   fail_unless (NULL != attr);
   fail_unless (attr->type == STUN_ATTRIBUTE_MAPPED_ADDRESS);
+  // length is not used
+  fail_unless (attr->length == 0);
   fail_unless (attr->address.af == 1);
   fail_unless (attr->address.port == 2345);
   fail_unless (attr->address.ip == 0x02030405);
+  stun_attribute_free (attr);
+
+  attr = stun_attribute_unpack (9,
+      "\x00\x06" // type
+      "\x00\x05" // length
+      "abcde"    // value
+      );
+
+  fail_unless (NULL != attr);
+  fail_unless (attr->length == 5);
+  fail_unless (attr->type == STUN_ATTRIBUTE_USERNAME);
+  fail_unless (0 == memcmp (attr->username, "abcde", 5));
+  stun_attribute_free (attr);
+
+  attr = stun_attribute_unpack (10,
+      "\x00\x07" // type
+      "\x00\x06" // length
+      "fghijk"   // value
+      );
+
+  fail_unless (NULL != attr);
+  fail_unless (attr->length == 6);
+  fail_unless (attr->type == STUN_ATTRIBUTE_PASSWORD);
+  fail_unless (0 == memcmp (attr->password, "fghijk", 6));
   stun_attribute_free (attr);
 }
 END_TEST
