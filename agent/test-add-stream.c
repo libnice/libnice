@@ -1,11 +1,5 @@
 
-#include <arpa/inet.h>
-
-#include <glib.h>
-
-#include <udp.h>
-
-#include <agent.h>
+#include "agent.h"
 
 void
 handle_recv (

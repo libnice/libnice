@@ -1,15 +1,9 @@
 
 #include <string.h>
 
-#include <arpa/inet.h>
-
-#include <glib.h>
-
-#include <stun.h>
-#include <udp.h>
-#include <udp-fake.h>
-
-#include <agent.h>
+#include "stun.h"
+#include "udp-fake.h"
+#include "agent.h"
 
 void
 handle_recv (

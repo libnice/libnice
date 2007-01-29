@@ -1,17 +1,15 @@
 
 #include <string.h>
 
-#include <arpa/inet.h>
 #include <errno.h>
 #include <unistd.h>
 
-#include <glib.h>
 
-#include <udp.h>
-#include <stun.h>
-#include <agent.h>
-#include <readline.h>
-#include <util.h>
+#include "udp.h"
+#include "stun.h"
+#include "agent.h"
+#include "readline.h"
+#include "util.h"
 
 static void
 handle_recv (

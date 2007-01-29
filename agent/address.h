@@ -2,6 +2,8 @@
 #ifndef _ADDRESS_H
 #define _ADDRESS_H
 
+G_BEGIN_DECLS
+
 typedef enum address_type NiceAddressType;
 
 enum address_type
@@ -37,6 +39,8 @@ gboolean
 nice_address_equal (NiceAddress *a, NiceAddress *b);
 gchar *
 nice_address_to_string (NiceAddress *addr);
+
+G_END_DECLS
 
 #endif /* _ADDRESS_H */
 

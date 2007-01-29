@@ -1,4 +1,15 @@
 
+#ifndef _UDP_FAKE_H
+#define _UDP_FAKE_H
+
+#include <arpa/inet.h>
+
+#include <glib.h>
+
+#include "udp.h"
+
+G_BEGIN_DECLS
+
 void
 udp_fake_socket_manager_init (UDPSocketManager *man);
 void
@@ -13,4 +24,8 @@ udp_fake_socket_pop_send (
   struct sockaddr_in *to,
   guint len,
   gchar *buf);
+
+G_END_DECLS
+
+#endif /* _UDP_FAKE_H */
 

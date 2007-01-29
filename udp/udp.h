@@ -2,6 +2,12 @@
 #ifndef _UDP_H
 #define _UDP_H
 
+#include <arpa/inet.h>
+
+#include <glib.h>
+
+G_BEGIN_DECLS
+
 typedef struct _UDPSocket UDPSocket;
 
 struct _UDPSocket
@@ -59,6 +65,8 @@ udp_socket_send (
   gchar *buf);
 void
 udp_socket_close (UDPSocket *sock);
+
+G_END_DECLS
 
 #endif /* _UDP_H */
 

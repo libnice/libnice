@@ -10,6 +10,7 @@
 #include "address.h"
 #include "candidate.h"
 
+G_BEGIN_DECLS
 
 /*** event ***/
 
@@ -96,6 +97,8 @@ nice_agent_recv (
 const GSList *
 nice_agent_get_local_candidates (
   NiceAgent *agent);
+
+G_END_DECLS
 
 #endif /* _AGENT_H */
 

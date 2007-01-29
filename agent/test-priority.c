@@ -1,9 +1,4 @@
 
-#include <arpa/inet.h>
-
-#include <glib.h>
-
-#include "udp.h"
 #include "agent.h"
 
 int

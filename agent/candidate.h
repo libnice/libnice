@@ -2,6 +2,8 @@
 #ifndef _CANDIDATE_H
 #define _CANDIDATE_H
 
+G_BEGIN_DECLS
+
 typedef enum candidate_type NiceCandidateType;
 
 enum candidate_type
@@ -41,6 +43,8 @@ gfloat
 nice_candidate_jingle_priority (NiceCandidate *candidate);
 guint32
 nice_candidate_ice_priority (NiceCandidate *candidate);
+
+G_END_DECLS
 
 #endif /* _CANDIDATE_H */
 

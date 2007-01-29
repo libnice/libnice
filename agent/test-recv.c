@@ -1,14 +1,8 @@
 
 #include <string.h>
 
-#include <arpa/inet.h>
-
-#include <glib.h>
-
-#include <udp.h>
-#include <udp-fake.h>
-
-#include <agent.h>
+#include "udp-fake.h"
+#include "agent.h"
 
 static gboolean cb_called = FALSE;
 

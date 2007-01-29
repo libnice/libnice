@@ -1,12 +1,8 @@
 
 #include <string.h>
 
-#include <arpa/inet.h>
-
-#include <glib.h>
-
-#include <udp.h>
-#include <udp-fake.h>
+#include "udp.h"
+#include "udp-fake.h"
 
 int
 main (void)

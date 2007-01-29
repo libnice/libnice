@@ -1,12 +1,6 @@
 
-#include <arpa/inet.h>
-
-#include <glib.h>
-
-#include <udp.h>
-#include <udp-fake.h>
-
-#include <agent.h>
+#include "udp-fake.h"
+#include "agent.h"
 
 void
 handle_recv (

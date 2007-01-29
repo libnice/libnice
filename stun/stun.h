@@ -4,6 +4,8 @@
 
 #include <glib.h>
 
+G_BEGIN_DECLS
+
 typedef enum {
   STUN_MESSAGE_BINDING_REQUEST              = 0x001,
   STUN_MESSAGE_BINDING_RESPONSE             = 0x101,
@@ -82,6 +84,8 @@ stun_message_dump (StunMessage *msg);
 G_GNUC_WARN_UNUSED_RESULT
 StunMessage *
 stun_message_unpack (guint length, gchar *s);
+
+G_END_DECLS
 
 #endif /* __STUN_H__ */
 
