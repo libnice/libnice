@@ -28,6 +28,8 @@ struct _candidate
   // guint generation;
   // gchar *foundation;
   UDPSocket sock;
+  gchar username[128];
+  gchar password[128];
 };
 
 
