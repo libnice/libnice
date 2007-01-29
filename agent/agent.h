@@ -30,13 +30,13 @@ struct _event
 
   union {
     struct {
-      Address *addr;
+      NiceAddress *addr;
       guint candidate_id;
     } request_port;
     struct {
-      Address *from;
+      NiceAddress *from;
       guint from_port;
-      Address *to;
+      NiceAddress *to;
       guint to_port;
     } request_stun_query;
   };
@@ -50,7 +50,7 @@ event_free (Event *ev);
 /*** agent ***/
 
 
-typedef struct _agent Agent;
+typedef struct _agent NiceAgent;
 
 struct _agent
 {
@@ -65,35 +65,36 @@ struct _agent
 };
 
 
-typedef void (*AgentRecvHandler) (
-  Agent *agent, guint stream_id, guint component_id, guint len, gchar *buf);
+typedef void (*NiceAgentRecvHandler) (
+  NiceAgent *agent, guint stream_id, guint component_id, guint len,
+  gchar *buf);
 
 
-Agent *
-ice_agent_new (UDPSocketManager *mgr);
+NiceAgent *
+nice_agent_new (UDPSocketManager *mgr);
 Event *
-ice_agent_pop_event (Agent *agent);
+nice_agent_pop_event (NiceAgent *agent);
 void
-ice_agent_add_local_address (Agent *agent, Address *addr);
+nice_agent_add_local_address (NiceAgent *agent, NiceAddress *addr);
 guint
-ice_agent_add_stream (
-  Agent *agent,
-  AgentRecvHandler handle_recv);
+nice_agent_add_stream (
+  NiceAgent *agent,
+  NiceAgentRecvHandler handle_recv);
 void
-ice_agent_free (Agent *agent);
+nice_agent_free (NiceAgent *agent);
 void
-ice_agent_add_remote_candidate (
-  Agent *agent,
-  CandidateType type,
-  Address *addr,
+nice_agent_add_remote_candidate (
+  NiceAgent *agent,
+  NiceCandidateType type,
+  NiceAddress *addr,
   guint port);
 void
-ice_agent_recv (
-  Agent *agent,
+nice_agent_recv (
+  NiceAgent *agent,
   guint candidate_id);
 const GSList *
-ice_agent_get_local_candidates (
-  Agent *agent);
+nice_agent_get_local_candidates (
+  NiceAgent *agent);
 
 #endif /* _AGENT_H */
 

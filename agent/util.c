@@ -13,12 +13,12 @@
 /* format is:
  *   type/ip/port
  */
-Candidate *
-candidate_from_string (const gchar *s)
+NiceCandidate *
+nice_candidate_from_string (const gchar *s)
 {
-  CandidateType type;
-  Candidate *candidate;
-  Address *addr;
+  NiceCandidateType type;
+  NiceCandidate *candidate;
+  NiceAddress *addr;
   gchar *first_slash;
   gchar *last_slash;
   gchar tmp[128];
@@ -32,16 +32,16 @@ candidate_from_string (const gchar *s)
   switch (s[0])
     {
     case 'H':
-      type = CANDIDATE_TYPE_HOST;
+      type = NICE_CANDIDATE_TYPE_HOST;
       break;
     case 'S':
-      type = CANDIDATE_TYPE_SERVER_REFLEXIVE;
+      type = NICE_CANDIDATE_TYPE_SERVER_REFLEXIVE;
       break;
     case 'P':
-      type = CANDIDATE_TYPE_PEER_REFLEXIVE;
+      type = NICE_CANDIDATE_TYPE_PEER_REFLEXIVE;
       break;
     case 'R':
-      type = CANDIDATE_TYPE_RELAYED;
+      type = NICE_CANDIDATE_TYPE_RELAYED;
       break;
     default:
       return NULL;
@@ -72,9 +72,9 @@ candidate_from_string (const gchar *s)
 
   port = strtol (last_slash + 1, NULL, 10);
 
-  candidate = candidate_new (type);
-  addr = address_new ();
-  address_set_ipv4 (addr, ntohl (ip));
+  candidate = nice_candidate_new (type);
+  addr = nice_address_new ();
+  nice_address_set_ipv4 (addr, ntohl (ip));
   candidate->addr = *addr;
   candidate->port = port;
 
@@ -82,7 +82,7 @@ candidate_from_string (const gchar *s)
 }
 
 gchar *
-candidate_to_string (Candidate *candidate)
+nice_candidate_to_string (NiceCandidate *candidate)
 {
   gchar *addr_tmp;
   gchar *ret;
@@ -90,23 +90,23 @@ candidate_to_string (Candidate *candidate)
 
   switch (candidate->type)
     {
-    case CANDIDATE_TYPE_HOST:
+    case NICE_CANDIDATE_TYPE_HOST:
       type = 'H';
       break;
-    case CANDIDATE_TYPE_SERVER_REFLEXIVE:
+    case NICE_CANDIDATE_TYPE_SERVER_REFLEXIVE:
       type = 'S';
       break;
-    case CANDIDATE_TYPE_PEER_REFLEXIVE:
+    case NICE_CANDIDATE_TYPE_PEER_REFLEXIVE:
       type = 'P';
       break;
-    case CANDIDATE_TYPE_RELAYED:
+    case NICE_CANDIDATE_TYPE_RELAYED:
       type = 'R';
       break;
     default:
       return NULL;
     }
 
-  addr_tmp = address_to_string (&(candidate->addr));
+  addr_tmp = nice_address_to_string (&(candidate->addr));
   ret = g_strdup_printf ("%c/%s/%d", type, addr_tmp, candidate->port);
   g_free (addr_tmp);
   return ret;

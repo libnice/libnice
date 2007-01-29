@@ -15,7 +15,7 @@
 
 static void
 handle_recv (
-  Agent *agent,
+  NiceAgent *agent,
   guint stream_id,
   guint component_id,
   guint len,
@@ -29,22 +29,22 @@ static gboolean
 make_agent (
   gchar *ip,
   UDPSocketManager *mgr,
-  Agent **ret_agent,
+  NiceAgent **ret_agent,
   UDPSocket **ret_sock)
 {
-  Agent *agent;
-  Address addr_local;
-  Candidate *candidate;
+  NiceAgent *agent;
+  NiceAddress addr_local;
+  NiceCandidate *candidate;
 
-  agent = ice_agent_new (mgr);
+  agent = nice_agent_new (mgr);
 
-  address_set_ipv4_from_string (&addr_local, ip);
-  ice_agent_add_local_address (agent, &addr_local);
+  nice_address_set_ipv4_from_string (&addr_local, ip);
+  nice_agent_add_local_address (agent, &addr_local);
 
-  ice_agent_add_stream (agent, handle_recv);
+  nice_agent_add_stream (agent, handle_recv);
 
   g_assert (agent->local_candidates != NULL);
-  candidate = (Candidate *) agent->local_candidates->data;
+  candidate = (NiceCandidate *) agent->local_candidates->data;
   g_debug ("allocated socket %d port %d for candidate %d",
       candidate->sock.fileno, ntohs (candidate->sock.addr.sin_port),
       candidate->id);
@@ -72,7 +72,7 @@ handle_tcp_read (guint fileno)
 static void
 handle_connection (guint fileno, const struct sockaddr_in *sin, gpointer data)
 {
-  Agent *agent;
+  NiceAgent *agent;
   UDPSocketManager mgr;
   UDPSocket *sock;
   GSList *sockets = NULL;
@@ -92,8 +92,8 @@ handle_connection (guint fileno, const struct sockaddr_in *sin, gpointer data)
   sockets = g_slist_append (sockets, sock);
 
   /* send first local candidate to remote end */
-  candidate_str = candidate_to_string (
-      (Candidate *) ice_agent_get_local_candidates (agent)->data);
+  candidate_str = nice_candidate_to_string (
+      (NiceCandidate *) nice_agent_get_local_candidates (agent)->data);
   send (fileno, candidate_str, strlen (candidate_str), 0);
   send (fileno, "\n", 1, 0);
   g_free (candidate_str);
@@ -133,7 +133,7 @@ handle_connection (guint fileno, const struct sockaddr_in *sin, gpointer data)
             {
               /* UDP data */
               /* XXX: candidate number is hardcoded */
-              ice_agent_recv (agent, 1);
+              nice_agent_recv (agent, 1);
             }
         }
     }
@@ -225,4 +225,5 @@ main (int argc, char **argv)
 
   return 0;
 }
+
 

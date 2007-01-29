@@ -13,7 +13,7 @@
 
 void
 handle_recv (
-  Agent *agent,
+  NiceAgent *agent,
   guint stream_id,
   guint component_id,
   guint len,
@@ -25,9 +25,9 @@ handle_recv (
 int
 main (void)
 {
-  Agent *agent;
-  Address local_addr, remote_addr;
-  Candidate *candidate;
+  NiceAgent *agent;
+  NiceAddress local_addr, remote_addr;
+  NiceCandidate *candidate;
   UDPSocketManager mgr;
   UDPSocket *sock;
   StunMessage *breq, *bres;
@@ -41,19 +41,19 @@ main (void)
 
   udp_fake_socket_manager_init (&mgr);
 
-  address_set_ipv4_from_string (&local_addr, "192.168.0.1");
-  address_set_ipv4_from_string (&remote_addr, "192.168.0.5");
+  nice_address_set_ipv4_from_string (&local_addr, "192.168.0.1");
+  nice_address_set_ipv4_from_string (&remote_addr, "192.168.0.5");
 
   from.sin_family = AF_INET;
   from.sin_addr.s_addr = htonl (remote_addr.addr_ipv4);
   from.sin_port = htons (5678);
 
   /* set up agent */
-  agent = ice_agent_new (&mgr);
-  ice_agent_add_local_address (agent, &local_addr);
-  ice_agent_add_stream (agent, handle_recv);
+  agent = nice_agent_new (&mgr);
+  nice_agent_add_local_address (agent, &local_addr);
+  nice_agent_add_stream (agent, handle_recv);
   g_assert (agent->local_candidates != NULL);
-  candidate = (Candidate *) agent->local_candidates->data;
+  candidate = (NiceCandidate *) agent->local_candidates->data;
   sock = &(candidate->sock);
 
   /* send binding request */
@@ -65,7 +65,7 @@ main (void)
   stun_message_free (breq);
 
   /* tell the agent there's a packet waiting */
-  ice_agent_recv (agent, candidate->id);
+  nice_agent_recv (agent, candidate->id);
 
   /* construct expected response packet */
   bres = stun_message_new (STUN_MESSAGE_BINDING_RESPONSE);
@@ -89,7 +89,7 @@ main (void)
   stun_message_free (bres);
 
   /* clean up */
-  ice_agent_free (agent);
+  nice_agent_free (agent);
   udp_socket_manager_close (&mgr);
 
   return 0;

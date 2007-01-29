@@ -6,17 +6,17 @@
 #include "address.h"
 
 
-Address *
-address_new (void)
+NiceAddress *
+nice_address_new (void)
 {
-  return g_slice_new0 (Address);
+  return g_slice_new0 (NiceAddress);
 }
 
 
 void
-address_set_ipv4 (Address *addr, guint32 addr_ipv4)
+nice_address_set_ipv4 (NiceAddress *addr, guint32 addr_ipv4)
 {
-  addr->type = ADDRESS_TYPE_IPV4;
+  addr->type = NICE_ADDRESS_TYPE_IPV4;
   addr->addr_ipv4 = addr_ipv4;
 }
 
@@ -27,13 +27,13 @@ address_set_ipv4 (Address *addr, guint32 addr_ipv4)
  * Returns FALSE on error.
  */
 gboolean
-address_set_ipv4_from_string (Address *addr, gchar *str)
+nice_address_set_ipv4_from_string (NiceAddress *addr, gchar *str)
 {
   struct in_addr iaddr;
 
   if (inet_aton (str, &iaddr) != 0)
     {
-      address_set_ipv4 (addr, ntohl (iaddr.s_addr));
+      nice_address_set_ipv4 (addr, ntohl (iaddr.s_addr));
       return TRUE;
     }
   else
@@ -45,13 +45,13 @@ address_set_ipv4_from_string (Address *addr, gchar *str)
 
 
 gchar *
-address_to_string (Address *addr)
+nice_address_to_string (NiceAddress *addr)
 {
   struct in_addr iaddr;
   gchar ip_str[INET_ADDRSTRLEN];
   const gchar *ret;
 
-  g_assert (addr->type == ADDRESS_TYPE_IPV4);
+  g_assert (addr->type == NICE_ADDRESS_TYPE_IPV4);
   iaddr.s_addr = htonl (addr->addr_ipv4);
   ret = inet_ntop (AF_INET, &iaddr, ip_str, INET_ADDRSTRLEN);
   g_assert (ret);
@@ -60,22 +60,22 @@ address_to_string (Address *addr)
 
 
 gboolean
-address_equal (Address *a, Address *b)
+nice_address_equal (NiceAddress *a, NiceAddress *b)
 {
   if (a->type != b->type)
     return FALSE;
 
-  if (a->type == ADDRESS_TYPE_IPV4)
+  if (a->type == NICE_ADDRESS_TYPE_IPV4)
     return a->addr_ipv4 == b->addr_ipv4;
 
   g_assert_not_reached ();
 }
 
 
-Address *
-address_dup (Address *a)
+NiceAddress *
+nice_address_dup (NiceAddress *a)
 {
-  Address *dup = g_slice_new0 (Address);
+  NiceAddress *dup = g_slice_new0 (NiceAddress);
 
   *dup = *a;
   return dup;
@@ -83,9 +83,9 @@ address_dup (Address *a)
 
 
 void
-address_free (Address *addr)
+nice_address_free (NiceAddress *addr)
 {
-  g_slice_free (Address, addr);
+  g_slice_free (NiceAddress, addr);
 }
 
 
@@ -107,9 +107,9 @@ ipv4_address_is_private (guint32 addr)
 
 
 gboolean
-address_is_private (Address *a)
+nice_address_is_private (NiceAddress *a)
 {
-  if (a->type == ADDRESS_TYPE_IPV4)
+  if (a->type == NICE_ADDRESS_TYPE_IPV4)
     return ipv4_address_is_private (a->addr_ipv4);
 
   g_assert_not_reached ();

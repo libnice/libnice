@@ -7,33 +7,33 @@
  * candidates, server reflexive candidates, and relayed candidates. */
 
 
-Candidate *
-candidate_new (CandidateType type)
+NiceCandidate *
+nice_candidate_new (NiceCandidateType type)
 {
-  Candidate *candidate;
+  NiceCandidate *candidate;
 
-  candidate = g_slice_new0 (Candidate);
+  candidate = g_slice_new0 (NiceCandidate);
   candidate->type = type;
   return candidate;
 }
 
 
 void
-candidate_free (Candidate *candidate)
+nice_candidate_free (NiceCandidate *candidate)
 {
-  g_slice_free (Candidate, candidate);
+  g_slice_free (NiceCandidate, candidate);
 }
 
 
 gfloat
-candidate_jingle_priority (Candidate *candidate)
+nice_candidate_jingle_priority (NiceCandidate *candidate)
 {
   switch (candidate->type)
     {
-    case CANDIDATE_TYPE_HOST:             return 1.0;
-    case CANDIDATE_TYPE_SERVER_REFLEXIVE: return 0.9;
-    case CANDIDATE_TYPE_PEER_REFLEXIVE:   return 0.9;
-    case CANDIDATE_TYPE_RELAYED:          return 0.5;
+    case NICE_CANDIDATE_TYPE_HOST:             return 1.0;
+    case NICE_CANDIDATE_TYPE_SERVER_REFLEXIVE: return 0.9;
+    case NICE_CANDIDATE_TYPE_PEER_REFLEXIVE:   return 0.9;
+    case NICE_CANDIDATE_TYPE_RELAYED:          return 0.5;
     }
 
   /* appease GCC */
@@ -60,16 +60,16 @@ _candidate_ice_priority (
 
 
 guint32
-candidate_ice_priority (Candidate *candidate)
+nice_candidate_ice_priority (NiceCandidate *candidate)
 {
   guint8 type_preference = 0;
 
   switch (candidate->type)
     {
-    case CANDIDATE_TYPE_HOST:             type_preference = 120; break;
-    case CANDIDATE_TYPE_PEER_REFLEXIVE:   type_preference = 110; break;
-    case CANDIDATE_TYPE_SERVER_REFLEXIVE: type_preference = 100; break;
-    case CANDIDATE_TYPE_RELAYED:          type_preference =  60; break;
+    case NICE_CANDIDATE_TYPE_HOST:             type_preference = 120; break;
+    case NICE_CANDIDATE_TYPE_PEER_REFLEXIVE:   type_preference = 110; break;
+    case NICE_CANDIDATE_TYPE_SERVER_REFLEXIVE: type_preference = 100; break;
+    case NICE_CANDIDATE_TYPE_RELAYED:          type_preference =  60; break;
     }
 
   return _candidate_ice_priority (type_preference, 1, candidate->component_id);

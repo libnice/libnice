@@ -2,25 +2,25 @@
 #ifndef _CANDIDATE_H
 #define _CANDIDATE_H
 
-typedef enum candidate_type CandidateType;
+typedef enum candidate_type NiceCandidateType;
 
 enum candidate_type
 {
-  CANDIDATE_TYPE_HOST,
-  CANDIDATE_TYPE_SERVER_REFLEXIVE,
-  CANDIDATE_TYPE_PEER_REFLEXIVE,
-  CANDIDATE_TYPE_RELAYED,
+  NICE_CANDIDATE_TYPE_HOST,
+  NICE_CANDIDATE_TYPE_SERVER_REFLEXIVE,
+  NICE_CANDIDATE_TYPE_PEER_REFLEXIVE,
+  NICE_CANDIDATE_TYPE_RELAYED,
 };
 
 
-typedef struct _candidate Candidate;
+typedef struct _candidate NiceCandidate;
 
 struct _candidate
 {
-  CandidateType type;
+  NiceCandidateType type;
   guint id;
-  Address addr;
-  Address base_addr;
+  NiceAddress addr;
+  NiceAddress base_addr;
   guint16 port;
   guint32 priority;
   guint stream_id;
@@ -33,14 +33,14 @@ struct _candidate
 };
 
 
-Candidate *
-candidate_new (CandidateType type);
+NiceCandidate *
+nice_candidate_new (NiceCandidateType type);
 void
-candidate_free (Candidate *candidate);
+nice_candidate_free (NiceCandidate *candidate);
 gfloat
-candidate_jingle_priority (Candidate *candidate);
+nice_candidate_jingle_priority (NiceCandidate *candidate);
 guint32
-candidate_ice_priority (Candidate *candidate);
+nice_candidate_ice_priority (NiceCandidate *candidate);
 
 #endif /* _CANDIDATE_H */
 

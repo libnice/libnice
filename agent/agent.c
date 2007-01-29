@@ -67,7 +67,7 @@ struct _stream
   guint id;
   /* XXX: streams can have multiple components */
   Component *component;
-  AgentRecvHandler handle_recv;
+  NiceAgentRecvHandler handle_recv;
 };
 
 
@@ -97,8 +97,8 @@ typedef struct _candidate_pair CandidatePair;
 
 struct _candidate_pair
 {
-  Candidate local;
-  Candidate remote;
+  NiceCandidate local;
+  NiceCandidate remote;
 };
 
 
@@ -142,7 +142,7 @@ candidate_pair_priority (
 
 #if 0
 static Event *
-event_new (EventType type)
+nice_event_new (EventType type)
 {
   Event *ev;
 
@@ -154,7 +154,7 @@ event_new (EventType type)
 
 
 void
-event_free (Event *ev)
+nice_event_free (Event *ev)
 {
   switch (ev->type)
     {
@@ -169,12 +169,12 @@ event_free (Event *ev)
 /*** agent ***/
 
 
-Agent *
-ice_agent_new (UDPSocketManager *mgr)
+NiceAgent *
+nice_agent_new (UDPSocketManager *mgr)
 {
-  Agent *agent;
+  NiceAgent *agent;
 
-  agent = g_slice_new0 (Agent);
+  agent = g_slice_new0 (NiceAgent);
   agent->sockmgr = mgr;
   agent->next_candidate_id = 1;
   agent->next_stream_id = 1;
@@ -183,7 +183,7 @@ ice_agent_new (UDPSocketManager *mgr)
 
 
 Event *
-ice_agent_pop_event (Agent *agent)
+nice_agent_pop_event (NiceAgent *agent)
 {
   Event *event;
   GSList *head;
@@ -200,23 +200,23 @@ ice_agent_pop_event (Agent *agent)
 
 
 void
-ice_agent_push_event (Agent *agent, Event *ev)
+nice_agent_push_event (NiceAgent *agent, Event *ev)
 {
   agent->events = g_slist_append (agent->events, ev);
 }
 
 
 static void
-ice_agent_add_local_host_candidate (
-  Agent *agent,
+nice_agent_add_local_host_candidate (
+  NiceAgent *agent,
   guint stream_id,
   guint component_id,
-  Address *address)
+  NiceAddress *address)
 {
-  Candidate *candidate;
+  NiceCandidate *candidate;
   struct sockaddr_in sin;
 
-  candidate = candidate_new (CANDIDATE_TYPE_HOST);
+  candidate = nice_candidate_new (NICE_CANDIDATE_TYPE_HOST);
   candidate->id = agent->next_candidate_id++;
   candidate->stream_id = stream_id;
   candidate->component_id = component_id;
@@ -235,9 +235,9 @@ ice_agent_add_local_host_candidate (
 
 
 guint
-ice_agent_add_stream (
-  Agent *agent,
-  AgentRecvHandler handle_recv)
+nice_agent_add_stream (
+  NiceAgent *agent,
+  NiceAgentRecvHandler handle_recv)
 {
   Stream *stream;
   GSList *i;
@@ -251,9 +251,9 @@ ice_agent_add_stream (
 
   for (i = agent->local_addresses; i; i = i->next)
     {
-      Address *addr = (Address *) i->data;
+      NiceAddress *addr = (NiceAddress *) i->data;
 
-      ice_agent_add_local_host_candidate (agent, stream->id,
+      nice_agent_add_local_host_candidate (agent, stream->id,
           stream->component->id, addr);
 
       /* XXX: need to check for redundant candidates? */
@@ -265,10 +265,10 @@ ice_agent_add_stream (
 
 
 void
-ice_agent_add_local_address (Agent *agent, Address *addr)
+nice_agent_add_local_address (NiceAgent *agent, NiceAddress *addr)
 {
   agent->local_addresses = g_slist_append (agent->local_addresses,
-      address_dup (addr));
+      nice_address_dup (addr));
 
   /* XXX: Should we generate local candidates for existing streams at this
    * point, or require that local addresses are set before media streams are
@@ -278,17 +278,17 @@ ice_agent_add_local_address (Agent *agent, Address *addr)
 
 
 void
-ice_agent_add_remote_candidate (
-  Agent *agent,
-  CandidateType type,
-  Address *addr,
+nice_agent_add_remote_candidate (
+  NiceAgent *agent,
+  NiceCandidateType type,
+  NiceAddress *addr,
   guint port)
 {
   /* append to agent->remote_candidates */
 
-  Candidate *candidate;
+  NiceCandidate *candidate;
 
-  candidate = candidate_new (type);
+  candidate = nice_candidate_new (type);
   /* do remote candidates need IDs? */
   candidate->id = 0;
   candidate->addr = *addr;
@@ -301,14 +301,14 @@ ice_agent_add_remote_candidate (
 }
 
 
-static Candidate *
-_local_candidate_lookup (Agent *agent, guint candidate_id)
+static NiceCandidate *
+_local_candidate_lookup (NiceAgent *agent, guint candidate_id)
 {
   GSList *i;
 
   for (i = agent->local_candidates; i; i = i->next)
     {
-      Candidate *c = (Candidate *) i->data;
+      NiceCandidate *c = (NiceCandidate *) i->data;
 
       if (c->id == candidate_id)
         return c;
@@ -319,7 +319,7 @@ _local_candidate_lookup (Agent *agent, guint candidate_id)
 
 
 static Stream *
-_stream_lookup (Agent *agent, guint stream_id)
+_stream_lookup (NiceAgent *agent, guint stream_id)
 {
   GSList *i;
 
@@ -343,11 +343,11 @@ _stream_lookup (Agent *agent, guint stream_id)
  * block if the socket is blocking.
  */
 void
-ice_agent_recv (
-  Agent *agent,
+nice_agent_recv (
+  NiceAgent *agent,
   guint candidate_id)
 {
-  Candidate *candidate;
+  NiceCandidate *candidate;
   guint len;
   gchar buf[1024];
   struct sockaddr_in from;
@@ -451,28 +451,28 @@ ice_agent_recv (
  */
 /*
 void
-ice_agent_set_stun_server (Address *addr, guint16 port)
+nice_agent_set_stun_server (NiceAddress *addr, guint16 port)
 {
 }
 */
 
 const GSList *
-ice_agent_get_local_candidates (
-  Agent *agent)
+nice_agent_get_local_candidates (
+  NiceAgent *agent)
 {
   return agent->local_candidates;
 }
 
 void
-ice_agent_free (Agent *agent)
+nice_agent_free (NiceAgent *agent)
 {
   GSList *i;
 
   for (i = agent->local_addresses; i; i = i->next)
     {
-      Address *a = (Address *) i->data;
+      NiceAddress *a = (NiceAddress *) i->data;
 
-      address_free (a);
+      nice_address_free (a);
     }
 
   g_slist_free (agent->local_addresses);
@@ -480,9 +480,9 @@ ice_agent_free (Agent *agent)
 
   for (i = agent->local_candidates; i; i = i->next)
     {
-      Candidate *c = (Candidate *) i->data;
+      NiceCandidate *c = (NiceCandidate *) i->data;
 
-      candidate_free (c);
+      nice_candidate_free (c);
     }
 
   g_slist_free (agent->local_candidates);
@@ -490,9 +490,9 @@ ice_agent_free (Agent *agent)
 
   for (i = agent->remote_candidates; i; i = i->next)
     {
-      Candidate *c = (Candidate *) i->data;
+      NiceCandidate *c = (NiceCandidate *) i->data;
 
-      candidate_free (c);
+      nice_candidate_free (c);
     }
 
   g_slist_free (agent->remote_candidates);
@@ -508,6 +508,6 @@ ice_agent_free (Agent *agent)
   g_slist_free (agent->streams);
   agent->streams = NULL;
 
-  g_slice_free (Agent, agent);
+  g_slice_free (NiceAgent, agent);
 }
 

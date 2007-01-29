@@ -2,20 +2,20 @@
 #ifndef _ADDRESS_H
 #define _ADDRESS_H
 
-typedef enum address_type AddressType;
+typedef enum address_type NiceAddressType;
 
 enum address_type
 {
-  ADDRESS_TYPE_IPV4,
-  ADDRESS_TYPE_IPV6,
+  NICE_ADDRESS_TYPE_IPV4,
+  NICE_ADDRESS_TYPE_IPV6,
 };
 
-typedef struct _address Address;
+typedef struct _address NiceAddress;
 
 /* XXX: need access to fields to convert to sockaddr_in */
 struct _address
 {
-  AddressType type;
+  NiceAddressType type;
   union
   {
     guint32 addr_ipv4;
@@ -23,20 +23,20 @@ struct _address
   };
 };
 
-Address *
-address_new (void);
+NiceAddress *
+nice_address_new (void);
 void
-address_free (Address *addr);
-Address *
-address_dup (Address *a);
+nice_address_free (NiceAddress *addr);
+NiceAddress *
+nice_address_dup (NiceAddress *a);
 void
-address_set_ipv4 (Address *addr, guint32 addr_ipv4);
+nice_address_set_ipv4 (NiceAddress *addr, guint32 addr_ipv4);
 gboolean
-address_set_ipv4_from_string (Address *addr, gchar *str);
+nice_address_set_ipv4_from_string (NiceAddress *addr, gchar *str);
 gboolean
-address_equal (Address *a, Address *b);
+nice_address_equal (NiceAddress *a, NiceAddress *b);
 gchar *
-address_to_string (Address *addr);
+nice_address_to_string (NiceAddress *addr);
 
 #endif /* _ADDRESS_H */
 

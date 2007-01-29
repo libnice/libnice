@@ -1,6 +1,6 @@
 
-Candidate *
-candidate_from_string (const gchar *s);
+NiceCandidate *
+nice_candidate_from_string (const gchar *s);
 gchar *
-candidate_to_string (Candidate *candidate);
+nice_candidate_to_string (NiceCandidate *candidate);
 
