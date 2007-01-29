@@ -17,13 +17,28 @@ AM_CFLAGS = -Wall -Werror \
 	-I $(top_srcdir)/stun \
 	$(GLIB_CFLAGS)
 
-ice_test_server_SOURCES = ice-test-server.c \
-	$(top_srcdir)/agent/readline.h \
-	$(top_srcdir)/agent/readline.c \
-	$(top_srcdir)/agent/util.h \
-	$(top_srcdir)/agent/util.c
+COMMON_LDADD = $(top_builddir)/agent/libagent.la $(GLIB_LIBS)
 
-ice_test_server_LDADD = \
-	libnice.la \
-	$(GLIB_LIBS)
+ice_test_server_SOURCES = \
+	ice-test-server.c \
+	readline.h \
+	readline.c \
+	util.h \
+	util.c
+
+ice_test_server_LDADD = $(COMMON_LDADD)
+
+check_PROGRAMS = \
+	test-readline \
+	test-util
+
+test_readline_SOURCES = test-readline.c readline.h readline.c
+
+test_readline_LDADD = $(COMMON_LDADD)
+
+test_util_SOURCES = test-util.c util.h util.c
+
+test_util_LDADD = $(COMMON_LDADD)
+
+TESTS = test-readline test-util
 

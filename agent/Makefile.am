@@ -22,8 +22,6 @@ libagent_la_LIBADD = \
 
 check_PROGRAMS = \
 	test \
-	test-readline \
-	test-util \
 	test-add-stream \
 	test-recv \
 	test-stun \
@@ -32,14 +30,6 @@ check_PROGRAMS = \
 TESTS = $(check_PROGRAMS)
 
 test_LDADD = libagent.la $(GLIB_LIBS)
-
-test_readline_SOURCES = test-readline.c readline.h readline.c
-
-test_readline_LDADD = $(GLIB_LIBS)
-
-test_util_SOURCES = test-util.c util.h util.c
-
-test_util_LDADD = $(COMMON_LDADD)
 
 test_add_stream_LDADD = $(COMMON_LDADD)
 
