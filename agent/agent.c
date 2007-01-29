@@ -408,6 +408,8 @@ ice_agent_recv (
     }
   else if ((buf[0] & 0xc0) == 0)
     {
+      /* looks like a STUN message (connectivity check) */
+      /* connectivity checks are described in ICE-13 §7. */
       StunMessage *msg;
 
       msg = stun_message_unpack (len, buf);
@@ -431,13 +433,22 @@ ice_agent_recv (
 
           g_free (packed);
           stun_message_free (response);
+
+          /* XXX: perform a triggered connectivity check here */
+          /* or is that only for full implementations? */
         }
+
+      /* XXX: handle the case where the incoming packet is a response for a
+       * binding request we sent */
 
       stun_message_free (msg);
     }
 }
 
 
+/**
+ * Set the STUN server from which to obtain server-reflexive candidates.
+ */
 /*
 void
 ice_agent_set_stun_server (Address *addr, guint16 port)
