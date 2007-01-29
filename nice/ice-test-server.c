@@ -44,7 +44,7 @@ make_agent (
   nice_agent_add_stream (agent, handle_recv);
 
   g_assert (agent->local_candidates != NULL);
-  candidate = (NiceCandidate *) agent->local_candidates->data;
+  candidate = agent->local_candidates->data;
   g_debug ("allocated socket %d port %d for candidate %d",
       candidate->sock.fileno, ntohs (candidate->sock.addr.sin_port),
       candidate->id);
@@ -93,7 +93,7 @@ handle_connection (guint fileno, const struct sockaddr_in *sin, gpointer data)
 
   /* send first local candidate to remote end */
   candidate_str = nice_candidate_to_string (
-      (NiceCandidate *) nice_agent_get_local_candidates (agent)->data);
+      nice_agent_get_local_candidates (agent)->data);
   send (fileno, candidate_str, strlen (candidate_str), 0);
   send (fileno, "\n", 1, 0);
   g_free (candidate_str);
@@ -144,7 +144,7 @@ END:
   while (sockets != NULL)
     {
       GSList *tmp;
-      UDPSocket *sock = (UDPSocket *) sockets->data;
+      UDPSocket *sock = sockets->data;
 
       tmp = sockets;
       sockets = sockets->next;

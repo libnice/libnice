@@ -53,7 +53,7 @@ main (void)
   nice_agent_add_local_address (agent, &local_addr);
   nice_agent_add_stream (agent, handle_recv);
   g_assert (agent->local_candidates != NULL);
-  candidate = (NiceCandidate *) agent->local_candidates->data;
+  candidate = agent->local_candidates->data;
   sock = &(candidate->sock);
 
   /* send binding request */

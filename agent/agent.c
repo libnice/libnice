@@ -192,7 +192,7 @@ nice_agent_pop_event (NiceAgent *agent)
     return NULL;
 
   head = agent->events;
-  event = (Event *) head->data;
+  event = head->data;
   agent->events = head->next;
   g_slist_free_1 (head);
   return event;
@@ -251,7 +251,7 @@ nice_agent_add_stream (
 
   for (i = agent->local_addresses; i; i = i->next)
     {
-      NiceAddress *addr = (NiceAddress *) i->data;
+      NiceAddress *addr = i->data;
 
       nice_agent_add_local_host_candidate (agent, stream->id,
           stream->component->id, addr);
@@ -308,7 +308,7 @@ _local_candidate_lookup (NiceAgent *agent, guint candidate_id)
 
   for (i = agent->local_candidates; i; i = i->next)
     {
-      NiceCandidate *c = (NiceCandidate *) i->data;
+      NiceCandidate *c = i->data;
 
       if (c->id == candidate_id)
         return c;
@@ -325,7 +325,7 @@ _stream_lookup (NiceAgent *agent, guint stream_id)
 
   for (i = agent->streams; i; i = i->next)
     {
-      Stream *s = (Stream *) i->data;
+      Stream *s = i->data;
 
       if (s->id == stream_id)
         return s;
@@ -470,7 +470,7 @@ nice_agent_free (NiceAgent *agent)
 
   for (i = agent->local_addresses; i; i = i->next)
     {
-      NiceAddress *a = (NiceAddress *) i->data;
+      NiceAddress *a = i->data;
 
       nice_address_free (a);
     }
@@ -480,7 +480,7 @@ nice_agent_free (NiceAgent *agent)
 
   for (i = agent->local_candidates; i; i = i->next)
     {
-      NiceCandidate *c = (NiceCandidate *) i->data;
+      NiceCandidate *c = i->data;
 
       nice_candidate_free (c);
     }
@@ -490,7 +490,7 @@ nice_agent_free (NiceAgent *agent)
 
   for (i = agent->remote_candidates; i; i = i->next)
     {
-      NiceCandidate *c = (NiceCandidate *) i->data;
+      NiceCandidate *c = i->data;
 
       nice_candidate_free (c);
     }
@@ -500,7 +500,7 @@ nice_agent_free (NiceAgent *agent)
 
   for (i = agent->streams; i; i = i->next)
     {
-      Stream *s = (Stream *) i->data;
+      Stream *s = i->data;
 
       stream_free (s);
     }

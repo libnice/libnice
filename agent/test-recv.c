@@ -48,7 +48,7 @@ main (void)
   g_assert (agent->local_candidates != NULL);
 
   /* recieve an RTP packet */
-  candidate = (NiceCandidate *) agent->local_candidates->data;
+  candidate = agent->local_candidates->data;
   sock = &(candidate->sock);
   udp_fake_socket_push_recv (sock, &from, 7, "\x80lalala");
   nice_agent_recv (agent, candidate->id);

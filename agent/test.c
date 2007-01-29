@@ -43,8 +43,7 @@ main (void)
 
   g_assert (agent->local_addresses != NULL);
   g_assert (g_slist_length (agent->local_addresses) == 1);
-  g_assert (nice_address_equal ((NiceAddress *) agent->local_addresses->data,
-        &addr_local));
+  g_assert (nice_address_equal (agent->local_addresses->data, &addr_local));
 
   /* no candidates should be generated until we have a stream */
   g_assert (agent->local_candidates == NULL);
@@ -55,7 +54,7 @@ main (void)
   /* adding a stream should cause host candidates to be generated */
   g_assert (agent->local_candidates != NULL);
   g_assert (g_slist_length (agent->local_candidates) == 1);
-  candidate = (NiceCandidate *) agent->local_candidates->data;
+  candidate = agent->local_candidates->data;
   g_assert (nice_address_equal (&(candidate->addr), &addr_local));
   g_assert (candidate->id == 1);
   /* fake socket manager uses incremental port numbers starting at 1 */
@@ -66,7 +65,7 @@ main (void)
       &addr_remote, 2345);
   g_assert (agent->remote_candidates != NULL);
   g_assert (g_slist_length (agent->remote_candidates) == 1);
-  candidate = (NiceCandidate *) agent->remote_candidates->data;
+  candidate = agent->remote_candidates->data;
   g_assert (nice_address_equal (&(candidate->addr), &addr_remote));
   g_assert (candidate->port == 2345);
 
