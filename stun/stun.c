@@ -8,7 +8,7 @@ G_GNUC_WARN_UNUSED_RESULT
 static StunAttribute *
 stun_attribute_new (guint type)
 {
-  StunAttribute *attr = g_slice_new (StunAttribute);
+  StunAttribute *attr = g_slice_new0 (StunAttribute);
 
   attr->type = type;
   return attr;
