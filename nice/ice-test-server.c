@@ -5,9 +5,7 @@
 #include <unistd.h>
 
 
-#include "udp.h"
-#include "stun.h"
-#include "agent.h"
+#include "nice.h"
 #include "readline.h"
 #include "util.h"
 

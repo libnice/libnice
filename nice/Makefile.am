@@ -42,3 +42,5 @@ test_util_LDADD = $(COMMON_LDADD)
 
 TESTS = test-readline test-util
 
+pkginclude_HEADERS = nice.h
+
