@@ -13,7 +13,8 @@ handle_recv (
   guint stream_id,
   guint component_id,
   guint len,
-  gchar *buf)
+  gchar *buf,
+  gpointer user_data)
 {
   g_assert_not_reached ();
 }
@@ -24,9 +25,9 @@ main (void)
   NiceAgent *agent;
 
   agent = nice_agent_new (NULL);
-  g_assert (nice_agent_add_stream (agent, handle_recv) == 1);
-  g_assert (nice_agent_add_stream (agent, handle_recv) == 2);
-  g_assert (nice_agent_add_stream (agent, handle_recv) == 3);
+  g_assert (nice_agent_add_stream (agent, handle_recv, NULL) == 1);
+  g_assert (nice_agent_add_stream (agent, handle_recv, NULL) == 2);
+  g_assert (nice_agent_add_stream (agent, handle_recv, NULL) == 3);
   nice_agent_free (agent);
 
   return 0;

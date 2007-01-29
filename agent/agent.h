@@ -67,7 +67,7 @@ struct _agent
 
 typedef void (*NiceAgentRecvHandler) (
   NiceAgent *agent, guint stream_id, guint component_id, guint len,
-  gchar *buf);
+  gchar *buf, gpointer user_data);
 
 
 NiceAgent *
@@ -79,7 +79,8 @@ nice_agent_add_local_address (NiceAgent *agent, NiceAddress *addr);
 guint
 nice_agent_add_stream (
   NiceAgent *agent,
-  NiceAgentRecvHandler handle_recv);
+  NiceAgentRecvHandler handle_recv,
+  gpointer handle_recv_data);
 void
 nice_agent_free (NiceAgent *agent);
 void

@@ -17,7 +17,8 @@ handle_recv (
   guint stream_id,
   guint component_id,
   guint len,
-  gchar *buf)
+  gchar *buf,
+  gpointer data)
 {
   g_assert_not_reached ();
 }
@@ -51,7 +52,7 @@ main (void)
   /* set up agent */
   agent = nice_agent_new (&mgr);
   nice_agent_add_local_address (agent, &local_addr);
-  nice_agent_add_stream (agent, handle_recv);
+  nice_agent_add_stream (agent, handle_recv, NULL);
   g_assert (agent->local_candidates != NULL);
   candidate = agent->local_candidates->data;
   sock = &(candidate->sock);

@@ -68,6 +68,7 @@ struct _stream
   /* XXX: streams can have multiple components */
   Component *component;
   NiceAgentRecvHandler handle_recv;
+  gpointer handle_recv_data;
 };
 
 
@@ -237,7 +238,8 @@ nice_agent_add_local_host_candidate (
 guint
 nice_agent_add_stream (
   NiceAgent *agent,
-  NiceAgentRecvHandler handle_recv)
+  NiceAgentRecvHandler handle_recv,
+  gpointer handle_recv_data)
 {
   Stream *stream;
   GSList *i;
@@ -245,6 +247,7 @@ nice_agent_add_stream (
   stream = stream_new ();
   stream->id = agent->next_stream_id++;
   stream->handle_recv = handle_recv;
+  stream->handle_recv_data = handle_recv_data;
   agent->streams = g_slist_append (agent->streams, stream);
 
   /* generate a local host candidate for each local address */
@@ -404,7 +407,7 @@ nice_agent_recv (
       /* XXX: should a NULL data handler be permitted? */
       g_assert (stream->handle_recv != NULL);
       stream->handle_recv (agent, candidate->stream_id,
-          candidate->component_id, len, buf);
+          candidate->component_id, len, buf, stream->handle_recv_data);
     }
   else if ((buf[0] & 0xc0) == 0)
     {

@@ -19,7 +19,8 @@ handle_recv (
   guint stream_id,
   guint component_id,
   guint len,
-  gchar *buf)
+  gchar *buf,
+  gpointer data)
 {
   g_debug ("got media");
 }
@@ -41,7 +42,7 @@ make_agent (
   nice_address_set_ipv4_from_string (&addr_local, ip);
   nice_agent_add_local_address (agent, &addr_local);
 
-  nice_agent_add_stream (agent, handle_recv);
+  nice_agent_add_stream (agent, handle_recv, NULL);
 
   g_assert (agent->local_candidates != NULL);
   candidate = agent->local_candidates->data;

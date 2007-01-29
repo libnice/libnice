@@ -14,7 +14,8 @@ handle_recv (
   guint stream_id,
   guint component_id,
   guint len,
-  gchar *buf)
+  gchar *buf,
+  gpointer data)
 {
   g_assert_not_reached ();
 }
@@ -49,7 +50,7 @@ main (void)
   g_assert (agent->local_candidates == NULL);
 
   /* add an audio stream */
-  nice_agent_add_stream (agent, handle_recv);
+  nice_agent_add_stream (agent, handle_recv, NULL);
 
   /* adding a stream should cause host candidates to be generated */
   g_assert (agent->local_candidates != NULL);
