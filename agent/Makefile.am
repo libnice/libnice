@@ -24,7 +24,8 @@ check_PROGRAMS = \
 	test-util \
 	test-add-stream \
 	test-recv \
-	test-stun
+	test-stun \
+	test-priority
 
 TESTS = $(check_PROGRAMS)
 
@@ -43,6 +44,8 @@ test_add_stream_LDADD = $(COMMON_LDADD)
 test_recv_LDADD = $(COMMON_LDADD)
 
 test_stun_LDADD = $(COMMON_LDADD)
+
+test_priority_LDADD = $(COMMON_LDADD)
 
 pkginclude_HEADERS = agent.h
 

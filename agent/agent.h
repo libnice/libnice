@@ -50,6 +50,10 @@ Candidate *
 candidate_new (CandidateType type);
 void
 candidate_free (Candidate *candidate);
+gfloat
+candidate_jingle_priority (Candidate *candidate);
+guint32
+candidate_ice_priority (Candidate *candidate);
 
 
 /*** event ***/
