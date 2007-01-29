@@ -91,6 +91,9 @@ void
 ice_agent_recv (
   Agent *agent,
   guint candidate_id);
+const GSList *
+ice_agent_get_local_candidates (
+  Agent *agent);
 
 #endif /* _AGENT_H */
 

@@ -91,8 +91,9 @@ handle_connection (guint fileno, const struct sockaddr_in *sin, gpointer data)
 
   sockets = g_slist_append (sockets, sock);
 
+  /* send first local candidate to remote end */
   candidate_str = candidate_to_string (
-      (Candidate *) agent->local_candidates->data);
+      (Candidate *) ice_agent_get_local_candidates (agent)->data);
   send (fileno, candidate_str, strlen (candidate_str), 0);
   send (fileno, "\n", 1, 0);
   g_free (candidate_str);

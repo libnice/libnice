@@ -445,6 +445,12 @@ ice_agent_set_stun_server (Address *addr, guint16 port)
 }
 */
 
+const GSList *
+ice_agent_get_local_candidates (
+  Agent *agent)
+{
+  return agent->local_candidates;
+}
 
 void
 ice_agent_free (Agent *agent)
