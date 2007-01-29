@@ -338,6 +338,36 @@ _stream_lookup (NiceAgent *agent, guint stream_id)
 }
 
 
+static void
+_handle_stun (
+  NiceAgent *agent,
+  UDPSocket *sock,
+  struct sockaddr_in from,
+  StunMessage *msg)
+{
+  StunMessage *response;
+  guint len;
+  gchar *packed;
+
+  if (msg->type != STUN_MESSAGE_BINDING_REQUEST)
+    return;
+
+  response = stun_message_new (STUN_MESSAGE_BINDING_RESPONSE);
+  memcpy (response->transaction_id, msg->transaction_id, 16);
+  response->attributes = g_malloc0 (2 * sizeof (StunAttribute));
+  response->attributes[0] = stun_attribute_mapped_address_new (
+      ntohl (from.sin_addr.s_addr), ntohs (from.sin_port));
+  len = stun_message_pack (response, &packed);
+  udp_socket_send (sock, &from, len, packed);
+
+  g_free (packed);
+  stun_message_free (response);
+
+  /* XXX: perform a triggered connectivity check here */
+  /* or is that only for full implementations? */
+}
+
+
 /**
  * ice_agent_recv (agent, candidate)
  *
@@ -420,30 +450,10 @@ nice_agent_recv (
       if (msg == NULL)
         return;
 
-      if (msg->type == STUN_MESSAGE_BINDING_REQUEST)
-        {
-          StunMessage *response;
-          guint len;
-          gchar *packed;
-
-          response = stun_message_new (STUN_MESSAGE_BINDING_RESPONSE);
-          memcpy (response->transaction_id, msg->transaction_id, 16);
-          response->attributes = g_malloc0 (2 * sizeof (StunAttribute));
-          response->attributes[0] = stun_attribute_mapped_address_new (
-              ntohl (from.sin_addr.s_addr), ntohs (from.sin_port));
-          len = stun_message_pack (response, &packed);
-          udp_socket_send (&(candidate->sock), &from, len, packed);
-
-          g_free (packed);
-          stun_message_free (response);
-
-          /* XXX: perform a triggered connectivity check here */
-          /* or is that only for full implementations? */
-        }
-
       /* XXX: handle the case where the incoming packet is a response for a
        * binding request we sent */
 
+      _handle_stun (agent, &(candidate->sock), from, msg);
       stun_message_free (msg);
     }
 }
