@@ -50,7 +50,7 @@ main (void)
   g_assert (agent->local_candidates == NULL);
 
   /* add an audio stream */
-  ice_agent_add_stream (agent, MEDIA_TYPE_AUDIO, handle_recv);
+  ice_agent_add_stream (agent, handle_recv);
 
   /* adding a stream should cause host candidates to be generated */
   g_assert (agent->local_candidates != NULL);

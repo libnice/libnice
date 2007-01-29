@@ -142,7 +142,6 @@ typedef struct _stream Stream;
 
 struct _stream
 {
-  MediaType type;
   guint id;
   /* XXX: streams can have multiple components */
   Component *component;
@@ -151,12 +150,11 @@ struct _stream
 
 
 static Stream *
-stream_new (MediaType type)
+stream_new ()
 {
   Stream *stream;
 
   stream = g_slice_new0 (Stream);
-  stream->type = type;
   stream->component = component_new (COMPONENT_TYPE_RTP);
   return stream;
 }
@@ -317,13 +315,12 @@ ice_agent_add_local_host_candidate (
 guint
 ice_agent_add_stream (
   Agent *agent,
-  MediaType type,
   AgentRecvHandler handle_recv)
 {
   Stream *stream;
   GSList *i;
 
-  stream = stream_new (type);
+  stream = stream_new ();
   stream->id = agent->next_stream_id++;
   stream->handle_recv = handle_recv;
   agent->streams = g_slist_append (agent->streams, stream);

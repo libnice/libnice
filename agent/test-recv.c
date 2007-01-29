@@ -44,7 +44,7 @@ main (void)
   agent = ice_agent_new (&mgr);
   address_set_ipv4_from_string (&addr, "192.168.0.1");
   ice_agent_add_local_address (agent, &addr);
-  ice_agent_add_stream (agent, MEDIA_TYPE_AUDIO, handle_recv);
+  ice_agent_add_stream (agent, handle_recv);
   g_assert (agent->local_candidates != NULL);
 
   /* recieve an RTP packet */

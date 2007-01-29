@@ -6,15 +6,6 @@
 #include "address.h"
 
 
-typedef enum media_type MediaType;
-
-enum media_type
-{
-  MEDIA_TYPE_AUDIO,
-  MEDIA_TYPE_VIDEO,
-};
-
-
 /*** candidate ***/
 
 typedef enum candidate_type CandidateType;
@@ -123,7 +114,6 @@ ice_agent_add_local_address (Agent *agent, Address *addr);
 guint
 ice_agent_add_stream (
   Agent *agent,
-  MediaType type,
   AgentRecvHandler handle_recv);
 void
 ice_agent_free (Agent *agent);

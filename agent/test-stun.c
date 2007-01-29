@@ -51,7 +51,7 @@ main (void)
   /* set up agent */
   agent = ice_agent_new (&mgr);
   ice_agent_add_local_address (agent, &local_addr);
-  ice_agent_add_stream (agent, MEDIA_TYPE_AUDIO, handle_recv);
+  ice_agent_add_stream (agent, handle_recv);
   g_assert (agent->local_candidates != NULL);
   candidate = (Candidate *) agent->local_candidates->data;
   sock = &(candidate->sock);

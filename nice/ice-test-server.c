@@ -41,7 +41,7 @@ make_agent (
   address_set_ipv4_from_string (&addr_local, ip);
   ice_agent_add_local_address (agent, &addr_local);
 
-  ice_agent_add_stream (agent, MEDIA_TYPE_AUDIO, handle_recv);
+  ice_agent_add_stream (agent, handle_recv);
 
   g_assert (agent->local_candidates != NULL);
   candidate = (Candidate *) agent->local_candidates->data;
