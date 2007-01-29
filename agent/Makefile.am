@@ -11,6 +11,8 @@ noinst_LTLIBRARIES = libagent.la
 libagent_la_SOURCES = \
 	address.h \
 	address.c \
+	candidate.h \
+	candidate.c \
 	agent.h \
 	agent.c
 
