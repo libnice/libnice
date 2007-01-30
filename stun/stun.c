@@ -88,8 +88,9 @@ stun_attribute_unpack (guint length, const gchar *s)
 
   if (_stun_attribute_unpack (attr, length, s))
     return attr;
-  else
-    return NULL;
+
+  stun_attribute_free (attr);
+  return NULL;
 }
 
 guint
