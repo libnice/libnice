@@ -346,10 +346,32 @@ _handle_stun (
   StunMessage *msg)
 {
   StunMessage *response;
+  StunAttribute **attr;
   guint len;
   gchar *packed;
+  gchar *username = NULL;
 
   if (msg->type != STUN_MESSAGE_BINDING_REQUEST)
+    return;
+
+  /* msg shoukd have either:
+   *
+   *   Jingle P2P:
+   *     username = remote candidate pwd + local candidate pwd
+   *   ICE:
+   *     username = remote candidate pwd + ":" + local candidate pwd
+   *     password = local candidate pwd
+   */
+
+  for (attr = msg->attributes; *attr; attr++)
+    if ((*attr)->type == STUN_ATTRIBUTE_USERNAME)
+      {
+        username = (*attr)->username;
+        break;
+      }
+
+  if (username == NULL)
+    /* no username attribute found */
     return;
 
   response = stun_message_new (STUN_MESSAGE_BINDING_RESPONSE);

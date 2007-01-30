@@ -51,10 +51,29 @@ main (void)
   candidate = agent->local_candidates->data;
   sock = &(candidate->sock);
 
-  /* send binding request */
+  /* send binding request without password */
   breq = stun_message_new (STUN_MESSAGE_BINDING_REQUEST);
   memcpy (breq->transaction_id, "0123456789abcdef", 16);
   packed_len = stun_message_pack (breq, &packed);
+  udp_fake_socket_push_recv (sock, &from, packed_len, packed);
+  g_free (packed);
+  stun_message_free (breq);
+
+  /* tell the agent there's a packet waiting */
+  nice_agent_recv (agent, candidate->id);
+
+  /* no reply should have been sent */
+  len = udp_fake_socket_pop_send (sock, &to, sizeof (buf) / sizeof (gchar),
+      buf);
+  g_assert (len == 0);
+
+  /* send binding request with password */
+  breq = stun_message_new (STUN_MESSAGE_BINDING_REQUEST);
+  breq->attributes = g_malloc0 (2 * sizeof (StunAttribute *));
+  breq->attributes[0] = stun_attribute_username_new ("lala");
+  memcpy (breq->transaction_id, "0123456789abcdef", 16);
+  packed_len = stun_message_pack (breq, &packed);
+  g_assert (packed_len != 0);
   udp_fake_socket_push_recv (sock, &from, packed_len, packed);
   g_free (packed);
   stun_message_free (breq);
