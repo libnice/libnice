@@ -132,6 +132,9 @@ stun_attribute_dump (StunAttribute *attr)
             (attr->address.ip & 0x0000ff00) >>  8,
             (attr->address.ip & 0x000000ff) >>  0,
             attr->address.port);
+      case STUN_ATTRIBUTE_USERNAME:
+        return g_strdup_printf (
+          "USERNAME \"%*s\"", attr->length, attr->username);
       default:
         return g_strdup_printf ("UNKNOWN (%d)", attr->type);
     }
