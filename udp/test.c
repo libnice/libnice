@@ -9,7 +9,7 @@ main (void)
 {
   UDPSocketManager man;
   UDPSocket sock;
-  struct sockaddr_in sin;
+  struct sockaddr_in sin = {0,};
   guint len;
   gchar buf[1024];
 
