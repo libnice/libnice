@@ -4,6 +4,17 @@
 #include <arpa/inet.h>
 #include <string.h>
 
+/* round up to multiple of 4 */
+G_GNUC_CONST
+static guint
+ceil4 (guint n)
+{
+  if (n % 4 == 0)
+    return n;
+  else
+    return n + 4 - (n % 4);
+}
+
 G_GNUC_WARN_UNUSED_RESULT
 static StunAttribute *
 stun_attribute_new (guint type)
@@ -200,9 +211,7 @@ stun_message_unpack (guint length, gchar *s)
 
   for (offset = 20; offset < length; offset += attr_length)
     {
-      attr_length = 4 + ntohs (*(guint16 *)(s + offset + 2));
-      /* pad to multiple of 4 bytes */
-      attr_length += 4 - (attr_length % 4);
+      attr_length = ceil4 (4 + ntohs (*(guint16 *)(s + offset + 2)));
       n_attributes++;
     }
 
@@ -218,8 +227,7 @@ stun_message_unpack (guint length, gchar *s)
       attr_length = 4 + ntohs (*(guint16 *)(s + offset + 2));
       attr = msg->attributes[i] = stun_attribute_unpack (attr_length,
           s + offset);
-      /* pad to multiple of 4 bytes */
-      attr_length += 4 - (attr_length % 4);
+      attr_length = ceil4 (attr_length);
     }
 
   return msg;
