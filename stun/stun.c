@@ -224,7 +224,7 @@ stun_message_unpack (guint length, gchar *s)
 guint
 stun_message_pack (StunMessage *msg, gchar **packed)
 {
-  GString *tmp = g_string_new ("");
+  GString *tmp;
   unsigned int packed_type;
   guint16 packed_length;
   guint length = 0;
@@ -240,6 +240,7 @@ stun_message_pack (StunMessage *msg, gchar **packed)
   packed_type = htons (msg->type);
   packed_length = htons (length);
 
+  tmp = g_string_sized_new (length + 20);
   g_string_append_printf (tmp, "%c%c%c%c",
     ((gchar *) &packed_type)[0],
     ((gchar *) &packed_type)[1],
