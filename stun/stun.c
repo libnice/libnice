@@ -137,6 +137,22 @@ stun_attribute_pack (StunAttribute *attr, gchar **packed)
 
           return 12;
         }
+
+      case STUN_ATTRIBUTE_USERNAME:
+        {
+          if (packed != NULL)
+            {
+              StunAttribute *ret = g_malloc0 (sizeof (StunAttribute));
+
+              ret->type = htons (attr->type);
+              ret->length = htons (attr->length);
+              memcpy (ret->username, attr->username, attr->length);
+              *packed = (gchar *) ret;
+            }
+
+          return ceil4 (4 + attr->length);
+        }
+
       default:
         return 0;
   }
