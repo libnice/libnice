@@ -18,7 +18,6 @@ nice_candidate_from_string (const gchar *s)
 {
   NiceCandidateType type;
   NiceCandidate *candidate;
-  NiceAddress *addr;
   gchar *first_slash;
   gchar *last_slash;
   gchar tmp[128];
@@ -73,9 +72,7 @@ nice_candidate_from_string (const gchar *s)
   port = strtol (last_slash + 1, NULL, 10);
 
   candidate = nice_candidate_new (type);
-  addr = nice_address_new ();
-  nice_address_set_ipv4 (addr, ntohl (ip));
-  candidate->addr = *addr;
+  nice_address_set_ipv4 (&candidate->addr, ntohl (ip));
   candidate->port = port;
 
   return candidate;
