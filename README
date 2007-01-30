@@ -26,7 +26,6 @@ Requirements
 ------------
 
  glib >= 2.10
- check >= 0.9.4 (for make check)
  pkg-config
 
 Limitations
