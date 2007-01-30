@@ -65,16 +65,24 @@
 ^agent/libagent.la$
 ^agent/test$
 ^agent/test-add-stream$
-^agent/test-readline$
 ^agent/test-recv$
 ^agent/test-stun$
-^agent/test-util$
+^agent/test-priority$
 
 # stun/ stuff
 ^stun/libstun.la$
 ^stun/stun-client$
 ^stun/stun-server$
-^stun/test$
+^stun/test-attribute-dump$
+^stun/test-attribute-dump-unknown$
+^stun/test-attribute-pack$
+^stun/test-attribute-pack-unknown$
+^stun/test-attribute-unpack$
+^stun/test-attribute-unpack-unknown$
+^stun/test-attribute-unpack-wrong-length$
+^stun/test-message-dump$
+^stun/test-message-pack$
+^stun/test-message-unpack$
 
 # local/ stuff
 ^local/liblocal.la$
@@ -89,4 +97,6 @@
 # nice/ stuff
 ^nice/libnice.la$
 ^nice/ice-test-server$
+^nice/test-readline$
+^nice/test-util$
 
