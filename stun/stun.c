@@ -38,6 +38,18 @@ stun_attribute_mapped_address_new (guint32 ip, guint16 port)
   return attr;
 }
 
+StunAttribute *
+stun_attribute_username_new (const gchar *username)
+{
+  StunAttribute *attr;
+
+  attr = stun_attribute_new (STUN_ATTRIBUTE_USERNAME);
+  g_assert (strlen (username) < sizeof (attr->username));
+  attr->length = strlen (username);
+  strcpy (attr->username, username);
+  return attr;
+}
+
 void
 stun_attribute_free (StunAttribute *attr)
 {

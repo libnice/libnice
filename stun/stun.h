@@ -80,6 +80,8 @@ struct _StunMessage {
 G_GNUC_WARN_UNUSED_RESULT
 StunAttribute *
 stun_attribute_mapped_address_new (guint32 ip_address, guint16 port);
+StunAttribute *
+stun_attribute_username_new (const gchar *username);
 void
 stun_attribute_free (StunAttribute *attr);
 G_GNUC_WARN_UNUSED_RESULT
