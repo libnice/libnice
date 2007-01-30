@@ -99,14 +99,18 @@ stun_attribute_pack (StunAttribute *attr, gchar **packed)
     {
       case STUN_ATTRIBUTE_MAPPED_ADDRESS:
         {
-          StunAttribute *ret = g_malloc0 (sizeof (StunAttribute));
+          if (packed != NULL)
+            {
+              StunAttribute *ret = g_malloc0 (sizeof (StunAttribute));
 
-          ret->type = htons (attr->type);
-          ret->length = htons (8);
-          ret->address.af = attr->address.af;
-          ret->address.port = htons (attr->address.port);
-          ret->address.ip = htonl (attr->address.ip);
-          *packed = (gchar *) ret;
+              ret->type = htons (attr->type);
+              ret->length = htons (8);
+              ret->address.af = attr->address.af;
+              ret->address.port = htons (attr->address.port);
+              ret->address.ip = htonl (attr->address.ip);
+              *packed = (gchar *) ret;
+            }
+
           return 12;
         }
       default:
@@ -230,7 +234,7 @@ stun_message_pack (StunMessage *msg, gchar **packed)
       StunAttribute **attr;
 
       for (attr = msg->attributes; *attr; attr++)
-        length += 4 + (*attr)->length;
+        length += stun_attribute_pack (*attr, NULL);
     }
 
   packed_type = htons (msg->type);
