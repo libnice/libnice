@@ -225,9 +225,7 @@ stun_message_unpack (guint length, gchar *s)
 guint
 stun_message_pack (StunMessage *msg, gchar **packed)
 {
-  GString *tmp;
-  unsigned int packed_type;
-  guint16 packed_length;
+  gchar *tmp;
   guint length = 0;
 
   if (msg->attributes)
@@ -238,31 +236,27 @@ stun_message_pack (StunMessage *msg, gchar **packed)
         length += stun_attribute_pack (*attr, NULL);
     }
 
-  packed_type = htons (msg->type);
-  packed_length = htons (length);
-
-  tmp = g_string_sized_new (length + 20);
-  g_string_append_printf (tmp, "%c%c%c%c",
-    ((gchar *) &packed_type)[0],
-    ((gchar *) &packed_type)[1],
-    ((gchar *) &packed_length)[0],
-    ((gchar *) &packed_length)[1]);
-  g_string_append_len (tmp, msg->transaction_id, 16);
+  tmp = g_malloc0 (length + 20);
+  *(guint16 *) (tmp + 0) = htons (msg->type);
+  *(guint16 *) (tmp + 2) = htons (length);
+  memcpy (tmp + 4, msg->transaction_id, 16);
 
   if (msg->attributes)
     {
       StunAttribute **attr;
+      gchar *pos = tmp + 20;
 
       for (attr = msg->attributes; *attr; attr++)
         {
           gchar *attr_packed;
           guint attr_length = stun_attribute_pack (*attr, &attr_packed);
-          g_string_append_len (tmp, attr_packed, attr_length);
+          memcpy (pos, attr_packed, attr_length);
           g_free (attr_packed);
+          pos += attr_length;
         }
     }
 
-  *packed = g_string_free (tmp, FALSE);
+  *packed = tmp;
   return length + 20;
 }
 
