@@ -32,6 +32,7 @@ main (void)
 
   line = readline (0);
   g_assert (0 == strcmp (line, "test"));
+  g_free (line);
   line = readline (0);
   g_assert (line == NULL);
   return 0;
