@@ -26,7 +26,7 @@ main (void)
   UDPSocketManager mgr;
   UDPSocket *sock;
   StunMessage *breq, *bres;
-  struct sockaddr_in from, to;
+  struct sockaddr_in from = {0,}, to = {0,};
   guint packed_len;
   gchar *packed;
   guint len;
