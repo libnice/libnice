@@ -1,5 +1,6 @@
 
 AM_CFLAGS = -Wall -Werror \
+	-I $(top_srcdir)/random \
 	-I $(top_srcdir)/udp \
 	-I $(top_srcdir)/stun \
 	$(GLIB_CFLAGS)
@@ -17,6 +18,7 @@ libagent_la_SOURCES = \
 	agent.c
 
 libagent_la_LIBADD = \
+	$(top_builddir)/random/librandom.la \
 	$(top_builddir)/udp/libudp.la \
 	$(top_builddir)/stun/libstun.la
 

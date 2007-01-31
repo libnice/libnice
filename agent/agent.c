@@ -10,7 +10,8 @@
 #include <stun.h>
 #include <udp.h>
 
-#include <agent.h>
+#include "agent.h"
+#include "random.h"
 
 /*** component ***/
 
@@ -214,6 +215,7 @@ nice_agent_add_local_host_candidate (
   guint component_id,
   NiceAddress *address)
 {
+  NiceRNG *rng;
   NiceCandidate *candidate;
   struct sockaddr_in sin;
 
@@ -225,6 +227,12 @@ nice_agent_add_local_host_candidate (
   candidate->base_addr = *address;
   agent->local_candidates = g_slist_append (agent->local_candidates,
       candidate);
+
+  /* generate username/password */
+  rng = nice_rng_new ();
+  nice_rng_generate_bytes_print (rng, 8, candidate->username);
+  nice_rng_generate_bytes_print (rng, 8, candidate->password);
+  nice_rng_free (rng);
 
   sin.sin_family = AF_INET;
   sin.sin_addr.s_addr = htonl (address->addr_ipv4);
