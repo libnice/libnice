@@ -13,6 +13,12 @@ nice_rng_new (void)
 }
 
 void
+nice_rng_free (NiceRNG *rng)
+{
+  rng->free (rng);
+}
+
+void
 nice_rng_generate_bytes (NiceRNG *rng, guint len, gchar *buf)
 {
   rng->generate_bytes (rng, len, buf);
