@@ -275,6 +275,7 @@ stun_message_pack (StunMessage *msg, gchar **packed)
         length += stun_attribute_pack (*attr, NULL);
     }
 
+  g_assert (length % 4 == 0);
   tmp = g_malloc0 (length + 20);
   *(guint16 *) (tmp + 0) = htons (msg->type);
   *(guint16 *) (tmp + 2) = htons (length);
