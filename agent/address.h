@@ -27,16 +27,22 @@ struct _NiceAddress
 
 NiceAddress *
 nice_address_new (void);
+
 void
 nice_address_free (NiceAddress *addr);
+
 NiceAddress *
 nice_address_dup (NiceAddress *a);
+
 void
 nice_address_set_ipv4 (NiceAddress *addr, guint32 addr_ipv4);
+
 gboolean
 nice_address_set_ipv4_from_string (NiceAddress *addr, gchar *str);
+
 gboolean
 nice_address_equal (NiceAddress *a, NiceAddress *b);
+
 gchar *
 nice_address_to_string (NiceAddress *addr);
 
