@@ -31,9 +31,9 @@ enum component_type
 };
 
 
-typedef struct _component Component;
+typedef struct _Component Component;
 
-struct _component
+struct _Component
 {
   ComponentType type;
   guint id;
@@ -61,9 +61,9 @@ component_free (Component *cmp)
 /*** stream ***/
 
 
-typedef struct _stream Stream;
+typedef struct _Stream Stream;
 
-struct _stream
+struct _Stream
 {
   guint id;
   /* XXX: streams can have multiple components */
@@ -95,9 +95,9 @@ stream_free (Stream *stream)
 /*** candidate_pair ***/
 
 
-typedef struct _candidate_pair CandidatePair;
+typedef struct _CandidatePair CandidatePair;
 
-struct _candidate_pair
+struct _CandidatePair
 {
   NiceCandidate local;
   NiceCandidate remote;

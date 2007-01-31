@@ -23,9 +23,9 @@ enum event_type
 };
 
 
-typedef struct _event Event;
+typedef struct _Event Event;
 
-struct _event
+struct _Event
 {
   EventType type;
 
@@ -51,9 +51,9 @@ event_free (Event *ev);
 /*** agent ***/
 
 
-typedef struct _agent NiceAgent;
+typedef struct _NiceAgent NiceAgent;
 
-struct _agent
+struct _NiceAgent
 {
   guint next_candidate_id;
   guint next_stream_id;
