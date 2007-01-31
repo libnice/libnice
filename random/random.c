@@ -3,7 +3,7 @@
 #include "random-glib.h"
 
 NiceRNG *
-nice_rng_new ()
+nice_rng_new (void)
 {
   NiceRNG *rng;
 
