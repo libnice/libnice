@@ -1,5 +1,5 @@
 
-SUBDIRS = local stun tests udp agent random nice
+SUBDIRS = local stun tests udp random agent nice
 
 EXTRA_DIST = scripts
 
