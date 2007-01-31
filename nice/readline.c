@@ -16,12 +16,12 @@ readline (guint fileno)
       ret = read (fileno, buf + i, 1);
 
       if (ret == -1)
-        return NULL;
+        break;
 
       if (ret == 0 && i == 0)
         {
           /* EOF on first read */
-          return NULL;
+          break;
         }
       else if (ret == 0 || buf[i] == '\n')
         {
