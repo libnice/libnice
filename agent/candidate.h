@@ -4,9 +4,9 @@
 
 G_BEGIN_DECLS
 
-typedef enum candidate_type NiceCandidateType;
+typedef enum _NiceCandidateType NiceCandidateType;
 
-enum candidate_type
+enum _NiceCandidateType
 {
   NICE_CANDIDATE_TYPE_HOST,
   NICE_CANDIDATE_TYPE_SERVER_REFLEXIVE,
@@ -15,9 +15,9 @@ enum candidate_type
 };
 
 
-typedef struct _candidate NiceCandidate;
+typedef struct _NiceCandidate NiceCandidate;
 
-struct _candidate
+struct _NiceCandidate
 {
   NiceCandidateType type;
   guint id;

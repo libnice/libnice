@@ -15,9 +15,9 @@ G_BEGIN_DECLS
 /*** event ***/
 
 
-typedef enum event_type EventType;
+typedef enum _EventType EventType;
 
-enum event_type
+enum _EventType
 {
   EVENT_CANDIDATE_SELECTED,
 };

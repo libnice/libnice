@@ -22,9 +22,9 @@
  * would end up with 2*K host candidates if an agent has K interfaces.
  */
 
-typedef enum component_type ComponentType;
+typedef enum _ComponentType ComponentType;
 
-enum component_type
+enum _ComponentType
 {
   COMPONENT_TYPE_RTP,
   COMPONENT_TYPE_RTCP,

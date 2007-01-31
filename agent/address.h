@@ -4,18 +4,18 @@
 
 G_BEGIN_DECLS
 
-typedef enum address_type NiceAddressType;
+typedef enum _NiceAddressType NiceAddressType;
 
-enum address_type
+enum _NiceAddressType
 {
   NICE_ADDRESS_TYPE_IPV4,
   NICE_ADDRESS_TYPE_IPV6,
 };
 
-typedef struct _address NiceAddress;
+typedef struct _NiceAddress NiceAddress;
 
 /* XXX: need access to fields to convert to sockaddr_in */
-struct _address
+struct _NiceAddress
 {
   NiceAddressType type;
   union
