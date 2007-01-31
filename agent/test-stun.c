@@ -130,6 +130,7 @@ test_stun_valid_password (
           ((NiceCandidate *) agent->local_candidates->data)->username,
           NULL);
       breq->attributes[0] = stun_attribute_username_new (username);
+      g_free (username);
       memcpy (breq->transaction_id, "0123456789abcdef", 16);
       packed_len = stun_message_pack (breq, &packed);
       g_assert (packed_len != 0);
