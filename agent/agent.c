@@ -287,23 +287,43 @@ nice_agent_add_local_address (NiceAgent *agent, NiceAddress *addr)
    */
 }
 
-
+/**
+ * nice_agent_add_remote_candidate
+ *  @agent: The agent
+ *  @stream_id: The ID of the stream the candidate is for
+ *  @candidate_id: The ID of the candidate the candidate is for
+ *  @type: The type of the new candidate
+ *  @addr: The new candidate's IP address
+ *  @port: The new candidate's port
+ *  @username: The new candidate's username
+ *  @password: The new candidate's password
+ *
+ * Add a candidate our peer has informed us about to the agent's list.
+ **/
 void
 nice_agent_add_remote_candidate (
   NiceAgent *agent,
+  guint stream_id,
+  guint component_id,
   NiceCandidateType type,
   NiceAddress *addr,
-  guint port)
+  guint port,
+  gchar *username,
+  gchar *password)
 {
   /* append to agent->remote_candidates */
 
   NiceCandidate *candidate;
 
   candidate = nice_candidate_new (type);
+  candidate->stream_id = stream_id;
+  candidate->component_id = component_id;
   /* do remote candidates need IDs? */
   candidate->id = 0;
   candidate->addr = *addr;
   candidate->port = port;
+  strncpy (candidate->username, username, sizeof (candidate->username));
+  strncpy (candidate->password, password, sizeof (candidate->password));
 
   agent->remote_candidates = g_slist_append (agent->remote_candidates,
       candidate);

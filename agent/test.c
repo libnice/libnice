@@ -1,4 +1,6 @@
 
+#include <string.h>
+
 #include "udp-fake.h"
 #include "agent.h"
 
@@ -56,13 +58,18 @@ main (void)
   g_assert (candidate->port == 1);
 
   /* add remote candidate */
-  nice_agent_add_remote_candidate (agent, NICE_CANDIDATE_TYPE_HOST,
-      &addr_remote, 2345);
+  nice_agent_add_remote_candidate (agent, 1, 1, NICE_CANDIDATE_TYPE_HOST,
+      &addr_remote, 2345, "username", "password");
   g_assert (agent->remote_candidates != NULL);
   g_assert (g_slist_length (agent->remote_candidates) == 1);
   candidate = agent->remote_candidates->data;
   g_assert (nice_address_equal (&(candidate->addr), &addr_remote));
   g_assert (candidate->port == 2345);
+  g_assert (candidate->stream_id == 1);
+  g_assert (candidate->component_id == 1);
+  g_assert (candidate->type == NICE_CANDIDATE_TYPE_HOST);
+  g_assert (0 == strcmp (candidate->username, "username"));
+  g_assert (0 == strcmp (candidate->password, "password"));
 
   /* check there's no unexpected events, and clean up */
   g_assert (nice_agent_pop_event (agent) == NULL);

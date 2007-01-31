@@ -87,9 +87,13 @@ nice_agent_free (NiceAgent *agent);
 void
 nice_agent_add_remote_candidate (
   NiceAgent *agent,
+  guint stream_id,
+  guint component_id,
   NiceCandidateType type,
   NiceAddress *addr,
-  guint port);
+  guint port,
+  gchar *username,
+  gchar *password);
 void
 nice_agent_recv (
   NiceAgent *agent,
