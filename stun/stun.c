@@ -318,7 +318,7 @@ stun_message_dump (StunMessage *msg)
   }
 
   g_string_printf (tmp,
-    "%s %08x:%08x:%08x:%08x",
+    "%s %08x:%08x:%08x:%08x\n",
       name,
       *(guint32 *)(msg->transaction_id),
       *(guint32 *)(msg->transaction_id + 4),
@@ -329,7 +329,7 @@ stun_message_dump (StunMessage *msg)
     for (attr = msg->attributes; *attr; attr++)
       {
           gchar *dump = stun_attribute_dump (*attr);
-          g_string_append_printf (tmp, "\n  %s", dump);
+          g_string_append_printf (tmp, "  %s\n", dump);
           g_free (dump);
       }
 

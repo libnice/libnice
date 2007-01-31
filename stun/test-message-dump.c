@@ -16,7 +16,7 @@ main (void)
   g_assert (NULL != dump);
   g_assert (0 == strcmp (dump,
     "BINDING-REQUEST 00000000:00000000:00000000:00000000\n"
-    "  MAPPED-ADDRESS 2.3.4.5:2345"));
+    "  MAPPED-ADDRESS 2.3.4.5:2345\n"));
   g_free (dump);
   stun_message_free (msg);
   return 0;
