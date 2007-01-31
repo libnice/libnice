@@ -31,6 +31,7 @@ main (void)
   gchar *packed;
   guint len;
   gchar buf[1024];
+  gchar *username;
 
   memset (buf, '\0', 1024);
 
@@ -47,11 +48,13 @@ main (void)
   agent = nice_agent_new (&mgr);
   nice_agent_add_local_address (agent, &local_addr);
   nice_agent_add_stream (agent, handle_recv, NULL);
+  nice_agent_add_remote_candidate (agent, 1, 1, NICE_CANDIDATE_TYPE_HOST,
+      &remote_addr, 5678, "username", "password");
   g_assert (agent->local_candidates != NULL);
   candidate = agent->local_candidates->data;
   sock = &(candidate->sock);
 
-  /* send binding request without password */
+  /* send binding request without username */
   breq = stun_message_new (STUN_MESSAGE_BINDING_REQUEST);
   memcpy (breq->transaction_id, "0123456789abcdef", 16);
   packed_len = stun_message_pack (breq, &packed);
@@ -67,7 +70,7 @@ main (void)
       buf);
   g_assert (len == 0);
 
-  /* send binding request with password */
+  /* send binding request with incorrect username */
   breq = stun_message_new (STUN_MESSAGE_BINDING_REQUEST);
   breq->attributes = g_malloc0 (2 * sizeof (StunAttribute *));
   breq->attributes[0] = stun_attribute_username_new ("lala");
@@ -81,6 +84,26 @@ main (void)
   /* tell the agent there's a packet waiting */
   nice_agent_recv (agent, candidate->id);
 
+  /* no reply should have been sent */
+  len = udp_fake_socket_pop_send (sock, &to, sizeof (buf) / sizeof (gchar),
+      buf);
+  g_assert (len == 0);
+
+  /* send binding request with correct username */
+  breq = stun_message_new (STUN_MESSAGE_BINDING_REQUEST);
+  breq->attributes = g_malloc0 (2 * sizeof (StunAttribute *));
+  username = g_strconcat (
+      "username",
+      ((NiceCandidate *) agent->local_candidates->data)->username,
+      NULL);
+  breq->attributes[0] = stun_attribute_username_new (username);
+  memcpy (breq->transaction_id, "0123456789abcdef", 16);
+  packed_len = stun_message_pack (breq, &packed);
+  g_assert (packed_len != 0);
+  udp_fake_socket_push_recv (sock, &from, packed_len, packed);
+  g_free (packed);
+  stun_message_free (breq);
+
   /* construct expected response packet */
   bres = stun_message_new (STUN_MESSAGE_BINDING_RESPONSE);
   memcpy (bres->transaction_id, "0123456789abcdef", 16);
@@ -89,6 +112,9 @@ main (void)
     remote_addr.addr_ipv4, 5678);
   packed_len = stun_message_pack (bres, &packed);
   g_assert (packed_len == 32);
+
+  /* tell the agent there's a packet waiting */
+  nice_agent_recv (agent, candidate->id);
 
   /* compare sent packet to expected */
   len = udp_fake_socket_pop_send (sock, &to, sizeof (buf) / sizeof (gchar),

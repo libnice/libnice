@@ -369,26 +369,44 @@ _stream_lookup (NiceAgent *agent, guint stream_id)
 static void
 _handle_stun (
   NiceAgent *agent,
-  UDPSocket *sock,
+  NiceCandidate *local,
   struct sockaddr_in from,
   StunMessage *msg)
 {
-  StunMessage *response;
+  GSList *i;
   StunAttribute **attr;
-  guint len;
-  gchar *packed;
   gchar *username = NULL;
 
   if (msg->type != STUN_MESSAGE_BINDING_REQUEST)
+    /* XXX: send error response */
     return;
 
-  /* msg shoukd have either:
+  /* msg should have either:
    *
    *   Jingle P2P:
-   *     username = remote candidate pwd + local candidate pwd
+   *     username = remote candidate username + local candidate username
    *   ICE:
-   *     username = remote candidate pwd + ":" + local candidate pwd
+   *     username = local candidate username + ":" + local candidate username
    *     password = local candidate pwd
+   *     priority = priority to use if a new candidate is generated
+   *
+   * Note that:
+   *
+   *  - Jingle and ICE differ with respects to which way around the candidate
+   *    usernames are concatenated
+   *  - the remote candidate password is not necessarily unique; Jingle seems
+   *    to always generate a unique password for each candidate, but ICE makes
+   *    no guarantees
+   *
+   * There are three cases we need to deal with:
+   *
+   *  - valid username with a known address
+   *    --> send response
+   *  - valid username with an unknown address
+   *    --> send response
+   *    --> later: create new remote candidate
+   *  - invalid username
+   *    --> send error
    */
 
   for (attr = msg->attributes; *attr; attr++)
@@ -400,21 +418,80 @@ _handle_stun (
 
   if (username == NULL)
     /* no username attribute found */
+    /* XXX: send error response */
     return;
 
-  response = stun_message_new (STUN_MESSAGE_BINDING_RESPONSE);
-  memcpy (response->transaction_id, msg->transaction_id, 16);
-  response->attributes = g_malloc0 (2 * sizeof (StunAttribute));
-  response->attributes[0] = stun_attribute_mapped_address_new (
-      ntohl (from.sin_addr.s_addr), ntohs (from.sin_port));
-  len = stun_message_pack (response, &packed);
-  udp_socket_send (sock, &from, len, packed);
+  /* validate username */
+  /* XXX: what about the case where the username uniquely identifies a remote
+   * candidate, but the transport address is not the one we expected?
+   */
 
-  g_free (packed);
-  stun_message_free (response);
+  for (i = agent->remote_candidates; i; i = i->next)
+    {
+      NiceCandidate *rtmp = i->data;
+      guint len;
 
-  /* XXX: perform a triggered connectivity check here */
-  /* or is that only for full implementations? */
+      if (!g_str_has_prefix (username, rtmp->username))
+        continue;
+
+      len = strlen (rtmp->username);
+
+      if (0 != strcmp (username + len, local->username))
+        continue;
+
+#if 0
+      /* usernames match; check address */
+
+      if (rtmp->addr.addr_ipv4 == ntohs (from.sin_addr.s_addr) &&
+          rtmp->port == ntohl (from.sin_port))
+        {
+          /* this is a candidate we know about, just send a reply */
+          /* is candidate pair active now? */
+          remote = rtmp;
+        }
+#endif
+
+      /* send response */
+      goto RESPOND;
+    }
+
+  /* username is not valid */
+  /* XXX: send error response */
+  return;
+
+RESPOND:
+    {
+      StunMessage *response;
+      guint len;
+      gchar *packed;
+
+      /* XXX: add username to response */
+      response = stun_message_new (STUN_MESSAGE_BINDING_RESPONSE);
+      memcpy (response->transaction_id, msg->transaction_id, 16);
+      response->attributes = g_malloc0 (2 * sizeof (StunAttribute));
+      response->attributes[0] = stun_attribute_mapped_address_new (
+          ntohl (from.sin_addr.s_addr), ntohs (from.sin_port));
+      len = stun_message_pack (response, &packed);
+      udp_socket_send (&local->sock, &from, len, packed);
+
+      g_free (packed);
+      stun_message_free (response);
+    }
+
+  return;
+
+  /* XXX: perform a triggered connectivity check here -- or is that only for
+   * full implementations?
+   */
+  /* XXX: we could be clever and keep around STUN packets that we couldn't
+   * validate, then re-examine them when we get new remote candidates -- would
+   * this fix some timing problems (i.e. TCP being slower than UDP)
+   */
+  /* XXX: if the peer is the controlling agent, it may include a USE-CANDIDATE
+   * attribute in the binding request
+   */
+  /* XXX: update peer media affinity here?
+   */
 }
 
 
@@ -503,7 +580,7 @@ nice_agent_recv (
       /* XXX: handle the case where the incoming packet is a response for a
        * binding request we sent */
 
-      _handle_stun (agent, &(candidate->sock), from, msg);
+      _handle_stun (agent, candidate, from, msg);
       stun_message_free (msg);
     }
 }
