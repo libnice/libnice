@@ -73,17 +73,22 @@ typedef void (*NiceAgentRecvHandler) (
 
 NiceAgent *
 nice_agent_new (UDPSocketManager *mgr);
+
 Event *
 nice_agent_pop_event (NiceAgent *agent);
+
 void
 nice_agent_add_local_address (NiceAgent *agent, NiceAddress *addr);
+
 guint
 nice_agent_add_stream (
   NiceAgent *agent,
   NiceAgentRecvHandler handle_recv,
   gpointer handle_recv_data);
+
 void
 nice_agent_free (NiceAgent *agent);
+
 void
 nice_agent_add_remote_candidate (
   NiceAgent *agent,
@@ -94,10 +99,12 @@ nice_agent_add_remote_candidate (
   guint port,
   gchar *username,
   gchar *password);
+
 void
 nice_agent_recv (
   NiceAgent *agent,
   guint candidate_id);
+
 const GSList *
 nice_agent_get_local_candidates (
   NiceAgent *agent);
