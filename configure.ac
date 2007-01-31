@@ -12,6 +12,7 @@ AC_CONFIG_FILES([
 	local/Makefile
 	udp/Makefile
 	nice/Makefile
+	nice/libnice.pc
 	random/Makefile
 	])
 

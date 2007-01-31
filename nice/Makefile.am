@@ -54,3 +54,6 @@ TESTS = test-readline test-util
 
 pkginclude_HEADERS = nice.h
 
+pkgconfigdir = $(libdir)/pkgconfig
+pkgconfig_DATA = libnice.pc
+
