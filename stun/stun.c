@@ -1,8 +1,9 @@
 
-#include "stun.h"
+#include <string.h>
 
 #include <arpa/inet.h>
-#include <string.h>
+
+#include "stun.h"
 
 /* round up to multiple of 4 */
 G_GNUC_CONST
