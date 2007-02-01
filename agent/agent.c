@@ -445,8 +445,7 @@ _handle_stun (
 
   if (username == NULL)
     /* no username attribute found */
-    /* XXX: send error response */
-    return;
+    goto ERROR;
 
   /* validate username */
   /* XXX: what about the case where the username uniquely identifies a remote
@@ -483,8 +482,7 @@ _handle_stun (
     }
 
   /* username is not valid */
-  /* XXX: send error response */
-  return;
+  goto ERROR;
 
 RESPOND:
     {
@@ -505,6 +503,21 @@ RESPOND:
     }
 
   return;
+
+ERROR:
+    {
+      StunMessage *response;
+      guint len;
+      gchar *packed;
+
+      response = stun_message_new (STUN_MESSAGE_BINDING_ERROR_RESPONSE,
+          msg->transaction_id, 0);
+      len = stun_message_pack (response, &packed);
+      udp_socket_send (&local->sock, &from, len, packed);
+
+      g_free (packed);
+      stun_message_free (response);
+    }
 
   /* XXX: perform a triggered connectivity check here -- or is that only for
    * full implementations?

@@ -27,6 +27,8 @@ test_stun_no_password (
   guint len;
   struct sockaddr_in to = {0,};
   gchar buf[1024];
+  guint packed_len;
+  gchar *packed;
 
   memset (buf, '\0', 1024);
 
@@ -35,8 +37,6 @@ test_stun_no_password (
 
     {
       StunMessage *breq;
-      guint packed_len;
-      gchar *packed;
 
       /* send binding request without username */
       breq = stun_message_new (STUN_MESSAGE_BINDING_REQUEST,
@@ -50,10 +50,22 @@ test_stun_no_password (
   /* tell the agent there's a packet waiting */
   nice_agent_recv (agent, candidate->id);
 
-  /* no reply should have been sent */
+  /* error response should have been sent */
   len = udp_fake_socket_pop_send (sock, &to, sizeof (buf) / sizeof (gchar),
       buf);
-  g_assert (len == 0);
+  g_assert (len != 0);
+
+    {
+      StunMessage *bres;
+
+      /* construct expected response */
+      bres = stun_message_new (STUN_MESSAGE_BINDING_ERROR_RESPONSE,
+          "0123456789abcdef", 0);
+      packed_len = stun_message_pack (bres, &packed);
+    }
+
+  g_assert (len == packed_len);
+  g_assert (0 == memcmp (buf, packed, len));
 }
 
 static void
@@ -66,6 +78,8 @@ test_stun_invalid_password (
   guint len;
   struct sockaddr_in to = {0,};
   gchar buf[1024];
+  guint packed_len;
+  gchar *packed;
 
   memset (buf, '\0', 1024);
 
@@ -74,8 +88,6 @@ test_stun_invalid_password (
 
     {
       StunMessage *breq;
-      guint packed_len;
-      gchar *packed;
 
       /* send binding request with incorrect username */
       breq = stun_message_new (STUN_MESSAGE_BINDING_REQUEST,
@@ -91,10 +103,22 @@ test_stun_invalid_password (
   /* tell the agent there's a packet waiting */
   nice_agent_recv (agent, candidate->id);
 
-  /* no reply should have been sent */
+  /* error should have been sent */
   len = udp_fake_socket_pop_send (sock, &to, sizeof (buf) / sizeof (gchar),
       buf);
-  g_assert (len == 0);
+  g_assert (len != 0);
+
+    {
+      StunMessage *bres;
+
+      /* construct expected response */
+      bres = stun_message_new (STUN_MESSAGE_BINDING_ERROR_RESPONSE,
+          "0123456789abcdef", 0);
+      packed_len = stun_message_pack (bres, &packed);
+    }
+
+  g_assert (len == packed_len);
+  g_assert (0 == memcmp (buf, packed, len));
 }
 
 static void
