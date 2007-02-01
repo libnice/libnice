@@ -2,8 +2,9 @@
 
 set -e
 export G_SLICE=always-malloc
+export G_DEBUG=gc-friendly
 
-report=`valgrind \
+report=`libtool --mode=execute valgrind \
 	-q \
 	--leak-check=full \
 	--show-reachable=no \
