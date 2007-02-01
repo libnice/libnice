@@ -62,10 +62,13 @@ test_stun_no_password (
       bres = stun_message_new (STUN_MESSAGE_BINDING_ERROR_RESPONSE,
           "0123456789abcdef", 0);
       packed_len = stun_message_pack (bres, &packed);
+
+      stun_message_free (bres);
     }
 
   g_assert (len == packed_len);
   g_assert (0 == memcmp (buf, packed, len));
+  g_free (packed);
 }
 
 static void
@@ -115,10 +118,12 @@ test_stun_invalid_password (
       bres = stun_message_new (STUN_MESSAGE_BINDING_ERROR_RESPONSE,
           "0123456789abcdef", 0);
       packed_len = stun_message_pack (bres, &packed);
+      stun_message_free (bres);
     }
 
   g_assert (len == packed_len);
   g_assert (0 == memcmp (buf, packed, len));
+  g_free (packed);
 }
 
 static void
