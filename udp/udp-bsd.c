@@ -8,11 +8,11 @@
 
 #include "udp-bsd.h"
 
-/*** UDPSocket ***/
+/*** NiceUDPSocket ***/
 
 static gint
 socket_recv (
-  UDPSocket *sock,
+  NiceUDPSocket *sock,
   struct sockaddr_in *from,
   guint len,
   gchar *buf)
@@ -28,7 +28,7 @@ socket_recv (
 
 static gboolean
 socket_send (
-  UDPSocket *sock,
+  NiceUDPSocket *sock,
   struct sockaddr_in *to,
   guint len,
   gchar *buf)
@@ -39,17 +39,17 @@ socket_send (
 }
 
 static void
-socket_close (UDPSocket *sock)
+socket_close (NiceUDPSocket *sock)
 {
   close (sock->fileno);
 }
 
-/*** UDPSocketManager ***/
+/*** NiceUDPSocketFactory ***/
 
 static gboolean
-socket_manager_init_socket (
-  UDPSocketManager *man,
-  UDPSocket *sock,
+socket_factory_init_socket (
+  NiceUDPSocketFactory *man,
+  NiceUDPSocket *sock,
   struct sockaddr_in *sin)
 {
   gint sockfd;
@@ -81,21 +81,21 @@ socket_manager_init_socket (
 }
 
 static void
-socket_manager_select (UDPPacketRecvFunc cb)
+socket_factory_select (NiceUDPRecvFunc cb)
 {
   g_assert_not_reached ();
 }
 
 static void
-socket_manager_close (UDPSocketManager *man)
+socket_factory_close (NiceUDPSocketFactory *man)
 {
 }
 
 void
-udp_bsd_socket_manager_init (UDPSocketManager *man)
+nice_udp_bsd_socket_factory_init (NiceUDPSocketFactory *man)
 {
-  man->init = socket_manager_init_socket;
-  man->select = socket_manager_select;
-  man->close = socket_manager_close;
+  man->init = socket_factory_init_socket;
+  man->select = socket_factory_select;
+  man->close = socket_factory_close;
 }
 

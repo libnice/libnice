@@ -29,14 +29,14 @@ main (void)
   NiceAgent *agent;
   NiceAddress addr;
   NiceCandidate *candidate;
-  UDPSocketManager mgr;
-  UDPSocket *sock;
+  NiceUDPSocketFactory factory;
+  NiceUDPSocket *sock;
   struct sockaddr_in from = {0,};
 
-  udp_fake_socket_manager_init (&mgr);
+  nice_udp_fake_socket_factory_init (&factory);
 
   /* set up agent */
-  agent = nice_agent_new (&mgr);
+  agent = nice_agent_new (&factory);
   nice_address_set_ipv4_from_string (&addr, "192.168.0.1");
   nice_agent_add_local_address (agent, &addr);
   nice_agent_add_stream (agent, handle_recv, NULL);
@@ -45,13 +45,13 @@ main (void)
   /* recieve an RTP packet */
   candidate = agent->local_candidates->data;
   sock = &(candidate->sock);
-  udp_fake_socket_push_recv (sock, &from, 7, "\x80lalala");
+  nice_udp_fake_socket_push_recv (sock, &from, 7, "\x80lalala");
   nice_agent_recv (agent, candidate->id);
   g_assert (cb_called == TRUE);
 
   /* clean up */
   nice_agent_free (agent);
-  udp_socket_manager_close (&mgr);
+  nice_udp_socket_factory_close (&factory);
 
   return 0;
 }

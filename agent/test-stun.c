@@ -23,7 +23,7 @@ test_stun_no_password (
   struct sockaddr_in from)
 {
   NiceCandidate *candidate;
-  UDPSocket *sock;
+  NiceUDPSocket *sock;
   guint len;
   struct sockaddr_in to = {0,};
   gchar buf[1024];
@@ -42,7 +42,7 @@ test_stun_no_password (
       breq = stun_message_new (STUN_MESSAGE_BINDING_REQUEST,
           "0123456789abcdef", 0);
       packed_len = stun_message_pack (breq, &packed);
-      udp_fake_socket_push_recv (sock, &from, packed_len, packed);
+      nice_udp_fake_socket_push_recv (sock, &from, packed_len, packed);
       g_free (packed);
       stun_message_free (breq);
     }
@@ -51,7 +51,7 @@ test_stun_no_password (
   nice_agent_recv (agent, candidate->id);
 
   /* error response should have been sent */
-  len = udp_fake_socket_pop_send (sock, &to, sizeof (buf) / sizeof (gchar),
+  len = nice_udp_fake_socket_pop_send (sock, &to, sizeof (buf) / sizeof (gchar),
       buf);
   g_assert (len != 0);
 
@@ -74,7 +74,7 @@ test_stun_invalid_password (
   struct sockaddr_in from)
 {
   NiceCandidate *candidate;
-  UDPSocket *sock;
+  NiceUDPSocket *sock;
   guint len;
   struct sockaddr_in to = {0,};
   gchar buf[1024];
@@ -95,7 +95,7 @@ test_stun_invalid_password (
       breq->attributes[0] = stun_attribute_username_new ("lala");
       packed_len = stun_message_pack (breq, &packed);
       g_assert (packed_len != 0);
-      udp_fake_socket_push_recv (sock, &from, packed_len, packed);
+      nice_udp_fake_socket_push_recv (sock, &from, packed_len, packed);
       g_free (packed);
       stun_message_free (breq);
     }
@@ -104,7 +104,7 @@ test_stun_invalid_password (
   nice_agent_recv (agent, candidate->id);
 
   /* error should have been sent */
-  len = udp_fake_socket_pop_send (sock, &to, sizeof (buf) / sizeof (gchar),
+  len = nice_udp_fake_socket_pop_send (sock, &to, sizeof (buf) / sizeof (gchar),
       buf);
   g_assert (len != 0);
 
@@ -127,7 +127,7 @@ test_stun_valid_password (
   struct sockaddr_in from)
 {
   NiceCandidate *candidate;
-  UDPSocket *sock;
+  NiceUDPSocket *sock;
   guint len;
   guint packed_len;
   struct sockaddr_in to = {0,};
@@ -156,7 +156,7 @@ test_stun_valid_password (
       g_free (username);
       packed_len = stun_message_pack (breq, &packed);
       g_assert (packed_len != 0);
-      udp_fake_socket_push_recv (sock, &from, packed_len, packed);
+      nice_udp_fake_socket_push_recv (sock, &from, packed_len, packed);
       g_free (packed);
       stun_message_free (breq);
     }
@@ -178,7 +178,7 @@ test_stun_valid_password (
   nice_agent_recv (agent, candidate->id);
 
   /* compare sent packet to expected */
-  len = udp_fake_socket_pop_send (sock, &to, sizeof (buf) / sizeof (gchar),
+  len = nice_udp_fake_socket_pop_send (sock, &to, sizeof (buf) / sizeof (gchar),
       buf);
   g_assert (len == packed_len);
   g_assert (0 == memcmp (buf, packed, len));
@@ -194,11 +194,11 @@ main (void)
   NiceAgent *agent;
   NiceAddress local_addr, remote_addr;
   NiceCandidate *candidate;
-  UDPSocketManager mgr;
-  UDPSocket *sock;
+  NiceUDPSocketFactory factory;
+  NiceUDPSocket *sock;
   struct sockaddr_in from = {0,};
 
-  udp_fake_socket_manager_init (&mgr);
+  nice_udp_fake_socket_factory_init (&factory);
 
   nice_address_set_ipv4_from_string (&local_addr, "192.168.0.1");
   nice_address_set_ipv4_from_string (&remote_addr, "192.168.0.5");
@@ -208,7 +208,7 @@ main (void)
   from.sin_port = htons (5678);
 
   /* set up agent */
-  agent = nice_agent_new (&mgr);
+  agent = nice_agent_new (&factory);
   nice_agent_add_local_address (agent, &local_addr);
   nice_agent_add_stream (agent, handle_recv, NULL);
   nice_agent_add_remote_candidate (agent, 1, 1, NICE_CANDIDATE_TYPE_HOST,
@@ -224,7 +224,7 @@ main (void)
 
   /* clean up */
   nice_agent_free (agent);
-  udp_socket_manager_close (&mgr);
+  nice_udp_socket_factory_close (&factory);
 
   return 0;
 }

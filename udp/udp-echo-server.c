@@ -4,11 +4,11 @@
 gint
 main (void)
 {
-  UDPSocketManager man;
-  UDPSocket sock;
+  NiceUDPSocketFactory man;
+  NiceUDPSocket sock;
   struct sockaddr_in sin;
 
-  udp_bsd_socket_manager_init (&man);
+  nice_udp_bsd_socket_factory_init (&man);
   sin.sin_family = AF_INET;
   sin.sin_addr.s_addr = INADDR_ANY;
   sin.sin_port = htons (9999);

@@ -174,17 +174,17 @@ nice_event_free (Event *ev)
 /**
  * nice_agent_new:
  *
- * @mgr: a UDPSocketManager used for allocating sockets
+ * @factory: a NiceUDPSocketFactory used for allocating sockets
  *
  * Create a new NiceAgent.
  **/
 NiceAgent *
-nice_agent_new (UDPSocketManager *mgr)
+nice_agent_new (NiceUDPSocketFactory *factory)
 {
   NiceAgent *agent;
 
   agent = g_slice_new0 (NiceAgent);
-  agent->sockmgr = mgr;
+  agent->socket_factory = factory;
   agent->next_candidate_id = 1;
   agent->next_stream_id = 1;
   return agent;
@@ -247,7 +247,7 @@ nice_agent_add_local_host_candidate (
   sin.sin_addr.s_addr = htonl (address->addr_ipv4);
   sin.sin_port = 0;
   /* XXX: handle error */
-  udp_socket_manager_alloc_socket (agent->sockmgr, &(candidate->sock), &sin);
+  nice_udp_socket_factory_make (agent->socket_factory, &(candidate->sock), &sin);
   candidate->port = ntohs (candidate->sock.addr.sin_port);
 }
 
@@ -496,7 +496,7 @@ RESPOND:
       response->attributes[0] = stun_attribute_mapped_address_new (
           ntohl (from.sin_addr.s_addr), ntohs (from.sin_port));
       len = stun_message_pack (response, &packed);
-      udp_socket_send (&local->sock, &from, len, packed);
+      nice_udp_socket_send (&local->sock, &from, len, packed);
 
       g_free (packed);
       stun_message_free (response);
@@ -513,7 +513,7 @@ ERROR:
       response = stun_message_new (STUN_MESSAGE_BINDING_ERROR_RESPONSE,
           msg->transaction_id, 0);
       len = stun_message_pack (response, &packed);
-      udp_socket_send (&local->sock, &from, len, packed);
+      nice_udp_socket_send (&local->sock, &from, len, packed);
 
       g_free (packed);
       stun_message_free (response);
@@ -542,7 +542,7 @@ _nice_agent_recv (
   gchar buf[1024];
   struct sockaddr_in from;
 
-  len = udp_socket_recv (&(candidate->sock), &from,
+  len = nice_udp_socket_recv (&(candidate->sock), &from,
       sizeof (buf) / sizeof (gchar), buf);
   g_assert (len > 0);
 

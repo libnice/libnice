@@ -57,7 +57,7 @@ struct _NiceAgent
 {
   guint next_candidate_id;
   guint next_stream_id;
-  UDPSocketManager *sockmgr;
+  NiceUDPSocketFactory *socket_factory;
   GSList *local_addresses;
   GSList *local_candidates;
   GSList *remote_candidates;
@@ -72,7 +72,7 @@ typedef void (*NiceAgentRecvHandler) (
 
 
 NiceAgent *
-nice_agent_new (UDPSocketManager *mgr);
+nice_agent_new (NiceUDPSocketFactory *factory);
 
 Event *
 nice_agent_pop_event (NiceAgent *agent);

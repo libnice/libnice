@@ -6,23 +6,23 @@
 #include <udp.h>
 
 gboolean
-udp_socket_manager_alloc_socket (
-  UDPSocketManager *man,
-  UDPSocket *sock,
+nice_udp_socket_factory_make (
+  NiceUDPSocketFactory *man,
+  NiceUDPSocket *sock,
   struct sockaddr_in *sin)
 {
   return man->init (man, sock, sin);
 }
 
 void
-udp_socket_manager_close (UDPSocketManager *man)
+nice_udp_socket_factory_close (NiceUDPSocketFactory *man)
 {
   man->close (man);
 }
 
 guint
-udp_socket_recv (
-  UDPSocket *sock,
+nice_udp_socket_recv (
+  NiceUDPSocket *sock,
   struct sockaddr_in *sin,
   guint len,
   gchar *buf)
@@ -31,8 +31,8 @@ udp_socket_recv (
 }
 
 void
-udp_socket_send (
-  UDPSocket *sock,
+nice_udp_socket_send (
+  NiceUDPSocket *sock,
   struct sockaddr_in *sin,
   guint len,
   gchar *buf)
@@ -41,7 +41,7 @@ udp_socket_send (
 }
 
 void
-udp_socket_close (UDPSocket *sock)
+nice_udp_socket_close (NiceUDPSocket *sock)
 {
   sock->close (sock);
 }

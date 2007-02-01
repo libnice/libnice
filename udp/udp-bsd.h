@@ -7,7 +7,7 @@
 G_BEGIN_DECLS
 
 void
-udp_bsd_socket_manager_init (UDPSocketManager *man);
+nice_udp_bsd_socket_factory_init (NiceUDPSocketFactory *man);
 
 G_END_DECLS
 

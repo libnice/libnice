@@ -8,31 +8,31 @@
 
 G_BEGIN_DECLS
 
-typedef struct _UDPSocket UDPSocket;
+typedef struct _UDPSocket NiceUDPSocket;
 
 struct _UDPSocket
 {
   struct sockaddr_in addr;
   guint fileno;
-  gint (*recv) (UDPSocket *sock, struct sockaddr_in *from, guint len,
+  gint (*recv) (NiceUDPSocket *sock, struct sockaddr_in *from, guint len,
       gchar *buf);
-  gboolean (*send) (UDPSocket *sock, struct sockaddr_in *to, guint len,
+  gboolean (*send) (NiceUDPSocket *sock, struct sockaddr_in *to, guint len,
       gchar *buf);
-  void (*close) (UDPSocket *sock);
+  void (*close) (NiceUDPSocket *sock);
   void *priv;
 };
 
-typedef gboolean (*UDPPacketRecvFunc) (struct sockaddr_in *from, guint len,
+typedef gboolean (*NiceUDPRecvFunc) (struct sockaddr_in *from, guint len,
     gchar *buf);
 
-typedef struct _UDPSocketManager UDPSocketManager;
+typedef struct _UDPSocketManager NiceUDPSocketFactory;
 
 struct _UDPSocketManager
 {
-  gboolean (*init) (UDPSocketManager *man, UDPSocket *sock,
+  gboolean (*init) (NiceUDPSocketFactory *man, NiceUDPSocket *sock,
       struct sockaddr_in *sin);
-  void (*select) (UDPPacketRecvFunc cb);
-  void (*close) (UDPSocketManager *man);
+  void (*select) (NiceUDPRecvFunc cb);
+  void (*close) (NiceUDPSocketFactory *man);
   void *priv;
 };
 
@@ -42,30 +42,30 @@ struct _UDPSocketManager
  * address bound to will be set in sock->addr.
  */
 gboolean
-udp_socket_manager_alloc_socket (
-  UDPSocketManager *man,
-  UDPSocket *sock,
+nice_udp_socket_factory_make (
+  NiceUDPSocketFactory *man,
+  NiceUDPSocket *sock,
   struct sockaddr_in *sin);
 
 void
-udp_socket_manager_close (UDPSocketManager *man);
+nice_udp_socket_factory_close (NiceUDPSocketFactory *man);
 
 guint
-udp_socket_recv (
-  UDPSocket *sock,
+nice_udp_socket_recv (
+  NiceUDPSocket *sock,
   struct sockaddr_in *sin,
   guint len,
   gchar *buf);
 
 void
-udp_socket_send (
-  UDPSocket *sock,
+nice_udp_socket_send (
+  NiceUDPSocket *sock,
   struct sockaddr_in *sin,
   guint len,
   gchar *buf);
 
 void
-udp_socket_close (UDPSocket *sock);
+nice_udp_socket_close (NiceUDPSocket *sock);
 
 G_END_DECLS
 

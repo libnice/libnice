@@ -22,14 +22,14 @@ main (void)
   NiceAgent *agent;
   NiceAddress addr_local, addr_remote;
   NiceCandidate *candidate;
-  UDPSocketManager mgr;
+  NiceUDPSocketFactory factory;
 
-  udp_fake_socket_manager_init (&mgr);
+  nice_udp_fake_socket_factory_init (&factory);
 
   nice_address_set_ipv4_from_string (&addr_local, "192.168.0.1");
   nice_address_set_ipv4_from_string (&addr_remote, "192.168.0.2");
 
-  agent = nice_agent_new (&mgr);
+  agent = nice_agent_new (&factory);
 
   g_assert (agent->local_addresses == NULL);
   g_assert (agent->local_candidates == NULL);

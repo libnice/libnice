@@ -44,7 +44,7 @@ _g_slist_pop (GSList **list)
 
 static gboolean
 fake_send (
-  UDPSocket *sock,
+  NiceUDPSocket *sock,
   struct sockaddr_in *to,
   guint len,
   gchar *buf)
@@ -65,7 +65,7 @@ fake_send (
 
 static gint
 fake_recv (
-  UDPSocket *sock,
+  NiceUDPSocket *sock,
   struct sockaddr_in *from,
   guint len,
   gchar *buf)
@@ -82,7 +82,7 @@ fake_recv (
 }
 
 static void
-fake_close (UDPSocket *sock)
+fake_close (NiceUDPSocket *sock)
 {
   UDPFakeSocketPriv *priv;
 
@@ -95,8 +95,8 @@ fake_close (UDPSocket *sock)
 /* XXX: copied INADDR_ANY to sock->addr rather than using a valid address */
 static gboolean
 fake_socket_init (
-  UDPSocketManager *man,
-  UDPSocket *sock,
+  NiceUDPSocketFactory *man,
+  NiceUDPSocket *sock,
   struct sockaddr_in *sin)
 {
   int fds[2];
@@ -127,8 +127,8 @@ fake_socket_init (
 }
 
 void
-udp_fake_socket_push_recv (
-  UDPSocket *sock,
+nice_udp_fake_socket_push_recv (
+  NiceUDPSocket *sock,
   struct sockaddr_in *from,
   guint len,
   gchar *buf)
@@ -142,8 +142,8 @@ udp_fake_socket_push_recv (
 }
 
 guint
-udp_fake_socket_pop_send (
-  UDPSocket *sock,
+nice_udp_fake_socket_pop_send (
+  NiceUDPSocket *sock,
   struct sockaddr_in *to,
   guint len,
   gchar *buf)
@@ -165,16 +165,16 @@ udp_fake_socket_pop_send (
 }
 
 static void
-fake_socket_manager_close (UDPSocketManager *man)
+fake_socket_factory_close (NiceUDPSocketFactory *man)
 {
 }
 
 void
-udp_fake_socket_manager_init (UDPSocketManager *man)
+nice_udp_fake_socket_factory_init (NiceUDPSocketFactory *man)
 {
   man->init = fake_socket_init;
   man->select = NULL;
-  man->close = fake_socket_manager_close;
+  man->close = fake_socket_factory_close;
   man->priv = NULL;
 }
 

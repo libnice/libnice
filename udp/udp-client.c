@@ -7,13 +7,13 @@
 gint
 main (void)
 {
-  UDPSocketManager man;
-  UDPSocket sock;
+  NiceUDPSocketFactory man;
+  NiceUDPSocket sock;
   struct sockaddr_in sin;
 
-  udp_bsd_socket_manager_init (&man);
+  nice_udp_bsd_socket_factory_init (&man);
 
-  if (!udp_socket_manager_alloc_socket (&man, &sock, NULL))
+  if (!nice_udp_socket_factory_make (&man, &sock, NULL))
     g_assert_not_reached ();
 
   if (inet_pton (AF_INET, "127.0.0.1", &(sin.sin_addr)) < 0)
@@ -30,13 +30,13 @@ main (void)
       if (fgets (buf, sizeof (buf), stdin) == NULL)
         break;
 
-      udp_socket_send (&sock, &sin, strlen (buf), buf);
-      length = udp_socket_recv (&sock, NULL, sizeof (buf), buf);
+      nice_udp_socket_send (&sock, &sin, strlen (buf), buf);
+      length = nice_udp_socket_recv (&sock, NULL, sizeof (buf), buf);
       g_print (buf);
     }
 
-  udp_socket_close (&sock);
-  udp_socket_manager_close (&man);
+  nice_udp_socket_close (&sock);
+  nice_udp_socket_factory_close (&man);
   return 0;
 }
 

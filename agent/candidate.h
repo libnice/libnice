@@ -29,7 +29,7 @@ struct _NiceCandidate
   guint component_id;
   // guint generation;
   // gchar *foundation;
-  UDPSocket sock;
+  NiceUDPSocket sock;
   gchar username[128];
   gchar password[128];
 };

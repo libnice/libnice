@@ -25,15 +25,15 @@ handle_recv (
 static gboolean
 make_agent (
   gchar *ip,
-  UDPSocketManager *mgr,
+  NiceUDPSocketFactory *factory,
   NiceAgent **ret_agent,
-  UDPSocket **ret_sock)
+  NiceUDPSocket **ret_sock)
 {
   NiceAgent *agent;
   NiceAddress addr_local;
   NiceCandidate *candidate;
 
-  agent = nice_agent_new (mgr);
+  agent = nice_agent_new (factory);
 
   nice_address_set_ipv4_from_string (&addr_local, ip);
   nice_agent_add_local_address (agent, &addr_local);
@@ -70,8 +70,8 @@ static void
 handle_connection (guint fileno, const struct sockaddr_in *sin, gpointer data)
 {
   NiceAgent *agent;
-  UDPSocketManager mgr;
-  UDPSocket *sock;
+  NiceUDPSocketFactory factory;
+  NiceUDPSocket *sock;
   GSList *sockets = NULL;
   gchar ip_str[INET_ADDRSTRLEN];
   fd_set fds;
@@ -81,9 +81,9 @@ handle_connection (guint fileno, const struct sockaddr_in *sin, gpointer data)
   inet_ntop (AF_INET, &(sin->sin_addr), ip_str, INET_ADDRSTRLEN);
   g_debug ("got connection from %s:%d", ip_str, ntohs (sin->sin_port));
 
-  udp_bsd_socket_manager_init (&mgr);
+  nice_udp_bsd_socket_factory_init (&factory);
 
-  if (!make_agent ((gchar *) data, &mgr, &agent, &sock))
+  if (!make_agent ((gchar *) data, &factory, &agent, &sock))
     return;
 
   sockets = g_slist_append (sockets, sock);
@@ -141,17 +141,17 @@ END:
   while (sockets != NULL)
     {
       GSList *tmp;
-      UDPSocket *sock = sockets->data;
+      NiceUDPSocket *sock = sockets->data;
 
       tmp = sockets;
       sockets = sockets->next;
       g_slist_free_1 (tmp);
-      udp_socket_close (sock);
-      g_slice_free (UDPSocket, sock);
+      nice_udp_socket_close (sock);
+      g_slice_free (NiceUDPSocket, sock);
     }
 
   g_slist_free (sockets);
-  udp_socket_manager_close (&mgr);
+  nice_udp_socket_factory_close (&factory);
 }
 
 static gboolean
