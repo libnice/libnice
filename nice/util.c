@@ -1,14 +1,7 @@
 
-#include <string.h>
 #include <stdlib.h>
 
-#include <arpa/inet.h>
-
-#include <glib.h>
-
-#include <udp.h>
-
-#include <agent.h>
+#include "agent.h"
 
 /* format is:
  *   type/ip/port
@@ -18,17 +11,19 @@ nice_candidate_from_string (const gchar *s)
 {
   NiceCandidateType type;
   NiceCandidate *candidate;
-  gchar *first_slash;
-  gchar *last_slash;
-  gchar tmp[128];
-  guint len;
   guint32 ip;
   guint16 port;
+  gchar **bits;
 
   if (s == NULL || s[0] == '\0')
     return NULL;
 
-  switch (s[0])
+  bits = g_strsplit (s, "/", 3);
+
+  if (g_strv_length (bits) != 3)
+    return NULL;
+
+  switch (bits[0][0])
     {
     case 'H':
       type = NICE_CANDIDATE_TYPE_HOST;
@@ -48,28 +43,12 @@ nice_candidate_from_string (const gchar *s)
 
   /* extract IP address */
 
-  first_slash = index (s, '/');
-  last_slash = rindex (s, '/');
-
-  if (first_slash == NULL ||
-      last_slash == NULL ||
-      first_slash == last_slash)
-    return NULL;
-
-  len = last_slash - first_slash - 1;
-
-  if (len > sizeof (tmp) - 1)
-    return NULL;
-
-  strncpy (tmp, first_slash + 1, len);
-  tmp[len] = '\0';
-
-  if (inet_pton (AF_INET, tmp, &ip) < 1)
+  if (inet_pton (AF_INET, bits[1], &ip) < 1)
     return NULL;
 
   /* extract port */
 
-  port = strtol (last_slash + 1, NULL, 10);
+  port = strtol (bits[2], NULL, 10);
 
   candidate = nice_candidate_new (type);
   nice_address_set_ipv4 (&candidate->addr, ntohl (ip));
