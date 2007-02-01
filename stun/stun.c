@@ -189,18 +189,23 @@ stun_message_init (StunMessage *msg, guint type, gchar *id)
 }
 
 StunMessage *
-stun_message_new (guint type, gchar *id)
+stun_message_new (guint type, gchar *id, guint n_attributes)
 {
   StunMessage *msg = g_slice_new0 (StunMessage);
 
   stun_message_init (msg, type, id);
+
+  if (n_attributes != 0)
+    msg->attributes = g_malloc0 (
+        (n_attributes + 1) * sizeof (StunAttribute *));
+
   return msg;
 }
 
 StunMessage *
 stun_message_binding_request_new ()
 {
-  return stun_message_new (STUN_MESSAGE_BINDING_REQUEST, NULL);
+  return stun_message_new (STUN_MESSAGE_BINDING_REQUEST, NULL, 0);
 }
 
 void
@@ -233,10 +238,6 @@ stun_message_unpack (guint length, gchar *s)
 
   g_assert (length >= 20);
 
-  /* unpack the header */
-
-  msg = stun_message_new (ntohs (*(guint16 *) s), s + 4);
-
   /* count the number of attributes */
 
   for (offset = 20; offset < length; offset += attr_length)
@@ -245,10 +246,9 @@ stun_message_unpack (guint length, gchar *s)
       n_attributes++;
     }
 
-  /* allocate memory for the attribute list and terminate it */
+  /* create message structure */
 
-  msg->attributes = g_malloc0 ((n_attributes + 1) * sizeof (StunAttribute *));
-  msg->attributes[n_attributes] = NULL;
+  msg = stun_message_new (ntohs (*(guint16 *) s), s + 4, n_attributes);
 
   /* unpack attributes */
 

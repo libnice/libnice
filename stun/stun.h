@@ -104,7 +104,7 @@ stun_message_init (StunMessage *msg, guint type, gchar *id);
 
 G_GNUC_WARN_UNUSED_RESULT
 StunMessage *
-stun_message_new (guint type, gchar *id);
+stun_message_new (guint type, gchar *id, guint n_attributes);
 
 G_GNUC_WARN_UNUSED_RESULT
 StunMessage *

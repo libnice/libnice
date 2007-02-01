@@ -494,8 +494,7 @@ RESPOND:
 
       /* XXX: add username to response */
       response = stun_message_new (STUN_MESSAGE_BINDING_RESPONSE,
-          msg->transaction_id);
-      response->attributes = g_malloc0 (2 * sizeof (StunAttribute));
+          msg->transaction_id, 1);
       response->attributes[0] = stun_attribute_mapped_address_new (
           ntohl (from.sin_addr.s_addr), ntohs (from.sin_port));
       len = stun_message_pack (response, &packed);

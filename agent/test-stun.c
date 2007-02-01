@@ -40,7 +40,7 @@ test_stun_no_password (
 
       /* send binding request without username */
       breq = stun_message_new (STUN_MESSAGE_BINDING_REQUEST,
-          "0123456789abcdef");
+          "0123456789abcdef", 0);
       packed_len = stun_message_pack (breq, &packed);
       udp_fake_socket_push_recv (sock, &from, packed_len, packed);
       g_free (packed);
@@ -79,8 +79,7 @@ test_stun_invalid_password (
 
       /* send binding request with incorrect username */
       breq = stun_message_new (STUN_MESSAGE_BINDING_REQUEST,
-          "0123456789abcdef");
-      breq->attributes = g_malloc0 (2 * sizeof (StunAttribute *));
+          "0123456789abcdef", 1);
       breq->attributes[0] = stun_attribute_username_new ("lala");
       packed_len = stun_message_pack (breq, &packed);
       g_assert (packed_len != 0);
@@ -124,8 +123,7 @@ test_stun_valid_password (
 
       /* send binding request with correct username */
       breq = stun_message_new (STUN_MESSAGE_BINDING_REQUEST,
-          "0123456789abcdef");
-      breq->attributes = g_malloc0 (2 * sizeof (StunAttribute *));
+          "0123456789abcdef", 1);
       username = g_strconcat (
           "username",
           ((NiceCandidate *) agent->local_candidates->data)->username,
@@ -144,8 +142,7 @@ test_stun_valid_password (
 
       /* construct expected response packet */
       bres = stun_message_new (STUN_MESSAGE_BINDING_RESPONSE,
-          "0123456789abcdef");
-      bres->attributes = g_malloc0 (2 * sizeof (StunAttribute *));
+          "0123456789abcdef", 1);
       bres->attributes[0] = stun_attribute_mapped_address_new (
         ntohl (from.sin_addr.s_addr), 5678);
       packed_len = stun_message_pack (bres, &packed);
