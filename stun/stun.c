@@ -180,24 +180,27 @@ stun_attribute_dump (StunAttribute *attr)
 }
 
 void
-stun_message_init (StunMessage *msg, guint type)
+stun_message_init (StunMessage *msg, guint type, gchar *id)
 {
   msg->type = type;
+
+  if (id != NULL)
+    memcpy (msg->transaction_id, id, 16);
 }
 
 StunMessage *
-stun_message_new (guint type)
+stun_message_new (guint type, gchar *id)
 {
   StunMessage *msg = g_slice_new0 (StunMessage);
 
-  stun_message_init (msg, type);
+  stun_message_init (msg, type, id);
   return msg;
 }
 
 StunMessage *
 stun_message_binding_request_new ()
 {
-  return stun_message_new (STUN_MESSAGE_BINDING_REQUEST);
+  return stun_message_new (STUN_MESSAGE_BINDING_REQUEST, NULL);
 }
 
 void
@@ -224,7 +227,7 @@ stun_message_unpack (guint length, gchar *s)
   guint i;
   guint offset;
   StunAttribute *attr;
-  StunMessage *msg = stun_message_new (STUN_MESSAGE_BINDING_REQUEST);
+  StunMessage *msg;
 
   /* message header is 20 bytes */
 
@@ -232,8 +235,7 @@ stun_message_unpack (guint length, gchar *s)
 
   /* unpack the header */
 
-  msg->type = ntohs (*(guint16 *)(s + 0));
-  memcpy (msg->transaction_id, s + 4, 16);
+  msg = stun_message_new (ntohs (*(guint16 *) s), s + 4);
 
   /* count the number of attributes */
 

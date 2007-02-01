@@ -39,8 +39,8 @@ test_stun_no_password (
       gchar *packed;
 
       /* send binding request without username */
-      breq = stun_message_new (STUN_MESSAGE_BINDING_REQUEST);
-      memcpy (breq->transaction_id, "0123456789abcdef", 16);
+      breq = stun_message_new (STUN_MESSAGE_BINDING_REQUEST,
+          "0123456789abcdef");
       packed_len = stun_message_pack (breq, &packed);
       udp_fake_socket_push_recv (sock, &from, packed_len, packed);
       g_free (packed);
@@ -78,10 +78,10 @@ test_stun_invalid_password (
       gchar *packed;
 
       /* send binding request with incorrect username */
-      breq = stun_message_new (STUN_MESSAGE_BINDING_REQUEST);
+      breq = stun_message_new (STUN_MESSAGE_BINDING_REQUEST,
+          "0123456789abcdef");
       breq->attributes = g_malloc0 (2 * sizeof (StunAttribute *));
       breq->attributes[0] = stun_attribute_username_new ("lala");
-      memcpy (breq->transaction_id, "0123456789abcdef", 16);
       packed_len = stun_message_pack (breq, &packed);
       g_assert (packed_len != 0);
       udp_fake_socket_push_recv (sock, &from, packed_len, packed);
@@ -123,7 +123,8 @@ test_stun_valid_password (
       gchar *username;
 
       /* send binding request with correct username */
-      breq = stun_message_new (STUN_MESSAGE_BINDING_REQUEST);
+      breq = stun_message_new (STUN_MESSAGE_BINDING_REQUEST,
+          "0123456789abcdef");
       breq->attributes = g_malloc0 (2 * sizeof (StunAttribute *));
       username = g_strconcat (
           "username",
@@ -131,7 +132,6 @@ test_stun_valid_password (
           NULL);
       breq->attributes[0] = stun_attribute_username_new (username);
       g_free (username);
-      memcpy (breq->transaction_id, "0123456789abcdef", 16);
       packed_len = stun_message_pack (breq, &packed);
       g_assert (packed_len != 0);
       udp_fake_socket_push_recv (sock, &from, packed_len, packed);
@@ -143,8 +143,8 @@ test_stun_valid_password (
       StunMessage *bres;
 
       /* construct expected response packet */
-      bres = stun_message_new (STUN_MESSAGE_BINDING_RESPONSE);
-      memcpy (bres->transaction_id, "0123456789abcdef", 16);
+      bres = stun_message_new (STUN_MESSAGE_BINDING_RESPONSE,
+          "0123456789abcdef");
       bres->attributes = g_malloc0 (2 * sizeof (StunAttribute *));
       bres->attributes[0] = stun_attribute_mapped_address_new (
         ntohl (from.sin_addr.s_addr), 5678);

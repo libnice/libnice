@@ -95,10 +95,10 @@ StunAttribute *
 stun_attribute_unpack (guint length, const gchar *s);
 
 void
-stun_message_init (StunMessage *msg, guint type);
+stun_message_init (StunMessage *msg, guint type, gchar *id);
 G_GNUC_WARN_UNUSED_RESULT
 StunMessage *
-stun_message_new (guint type);
+stun_message_new (guint type, gchar *id);
 G_GNUC_WARN_UNUSED_RESULT
 StunMessage *
 stun_message_binding_request_new (void);

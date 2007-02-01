@@ -16,7 +16,7 @@ send_stun (UDPSocket *udpsock, struct sockaddr_in sin)
   gchar buf[1024];
   StunMessage *msg;
 
-  msg = stun_message_new (STUN_MESSAGE_BINDING_REQUEST);
+  msg = stun_message_new (STUN_MESSAGE_BINDING_REQUEST, NULL);
   msg->attributes = g_malloc0 (2 * sizeof (StunAttribute));
   msg->attributes[0] = stun_attribute_username_new ("lala");
 
