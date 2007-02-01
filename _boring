@@ -38,6 +38,8 @@
 (^|/)core$
 \.gc(no|da)$
 ^lcov($|/)
+^doc($|/)
+(^|/)scratch$
 
 # autofoo files
 ^missing
@@ -96,7 +98,12 @@
 
 # nice/ stuff
 ^nice/libnice.la$
+^nice/libnice.pc$
+^nice/ice-test-client$
 ^nice/ice-test-server$
 ^nice/test-readline$
 ^nice/test-util$
 
+# random/ stuff
+^random/librandom.la$
+^random/test$
