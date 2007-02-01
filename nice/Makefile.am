@@ -18,7 +18,7 @@ AM_CFLAGS = -Wall -Werror \
 	-I $(top_srcdir)/stun \
 	$(GLIB_CFLAGS)
 
-COMMON_LDADD = $(top_builddir)/agent/libagent.la $(GLIB_LIBS)
+COMMON_LDADD = libnice.la $(GLIB_LIBS)
 
 ice_test_client_SOURCES = \
 	ice-test-client.c \
@@ -27,7 +27,7 @@ ice_test_client_SOURCES = \
 	util.h \
 	util.c
 
-ice_test_client_LDADD = $(COMMON_LDADD)
+ice_test_client_LDADD = $(top_builddir)/stun/libstun.la $(COMMON_LDADD)
 
 ice_test_server_SOURCES = \
 	ice-test-server.c \
