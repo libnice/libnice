@@ -21,7 +21,7 @@ nice_candidate_from_string (const gchar *s)
   bits = g_strsplit (s, "/", 3);
 
   if (g_strv_length (bits) != 3)
-    return NULL;
+    goto ERROR;
 
   switch (bits[0][0])
     {
@@ -38,13 +38,13 @@ nice_candidate_from_string (const gchar *s)
       type = NICE_CANDIDATE_TYPE_RELAYED;
       break;
     default:
-      return NULL;
+      goto ERROR;
     }
 
   /* extract IP address */
 
   if (inet_pton (AF_INET, bits[1], &ip) < 1)
-    return NULL;
+    goto ERROR;
 
   /* extract port */
 
@@ -54,7 +54,12 @@ nice_candidate_from_string (const gchar *s)
   nice_address_set_ipv4 (&candidate->addr, ntohl (ip));
   candidate->port = port;
 
+  g_strfreev (bits);
   return candidate;
+
+ERROR:
+  g_strfreev (bits);
+  return NULL;
 }
 
 gchar *
