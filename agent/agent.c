@@ -208,11 +208,13 @@ nice_agent_pop_event (NiceAgent *agent)
 }
 
 
-void
+#if 0
+static void
 nice_agent_push_event (NiceAgent *agent, Event *ev)
 {
   agent->events = g_slist_append (agent->events, ev);
 }
+#endif
 
 
 static void
