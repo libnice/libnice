@@ -2,11 +2,11 @@
 Nice: GLib ICE library
 ======================
 
-Copyright
----------
+Copyright and license
+---------------------
 
- (C) 2006, 2007 Collabora Ltd.
- (C) 2006, 2007 Nokia Corporation
+  (C) 2006, 2007 Collabora Ltd.
+  (C) 2006, 2007 Nokia Corporation
 
   This library is free software; you can redistribute it and/or modify it
   under the terms of the GNU Lesser General Public License as published by the
@@ -31,7 +31,7 @@ Requirements
 Limitations
 -----------
 
- - ICE agent only supports passive operation
+ - only implements ICE Lite
  - no support for RTCP
  - no support for IPv6
 
@@ -43,4 +43,29 @@ Structure
  udp/   - UDP abstraction layer
  agent/ - ICE agent
  nice/  - libnice
+
+Relevant standards
+------------------
+
+These standards are relevant to nice's current implementation.
+
+ICE draft 13
+  http://tools.ietf.org/html/draft-ietf-mmusic-ice-13
+STUN
+  http://tools.ietf.org/html/rfc3489
+STUN bis (used by ICE)
+  http://tools.ietf.org/html/draft-ietf-behave-rfc3489bis-04
+RTP
+  http://tools.ietf.org/html/rfc3550
+XMPP Jingle ICE transport
+  http://www.xmpp.org/extensions/xep-0176.html
+
+In future, nice may additionally support the following standards.
+
+TURN
+  http://tools.ietf.org/html/draft-ietf-behave-turn-02
+NAT-PMP
+  http://files.dns-sd.org/draft-cheshire-nat-pmp.txt
+UPnP IGD
+  http://www.upnp.org/standardizeddcps/igd.asp
 
