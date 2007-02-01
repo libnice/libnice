@@ -50,7 +50,14 @@ test_util_SOURCES = test-util.c util.h util.c
 
 test_util_LDADD = $(COMMON_LDADD)
 
-TESTS = test-readline test-util
+test-symbols.sh::
+	chmod +x $(srcdir)/$@
+
+check_SCRIPTS = test-symbols.sh
+
+TESTS = $(check_PROGRAMS) $(check_SCRIPTS)
+
+EXTRA_DIST = $(check_SCRIPTS) libnice.symbols
 
 pkginclude_HEADERS = nice.h
 
