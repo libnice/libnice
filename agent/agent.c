@@ -171,6 +171,13 @@ nice_event_free (Event *ev)
 /*** agent ***/
 
 
+/**
+ * nice_agent_new:
+ *
+ * @mgr: a UDPSocketManager used for allocating sockets
+ *
+ * Create a new NiceAgent.
+ **/
 NiceAgent *
 nice_agent_new (UDPSocketManager *mgr)
 {
@@ -243,6 +250,14 @@ nice_agent_add_local_host_candidate (
 }
 
 
+/**
+ * nice_agent_add_stream:
+ *
+ * @agent: a NiceAgent
+ * @handle_recv: A function called when the stream recieves data
+ *
+ * Add a data stream to @agent.
+ **/
 guint
 nice_agent_add_stream (
   NiceAgent *agent,
@@ -275,6 +290,15 @@ nice_agent_add_stream (
 }
 
 
+/**
+ * nice_agent_add_local_address:
+ *
+ * @agent: A NiceAgent
+ * @addr: The address of a local IP interface
+ *
+ * Inform the agent of the presence of an address that a local network
+ * interface is bound to.
+ **/
 void
 nice_agent_add_local_address (NiceAgent *agent, NiceAddress *addr)
 {
@@ -496,12 +520,14 @@ RESPOND:
 
 
 /**
- * ice_agent_recv (agent, candidate)
+ * nice_agent_recv:
+ *  @agent: The agent to notify
+ *  @candidate_id: The ID of the candidate that has data waiting on its socket
  *
  * Tell the agent to try receiving a packet on @candidate's socket. This is
  * useful for integrating the agent into a select()-loop. This function will
  * block if the socket is blocking.
- */
+ **/
 void
 nice_agent_recv (
   NiceAgent *agent,
@@ -596,6 +622,14 @@ nice_agent_set_stun_server (NiceAddress *addr, guint16 port)
 }
 */
 
+/**
+ * nice_agent_get_local_candidates:
+ *
+ * @agent: A NiceAgent
+ * Return value: a GSList of local candidates belonging to @agent
+ *
+ * The caller does not own the GSList or the candidates contained within it.
+ **/
 const GSList *
 nice_agent_get_local_candidates (
   NiceAgent *agent)
