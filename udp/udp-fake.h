@@ -8,12 +8,14 @@ G_BEGIN_DECLS
 
 void
 udp_fake_socket_manager_init (UDPSocketManager *man);
+
 void
 udp_fake_socket_push_recv (
   UDPSocket *man,
   struct sockaddr_in *from,
   guint len,
   gchar *buf);
+
 guint
 udp_fake_socket_pop_send (
   UDPSocket *man,
