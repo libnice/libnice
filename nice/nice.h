@@ -3,6 +3,7 @@
 #define _NICE_H
 
 #include "udp.h"
+#include "udp-bsd.h"
 #include "udp-fake.h"
 #include "agent.h"
 #include "random.h"

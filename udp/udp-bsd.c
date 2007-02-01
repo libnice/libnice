@@ -1,24 +1,12 @@
 
 /*
- * convenience API for UDP sockets
- *
- * easily:
- *
- *  - create sockets and bind them to an interface
- *  - send and receive packets
- *  - know who packets are received from
- *  - select on a number of sockets
- *
- * also allows faking UDP sockets for testing purposes
+ * Implementation of UDP socket interface using Berkeley sockets. (See
+ * http://en.wikipedia.org/wiki/Berkeley_sockets.)
  */
 
-#include <arpa/inet.h>
-#include <sys/socket.h>
 #include <unistd.h>
 
-#include <glib.h>
-
-#include <udp.h>
+#include "udp-bsd.h"
 
 /*** UDPSocket ***/
 
@@ -104,7 +92,7 @@ socket_manager_close (UDPSocketManager *man)
 }
 
 void
-udp_socket_manager_init (UDPSocketManager *man)
+udp_socket_manager_bsd_init (UDPSocketManager *man)
 {
   man->init = socket_manager_init_socket;
   man->select = socket_manager_select;

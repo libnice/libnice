@@ -2,11 +2,7 @@
 #include <string.h>
 #include <stdio.h>
 
-#include <arpa/inet.h>
-
-#include <glib.h>
-
-#include <udp.h>
+#include "udp-bsd.h"
 
 gint
 main (void)
@@ -15,7 +11,7 @@ main (void)
   UDPSocket sock;
   struct sockaddr_in sin;
 
-  udp_socket_manager_init (&man);
+  udp_socket_manager_bsd_init (&man);
 
   if (!udp_socket_manager_alloc_socket (&man, &sock, NULL))
     g_assert_not_reached ();

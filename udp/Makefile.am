@@ -7,8 +7,9 @@ noinst_LTLIBRARIES = libudp.la
 
 libudp_la_SOURCES = \
 	udp.h \
-	udp.c \
 	udp-generic.c \
+	udp-bsd.h \
+	udp-bsd.c \
 	udp-fake.h \
 	udp-fake.c
 

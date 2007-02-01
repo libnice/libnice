@@ -2,10 +2,6 @@
 #ifndef _UDP_FAKE_H
 #define _UDP_FAKE_H
 
-#include <arpa/inet.h>
-
-#include <glib.h>
-
 #include "udp.h"
 
 G_BEGIN_DECLS

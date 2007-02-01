@@ -1,9 +1,5 @@
 
-#include <arpa/inet.h>
-
-#include <glib.h>
-
-#include <udp.h>
+#include "udp-bsd.h"
 
 gint
 main (void)
@@ -12,7 +8,7 @@ main (void)
   UDPSocket sock;
   struct sockaddr_in sin;
 
-  udp_socket_manager_init (&man);
+  udp_socket_manager_bsd_init (&man);
   sin.sin_family = AF_INET;
   sin.sin_addr.s_addr = INADDR_ANY;
   sin.sin_port = htons (9999);

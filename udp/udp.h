@@ -36,8 +36,6 @@ struct _UDPSocketManager
   void *priv;
 };
 
-void
-udp_socket_manager_init (UDPSocketManager *man);
 /**
  * If sin is not NULL, the new socket will be bound to that IP address/port.
  * If sin->sin_port is 0, a port will be assigned at random. In all cases, the

@@ -68,7 +68,7 @@ handle_connection (guint sock)
 
   g_debug ("got candidate");
 
-  udp_socket_manager_init (&man);
+  udp_socket_manager_bsd_init (&man);
 
   sin.sin_family = AF_INET;
   sin.sin_addr.s_addr = INADDR_ANY;
