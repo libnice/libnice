@@ -435,12 +435,13 @@ _handle_stun (
    *    --> send error
    */
 
-  for (attr = msg->attributes; *attr; attr++)
-    if ((*attr)->type == STUN_ATTRIBUTE_USERNAME)
-      {
-        username = (*attr)->username;
-        break;
-      }
+  if (msg->attributes)
+    for (attr = msg->attributes; *attr; attr++)
+      if ((*attr)->type == STUN_ATTRIBUTE_USERNAME)
+        {
+          username = (*attr)->username;
+          break;
+        }
 
   if (username == NULL)
     /* no username attribute found */
