@@ -81,7 +81,7 @@ handle_connection (guint fileno, const struct sockaddr_in *sin, gpointer data)
   inet_ntop (AF_INET, &(sin->sin_addr), ip_str, INET_ADDRSTRLEN);
   g_debug ("got connection from %s:%d", ip_str, ntohs (sin->sin_port));
 
-  udp_socket_manager_bsd_init (&mgr);
+  udp_bsd_socket_manager_init (&mgr);
 
   if (!make_agent ((gchar *) data, &mgr, &agent, &sock))
     return;

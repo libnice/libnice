@@ -92,7 +92,7 @@ socket_manager_close (UDPSocketManager *man)
 }
 
 void
-udp_socket_manager_bsd_init (UDPSocketManager *man)
+udp_bsd_socket_manager_init (UDPSocketManager *man)
 {
   man->init = socket_manager_init_socket;
   man->select = socket_manager_select;

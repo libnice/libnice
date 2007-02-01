@@ -8,7 +8,7 @@ main (void)
   UDPSocket sock;
   struct sockaddr_in sin;
 
-  udp_socket_manager_bsd_init (&man);
+  udp_bsd_socket_manager_init (&man);
   sin.sin_family = AF_INET;
   sin.sin_addr.s_addr = INADDR_ANY;
   sin.sin_port = htons (9999);

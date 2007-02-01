@@ -11,7 +11,7 @@ main (void)
   UDPSocket sock;
   struct sockaddr_in sin;
 
-  udp_socket_manager_bsd_init (&man);
+  udp_bsd_socket_manager_init (&man);
 
   if (!udp_socket_manager_alloc_socket (&man, &sock, NULL))
     g_assert_not_reached ();

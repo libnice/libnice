@@ -7,7 +7,7 @@
 G_BEGIN_DECLS
 
 void
-udp_socket_manager_bsd_init (UDPSocketManager *man);
+udp_bsd_socket_manager_init (UDPSocketManager *man);
 
 G_END_DECLS
 
