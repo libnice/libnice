@@ -66,7 +66,7 @@ nice_address_equal (NiceAddress *a, NiceAddress *b)
     return FALSE;
 
   if (a->type == NICE_ADDRESS_TYPE_IPV4)
-    return a->addr_ipv4 == b->addr_ipv4;
+    return (a->addr_ipv4 == b->addr_ipv4) && (a->port == b->port);
 
   g_assert_not_reached ();
 }

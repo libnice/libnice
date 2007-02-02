@@ -25,6 +25,7 @@ struct _NiceAddress
     guint32 addr_ipv4;
     guchar addr_ipv6[16];
   };
+  guint16 port;
 };
 
 NiceAddress *
