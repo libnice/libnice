@@ -321,10 +321,10 @@ stun_message_dump (StunMessage *msg)
   g_string_printf (tmp,
     "%s %08x:%08x:%08x:%08x\n",
       name,
-      *(guint32 *)(msg->transaction_id),
-      *(guint32 *)(msg->transaction_id + 4),
-      *(guint32 *)(msg->transaction_id + 8),
-      *(guint32 *)(msg->transaction_id + 12));
+      ntohl (*(guint32 *)(msg->transaction_id)),
+      ntohl (*(guint32 *)(msg->transaction_id + 4)),
+      ntohl (*(guint32 *)(msg->transaction_id + 8)),
+      ntohl (*(guint32 *)(msg->transaction_id + 12)));
 
   if (msg->attributes)
     for (attr = msg->attributes; *attr; attr++)
