@@ -14,6 +14,11 @@ symbol_file="$2"
 make_symbol_list=`dirname $0`/make-symbol-list.sh
 test -f "$make_symbol_list" || exit 1
 
+if ! test -f "$symbol_file"; then
+	echo "$symbol_file doesn't exist"
+	exit 1
+fi
+
 # stop if there are no differences
 sh $make_symbol_list "$lib" | cmp -s "$symbol_file" - && exit 0
 
