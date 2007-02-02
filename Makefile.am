@@ -1,7 +1,14 @@
 
 include common.mk
 
-SUBDIRS = local stun tests udp random agent nice
+SUBDIRS = \
+	local \
+	stun \
+	tests \
+	udp \
+	random \
+	agent \
+	nice
 
 EXTRA_DIST = scripts common.mk
 
