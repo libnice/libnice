@@ -181,9 +181,9 @@ nice_agent_pop_event (NiceAgent *agent)
 
 #if 0
 static void
-nice_agent_push_event (NiceAgent *agent, Event *ev)
+nice_agent_push_event (NiceAgent *agent, NiceEvent *event)
 {
-  agent->events = g_slist_append (agent->events, ev);
+  agent->events = g_slist_append (agent->events, event);
 }
 #endif
 
