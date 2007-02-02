@@ -21,6 +21,11 @@ nice_candidate_new (NiceCandidateType type)
 void
 nice_candidate_free (NiceCandidate *candidate)
 {
+  /* better way of checking if socket is allocated? */
+
+  if (candidate->sock.addr.sin_addr.s_addr != 0)
+    nice_udp_socket_close (&(candidate->sock));
+
   g_slice_free (NiceCandidate, candidate);
 }
 
