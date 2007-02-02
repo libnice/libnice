@@ -375,6 +375,7 @@ _handle_stun (
   GSList *i;
   StunAttribute **attr;
   gchar *username = NULL;
+  NiceCandidate *remote = NULL;
 
   if (msg->type != STUN_MESSAGE_BINDING_REQUEST)
     /* XXX: send error response */
@@ -383,7 +384,7 @@ _handle_stun (
   /* msg should have either:
    *
    *   Jingle P2P:
-   *     username = remote candidate username + local candidate username
+   *     username = local candidate username + remote candidate username
    *   ICE:
    *     username = local candidate username + ":" + local candidate username
    *     password = local candidate pwd
@@ -391,11 +392,10 @@ _handle_stun (
    *
    * Note that:
    *
-   *  - Jingle and ICE differ with respects to which way around the candidate
-   *    usernames are concatenated
-   *  - the remote candidate password is not necessarily unique; Jingle seems
-   *    to always generate a unique password for each candidate, but ICE makes
-   *    no guarantees
+   *  - "local"/"remote" are from the perspective of the receiving side
+   *  - the remote candidate username is not necessarily unique; Jingle seems
+   *    to always generate a unique username/password for each candidate, but
+   *    ICE makes no guarantees
    *
    * There are three cases we need to deal with:
    *
@@ -427,15 +427,16 @@ _handle_stun (
 
   for (i = agent->remote_candidates; i; i = i->next)
     {
-      NiceCandidate *rtmp = i->data;
       guint len;
 
-      if (!g_str_has_prefix (username, rtmp->username))
+      remote = i->data;
+
+      if (!g_str_has_prefix (username, local->username))
         continue;
 
-      len = strlen (rtmp->username);
+      len = strlen (local->username);
 
-      if (0 != strcmp (username + len, local->username))
+      if (0 != strcmp (username + len, remote->username))
         continue;
 
 #if 0

@@ -154,8 +154,8 @@ test_stun_valid_password (
       breq = stun_message_new (STUN_MESSAGE_BINDING_REQUEST,
           "0123456789abcdef", 1);
       username = g_strconcat (
-          "username",
           ((NiceCandidate *) agent->local_candidates->data)->username,
+          "username",
           NULL);
       breq->attributes[0] = stun_attribute_username_new (username);
       g_free (username);
