@@ -205,8 +205,8 @@ main (void)
 
   nice_udp_fake_socket_factory_init (&factory);
 
-  nice_address_set_ipv4_from_string (&local_addr, "192.168.0.1");
-  nice_address_set_ipv4_from_string (&remote_addr, "192.168.0.5");
+  g_assert (nice_address_set_ipv4_from_string (&local_addr, "192.168.0.1"));
+  g_assert (nice_address_set_ipv4_from_string (&remote_addr, "192.168.0.5"));
   remote_addr.port = 5678;
 
   from.sin_family = AF_INET;

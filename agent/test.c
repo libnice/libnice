@@ -26,10 +26,10 @@ main (void)
 
   nice_udp_fake_socket_factory_init (&factory);
 
-  nice_address_set_ipv4_from_string (&addr_local, "192.168.0.1");
+  g_assert (nice_address_set_ipv4_from_string (&addr_local, "192.168.0.1"));
   /* fake socket manager uses incremental port numbers starting at 1 */
   addr_local.port = 1;
-  nice_address_set_ipv4_from_string (&addr_remote, "192.168.0.2");
+  g_assert (nice_address_set_ipv4_from_string (&addr_remote, "192.168.0.2"));
   addr_remote.port = 2345;
 
   agent = nice_agent_new (&factory);

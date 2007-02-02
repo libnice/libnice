@@ -21,7 +21,9 @@ main (void)
 
   sin.sin_addr.s_addr = INADDR_ANY;
   sin.sin_port = 0;
-  nice_udp_socket_factory_make (&man, &sock, &sin);
+
+  if (!nice_udp_socket_factory_make (&man, &sock, &sin))
+    g_assert_not_reached ();
 
   /* test recv */
 

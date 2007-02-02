@@ -37,7 +37,7 @@ main (void)
 
   /* set up agent */
   agent = nice_agent_new (&factory);
-  nice_address_set_ipv4_from_string (&addr, "192.168.0.1");
+  g_assert (nice_address_set_ipv4_from_string (&addr, "192.168.0.1"));
   nice_agent_add_local_address (agent, &addr);
   nice_agent_add_stream (agent, handle_recv, NULL);
   g_assert (agent->local_candidates != NULL);

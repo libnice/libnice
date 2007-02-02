@@ -40,6 +40,7 @@ nice_address_dup (NiceAddress *a);
 void
 nice_address_set_ipv4 (NiceAddress *addr, guint32 addr_ipv4);
 
+G_GNUC_WARN_UNUSED_RESULT
 gboolean
 nice_address_set_ipv4_from_string (NiceAddress *addr, gchar *str);
 

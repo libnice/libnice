@@ -41,6 +41,7 @@ struct _UDPSocketManager
  * If sin->sin_port is 0, a port will be assigned at random. In all cases, the
  * address bound to will be set in sock->addr.
  */
+G_GNUC_WARN_UNUSED_RESULT
 gboolean
 nice_udp_socket_factory_make (
   NiceUDPSocketFactory *man,
@@ -50,6 +51,7 @@ nice_udp_socket_factory_make (
 void
 nice_udp_socket_factory_close (NiceUDPSocketFactory *man);
 
+G_GNUC_WARN_UNUSED_RESULT
 guint
 nice_udp_socket_recv (
   NiceUDPSocket *sock,

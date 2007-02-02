@@ -35,9 +35,10 @@ make_agent (
 
   agent = nice_agent_new (factory);
 
-  nice_address_set_ipv4_from_string (&addr_local, ip);
-  nice_agent_add_local_address (agent, &addr_local);
+  if (!nice_address_set_ipv4_from_string (&addr_local, ip))
+    g_assert_not_reached ();
 
+  nice_agent_add_local_address (agent, &addr_local);
   nice_agent_add_stream (agent, handle_recv, NULL);
 
   g_assert (agent->local_candidates != NULL);
