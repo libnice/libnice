@@ -66,6 +66,7 @@ handle_connection (guint sock)
     return;
 
   g_debug ("got candidate");
+  g_free (line);
 
   nice_udp_bsd_socket_factory_init (&man);
 
