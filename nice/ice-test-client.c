@@ -23,7 +23,7 @@ send_stun (NiceUDPSocket *udpsock, struct sockaddr_in sin, gchar *username)
     {
       gchar *dump;
       dump = stun_message_dump (msg);
-      g_print ("%s\n", dump);
+      g_debug ("sending message:\n%s", dump);
       g_free (dump);
     }
 
@@ -40,7 +40,7 @@ send_stun (NiceUDPSocket *udpsock, struct sockaddr_in sin, gchar *username)
     {
       gchar *dump;
       dump = stun_message_dump (msg);
-      g_print ("%s\n", dump);
+      g_debug ("got response:\n%s", dump);
       g_free (dump);
     }
 
@@ -56,6 +56,8 @@ handle_connection (guint sock)
   NiceUDPSocket udpsock;
   NiceCandidate *candidate;
 
+  // recieve and parse remote candidate
+
   line = readline (sock);
 
   if (line == NULL)
@@ -68,6 +70,8 @@ handle_connection (guint sock)
 
   g_debug ("got candidate: %s", line);
   g_free (line);
+
+  // create local UDP port
 
   nice_udp_bsd_socket_factory_init (&man);
 
@@ -88,7 +92,8 @@ handle_connection (guint sock)
 
   g_free (line);
 
-  // copy remote candidate address into sin
+  // agent doesn't initiate connectivity checks, so make our own for now
+
   sin.sin_addr.s_addr = htonl (candidate->addr.addr_ipv4);
   sin.sin_port = htons (candidate->port);
 
