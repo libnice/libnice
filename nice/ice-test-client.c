@@ -1,4 +1,5 @@
 
+#include <string.h>
 #include <unistd.h>
 
 #include <glib/gprintf.h>
