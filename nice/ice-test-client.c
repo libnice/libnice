@@ -10,7 +10,7 @@
 #include "stun.h"
 
 static void
-send_stun (NiceUDPSocket *udpsock, struct sockaddr_in sin)
+send_stun (NiceUDPSocket *udpsock, struct sockaddr_in sin, gchar *username)
 {
   gchar *packed;
   guint packed_len;
@@ -18,7 +18,7 @@ send_stun (NiceUDPSocket *udpsock, struct sockaddr_in sin)
   StunMessage *msg;
 
   msg = stun_message_new (STUN_MESSAGE_BINDING_REQUEST, NULL, 1);
-  msg->attributes[0] = stun_attribute_username_new ("lala");
+  msg->attributes[0] = stun_attribute_username_new (username);
 
     {
       gchar *dump;
@@ -92,8 +92,13 @@ handle_connection (guint sock)
   sin.sin_addr.s_addr = htonl (candidate->addr.addr_ipv4);
   sin.sin_port = htons (candidate->port);
 
-  // agent doesn't proactively do STUN, so we have to do it ourselves for now
-  send_stun (&udpsock, sin);
+    {
+      gchar *username;
+
+      username = g_strdup_printf ("lala%s", candidate->username);
+      send_stun (&udpsock, sin, username);
+      g_free (username);
+    }
 
   nice_udp_socket_send (&udpsock, &sin, 6, "\x80hello");
   nice_udp_socket_close (&udpsock);
