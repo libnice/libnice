@@ -77,6 +77,16 @@ handle_connection (guint sock)
   if (!nice_udp_socket_factory_make (&man, &udpsock, &sin))
     goto OUT;
 
+  // send local candidate
+
+  line = g_strdup_printf ("H/127.0.0.1/%d/lala/titi\n",
+      ntohs (udpsock.addr.sin_port));
+
+  if (write (sock, line, strlen (line)) != strlen (line))
+    g_assert_not_reached ();
+
+  g_free (line);
+
   // copy remote candidate address into sin
   sin.sin_addr.s_addr = htonl (candidate->addr.addr_ipv4);
   sin.sin_port = htons (candidate->port);
