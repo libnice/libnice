@@ -203,12 +203,6 @@ stun_message_new (guint type, gchar *id, guint n_attributes)
   return msg;
 }
 
-StunMessage *
-stun_message_binding_request_new ()
-{
-  return stun_message_new (STUN_MESSAGE_BINDING_REQUEST, NULL, 0);
-}
-
 void
 stun_message_free (StunMessage *msg)
 {

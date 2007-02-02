@@ -6,10 +6,10 @@
 int
 main (void)
 {
-  StunMessage *msg = stun_message_binding_request_new ();
+  StunMessage *msg;
   gchar *dump;
 
-  msg->attributes = g_malloc0 (2 * sizeof (StunAttribute *));
+  msg = stun_message_new (STUN_MESSAGE_BINDING_REQUEST, NULL, 1);
   msg->attributes[0] = stun_attribute_mapped_address_new (0x02030405, 2345);
 
   dump = stun_message_dump (msg);

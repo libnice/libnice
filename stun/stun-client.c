@@ -58,7 +58,7 @@ main (int argc, char **argv)
   sock = socket (AF_INET, SOCK_DGRAM, 0);
   connect (sock, (struct sockaddr *) &sin, sizeof (struct sockaddr));
 
-  msg = stun_message_binding_request_new ();
+  msg = stun_message_new (STUN_MESSAGE_BINDING_REQUEST, NULL, 0);
   length = stun_message_pack (msg, &packed);
 
 #ifdef DEBUG

@@ -6,13 +6,13 @@
 int
 main (void)
 {
-  StunMessage *msg = stun_message_binding_request_new ();
+  StunMessage *msg;
   gchar *packed;
   guint length;
 
+  msg = stun_message_new (STUN_MESSAGE_BINDING_REQUEST, NULL, 1);
   memcpy (msg->transaction_id,
     "\x00\x01\x02\x03\x04\x05\x06\x07\x08\x09\x0a\x0b\x0c\x0d\x0e\x0f", 16);
-  msg->attributes = g_malloc0 (2 * sizeof (StunAttribute *));
   msg->attributes[0] = stun_attribute_mapped_address_new (0x02030405, 2345);
   length = stun_message_pack (msg, &packed);
 

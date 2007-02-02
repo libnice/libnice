@@ -106,10 +106,6 @@ G_GNUC_WARN_UNUSED_RESULT
 StunMessage *
 stun_message_new (guint type, gchar *id, guint n_attributes);
 
-G_GNUC_WARN_UNUSED_RESULT
-StunMessage *
-stun_message_binding_request_new (void);
-
 void
 stun_message_free (StunMessage *msg);
 G_GNUC_WARN_UNUSED_RESULT
