@@ -13,6 +13,7 @@ main (void)
   dump = stun_message_dump (msg);
   g_assert (0 == strcmp (dump,
         "(UNKNOWN) 00000000:00000000:00000000:00000000\n"));
+  g_free (dump);
   stun_message_free (msg);
 
   return 0;
