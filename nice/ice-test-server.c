@@ -53,15 +53,29 @@ make_agent (
 }
 
 static gboolean
-handle_tcp_read (guint fileno)
+handle_tcp_read (guint fileno, NiceAgent *agent)
 {
-  //Candidate *candidate;
+  NiceCandidate *candidate;
   gchar *line;
 
   line = readline (fileno);
 
   if (line == NULL)
+    /* EOF */
     return FALSE;
+
+  candidate = nice_candidate_from_string (line);
+
+  if (candidate == NULL)
+    /* invalid candidate string */
+    return FALSE;
+
+  g_debug ("got remote candidate: %s", line);
+  nice_agent_add_remote_candidate (agent, 1, 1, candidate->type,
+      &candidate->addr, candidate->port, candidate->username,
+      candidate->password);
+  nice_candidate_free (candidate);
+  g_free (line);
 
   return TRUE;
 }
@@ -123,7 +137,7 @@ handle_connection (guint fileno, const struct sockaddr_in *sin, gpointer data)
 
               g_debug ("got TCP data");
 
-              if (!handle_tcp_read (fileno))
+              if (!handle_tcp_read (fileno, agent))
                 goto END;
             }
           else if (i == sock->fileno)
