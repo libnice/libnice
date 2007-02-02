@@ -9,47 +9,9 @@
 #include "udp.h"
 #include "address.h"
 #include "candidate.h"
+#include "event.h"
 
 G_BEGIN_DECLS
-
-/*** event ***/
-
-
-typedef enum _EventType EventType;
-
-enum _EventType
-{
-  EVENT_CANDIDATE_SELECTED,
-};
-
-
-typedef struct _Event Event;
-
-struct _Event
-{
-  EventType type;
-
-  union {
-    struct {
-      NiceAddress *addr;
-      guint candidate_id;
-    } request_port;
-    struct {
-      NiceAddress *from;
-      guint from_port;
-      NiceAddress *to;
-      guint to_port;
-    } request_stun_query;
-  };
-};
-
-
-void
-event_free (Event *ev);
-
-
-/*** agent ***/
-
 
 typedef struct _NiceAgent NiceAgent;
 
@@ -74,7 +36,7 @@ typedef void (*NiceAgentRecvHandler) (
 NiceAgent *
 nice_agent_new (NiceUDPSocketFactory *factory);
 
-Event *
+NiceEvent *
 nice_agent_pop_event (NiceAgent *agent);
 
 void

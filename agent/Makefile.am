@@ -15,7 +15,9 @@ libagent_la_SOURCES = \
 	candidate.h \
 	candidate.c \
 	agent.h \
-	agent.c
+	agent.c \
+	event.h \
+	event.c
 
 libagent_la_LIBADD = \
 	$(top_builddir)/random/librandom.la \

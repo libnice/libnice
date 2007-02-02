@@ -139,35 +139,6 @@ candidate_pair_priority (
 }
 
 
-/*** event ***/
-
-
-#if 0
-static Event *
-nice_event_new (EventType type)
-{
-  Event *ev;
-
-  ev = g_slice_new0 (Event);
-  ev->type = type;
-  return ev;
-}
-#endif
-
-
-void
-nice_event_free (Event *ev)
-{
-  switch (ev->type)
-    {
-      case EVENT_CANDIDATE_SELECTED:
-        break;
-    }
-
-  g_slice_free (Event, ev);
-}
-
-
 /*** agent ***/
 
 
@@ -191,10 +162,10 @@ nice_agent_new (NiceUDPSocketFactory *factory)
 }
 
 
-Event *
+NiceEvent *
 nice_agent_pop_event (NiceAgent *agent)
 {
-  Event *event;
+  NiceEvent *event;
   GSList *head;
 
   if (agent->events == NULL)
