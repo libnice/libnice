@@ -37,9 +37,8 @@
 (^|/)autom4te\.cache($|/)
 (^|/)core$
 \.gc(no|da)$
-^lcov($|/)
-^doc($|/)
 (^|/)scratch$
+\.cdbs-orig$
 
 # autofoo files
 ^missing
@@ -63,6 +62,11 @@
 ^libtool$
 \.lo$
 
+# top level stuff
+^lcov($|/)
+^doc($|/)
+^debian($|/)
+
 # agent/ stuff
 ^agent/libagent.la$
 ^agent/test$
@@ -83,6 +87,7 @@
 ^stun/test-attribute-unpack-unknown$
 ^stun/test-attribute-unpack-wrong-length$
 ^stun/test-message-dump$
+^stun/test-message-dump-unknown$
 ^stun/test-message-pack$
 ^stun/test-message-unpack$
 
