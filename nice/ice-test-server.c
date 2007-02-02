@@ -72,8 +72,7 @@ handle_tcp_read (guint fileno, NiceAgent *agent)
 
   g_debug ("got remote candidate: %s", line);
   nice_agent_add_remote_candidate (agent, 1, 1, candidate->type,
-      &candidate->addr, candidate->port, candidate->username,
-      candidate->password);
+      &candidate->addr, candidate->username, candidate->password);
   nice_candidate_free (candidate);
   g_free (line);
 

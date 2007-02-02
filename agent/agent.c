@@ -219,7 +219,8 @@ nice_agent_add_local_host_candidate (
   sin.sin_port = 0;
   /* XXX: handle error */
   nice_udp_socket_factory_make (agent->socket_factory, &(candidate->sock), &sin);
-  candidate->port = ntohs (candidate->sock.addr.sin_port);
+  candidate->addr.port = ntohs (candidate->sock.addr.sin_port);
+  candidate->base_addr.port = ntohs (candidate->sock.addr.sin_port);
 }
 
 
@@ -304,7 +305,6 @@ nice_agent_add_remote_candidate (
   guint component_id,
   NiceCandidateType type,
   NiceAddress *addr,
-  guint port,
   gchar *username,
   gchar *password)
 {
@@ -318,7 +318,6 @@ nice_agent_add_remote_candidate (
   /* do remote candidates need IDs? */
   candidate->id = 0;
   candidate->addr = *addr;
-  candidate->port = port;
   strncpy (candidate->username, username, sizeof (candidate->username));
   strncpy (candidate->password, password, sizeof (candidate->password));
 

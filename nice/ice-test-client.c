@@ -95,7 +95,7 @@ handle_connection (guint sock)
   // agent doesn't initiate connectivity checks, so make our own for now
 
   sin.sin_addr.s_addr = htonl (candidate->addr.addr_ipv4);
-  sin.sin_port = htons (candidate->port);
+  sin.sin_port = htons (candidate->addr.port);
 
     {
       gchar *username;

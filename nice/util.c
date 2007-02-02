@@ -53,7 +53,7 @@ nice_candidate_from_string (const gchar *s)
 
   candidate = nice_candidate_new (type);
   nice_address_set_ipv4 (&candidate->addr, ntohl (ip));
-  candidate->port = port;
+  candidate->addr.port = port;
 
   memcpy (candidate->username, bits[3],
       MIN (strlen (bits[3]), sizeof (candidate->username)));
@@ -94,8 +94,8 @@ nice_candidate_to_string (NiceCandidate *candidate)
     }
 
   addr_tmp = nice_address_to_string (&(candidate->addr));
-  ret = g_strdup_printf ("%c/%s/%d/%s/%s", type, addr_tmp, candidate->port,
-      candidate->username, candidate->password);
+  ret = g_strdup_printf ("%c/%s/%d/%s/%s", type, addr_tmp,
+      candidate->addr.port, candidate->username, candidate->password);
   g_free (addr_tmp);
   return ret;
 }

@@ -207,17 +207,18 @@ main (void)
 
   nice_address_set_ipv4_from_string (&local_addr, "192.168.0.1");
   nice_address_set_ipv4_from_string (&remote_addr, "192.168.0.5");
+  remote_addr.port = 5678;
 
   from.sin_family = AF_INET;
   from.sin_addr.s_addr = htonl (remote_addr.addr_ipv4);
-  from.sin_port = htons (5678);
+  from.sin_port = htons (remote_addr.port);
 
   /* set up agent */
   agent = nice_agent_new (&factory);
   nice_agent_add_local_address (agent, &local_addr);
   nice_agent_add_stream (agent, handle_recv, NULL);
   nice_agent_add_remote_candidate (agent, 1, 1, NICE_CANDIDATE_TYPE_HOST,
-      &remote_addr, 5678, "username", "password");
+      &remote_addr, "username", "password");
   g_assert (agent->local_candidates != NULL);
   candidate = agent->local_candidates->data;
   sock = &(candidate->sock);

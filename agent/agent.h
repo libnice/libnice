@@ -58,7 +58,6 @@ nice_agent_add_remote_candidate (
   guint component_id,
   NiceCandidateType type,
   NiceAddress *addr,
-  guint port,
   gchar *username,
   gchar *password);
 

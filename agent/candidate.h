@@ -23,7 +23,6 @@ struct _NiceCandidate
   guint id;
   NiceAddress addr;
   NiceAddress base_addr;
-  guint16 port;
   guint32 priority;
   guint stream_id;
   guint component_id;
