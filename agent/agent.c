@@ -607,6 +607,76 @@ nice_agent_recv (
 
 
 /**
+ * nice_agent_poll_read:
+ *
+ * Polls the agent's sockets until at least one of them is readable, and
+ * additionally if @other_fds is not NULL, polls those for readability too.
+ * @other_fds should contain the file descriptors directly, i.e. using
+ * GUINT_TO_POINTER.
+ *
+ * @agent: A NiceAgent
+ * @other_fds: A GSList of other file descriptors to poll
+ * Return value: A list of file descriptors from @other_fds that are readable
+ **/
+GSList *
+nice_agent_poll_read (NiceAgent *agent, GSList *other_fds)
+{
+  fd_set fds;
+  guint max_fd = 0;
+  gint num_readable;
+  GSList *ret = NULL;
+  GSList *i;
+  guint j;
+
+  FD_ZERO (&fds);
+
+  for (i = agent->local_candidates; i; i = i->next)
+    {
+      NiceCandidate *candidate;
+
+      candidate = i->data;
+      FD_SET (candidate->sock.fileno, &fds);
+      max_fd = MAX (candidate->sock.fileno, max_fd);
+    }
+
+  for (i = other_fds; i; i = i->next)
+    {
+      guint fileno;
+
+      fileno = GPOINTER_TO_UINT (i->data);
+      FD_SET (fileno, &fds);
+      max_fd = MAX (fileno, max_fd);
+    }
+
+  max_fd++;
+  num_readable = select (max_fd, &fds, NULL, NULL, 0);
+
+  if (num_readable < 1)
+    /* none readable, or error */
+    return NULL;
+
+  for (j = 0; j < max_fd; j++)
+    if (FD_ISSET (j, &fds))
+      {
+        GSList *i;
+
+        if (g_slist_find (other_fds, GUINT_TO_POINTER (j)))
+          ret = g_slist_append (ret, GUINT_TO_POINTER (j));
+        else
+          for (i = agent->local_candidates; i; i = i->next)
+            {
+              NiceCandidate *candidate = i->data;
+
+              if (candidate->sock.fileno == j)
+                _nice_agent_recv (agent, candidate);
+            }
+      }
+
+  return ret;
+}
+
+
+/**
  * Set the STUN server from which to obtain server-reflexive candidates.
  */
 /*

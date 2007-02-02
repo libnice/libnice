@@ -66,6 +66,11 @@ nice_agent_recv (
   NiceAgent *agent,
   guint candidate_id);
 
+GSList *
+nice_agent_poll_read (
+  NiceAgent *agent,
+  GSList *other_fds);
+
 const GSList *
 nice_agent_get_local_candidates (
   NiceAgent *agent);
