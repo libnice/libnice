@@ -2,6 +2,8 @@
 #ifndef _ADDRESS_H
 #define _ADDRESS_H
 
+#include <glib.h>
+
 G_BEGIN_DECLS
 
 typedef enum _NiceAddressType NiceAddressType;
