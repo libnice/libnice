@@ -311,6 +311,9 @@ stun_message_dump (StunMessage *msg)
     case STUN_MESSAGE_BINDING_RESPONSE:
       name = "BINDING-RESPONSE";
       break;
+    case STUN_MESSAGE_BINDING_ERROR_RESPONSE:
+      name = "BINDING-ERROR-RESPONSE";
+      break;
     default:
       name = "(UNKNOWN)";
   }
