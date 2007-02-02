@@ -30,5 +30,5 @@ EXTRA_DIST = test-echo.sh
 
 TESTS = test-echo.sh test
 
-pkginclude_HEADERS = udp.h udp-fake.h
+pkginclude_HEADERS = udp.h udp-fake.h udp-bsd.h
 

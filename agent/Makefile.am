@@ -43,5 +43,5 @@ test_stun_LDADD = $(COMMON_LDADD)
 
 test_priority_LDADD = $(COMMON_LDADD)
 
-pkginclude_HEADERS = agent.h
+pkginclude_HEADERS = agent.h address.h candidate.h event.h
 
