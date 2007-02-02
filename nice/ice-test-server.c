@@ -152,6 +152,7 @@ END:
 
   g_slist_free (sockets);
   nice_udp_socket_factory_close (&factory);
+  nice_agent_free (agent);
 }
 
 static gboolean
