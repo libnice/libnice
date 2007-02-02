@@ -136,7 +136,7 @@ handle_connection (guint fileno, const struct sockaddr_in *sin, gpointer data)
     }
 
 END:
-  g_debug ("connection closed");
+  g_debug ("-- connection closed --");
 
   while (sockets != NULL)
     {
