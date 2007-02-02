@@ -16,8 +16,8 @@
 /*** component ***/
 
 
-/* (ICE12 §5.1) For RTP-based media streams, the RTP itself has a component ID
- * of 1, and RTCP a component ID of 2.  If an agent is using RTCP it MUST
+/* (ICE-13 §4.1.1) For RTP-based media streams, the RTP itself has a component
+ * ID of 1, and RTCP a component ID of 2.  If an agent is using RTCP it MUST
  * obtain a candidate for it.  If an agent is using both RTP and RTCP, it
  * would end up with 2*K host candidates if an agent has K interfaces.
  */
@@ -106,7 +106,7 @@ struct _CandidatePair
 
 typedef enum check_state CheckState;
 
-/* ICE12 §6.7 (p24) */
+/* ICE-13 §5.7 (p24) */
 enum check_state
 {
   CHECK_STATE_WAITING,
@@ -126,7 +126,7 @@ enum check_list_state
 };
 
 
-/* ICE12 §6.7 */
+/* ICE-13 §5.7 */
 guint64
 candidate_pair_priority (
       guint64 offerer_prio,
