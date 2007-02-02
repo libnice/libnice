@@ -1,10 +1,11 @@
 
 #include <stdlib.h>
+#include <string.h>
 
 #include "agent.h"
 
 /* format is:
- *   type/ip/port
+ *   type/ip/port/username/password
  */
 NiceCandidate *
 nice_candidate_from_string (const gchar *s)
@@ -18,9 +19,9 @@ nice_candidate_from_string (const gchar *s)
   if (s == NULL || s[0] == '\0')
     return NULL;
 
-  bits = g_strsplit (s, "/", 3);
+  bits = g_strsplit (s, "/", 5);
 
-  if (g_strv_length (bits) != 3)
+  if (g_strv_length (bits) != 5)
     goto ERROR;
 
   switch (bits[0][0])
@@ -53,6 +54,11 @@ nice_candidate_from_string (const gchar *s)
   candidate = nice_candidate_new (type);
   nice_address_set_ipv4 (&candidate->addr, ntohl (ip));
   candidate->port = port;
+
+  memcpy (candidate->username, bits[3],
+      MIN (strlen (bits[3]), sizeof (candidate->username)));
+  memcpy (candidate->password, bits[4],
+      MIN (strlen (bits[4]), sizeof (candidate->password)));
 
   g_strfreev (bits);
   return candidate;
@@ -88,7 +94,8 @@ nice_candidate_to_string (NiceCandidate *candidate)
     }
 
   addr_tmp = nice_address_to_string (&(candidate->addr));
-  ret = g_strdup_printf ("%c/%s/%d", type, addr_tmp, candidate->port);
+  ret = g_strdup_printf ("%c/%s/%d/%s/%s", type, addr_tmp, candidate->port,
+      candidate->username, candidate->password);
   g_free (addr_tmp);
   return ret;
 }
