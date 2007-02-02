@@ -22,6 +22,7 @@ check_PROGRAMS = \
 	test-attribute-unpack-wrong-length \
 	test-message-pack \
 	test-message-dump \
+	test-message-dump-unknown \
 	test-message-unpack
 
 test_attribute_pack_LDADD                = libstun.la
@@ -33,6 +34,7 @@ test_attribute_unpack_unknown_LDADD      = libstun.la
 test_attribute_unpack_wrong_length_LDADD = libstun.la
 test_message_pack_LDADD                  = libstun.la
 test_message_dump_LDADD                  = libstun.la
+test_message_dump_unknown_LDADD          = libstun.la
 test_message_unpack_LDADD                = libstun.la
 
 TESTS = $(check_PROGRAMS)

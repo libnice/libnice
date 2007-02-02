@@ -318,7 +318,7 @@ stun_message_dump (StunMessage *msg)
       name = "BINDING-RESPONSE";
       break;
     default:
-      return NULL;
+      name = "(UNKNOWN)";
   }
 
   g_string_printf (tmp,
