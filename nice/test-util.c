@@ -7,7 +7,7 @@
 int
 main (void)
 {
-  NiceAddress addr;
+  NiceAddress addr = {0,};
   NiceCandidate *candidate;
   gchar *str;
 
