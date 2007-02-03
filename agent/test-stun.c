@@ -138,27 +138,27 @@ test_stun_valid_password (
   struct sockaddr_in to = {0,};
   gchar buf[1024];
   gchar *packed;
+  gchar *username;
 
   memset (buf, '\0', 1024);
 
   candidate = agent->local_candidates->data;
   sock = &candidate->sock;
 
+  username = g_strconcat (
+      ((NiceCandidate *) agent->local_candidates->data)->username,
+      "username",
+      NULL);
+
     {
       StunMessage *breq;
       guint packed_len;
       gchar *packed;
-      gchar *username;
 
       /* send binding request with correct username */
       breq = stun_message_new (STUN_MESSAGE_BINDING_REQUEST,
           "0123456789abcdef", 1);
-      username = g_strconcat (
-          ((NiceCandidate *) agent->local_candidates->data)->username,
-          "username",
-          NULL);
       breq->attributes[0] = stun_attribute_username_new (username);
-      g_free (username);
       packed_len = stun_message_pack (breq, &packed);
       g_assert (packed_len != 0);
       nice_udp_fake_socket_push_recv (sock, &from, packed_len, packed);
@@ -171,20 +171,22 @@ test_stun_valid_password (
 
       /* construct expected response packet */
       bres = stun_message_new (STUN_MESSAGE_BINDING_RESPONSE,
-          "0123456789abcdef", 1);
+          "0123456789abcdef", 2);
       bres->attributes[0] = stun_attribute_mapped_address_new (
         ntohl (from.sin_addr.s_addr), 5678);
+      bres->attributes[1] = stun_attribute_username_new (username);
       packed_len = stun_message_pack (bres, &packed);
-      g_assert (packed_len == 32);
       stun_message_free (bres);
     }
+
+  g_free (username);
 
   /* tell the agent there's a packet waiting */
   nice_agent_recv (agent, candidate->id);
 
   /* compare sent packet to expected */
-  len = nice_udp_fake_socket_pop_send (sock, &to, sizeof (buf) / sizeof (gchar),
-      buf);
+  len = nice_udp_fake_socket_pop_send (sock, &to,
+      sizeof (buf) / sizeof (gchar), buf);
   g_assert (len == packed_len);
   g_assert (0 == memcmp (buf, packed, len));
   g_assert (to.sin_family == from.sin_family);

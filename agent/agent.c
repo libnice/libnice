@@ -464,11 +464,11 @@ RESPOND:
       guint len;
       gchar *packed;
 
-      /* XXX: add username to response */
       response = stun_message_new (STUN_MESSAGE_BINDING_RESPONSE,
-          msg->transaction_id, 1);
+          msg->transaction_id, 2);
       response->attributes[0] = stun_attribute_mapped_address_new (
           ntohl (from.sin_addr.s_addr), ntohs (from.sin_port));
+      response->attributes[1] = stun_attribute_username_new (username);
       len = stun_message_pack (response, &packed);
       nice_udp_socket_send (&local->sock, &from, len, packed);
 
