@@ -114,12 +114,18 @@ OUT:
 }
 
 int
-main (void)
+main (gint argc, gchar *argv[])
 {
   struct sockaddr_in sin = {0,};
   gint sock;
 
   sock = socket (AF_INET, SOCK_STREAM, 0);
+
+  if (argc != 2)
+    {
+      g_print ("usage: %s server\n", argv[0]);
+      return 1;
+    }
 
   if (sock < 0)
     {
@@ -127,7 +133,7 @@ main (void)
       return 1;
     }
 
-  if (inet_pton (AF_INET, "127.0.0.1", &sin.sin_addr) < 1)
+  if (inet_pton (AF_INET, argv[1], &sin.sin_addr) < 1)
     {
       g_print ("invalid address\n");
       return 1;
