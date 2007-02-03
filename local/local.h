@@ -8,22 +8,22 @@ G_BEGIN_DECLS
 
 typedef guint32 addr_ipv4;
 
-typedef struct _interface interface;
+typedef struct _NiceInterface NiceInterface;
 
-struct _interface
+struct _NiceInterface
 {
   gchar *name;
   addr_ipv4 addr;
 };
 
-interface *
-interface_new ();
+NiceInterface *
+nice_interface_new ();
 
 void
-interface_free (interface *iface);
+nice_interface_free (NiceInterface *iface);
 
 GSList *
-list_local_interfaces ();
+nice_list_local_interfaces ();
 
 G_END_DECLS
 

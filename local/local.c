@@ -8,21 +8,21 @@
 
 #include "local.h"
 
-interface *
-interface_new ()
+NiceInterface *
+nice_interface_new ()
 {
-  return g_slice_new0 (interface);
+  return g_slice_new0 (NiceInterface);
 }
 
 void
-interface_free (interface *iface)
+nice_interface_free (NiceInterface *iface)
 {
   g_free (iface->name);
-  g_slice_free (interface, iface);
+  g_slice_free (NiceInterface, iface);
 }
 
 GSList *
-list_local_interfaces ()
+nice_list_local_interfaces ()
 {
   char buf[1024];
   gint sock;
@@ -48,13 +48,13 @@ list_local_interfaces ()
     {
       struct ifreq *ifr = ifc.ifc_req + i;
       struct sockaddr_in *sin;
-      interface *iface;
+      NiceInterface *iface;
 
       if (ifr->ifr_addr.sa_family != AF_INET)
         /* this probably shouldn't happen */
         continue;
 
-      iface = g_slice_new0 (interface);
+      iface = g_slice_new0 (NiceInterface);
       iface->name = g_strdup (ifr->ifr_name);
 
       sin = (struct sockaddr_in *) &(ifr->ifr_addr);

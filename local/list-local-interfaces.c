@@ -1,6 +1,4 @@
 
-#include <glib.h>
-
 #include "local.h"
 
 int
@@ -9,11 +7,11 @@ main (void)
   GSList *i;
   GSList *interfaces;
 
-  interfaces = list_local_interfaces ();
+  interfaces = nice_list_local_interfaces ();
 
   for (i = interfaces; i; i = i->next)
     {
-      interface *iface = (interface *) i->data;
+      NiceInterface *iface = i->data;
 
       g_print ("%s: %d.%d.%d.%d\n",
           iface->name,
@@ -21,7 +19,7 @@ main (void)
           (iface->addr & 0x00ff0000) >> 16,
           (iface->addr & 0x0000ff00) >>  8,
           (iface->addr & 0x000000ff));
-      interface_free (iface);
+      nice_interface_free (iface);
     }
 
   g_slist_free (interfaces);
