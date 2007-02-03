@@ -9,14 +9,18 @@ libnice_la_LIBADD = \
 
 libnice_la_LDFLAGS = -Wl,--version-script,$(srcdir)/libnice.ver
 
-noinst_PROGRAMS = ice-test-client ice-test-server
-
 AM_CFLAGS = -Wall -Werror \
+	-I $(top_srcdir) \
 	-I $(top_srcdir)/agent \
 	-I $(top_srcdir)/random \
 	-I $(top_srcdir)/udp \
 	-I $(top_srcdir)/stun \
 	$(GLIB_CFLAGS)
+
+noinst_PROGRAMS = \
+	ice-test-client \
+	ice-test-server \
+	jingle-test-server
 
 COMMON_LDADD = libnice.la $(GLIB_LIBS)
 
@@ -37,6 +41,8 @@ ice_test_server_SOURCES = \
 	util.c
 
 ice_test_server_LDADD = $(COMMON_LDADD)
+
+jingle_test_server_LDADD = $(COMMON_LDADD)
 
 check_PROGRAMS = \
 	test-readline \
