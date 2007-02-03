@@ -86,11 +86,9 @@ handle_connection (guint fileno, const struct sockaddr_in *sin, gpointer data)
   NiceAgent *agent;
   NiceUDPSocketFactory factory;
   NiceUDPSocket *sock;
-  GSList *sockets = NULL;
   gchar ip_str[INET_ADDRSTRLEN];
-  fd_set fds;
-  guint max_fd;
   gchar *candidate_str;
+  GSList *in_fds = NULL;
 
   inet_ntop (AF_INET, &(sin->sin_addr), ip_str, INET_ADDRSTRLEN);
   g_debug ("got connection from %s:%d", ip_str, ntohs (sin->sin_port));
@@ -99,8 +97,6 @@ handle_connection (guint fileno, const struct sockaddr_in *sin, gpointer data)
 
   if (!make_agent ((gchar *) data, &factory, &agent, &sock))
     return;
-
-  sockets = g_slist_append (sockets, sock);
 
   /* send first local candidate to remote end */
   candidate_str = nice_candidate_to_string (
@@ -111,60 +107,33 @@ handle_connection (guint fileno, const struct sockaddr_in *sin, gpointer data)
 
   /* event loop */
 
-  FD_ZERO (&fds);
-  FD_SET (fileno, &fds);
-  FD_SET (sock->fileno, &fds);
-  max_fd = MAX (fileno, sock->fileno) + 1;
-
-  g_debug ("fileno = %d", fileno);
+  in_fds = g_slist_append (in_fds, GUINT_TO_POINTER (fileno));
 
   for (;;)
     {
-      fd_set tmp = fds;
-      guint ret;
-      guint i;
+      GSList *out_fds;
+      GSList *i;
 
-      ret = select (max_fd, &tmp, NULL, NULL, 0);
+      out_fds = nice_agent_poll_read (agent, in_fds);
 
-      for (i = 0; i < max_fd; i++)
-        {
-          if (!FD_ISSET (i, &tmp))
-            continue;
+      for (i = out_fds; i; i = i->next)
+        if (GPOINTER_TO_UINT (i->data) == fileno)
+          {
+            /* TCP data */
 
-          if (i == fileno)
-            {
-              /* TCP data */
+            g_debug ("got TCP data");
 
-              g_debug ("got TCP data");
+            if (!handle_tcp_read (fileno, agent))
+              goto END;
+          }
 
-              if (!handle_tcp_read (fileno, agent))
-                goto END;
-            }
-          else if (i == sock->fileno)
-            {
-              /* UDP data */
-              /* XXX: candidate number is hardcoded */
-              nice_agent_recv (agent, 1);
-            }
-        }
+      g_slist_free (out_fds);
     }
 
 END:
   g_debug ("-- connection closed --");
 
-  while (sockets != NULL)
-    {
-      GSList *tmp;
-      NiceUDPSocket *sock = sockets->data;
-
-      tmp = sockets;
-      sockets = sockets->next;
-      g_slist_free_1 (tmp);
-      nice_udp_socket_close (sock);
-      g_slice_free (NiceUDPSocket, sock);
-    }
-
-  g_slist_free (sockets);
+  g_slist_free (in_fds);
   nice_udp_socket_factory_close (&factory);
   nice_agent_free (agent);
 }
@@ -237,5 +206,4 @@ main (int argc, char **argv)
 
   return 0;
 }
-
 
