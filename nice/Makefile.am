@@ -11,6 +11,7 @@ libnice_la_LDFLAGS = -Wl,--version-script,$(srcdir)/libnice.ver
 
 AM_CFLAGS = -Wall -Werror \
 	-I $(top_srcdir) \
+	-I $(top_srcdir)/address \
 	-I $(top_srcdir)/agent \
 	-I $(top_srcdir)/random \
 	-I $(top_srcdir)/udp \

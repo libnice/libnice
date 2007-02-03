@@ -1,5 +1,6 @@
 
 AM_CFLAGS = -Wall -Werror \
+	-I $(top_srcdir)/address \
 	-I $(top_srcdir)/random \
 	-I $(top_srcdir)/udp \
 	-I $(top_srcdir)/stun \
@@ -10,8 +11,6 @@ COMMON_LDADD = libagent.la $(GLIB_LIBS)
 noinst_LTLIBRARIES = libagent.la
 
 libagent_la_SOURCES = \
-	address.h \
-	address.c \
 	candidate.h \
 	candidate.c \
 	agent.h \
@@ -20,6 +19,7 @@ libagent_la_SOURCES = \
 	event.c
 
 libagent_la_LIBADD = \
+	$(top_builddir)/address/libaddress.la \
 	$(top_builddir)/random/librandom.la \
 	$(top_builddir)/udp/libudp.la \
 	$(top_builddir)/stun/libstun.la
@@ -43,5 +43,5 @@ test_stun_LDADD = $(COMMON_LDADD)
 
 test_priority_LDADD = $(COMMON_LDADD)
 
-pkginclude_HEADERS = agent.h address.h candidate.h event.h
+pkginclude_HEADERS = agent.h candidate.h event.h
 

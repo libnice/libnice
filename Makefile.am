@@ -2,6 +2,7 @@
 include common.mk
 
 SUBDIRS = \
+	address \
 	local \
 	stun \
 	tests \
