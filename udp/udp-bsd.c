@@ -81,12 +81,6 @@ socket_factory_init_socket (
 }
 
 static void
-socket_factory_select (NiceUDPRecvFunc cb)
-{
-  g_assert_not_reached ();
-}
-
-static void
 socket_factory_close (NiceUDPSocketFactory *man)
 {
 }
@@ -95,7 +89,6 @@ void
 nice_udp_bsd_socket_factory_init (NiceUDPSocketFactory *man)
 {
   man->init = socket_factory_init_socket;
-  man->select = socket_factory_select;
   man->close = socket_factory_close;
 }
 

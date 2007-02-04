@@ -31,7 +31,6 @@ struct _UDPSocketManager
 {
   gboolean (*init) (NiceUDPSocketFactory *man, NiceUDPSocket *sock,
       struct sockaddr_in *sin);
-  void (*select) (NiceUDPRecvFunc cb);
   void (*close) (NiceUDPSocketFactory *man);
   void *priv;
 };

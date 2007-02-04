@@ -173,7 +173,6 @@ void
 nice_udp_fake_socket_factory_init (NiceUDPSocketFactory *man)
 {
   man->init = fake_socket_init;
-  man->select = NULL;
   man->close = fake_socket_factory_close;
   man->priv = NULL;
 }
