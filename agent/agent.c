@@ -144,10 +144,11 @@ candidate_pair_priority (
 
 /**
  * nice_agent_new:
- *
  * @factory: a NiceUDPSocketFactory used for allocating sockets
  *
  * Create a new NiceAgent.
+ *
+ * Returns: the new agent
  **/
 NiceAgent *
 nice_agent_new (NiceUDPSocketFactory *factory)
@@ -229,11 +230,13 @@ nice_agent_add_local_host_candidate (
 
 /**
  * nice_agent_add_stream:
- *
- * @agent: a NiceAgent
- * @handle_recv: A function called when the stream recieves data
+ *  @agent: a NiceAgent
+ *  @handle_recv: a function called when the stream recieves data
+ *  @handle_recv_data: data passed as last parameter to @handle_recv
  *
  * Add a data stream to @agent.
+ *
+ * Returns: the ID of the new stream
  **/
 guint
 nice_agent_add_stream (
@@ -269,9 +272,8 @@ nice_agent_add_stream (
 
 /**
  * nice_agent_add_local_address:
- *
- * @agent: A NiceAgent
- * @addr: The address of a local IP interface
+ *  @agent: A NiceAgent
+ *  @addr: the address of a local IP interface
  *
  * Inform the agent of the presence of an address that a local network
  * interface is bound to.
@@ -290,14 +292,14 @@ nice_agent_add_local_address (NiceAgent *agent, NiceAddress *addr)
 
 /**
  * nice_agent_add_remote_candidate
- *  @agent: The agent
- *  @stream_id: The ID of the stream the candidate is for
- *  @candidate_id: The ID of the candidate the candidate is for
- *  @type: The type of the new candidate
- *  @addr: The new candidate's IP address
- *  @port: The new candidate's port
- *  @username: The new candidate's username
- *  @password: The new candidate's password
+ *  @agent: a NiceAgent
+ *  @stream_id: the ID of the stream the candidate is for
+ *  @component_id: the ID of the component the candidate is for
+ *  @type: the type of the new candidate
+ *  @addr: the new candidate's IP address
+ *  @port: the new candidate's port
+ *  @username: the new candidate's username
+ *  @password: the new candidate's password
  *
  * Add a candidate our peer has informed us about to the agent's list.
  **/
@@ -612,15 +614,15 @@ nice_agent_recv (
 
 /**
  * nice_agent_poll_read:
+ *  @agent: A NiceAgent
+ *  @other_fds: A GSList of other file descriptors to poll
  *
  * Polls the agent's sockets until at least one of them is readable, and
  * additionally if @other_fds is not NULL, polls those for readability too.
  * @other_fds should contain the file descriptors directly, i.e. using
  * GUINT_TO_POINTER.
  *
- * @agent: A NiceAgent
- * @other_fds: A GSList of other file descriptors to poll
- * Return value: A list of file descriptors from @other_fds that are readable
+ * Returns: A list of file descriptors from @other_fds that are readable
  **/
 GSList *
 nice_agent_poll_read (NiceAgent *agent, GSList *other_fds)
@@ -692,11 +694,12 @@ nice_agent_set_stun_server (NiceAddress *addr, guint16 port)
 
 /**
  * nice_agent_get_local_candidates:
+ *  @agent: A NiceAgent
  *
- * @agent: A NiceAgent
- * Return value: a GSList of local candidates belonging to @agent
+ * The caller does not own the returned GSList or the candidates contained
+ * within it.
  *
- * The caller does not own the GSList or the candidates contained within it.
+ * Returns: a GSList of local candidates belonging to @agent
  **/
 const GSList *
 nice_agent_get_local_candidates (
@@ -705,6 +708,12 @@ nice_agent_get_local_candidates (
   return agent->local_candidates;
 }
 
+/**
+ * nice_agent_free:
+ *  @agent: a NiceAgent
+ *
+ * Free the agent.
+ **/
 void
 nice_agent_free (NiceAgent *agent)
 {
