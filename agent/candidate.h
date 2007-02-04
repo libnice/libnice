@@ -2,6 +2,8 @@
 #ifndef _CANDIDATE_H
 #define _CANDIDATE_H
 
+#include "udp.h"
+
 G_BEGIN_DECLS
 
 typedef enum _NiceCandidateType NiceCandidateType;
