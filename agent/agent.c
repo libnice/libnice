@@ -68,7 +68,7 @@ struct _Stream
   guint id;
   /* XXX: streams can have multiple components */
   Component *component;
-  NiceAgentRecvHandler handle_recv;
+  NiceAgentRecvFunc handle_recv;
   gpointer handle_recv_data;
 };
 
@@ -241,7 +241,7 @@ nice_agent_add_local_host_candidate (
 guint
 nice_agent_add_stream (
   NiceAgent *agent,
-  NiceAgentRecvHandler handle_recv,
+  NiceAgentRecvFunc handle_recv,
   gpointer handle_recv_data)
 {
   Stream *stream;

@@ -15,6 +15,9 @@ G_BEGIN_DECLS
 
 typedef struct _NiceAgent NiceAgent;
 
+typedef void (*NiceAgentEventFunc) (
+  NiceAgent *agent, NiceEvent *event);
+
 struct _NiceAgent
 {
   guint next_candidate_id;
@@ -28,7 +31,7 @@ struct _NiceAgent
 };
 
 
-typedef void (*NiceAgentRecvHandler) (
+typedef void (*NiceAgentRecvFunc) (
   NiceAgent *agent, guint stream_id, guint component_id, guint len,
   gchar *buf, gpointer user_data);
 
@@ -45,7 +48,7 @@ nice_agent_add_local_address (NiceAgent *agent, NiceAddress *addr);
 guint
 nice_agent_add_stream (
   NiceAgent *agent,
-  NiceAgentRecvHandler handle_recv,
+  NiceAgentRecvFunc recv_func,
   gpointer handle_recv_data);
 
 void
