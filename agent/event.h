@@ -4,13 +4,16 @@
 
 #include <glib.h>
 
+#include "candidate.h"
+
 G_BEGIN_DECLS
 
 typedef enum _NiceEventType NiceEventType;
 
 enum _NiceEventType
 {
-  EVENT_CANDIDATE_SELECTED,
+  NICE_EVENT_COMPONENT_CONNECTED,
+  NICE_EVENT_CANDIDATE_SELECTED,
 };
 
 
@@ -22,15 +25,14 @@ struct _NiceEvent
 
   union {
     struct {
-      NiceAddress *addr;
-      guint candidate_id;
-    } request_port;
+      guint stream_id;
+      guint component_id;
+      NiceAddress addr;
+    } component_connected;
     struct {
-      NiceAddress *from;
-      guint from_port;
-      NiceAddress *to;
-      guint to_port;
-    } request_stun_query;
+      NiceCandidate *local;
+      NiceCandidate *remote;
+    } candidate_selected;
   };
 };
 
