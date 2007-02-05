@@ -27,7 +27,7 @@ int
 main (void)
 {
   NiceAgent *agent;
-  NiceAddress addr;
+  NiceAddress addr = {0,};
   NiceCandidate *candidate;
   NiceUDPSocketFactory factory;
   NiceUDPSocket *sock;

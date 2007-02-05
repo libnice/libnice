@@ -197,7 +197,8 @@ int
 main (void)
 {
   NiceAgent *agent;
-  NiceAddress local_addr, remote_addr;
+  NiceAddress local_addr = {0,};
+  NiceAddress remote_addr = {0,};
   NiceCandidate *candidate;
   NiceUDPSocketFactory factory;
   NiceUDPSocket *sock;
