@@ -371,6 +371,7 @@ _stream_lookup (NiceAgent *agent, guint stream_id)
 static void
 _handle_stun (
   NiceAgent *agent,
+  Stream *stream,
   NiceCandidate *local,
   struct sockaddr_in from,
   StunMessage *msg)
@@ -548,16 +549,17 @@ _nice_agent_recv (
   * version number is 2. The top two bits of a STUN message are always 0.
   */
 
+  Stream *stream;
+
+  stream = _stream_lookup (agent, candidate->stream_id);
+
+  if (stream == NULL)
+    /* odd: a candidate that doesn't belong to a stream */
+    return;
+
   if ((buf[0] & 0xc0) == 0x80)
     {
       /* looks like RTP */
-      Stream *stream;
-
-      stream = _stream_lookup (agent, candidate->stream_id);
-
-      if (stream == NULL)
-        /* odd: a candidate that doesn't belong to a stream */
-        return;
 
       /* XXX: should a NULL data handler be permitted? */
       g_assert (stream->handle_recv != NULL);
@@ -578,7 +580,7 @@ _nice_agent_recv (
       /* XXX: handle the case where the incoming packet is a response for a
        * binding request we sent */
 
-      _handle_stun (agent, candidate, from, msg);
+      _handle_stun (agent, stream, candidate, from, msg);
       stun_message_free (msg);
     }
 }
