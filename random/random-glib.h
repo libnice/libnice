@@ -9,7 +9,7 @@
 G_BEGIN_DECLS
 
 NiceRNG *
-nice_glib_rng_new (void);
+nice_rng_glib_new (void);
 
 G_END_DECLS
 

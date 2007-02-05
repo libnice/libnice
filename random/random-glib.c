@@ -29,7 +29,7 @@ rng_free (NiceRNG *rng)
 }
 
 NiceRNG *
-nice_glib_rng_new (void)
+nice_rng_glib_new (void)
 {
   NiceRNG *ret;
 

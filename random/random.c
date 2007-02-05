@@ -7,7 +7,7 @@ nice_rng_new (void)
 {
   NiceRNG *rng;
 
-  rng = nice_glib_rng_new ();
+  rng = nice_rng_glib_new ();
   rng->seed (rng, 0);
   return rng;
 }
