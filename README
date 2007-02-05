@@ -38,11 +38,13 @@ Limitations
 Structure
 ---------
 
- local/ - local address gathering code
- stun/  - STUN implementation
- udp/   - UDP abstraction layer
- agent/ - ICE agent
- nice/  - libnice
+ address/ - IP address convenience library
+ local/   - local address gathering code
+ random/  - random number generation
+ stun/    - STUN implementation
+ udp/     - UDP abstraction layer
+ agent/   - ICE agent
+ nice/    - libnice
 
 Relevant standards
 ------------------
