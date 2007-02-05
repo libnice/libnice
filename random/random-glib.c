@@ -41,3 +41,13 @@ nice_rng_glib_new (void)
   return ret;
 }
 
+NiceRNG *
+nice_rng_glib_new_predictable (void)
+{
+  NiceRNG *rng;
+
+  rng = nice_rng_glib_new ();
+  rng->seed (rng, 0);
+  return rng;
+}
+
