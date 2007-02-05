@@ -67,6 +67,9 @@
 ^doc($|/)
 ^debian($|/)
 
+# address/ stuff
+^address/libaddress.la$
+
 # agent/ stuff
 ^agent/libagent.la$
 ^agent/test$
@@ -74,6 +77,7 @@
 ^agent/test-recv$
 ^agent/test-stun$
 ^agent/test-priority$
+^agent/test-send$
 
 # stun/ stuff
 ^stun/libstun.la$
@@ -99,16 +103,21 @@
 ^udp/libudp.la$
 ^udp/udp-client$
 ^udp/udp-echo-server$
-^udp/test$
+^udp/test-fake$
+^udp/test-bsd$
 
 # nice/ stuff
 ^nice/libnice.la$
 ^nice/libnice.pc$
 ^nice/ice-test-client$
 ^nice/ice-test-server$
+^nice/jingle-test-server$
 ^nice/test-readline$
 ^nice/test-util$
 
 # random/ stuff
 ^random/librandom.la$
 ^random/test$
+
+# gst/ stuff
+^gst/libgstnice.la$
