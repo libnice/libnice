@@ -461,6 +461,17 @@ _handle_stun (
 
 RESPOND:
 
+#ifdef DEBUG
+    {
+      gchar *ip;
+
+      ip = nice_address_to_string (&remote->addr);
+      g_debug ("got valid connectivity check for candidate %d (%s:%d)",
+          remote->id, ip, remote->addr.port);
+      g_free (ip);
+    }
+#endif
+
   /* update candidate/peer affinity */
 
     {
@@ -495,6 +506,18 @@ RESPOND:
   return;
 
 ERROR:
+
+#ifdef DEBUG
+    {
+      gchar *ip;
+
+      ip = nice_address_to_string (&remote->addr);
+      g_debug ("got invalid connectivity check for candidate %d (%s:%d)",
+          remote->id, ip, remote->addr.port);
+      g_free (ip);
+    }
+#endif
+
     {
       StunMessage *response;
       guint len;
