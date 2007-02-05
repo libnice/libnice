@@ -1,9 +1,7 @@
 
 #include <string.h>
 
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
+#include <sys/select.h>
 
 #include <glib.h>
 
@@ -202,7 +200,6 @@ nice_agent_add_local_host_candidate (
 {
   NiceRNG *rng;
   NiceCandidate *candidate;
-  struct sockaddr_in sin;
 
   candidate = nice_candidate_new (NICE_CANDIDATE_TYPE_HOST);
   candidate->id = agent->next_candidate_id++;
@@ -219,17 +216,13 @@ nice_agent_add_local_host_candidate (
   nice_rng_generate_bytes_print (rng, 8, candidate->password);
   nice_rng_free (rng);
 
-  sin.sin_family = AF_INET;
-  sin.sin_addr.s_addr = htonl (address->addr_ipv4);
-  sin.sin_port = 0;
-
   /* XXX: handle error */
   if (!nice_udp_socket_factory_make (agent->socket_factory,
-        &(candidate->sock), &sin))
+        &(candidate->sock), address))
     g_assert_not_reached ();
 
-  candidate->addr.port = ntohs (candidate->sock.addr.sin_port);
-  candidate->base_addr.port = ntohs (candidate->sock.addr.sin_port);
+  candidate->addr = candidate->sock.addr;
+  candidate->base_addr = candidate->sock.addr;
 }
 
 
@@ -377,7 +370,7 @@ _handle_stun (
   NiceAgent *agent,
   Stream *stream,
   NiceCandidate *local,
-  struct sockaddr_in from,
+  NiceAddress from,
   StunMessage *msg)
 {
   GSList *i;
@@ -490,7 +483,7 @@ RESPOND:
       response = stun_message_new (STUN_MESSAGE_BINDING_RESPONSE,
           msg->transaction_id, 2);
       response->attributes[0] = stun_attribute_mapped_address_new (
-          ntohl (from.sin_addr.s_addr), ntohs (from.sin_port));
+          from.addr_ipv4, from.port);
       response->attributes[1] = stun_attribute_username_new (username);
       len = stun_message_pack (response, &packed);
       nice_udp_socket_send (&local->sock, &from, len, packed);
@@ -537,7 +530,7 @@ _nice_agent_recv (
 {
   guint len;
   gchar buf[1024];
-  struct sockaddr_in from;
+  NiceAddress from;
 
   len = nice_udp_socket_recv (&(candidate->sock), &from,
       sizeof (buf) / sizeof (gchar), buf);
@@ -722,14 +715,10 @@ nice_agent_send (
     {
       NiceUDPSocket *sock;
       NiceAddress *addr;
-      struct sockaddr_in sockaddr;
 
       sock = &component->active_candidate->sock;
       addr = component->peer_addr;
-      sockaddr.sin_family = AF_INET;
-      sockaddr.sin_addr.s_addr = htonl (addr->addr_ipv4);
-      sockaddr.sin_port = htons (addr->port);
-      nice_udp_socket_send (sock, &sockaddr, len, buf);
+      nice_udp_socket_send (sock, addr, len, buf);
     }
 }
 

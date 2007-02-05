@@ -43,7 +43,8 @@ accept_connection (
   NiceUDPSocket *sock)
 {
   NiceAgent *agent;
-  struct sockaddr_in sin_recv, sin_send;
+  NiceAddress recv_addr;
+  NiceAddress send_addr;
   guint len;
   gchar buf[1024];
   guint ret = 0;
@@ -53,7 +54,7 @@ accept_connection (
 
   // accept incoming handshake
 
-  len = nice_udp_socket_recv (sock, &sin_recv, 1, buf);
+  len = nice_udp_socket_recv (sock, &recv_addr, 1, buf);
 
   if (len != 1)
     {
@@ -71,16 +72,16 @@ accept_connection (
 
   // send handshake reply
 
-  sin_send = sin_recv;
-  sin_send.sin_port = htons (1235);
-  nice_udp_socket_send (sock, &sin_send, 1, buf);
+  send_addr = recv_addr;
+  send_addr.port = 1235;
+  nice_udp_socket_send (sock, &send_addr, 1, buf);
 
   // send codec
 
   strcpy (buf, "1 0 PCMU 0 8000 0");
-  nice_udp_socket_send (sock, &sin_send, strlen (buf), buf);
+  nice_udp_socket_send (sock, &send_addr, strlen (buf), buf);
   strcpy (buf, "1 0 LAST 0 0 0");
-  nice_udp_socket_send (sock, &sin_send, strlen (buf), buf);
+  nice_udp_socket_send (sock, &send_addr, strlen (buf), buf);
 
   // send candidate
 
@@ -90,7 +91,7 @@ accept_connection (
       candidate = nice_agent_get_local_candidates (agent)->data;
       len = g_snprintf (buf, 1024, "0 0 X1 127.0.0.1 %d %s %s",
           candidate->addr.port, candidate->username, candidate->password);
-      nice_udp_socket_send (sock, &sin_send, len, buf);
+      nice_udp_socket_send (sock, &send_addr, len, buf);
     }
 
   // IO loop
@@ -105,7 +106,7 @@ accept_connection (
       if (nice_agent_poll_read (agent, fds) == NULL)
         continue;
 
-      len = nice_udp_socket_recv (sock, &sin_recv, 1024, buf);
+      len = nice_udp_socket_recv (sock, &recv_addr, 1024, buf);
       buf[len] = '\0';
       g_debug ("%s", buf);
 
@@ -141,16 +142,14 @@ main (gint argc, gchar *argv[])
 {
   NiceUDPSocketFactory factory;
   NiceUDPSocket sock;
-  struct sockaddr_in sin;
+  NiceAddress addr = {0,};
   guint ret;
 
-  sin.sin_family = AF_INET;
-  sin.sin_addr.s_addr = INADDR_ANY;
-  sin.sin_port = htons (1234);
+  addr.port = 1234;
 
   nice_udp_bsd_socket_factory_init (&factory);
 
-  if (!nice_udp_socket_factory_make (&factory, &sock, &sin))
+  if (!nice_udp_socket_factory_make (&factory, &sock, &addr))
     g_assert_not_reached ();
 
   ret = accept_connection (&factory, &sock);

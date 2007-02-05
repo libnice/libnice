@@ -1,7 +1,6 @@
 
 #include <string.h>
 
-#include <arpa/inet.h>
 #include <unistd.h>
 
 #include <glib.h>
@@ -12,7 +11,7 @@ typedef struct _Packet Packet;
 
 struct _Packet
 {
-  struct sockaddr_in sin;
+  NiceAddress addr;
   guint len;
   gchar buf[1024];
 };
@@ -45,7 +44,7 @@ _g_slist_pop (GSList **list)
 static gboolean
 fake_send (
   NiceUDPSocket *sock,
-  struct sockaddr_in *to,
+  NiceAddress *to,
   guint len,
   gchar *buf)
 {
@@ -54,7 +53,7 @@ fake_send (
 
   packet = g_slice_new0 (Packet);
   packet->len = len;
-  packet->sin = *to;
+  packet->addr = *to;
   memcpy (packet->buf, buf, len);
 
   priv = (UDPFakeSocketPriv *) sock->priv;
@@ -66,7 +65,7 @@ fake_send (
 static gint
 fake_recv (
   NiceUDPSocket *sock,
-  struct sockaddr_in *from,
+  NiceAddress *from,
   guint len,
   gchar *buf)
 {
@@ -74,7 +73,7 @@ fake_recv (
 
   priv = (UDPFakeSocketPriv *) sock->priv;
 
-  read (priv->recv_pipe_out, from, sizeof (struct sockaddr_in));
+  read (priv->recv_pipe_out, from, sizeof (NiceAddress));
   read (priv->recv_pipe_out, &len, sizeof (guint));
   read (priv->recv_pipe_out, buf, len);
 
@@ -97,7 +96,7 @@ static gboolean
 fake_socket_init (
   NiceUDPSocketFactory *man,
   NiceUDPSocket *sock,
-  struct sockaddr_in *sin)
+  NiceAddress *addr)
 {
   int fds[2];
   static int port = 1;
@@ -111,13 +110,13 @@ fake_socket_init (
   priv->recv_pipe_in = fds[1];
 
   sock->fileno = priv->recv_pipe_out;
-  sock->addr.sin_family = sin->sin_family;
-  sock->addr.sin_addr = sin->sin_addr;
+  sock->addr.type = addr->type;
+  sock->addr.addr_ipv4 = addr->addr_ipv4;
 
-  if (sin->sin_port == 0)
-    sock->addr.sin_port = htons (port++);
+  if (addr->port == 0)
+    sock->addr.port = port++;
   else
-    sock->addr.sin_port = sin->sin_port;
+    sock->addr.port = addr->port;
 
   sock->send = fake_send;
   sock->recv = fake_recv;
@@ -129,14 +128,14 @@ fake_socket_init (
 void
 nice_udp_fake_socket_push_recv (
   NiceUDPSocket *sock,
-  struct sockaddr_in *from,
+  NiceAddress *from,
   guint len,
   gchar *buf)
 {
   UDPFakeSocketPriv *priv;
 
   priv = (UDPFakeSocketPriv *) sock->priv;
-  write (priv->recv_pipe_in, from, sizeof (struct sockaddr_in));
+  write (priv->recv_pipe_in, from, sizeof (NiceAddress));
   write (priv->recv_pipe_in, &len, sizeof (guint));
   write (priv->recv_pipe_in, buf, len);
 }
@@ -144,7 +143,7 @@ nice_udp_fake_socket_push_recv (
 guint
 nice_udp_fake_socket_pop_send (
   NiceUDPSocket *sock,
-  struct sockaddr_in *to,
+  NiceAddress *to,
   guint len,
   gchar *buf)
 {
@@ -159,7 +158,7 @@ nice_udp_fake_socket_pop_send (
 
   memcpy (buf, packet->buf, MIN (len, packet->len));
   len = packet->len;
-  *to = packet->sin;
+  *to = packet->addr;
   g_slice_free (Packet, packet);
   return len;
 }

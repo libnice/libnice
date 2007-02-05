@@ -4,6 +4,8 @@
  * http://en.wikipedia.org/wiki/Berkeley_sockets.)
  */
 
+#include <arpa/inet.h>
+
 #include <unistd.h>
 
 #include "udp-bsd.h"
@@ -13,15 +15,20 @@
 static gint
 socket_recv (
   NiceUDPSocket *sock,
-  struct sockaddr_in *from,
+  NiceAddress *from,
   guint len,
   gchar *buf)
 {
   gint recvd;
-  guint from_len = sizeof (struct sockaddr_in);
+  struct sockaddr_in sin = {0,};
+  guint from_len = sizeof (sin);
 
-  recvd = recvfrom (sock->fileno, buf, len, 0,
-      (struct sockaddr *) from, &from_len);
+  recvd = recvfrom (sock->fileno, buf, len, 0, (struct sockaddr *) &sin,
+      &from_len);
+
+  from->type = NICE_ADDRESS_TYPE_IPV4;
+  from->addr_ipv4 = ntohl (sin.sin_addr.s_addr);
+  from->port = ntohs (sin.sin_port);
 
   return recvd;
 }
@@ -29,12 +36,17 @@ socket_recv (
 static gboolean
 socket_send (
   NiceUDPSocket *sock,
-  struct sockaddr_in *to,
+  NiceAddress *to,
   guint len,
   gchar *buf)
 {
-  sendto (sock->fileno, buf, len, 0, (struct sockaddr *) to,
-      sizeof (struct sockaddr_in));
+  struct sockaddr_in sin;
+
+  sin.sin_family = AF_INET;
+  sin.sin_addr.s_addr = htonl (to->addr_ipv4);
+  sin.sin_port = htons (to->port);
+
+  sendto (sock->fileno, buf, len, 0, (struct sockaddr *) &sin, sizeof (sin));
   return TRUE;
 }
 
@@ -50,28 +62,48 @@ static gboolean
 socket_factory_init_socket (
   NiceUDPSocketFactory *man,
   NiceUDPSocket *sock,
-  struct sockaddr_in *sin)
+  NiceAddress *addr)
 {
   gint sockfd;
-  guint name_len = sizeof (struct sockaddr_in);
+  struct sockaddr_in name = {0,};
+  guint name_len = sizeof (name);
 
   sockfd = socket (PF_INET, SOCK_DGRAM, 0);
 
   if (sock < 0)
     return FALSE;
 
-  if (sin != NULL)
-    if (bind (sockfd, (struct sockaddr *) sin, sizeof (*sin)) != 0)
-      {
-        close (sockfd);
-        return FALSE;
-      }
+  name.sin_family = AF_INET;
 
-  if (getsockname (sockfd, (struct sockaddr *) &(sock->addr), &name_len) != 0)
+  if (addr != NULL)
+    {
+      if (addr->addr_ipv4 != 0)
+        name.sin_addr.s_addr = htonl (addr->addr_ipv4);
+      else
+        name.sin_addr.s_addr = INADDR_ANY;
+
+      if (addr->port != 0)
+        name.sin_port = htons (addr->port);
+    }
+
+  if (bind (sockfd, (struct sockaddr *) &name, sizeof (name)) != 0)
     {
       close (sockfd);
       return FALSE;
     }
+
+  if (getsockname (sockfd, (struct sockaddr *) &name, &name_len) != 0)
+    {
+      close (sockfd);
+      return FALSE;
+    }
+
+  if (name.sin_addr.s_addr == INADDR_ANY)
+    sock->addr.addr_ipv4 = 0;
+  else
+    sock->addr.addr_ipv4 = ntohl (name.sin_addr.s_addr);
+
+  sock->addr.port = ntohs (name.sin_port);
 
   sock->fileno = sockfd;
   sock->send = socket_send;

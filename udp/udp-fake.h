@@ -12,14 +12,14 @@ nice_udp_fake_socket_factory_init (NiceUDPSocketFactory *man);
 void
 nice_udp_fake_socket_push_recv (
   NiceUDPSocket *man,
-  struct sockaddr_in *from,
+  NiceAddress *from,
   guint len,
   gchar *buf);
 
 guint
 nice_udp_fake_socket_pop_send (
   NiceUDPSocket *man,
-  struct sockaddr_in *to,
+  NiceAddress *to,
   guint len,
   gchar *buf);
 

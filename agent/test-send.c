@@ -15,7 +15,6 @@ send_connectivity_check (
   NiceCandidate *local;
   NiceCandidate *remote;
   gchar *username;
-  struct sockaddr_in remote_sockaddr = {0,};
 
   g_assert (agent->local_candidates);
   g_assert (agent->local_candidates->data);
@@ -30,10 +29,6 @@ send_connectivity_check (
 
   username = g_strconcat (local->username, remote->username, NULL);
 
-  remote_sockaddr.sin_family = AF_INET;
-  remote_sockaddr.sin_addr.s_addr = htonl (remote_addr->addr_ipv4);
-  remote_sockaddr.sin_port = htons (remote_addr->port);
-
   {
     StunMessage *msg;
     gchar *packed;
@@ -42,7 +37,7 @@ send_connectivity_check (
     msg = stun_message_new (STUN_MESSAGE_BINDING_REQUEST, NULL, 1);
     msg->attributes[0] = stun_attribute_username_new (username);
     len = stun_message_pack (msg, &packed);
-    nice_udp_fake_socket_push_recv (sock, &remote_sockaddr, len, packed);
+    nice_udp_fake_socket_push_recv (sock, remote_addr, len, packed);
     g_free (packed);
     stun_message_free (msg);
   }
@@ -51,13 +46,13 @@ send_connectivity_check (
 
   {
     StunMessage *msg;
-    struct sockaddr_in addr = {0,};
+    NiceAddress addr = {0,};
     gchar packed[1024];
     gchar *dump;
     guint len;
 
     len = nice_udp_fake_socket_pop_send (sock, &addr, 1024, packed);
-    g_assert (0 == memcmp (&addr, &remote_sockaddr, sizeof (addr)));
+    g_assert (nice_address_equal (&addr, remote_addr));
     msg = stun_message_unpack (len, packed);
     dump = stun_message_dump (msg);
     g_assert (0 == strcmp (dump,
@@ -102,7 +97,7 @@ main (void)
   {
     NiceUDPSocket *sock;
     NiceCandidate *candidate;
-    struct sockaddr_in addr;
+    NiceAddress addr;
     gchar buf[1024];
     guint len;
 

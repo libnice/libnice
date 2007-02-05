@@ -2,35 +2,33 @@
 #ifndef _UDP_H
 #define _UDP_H
 
-#include <arpa/inet.h>
-
-#include <glib.h>
+#include "address.h"
 
 G_BEGIN_DECLS
 
-typedef struct _UDPSocket NiceUDPSocket;
+typedef struct _NiceUDPSocket NiceUDPSocket;
 
-struct _UDPSocket
+struct _NiceUDPSocket
 {
-  struct sockaddr_in addr;
+  NiceAddress addr;
   guint fileno;
-  gint (*recv) (NiceUDPSocket *sock, struct sockaddr_in *from, guint len,
+  gint (*recv) (NiceUDPSocket *sock, NiceAddress *from, guint len,
       gchar *buf);
-  gboolean (*send) (NiceUDPSocket *sock, struct sockaddr_in *to, guint len,
+  gboolean (*send) (NiceUDPSocket *sock, NiceAddress *to, guint len,
       gchar *buf);
   void (*close) (NiceUDPSocket *sock);
   void *priv;
 };
 
-typedef gboolean (*NiceUDPRecvFunc) (struct sockaddr_in *from, guint len,
+typedef gboolean (*NiceUDPRecvFunc) (NiceAddress *from, guint len,
     gchar *buf);
 
-typedef struct _UDPSocketManager NiceUDPSocketFactory;
+typedef struct _NiceUDPSocketManager NiceUDPSocketFactory;
 
-struct _UDPSocketManager
+struct _NiceUDPSocketManager
 {
   gboolean (*init) (NiceUDPSocketFactory *man, NiceUDPSocket *sock,
-      struct sockaddr_in *sin);
+      NiceAddress *sin);
   void (*close) (NiceUDPSocketFactory *man);
   void *priv;
 };
@@ -45,7 +43,7 @@ gboolean
 nice_udp_socket_factory_make (
   NiceUDPSocketFactory *man,
   NiceUDPSocket *sock,
-  struct sockaddr_in *sin);
+  NiceAddress *addr);
 
 void
 nice_udp_socket_factory_close (NiceUDPSocketFactory *man);
@@ -54,14 +52,14 @@ G_GNUC_WARN_UNUSED_RESULT
 guint
 nice_udp_socket_recv (
   NiceUDPSocket *sock,
-  struct sockaddr_in *sin,
+  NiceAddress *from,
   guint len,
   gchar *buf);
 
 void
 nice_udp_socket_send (
   NiceUDPSocket *sock,
-  struct sockaddr_in *sin,
+  NiceAddress *to,
   guint len,
   gchar *buf);
 

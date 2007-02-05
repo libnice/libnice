@@ -1,6 +1,8 @@
 
 #include <string.h>
+
 #include <unistd.h>
+#include <arpa/inet.h>
 
 #include <glib/gprintf.h>
 
@@ -10,7 +12,7 @@
 #include "stun.h"
 
 static void
-send_stun (NiceUDPSocket *udpsock, struct sockaddr_in sin, gchar *username)
+send_stun (NiceUDPSocket *udpsock, NiceAddress addr, gchar *username)
 {
   gchar *packed;
   guint packed_len;
@@ -28,11 +30,11 @@ send_stun (NiceUDPSocket *udpsock, struct sockaddr_in sin, gchar *username)
     }
 
   packed_len = stun_message_pack (msg, &packed);
-  nice_udp_socket_send (udpsock, &sin, packed_len, packed);
+  nice_udp_socket_send (udpsock, &addr, packed_len, packed);
   g_free (packed);
   stun_message_free (msg);
 
-  packed_len = nice_udp_socket_recv (udpsock, &sin, 1024, buf);
+  packed_len = nice_udp_socket_recv (udpsock, &addr, 1024, buf);
   g_assert (packed_len > 0);
   msg = stun_message_unpack (packed_len, buf);
   g_assert (msg);
@@ -51,7 +53,6 @@ static void
 handle_connection (guint sock)
 {
   gchar *line;
-  struct sockaddr_in sin;
   NiceUDPSocketFactory man;
   NiceUDPSocket udpsock;
   NiceCandidate *candidate;
@@ -75,17 +76,13 @@ handle_connection (guint sock)
 
   nice_udp_bsd_socket_factory_init (&man);
 
-  sin.sin_family = AF_INET;
-  sin.sin_addr.s_addr = INADDR_ANY;
-  sin.sin_port = 0;
-
-  if (!nice_udp_socket_factory_make (&man, &udpsock, &sin))
+  if (!nice_udp_socket_factory_make (&man, &udpsock, NULL))
     goto OUT;
 
   // send local candidate
 
   line = g_strdup_printf ("H/127.0.0.1/%d/lala/titi\n",
-      ntohs (udpsock.addr.sin_port));
+      ntohs (udpsock.addr.port));
 
   if (write (sock, line, strlen (line)) != strlen (line))
     g_assert_not_reached ();
@@ -94,18 +91,15 @@ handle_connection (guint sock)
 
   // agent doesn't initiate connectivity checks, so make our own for now
 
-  sin.sin_addr.s_addr = htonl (candidate->addr.addr_ipv4);
-  sin.sin_port = htons (candidate->addr.port);
-
     {
       gchar *username;
 
       username = g_strdup_printf ("lala%s", candidate->username);
-      send_stun (&udpsock, sin, username);
+      send_stun (&udpsock, candidate->addr, username);
       g_free (username);
     }
 
-  nice_udp_socket_send (&udpsock, &sin, 6, "\x80hello");
+  nice_udp_socket_send (&udpsock, &candidate->addr, 6, "\x80hello");
   nice_udp_socket_close (&udpsock);
 
 OUT:

@@ -20,12 +20,12 @@ handle_recv (
 static void
 test_stun_no_password (
   NiceAgent *agent,
-  struct sockaddr_in from)
+  NiceAddress from)
 {
   NiceCandidate *candidate;
   NiceUDPSocket *sock;
+  NiceAddress to = {0,};
   guint len;
-  struct sockaddr_in to = {0,};
   gchar buf[1024];
   guint packed_len;
   gchar *packed;
@@ -74,12 +74,12 @@ test_stun_no_password (
 static void
 test_stun_invalid_password (
   NiceAgent *agent,
-  struct sockaddr_in from)
+  NiceAddress from)
 {
   NiceCandidate *candidate;
   NiceUDPSocket *sock;
+  NiceAddress to = {0,};
   guint len;
-  struct sockaddr_in to = {0,};
   gchar buf[1024];
   guint packed_len;
   gchar *packed;
@@ -129,13 +129,13 @@ test_stun_invalid_password (
 static void
 test_stun_valid_password (
   NiceAgent *agent,
-  struct sockaddr_in from)
+  NiceAddress from)
 {
   NiceCandidate *candidate;
   NiceUDPSocket *sock;
+  NiceAddress to = {0,};
   guint len;
   guint packed_len;
-  struct sockaddr_in to = {0,};
   gchar buf[1024];
   gchar *packed;
   gchar *username;
@@ -173,7 +173,7 @@ test_stun_valid_password (
       bres = stun_message_new (STUN_MESSAGE_BINDING_RESPONSE,
           "0123456789abcdef", 2);
       bres->attributes[0] = stun_attribute_mapped_address_new (
-        ntohl (from.sin_addr.s_addr), 5678);
+          from.addr_ipv4, 5678);
       bres->attributes[1] = stun_attribute_username_new (username);
       packed_len = stun_message_pack (bres, &packed);
       stun_message_free (bres);
@@ -189,9 +189,7 @@ test_stun_valid_password (
       sizeof (buf) / sizeof (gchar), buf);
   g_assert (len == packed_len);
   g_assert (0 == memcmp (buf, packed, len));
-  g_assert (to.sin_family == from.sin_family);
-  g_assert (to.sin_addr.s_addr == from.sin_addr.s_addr);
-  g_assert (to.sin_port == from.sin_port);
+  g_assert (nice_address_equal (&to, &from));
   g_free (packed);
 }
 
@@ -203,17 +201,12 @@ main (void)
   NiceCandidate *candidate;
   NiceUDPSocketFactory factory;
   NiceUDPSocket *sock;
-  struct sockaddr_in from = {0,};
 
   nice_udp_fake_socket_factory_init (&factory);
 
   g_assert (nice_address_set_ipv4_from_string (&local_addr, "192.168.0.1"));
   g_assert (nice_address_set_ipv4_from_string (&remote_addr, "192.168.0.5"));
   remote_addr.port = 5678;
-
-  from.sin_family = AF_INET;
-  from.sin_addr.s_addr = htonl (remote_addr.addr_ipv4);
-  from.sin_port = htons (remote_addr.port);
 
   /* set up agent */
   agent = nice_agent_new (&factory);
@@ -226,9 +219,9 @@ main (void)
   sock = &(candidate->sock);
 
   /* run tests */
-  test_stun_no_password (agent, from);
-  test_stun_invalid_password (agent, from);
-  test_stun_valid_password (agent, from);
+  test_stun_no_password (agent, remote_addr);
+  test_stun_invalid_password (agent, remote_addr);
+  test_stun_valid_password (agent, remote_addr);
 
   /* clean up */
   nice_agent_free (agent);

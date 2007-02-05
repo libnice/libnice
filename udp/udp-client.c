@@ -9,18 +9,17 @@ main (void)
 {
   NiceUDPSocketFactory man;
   NiceUDPSocket sock;
-  struct sockaddr_in sin;
+  NiceAddress addr;
 
   nice_udp_bsd_socket_factory_init (&man);
 
   if (!nice_udp_socket_factory_make (&man, &sock, NULL))
     g_assert_not_reached ();
 
-  if (inet_pton (AF_INET, "127.0.0.1", &(sin.sin_addr)) < 0)
+  if (!nice_address_set_ipv4_from_string (&addr, "127.0.0.1"))
     g_assert_not_reached ();
 
-  sin.sin_family = AF_INET;
-  sin.sin_port = htons (9999);
+  addr.port = 9999;
 
   for (;;)
     {
@@ -30,8 +29,8 @@ main (void)
       if (fgets (buf, sizeof (buf), stdin) == NULL)
         break;
 
-      nice_udp_socket_send (&sock, &sin, strlen (buf), buf);
-      length = nice_udp_socket_recv (&sock, NULL, sizeof (buf), buf);
+      nice_udp_socket_send (&sock, &addr, strlen (buf), buf);
+      length = nice_udp_socket_recv (&sock, &addr, sizeof (buf), buf);
       g_print (buf);
     }
 

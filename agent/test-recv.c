@@ -31,7 +31,6 @@ main (void)
   NiceCandidate *candidate;
   NiceUDPSocketFactory factory;
   NiceUDPSocket *sock;
-  struct sockaddr_in from = {0,};
 
   nice_udp_fake_socket_factory_init (&factory);
 
@@ -45,7 +44,7 @@ main (void)
   /* recieve an RTP packet */
   candidate = agent->local_candidates->data;
   sock = &(candidate->sock);
-  nice_udp_fake_socket_push_recv (sock, &from, 7, "\x80lalala");
+  nice_udp_fake_socket_push_recv (sock, &addr, 7, "\x80lalala");
   nice_agent_recv (agent, candidate->id);
   g_assert (cb_called == TRUE);
 

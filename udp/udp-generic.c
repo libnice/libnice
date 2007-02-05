@@ -9,9 +9,9 @@ gboolean
 nice_udp_socket_factory_make (
   NiceUDPSocketFactory *man,
   NiceUDPSocket *sock,
-  struct sockaddr_in *sin)
+  NiceAddress *addr)
 {
-  return man->init (man, sock, sin);
+  return man->init (man, sock, addr);
 }
 
 void
@@ -23,21 +23,21 @@ nice_udp_socket_factory_close (NiceUDPSocketFactory *man)
 guint
 nice_udp_socket_recv (
   NiceUDPSocket *sock,
-  struct sockaddr_in *sin,
+  NiceAddress *from,
   guint len,
   gchar *buf)
 {
-  return sock->recv (sock, sin, len, buf);
+  return sock->recv (sock, from, len, buf);
 }
 
 void
 nice_udp_socket_send (
   NiceUDPSocket *sock,
-  struct sockaddr_in *sin,
+  NiceAddress *to,
   guint len,
   gchar *buf)
 {
-  sock->send (sock, sin, len, buf);
+  sock->send (sock, to, len, buf);
 }
 
 void

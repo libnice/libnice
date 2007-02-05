@@ -2,8 +2,6 @@
 #ifndef _AGENT_H
 #define _AGENT_H
 
-#include <arpa/inet.h>
-
 #include <glib.h>
 
 #include "udp.h"

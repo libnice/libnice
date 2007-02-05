@@ -1,9 +1,9 @@
 
 include $(top_srcdir)/common.mk
 
-AM_CFLAGS = -Wall -Werror $(GLIB_CFLAGS)
+AM_CFLAGS = -Wall -Werror $(GLIB_CFLAGS) -I $(top_srcdir)/address
 
-COMMON_LDADD = libudp.la $(GLIB_LIBS)
+COMMON_LDADD = libudp.la $(GLIB_LIBS) $(top_builddir)/address/libaddress.la
 
 noinst_LTLIBRARIES = libudp.la
 

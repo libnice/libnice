@@ -1,9 +1,9 @@
 
 #include <string.h>
 
+#include <arpa/inet.h>
 #include <errno.h>
 #include <unistd.h>
-
 
 #include "nice.h"
 #include "readline.h"
@@ -44,8 +44,7 @@ make_agent (
   g_assert (agent->local_candidates != NULL);
   candidate = agent->local_candidates->data;
   g_debug ("allocated socket %d port %d for candidate %d",
-      candidate->sock.fileno, ntohs (candidate->sock.addr.sin_port),
-      candidate->id);
+      candidate->sock.fileno, candidate->sock.addr.port, candidate->id);
 
   *ret_agent = agent;
   *ret_sock = &(candidate->sock);
