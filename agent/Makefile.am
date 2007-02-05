@@ -1,4 +1,6 @@
 
+include $(top_srcdir)/common.mk
+
 AM_CFLAGS = -Wall -Werror \
 	-I $(top_srcdir)/address \
 	-I $(top_srcdir)/random \

@@ -1,4 +1,6 @@
 
+include $(top_srcdir)/common.mk
+
 AM_CFLAGS = -Wall -Werror $(GLIB_CFLAGS)
 
 noinst_LTLIBRARIES = liblocal.la

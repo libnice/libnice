@@ -1,4 +1,6 @@
 
+include $(top_srcdir)/common.mk
+
 lib_LTLIBRARIES = libnice.la
 
 libnice_la_SOURCES = libnice.ver
