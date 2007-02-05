@@ -88,6 +88,16 @@ fake_close (NiceUDPSocket *sock)
   priv = (UDPFakeSocketPriv *) sock->priv;
   close (priv->recv_pipe_out);
   close (priv->recv_pipe_in);
+
+  while (priv->send_queue)
+    {
+      Packet *packet;
+
+      packet = priv->send_queue->data;
+      priv->send_queue = g_slist_remove (priv->send_queue, packet);
+      g_slice_free (Packet, packet);
+    }
+
   g_slice_free (UDPFakeSocketPriv, priv);
 }
 
