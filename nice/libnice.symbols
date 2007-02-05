@@ -15,6 +15,7 @@ T nice_agent_new
 T nice_agent_poll_read
 T nice_agent_pop_event
 T nice_agent_recv
+T nice_agent_send
 T nice_candidate_free
 T nice_candidate_ice_priority
 T nice_candidate_jingle_priority

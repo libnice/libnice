@@ -704,6 +704,36 @@ nice_agent_poll_read (NiceAgent *agent, GSList *other_fds)
 }
 
 
+void
+nice_agent_send (
+  NiceAgent *agent,
+  guint stream_id,
+  guint component_id,
+  guint len,
+  gchar *buf)
+{
+  Stream *stream;
+  Component *component;
+
+  stream = _stream_lookup (agent, stream_id);
+  component = stream->component;
+
+  if (component->active_candidate != NULL)
+    {
+      NiceUDPSocket *sock;
+      NiceAddress *addr;
+      struct sockaddr_in sockaddr;
+
+      sock = &component->active_candidate->sock;
+      addr = component->peer_addr;
+      sockaddr.sin_family = AF_INET;
+      sockaddr.sin_addr.s_addr = htonl (addr->addr_ipv4);
+      sockaddr.sin_port = htons (addr->port);
+      nice_udp_socket_send (sock, &sockaddr, len, buf);
+    }
+}
+
+
 /**
  * Set the STUN server from which to obtain server-reflexive candidates.
  */

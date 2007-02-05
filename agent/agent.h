@@ -74,6 +74,14 @@ nice_agent_poll_read (
   NiceAgent *agent,
   GSList *other_fds);
 
+void
+nice_agent_send (
+  NiceAgent *agent,
+  guint stream_id,
+  guint component_id,
+  guint len,
+  gchar *buf);
+
 const GSList *
 nice_agent_get_local_candidates (
   NiceAgent *agent);

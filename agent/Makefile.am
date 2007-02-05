@@ -30,6 +30,7 @@ check_PROGRAMS = \
 	test \
 	test-add-stream \
 	test-recv \
+	test-send \
 	test-stun \
 	test-priority
 
@@ -40,6 +41,8 @@ test_LDADD = libagent.la $(GLIB_LIBS)
 test_add_stream_LDADD = $(COMMON_LDADD)
 
 test_recv_LDADD = $(COMMON_LDADD)
+
+test_send_LDADD = $(COMMON_LDADD)
 
 test_stun_LDADD = $(COMMON_LDADD)
 
