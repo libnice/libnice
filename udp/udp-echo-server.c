@@ -4,16 +4,16 @@
 gint
 main (void)
 {
-  NiceUDPSocketFactory man;
+  NiceUDPSocketFactory factory;
   NiceUDPSocket sock;
   NiceAddress addr = {0,};
 
-  nice_udp_bsd_socket_factory_init (&man);
+  nice_udp_bsd_socket_factory_init (&factory);
   addr.port = 9999;
 
-  if (!man.init (&man, &sock, &addr))
+  if (!nice_udp_socket_factory_make (&factory, &sock, &addr))
     {
-      g_debug ("failed to find to port 9999: server already running?");
+      g_debug ("failed to bind to port 9999: server already running?");
       return 1;
     }
 
@@ -22,11 +22,17 @@ main (void)
       gchar buf[1024];
       guint length;
 
-      length = sock.recv (&sock, &addr, sizeof (buf), buf);
+      length = nice_udp_socket_recv (&sock, &addr, sizeof (buf), buf);
 #ifdef DEBUG
-      g_debug ("%s:%d", inet_ntoa (sin.sin_addr), ntohs (sin.sin_port));
+        {
+          gchar *ip;
+
+          ip = nice_address_to_string (&addr);
+          g_debug ("%s:%d", ip, addr.port);
+          g_free (ip);
+        }
 #endif
-      sock.send (&sock, &addr, length, buf);
+      nice_udp_socket_send (&sock, &addr, length, buf);
     }
 
   return 0;
