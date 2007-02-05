@@ -218,6 +218,7 @@ nice_agent_add_local_host_candidate (
   sin.sin_family = AF_INET;
   sin.sin_addr.s_addr = htonl (address->addr_ipv4);
   sin.sin_port = 0;
+
   /* XXX: handle error */
   if (!nice_udp_socket_factory_make (agent->socket_factory,
         &(candidate->sock), &sin))
