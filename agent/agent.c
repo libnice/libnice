@@ -503,6 +503,31 @@ RESPOND:
       stun_message_free (response);
     }
 
+    {
+      NiceRNG *rng;
+      StunMessage *extra;
+      gchar *username;
+      guint len;
+      gchar *packed;
+
+      extra = stun_message_new (STUN_MESSAGE_BINDING_REQUEST,
+          NULL, 1);
+
+      username = g_strconcat (remote->username, local->username, NULL);
+      extra->attributes[0] = stun_attribute_username_new (username);
+      g_free (username);
+
+      rng = nice_rng_new ();
+      nice_rng_generate_bytes (rng, 16, extra->transaction_id);
+      nice_rng_free (rng);
+
+      len = stun_message_pack (extra, &packed);
+      nice_udp_socket_send (&local->sock, &from, len, packed);
+      g_free (packed);
+
+      stun_message_free (extra);
+    }
+
   return;
 
 ERROR:

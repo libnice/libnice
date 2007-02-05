@@ -64,6 +64,24 @@ send_connectivity_check (
     stun_message_free (msg);
   }
 
+  {
+    StunMessage *msg;
+    NiceAddress addr = {0,};
+    gchar packed[1024];
+    gchar *dump;
+    guint len;
+
+    len = nice_udp_fake_socket_pop_send (sock, &addr, 1024, packed);
+    g_assert (nice_address_equal (&addr, remote_addr));
+    msg = stun_message_unpack (len, packed);
+    dump = stun_message_dump (msg);
+    g_assert (0 == strcmp (dump,
+        "BINDING-REQUEST ac2f75c0:43fbc367:09d315f2:245746d8\n"
+        "  USERNAME \"usernameS9PObXR5\"\n"));
+    g_free (dump);
+    stun_message_free (msg);
+  }
+
   g_free (username);
 }
 
