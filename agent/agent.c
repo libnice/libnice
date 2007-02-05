@@ -36,6 +36,10 @@ typedef struct _Component Component;
 struct _Component
 {
   ComponentType type;
+  /* the local candidate that last received a valid connectivity check */
+  NiceCandidate *active_candidate;
+  /* the remote address that the last connectivity check came from */
+  NiceAddress *peer_addr;
   guint id;
 };
 
@@ -463,6 +467,21 @@ _handle_stun (
   goto ERROR;
 
 RESPOND:
+
+  /* update candidate/peer affinity */
+
+    {
+      Component *component;
+
+      component = stream->component;
+      g_assert (component);
+
+      component->active_candidate = local;
+      component->peer_addr = &remote->addr;
+    }
+
+  /* send STUN response */
+
     {
       StunMessage *response;
       guint len;
