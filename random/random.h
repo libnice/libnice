@@ -20,6 +20,9 @@ NiceRNG *
 nice_rng_new (void);
 
 void
+nice_rng_set_new_func (NiceRNG * (*func) (void));
+
+void
 nice_rng_seed (NiceRNG *rng, guint32 seed);
 
 void

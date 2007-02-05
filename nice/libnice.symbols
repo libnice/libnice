@@ -31,6 +31,7 @@ T nice_rng_generate_int
 T nice_rng_glib_new
 T nice_rng_glib_new_predictable
 T nice_rng_new
+T nice_rng_set_new_func
 T nice_udp_bsd_socket_factory_init
 T nice_udp_fake_socket_factory_init
 T nice_udp_fake_socket_pop_send

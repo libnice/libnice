@@ -4,6 +4,7 @@
 #include "agent.h"
 #include "stun.h"
 #include "udp-fake.h"
+#include "random-glib.h"
 
 void
 send_connectivity_check (
@@ -75,6 +76,8 @@ main (void)
   NiceAddress remote_addr = {0,};
 
   /* set up */
+
+  nice_rng_set_new_func (nice_rng_glib_new_predictable);
 
   nice_udp_fake_socket_factory_init (&factory);
   agent = nice_agent_new (&factory);

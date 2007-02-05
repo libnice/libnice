@@ -2,14 +2,21 @@
 #include "random.h"
 #include "random-glib.h"
 
+static NiceRNG * (*nice_rng_new_func) (void) = NULL;
+
 NiceRNG *
 nice_rng_new (void)
 {
-  NiceRNG *rng;
+  if (nice_rng_new_func == NULL)
+    return nice_rng_glib_new ();
+  else
+    return nice_rng_new_func ();
+}
 
-  rng = nice_rng_glib_new ();
-  rng->seed (rng, 0);
-  return rng;
+void
+nice_rng_set_new_func (NiceRNG * (*func) (void))
+{
+  nice_rng_new_func = func;
 }
 
 void
