@@ -499,6 +499,9 @@ RESPOND:
       stun_message_free (response);
     }
 
+  /* send reciprocal ("triggered") connectivity check */
+  /* XXX: possibly we shouldn't do this if we're being an ICE Lite agent */
+
     {
       NiceRNG *rng;
       StunMessage *extra;
@@ -539,6 +542,8 @@ ERROR:
     }
 #endif
 
+  /* XXX: add ERROR-CODE parameter */
+
     {
       StunMessage *response;
       guint len;
@@ -553,17 +558,12 @@ ERROR:
       stun_message_free (response);
     }
 
-  /* XXX: perform a triggered connectivity check here -- or is that only for
-   * full implementations?
-   */
   /* XXX: we could be clever and keep around STUN packets that we couldn't
    * validate, then re-examine them when we get new remote candidates -- would
    * this fix some timing problems (i.e. TCP being slower than UDP)
    */
   /* XXX: if the peer is the controlling agent, it may include a USE-CANDIDATE
    * attribute in the binding request
-   */
-  /* XXX: update peer media affinity here?
    */
 }
 
@@ -627,9 +627,9 @@ _nice_agent_recv (
    * active.
    */
 
- /* The top two bits of an RTP message are the version number; the current
-  * version number is 2. The top two bits of a STUN message are always 0.
-  */
+  /* The top two bits of an RTP message are the version number; the current
+   * version number is 2. The top two bits of a STUN message are always 0.
+   */
 
   if ((buf[0] & 0xc0) == 0x80)
     {
