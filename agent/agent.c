@@ -643,6 +643,8 @@ _nice_agent_recv (
       _handle_stun (agent, stream, candidate, from, msg);
       stun_message_free (msg);
     }
+
+  /* anything else is ignored */
 }
 
 
