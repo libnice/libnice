@@ -574,6 +574,7 @@ ERROR:
 static void
 _nice_agent_recv (
   NiceAgent *agent,
+  Stream *stream,
   NiceCandidate *candidate)
 {
   guint len;
@@ -609,14 +610,6 @@ _nice_agent_recv (
   * version number is 2. The top two bits of a STUN message are always 0.
   */
 
-  Stream *stream;
-
-  stream = _stream_lookup (agent, candidate->stream_id);
-
-  if (stream == NULL)
-    /* odd: a candidate that doesn't belong to a stream */
-    return;
-
   if ((buf[0] & 0xc0) == 0x80)
     {
       /* looks like RTP */
@@ -648,6 +641,23 @@ _nice_agent_recv (
 }
 
 
+static void
+_nice_agent_candidate_recv (
+  NiceAgent *agent,
+  NiceCandidate *candidate)
+{
+  Stream *stream;
+
+  stream = _stream_lookup (agent, candidate->stream_id);
+
+  if (stream == NULL)
+    /* odd: a candidate that doesn't belong to a stream */
+    return;
+
+  _nice_agent_recv (agent, stream, candidate);
+}
+
+
 /**
  * nice_agent_recv:
  *  @agent: The agent to notify
@@ -673,7 +683,7 @@ nice_agent_recv (
   if (candidate == NULL)
     return;
 
-  _nice_agent_recv (agent, candidate);
+  _nice_agent_candidate_recv (agent, candidate);
 }
 
 
@@ -739,7 +749,7 @@ nice_agent_poll_read (NiceAgent *agent, GSList *other_fds)
               NiceCandidate *candidate = i->data;
 
               if (candidate->sock.fileno == j)
-                _nice_agent_recv (agent, candidate);
+                _nice_agent_candidate_recv (agent, candidate);
             }
       }
 
