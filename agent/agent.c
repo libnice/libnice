@@ -366,7 +366,7 @@ _stream_lookup (NiceAgent *agent, guint stream_id)
 
 
 static void
-_handle_stun (
+_handle_stun_binding_request (
   NiceAgent *agent,
   Stream *stream,
   NiceCandidate *local,
@@ -377,10 +377,6 @@ _handle_stun (
   StunAttribute **attr;
   gchar *username = NULL;
   NiceCandidate *remote = NULL;
-
-  if (msg->type != STUN_MESSAGE_BINDING_REQUEST)
-    /* XXX: send error response */
-    return;
 
   /* msg should have either:
    *
@@ -570,6 +566,31 @@ ERROR:
   /* XXX: update peer media affinity here?
    */
 }
+
+
+static void
+_handle_stun (
+  NiceAgent *agent,
+  Stream *stream,
+  NiceCandidate *local,
+  NiceAddress from,
+  StunMessage *msg)
+{
+  switch (msg->type)
+    {
+    case STUN_MESSAGE_BINDING_REQUEST:
+      _handle_stun_binding_request (agent, stream, local, from, msg);
+      break;
+    case STUN_MESSAGE_BINDING_RESPONSE:
+      /* XXX: check it matches a request we sent */
+      break;
+    default:
+      /* a message type we don't know how to handle */
+      /* XXX: send error response */
+      break;
+    }
+}
+
 
 static void
 _nice_agent_recv (
