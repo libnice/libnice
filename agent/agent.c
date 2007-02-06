@@ -592,18 +592,19 @@ _handle_stun (
 }
 
 
-static void
+static guint
 _nice_agent_recv (
   NiceAgent *agent,
   Stream *stream,
-  NiceCandidate *candidate)
+  NiceCandidate *candidate,
+  guint buf_len,
+  gchar *buf)
 {
-  guint len;
-  gchar buf[1024];
   NiceAddress from;
+  guint len;
 
   len = nice_udp_socket_recv (&(candidate->sock), &from,
-      sizeof (buf) / sizeof (gchar), buf);
+      buf_len, buf);
   g_assert (len > 0);
 
   /* XXX: verify sender; maybe:
@@ -634,11 +635,7 @@ _nice_agent_recv (
   if ((buf[0] & 0xc0) == 0x80)
     {
       /* looks like RTP */
-
-      /* XXX: should a NULL data handler be permitted? */
-      g_assert (stream->handle_recv != NULL);
-      stream->handle_recv (agent, candidate->stream_id,
-          candidate->component_id, len, buf, stream->handle_recv_data);
+      return len;
     }
   else if ((buf[0] & 0xc0) == 0)
     {
@@ -648,19 +645,37 @@ _nice_agent_recv (
 
       msg = stun_message_unpack (len, buf);
 
-      if (msg == NULL)
-        return;
-
-      /* XXX: handle the case where the incoming packet is a response for a
-       * binding request we sent */
-
-      _handle_stun (agent, stream, candidate, from, msg);
-      stun_message_free (msg);
+      if (msg != NULL)
+        {
+          _handle_stun (agent, stream, candidate, from, msg);
+          stun_message_free (msg);
+        }
     }
 
   /* anything else is ignored */
+  return 0;
 }
 
+
+static void
+_nice_agent_recv_to_cb (
+  NiceAgent *agent,
+  Stream *stream,
+  NiceCandidate *candidate)
+{
+  gchar buf[1024];
+  guint len;
+
+  len = _nice_agent_recv (agent, stream, candidate, 1024, buf);
+
+  if (len)
+    {
+      /* XXX: should a NULL data handler be permitted? */
+      g_assert (stream->handle_recv != NULL);
+      stream->handle_recv (agent, stream->id, candidate->component_id, len,
+          buf, stream->handle_recv_data);
+    }
+}
 
 static void
 _nice_agent_candidate_recv (
@@ -675,7 +690,7 @@ _nice_agent_candidate_recv (
     /* odd: a candidate that doesn't belong to a stream */
     return;
 
-  _nice_agent_recv (agent, stream, candidate);
+  _nice_agent_recv_to_cb (agent, stream, candidate);
 }
 
 
