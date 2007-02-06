@@ -76,7 +76,7 @@ struct _Stream
 
 
 static Stream *
-stream_new ()
+stream_new (void)
 {
   Stream *stream;
 
