@@ -41,8 +41,8 @@ nice_list_local_interfaces ()
   if (ioctl (sock, SIOCGIFCONF, &ifc) < 0)
     return NULL;
 
-  /* FIXME: test case where ifc.ifc_len == sizeof (buf) (overflow) */
-  /* FIXME: support IPv6 */
+  /* XXX: test case where ifc.ifc_len == sizeof (buf) (overflow) */
+  /* XXX: support IPv6 */
 
   for (i = 0; i < ifc.ifc_len / sizeof (struct ifreq); i++)
     {
