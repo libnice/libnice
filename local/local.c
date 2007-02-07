@@ -58,8 +58,7 @@ nice_list_local_interfaces ()
       iface->name = g_strdup (ifr->ifr_name);
 
       sin = (struct sockaddr_in *) &(ifr->ifr_addr);
-      iface->addr = (addr_ipv4) ntohl (sin->sin_addr.s_addr);
-
+      nice_address_set_ipv4 (&iface->addr, ntohl (sin->sin_addr.s_addr));
       ret = g_slist_append (ret, iface);
     }
 

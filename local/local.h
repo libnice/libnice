@@ -4,16 +4,16 @@
 
 #include <glib.h>
 
-G_BEGIN_DECLS
+#include "address.h"
 
-typedef guint32 addr_ipv4;
+G_BEGIN_DECLS
 
 typedef struct _NiceInterface NiceInterface;
 
 struct _NiceInterface
 {
   gchar *name;
-  addr_ipv4 addr;
+  NiceAddress addr;
 };
 
 NiceInterface *
