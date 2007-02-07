@@ -348,6 +348,23 @@ _local_candidate_lookup (NiceAgent *agent, guint candidate_id)
 }
 
 
+static NiceCandidate *
+_local_candidate_lookup_by_fd (NiceAgent *agent, guint fd)
+{
+  GSList *i;
+
+  for (i = agent->local_candidates; i; i = i->next)
+    {
+      NiceCandidate *c = i->data;
+
+      if (c->sock.fileno == fd)
+        return c;
+    }
+
+  return NULL;
+}
+
+
 static Stream *
 _stream_lookup (NiceAgent *agent, guint stream_id)
 {
@@ -720,6 +737,81 @@ nice_agent_recv (
     return;
 
   _nice_agent_candidate_recv (agent, candidate);
+}
+
+
+/**
+ * nice_agent_component_recv:
+ *  @agent: a NiceAgent
+ *  @stream_id: the ID of the stream to recieve data from
+ *  @component_id: the ID of the component to receive data from
+ *  @buf_len: the size of @buf
+ *  @buf: the buffer to read data into
+ *
+ * Recieve data on a particular component.
+ *
+ * Returns: the amount of data read into @buf
+ **/
+guint
+nice_agent_component_recv (
+  NiceAgent *agent,
+  guint stream_id,
+  guint component_id,
+  guint buf_len,
+  gchar *buf)
+{
+  guint len = 0;
+  fd_set fds;
+  guint max_fd = 0;
+  gint num_readable;
+  GSList *i;
+
+  for (i = agent->local_candidates; i; i = i->next)
+    {
+      NiceCandidate *candidate;
+
+      candidate = i->data;
+
+      if (candidate->stream_id == stream_id &&
+          candidate->component_id == component_id)
+        {
+          FD_SET (candidate->sock.fileno, &fds);
+          max_fd = MAX (candidate->sock.fileno, max_fd);
+        }
+    }
+
+  /* Loop on candidate sockets until we find one that has non-STUN data
+   * waiting on it.
+   */
+
+  for (;;)
+    {
+      num_readable = select (max_fd + 1, &fds, NULL, NULL, 0);
+      g_assert (num_readable >= 0);
+
+      if (num_readable > 0)
+        {
+          guint j;
+
+          for (j = 0; j <= max_fd; j++)
+            if (FD_ISSET (j, &fds))
+              {
+                NiceCandidate *candidate;
+                Stream *stream;
+
+                candidate = _local_candidate_lookup_by_fd (agent, j);
+                g_assert (candidate);
+                stream = _stream_lookup (agent, candidate->stream_id);
+                len = _nice_agent_recv (agent, stream, candidate, buf_len,
+                    buf);
+
+                if (len > 0)
+                  return len;
+              }
+        }
+    }
+
+  g_assert_not_reached ();
 }
 
 

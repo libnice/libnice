@@ -67,6 +67,14 @@ nice_agent_recv (
   NiceAgent *agent,
   guint candidate_id);
 
+guint
+nice_agent_component_recv (
+  NiceAgent *agent,
+  guint stream_id,
+  guint component_id,
+  guint buf_len,
+  gchar *buf);
+
 GSList *
 nice_agent_poll_read (
   NiceAgent *agent,
