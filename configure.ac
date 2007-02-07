@@ -15,6 +15,7 @@ AC_CONFIG_FILES([
 	nice/Makefile
 	nice/libnice.pc
 	random/Makefile
+	gst/Makefile
 	])
 
 # Checks for programs.
@@ -27,6 +28,11 @@ AC_PROG_LIBTOOL
 PKG_CHECK_MODULES(GLIB, [dnl
 	glib-2.0 >= 2.10 dnl
 	gobject-2.0 >= 2.10 dnl
+	])
+
+PKG_CHECK_MODULES(GST, [
+	gstreamer-0.10 >= 0.10.0
+	gstreamer-base-0.10 >= 0.10.0
 	])
 
 AC_OUTPUT
