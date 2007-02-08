@@ -253,8 +253,11 @@ nice_agent_add_stream (
 void
 nice_agent_add_local_address (NiceAgent *agent, NiceAddress *addr)
 {
-  agent->local_addresses = g_slist_append (agent->local_addresses,
-      nice_address_dup (addr));
+  NiceAddress *dup;
+
+  dup = nice_address_dup (addr);
+  dup->port = 0;
+  agent->local_addresses = g_slist_append (agent->local_addresses, dup);
 
   /* XXX: Should we generate local candidates for existing streams at this
    * point, or require that local addresses are set before media streams are

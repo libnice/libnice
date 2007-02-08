@@ -27,8 +27,6 @@ main (void)
   nice_udp_fake_socket_factory_init (&factory);
 
   g_assert (nice_address_set_ipv4_from_string (&addr_local, "192.168.0.1"));
-  /* fake socket manager uses incremental port numbers starting at 1 */
-  addr_local.port = 1;
   g_assert (nice_address_set_ipv4_from_string (&addr_remote, "192.168.0.2"));
   addr_remote.port = 2345;
 
@@ -54,6 +52,8 @@ main (void)
   g_assert (agent->local_candidates != NULL);
   g_assert (g_slist_length (agent->local_candidates) == 1);
   candidate = agent->local_candidates->data;
+  /* fake socket manager uses incremental port numbers starting at 1 */
+  addr_local.port = 1;
   g_assert (nice_address_equal (&(candidate->addr), &addr_local));
   g_assert (candidate->id == 1);
 
