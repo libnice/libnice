@@ -17,7 +17,8 @@ lib_LTLIBRARIES = libgstnice.la
 
 libgstnice_la_SOURCES = \
 	gstnicesrc.h \
-	gstnicesrc.c
+	gstnicesrc.c \
+	gstnice.c
 
 libgstnice_la_LIBADD = $(COMMON_LDADD)
 
