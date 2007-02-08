@@ -2,6 +2,7 @@
 include $(top_srcdir)/common.mk
 
 AM_CFLAGS = -Wall -Werror \
+	-I $(top_srcdir) \
 	-I $(top_srcdir)/address \
 	-I $(top_srcdir)/random \
 	-I $(top_srcdir)/udp \
@@ -32,7 +33,8 @@ check_PROGRAMS = \
 	test-recv \
 	test-send \
 	test-stun \
-	test-priority
+	test-priority \
+	test-poll
 
 TESTS = $(check_PROGRAMS)
 
@@ -47,6 +49,8 @@ test_send_LDADD = $(COMMON_LDADD)
 test_stun_LDADD = $(COMMON_LDADD)
 
 test_priority_LDADD = $(COMMON_LDADD)
+
+test_poll_LDADD = $(COMMON_LDADD)
 
 pkginclude_HEADERS = agent.h candidate.h event.h
 
