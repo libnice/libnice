@@ -37,9 +37,6 @@ typedef void (*NiceAgentRecvFunc) (
 NiceAgent *
 nice_agent_new (NiceUDPSocketFactory *factory);
 
-NiceEvent *
-nice_agent_pop_event (NiceAgent *agent);
-
 void
 nice_agent_add_local_address (NiceAgent *agent, NiceAddress *addr);
 

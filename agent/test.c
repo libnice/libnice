@@ -36,7 +36,6 @@ main (void)
 
   g_assert (agent->local_addresses == NULL);
   g_assert (agent->local_candidates == NULL);
-  g_assert (nice_agent_pop_event (agent) == NULL);
 
   /* add one local address */
   nice_agent_add_local_address (agent, &addr_local);
@@ -71,8 +70,7 @@ main (void)
   g_assert (0 == strcmp (candidate->username, "username"));
   g_assert (0 == strcmp (candidate->password, "password"));
 
-  /* check there's no unexpected events, and clean up */
-  g_assert (nice_agent_pop_event (agent) == NULL);
+  /* clean up */
   nice_agent_free (agent);
   return 0;
 }

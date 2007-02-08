@@ -165,32 +165,6 @@ nice_agent_new (NiceUDPSocketFactory *factory)
 }
 
 
-NiceEvent *
-nice_agent_pop_event (NiceAgent *agent)
-{
-  NiceEvent *event;
-  GSList *head;
-
-  if (agent->events == NULL)
-    return NULL;
-
-  head = agent->events;
-  event = head->data;
-  agent->events = head->next;
-  g_slist_free_1 (head);
-  return event;
-}
-
-
-#if 0
-static void
-nice_agent_push_event (NiceAgent *agent, NiceEvent *event)
-{
-  agent->events = g_slist_append (agent->events, event);
-}
-#endif
-
-
 static void
 nice_agent_add_local_host_candidate (
   NiceAgent *agent,
