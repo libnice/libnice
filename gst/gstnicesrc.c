@@ -20,7 +20,7 @@ static const GstElementDetails gst_nice_src_details =
 GST_ELEMENT_DETAILS (
     "ICE source",
     "Source",
-    "Automagic UDP connectivity establishment",
+    "Interactive UDP connectivity establishment",
     "Dafydd Harries <dafydd.harries@collabora.co.uk>");
 
 static GstStaticPadTemplate gst_nice_src_src_template =
