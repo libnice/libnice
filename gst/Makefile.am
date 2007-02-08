@@ -27,3 +27,10 @@ libgstnice_la_LIBADD = $(COMMON_LDADD)
 
 libgstnice_la_LDFLAGS = -module -avoid-version
 
+# programs
+
+noinst_PROGRAMS = \
+	jingle-gst-test-server
+
+jingle_gst_test_server_LDADD = libgstnice.la $(COMMON_LDADD)
+
