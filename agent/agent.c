@@ -691,7 +691,7 @@ _nice_agent_candidate_recv (
 
 
 /**
- * nice_agent_component_recv:
+ * nice_agent_recv:
  *  @agent: a NiceAgent
  *  @stream_id: the ID of the stream to recieve data from
  *  @component_id: the ID of the component to receive data from
@@ -703,7 +703,7 @@ _nice_agent_candidate_recv (
  * Returns: the amount of data read into @buf
  **/
 guint
-nice_agent_component_recv (
+nice_agent_recv (
   NiceAgent *agent,
   guint stream_id,
   guint component_id,

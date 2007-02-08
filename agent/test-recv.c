@@ -50,7 +50,7 @@ main (void)
       candidate = agent->local_candidates->data;
       sock = &(candidate->sock);
       nice_udp_fake_socket_push_recv (sock, &addr, 7, "\x80lalala");
-      len = nice_agent_component_recv (agent, candidate->stream_id,
+      len = nice_agent_recv (agent, candidate->stream_id,
           candidate->component_id, 1024, buf);
       g_assert (len == 7);
       g_assert (0 == strncmp (buf, "\x80lalala", 7));

@@ -9,11 +9,11 @@ T nice_address_to_string
 T nice_agent_add_local_address
 T nice_agent_add_remote_candidate
 T nice_agent_add_stream
-T nice_agent_component_recv
 T nice_agent_free
 T nice_agent_get_local_candidates
 T nice_agent_new
 T nice_agent_poll_read
+T nice_agent_recv
 T nice_agent_send
 T nice_candidate_free
 T nice_candidate_ice_priority

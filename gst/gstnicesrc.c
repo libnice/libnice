@@ -126,7 +126,7 @@ gst_nice_src_create (GstBaseSrc *basesrc, guint64 offset, guint length,
   if (res != GST_FLOW_OK)
     return res;
 
-  len = nice_agent_component_recv (nicesrc->agent, nicesrc->stream_id,
+  len = nice_agent_recv (nicesrc->agent, nicesrc->stream_id,
       nicesrc->component_id, 1024, (gchar *) buf->data);
   g_assert (len);
   buf->size = len;

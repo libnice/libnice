@@ -60,7 +60,7 @@ nice_agent_add_remote_candidate (
   gchar *password);
 
 guint
-nice_agent_component_recv (
+nice_agent_recv (
   NiceAgent *agent,
   guint stream_id,
   guint component_id,
