@@ -834,14 +834,13 @@ nice_agent_poll_read (NiceAgent *agent, GSList *other_fds)
       max_fd = MAX (fileno, max_fd);
     }
 
-  max_fd++;
-  num_readable = select (max_fd, &fds, NULL, NULL, 0);
+  num_readable = select (max_fd + 1, &fds, NULL, NULL, 0);
 
   if (num_readable < 1)
     /* none readable, or error */
     return NULL;
 
-  for (j = 0; j < max_fd; j++)
+  for (j = 0; j <= max_fd; j++)
     if (FD_ISSET (j, &fds))
       {
         GSList *i;
