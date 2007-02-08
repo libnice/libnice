@@ -93,6 +93,7 @@ gst_nice_src_class_init (GstNiceSrcClass *klass)
 static void
 gst_nice_src_init (GstNiceSrc *src, GstNiceSrcClass *g_class)
 {
+  gst_base_src_set_live (GST_BASE_SRC (src), TRUE);
 }
 
 static GstFlowReturn
