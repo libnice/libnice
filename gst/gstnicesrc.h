@@ -1,6 +1,6 @@
 
-#ifndef _GSTNICE_H
-#define _GSTNICE_H
+#ifndef _GSTNICESRC_H
+#define _GSTNICESRC_H
 
 #include <gst/gst.h>
 #include <gst/base/gstbasesrc.h>
@@ -42,5 +42,5 @@ GType gst_nice_src_get_type (void);
 
 G_END_DECLS
 
-#endif // _GSTNICE_H
+#endif // _GSTNICESRC_H
 
