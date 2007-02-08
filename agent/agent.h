@@ -59,11 +59,6 @@ nice_agent_add_remote_candidate (
   gchar *username,
   gchar *password);
 
-void
-nice_agent_recv (
-  NiceAgent *agent,
-  guint candidate_id);
-
 guint
 nice_agent_component_recv (
   NiceAgent *agent,

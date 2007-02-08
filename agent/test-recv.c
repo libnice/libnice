@@ -28,9 +28,7 @@ main (void)
 {
   NiceAgent *agent;
   NiceAddress addr = {0,};
-  NiceCandidate *candidate;
   NiceUDPSocketFactory factory;
-  NiceUDPSocket *sock;
 
   nice_udp_fake_socket_factory_init (&factory);
 
@@ -42,11 +40,21 @@ main (void)
   g_assert (agent->local_candidates != NULL);
 
   /* recieve an RTP packet */
-  candidate = agent->local_candidates->data;
-  sock = &(candidate->sock);
-  nice_udp_fake_socket_push_recv (sock, &addr, 7, "\x80lalala");
-  nice_agent_recv (agent, candidate->id);
-  g_assert (cb_called == TRUE);
+
+    {
+      NiceCandidate *candidate;
+      NiceUDPSocket *sock;
+      guint len;
+      gchar buf[1024];
+
+      candidate = agent->local_candidates->data;
+      sock = &(candidate->sock);
+      nice_udp_fake_socket_push_recv (sock, &addr, 7, "\x80lalala");
+      len = nice_agent_component_recv (agent, candidate->stream_id,
+          candidate->component_id, 1024, buf);
+      g_assert (len == 7);
+      g_assert (0 == strncmp (buf, "\x80lalala", 7));
+    }
 
   /* clean up */
   nice_agent_free (agent);

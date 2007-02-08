@@ -308,6 +308,7 @@ nice_agent_add_remote_candidate (
 }
 
 
+#if 0
 static NiceCandidate *
 _local_candidate_lookup (NiceAgent *agent, guint candidate_id)
 {
@@ -323,6 +324,7 @@ _local_candidate_lookup (NiceAgent *agent, guint candidate_id)
 
   return NULL;
 }
+#endif
 
 
 static NiceCandidate *
@@ -685,35 +687,6 @@ _nice_agent_candidate_recv (
     return;
 
   _nice_agent_recv_to_cb (agent, stream, candidate);
-}
-
-
-/**
- * nice_agent_recv:
- *  @agent: The agent to notify
- *  @candidate_id: The ID of the candidate that has data waiting on its socket
- *
- * Tell the agent to try receiving a packet on @candidate's socket. This is
- * useful for integrating the agent into a select()-loop. This function will
- * block if the socket is blocking.
- **/
-void
-nice_agent_recv (
-  NiceAgent *agent,
-  guint candidate_id)
-{
-  NiceCandidate *candidate;
-
-  /* XXX: this is a probably a good place to start optimizing, as it gets
-   * called once for each packet recieved
-   */
-
-  candidate = _local_candidate_lookup (agent, candidate_id);
-
-  if (candidate == NULL)
-    return;
-
-  _nice_agent_candidate_recv (agent, candidate);
 }
 
 

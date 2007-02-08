@@ -43,7 +43,7 @@ send_connectivity_check (
     stun_message_free (msg);
   }
 
-  nice_agent_recv (agent, 1);
+  nice_agent_poll_read (agent, NULL);
 
   {
     StunMessage *msg;
