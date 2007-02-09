@@ -113,7 +113,7 @@ handle_connection (guint fileno, const struct sockaddr_in *sin, gpointer data)
       GSList *out_fds;
       GSList *i;
 
-      out_fds = nice_agent_poll_read (agent, in_fds);
+      out_fds = nice_agent_poll_read (agent, in_fds, handle_recv, NULL);
 
       for (i = out_fds; i; i = i->next)
         if (GPOINTER_TO_UINT (i->data) == fileno)

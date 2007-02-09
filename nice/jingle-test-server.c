@@ -103,7 +103,7 @@ accept_connection (
       gchar **bits;
       NiceAddress addr;
 
-      if (nice_agent_poll_read (agent, fds) == NULL)
+      if (nice_agent_poll_read (agent, fds, recv_cb, NULL) == NULL)
         continue;
 
       len = nice_udp_socket_recv (sock, &recv_addr, 1024, buf);

@@ -4,8 +4,6 @@
 #include "udp-fake.h"
 #include "agent.h"
 
-static gboolean cb_called = FALSE;
-
 void
 handle_recv (
   NiceAgent *agent,
@@ -15,12 +13,7 @@ handle_recv (
   gchar *buf,
   gpointer data)
 {
-  g_assert (cb_called == FALSE);
-  g_assert (stream_id == 1);
-  g_assert (component_id == 1);
-  g_assert (len == 7);
-  g_assert (0 == strncmp (buf, "\x80lalala", 7));
-  cb_called = TRUE;
+  g_assert_not_reached ();
 }
 
 int

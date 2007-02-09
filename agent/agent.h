@@ -75,7 +75,9 @@ nice_agent_recv (
 GSList *
 nice_agent_poll_read (
   NiceAgent *agent,
-  GSList *other_fds);
+  GSList *other_fds,
+  NiceAgentRecvFunc func,
+  gpointer data);
 
 void
 nice_agent_send (

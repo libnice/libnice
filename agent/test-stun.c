@@ -48,7 +48,7 @@ test_stun_no_password (
     }
 
   /* tell the agent there's a packet waiting */
-  nice_agent_poll_read (agent, NULL);
+  nice_agent_poll_read (agent, NULL, NULL, NULL);
 
   /* error response should have been sent */
   len = nice_udp_fake_socket_pop_send (sock, &to,
@@ -104,7 +104,7 @@ test_stun_invalid_password (
     }
 
   /* tell the agent there's a packet waiting */
-  nice_agent_poll_read (agent, NULL);
+  nice_agent_poll_read (agent, NULL, NULL, NULL);
 
   /* error should have been sent */
   len = nice_udp_fake_socket_pop_send (sock, &to,
@@ -182,7 +182,7 @@ test_stun_valid_password (
   g_free (username);
 
   /* tell the agent there's a packet waiting */
-  nice_agent_poll_read (agent, NULL);
+  nice_agent_poll_read (agent, NULL, NULL, NULL);
 
   /* compare sent packet to expected */
   len = nice_udp_fake_socket_pop_send (sock, &to,

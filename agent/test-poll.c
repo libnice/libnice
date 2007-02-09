@@ -60,7 +60,7 @@ main (void)
 
   /* poll */
 
-  readable = nice_agent_poll_read (agent, fds);
+  readable = nice_agent_poll_read (agent, fds, NULL, NULL);
   g_assert (g_slist_length (readable) == 1);
   g_assert (GPOINTER_TO_UINT (readable->data) == pipe_fds[0]);
   g_slist_free (readable);
@@ -79,7 +79,7 @@ main (void)
 
   /* poll again */
 
-  readable = nice_agent_poll_read (agent, fds);
+  readable = nice_agent_poll_read (agent, fds, handle_recv, NULL);
   g_assert (cb_called == TRUE);
   g_assert (readable == NULL);
 

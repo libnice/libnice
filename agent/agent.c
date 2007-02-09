@@ -701,44 +701,6 @@ _nice_agent_recv (
 }
 
 
-static void
-_nice_agent_recv_to_cb (
-  NiceAgent *agent,
-  Stream *stream,
-  NiceCandidate *candidate)
-{
-  gchar buf[1024];
-  guint len;
-
-  len = _nice_agent_recv (agent, stream, candidate, 1024, buf);
-
-  if (len)
-    {
-      /* XXX: should a NULL data handler be permitted? */
-      g_assert (stream->handle_recv != NULL);
-      stream->handle_recv (agent, stream->id, candidate->component_id, len,
-          buf, stream->handle_recv_data);
-    }
-}
-
-
-static void
-_nice_agent_candidate_recv (
-  NiceAgent *agent,
-  NiceCandidate *candidate)
-{
-  Stream *stream;
-
-  stream = _stream_lookup (agent, candidate->stream_id);
-
-  if (stream == NULL)
-    /* odd: a candidate that doesn't belong to a stream */
-    return;
-
-  _nice_agent_recv_to_cb (agent, stream, candidate);
-}
-
-
 /**
  * nice_agent_recv:
  *  @agent: a NiceAgent
@@ -827,7 +789,11 @@ nice_agent_recv (
  * Returns: A list of file descriptors from @other_fds that are readable
  **/
 GSList *
-nice_agent_poll_read (NiceAgent *agent, GSList *other_fds)
+nice_agent_poll_read (
+  NiceAgent *agent,
+  GSList *other_fds,
+  NiceAgentRecvFunc func,
+  gpointer data)
 {
   fd_set fds;
   guint max_fd = 0;
@@ -875,7 +841,22 @@ nice_agent_poll_read (NiceAgent *agent, GSList *other_fds)
               NiceCandidate *candidate = i->data;
 
               if (candidate->sock.fileno == j)
-                _nice_agent_candidate_recv (agent, candidate);
+                {
+                  Stream *stream;
+                  gchar buf[1024];
+                  guint len;
+
+                  stream = _stream_lookup (agent, candidate->stream_id);
+
+                  if (stream == NULL)
+                    break;
+
+                  len = _nice_agent_recv (agent, stream, candidate, 1024, buf);
+
+                  if (len && func != NULL)
+                    func (agent, stream->id, candidate->component_id, len, buf,
+                        stream->handle_recv_data);
+                }
             }
       }
 
