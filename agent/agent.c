@@ -11,6 +11,7 @@
 #include "agent.h"
 #include "random.h"
 
+
 /*** component ***/
 
 
@@ -719,6 +720,7 @@ _nice_agent_recv_to_cb (
           buf, stream->handle_recv_data);
     }
 }
+
 
 static void
 _nice_agent_candidate_recv (
