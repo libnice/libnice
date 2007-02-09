@@ -14,6 +14,7 @@ T nice_agent_get_local_candidates
 T nice_agent_new
 T nice_agent_poll_read
 T nice_agent_recv
+T nice_agent_remove_stream
 T nice_agent_send
 T nice_candidate_free
 T nice_candidate_ice_priority

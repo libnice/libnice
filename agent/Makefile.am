@@ -29,7 +29,7 @@ libagent_la_LIBADD = \
 
 check_PROGRAMS = \
 	test \
-	test-add-stream \
+	test-add-remove-stream \
 	test-recv \
 	test-send \
 	test-stun \
@@ -40,7 +40,7 @@ TESTS = $(check_PROGRAMS)
 
 test_LDADD = libagent.la $(GLIB_LIBS)
 
-test_add_stream_LDADD = $(COMMON_LDADD)
+test_add_remove_stream_LDADD = $(COMMON_LDADD)
 
 test_recv_LDADD = $(COMMON_LDADD)
 

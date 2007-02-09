@@ -47,6 +47,11 @@ nice_agent_add_stream (
   gpointer handle_recv_data);
 
 void
+nice_agent_remove_stream (
+  NiceAgent *agent,
+  guint stream_id);
+
+void
 nice_agent_free (NiceAgent *agent);
 
 void

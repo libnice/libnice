@@ -242,6 +242,69 @@ nice_agent_add_stream (
 }
 
 
+static Stream *
+_stream_lookup (NiceAgent *agent, guint stream_id)
+{
+  GSList *i;
+
+  for (i = agent->streams; i; i = i->next)
+    {
+      Stream *s = i->data;
+
+      if (s->id == stream_id)
+        return s;
+    }
+
+  return NULL;
+}
+
+
+/**
+ * nice_agent_remove_stream:
+ *  @agent: a NiceAgent
+ *  @stream_id: the ID of the stream to remove
+ **/
+void
+nice_agent_remove_stream (
+  NiceAgent *agent,
+  guint stream_id)
+{
+  /* note that streams/candidates can be in use by other threads */
+
+  Stream *stream;
+
+  stream = _stream_lookup (agent, stream_id);
+
+  if (!stream)
+    return;
+
+  /* remove candidates */
+
+    {
+      GSList *i;
+      GSList *candidates = agent->local_candidates;
+
+      for (i = agent->local_candidates; i; i = i->next)
+        {
+          NiceCandidate *candidate = i->data;
+
+          if (candidate->stream_id == stream_id)
+            {
+              candidates = g_slist_remove (candidates, candidate);
+              nice_candidate_free (candidate);
+            }
+        }
+
+      agent->local_candidates = candidates;
+    }
+
+  /* remove stream */
+
+  stream_free (stream);
+  agent->streams = g_slist_remove (agent->streams, stream);
+}
+
+
 /**
  * nice_agent_add_local_address:
  *  @agent: A NiceAgent
@@ -338,23 +401,6 @@ _local_candidate_lookup_by_fd (NiceAgent *agent, guint fd)
 
       if (c->sock.fileno == fd)
         return c;
-    }
-
-  return NULL;
-}
-
-
-static Stream *
-_stream_lookup (NiceAgent *agent, guint stream_id)
-{
-  GSList *i;
-
-  for (i = agent->streams; i; i = i->next)
-    {
-      Stream *s = i->data;
-
-      if (s->id == stream_id)
-        return s;
     }
 
   return NULL;
