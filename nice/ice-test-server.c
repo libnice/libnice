@@ -39,7 +39,7 @@ make_agent (
     g_assert_not_reached ();
 
   nice_agent_add_local_address (agent, &addr_local);
-  nice_agent_add_stream (agent, handle_recv, NULL);
+  nice_agent_add_stream (agent, 1);
 
   g_assert (agent->local_candidates != NULL);
   candidate = agent->local_candidates->data;

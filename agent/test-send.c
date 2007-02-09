@@ -104,7 +104,7 @@ main (void)
     g_assert_not_reached ();
 
   nice_agent_add_local_address (agent, &local_addr);
-  nice_agent_add_stream (agent, NULL, NULL);
+  nice_agent_add_stream (agent, 1);
 
   if (!nice_address_set_ipv4_from_string (&remote_addr, "192.168.0.2"))
     g_assert_not_reached ();

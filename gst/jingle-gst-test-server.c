@@ -76,7 +76,7 @@ main (gint argc, gchar *argv[])
   // remove
   addr.port = 0;
   nice_agent_add_local_address (agent, &addr);
-  nice_agent_add_stream (agent, NULL, NULL);
+  nice_agent_add_stream (agent, 1);
 
   // accept incoming handshake
 

@@ -33,7 +33,7 @@ make_agent (NiceUDPSocketFactory *factory)
     g_assert_not_reached ();
 
   nice_agent_add_local_address (agent, &addr);
-  nice_agent_add_stream (agent, recv_cb, NULL);
+  nice_agent_add_stream (agent, 1);
   return agent;
 }
 

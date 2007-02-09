@@ -45,8 +45,8 @@ main (void)
   /* no candidates should be generated until we have a stream */
   g_assert (agent->local_candidates == NULL);
 
-  /* add an audio stream */
-  nice_agent_add_stream (agent, handle_recv, NULL);
+  /* add a stream */
+  nice_agent_add_stream (agent, 1);
 
   /* adding a stream should cause host candidates to be generated */
   g_assert (agent->local_candidates != NULL);

@@ -44,7 +44,7 @@ main (void)
   nice_udp_fake_socket_factory_init (&factory);
   agent = nice_agent_new (&factory);
   nice_agent_add_local_address (agent, &addr);
-  nice_agent_add_stream (agent, handle_recv, NULL);
+  nice_agent_add_stream (agent, 1);
 
   candidate = agent->local_candidates->data;
   sock = &candidate->sock;

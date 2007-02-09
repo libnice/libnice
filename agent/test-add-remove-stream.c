@@ -29,9 +29,9 @@ main (void)
   agent = nice_agent_new (&factory);
   nice_agent_add_local_address (agent, &addr);
 
-  g_assert (nice_agent_add_stream (agent, handle_recv, NULL) == 1);
-  g_assert (nice_agent_add_stream (agent, handle_recv, NULL) == 2);
-  g_assert (nice_agent_add_stream (agent, handle_recv, NULL) == 3);
+  g_assert (nice_agent_add_stream (agent, 1) == 1);
+  g_assert (nice_agent_add_stream (agent, 1) == 2);
+  g_assert (nice_agent_add_stream (agent, 1) == 3);
 
   g_assert (NULL != agent->streams);
   g_assert (NULL != agent->local_candidates);

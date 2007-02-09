@@ -6,18 +6,6 @@
 #include "agent.h"
 
 static void
-handle_recv (
-  NiceAgent *agent,
-  guint stream_id,
-  guint component_id,
-  guint len,
-  gchar *buf,
-  gpointer data)
-{
-  g_assert_not_reached ();
-}
-
-static void
 test_stun_no_password (
   NiceAgent *agent,
   NiceAddress from)
@@ -212,7 +200,7 @@ main (void)
   /* set up agent */
   agent = nice_agent_new (&factory);
   nice_agent_add_local_address (agent, &local_addr);
-  nice_agent_add_stream (agent, handle_recv, NULL);
+  nice_agent_add_stream (agent, 1);
   nice_agent_add_remote_candidate (agent, 1, 1, NICE_CANDIDATE_TYPE_HOST,
       &remote_addr, "username", "password");
   g_assert (agent->local_candidates != NULL);

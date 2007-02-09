@@ -214,16 +214,14 @@ nice_agent_add_local_host_candidate (
 guint
 nice_agent_add_stream (
   NiceAgent *agent,
-  NiceAgentRecvFunc handle_recv,
-  gpointer handle_recv_data)
+  guint n_components)
 {
   Stream *stream;
   GSList *i;
 
+  g_assert (n_components == 1);
   stream = stream_new ();
   stream->id = agent->next_stream_id++;
-  stream->handle_recv = handle_recv;
-  stream->handle_recv_data = handle_recv_data;
   agent->streams = g_slist_append (agent->streams, stream);
 
   /* generate a local host candidate for each local address */

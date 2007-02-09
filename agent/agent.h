@@ -43,8 +43,7 @@ nice_agent_add_local_address (NiceAgent *agent, NiceAddress *addr);
 guint
 nice_agent_add_stream (
   NiceAgent *agent,
-  NiceAgentRecvFunc recv_func,
-  gpointer handle_recv_data);
+  guint n_components);
 
 void
 nice_agent_remove_stream (
