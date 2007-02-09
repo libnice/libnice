@@ -51,8 +51,8 @@ test_stun_no_password (
   nice_agent_poll_read (agent, NULL);
 
   /* error response should have been sent */
-  len = nice_udp_fake_socket_pop_send (sock, &to, sizeof (buf) / sizeof (gchar),
-      buf);
+  len = nice_udp_fake_socket_pop_send (sock, &to,
+      sizeof (buf) / sizeof (gchar), buf);
   g_assert (len != 0);
 
     {
