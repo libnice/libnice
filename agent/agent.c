@@ -648,6 +648,7 @@ _nice_agent_recv (
   len = nice_udp_socket_recv (&(candidate->sock), &from,
       buf_len, buf);
   g_assert (len > 0);
+  g_assert (len < buf_len);
 
   /* XXX: verify sender; maybe:
    * 
