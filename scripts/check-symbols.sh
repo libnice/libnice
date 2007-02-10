@@ -19,12 +19,13 @@ if ! test -f "$symbol_file"; then
 	exit 1
 fi
 
+diff=`sh $make_symbol_list "$lib" | \
+	diff -uB "$symbol_file" - | tail -n +3`
+
 # stop if there are no differences
-sh $make_symbol_list "$lib" | cmp -s "$symbol_file" - && exit 0
+test -z "$diff" && exit 0
 
 echo "symbols for $lib changed"
-diff=`sh $make_symbol_list "$lib" | \
-	diff -u "$symbol_file" - | tail -n +3`
 
 if echo "$diff" | grep -q '^-'; then
 	echo "  missing:"
