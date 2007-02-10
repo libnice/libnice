@@ -1,4 +1,6 @@
 
+#include <string.h>
+
 #include <arpa/inet.h>
 
 #include <glib.h>
@@ -18,6 +20,14 @@ nice_address_set_ipv4 (NiceAddress *addr, guint32 addr_ipv4)
 {
   addr->type = NICE_ADDRESS_TYPE_IPV4;
   addr->addr_ipv4 = addr_ipv4;
+}
+
+
+void
+nice_address_set_ipv6 (NiceAddress *addr, const gchar *addr_ipv6)
+{
+  addr->type = NICE_ADDRESS_TYPE_IPV6;
+  memcpy (addr->addr_ipv6, addr_ipv6, sizeof (addr->addr_ipv6));
 }
 
 

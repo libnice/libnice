@@ -5,6 +5,7 @@ T nice_address_is_private
 T nice_address_new
 T nice_address_set_ipv4
 T nice_address_set_ipv4_from_string
+T nice_address_set_ipv6
 T nice_address_to_string
 
 T nice_agent_add_local_address
