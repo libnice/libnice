@@ -6,6 +6,7 @@ T nice_address_new
 T nice_address_set_ipv4
 T nice_address_set_ipv4_from_string
 T nice_address_to_string
+
 T nice_agent_add_local_address
 T nice_agent_add_remote_candidate
 T nice_agent_add_stream
@@ -16,14 +17,18 @@ T nice_agent_poll_read
 T nice_agent_recv
 T nice_agent_remove_stream
 T nice_agent_send
+
 T nice_candidate_free
 T nice_candidate_ice_priority
 T nice_candidate_jingle_priority
 T nice_candidate_new
+
 T nice_event_free
+
 T nice_interface_free
 T nice_interface_new
 T nice_list_local_interfaces
+
 T nice_rng_free
 T nice_rng_generate_bytes
 T nice_rng_generate_bytes_print
@@ -32,6 +37,7 @@ T nice_rng_glib_new
 T nice_rng_glib_new_predictable
 T nice_rng_new
 T nice_rng_set_new_func
+
 T nice_udp_bsd_socket_factory_init
 T nice_udp_fake_socket_factory_init
 T nice_udp_fake_socket_pop_send
