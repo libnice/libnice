@@ -1,10 +1,8 @@
 
 #include <glib.h>
 
-#include <sys/ioctl.h>
-#include <net/if.h>
-#include <netinet/in.h>
-#include <unistd.h>
+#include <arpa/inet.h>
+#include <ifaddrs.h>
 
 #include "local.h"
 
@@ -24,45 +22,37 @@ nice_interface_free (NiceInterface *iface)
 GSList *
 nice_list_local_interfaces ()
 {
-  char buf[1024];
-  gint sock;
-  guint i;
   GSList *ret = NULL;
-  struct ifconf ifc;
+  struct ifaddrs *ifs;
+  struct ifaddrs *i;
 
-  sock = socket (PF_INET, SOCK_DGRAM, 0);
+  getifaddrs (&ifs);
 
-  if (sock < 0)
-    return NULL;
-
-  ifc.ifc_len = sizeof (buf);
-  ifc.ifc_buf = buf;
-
-  if (ioctl (sock, SIOCGIFCONF, &ifc) < 0)
-    return NULL;
-
-  /* XXX: test case where ifc.ifc_len == sizeof (buf) (overflow) */
-  /* XXX: support IPv6 */
-
-  for (i = 0; i < ifc.ifc_len / sizeof (struct ifreq); i++)
+  for (i = ifs; i; i = i->ifa_next)
     {
-      struct ifreq *ifr = ifc.ifc_req + i;
-      struct sockaddr_in *sin;
-      NiceInterface *iface;
+      struct sockaddr_in *addr;
 
-      if (ifr->ifr_addr.sa_family != AF_INET)
-        /* this probably shouldn't happen */
-        continue;
+      addr = (struct sockaddr_in *) i->ifa_addr;
 
-      iface = g_slice_new0 (NiceInterface);
-      iface->name = g_strdup (ifr->ifr_name);
+      if (addr->sin_family == AF_INET || addr->sin_family == AF_INET6)
+        {
+          NiceInterface *iface;
 
-      sin = (struct sockaddr_in *) &(ifr->ifr_addr);
-      nice_address_set_ipv4 (&iface->addr, ntohl (sin->sin_addr.s_addr));
-      ret = g_slist_append (ret, iface);
+          iface = g_slice_new0 (NiceInterface);
+          iface->name = g_strdup (i->ifa_name);
+
+          if (addr->sin_family == AF_INET)
+            nice_address_set_ipv4 (&iface->addr,
+                ntohl (addr->sin_addr.s_addr));
+          else
+            nice_address_set_ipv6 (&iface->addr,
+                (gchar *) &((struct sockaddr_in6 *) addr)->sin6_addr);
+
+          ret = g_slist_append (ret, iface);
+        }
     }
 
-  close (sock);
+  freeifaddrs (ifs);
   return ret;
 }
 
