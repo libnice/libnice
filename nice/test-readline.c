@@ -3,7 +3,7 @@
 
 #include <glib.h>
 
-#include <readline.h>
+#include "readline.h"
 
 /* this overrides libc read() -- is this reliable? */
 int
