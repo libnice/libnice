@@ -6,6 +6,8 @@
 
 #include "agent.h"
 
+#include "util.h"
+
 /* format is:
  *   type/ip/port/username/password
  */

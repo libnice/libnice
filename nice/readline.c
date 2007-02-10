@@ -3,6 +3,8 @@
 
 #include <glib.h>
 
+#include "readline.h"
+
 gchar *
 readline (guint fileno)
 {
