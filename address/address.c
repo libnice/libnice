@@ -27,7 +27,7 @@ nice_address_set_ipv4 (NiceAddress *addr, guint32 addr_ipv4)
  * Returns FALSE on error.
  */
 gboolean
-nice_address_set_ipv4_from_string (NiceAddress *addr, gchar *str)
+nice_address_set_ipv4_from_string (NiceAddress *addr, const gchar *str)
 {
   struct in_addr iaddr;
 

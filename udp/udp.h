@@ -15,7 +15,7 @@ struct _NiceUDPSocket
   gint (*recv) (NiceUDPSocket *sock, NiceAddress *from, guint len,
       gchar *buf);
   gboolean (*send) (NiceUDPSocket *sock, NiceAddress *to, guint len,
-      gchar *buf);
+      const gchar *buf);
   void (*close) (NiceUDPSocket *sock);
   void *priv;
 };
@@ -61,7 +61,7 @@ nice_udp_socket_send (
   NiceUDPSocket *sock,
   NiceAddress *to,
   guint len,
-  gchar *buf);
+  const gchar *buf);
 
 void
 nice_udp_socket_close (NiceUDPSocket *sock);

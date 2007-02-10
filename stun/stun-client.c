@@ -9,8 +9,8 @@
 
 #include <stun.h>
 
-static gchar *server = "stun.fwdnet.net";
-const guint port = 3478;
+static const gchar *server = "stun.fwdnet.net";
+static guint port = 3478;
 
 static gboolean
 resolve (const gchar *name, struct hostent *ret)

@@ -35,7 +35,7 @@ nice_udp_socket_send (
   NiceUDPSocket *sock,
   NiceAddress *to,
   guint len,
-  gchar *buf)
+  const gchar *buf)
 {
   sock->send (sock, to, len, buf);
 }

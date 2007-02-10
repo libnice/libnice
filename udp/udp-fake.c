@@ -46,7 +46,7 @@ fake_send (
   NiceUDPSocket *sock,
   NiceAddress *to,
   guint len,
-  gchar *buf)
+  const gchar *buf)
 {
   Packet *packet;
   UDPFakeSocketPriv *priv;

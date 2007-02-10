@@ -41,7 +41,7 @@ void
 nice_rng_generate_bytes_print (NiceRNG *rng, guint len, gchar *buf)
 {
   guint i;
-  gchar *chars =
+  const gchar *chars =
     "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
     "abcdefghijklmnopqrstuvwxyz"
     "01234567890";

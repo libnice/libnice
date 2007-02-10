@@ -38,7 +38,7 @@ socket_send (
   NiceUDPSocket *sock,
   NiceAddress *to,
   guint len,
-  gchar *buf)
+  const gchar *buf)
 {
   struct sockaddr_in sin;
 
