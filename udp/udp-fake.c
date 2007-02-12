@@ -5,7 +5,7 @@
 
 #include <glib.h>
 
-#include <udp.h>
+#include "udp-fake.h"
 
 typedef struct _Packet Packet;
 
