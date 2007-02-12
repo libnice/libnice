@@ -6,15 +6,24 @@
 
 static GstFlowReturn
 gst_nice_src_create (
-    GstBaseSrc *basesrc, guint64 offset, guint length, GstBuffer **buffer);
+  GstBaseSrc *basesrc,
+  guint64 offset,
+  guint length,
+  GstBuffer **buffer);
 
 static void
 gst_nice_src_set_property (
-    GObject *object, guint prop_id, const GValue *value, GParamSpec *pspec);
+  GObject *object,
+  guint prop_id,
+  const GValue *value,
+  GParamSpec *pspec);
 
 static void
 gst_nice_src_get_property (
-    GObject *object, guint prop_id, GValue *value, GParamSpec *pspec);
+  GObject *object,
+  guint prop_id,
+  GValue *value,
+  GParamSpec *pspec);
 
 static const GstElementDetails gst_nice_src_details =
 GST_ELEMENT_DETAILS (
@@ -97,8 +106,11 @@ gst_nice_src_init (GstNiceSrc *src, GstNiceSrcClass *g_class)
 }
 
 static GstFlowReturn
-gst_nice_src_create (GstBaseSrc *basesrc, guint64 offset, guint length,
-    GstBuffer **buffer)
+gst_nice_src_create (
+  GstBaseSrc *basesrc,
+  guint64 offset,
+  guint length,
+  GstBuffer **buffer)
 {
   GstFlowReturn res;
   GstBuffer *buf;
