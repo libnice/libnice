@@ -11,7 +11,7 @@
 
 const guint port = 3478;
 
-guint
+static guint
 handle_packet (
   struct sockaddr_in *from,
   guint packet_len,

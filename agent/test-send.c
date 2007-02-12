@@ -6,7 +6,7 @@
 #include "udp-fake.h"
 #include "random-glib.h"
 
-void
+static void
 send_connectivity_check (
   NiceAgent *agent,
   NiceUDPSocketFactory *factory,

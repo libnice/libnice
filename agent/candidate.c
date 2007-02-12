@@ -48,7 +48,7 @@ nice_candidate_jingle_priority (NiceCandidate *candidate)
 
 /* ICE-13 §4.1.2; returns number between 1 and 0x7effffff */
 G_GNUC_CONST
-guint32
+static guint32
 _candidate_ice_priority (
   // must be ∈ (0, 126) (max 2^7 - 2)
   guint type_preference,

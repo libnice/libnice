@@ -7,7 +7,7 @@
 
 static gboolean cb_called = FALSE;
 
-void
+static void
 handle_recv (
   NiceAgent *agent,
   guint stream_id,

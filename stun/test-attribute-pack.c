@@ -3,7 +3,7 @@
 
 #include "stun.h"
 
-void
+static void
 test_pack_mapped_address (void)
 {
   StunAttribute *attr = stun_attribute_mapped_address_new (0x02030405, 2345);
@@ -26,7 +26,7 @@ test_pack_mapped_address (void)
   stun_attribute_free (attr);
 }
 
-void
+static void
 test_pack_username (void)
 {
   StunAttribute *attr;
