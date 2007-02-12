@@ -14,7 +14,7 @@ nice_udp_fake_socket_push_recv (
   NiceUDPSocket *man,
   NiceAddress *from,
   guint len,
-  gchar *buf);
+  const gchar *buf);
 
 guint
 nice_udp_fake_socket_pop_send (

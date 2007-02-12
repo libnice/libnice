@@ -141,7 +141,7 @@ nice_udp_fake_socket_push_recv (
   NiceUDPSocket *sock,
   NiceAddress *from,
   guint len,
-  gchar *buf)
+  const gchar *buf)
 {
   UDPFakeSocketPriv *priv;
 
