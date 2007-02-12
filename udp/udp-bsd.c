@@ -60,6 +60,7 @@ socket_close (NiceUDPSocket *sock)
 
 static gboolean
 socket_factory_init_socket (
+  G_GNUC_UNUSED
   NiceUDPSocketFactory *man,
   NiceUDPSocket *sock,
   NiceAddress *addr)
@@ -113,12 +114,16 @@ socket_factory_init_socket (
 }
 
 static void
-socket_factory_close (NiceUDPSocketFactory *man)
+socket_factory_close (
+  G_GNUC_UNUSED
+  NiceUDPSocketFactory *man)
 {
 }
 
 void
-nice_udp_bsd_socket_factory_init (NiceUDPSocketFactory *man)
+nice_udp_bsd_socket_factory_init (
+  G_GNUC_UNUSED
+  NiceUDPSocketFactory *man)
 {
   man->init = socket_factory_init_socket;
   man->close = socket_factory_close;

@@ -104,6 +104,7 @@ fake_close (NiceUDPSocket *sock)
 /* XXX: copied INADDR_ANY to sock->addr rather than using a valid address */
 static gboolean
 fake_socket_init (
+  G_GNUC_UNUSED
   NiceUDPSocketFactory *man,
   NiceUDPSocket *sock,
   NiceAddress *addr)
@@ -174,7 +175,9 @@ nice_udp_fake_socket_pop_send (
 }
 
 static void
-fake_socket_factory_close (NiceUDPSocketFactory *man)
+fake_socket_factory_close (
+  G_GNUC_UNUSED
+  NiceUDPSocketFactory *man)
 {
 }
 
