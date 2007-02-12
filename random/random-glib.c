@@ -2,13 +2,19 @@
 #include "random-glib.h"
 
 static void
-rng_seed (NiceRNG *rng, guint32 seed)
+rng_seed (
+  G_GNUC_UNUSED
+  NiceRNG *rng, guint32 seed)
 {
   g_random_set_seed (seed);
 }
 
 static void
-rng_generate_bytes (NiceRNG *rng, guint len, gchar *buf)
+rng_generate_bytes (
+  G_GNUC_UNUSED
+  NiceRNG *rng,
+  guint len,
+  gchar *buf)
 {
   guint i;
 
@@ -17,7 +23,11 @@ rng_generate_bytes (NiceRNG *rng, guint len, gchar *buf)
 }
 
 static guint
-rng_generate_int (NiceRNG *rng, guint low, guint high)
+rng_generate_int (
+  G_GNUC_UNUSED
+  NiceRNG *rng,
+  guint low,
+  guint high)
 {
   return g_random_int_range (low, high);
 }
