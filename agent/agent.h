@@ -16,6 +16,10 @@ typedef struct _NiceAgent NiceAgent;
 typedef void (*NiceAgentEventFunc) (
   NiceAgent *agent, NiceEvent *event);
 
+typedef void (*NiceAgentRecvFunc) (
+  NiceAgent *agent, guint stream_id, guint component_id, guint len,
+  gchar *buf, gpointer user_data);
+
 struct _NiceAgent
 {
   guint next_candidate_id;
@@ -27,12 +31,6 @@ struct _NiceAgent
   GSList *streams;
   GSList *events;
 };
-
-
-typedef void (*NiceAgentRecvFunc) (
-  NiceAgent *agent, guint stream_id, guint component_id, guint len,
-  gchar *buf, gpointer user_data);
-
 
 NiceAgent *
 nice_agent_new (NiceUDPSocketFactory *factory);
