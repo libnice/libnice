@@ -143,7 +143,7 @@ tcp_listen_loop (
   void (*handler) (guint sock, const struct sockaddr_in *sin, gpointer data),
   gpointer data)
 {
-  guint sock;
+  gint sock;
   struct sockaddr_in sin;
 
   sock = socket (AF_INET, SOCK_STREAM, 0);
