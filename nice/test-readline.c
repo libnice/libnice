@@ -1,13 +1,19 @@
 
 #include <string.h>
 
+#include <unistd.h>
+
 #include <glib.h>
 
 #include "readline.h"
 
 /* this overrides libc read() -- is this reliable? */
 int
-read (int fd, void *buf, size_t count)
+read (
+  G_GNUC_UNUSED
+  int fd,
+  void *buf,
+  size_t count)
 {
   static int offset = 0;
   gchar *line = "test\n";
