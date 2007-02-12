@@ -16,7 +16,7 @@ read (
   size_t count)
 {
   static int offset = 0;
-  gchar *line = "test\n";
+  const gchar *line = "test\n";
 
   g_assert (count == 1);
 
