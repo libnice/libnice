@@ -73,8 +73,6 @@ struct _Stream
   guint id;
   /* XXX: streams can have multiple components */
   Component *component;
-  NiceAgentRecvFunc handle_recv;
-  gpointer handle_recv_data;
 };
 
 
