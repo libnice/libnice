@@ -13,7 +13,7 @@ readline (guint fileno)
 
   for (i = 0; i < sizeof (buf); i++)
     {
-      guint ret;
+      gint ret;
 
       ret = read (fileno, buf + i, 1);
 
