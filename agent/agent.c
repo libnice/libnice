@@ -747,7 +747,7 @@ nice_agent_recv (
 
   for (;;)
     {
-      num_readable = select (max_fd + 1, &fds, NULL, NULL, 0);
+      num_readable = select (max_fd + 1, &fds, NULL, NULL, NULL);
       g_assert (num_readable >= 0);
 
       if (num_readable > 0)
@@ -822,7 +822,7 @@ nice_agent_poll_read (
       max_fd = MAX (fileno, max_fd);
     }
 
-  num_readable = select (max_fd + 1, &fds, NULL, NULL, 0);
+  num_readable = select (max_fd + 1, &fds, NULL, NULL, NULL);
 
   if (num_readable < 1)
     /* none readable, or error */
