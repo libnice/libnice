@@ -20,9 +20,6 @@ struct _NiceUDPSocket
   void *priv;
 };
 
-typedef gboolean (*NiceUDPRecvFunc) (NiceAddress *from, guint len,
-    gchar *buf);
-
 typedef struct _NiceUDPSocketManager NiceUDPSocketFactory;
 
 struct _NiceUDPSocketManager
