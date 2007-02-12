@@ -10,13 +10,7 @@
 #include "util.h"
 
 static void
-handle_recv (
-  NiceAgent *agent,
-  guint stream_id,
-  guint component_id,
-  guint len,
-  gchar *buf,
-  gpointer data)
+handle_recv ()
 {
   g_debug ("got media");
 }
