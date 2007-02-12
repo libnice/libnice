@@ -17,13 +17,13 @@ struct _NiceInterface
 };
 
 NiceInterface *
-nice_interface_new ();
+nice_interface_new (void);
 
 void
 nice_interface_free (NiceInterface *iface);
 
 GSList *
-nice_list_local_interfaces ();
+nice_list_local_interfaces (void);
 
 G_END_DECLS
 
