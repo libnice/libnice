@@ -4,7 +4,8 @@
 
 static GstFlowReturn
 gst_nice_sink_render (
-    GstBaseSink *basesink, GstBuffer *buffer);
+  GstBaseSink *basesink,
+  GstBuffer *buffer);
 
 static void
 gst_nice_sink_set_property (
