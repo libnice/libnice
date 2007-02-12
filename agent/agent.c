@@ -855,7 +855,7 @@ nice_agent_poll_read (
 
                   if (len && func != NULL)
                     func (agent, stream->id, candidate->component_id, len, buf,
-                        stream->handle_recv_data);
+                        data);
                 }
             }
       }

@@ -16,11 +16,13 @@ handle_recv (
   gchar *buf,
   gpointer data)
 {
+  g_assert (agent != NULL);
   g_assert (cb_called == FALSE);
   g_assert (stream_id == 1);
   g_assert (component_id == 1);
   g_assert (len == 7);
   g_assert (0 == strncmp (buf, "\x80lalala", 7));
+  g_assert (GPOINTER_TO_UINT (data) == 42);
   cb_called = TRUE;
 }
 
@@ -79,7 +81,8 @@ main (void)
 
   /* poll again */
 
-  readable = nice_agent_poll_read (agent, fds, handle_recv, NULL);
+  readable = nice_agent_poll_read (agent, fds, handle_recv,
+      GUINT_TO_POINTER (42));
   g_assert (cb_called == TRUE);
   g_assert (readable == NULL);
 
