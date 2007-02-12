@@ -9,7 +9,6 @@
 static void
 send_connectivity_check (
   NiceAgent *agent,
-  NiceUDPSocketFactory *factory,
   NiceAddress *remote_addr)
 {
   NiceUDPSocket *sock;
@@ -133,7 +132,7 @@ main (void)
     nice_agent_send (agent, 1, 1, 5, "hello");
     g_assert (0 == nice_udp_fake_socket_pop_send (sock, &addr, 1024, buf));
 
-    send_connectivity_check (agent, &factory, &remote_addr);
+    send_connectivity_check (agent, &remote_addr);
 
     /* Now that we've received a valid connectivity check, we have a local
      * socket to send from, and a remote address to send to.
