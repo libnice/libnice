@@ -21,13 +21,11 @@
  * would end up with 2*K host candidates if an agent has K interfaces.
  */
 
-typedef enum _ComponentType ComponentType;
-
-enum _ComponentType
+typedef enum
 {
   COMPONENT_TYPE_RTP,
   COMPONENT_TYPE_RTCP,
-};
+} ComponentType;
 
 
 typedef struct _Component Component;
@@ -107,26 +105,22 @@ struct _CandidatePair
 };
 
 
-typedef enum check_state CheckState;
-
 /* ICE-13 §5.7 (p24) */
-enum check_state
+typedef enum
 {
   CHECK_STATE_WAITING,
   CHECK_STATE_IN_PROGRESS,
   CHECK_STATE_SUCCEEDED,
   CHECK_STATE_FAILED,
   CHECK_STATE_FROZEN,
-};
+} CheckState;
 
 
-typedef enum check_list_state CheckListState;
-
-enum check_list_state
+typedef enum
 {
   CHECK_LIST_STATE_RUNNING,
   CHECK_LIST_STATE_COMPLETED,
-};
+} CheckListState;
 
 
 #if 0
