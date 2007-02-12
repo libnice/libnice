@@ -6,13 +6,11 @@
 
 G_BEGIN_DECLS
 
-typedef enum _NiceAddressType NiceAddressType;
-
-enum _NiceAddressType
+typedef enum
 {
   NICE_ADDRESS_TYPE_IPV4,
   NICE_ADDRESS_TYPE_IPV6,
-};
+} NiceAddressType;
 
 typedef struct _NiceAddress NiceAddress;
 

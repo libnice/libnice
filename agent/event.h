@@ -8,13 +8,11 @@
 
 G_BEGIN_DECLS
 
-typedef enum _NiceEventType NiceEventType;
-
-enum _NiceEventType
+typedef enum
 {
   NICE_EVENT_COMPONENT_CONNECTED,
   NICE_EVENT_CANDIDATE_SELECTED,
-};
+} NiceEventType;
 
 
 typedef struct _NiceEvent NiceEvent;

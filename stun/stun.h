@@ -6,7 +6,8 @@
 
 G_BEGIN_DECLS
 
-typedef enum {
+typedef enum
+{
   STUN_MESSAGE_BINDING_REQUEST              = 0x001,
   STUN_MESSAGE_BINDING_RESPONSE             = 0x101,
   STUN_MESSAGE_BINDING_ERROR_RESPONSE       = 0x111,
@@ -20,7 +21,8 @@ typedef enum {
  * c = defined by draft-ietf-behave-turn-02
  */
 
-typedef enum {
+typedef enum
+{
   // mandatory parameters (<= 0x7fff)
   STUN_ATTRIBUTE_MAPPED_ADDRESS       = 0x0001, // ab
   STUN_ATTRIBUTE_RESPONSE_ADDRESS     = 0x0002, // a

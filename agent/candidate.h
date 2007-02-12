@@ -6,15 +6,13 @@
 
 G_BEGIN_DECLS
 
-typedef enum _NiceCandidateType NiceCandidateType;
-
-enum _NiceCandidateType
+typedef enum
 {
   NICE_CANDIDATE_TYPE_HOST,
   NICE_CANDIDATE_TYPE_SERVER_REFLEXIVE,
   NICE_CANDIDATE_TYPE_PEER_REFLEXIVE,
   NICE_CANDIDATE_TYPE_RELAYED,
-};
+} NiceCandidateType;
 
 
 typedef struct _NiceCandidate NiceCandidate;
