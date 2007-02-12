@@ -131,6 +131,7 @@ enum check_list_state
 };
 
 
+#if 0
 /* ICE-13 §5.7 */
 guint64
 candidate_pair_priority (
@@ -142,6 +143,7 @@ candidate_pair_priority (
       2 * MAX (offerer_prio, answerer_prio) +
       (offerer_prio > answerer_prio ? 1 : 0));
 }
+#endif
 
 
 /*** agent ***/
