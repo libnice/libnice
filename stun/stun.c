@@ -181,7 +181,7 @@ stun_attribute_dump (StunAttribute *attr)
 }
 
 void
-stun_message_init (StunMessage *msg, guint type, gchar *id)
+stun_message_init (StunMessage *msg, guint type, const gchar *id)
 {
   msg->type = type;
 
@@ -190,7 +190,7 @@ stun_message_init (StunMessage *msg, guint type, gchar *id)
 }
 
 StunMessage *
-stun_message_new (guint type, gchar *id, guint n_attributes)
+stun_message_new (guint type, const gchar *id, guint n_attributes)
 {
   StunMessage *msg = g_slice_new0 (StunMessage);
 
@@ -220,7 +220,7 @@ stun_message_free (StunMessage *msg)
 }
 
 StunMessage *
-stun_message_unpack (guint length, gchar *s)
+stun_message_unpack (guint length, const gchar *s)
 {
   guint attr_length;
   guint n_attributes = 0;
