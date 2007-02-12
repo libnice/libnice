@@ -53,6 +53,9 @@ nice_address_equal (NiceAddress *a, NiceAddress *b);
 gchar *
 nice_address_to_string (NiceAddress *addr);
 
+gboolean
+nice_address_is_private (NiceAddress *a);
+
 G_END_DECLS
 
 #endif /* _ADDRESS_H */
