@@ -138,7 +138,7 @@ OUT:
 }
 
 int
-main (gint argc, gchar *argv[])
+main (void)
 {
   NiceUDPSocketFactory factory;
   NiceUDPSocket sock;
