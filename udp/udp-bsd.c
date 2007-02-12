@@ -71,7 +71,7 @@ socket_factory_init_socket (
 
   sockfd = socket (PF_INET, SOCK_DGRAM, 0);
 
-  if (sock < 0)
+  if (sockfd < 0)
     return FALSE;
 
   name.sin_family = AF_INET;
