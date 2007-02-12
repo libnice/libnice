@@ -16,12 +16,12 @@ static gboolean
 resolve (const gchar *name, struct hostent *ret)
 {
   int res;
-  int h_errno;
+  int err;
   struct hostent *he;
   gchar buf[1024];
 
   res = gethostbyname_r (name, ret, buf, sizeof (buf) / sizeof (gchar), &he,
-      &h_errno);
+      &err);
   return (res == 0);
 }
 
