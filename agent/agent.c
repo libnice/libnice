@@ -349,8 +349,8 @@ nice_agent_add_remote_candidate (
   guint component_id,
   NiceCandidateType type,
   NiceAddress *addr,
-  gchar *username,
-  gchar *password)
+  const gchar *username,
+  const gchar *password)
 {
   /* append to agent->remote_candidates */
 
@@ -871,7 +871,7 @@ nice_agent_send (
   G_GNUC_UNUSED
   guint component_id,
   guint len,
-  gchar *buf)
+  const gchar *buf)
 {
   Stream *stream;
   Component *component;

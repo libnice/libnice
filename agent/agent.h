@@ -60,8 +60,8 @@ nice_agent_add_remote_candidate (
   guint component_id,
   NiceCandidateType type,
   NiceAddress *addr,
-  gchar *username,
-  gchar *password);
+  const gchar *username,
+  const gchar *password);
 
 guint
 nice_agent_recv (
@@ -84,7 +84,7 @@ nice_agent_send (
   guint stream_id,
   guint component_id,
   guint len,
-  gchar *buf);
+  const gchar *buf);
 
 const GSList *
 nice_agent_get_local_candidates (
