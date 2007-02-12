@@ -57,14 +57,22 @@ nice_address_set_ipv4_from_string (NiceAddress *addr, const gchar *str)
 gchar *
 nice_address_to_string (NiceAddress *addr)
 {
-  struct in_addr iaddr;
-  gchar ip_str[INET_ADDRSTRLEN];
-  const gchar *ret;
+  struct in_addr iaddr = {0,};
+  gchar ip_str[INET6_ADDRSTRLEN] = {0,};
+  const gchar *ret = NULL;
 
-  g_assert (addr->type == NICE_ADDRESS_TYPE_IPV4);
-  iaddr.s_addr = htonl (addr->addr_ipv4);
-  ret = inet_ntop (AF_INET, &iaddr, ip_str, INET_ADDRSTRLEN);
-  g_assert (ret);
+  switch (addr->type)
+    {
+    case NICE_ADDRESS_TYPE_IPV4:
+      iaddr.s_addr = htonl (addr->addr_ipv4);
+      ret = inet_ntop (AF_INET, &iaddr, ip_str, INET_ADDRSTRLEN);
+      break;
+    case NICE_ADDRESS_TYPE_IPV6:
+      ret = inet_ntop (AF_INET6, &addr->addr_ipv6, ip_str, INET6_ADDRSTRLEN);
+      break;
+    }
+
+  g_assert (ret == ip_str);
   return g_strdup (ip_str);
 }
 
