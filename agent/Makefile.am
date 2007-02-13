@@ -18,9 +18,7 @@ libagent_la_SOURCES = \
 	candidate.h \
 	candidate.c \
 	agent.h \
-	agent.c \
-	event.h \
-	event.c
+	agent.c
 
 libagent_la_LIBADD = \
 	$(top_builddir)/address/libaddress.la \
@@ -56,5 +54,5 @@ test_poll_LDADD = $(COMMON_LDADD)
 
 test_mainloop_LDADD = $(COMMON_LDADD)
 
-pkginclude_HEADERS = agent.h candidate.h event.h
+pkginclude_HEADERS = agent.h candidate.h
 

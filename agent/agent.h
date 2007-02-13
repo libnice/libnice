@@ -7,14 +7,10 @@
 #include "udp.h"
 #include "address.h"
 #include "candidate.h"
-#include "event.h"
 
 G_BEGIN_DECLS
 
 typedef struct _NiceAgent NiceAgent;
-
-typedef void (*NiceAgentEventFunc) (
-  NiceAgent *agent, NiceEvent *event);
 
 typedef void (*NiceAgentRecvFunc) (
   NiceAgent *agent, guint stream_id, guint component_id, guint len,
@@ -29,7 +25,6 @@ struct _NiceAgent
   GSList *local_candidates;
   GSList *remote_candidates;
   GSList *streams;
-  GSList *events;
   gboolean main_context_set;
   GMainContext *main_context;
   NiceAgentRecvFunc read_func;
