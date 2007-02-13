@@ -721,6 +721,8 @@ nice_agent_recv (
   gint num_readable;
   GSList *i;
 
+  FD_ZERO (&fds);
+
   for (i = agent->local_candidates; i; i = i->next)
     {
       NiceCandidate *candidate;
