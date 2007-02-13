@@ -1053,16 +1053,30 @@ nice_agent_set_stun_server (NiceAddress *addr, guint16 port)
  * nice_agent_get_local_candidates:
  *  @agent: A NiceAgent
  *
- * The caller does not own the returned GSList or the candidates contained
- * within it.
+ * The caller owns the returned GSList but not the candidates contained within
+ * it.
  *
  * Returns: a GSList of local candidates belonging to @agent
  **/
-const GSList *
+GSList *
 nice_agent_get_local_candidates (
-  NiceAgent *agent)
+  NiceAgent *agent,
+  guint stream_id,
+  guint component_id)
 {
-  return agent->local_candidates;
+  GSList *candidates = NULL;
+  GSList *i;
+
+  for (i = agent->local_candidates; i; i = i->next)
+    {
+      NiceCandidate *candidate = i->data;
+
+      if (candidate->stream_id == stream_id &&
+          candidate->component_id == component_id)
+        candidates = g_slist_append (candidates, candidate);
+    }
+
+  return candidates;
 }
 
 

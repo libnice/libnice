@@ -93,7 +93,7 @@ handle_connection (guint fileno, const struct sockaddr_in *sin, gpointer data)
 
   /* send first local candidate to remote end */
   candidate_str = nice_candidate_to_string (
-      nice_agent_get_local_candidates (agent)->data);
+      agent->local_candidates->data);
   send (fileno, candidate_str, strlen (candidate_str), 0);
   send (fileno, "\n", 1, 0);
   g_free (candidate_str);

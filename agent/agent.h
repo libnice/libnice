@@ -119,9 +119,11 @@ nice_agent_send (
   guint len,
   const gchar *buf);
 
-const GSList *
+GSList *
 nice_agent_get_local_candidates (
-  NiceAgent *agent);
+  NiceAgent *agent,
+  guint stream_id,
+  guint component_id);
 
 gboolean
 nice_agent_main_context_attach (
