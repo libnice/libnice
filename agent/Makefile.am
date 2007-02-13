@@ -38,7 +38,7 @@ check_PROGRAMS = \
 
 TESTS = $(check_PROGRAMS)
 
-test_LDADD = libagent.la $(GLIB_LIBS)
+test_LDADD = $(COMMON_LDADD)
 
 test_add_remove_stream_LDADD = $(COMMON_LDADD)
 
