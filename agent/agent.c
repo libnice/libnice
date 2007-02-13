@@ -5,11 +5,10 @@
 
 #include <glib.h>
 
-#include <stun.h>
-#include <udp.h>
-
-#include "agent.h"
+#include "stun.h"
+#include "udp.h"
 #include "random.h"
+#include "agent.h"
 
 
 /*** component ***/
