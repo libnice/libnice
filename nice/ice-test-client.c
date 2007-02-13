@@ -84,7 +84,7 @@ handle_connection (guint sock)
   line = g_strdup_printf ("H/127.0.0.1/%d/lala/titi\n",
       ntohs (udpsock.addr.port));
 
-  if (write (sock, line, strlen (line)) != strlen (line))
+  if (write (sock, line, strlen (line)) != (gint) strlen (line))
     g_assert_not_reached ();
 
   g_free (line);
