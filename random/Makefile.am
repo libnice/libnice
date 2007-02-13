@@ -17,5 +17,5 @@ test_LDADD = $(GLIB_LIBS) librandom.la
 
 TESTS = $(check_PROGRAMS)
 
-pkginclude_HEADERS = random.h
+pkginclude_HEADERS = random.h random-glib.h
 
