@@ -6,7 +6,8 @@ ERROR_CFLAGS = \
 	-Wno-missing-field-initializers \
 	-Wwrite-strings \
 	-Wmissing-prototypes \
-	-Wredundant-decls
+	-Wredundant-decls \
+	-Wno-unused-parameter
 
 CLEANFILES = *.gcno *.gcda
 
