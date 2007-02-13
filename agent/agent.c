@@ -966,3 +966,76 @@ nice_agent_free (NiceAgent *agent)
   g_slice_free (NiceAgent, agent);
 }
 
+
+static gboolean
+nice_agent_g_source_cb (
+  GIOChannel *source,
+  G_GNUC_UNUSED
+  GIOCondition condition,
+  gpointer data)
+{
+  /* return value is whether to keep the source */
+
+  NiceAgent *agent = data;
+  NiceCandidate *candidate;
+  Stream *stream;
+  gchar buf[1024];
+  guint len;
+
+  candidate = _local_candidate_lookup_by_fd (agent,
+      g_io_channel_unix_get_fd (source));
+
+  if (candidate == NULL)
+    return TRUE;
+
+  stream = _stream_lookup (agent, candidate->stream_id);
+
+  if (stream == NULL)
+    return TRUE;
+
+  len = _nice_agent_recv (agent, stream, candidate, 1024, buf);
+
+  if (len > 0)
+    agent->read_func (agent, candidate->stream_id, candidate->component_id,
+        len, buf, agent->read_func_data);
+
+  return TRUE;
+}
+
+
+gboolean
+nice_agent_main_context_attach (
+  NiceAgent *agent,
+  GMainContext *ctx,
+  NiceAgentRecvFunc func,
+  gpointer data)
+{
+  if (agent->main_context_set)
+    return FALSE;
+
+  /* attach candidates */
+
+    {
+      GSList *i;
+
+      for (i = agent->local_candidates; i; i = i->next)
+        {
+          NiceCandidate *candidate = i->data;
+          GIOChannel *io;
+          GSource *source;
+
+          io = g_io_channel_unix_new (candidate->sock.fileno);
+          source = g_io_create_watch (io, G_IO_IN);
+          g_source_set_callback (source, (GSourceFunc) nice_agent_g_source_cb,
+              agent, NULL);
+          g_source_attach (source, ctx);
+        }
+    }
+
+  agent->main_context = ctx;
+  agent->main_context_set = TRUE;
+  agent->read_func = func;
+  agent->read_func_data = data;
+  return TRUE;
+}
+

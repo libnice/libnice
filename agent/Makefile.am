@@ -34,7 +34,8 @@ check_PROGRAMS = \
 	test-send \
 	test-stun \
 	test-priority \
-	test-poll
+	test-poll \
+	test-mainloop
 
 TESTS = $(check_PROGRAMS)
 
@@ -51,6 +52,8 @@ test_stun_LDADD = $(COMMON_LDADD)
 test_priority_LDADD = $(COMMON_LDADD)
 
 test_poll_LDADD = $(COMMON_LDADD)
+
+test_mainloop_LDADD = $(COMMON_LDADD)
 
 pkginclude_HEADERS = agent.h candidate.h event.h
 

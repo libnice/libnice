@@ -30,6 +30,10 @@ struct _NiceAgent
   GSList *remote_candidates;
   GSList *streams;
   GSList *events;
+  gboolean main_context_set;
+  GMainContext *main_context;
+  NiceAgentRecvFunc read_func;
+  gpointer read_func_data;
 };
 
 NiceAgent *
@@ -87,6 +91,13 @@ nice_agent_send (
 const GSList *
 nice_agent_get_local_candidates (
   NiceAgent *agent);
+
+gboolean
+nice_agent_main_context_attach (
+  NiceAgent *agent,
+  GMainContext *ctx,
+  NiceAgentRecvFunc func,
+  gpointer data);
 
 G_END_DECLS
 
