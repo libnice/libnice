@@ -104,6 +104,15 @@ nice_agent_recv (
   guint buf_len,
   gchar *buf);
 
+guint
+nice_agent_recv_sock (
+  NiceAgent *agent,
+  guint stream_id,
+  guint component_id,
+  guint sock,
+  guint buf_len,
+  gchar *buf);
+
 GSList *
 nice_agent_poll_read (
   NiceAgent *agent,

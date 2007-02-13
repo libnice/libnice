@@ -918,6 +918,27 @@ nice_agent_recv (
 }
 
 
+guint
+nice_agent_recv_sock (
+  NiceAgent *agent,
+  guint stream_id,
+  guint component_id,
+  guint sock,
+  guint buf_len,
+  gchar *buf)
+{
+  NiceCandidate *candidate;
+  Stream *stream;
+
+  candidate = _local_candidate_lookup_by_fd (agent, sock);
+  g_assert (candidate);
+  stream = _stream_lookup (agent, candidate->stream_id);
+  g_assert (stream);
+  return _nice_agent_recv (agent, stream, stream->component,
+      candidate, buf_len, buf);
+}
+
+
 /**
  * nice_agent_poll_read:
  *  @agent: A NiceAgent
