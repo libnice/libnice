@@ -2,44 +2,19 @@
 #include <string.h>
 
 #include <unistd.h>
+#include <sys/socket.h>
+#include <sys/un.h>
 
 #include <glib.h>
 
 #include "udp-fake.h"
 
-typedef struct _Packet Packet;
-
-struct _Packet
-{
-  NiceAddress addr;
-  guint len;
-  gchar buf[1024];
-};
-
 typedef struct _UDPFakeSocketPriv UDPFakeSocketPriv;
 
 struct _UDPFakeSocketPriv
 {
-  GSList *send_queue;
-  guint recv_pipe_in;
-  guint recv_pipe_out;
+  guint net_sock;
 };
-
-static void *
-_g_slist_pop (GSList **list)
-{
-  void *data;
-  GSList *head;
-
-  if (*list == NULL)
-    return NULL;
-
-  head = *list;
-  data = (*list)->data;
-  *list = (*list)->next;
-  g_slist_free_1 (head);
-  return data;
-}
 
 static gboolean
 fake_send (
@@ -48,16 +23,9 @@ fake_send (
   guint len,
   const gchar *buf)
 {
-  Packet *packet;
-  UDPFakeSocketPriv *priv;
-
-  packet = g_slice_new0 (Packet);
-  packet->len = len;
-  packet->addr = *to;
-  memcpy (packet->buf, buf, len);
-
-  priv = (UDPFakeSocketPriv *) sock->priv;
-  priv->send_queue = g_slist_append (priv->send_queue, packet);
+  write (sock->fileno, to, sizeof (NiceAddress));
+  write (sock->fileno, &len, sizeof (guint));
+  write (sock->fileno, buf, len);
 
   return TRUE;
 }
@@ -69,13 +37,9 @@ fake_recv (
   guint len,
   gchar *buf)
 {
-  UDPFakeSocketPriv *priv;
-
-  priv = (UDPFakeSocketPriv *) sock->priv;
-
-  read (priv->recv_pipe_out, from, sizeof (NiceAddress));
-  read (priv->recv_pipe_out, &len, sizeof (guint));
-  read (priv->recv_pipe_out, buf, len);
+  read (sock->fileno, from, sizeof (NiceAddress));
+  read (sock->fileno, &len, sizeof (guint));
+  read (sock->fileno, buf, len);
 
   return len;
 }
@@ -85,19 +49,10 @@ fake_close (NiceUDPSocket *sock)
 {
   UDPFakeSocketPriv *priv;
 
+  close (sock->fileno);
+
   priv = (UDPFakeSocketPriv *) sock->priv;
-  close (priv->recv_pipe_out);
-  close (priv->recv_pipe_in);
-
-  while (priv->send_queue)
-    {
-      Packet *packet;
-
-      packet = priv->send_queue->data;
-      priv->send_queue = g_slist_remove (priv->send_queue, packet);
-      g_slice_free (Packet, packet);
-    }
-
+  close (priv->net_sock);
   g_slice_free (UDPFakeSocketPriv, priv);
 }
 
@@ -113,14 +68,13 @@ fake_socket_init (
   static int port = 1;
   UDPFakeSocketPriv *priv;
 
-  if (pipe (fds) == -1)
+  if (socketpair (AF_LOCAL, SOCK_STREAM, 0, fds) != 0)
     return FALSE;
 
   priv = g_slice_new0 (UDPFakeSocketPriv);
-  priv->recv_pipe_out = fds[0];
-  priv->recv_pipe_in = fds[1];
+  priv->net_sock = fds[0];
 
-  sock->fileno = priv->recv_pipe_out;
+  sock->fileno = fds[1];
   sock->addr.type = addr->type;
   sock->addr.addr_ipv4 = addr->addr_ipv4;
 
@@ -146,9 +100,10 @@ nice_udp_fake_socket_push_recv (
   UDPFakeSocketPriv *priv;
 
   priv = (UDPFakeSocketPriv *) sock->priv;
-  write (priv->recv_pipe_in, from, sizeof (NiceAddress));
-  write (priv->recv_pipe_in, &len, sizeof (guint));
-  write (priv->recv_pipe_in, buf, len);
+
+  write (priv->net_sock, from, sizeof (NiceAddress));
+  write (priv->net_sock, &len, sizeof (guint));
+  write (priv->net_sock, buf, len);
 }
 
 guint
@@ -159,19 +114,24 @@ nice_udp_fake_socket_pop_send (
   gchar *buf)
 {
   UDPFakeSocketPriv *priv;
-  Packet *packet;
 
   priv = (UDPFakeSocketPriv *) sock->priv;
-  packet = (Packet *) _g_slist_pop (&priv->send_queue);
 
-  if (!packet)
-    return 0;
+  read (priv->net_sock, to, sizeof (NiceAddress));
+  read (priv->net_sock, &len, sizeof (guint));
+  read (priv->net_sock, buf, len);
 
-  memcpy (buf, packet->buf, MIN (len, packet->len));
-  len = packet->len;
-  *to = packet->addr;
-  g_slice_free (Packet, packet);
   return len;
+}
+
+guint
+nice_udp_fake_socket_get_peer_fd (
+  NiceUDPSocket *sock)
+{
+  UDPFakeSocketPriv *priv;
+
+  priv = (UDPFakeSocketPriv *) sock->priv;
+  return priv->net_sock;
 }
 
 static void

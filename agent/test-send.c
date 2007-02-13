@@ -1,10 +1,35 @@
 
 #include <string.h>
 
+#include <sys/select.h>
+
 #include "agent.h"
 #include "stun.h"
 #include "udp-fake.h"
 #include "random-glib.h"
+
+static gboolean
+fd_is_readable (guint fd)
+{
+  fd_set fds;
+  struct timeval timeout = {0,};
+
+  FD_ZERO (&fds);
+  FD_SET (fd, &fds);
+
+  switch (select (fd + 1, &fds, NULL, NULL, &timeout))
+    {
+    case -1:
+      g_assert_not_reached ();
+    case 0:
+      return FALSE;
+    case 1:
+      return TRUE;
+    default:
+      g_assert_not_reached ();
+    }
+}
+
 
 static void
 send_connectivity_check (
@@ -132,7 +157,7 @@ main (void)
      */
 
     nice_agent_send (agent, 1, 1, 5, "hello");
-    g_assert (0 == nice_udp_fake_socket_pop_send (sock, &addr, 1024, buf));
+    g_assert (0 == fd_is_readable (nice_udp_fake_socket_get_peer_fd (sock)));
 
     send_connectivity_check (agent, &remote_addr);
 
