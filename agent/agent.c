@@ -369,17 +369,29 @@ nice_agent_remove_stream (
     {
       GSList *i;
       GSList *old_list = agent->local_candidates;
+      GSList *free_list = NULL;
       GSList *new_list = NULL;
 
       for (i = agent->local_candidates; i; i = i->next)
         {
           NiceCandidate *candidate = i->data;
 
-          if (candidate->stream_id != stream_id)
+          if (candidate->stream_id == stream_id)
+            free_list = g_slist_append (free_list, candidate);
+          else
             new_list = g_slist_append (new_list, candidate);
         }
 
       agent->local_candidates = new_list;
+
+      for (i = free_list; i; i = i->next)
+        {
+          NiceCandidate *candidate = i->data;
+
+          nice_candidate_free (candidate);
+        }
+
+      g_slist_free (free_list);
       g_slist_free (old_list);
     }
 
