@@ -7,6 +7,7 @@
 #include "udp-fake.h"
 #include "agent.h"
 #include "random.h"
+#include "random-glib.h"
 
 #endif /* _NICE_H */
 
