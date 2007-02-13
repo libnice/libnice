@@ -464,6 +464,11 @@ _handle_stun_binding_request (
 
       remote = i->data;
 
+#if 0
+      g_debug ("uname check: %s :: %s -- %s", username, local->username,
+          remote->username);
+#endif
+
       if (!g_str_has_prefix (username, local->username))
         continue;
 
@@ -878,6 +883,11 @@ nice_agent_send (
     {
       NiceUDPSocket *sock;
       NiceAddress *addr;
+
+#if 0
+      g_debug ("sending %d bytes to %08x:%d", len,
+          component->peer_addr->addr_ipv4, component->peer_addr->port);
+#endif
 
       sock = &component->active_candidate->sock;
       addr = component->peer_addr;
