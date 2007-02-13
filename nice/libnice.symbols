@@ -11,7 +11,6 @@ T nice_address_to_string
 T nice_agent_add_local_address
 T nice_agent_add_remote_candidate
 T nice_agent_add_stream
-T nice_agent_free
 T nice_agent_get_local_candidates
 T nice_agent_get_type
 T nice_agent_main_context_attach

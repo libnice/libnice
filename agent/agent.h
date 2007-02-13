@@ -80,9 +80,6 @@ nice_agent_remove_stream (
   guint stream_id);
 
 void
-nice_agent_free (NiceAgent *agent);
-
-void
 nice_agent_add_remote_candidate (
   NiceAgent *agent,
   guint stream_id,

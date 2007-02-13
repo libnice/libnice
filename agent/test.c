@@ -61,7 +61,7 @@ main (void)
   g_assert (0 == strcmp (candidate->password, "password"));
 
   /* clean up */
-  nice_agent_free (agent);
+  g_object_unref (agent);
   return 0;
 }
 

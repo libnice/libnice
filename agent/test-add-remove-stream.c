@@ -34,7 +34,8 @@ main (void)
   /* check no local candidates were left behind when streams were removed*/
   g_assert (NULL == agent->local_candidates);
 
-  nice_agent_free (agent);
+  g_object_unref (agent);
+  nice_udp_socket_factory_close (&factory);
 
   return 0;
 }

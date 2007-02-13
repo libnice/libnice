@@ -183,7 +183,7 @@ main (gint argc, gchar *argv[])
 
   // clean up
 
-  nice_agent_free (agent);
+  g_object_unref (agent);
   g_object_unref (pipeline);
   gst_deinit ();
 

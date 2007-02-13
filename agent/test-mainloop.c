@@ -53,8 +53,8 @@ main (void)
   loop = g_main_loop_new (NULL, FALSE);
   g_main_loop_run (loop);
 
+  g_object_unref (agent);
   nice_udp_socket_factory_close (&factory);
-  nice_agent_free (agent);
   return 0;
 }
 

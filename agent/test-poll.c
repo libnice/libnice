@@ -91,7 +91,7 @@ main (void)
   /* clean up */
 
   g_slist_free (fds);
-  nice_agent_free (agent);
+  g_object_unref (agent);
 
   return 0;
 }

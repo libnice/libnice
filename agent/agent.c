@@ -1013,17 +1013,6 @@ nice_agent_get_local_candidates (
   return agent->local_candidates;
 }
 
-/**
- * nice_agent_free:
- *  @agent: a NiceAgent
- *
- * Free the agent.
- **/
-void
-nice_agent_free (NiceAgent *agent)
-{
-  g_object_unref (agent);
-}
 
 static void
 nice_agent_dispose (GObject *object)

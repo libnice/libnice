@@ -215,7 +215,7 @@ main (void)
   test_stun_valid_password (agent, remote_addr);
 
   /* clean up */
-  nice_agent_free (agent);
+  g_object_unref (agent);
   nice_udp_socket_factory_close (&factory);
 
   return 0;

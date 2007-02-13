@@ -128,7 +128,7 @@ END:
 
   g_slist_free (in_fds);
   nice_udp_socket_factory_close (&factory);
-  nice_agent_free (agent);
+  g_object_unref (agent);
 }
 
 static gboolean
