@@ -12,16 +12,14 @@
 static void
 recv_cb (
     NiceAgent *agent,
-    G_GNUC_UNUSED
     guint stream_id,
-    G_GNUC_UNUSED
     guint candidate_id,
     guint len,
     gchar *buf,
     G_GNUC_UNUSED
     gpointer user_data)
 {
-  g_debug ("got media");
+  nice_agent_send (agent, stream_id, candidate_id, len, buf);
 }
 
 static NiceAgent *
