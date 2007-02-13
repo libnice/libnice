@@ -4,7 +4,6 @@ export G_SLICE=always-malloc
 export G_DEBUG=gc-friendly
 
 report=`libtool --mode=execute valgrind \
-	-q \
 	--leak-check=full \
 	--show-reachable=no \
 	--error-exitcode=1 \
@@ -15,3 +14,11 @@ if test $? != 0; then
 	echo "$report"
 	exit 1
 fi
+
+if echo "$report" | grep -q "definitely lost"; then
+	if ! echo "$report" | grep -q "definitely lost: 0 bytes"; then
+		echo "$report"
+		exit 1
+	fi
+fi
+
