@@ -69,15 +69,18 @@
 
 # address/ stuff
 ^address/libaddress.la$
+^address/test$
 
 # agent/ stuff
 ^agent/libagent.la$
 ^agent/test$
-^agent/test-add-stream$
+^agent/test-add-remove-stream$
 ^agent/test-recv$
 ^agent/test-stun$
 ^agent/test-priority$
 ^agent/test-send$
+^agent/test-poll$
+^agent/test-mainloop$
 
 # stun/ stuff
 ^stun/libstun.la$
@@ -121,3 +124,4 @@
 
 # gst/ stuff
 ^gst/libgstnice.la$
+^gst/jingle-gst-test-server$
