@@ -1,7 +1,7 @@
 
 /*
  * This program interoperates with the test-rtp-jingle program from the
- * farsight tests/ directory.
+ * Farsight tests/ directory. It echoes received media to the sender.
  */
 
 #include <stdlib.h>
