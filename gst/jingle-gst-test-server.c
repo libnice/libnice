@@ -10,8 +10,11 @@
 // hack!
 NiceAgent *agent;
 
-gboolean
-handle_signal (GIOChannel *io, GIOCondition cond, gpointer data)
+static gboolean
+handle_signal (
+  GIOChannel *io,
+  GIOCondition cond,
+  gpointer data)
 {
   gchar **bits;
   NiceAddress addr;

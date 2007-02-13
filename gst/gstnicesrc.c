@@ -134,7 +134,10 @@ gst_nice_src_create (
 
 static void
 gst_nice_src_set_property (
-    GObject *object, guint prop_id, const GValue *value, GParamSpec *pspec)
+  GObject *object,
+  guint prop_id,
+  const GValue *value,
+  GParamSpec *pspec)
 {
   GstNiceSrc *src = GST_NICE_SRC (object);
 
@@ -156,7 +159,10 @@ gst_nice_src_set_property (
 
 static void
 gst_nice_src_get_property (
-    GObject *object, guint prop_id, GValue *value, GParamSpec *pspec)
+  GObject *object,
+  guint prop_id,
+  GValue *value,
+  GParamSpec *pspec)
 {
   GstNiceSrc *src = GST_NICE_SRC (object);
 
