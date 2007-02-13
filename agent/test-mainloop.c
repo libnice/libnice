@@ -30,6 +30,8 @@ main (void)
   NiceAddress addr = {0,};
   NiceUDPSocketFactory factory;
 
+  g_type_init ();
+
   nice_udp_fake_socket_factory_init (&factory);
   agent = nice_agent_new (&factory);
   nice_address_set_ipv4 (&addr, 0x7f000001);

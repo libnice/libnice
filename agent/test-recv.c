@@ -11,6 +11,8 @@ main (void)
   NiceAddress addr = {0,};
   NiceUDPSocketFactory factory;
 
+  g_type_init ();
+
   nice_udp_fake_socket_factory_init (&factory);
 
   /* set up agent */

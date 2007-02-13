@@ -12,6 +12,8 @@ main (void)
   NiceCandidate *candidate;
   NiceUDPSocketFactory factory;
 
+  g_type_init ();
+
   nice_udp_fake_socket_factory_init (&factory);
 
   g_assert (nice_address_set_ipv4_from_string (&addr_local, "192.168.0.1"));

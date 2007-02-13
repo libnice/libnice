@@ -141,6 +141,59 @@ candidate_pair_priority (
 /*** agent ***/
 
 
+G_DEFINE_TYPE (NiceAgent, nice_agent, G_TYPE_OBJECT);
+
+
+enum
+{
+  PROP_SOCKET_FACTORY = 1,
+};
+
+
+static void
+nice_agent_dispose (GObject *object);
+
+static void
+nice_agent_get_property (
+  GObject *object,
+  guint property_id,
+  GValue *value,
+  GParamSpec *pspec);
+
+static void
+nice_agent_set_property (
+  GObject *object,
+  guint property_id,
+  const GValue *value,
+  GParamSpec *pspec);
+
+
+static void
+nice_agent_class_init (NiceAgentClass *klass)
+{
+  GObjectClass *gobject_class = G_OBJECT_CLASS (klass);
+
+  gobject_class->get_property = nice_agent_get_property;
+  gobject_class->set_property = nice_agent_set_property;
+  gobject_class->dispose = nice_agent_dispose;
+
+  g_object_class_install_property (gobject_class, PROP_SOCKET_FACTORY,
+      g_param_spec_pointer (
+         "socket-factory",
+         "UDP socket factory",
+         "The socket factory used to create new UDP sockets",
+         G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY));
+}
+
+
+static void
+nice_agent_init (NiceAgent *agent)
+{
+  agent->next_candidate_id = 1;
+  agent->next_stream_id = 1;
+}
+
+
 /**
  * nice_agent_new:
  * @factory: a NiceUDPSocketFactory used for allocating sockets
@@ -152,13 +205,51 @@ candidate_pair_priority (
 NiceAgent *
 nice_agent_new (NiceUDPSocketFactory *factory)
 {
-  NiceAgent *agent;
+  return g_object_new (NICE_TYPE_AGENT,
+      "socket-factory", factory,
+      NULL);
+}
 
-  agent = g_slice_new0 (NiceAgent);
-  agent->socket_factory = factory;
-  agent->next_candidate_id = 1;
-  agent->next_stream_id = 1;
-  return agent;
+
+static void
+nice_agent_get_property (
+  GObject *object,
+  guint property_id,
+  GValue *value,
+  GParamSpec *pspec)
+{
+  NiceAgent *agent = NICE_AGENT (object);
+
+  switch (property_id)
+    {
+    case PROP_SOCKET_FACTORY:
+      g_value_set_pointer (value, agent->socket_factory);
+      break;
+
+    default:
+      G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
+    }
+}
+
+
+static void
+nice_agent_set_property (
+  GObject *object,
+  guint property_id,
+  const GValue *value,
+  GParamSpec *pspec)
+{
+  NiceAgent *agent = NICE_AGENT (object);
+
+  switch (property_id)
+    {
+    case PROP_SOCKET_FACTORY:
+      agent->socket_factory = g_value_get_pointer (value);
+      break;
+
+    default:
+      G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
+    }
 }
 
 
@@ -931,7 +1022,14 @@ nice_agent_get_local_candidates (
 void
 nice_agent_free (NiceAgent *agent)
 {
+  g_object_unref (agent);
+}
+
+static void
+nice_agent_dispose (GObject *object)
+{
   GSList *i;
+  NiceAgent *agent = NICE_AGENT (object);
 
   for (i = agent->local_addresses; i; i = i->next)
     {
@@ -973,7 +1071,8 @@ nice_agent_free (NiceAgent *agent)
   g_slist_free (agent->streams);
   agent->streams = NULL;
 
-  g_slice_free (NiceAgent, agent);
+  if (G_OBJECT_CLASS (nice_agent_parent_class)->dispose)
+    G_OBJECT_CLASS (nice_agent_parent_class)->dispose (object);
 }
 
 

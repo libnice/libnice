@@ -92,6 +92,8 @@ main (void)
   NiceAddress local_addr = {0,};
   NiceAddress remote_addr = {0,};
 
+  g_type_init ();
+
   /* set up */
 
   nice_rng_set_new_func (nice_rng_glib_new_predictable);

@@ -2,13 +2,35 @@
 #ifndef _AGENT_H
 #define _AGENT_H
 
-#include <glib.h>
+#include <glib-object.h>
 
 #include "udp.h"
 #include "address.h"
 #include "candidate.h"
 
 G_BEGIN_DECLS
+
+#define NICE_TYPE_AGENT nice_agent_get_type()
+
+#define NICE_AGENT(obj) \
+  (G_TYPE_CHECK_INSTANCE_CAST ((obj), \
+  NICE_TYPE_AGENT, NiceAgent))
+
+#define NICE_AGENT_CLASS(klass) \
+  (G_TYPE_CHECK_CLASS_CAST ((klass), \
+  NICE_TYPE_AGENT, NiceAgentClass))
+
+#define NICE_IS_AGENT(obj) \
+  (G_TYPE_CHECK_INSTANCE_TYPE ((obj), \
+  NICE_TYPE_AGENT))
+
+#define NICE_IS_AGENT_CLASS(klass) \
+  (G_TYPE_CHECK_CLASS_TYPE ((klass), \
+  NICE_TYPE_AGENT))
+
+#define NICE_AGENT_GET_CLASS(obj) \
+  (G_TYPE_INSTANCE_GET_CLASS ((obj), \
+  NICE_TYPE_AGENT, NiceAgentClass))
 
 typedef struct _NiceAgent NiceAgent;
 
@@ -18,6 +40,7 @@ typedef void (*NiceAgentRecvFunc) (
 
 struct _NiceAgent
 {
+  GObject parent;
   guint next_candidate_id;
   guint next_stream_id;
   NiceUDPSocketFactory *socket_factory;
@@ -30,6 +53,15 @@ struct _NiceAgent
   NiceAgentRecvFunc read_func;
   gpointer read_func_data;
 };
+
+typedef struct _NiceAgentClass NiceAgentClass;
+
+struct _NiceAgentClass
+{
+  GObjectClass parent_class;
+};
+
+GType nice_agent_get_type (void);
 
 NiceAgent *
 nice_agent_new (NiceUDPSocketFactory *factory);

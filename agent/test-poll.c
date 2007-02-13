@@ -38,6 +38,8 @@ main (void)
   GSList *fds = NULL;
   GSList *readable;
 
+  g_type_init ();
+
   /* set up agent */
 
   if (!nice_address_set_ipv4_from_string (&addr, "127.0.0.1"))

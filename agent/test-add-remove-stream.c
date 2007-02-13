@@ -9,6 +9,8 @@ main (void)
   NiceAddress addr = {0,};
   NiceUDPSocketFactory factory;
 
+  g_type_init ();
+
   nice_udp_fake_socket_factory_init (&factory);
 
   if (!nice_address_set_ipv4_from_string (&addr, "127.0.0.1"))
