@@ -81,6 +81,8 @@
 ^agent/test-send$
 ^agent/test-poll$
 ^agent/test-mainloop$
+^agent/agent-signals-marshal.h$
+^agent/agent-signals-marshal.c$
 
 # stun/ stuff
 ^stun/libstun.la$

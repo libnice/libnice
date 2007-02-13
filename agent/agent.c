@@ -9,6 +9,7 @@
 #include "udp.h"
 #include "random.h"
 #include "agent.h"
+#include "agent-signals-marshal.h"
 
 
 /*** component ***/
@@ -37,6 +38,7 @@ struct _Component
   /* the remote address that the last connectivity check came from */
   NiceAddress *peer_addr;
   guint id;
+  NiceComponentState state;
 };
 
 
@@ -149,6 +151,16 @@ enum
 };
 
 
+enum
+{
+  SIGNAL_COMPONENT_STATE_CHANGED,
+  N_SIGNALS,
+};
+
+
+static guint signals[N_SIGNALS];
+
+
 static void
 nice_agent_dispose (GObject *object);
 
@@ -176,12 +188,30 @@ nice_agent_class_init (NiceAgentClass *klass)
   gobject_class->set_property = nice_agent_set_property;
   gobject_class->dispose = nice_agent_dispose;
 
+  /* install properties */
+
   g_object_class_install_property (gobject_class, PROP_SOCKET_FACTORY,
       g_param_spec_pointer (
          "socket-factory",
          "UDP socket factory",
          "The socket factory used to create new UDP sockets",
          G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY));
+
+  /* install signals */
+
+  signals[SIGNAL_COMPONENT_STATE_CHANGED] =
+      g_signal_new (
+          "component-state-changed",
+          G_OBJECT_CLASS_TYPE (klass),
+          G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
+          0,
+          NULL,
+          NULL,
+          agent_marshal_VOID__UINT_UINT_UINT,
+          G_TYPE_NONE,
+          3,
+          G_TYPE_UINT, G_TYPE_UINT, G_TYPE_UINT,
+          G_TYPE_INVALID);
 }
 
 
@@ -739,6 +769,7 @@ static guint
 _nice_agent_recv (
   NiceAgent *agent,
   Stream *stream,
+  Component *component,
   NiceCandidate *candidate,
   guint buf_len,
   gchar *buf)
@@ -779,6 +810,14 @@ _nice_agent_recv (
   if ((buf[0] & 0xc0) == 0x80)
     {
       /* looks like RTP */
+
+      if (component->state != NICE_COMPONENT_STATE_CONNECTED)
+        {
+          component->state = NICE_COMPONENT_STATE_CONNECTED;
+          g_signal_emit (agent, signals[SIGNAL_COMPONENT_STATE_CHANGED], 0,
+              stream->id, component->id, component->state);
+        }
+
       return len;
     }
   else if ((buf[0] & 0xc0) == 0)
@@ -865,8 +904,9 @@ nice_agent_recv (
                 candidate = _local_candidate_lookup_by_fd (agent, j);
                 g_assert (candidate);
                 stream = _stream_lookup (agent, candidate->stream_id);
-                len = _nice_agent_recv (agent, stream, candidate, buf_len,
-                    buf);
+                g_assert (stream);
+                len = _nice_agent_recv (agent, stream, stream->component,
+                    candidate, buf_len, buf);
 
                 if (len > 0)
                   return len;
@@ -953,7 +993,8 @@ nice_agent_poll_read (
                   if (stream == NULL)
                     break;
 
-                  len = _nice_agent_recv (agent, stream, candidate, 1024, buf);
+                  len = _nice_agent_recv (agent, stream, stream->component,
+                      candidate, 1024, buf);
 
                   if (len && func != NULL)
                     func (agent, stream->id, candidate->component_id, len, buf,
@@ -1102,7 +1143,8 @@ nice_agent_g_source_cb (
   if (stream == NULL)
     return TRUE;
 
-  len = _nice_agent_recv (agent, stream, candidate, 1024, buf);
+  len = _nice_agent_recv (agent, stream, stream->component, candidate, 1024,
+      buf);
 
   if (len > 0)
     agent->read_func (agent, candidate->stream_id, candidate->component_id,

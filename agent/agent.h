@@ -32,6 +32,13 @@ G_BEGIN_DECLS
   (G_TYPE_INSTANCE_GET_CLASS ((obj), \
   NICE_TYPE_AGENT, NiceAgentClass))
 
+typedef enum
+{
+  NICE_COMPONENT_STATE_DISCONNECTED,
+  NICE_COMPONENT_STATE_CONNECTING,
+  NICE_COMPONENT_STATE_CONNECTED,
+} NiceComponentState;
+
 typedef struct _NiceAgent NiceAgent;
 
 typedef void (*NiceAgentRecvFunc) (
