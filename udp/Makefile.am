@@ -1,7 +1,10 @@
 
 include $(top_srcdir)/common.mk
 
-AM_CFLAGS = -Wall -Werror $(GLIB_CFLAGS) -I $(top_srcdir)/address
+AM_CFLAGS = \
+	$(ERROR_CFLAGS) \
+	$(GLIB_CFLAGS) \
+	-I $(top_srcdir)/address
 
 COMMON_LDADD = libudp.la $(GLIB_LIBS) $(top_builddir)/address/libaddress.la
 

@@ -2,7 +2,7 @@
 include $(top_srcdir)/common.mk
 
 AM_CFLAGS = \
-	-Wall -Werror \
+	$(ERROR_CFLAGS) \
 	$(GLIB_CFLAGS) \
 	-I $(top_srcdir)/address
 

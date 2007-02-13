@@ -1,7 +1,7 @@
 
 include $(top_srcdir)/common.mk
 
-AM_CFLAGS = -Wall -Werror $(GLIB_CFLAGS)
+AM_CFLAGS = $(ERROR_CFLAGS) $(GLIB_CFLAGS)
 
 # library
 

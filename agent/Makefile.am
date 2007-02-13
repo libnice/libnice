@@ -1,13 +1,14 @@
 
 include $(top_srcdir)/common.mk
 
-AM_CFLAGS = -Wall -Werror \
+AM_CFLAGS = \
+	$(ERROR_CFLAGS) \
+	$(GLIB_CFLAGS) \
 	-I $(top_srcdir) \
 	-I $(top_srcdir)/address \
 	-I $(top_srcdir)/random \
 	-I $(top_srcdir)/udp \
-	-I $(top_srcdir)/stun \
-	$(GLIB_CFLAGS)
+	-I $(top_srcdir)/stun
 
 COMMON_LDADD = libagent.la $(GLIB_LIBS)
 
