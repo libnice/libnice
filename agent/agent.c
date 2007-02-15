@@ -537,6 +537,7 @@ static void
 _handle_stun_binding_request (
   NiceAgent *agent,
   Stream *stream,
+  Component *component,
   NiceCandidate *local,
   NiceAddress from,
   StunMessage *msg)
@@ -700,6 +701,18 @@ RESPOND:
       stun_message_free (extra);
     }
 
+  /* emit component-state-changed(connected) */
+  /* XXX: probably better do this when we get the binding response */
+
+    {
+      if (component->state != NICE_COMPONENT_STATE_CONNECTED)
+        {
+          component->state = NICE_COMPONENT_STATE_CONNECTED;
+          g_signal_emit (agent, signals[SIGNAL_COMPONENT_STATE_CHANGED], 0,
+              stream->id, component->id, component->state);
+        }
+    }
+
   return;
 
 ERROR:
@@ -745,6 +758,7 @@ static void
 _handle_stun (
   NiceAgent *agent,
   Stream *stream,
+  Component *component,
   NiceCandidate *local,
   NiceAddress from,
   StunMessage *msg)
@@ -752,7 +766,8 @@ _handle_stun (
   switch (msg->type)
     {
     case STUN_MESSAGE_BINDING_REQUEST:
-      _handle_stun_binding_request (agent, stream, local, from, msg);
+      _handle_stun_binding_request (agent, stream, component, local, from,
+          msg);
       break;
     case STUN_MESSAGE_BINDING_RESPONSE:
       /* XXX: check it matches a request we sent */
@@ -813,14 +828,6 @@ _nice_agent_recv (
   if ((buf[0] & 0xc0) == 0x80)
     {
       /* looks like RTP */
-
-      if (component->state != NICE_COMPONENT_STATE_CONNECTED)
-        {
-          component->state = NICE_COMPONENT_STATE_CONNECTED;
-          g_signal_emit (agent, signals[SIGNAL_COMPONENT_STATE_CHANGED], 0,
-              stream->id, component->id, component->state);
-        }
-
       return len;
     }
   else if ((buf[0] & 0xc0) == 0)
@@ -833,7 +840,7 @@ _nice_agent_recv (
 
       if (msg != NULL)
         {
-          _handle_stun (agent, stream, candidate, from, msg);
+          _handle_stun (agent, stream, component, candidate, from, msg);
           stun_message_free (msg);
         }
     }

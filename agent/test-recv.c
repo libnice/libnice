@@ -4,23 +4,6 @@
 #include "udp-fake.h"
 #include "agent.h"
 
-static gboolean cb_called = FALSE;
-
-static void
-cb_component_state_changed (
-  NiceAgent *agent,
-  guint stream_id,
-  guint component_id,
-  guint state)
-{
-  g_assert (agent != NULL);
-  g_assert (stream_id == 1);
-  g_assert (component_id == 1);
-  g_assert (state == NICE_COMPONENT_STATE_CONNECTED);
-  g_assert (cb_called == FALSE);
-  cb_called = TRUE;
-}
-
 int
 main (void)
 {
@@ -38,8 +21,6 @@ main (void)
   nice_agent_add_local_address (agent, &addr);
   nice_agent_add_stream (agent, 1);
   g_assert (agent->local_candidates != NULL);
-  g_signal_connect (agent, "component-state-changed",
-      (GCallback) cb_component_state_changed, NULL);
 
   /* recieve an RTP packet */
 
@@ -57,8 +38,6 @@ main (void)
       g_assert (len == 7);
       g_assert (0 == strncmp (buf, "\x80lalala", 7));
     }
-
-  g_assert (cb_called);
 
   /* clean up */
   g_object_unref (agent);

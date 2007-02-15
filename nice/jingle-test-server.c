@@ -146,6 +146,8 @@ main (void)
   NiceAddress addr = {0,};
   guint ret;
 
+  g_type_init ();
+
   addr.port = 1234;
 
   nice_udp_bsd_socket_factory_init (&factory);

@@ -8,6 +8,24 @@
 #include "udp-fake.h"
 #include "random-glib.h"
 
+static gboolean cb_called = FALSE;
+
+static void
+cb_component_state_changed (
+  NiceAgent *agent,
+  guint stream_id,
+  guint component_id,
+  guint state)
+{
+  g_assert (agent != NULL);
+  g_assert (stream_id == 1);
+  g_assert (component_id == 1);
+  g_assert (state == NICE_COMPONENT_STATE_CONNECTED);
+  g_assert (cb_called == FALSE);
+  cb_called = TRUE;
+}
+
+
 static gboolean
 fd_is_readable (guint fd)
 {
@@ -109,6 +127,7 @@ send_connectivity_check (
   g_free (username);
 }
 
+
 int
 main (void)
 {
@@ -138,6 +157,9 @@ main (void)
   remote_addr.port = 2345;
   nice_agent_add_remote_candidate (agent, 1, 1, NICE_CANDIDATE_TYPE_HOST,
       &remote_addr, "username", "password");
+
+  g_signal_connect (agent, "component-state-changed",
+      (GCallback) cb_component_state_changed, NULL);
 
   /* test */
 
@@ -169,6 +191,10 @@ main (void)
     len = nice_udp_fake_socket_pop_send (sock, &addr, 1024, buf);
     g_assert (len == 5);
     g_assert (0 == strncmp (buf, "hello", len));
+
+    /* Signal to say component is connected should have been emitted. */
+
+    g_assert (cb_called == TRUE);
   }
 
   /* clean up */
