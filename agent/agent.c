@@ -644,15 +644,8 @@ RESPOND:
 
   /* update candidate/peer affinity */
 
-    {
-      Component *component;
-
-      component = stream->component;
-      g_assert (component);
-
-      component->active_candidate = local;
-      component->peer_addr = &remote->addr;
-    }
+  component->active_candidate = local;
+  component->peer_addr = &remote->addr;
 
   /* send STUN response */
 
