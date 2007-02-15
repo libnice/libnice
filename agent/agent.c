@@ -1075,7 +1075,9 @@ nice_agent_send (
  */
 /*
 void
-nice_agent_set_stun_server (NiceAddress *addr, guint16 port)
+nice_agent_set_stun_server (
+  NiceAgent *agent,
+  NiceAddress *addr)
 {
 }
 */
