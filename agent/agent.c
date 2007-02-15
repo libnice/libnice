@@ -162,7 +162,7 @@ static guint signals[N_SIGNALS];
 
 
 static Stream *
-_stream_lookup (NiceAgent *agent, guint stream_id)
+find_stream (NiceAgent *agent, guint stream_id)
 {
   GSList *i;
 
@@ -179,7 +179,7 @@ _stream_lookup (NiceAgent *agent, guint stream_id)
 
 
 static gboolean
-_component_lookup (
+find_component (
   NiceAgent *agent,
   guint stream_id,
   guint component_id,
@@ -191,7 +191,7 @@ _component_lookup (
   if (component_id != 1)
     return FALSE;
 
-  s = _stream_lookup (agent, stream_id);
+  s = find_stream (agent, stream_id);
 
   if (stream == NULL)
     return FALSE;
@@ -416,7 +416,7 @@ nice_agent_remove_stream (
 
   Stream *stream;
 
-  stream = _stream_lookup (agent, stream_id);
+  stream = find_stream (agent, stream_id);
 
   if (!stream)
     return;
@@ -545,7 +545,7 @@ _local_candidate_lookup (NiceAgent *agent, guint candidate_id)
 
 
 static NiceCandidate *
-_local_candidate_lookup_by_fd (NiceAgent *agent, guint fd)
+find_candidate_by_fd (NiceAgent *agent, guint fd)
 {
   GSList *i;
 
@@ -933,12 +933,12 @@ nice_agent_recv (
                 Stream *stream;
                 Component *component;
 
-                candidate = _local_candidate_lookup_by_fd (agent, j);
+                candidate = find_candidate_by_fd (agent, j);
 
                 if (candidate == NULL)
                   continue;
 
-                if (!_component_lookup (agent, candidate->stream_id,
+                if (!find_component (agent, candidate->stream_id,
                       candidate->component_id, &stream, &component))
                   continue;
 
@@ -968,10 +968,10 @@ nice_agent_recv_sock (
   Stream *stream;
   Component *component;
 
-  candidate = _local_candidate_lookup_by_fd (agent, sock);
+  candidate = find_candidate_by_fd (agent, sock);
   g_assert (candidate);
 
-  if (!_component_lookup (agent, stream_id, component_id, &stream, &component))
+  if (!find_component (agent, stream_id, component_id, &stream, &component))
     return 0;
 
   return _nice_agent_recv (agent, stream, component, candidate, buf_len, buf);
@@ -1049,7 +1049,7 @@ nice_agent_poll_read (
                   gchar buf[1024];
                   guint len;
 
-                  if (!_component_lookup (agent, candidate->stream_id,
+                  if (!find_component (agent, candidate->stream_id,
                         candidate->component_id, &stream, &component))
                     break;
 
@@ -1078,7 +1078,7 @@ nice_agent_send (
   Stream *stream;
   Component *component;
 
-  if (!_component_lookup (agent, stream_id, component_id, &stream, &component))
+  if (!find_component (agent, stream_id, component_id, &stream, &component))
     return;
 
   if (component->active_candidate != NULL)
@@ -1280,7 +1280,7 @@ nice_agent_main_context_attach (
           Component *component;
           IOCtx *ctx;
 
-          if (!_component_lookup (agent, candidate->stream_id,
+          if (!find_component (agent, candidate->stream_id,
                 candidate->component_id, &stream, &component))
             continue;
 
