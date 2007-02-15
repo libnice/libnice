@@ -36,7 +36,7 @@ struct _Component
   /* the local candidate that last received a valid connectivity check */
   NiceCandidate *active_candidate;
   /* the remote address that the last connectivity check came from */
-  NiceAddress *peer_addr;
+  NiceAddress peer_addr;
   guint id;
   NiceComponentState state;
 };
@@ -673,7 +673,7 @@ RESPOND:
   /* update candidate/peer affinity */
 
   component->active_candidate = local;
-  component->peer_addr = &remote->addr;
+  component->peer_addr = from;
 
   /* send STUN response */
 
@@ -1092,7 +1092,7 @@ nice_agent_send (
 #endif
 
       sock = &component->active_candidate->sock;
-      addr = component->peer_addr;
+      addr = &component->peer_addr;
       nice_udp_socket_send (sock, addr, len, buf);
     }
 }
