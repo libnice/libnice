@@ -1192,6 +1192,42 @@ nice_agent_dispose (GObject *object)
 }
 
 
+typedef struct _IOCtx IOCtx;
+
+struct _IOCtx
+{
+  NiceAgent *agent;
+  Stream *stream;
+  Component *component;
+  NiceCandidate *candidate;
+};
+
+
+static IOCtx *
+io_ctx_new (
+  NiceAgent *agent,
+  Stream *stream,
+  Component *component,
+  NiceCandidate *candidate)
+{
+  IOCtx *ctx;
+
+  ctx = g_slice_new0 (IOCtx);
+  ctx->agent = agent;
+  ctx->stream = stream;
+  ctx->component = component;
+  ctx->candidate = candidate;
+  return ctx;
+}
+
+
+static void
+io_ctx_free (IOCtx *ctx)
+{
+  g_slice_free (IOCtx, ctx);
+}
+
+
 static gboolean
 nice_agent_g_source_cb (
   GIOChannel *source,
@@ -1201,28 +1237,20 @@ nice_agent_g_source_cb (
 {
   /* return value is whether to keep the source */
 
-  NiceAgent *agent = data;
-  NiceCandidate *candidate;
-  Stream *stream;
-  Component *component;
+  IOCtx *ctx = data;
+  NiceAgent *agent = ctx->agent;
+  Stream *stream = ctx->stream;
+  Component *component = ctx->component;
+  NiceCandidate *candidate = ctx->candidate;
   gchar buf[1024];
   guint len;
 
-  candidate = _local_candidate_lookup_by_fd (agent,
-      g_io_channel_unix_get_fd (source));
-
-  if (candidate == NULL)
-    return TRUE;
-
-  if (!_component_lookup (agent, candidate->stream_id,
-        candidate->component_id, &stream, &component))
-    return TRUE;
-
-  len = _nice_agent_recv (agent, stream, component, candidate, 1024, buf);
+  len = _nice_agent_recv (agent, stream, component, candidate, 1024,
+      buf);
 
   if (len > 0)
-    agent->read_func (agent, stream->id, component->id, len, buf,
-        agent->read_func_data);
+    agent->read_func (agent, candidate->stream_id, candidate->component_id,
+        len, buf, agent->read_func_data);
 
   return TRUE;
 }
@@ -1248,12 +1276,20 @@ nice_agent_main_context_attach (
           NiceCandidate *candidate = i->data;
           GIOChannel *io;
           GSource *source;
+          Stream *stream;
+          Component *component;
+          IOCtx *ctx;
+
+          if (!_component_lookup (agent, candidate->stream_id,
+                candidate->component_id, &stream, &component))
+            continue;
 
           io = g_io_channel_unix_new (candidate->sock.fileno);
           source = g_io_create_watch (io, G_IO_IN);
+          ctx = io_ctx_new (agent, stream, component, candidate);
           g_source_set_callback (source, (GSourceFunc) nice_agent_g_source_cb,
-              agent, NULL);
-          g_source_attach (source, ctx);
+              ctx, (GDestroyNotify) io_ctx_free);
+          g_source_attach (source, NULL);
         }
     }
 
