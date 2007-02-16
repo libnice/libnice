@@ -1070,7 +1070,6 @@ void
 nice_agent_send (
   NiceAgent *agent,
   guint stream_id,
-  G_GNUC_UNUSED
   guint component_id,
   guint len,
   const gchar *buf)
