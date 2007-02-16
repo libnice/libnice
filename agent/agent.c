@@ -193,7 +193,7 @@ find_component (
 
   s = find_stream (agent, stream_id);
 
-  if (stream == NULL)
+  if (s == NULL)
     return FALSE;
 
   if (stream)
