@@ -664,8 +664,8 @@ RESPOND:
       gchar *ip;
 
       ip = nice_address_to_string (&remote->addr);
-      g_debug ("got valid connectivity check for candidate %d (%s:%d)",
-          remote->id, ip, remote->addr.port);
+      g_debug ("s%d:%d: got valid connectivity check for candidate %d (%s:%d)",
+          stream->id, component->id, remote->id, ip, remote->addr.port);
       g_free (ip);
     }
 #endif
@@ -743,8 +743,9 @@ ERROR:
       gchar *ip;
 
       ip = nice_address_to_string (&remote->addr);
-      g_debug ("got invalid connectivity check for candidate %d (%s:%d)",
-          remote->id, ip, remote->addr.port);
+      g_debug (
+          "s%d:%d: got invalid connectivity check for candidate %d (%s:%d)",
+          stream->id, component->id, remote->id, ip, remote->addr.port);
       g_free (ip);
     }
 #endif
@@ -1086,8 +1087,8 @@ nice_agent_send (
       NiceAddress *addr;
 
 #if 0
-      g_debug ("sending %d bytes to %08x:%d", len,
-          component->peer_addr->addr_ipv4, component->peer_addr->port);
+      g_debug ("s%d:%d: sending %d bytes to %08x:%d", stream_id, component_id,
+          len, component->peer_addr->addr_ipv4, component->peer_addr->port);
 #endif
 
       sock = &component->active_candidate->sock;
