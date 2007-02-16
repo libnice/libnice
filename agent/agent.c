@@ -352,6 +352,7 @@ nice_agent_add_local_host_candidate (
   nice_rng_generate_bytes_print (rng, 8, candidate->password);
   nice_rng_free (rng);
 
+  /* allocate socket */
   /* XXX: handle error */
   if (!nice_udp_socket_factory_make (agent->socket_factory,
         &(candidate->sock), address))
@@ -512,7 +513,7 @@ nice_agent_add_remote_candidate (
   candidate = nice_candidate_new (type);
   candidate->stream_id = stream_id;
   candidate->component_id = component_id;
-  /* do remote candidates need IDs? */
+  /* XXX: do remote candidates need IDs? */
   candidate->id = 0;
   candidate->addr = *addr;
   strncpy (candidate->username, username, sizeof (candidate->username));
@@ -615,8 +616,10 @@ _handle_stun_binding_request (
     goto ERROR;
 
   /* validate username */
-  /* XXX: what about the case where the username uniquely identifies a remote
-   * candidate, but the transport address is not the one we expected?
+  /* XXX: Should first try and find a remote candidate with a matching
+   * transport address, and fall back to matching on username only after that.
+   * That way, we know to always generate a new remote candidate if the
+   * transport address didn't match.
    */
 
   for (i = agent->remote_candidates; i; i = i->next)
@@ -671,6 +674,10 @@ RESPOND:
 #endif
 
   /* update candidate/peer affinity */
+  /* Note that @from might be different to @remote->addr; for ICE, this
+   * (always?) creates a new peer-reflexive remote candidate (§7.2).
+   */
+  /* XXX: test case where @from != @remote->addr. */
 
   component->active_candidate = local;
   component->peer_addr = from;
