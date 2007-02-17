@@ -11,13 +11,13 @@
 
 static void
 recv_cb (
-    NiceAgent *agent,
-    guint stream_id,
-    guint candidate_id,
-    guint len,
-    gchar *buf,
-    G_GNUC_UNUSED
-    gpointer user_data)
+  NiceAgent *agent,
+  guint stream_id,
+  guint candidate_id,
+  guint len,
+  gchar *buf,
+  G_GNUC_UNUSED
+  gpointer user_data)
 {
   nice_agent_send (agent, stream_id, candidate_id, len, buf);
 }
