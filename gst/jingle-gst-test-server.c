@@ -118,11 +118,15 @@ main (gint argc, gchar *argv[])
 
     {
       NiceCandidate *candidate;
+      GSList *candidates;
 
-      candidate = agent->local_candidates->data;
+      candidates = nice_agent_get_local_candidates (agent, 1, 1);
+      g_assert (candidates);
+      candidate = candidates->data;
       len = g_snprintf (buf, 1024, "0 0 X1 127.0.0.1 %d %s %s",
           candidate->addr.port, candidate->username, candidate->password);
       nice_udp_socket_send (&sock, &send_addr, len, buf);
+      g_slist_free (candidates);
     }
 
   // set up signalling callback

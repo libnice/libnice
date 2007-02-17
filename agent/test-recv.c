@@ -20,7 +20,6 @@ main (void)
   g_assert (nice_address_set_ipv4_from_string (&addr, "192.168.0.1"));
   nice_agent_add_local_address (agent, &addr);
   nice_agent_add_stream (agent, 1);
-  g_assert (agent->local_candidates != NULL);
 
   /* recieve an RTP packet */
 
@@ -29,8 +28,11 @@ main (void)
       NiceUDPSocket *sock;
       guint len;
       gchar buf[1024];
+      GSList *candidates;
 
-      candidate = agent->local_candidates->data;
+      candidates = nice_agent_get_local_candidates (agent, 1, 1);
+      candidate = candidates->data;
+      g_slist_free (candidates);
       sock = &(candidate->sock);
       nice_udp_fake_socket_push_recv (sock, &addr, 7, "\x80lalala");
       len = nice_agent_recv (agent, candidate->stream_id,

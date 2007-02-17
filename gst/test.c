@@ -22,14 +22,24 @@ send_connectivity_check (
   NiceCandidate *remote;
   gchar *username;
 
-  g_assert (agent->local_candidates);
-  g_assert (agent->local_candidates->data);
-  local = agent->local_candidates->data;
-  g_assert (local->id == 1);
+    {
+      GSList *candidates;
 
-  g_assert (agent->remote_candidates);
-  g_assert (agent->remote_candidates->data);
-  remote = agent->remote_candidates->data;
+      candidates = nice_agent_get_local_candidates (agent, 1, 1);
+      g_assert (candidates);
+      local = candidates->data;
+      g_assert (local->id == 1);
+      g_slist_free (candidates);
+    }
+
+    {
+      GSList *candidates;
+
+      candidates = nice_agent_get_remote_candidates (agent, 1, 1);
+      g_assert (candidates);
+      remote = candidates->data;
+      g_slist_free (candidates);
+    }
 
   sock = &local->sock;
 
@@ -99,12 +109,22 @@ recv_cb (
   /* return value is whether to keep the source */
 
   NiceAgent *agent = data;
-  NiceCandidate *candidate = agent->local_candidates->data;
-  NiceUDPSocket *sock = &candidate->sock;
+  NiceCandidate *candidate;
+  NiceUDPSocket *sock;
   NiceAddress from;
   guint len;
   gchar buf[1024];
 
+    {
+      GSList *candidates;
+
+      candidates = nice_agent_get_local_candidates (agent, 1, 1);
+      g_assert (candidates);
+      candidate = candidates->data;
+      g_slist_free (candidates);
+    }
+
+  sock = &candidate->sock;
   len = nice_udp_fake_socket_pop_send (
       sock, &from, 1024, buf);
 
@@ -137,9 +157,9 @@ main (gint argc, gchar *argv[])
   nice_agent_add_local_address (agent, &addr);
   nice_address_set_ipv4 (&addr, 0xc0a80002);
   addr.port = 2345;
+  nice_agent_add_stream (agent, 1);
   nice_agent_add_remote_candidate (agent, 1, 1, NICE_CANDIDATE_TYPE_HOST,
       &addr, "username", "password");
-  nice_agent_add_stream (agent, 1);
 
   // send connectivity check so that sending works
 
@@ -150,9 +170,13 @@ main (gint argc, gchar *argv[])
       GSource *source;
       NiceCandidate *candidate;
       NiceUDPSocket *sock;
+      GSList *candidates;
 
-      candidate = agent->local_candidates->data;
+      candidates = nice_agent_get_local_candidates (agent, 1, 1);
+      g_assert (candidates);
+      candidate = candidates->data;
       sock = &candidate->sock;
+      g_slist_free (candidates);
 
       // send test packet
 

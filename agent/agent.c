@@ -39,6 +39,8 @@ struct _Component
   NiceAddress peer_addr;
   guint id;
   NiceComponentState state;
+  GSList *local_candidates;
+  GSList *remote_candidates;
 };
 
 
@@ -58,6 +60,24 @@ component_new (
 static void
 component_free (Component *cmp)
 {
+  GSList *i;
+
+  for (i = cmp->local_candidates; i; i = i->next)
+    {
+      NiceCandidate *candidate = i->data;
+
+      nice_candidate_free (candidate);
+    }
+
+  for (i = cmp->remote_candidates; i; i = i->next)
+    {
+      NiceCandidate *candidate = i->data;
+
+      nice_candidate_free (candidate);
+    }
+
+  g_slist_free (cmp->local_candidates);
+  g_slist_free (cmp->remote_candidates);
   g_slice_free (Component, cmp);
 }
 
@@ -336,6 +356,10 @@ nice_agent_add_local_host_candidate (
 {
   NiceRNG *rng;
   NiceCandidate *candidate;
+  Component *component;
+
+  if (!find_component (agent, stream_id, component_id, NULL, &component))
+    return;
 
   candidate = nice_candidate_new (NICE_CANDIDATE_TYPE_HOST);
   candidate->id = agent->next_candidate_id++;
@@ -343,7 +367,7 @@ nice_agent_add_local_host_candidate (
   candidate->component_id = component_id;
   candidate->addr = *address;
   candidate->base_addr = *address;
-  agent->local_candidates = g_slist_append (agent->local_candidates,
+  component->local_candidates = g_slist_append (component->local_candidates,
       candidate);
 
   /* generate username/password */
@@ -422,37 +446,6 @@ nice_agent_remove_stream (
   if (!stream)
     return;
 
-  /* remove candidates */
-
-    {
-      GSList *i;
-      GSList *old_list = agent->local_candidates;
-      GSList *free_list = NULL;
-      GSList *new_list = NULL;
-
-      for (i = agent->local_candidates; i; i = i->next)
-        {
-          NiceCandidate *candidate = i->data;
-
-          if (candidate->stream_id == stream_id)
-            free_list = g_slist_append (free_list, candidate);
-          else
-            new_list = g_slist_append (new_list, candidate);
-        }
-
-      agent->local_candidates = new_list;
-
-      for (i = free_list; i; i = i->next)
-        {
-          NiceCandidate *candidate = i->data;
-
-          nice_candidate_free (candidate);
-        }
-
-      g_slist_free (free_list);
-      g_slist_free (old_list);
-    }
-
   /* remove stream */
 
   stream_free (stream);
@@ -506,9 +499,11 @@ nice_agent_add_remote_candidate (
   const gchar *username,
   const gchar *password)
 {
-  /* append to agent->remote_candidates */
-
   NiceCandidate *candidate;
+  Component *component;
+
+  if (!find_component (agent, stream_id, component_id, NULL, &component))
+    return;
 
   candidate = nice_candidate_new (type);
   candidate->stream_id = stream_id;
@@ -519,7 +514,7 @@ nice_agent_add_remote_candidate (
   strncpy (candidate->username, username, sizeof (candidate->username));
   strncpy (candidate->password, password, sizeof (candidate->password));
 
-  agent->remote_candidates = g_slist_append (agent->remote_candidates,
+  component->remote_candidates = g_slist_append (component->remote_candidates,
       candidate);
 
   /* later: for each component, generate a new check with the new candidate */
@@ -546,11 +541,11 @@ _local_candidate_lookup (NiceAgent *agent, guint candidate_id)
 
 
 static NiceCandidate *
-find_candidate_by_fd (NiceAgent *agent, guint fd)
+find_candidate_by_fd (Component *component, guint fd)
 {
   GSList *i;
 
-  for (i = agent->local_candidates; i; i = i->next)
+  for (i = component->local_candidates; i; i = i->next)
     {
       NiceCandidate *c = i->data;
 
@@ -622,7 +617,7 @@ _handle_stun_binding_request (
    * transport address didn't match.
    */
 
-  for (i = agent->remote_candidates; i; i = i->next)
+  for (i = component->remote_candidates; i; i = i->next)
     {
       guint len;
 
@@ -904,21 +899,20 @@ nice_agent_recv (
   guint max_fd = 0;
   gint num_readable;
   GSList *i;
+  Stream *stream;
+  Component *component;
+
+  if (!find_component (agent, stream_id, component_id, &stream, &component))
+    return 0;
 
   FD_ZERO (&fds);
 
-  for (i = agent->local_candidates; i; i = i->next)
+  for (i = component->local_candidates; i; i = i->next)
     {
-      NiceCandidate *candidate;
+      NiceCandidate *candidate = i->data;
 
-      candidate = i->data;
-
-      if (candidate->stream_id == stream_id &&
-          candidate->component_id == component_id)
-        {
-          FD_SET (candidate->sock.fileno, &fds);
-          max_fd = MAX (candidate->sock.fileno, max_fd);
-        }
+      FD_SET (candidate->sock.fileno, &fds);
+      max_fd = MAX (candidate->sock.fileno, max_fd);
     }
 
   /* Loop on candidate sockets until we find one that has non-STUN data
@@ -938,18 +932,9 @@ nice_agent_recv (
             if (FD_ISSET (j, &fds))
               {
                 NiceCandidate *candidate;
-                Stream *stream;
-                Component *component;
 
-                candidate = find_candidate_by_fd (agent, j);
-
-                if (candidate == NULL)
-                  continue;
-
-                if (!find_component (agent, candidate->stream_id,
-                      candidate->component_id, &stream, &component))
-                  continue;
-
+                candidate = find_candidate_by_fd (component, j);
+                g_assert (candidate);
                 len = _nice_agent_recv (agent, stream, component, candidate,
                     buf_len, buf);
 
@@ -976,13 +961,14 @@ nice_agent_recv_sock (
   Stream *stream;
   Component *component;
 
-  candidate = find_candidate_by_fd (agent, sock);
-  g_assert (candidate);
-
   if (!find_component (agent, stream_id, component_id, &stream, &component))
     return 0;
 
-  return _nice_agent_recv (agent, stream, component, candidate, buf_len, buf);
+  candidate = find_candidate_by_fd (component, sock);
+  g_assert (candidate);
+
+  return _nice_agent_recv (agent, stream, stream->component,
+      candidate, buf_len, buf);
 }
 
 
@@ -1014,13 +1000,19 @@ nice_agent_poll_read (
 
   FD_ZERO (&fds);
 
-  for (i = agent->local_candidates; i; i = i->next)
+  for (i = agent->streams; i; i = i->next)
     {
-      NiceCandidate *candidate;
+      GSList *j;
+      Stream *stream = i->data;
+      Component *component = stream->component;
 
-      candidate = i->data;
-      FD_SET (candidate->sock.fileno, &fds);
-      max_fd = MAX (candidate->sock.fileno, max_fd);
+      for (j = component->local_candidates; j; j = j->next)
+        {
+          NiceCandidate *candidate = j->data;
+
+          FD_SET (candidate->sock.fileno, &fds);
+          max_fd = MAX (candidate->sock.fileno, max_fd);
+        }
     }
 
   for (i = other_fds; i; i = i->next)
@@ -1041,33 +1033,41 @@ nice_agent_poll_read (
   for (j = 0; j <= max_fd; j++)
     if (FD_ISSET (j, &fds))
       {
-        GSList *i;
-
         if (g_slist_find (other_fds, GUINT_TO_POINTER (j)))
           ret = g_slist_append (ret, GUINT_TO_POINTER (j));
         else
-          for (i = agent->local_candidates; i; i = i->next)
-            {
-              NiceCandidate *candidate = i->data;
+          {
+            NiceCandidate *candidate = NULL;
+            Stream *stream;
+            gchar buf[1024];
+            guint len;
 
-              if (candidate->sock.fileno == j)
-                {
-                  Stream *stream;
-                  Component *component;
-                  gchar buf[1024];
-                  guint len;
+            for (i = agent->streams; i; i = i->next)
+              {
+                Stream *s = i->data;
+                Component *c = s->component;
 
-                  if (!find_component (agent, candidate->stream_id,
-                        candidate->component_id, &stream, &component))
-                    break;
+                candidate = find_candidate_by_fd (c, j);
 
-                  len = _nice_agent_recv (agent, stream, component, candidate,
-                      1024, buf);
+                if (candidate != NULL)
+                  break;
+              }
 
-                  if (len && func != NULL)
-                    func (agent, stream->id, component->id, len, buf, data);
-                }
-            }
+            if (candidate == NULL)
+              break;
+
+            stream = find_stream (agent, candidate->stream_id);
+
+            if (stream == NULL)
+              break;
+
+            len = _nice_agent_recv (agent, stream, stream->component,
+                candidate, 1024, buf);
+
+            if (len && func != NULL)
+              func (agent, stream->id, candidate->component_id, len, buf,
+                  data);
+          }
       }
 
   return ret;
@@ -1085,8 +1085,8 @@ nice_agent_send (
   Stream *stream;
   Component *component;
 
-  if (!find_component (agent, stream_id, component_id, &stream, &component))
-    return;
+  stream = find_stream (agent, stream_id);
+  component = stream->component;
 
   if (component->active_candidate != NULL)
     {
@@ -1132,20 +1132,36 @@ nice_agent_get_local_candidates (
   NiceAgent *agent,
   guint stream_id,
   guint component_id)
+{ Component *component;
+
+  if (!find_component (agent, stream_id, component_id, NULL, &component))
+    return NULL;
+
+  return g_slist_copy (component->local_candidates);
+}
+
+
+/**
+ * nice_agent_get_remote_candidates:
+ *  @agent: A NiceAgent
+ *
+ * The caller owns the returned GSList but not the candidates contained within
+ * it.
+ *
+ * Returns: a GSList of remote candidates belonging to @agent
+ **/
+GSList *
+nice_agent_get_remote_candidates (
+  NiceAgent *agent,
+  guint stream_id,
+  guint component_id)
 {
-  GSList *candidates = NULL;
-  GSList *i;
+  Component *component;
 
-  for (i = agent->local_candidates; i; i = i->next)
-    {
-      NiceCandidate *candidate = i->data;
+  if (!find_component (agent, stream_id, component_id, NULL, &component))
+    return NULL;
 
-      if (candidate->stream_id == stream_id &&
-          candidate->component_id == component_id)
-        candidates = g_slist_append (candidates, candidate);
-    }
-
-  return candidates;
+  return g_slist_copy (component->remote_candidates);
 }
 
 
@@ -1164,26 +1180,6 @@ nice_agent_dispose (GObject *object)
 
   g_slist_free (agent->local_addresses);
   agent->local_addresses = NULL;
-
-  for (i = agent->local_candidates; i; i = i->next)
-    {
-      NiceCandidate *c = i->data;
-
-      nice_candidate_free (c);
-    }
-
-  g_slist_free (agent->local_candidates);
-  agent->local_candidates = NULL;
-
-  for (i = agent->remote_candidates; i; i = i->next)
-    {
-      NiceCandidate *c = i->data;
-
-      nice_candidate_free (c);
-    }
-
-  g_slist_free (agent->remote_candidates);
-  agent->remote_candidates = NULL;
 
   for (i = agent->streams; i; i = i->next)
     {
@@ -1271,26 +1267,25 @@ nice_agent_main_context_attach (
   NiceAgentRecvFunc func,
   gpointer data)
 {
+  GSList *i;
+
   if (agent->main_context_set)
     return FALSE;
 
   /* attach candidates */
 
+  for (i = agent->streams; i; i = i->next)
     {
-      GSList *i;
+      GSList *j;
+      Stream *stream = i->data;
+      Component *component = stream->component;
 
-      for (i = agent->local_candidates; i; i = i->next)
+      for (j = component->local_candidates; j; j = j->next)
         {
-          NiceCandidate *candidate = i->data;
+          NiceCandidate *candidate = j->data;
           GIOChannel *io;
           GSource *source;
-          Stream *stream;
-          Component *component;
           IOCtx *ctx;
-
-          if (!find_component (agent, candidate->stream_id,
-                candidate->component_id, &stream, &component))
-            continue;
 
           io = g_io_channel_unix_new (candidate->sock.fileno);
           source = g_io_create_watch (io, G_IO_IN);

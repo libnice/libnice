@@ -43,9 +43,12 @@ main (void)
     {
       NiceUDPSocket *sock;
       NiceCandidate *candidate;
+      GSList *candidates;
 
-      candidate = agent->local_candidates->data;
+      candidates = nice_agent_get_local_candidates (agent, 1, 1);
+      candidate = candidates->data;
       sock = &candidate->sock;
+      g_slist_free (candidates);
 
       nice_udp_fake_socket_push_recv (sock, &addr, 6, "\x80hello");
     }

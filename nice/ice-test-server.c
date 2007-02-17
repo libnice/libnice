@@ -26,6 +26,7 @@ make_agent (
   NiceAgent *agent;
   NiceAddress addr_local;
   NiceCandidate *candidate;
+  GSList *candidates;
 
   agent = nice_agent_new (factory);
 
@@ -35,10 +36,12 @@ make_agent (
   nice_agent_add_local_address (agent, &addr_local);
   nice_agent_add_stream (agent, 1);
 
-  g_assert (agent->local_candidates != NULL);
-  candidate = agent->local_candidates->data;
+  candidates = nice_agent_get_local_candidates (agent, 1, 1);
+  g_assert (candidates != NULL);
+  candidate = candidates->data;
   g_debug ("allocated socket %d port %d for candidate %d",
       candidate->sock.fileno, candidate->sock.addr.port, candidate->id);
+  g_slist_free (candidates);
 
   *ret_agent = agent;
   *ret_sock = &(candidate->sock);
@@ -91,12 +94,17 @@ handle_connection (guint fileno, const struct sockaddr_in *sin, gpointer data)
   if (!make_agent ((gchar *) data, &factory, &agent, &sock))
     return;
 
-  /* send first local candidate to remote end */
-  candidate_str = nice_candidate_to_string (
-      agent->local_candidates->data);
-  send (fileno, candidate_str, strlen (candidate_str), 0);
-  send (fileno, "\n", 1, 0);
-  g_free (candidate_str);
+    {
+      GSList *candidates;
+
+      /* send first local candidate to remote end */
+      candidates = nice_agent_get_local_candidates (agent, 1, 1);
+      candidate_str = nice_candidate_to_string (candidates->data);
+      send (fileno, candidate_str, strlen (candidate_str), 0);
+      send (fileno, "\n", 1, 0);
+      g_free (candidate_str);
+      g_slist_free (candidates);
+    }
 
   /* event loop */
 

@@ -8,10 +8,9 @@
 static void
 test_stun_no_password (
   NiceAgent *agent,
-  NiceAddress from)
+  NiceAddress from,
+  NiceUDPSocket *sock)
 {
-  NiceCandidate *candidate;
-  NiceUDPSocket *sock;
   NiceAddress to = {0,};
   guint len;
   gchar buf[1024];
@@ -19,9 +18,6 @@ test_stun_no_password (
   gchar *packed;
 
   memset (buf, '\0', 1024);
-
-  candidate = agent->local_candidates->data;
-  sock = &candidate->sock;
 
     {
       StunMessage *breq;
@@ -62,10 +58,9 @@ test_stun_no_password (
 static void
 test_stun_invalid_password (
   NiceAgent *agent,
-  NiceAddress from)
+  NiceAddress from,
+  NiceUDPSocket *sock)
 {
-  NiceCandidate *candidate;
-  NiceUDPSocket *sock;
   NiceAddress to = {0,};
   guint len;
   gchar buf[1024];
@@ -73,9 +68,6 @@ test_stun_invalid_password (
   gchar *packed;
 
   memset (buf, '\0', 1024);
-
-  candidate = agent->local_candidates->data;
-  sock = &candidate->sock;
 
     {
       StunMessage *breq;
@@ -117,10 +109,10 @@ test_stun_invalid_password (
 static void
 test_stun_valid_password (
   NiceAgent *agent,
-  NiceAddress from)
+  NiceAddress from,
+  NiceCandidate *candidate,
+  NiceUDPSocket *sock)
 {
-  NiceCandidate *candidate;
-  NiceUDPSocket *sock;
   NiceAddress to = {0,};
   guint len;
   guint packed_len;
@@ -130,13 +122,7 @@ test_stun_valid_password (
 
   memset (buf, '\0', 1024);
 
-  candidate = agent->local_candidates->data;
-  sock = &candidate->sock;
-
-  username = g_strconcat (
-      ((NiceCandidate *) agent->local_candidates->data)->username,
-      "username",
-      NULL);
+  username = g_strconcat (candidate->username, "username", NULL);
 
     {
       StunMessage *breq;
@@ -190,6 +176,7 @@ main (void)
   NiceCandidate *candidate;
   NiceUDPSocketFactory factory;
   NiceUDPSocket *sock;
+  GSList *candidates;
 
   g_type_init ();
 
@@ -205,14 +192,16 @@ main (void)
   nice_agent_add_stream (agent, 1);
   nice_agent_add_remote_candidate (agent, 1, 1, NICE_CANDIDATE_TYPE_HOST,
       &remote_addr, "username", "password");
-  g_assert (agent->local_candidates != NULL);
-  candidate = agent->local_candidates->data;
+
+  candidates = nice_agent_get_local_candidates (agent, 1, 1);
+  candidate = candidates->data;
   sock = &(candidate->sock);
+  g_slist_free (candidates);
 
   /* run tests */
-  test_stun_no_password (agent, remote_addr);
-  test_stun_invalid_password (agent, remote_addr);
-  test_stun_valid_password (agent, remote_addr);
+  test_stun_no_password (agent, remote_addr, sock);
+  test_stun_invalid_password (agent, remote_addr, sock);
+  test_stun_valid_password (agent, remote_addr, candidate, sock);
 
   /* clean up */
   g_object_unref (agent);

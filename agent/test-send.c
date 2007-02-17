@@ -59,14 +59,24 @@ send_connectivity_check (
   NiceCandidate *remote;
   gchar *username;
 
-  g_assert (agent->local_candidates);
-  g_assert (agent->local_candidates->data);
-  local = agent->local_candidates->data;
-  g_assert (local->id == 1);
+  {
+    GSList *candidates;
 
-  g_assert (agent->remote_candidates);
-  g_assert (agent->remote_candidates->data);
-  remote = agent->remote_candidates->data;
+    candidates = nice_agent_get_local_candidates (agent, 1, 1);
+    g_assert (g_slist_length (candidates) > 0);
+    local = candidates->data;
+    g_assert (local->id == 1);
+    g_slist_free (candidates);
+  }
+
+  {
+    GSList *candidates;
+
+    candidates = nice_agent_get_remote_candidates (agent, 1, 1);
+    g_assert (g_slist_length (candidates) > 0);
+    remote = candidates->data;
+    g_slist_free (candidates);
+  }
 
   sock = &local->sock;
 
@@ -165,13 +175,19 @@ main (void)
 
   {
     NiceUDPSocket *sock;
-    NiceCandidate *candidate;
     NiceAddress addr;
     gchar buf[1024];
     guint len;
 
-    candidate = agent->local_candidates->data;
-    sock = &candidate->sock;
+      {
+        GSList *candidates;
+        NiceCandidate *candidate;
+
+        candidates = nice_agent_get_local_candidates (agent, 1, 1);
+        candidate = candidates->data;
+        sock = &candidate->sock;
+        g_slist_free (candidates);
+      }
 
     /* If we send data before we've received a connectivity check, we won't
      * have an affinity for any of the remote candidates, so the packet will

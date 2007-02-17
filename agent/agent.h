@@ -52,8 +52,6 @@ struct _NiceAgent
   guint next_stream_id;
   NiceUDPSocketFactory *socket_factory;
   GSList *local_addresses;
-  GSList *local_candidates;
-  GSList *remote_candidates;
   GSList *streams;
   gboolean main_context_set;
   GMainContext *main_context;
@@ -130,6 +128,12 @@ nice_agent_send (
 
 GSList *
 nice_agent_get_local_candidates (
+  NiceAgent *agent,
+  guint stream_id,
+  guint component_id);
+
+GSList *
+nice_agent_get_remote_candidates (
   NiceAgent *agent,
   guint stream_id,
   guint component_id);

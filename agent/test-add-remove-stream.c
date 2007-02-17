@@ -24,15 +24,12 @@ main (void)
   g_assert (nice_agent_add_stream (agent, 1) == 3);
 
   g_assert (NULL != agent->streams);
-  g_assert (NULL != agent->local_candidates);
 
   nice_agent_remove_stream (agent, 1);
   nice_agent_remove_stream (agent, 2);
   nice_agent_remove_stream (agent, 3);
 
   g_assert (NULL == agent->streams);
-  /* check no local candidates were left behind when streams were removed*/
-  g_assert (NULL == agent->local_candidates);
 
   g_object_unref (agent);
   nice_udp_socket_factory_close (&factory);

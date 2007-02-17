@@ -32,7 +32,6 @@ main (void)
   NiceAgent *agent;
   NiceAddress addr = {0,};
   NiceUDPSocketFactory factory;
-  NiceCandidate *candidate;
   NiceUDPSocket *sock;
   gint pipe_fds[2];
   GSList *fds = NULL;
@@ -50,8 +49,15 @@ main (void)
   nice_agent_add_local_address (agent, &addr);
   nice_agent_add_stream (agent, 1);
 
-  candidate = agent->local_candidates->data;
-  sock = &candidate->sock;
+      {
+        GSList *candidates;
+        NiceCandidate *candidate;
+
+        candidates = nice_agent_get_local_candidates (agent, 1, 1);
+        candidate = candidates->data;
+        sock = &candidate->sock;
+        g_slist_free (candidates);
+      }
 
   /* set up pipe and fd list */
 
