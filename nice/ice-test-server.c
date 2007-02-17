@@ -188,6 +188,8 @@ tcp_listen_loop (
 int
 main (int argc, char **argv)
 {
+  g_type_init ();
+
   if (argc != 2)
     {
       g_print ("usage: %s interface\n", argv[0]);
