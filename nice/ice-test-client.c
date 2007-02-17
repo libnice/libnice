@@ -94,7 +94,7 @@ handle_connection (guint sock)
     {
       gchar *username;
 
-      username = g_strdup_printf ("lala%s", candidate->username);
+      username = g_strdup_printf ("%slala", candidate->username);
       send_stun (&udpsock, candidate->addr, username);
       g_free (username);
     }
