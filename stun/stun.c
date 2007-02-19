@@ -231,7 +231,8 @@ stun_message_unpack (guint length, const gchar *s)
 
   /* message header is 20 bytes */
 
-  g_assert (length >= 20);
+  if (length < 20)
+    return NULL;
 
   /* count the number of attributes */
 

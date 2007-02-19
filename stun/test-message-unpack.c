@@ -4,7 +4,16 @@
 int
 main (void)
 {
-  StunMessage *msg = stun_message_unpack (32,
+  StunMessage *msg;
+
+  /* invalid message */
+
+  msg = stun_message_unpack (5, "hello");
+  g_assert (msg == NULL);
+
+  /* valid message */
+
+  msg = stun_message_unpack (32,
     "\x00\x01"         // type
     "\x00\x0c"         // length
     "\x00\x01\x02\x03" // transaction ID
