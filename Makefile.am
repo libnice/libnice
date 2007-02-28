@@ -9,8 +9,11 @@ SUBDIRS = \
 	udp \
 	random \
 	agent \
-	nice \
-	gst
+	nice
+
+if WITH_GSTREAMER
+ 	SUBDIRS += gst
+endif
 
 EXTRA_DIST = scripts common.mk
 
