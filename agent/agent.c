@@ -576,7 +576,7 @@ _handle_stun_binding_request (
    *   Jingle P2P:
    *     username = local candidate username + remote candidate username
    *   ICE:
-   *     username = local candidate username + ":" + local candidate username
+   *     username = local candidate username + ":" + remote candidate username
    *     password = local candidate pwd
    *     priority = priority to use if a new candidate is generated
    *
