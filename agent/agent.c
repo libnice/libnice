@@ -168,6 +168,7 @@ G_DEFINE_TYPE (NiceAgent, nice_agent, G_TYPE_OBJECT);
 enum
 {
   PROP_SOCKET_FACTORY = 1,
+  PROP_STUN_SERVER
 };
 
 
@@ -262,6 +263,13 @@ nice_agent_class_init (NiceAgentClass *klass)
          "The socket factory used to create new UDP sockets",
          G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY));
 
+  g_object_class_install_property (gobject_class, PROP_STUN_SERVER,
+      g_param_spec_pointer (
+        "stun-server",
+        "STUN server",
+        "The STUN server used to obtain server-reflexive candidates",
+        G_PARAM_READWRITE));
+
   /* install signals */
 
   signals[SIGNAL_COMPONENT_STATE_CHANGED] =
@@ -320,6 +328,9 @@ nice_agent_get_property (
       g_value_set_pointer (value, agent->socket_factory);
       break;
 
+    case PROP_STUN_SERVER:
+      g_value_set_string (value, agent->stun_server);
+
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
     }
@@ -340,6 +351,9 @@ nice_agent_set_property (
     case PROP_SOCKET_FACTORY:
       agent->socket_factory = g_value_get_pointer (value);
       break;
+
+    case PROP_STUN_SERVER:
+      agent->stun_server = g_value_dup_string (value);
 
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -1195,6 +1209,9 @@ nice_agent_dispose (GObject *object)
 
   g_slist_free (agent->streams);
   agent->streams = NULL;
+
+  g_free (agent->stun_server);
+  agent->stun_server = NULL;
 
   if (G_OBJECT_CLASS (nice_agent_parent_class)->dispose)
     G_OBJECT_CLASS (nice_agent_parent_class)->dispose (object);

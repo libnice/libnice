@@ -57,6 +57,7 @@ struct _NiceAgent
   GMainContext *main_context;
   NiceAgentRecvFunc read_func;
   gpointer read_func_data;
+  gchar *stun_server;
 };
 
 typedef struct _NiceAgentClass NiceAgentClass;
