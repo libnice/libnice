@@ -121,8 +121,8 @@ typedef struct _CandidatePair CandidatePair;
 
 struct _CandidatePair
 {
-  NiceCandidate local;
-  NiceCandidate remote;
+  NiceCandidate *local;
+  NiceCandidate *remote;
 };
 
 
