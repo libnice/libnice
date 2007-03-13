@@ -822,7 +822,12 @@ _nice_agent_recv (
   if (len == 0)
     return 0;
 
-  g_assert (len < buf_len);
+  if (len > buf_len)
+    {
+      /* buffer is not big enough to accept this packet */
+      /* XXX: test this case */
+      return 0;
+    }
 
   /* XXX: verify sender; maybe:
    * 
