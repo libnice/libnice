@@ -31,6 +31,7 @@ struct _NiceCandidate
   NiceUDPSocket sock;
   gchar username[128];
   gchar password[128];
+  GSource *source;
 };
 
 

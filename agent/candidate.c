@@ -26,6 +26,9 @@ nice_candidate_free (NiceCandidate *candidate)
   if (candidate->sock.addr.addr_ipv4 != 0)
     nice_udp_socket_close (&(candidate->sock));
 
+  if (candidate->source)
+    g_source_destroy (candidate->source);
+
   g_slice_free (NiceCandidate, candidate);
 }
 

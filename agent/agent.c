@@ -1293,6 +1293,7 @@ nice_agent_main_context_attach (
           g_source_set_callback (source, (GSourceFunc) nice_agent_g_source_cb,
               ctx, (GDestroyNotify) io_ctx_free);
           g_source_attach (source, NULL);
+          candidate->source = source;
         }
     }
 
