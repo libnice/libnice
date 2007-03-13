@@ -7,6 +7,7 @@
 #include "udp.h"
 #include "address.h"
 #include "candidate.h"
+#include "random.h"
 
 G_BEGIN_DECLS
 
@@ -58,6 +59,7 @@ struct _NiceAgent
   NiceAgentRecvFunc read_func;
   gpointer read_func_data;
   gchar *stun_server;
+  NiceRNG *rng;
 };
 
 typedef struct _NiceAgentClass NiceAgentClass;

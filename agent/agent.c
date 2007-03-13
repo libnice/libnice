@@ -7,7 +7,6 @@
 
 #include "stun.h"
 #include "udp.h"
-#include "random.h"
 #include "agent.h"
 #include "agent-signals-marshal.h"
 
@@ -293,6 +292,7 @@ nice_agent_init (NiceAgent *agent)
 {
   agent->next_candidate_id = 1;
   agent->next_stream_id = 1;
+  agent->rng = nice_rng_new ();
 }
 
 
@@ -368,7 +368,6 @@ nice_agent_add_local_host_candidate (
   guint component_id,
   NiceAddress *address)
 {
-  NiceRNG *rng;
   NiceCandidate *candidate;
   Component *component;
 
@@ -385,10 +384,8 @@ nice_agent_add_local_host_candidate (
       candidate);
 
   /* generate username/password */
-  rng = nice_rng_new ();
-  nice_rng_generate_bytes_print (rng, 8, candidate->username);
-  nice_rng_generate_bytes_print (rng, 8, candidate->password);
-  nice_rng_free (rng);
+  nice_rng_generate_bytes_print (agent->rng, 8, candidate->username);
+  nice_rng_generate_bytes_print (agent->rng, 8, candidate->password);
 
   /* allocate socket */
   /* XXX: handle error */
@@ -1212,6 +1209,9 @@ nice_agent_dispose (GObject *object)
 
   g_free (agent->stun_server);
   agent->stun_server = NULL;
+
+  nice_rng_free (agent->rng);
+  agent->rng = NULL;
 
   if (G_OBJECT_CLASS (nice_agent_parent_class)->dispose)
     G_OBJECT_CLASS (nice_agent_parent_class)->dispose (object);
