@@ -670,12 +670,11 @@ RESPOND:
 
 #ifdef DEBUG
     {
-      gchar *ip;
+      gchar ip[NICE_ADDRESS_STRING_LEN];
 
-      ip = nice_address_to_string (&remote->addr);
+      nice_address_to_string (&remote->addr, ip);
       g_debug ("s%d:%d: got valid connectivity check for candidate %d (%s:%d)",
           stream->id, component->id, remote->id, ip, remote->addr.port);
-      g_free (ip);
     }
 #endif
 
@@ -750,13 +749,12 @@ ERROR:
 
 #ifdef DEBUG
     {
-      gchar *ip;
+      gchar ip[NICE_ADDRESS_STRING_LEN];
 
-      ip = nice_address_to_string (&remote->addr);
+      nice_address_to_string (&remote->addr, ip);
       g_debug (
           "s%d:%d: got invalid connectivity check for candidate %d (%s:%d)",
           stream->id, component->id, remote->id, ip, remote->addr.port);
-      g_free (ip);
     }
 #endif
 

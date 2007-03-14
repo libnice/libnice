@@ -12,11 +12,10 @@ main (void)
   for (i = interfaces; i; i = i->next)
     {
       NiceInterface *iface = i->data;
-      gchar *addr;
+      gchar addr[NICE_ADDRESS_STRING_LEN];
 
-      addr = nice_address_to_string (&iface->addr);
+      nice_address_to_string (&iface->addr, addr);
       g_print ("%s: %s\n", iface->name, addr);
-      g_free (addr);
       nice_interface_free (iface);
     }
 

@@ -8,14 +8,13 @@ test_ipv4 (void)
 {
   NiceAddress addr = {0,};
   NiceAddress other = {0,};
-  gchar *str;
+  gchar str[NICE_ADDRESS_STRING_LEN];
 
   nice_address_set_ipv4 (&addr, 0x01020304);
   g_assert (addr.type == NICE_ADDRESS_TYPE_IPV4);
 
-  str = nice_address_to_string (&addr);
+  nice_address_to_string (&addr, str);
   g_assert (0 == strcmp (str, "1.2.3.4"));
-  g_free (str);
 
   /* same address */
   nice_address_set_ipv4 (&other, 0x01020304);
@@ -35,7 +34,7 @@ static void
 test_ipv6 (void)
 {
   NiceAddress addr = {0,};
-  gchar *str;
+  gchar str[NICE_ADDRESS_STRING_LEN];
 
   nice_address_set_ipv6 (&addr,
       "\x00\x11\x22\x33"
@@ -44,9 +43,8 @@ test_ipv6 (void)
       "\xcc\xdd\xee\xff");
   g_assert (addr.type == NICE_ADDRESS_TYPE_IPV6);
 
-  str = nice_address_to_string (&addr);
+  nice_address_to_string (&addr, str);
   g_assert (0 == strcmp (str, "11:2233:4455:6677:8899:aabb:ccdd:eeff"));
-  g_free (str);
 }
 
 int

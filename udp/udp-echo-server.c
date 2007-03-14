@@ -25,11 +25,10 @@ main (void)
       length = nice_udp_socket_recv (&sock, &addr, sizeof (buf), buf);
 #ifdef DEBUG
         {
-          gchar *ip;
+          gchar ip[NICE_ADDRESS_STRING_LEN];
 
-          ip = nice_address_to_string (&addr);
+          nice_address_to_string (&addr, ip);
           g_debug ("%s:%d", ip, addr.port);
-          g_free (ip);
         }
 #endif
       nice_udp_socket_send (&sock, &addr, length, buf);

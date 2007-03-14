@@ -73,26 +73,24 @@ nice_address_set_from_sockaddr_in (NiceAddress *addr, struct sockaddr_in *sin)
 }
 
 
-gchar *
-nice_address_to_string (NiceAddress *addr)
+void
+nice_address_to_string (NiceAddress *addr, gchar *dst)
 {
   struct in_addr iaddr = {0,};
-  gchar ip_str[INET6_ADDRSTRLEN] = {0,};
   const gchar *ret = NULL;
 
   switch (addr->type)
     {
     case NICE_ADDRESS_TYPE_IPV4:
       iaddr.s_addr = htonl (addr->addr_ipv4);
-      ret = inet_ntop (AF_INET, &iaddr, ip_str, INET_ADDRSTRLEN);
+      ret = inet_ntop (AF_INET, &iaddr, dst, INET_ADDRSTRLEN);
       break;
     case NICE_ADDRESS_TYPE_IPV6:
-      ret = inet_ntop (AF_INET6, &addr->addr_ipv6, ip_str, INET6_ADDRSTRLEN);
+      ret = inet_ntop (AF_INET6, &addr->addr_ipv6, dst, INET6_ADDRSTRLEN);
       break;
     }
 
-  g_assert (ret == ip_str);
-  return g_strdup (ip_str);
+  g_assert (ret == dst);
 }
 
 

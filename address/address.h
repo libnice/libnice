@@ -14,6 +14,8 @@ typedef enum
   NICE_ADDRESS_TYPE_IPV6,
 } NiceAddressType;
 
+#define NICE_ADDRESS_STRING_LEN INET6_ADDRSTRLEN
+
 typedef struct _NiceAddress NiceAddress;
 
 /* XXX: need access to fields to convert to sockaddr_in */
@@ -53,8 +55,8 @@ nice_address_set_from_sockaddr_in (NiceAddress *addr, struct sockaddr_in *sin);
 gboolean
 nice_address_equal (NiceAddress *a, NiceAddress *b);
 
-gchar *
-nice_address_to_string (NiceAddress *addr);
+void
+nice_address_to_string (NiceAddress *addr, gchar *dst);
 
 gboolean
 nice_address_is_private (NiceAddress *a);

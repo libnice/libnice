@@ -75,7 +75,7 @@ ERROR:
 gchar *
 nice_candidate_to_string (NiceCandidate *candidate)
 {
-  gchar *addr_tmp;
+  gchar addr_tmp[NICE_ADDRESS_STRING_LEN];
   gchar *ret;
   gchar type;
 
@@ -97,10 +97,9 @@ nice_candidate_to_string (NiceCandidate *candidate)
       return NULL;
     }
 
-  addr_tmp = nice_address_to_string (&(candidate->addr));
+  nice_address_to_string (&(candidate->addr), addr_tmp);
   ret = g_strdup_printf ("%c/%s/%d/%s/%s", type, addr_tmp,
       candidate->addr.port, candidate->username, candidate->password);
-  g_free (addr_tmp);
   return ret;
 }
 
