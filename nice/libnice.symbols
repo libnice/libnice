@@ -3,6 +3,7 @@ T nice_address_equal
 T nice_address_free
 T nice_address_is_private
 T nice_address_new
+T nice_address_set_from_sockaddr_in
 T nice_address_set_ipv4
 T nice_address_set_ipv4_from_string
 T nice_address_set_ipv6

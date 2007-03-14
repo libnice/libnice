@@ -54,6 +54,25 @@ nice_address_set_ipv4_from_string (NiceAddress *addr, const gchar *str)
 }
 
 
+void
+nice_address_set_from_sockaddr_in (NiceAddress *addr, struct sockaddr_in *sin)
+{
+  if (sin->sin_family == AF_INET6)
+    {
+      addr->type = NICE_ADDRESS_TYPE_IPV6;
+      nice_address_set_ipv6 (addr,
+          (gchar *) &((struct sockaddr_in6 *) sin)->sin6_addr);
+    }
+  else
+    {
+      addr->type = NICE_ADDRESS_TYPE_IPV4;
+      nice_address_set_ipv4 (addr, ntohl (sin->sin_addr.s_addr));
+    }
+
+  addr->port = ntohs (sin->sin_port);
+}
+
+
 gchar *
 nice_address_to_string (NiceAddress *addr)
 {

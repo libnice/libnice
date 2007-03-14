@@ -2,6 +2,8 @@
 #ifndef _ADDRESS_H
 #define _ADDRESS_H
 
+#include <netinet/in.h>
+
 #include <glib.h>
 
 G_BEGIN_DECLS
@@ -44,6 +46,9 @@ nice_address_set_ipv6 (NiceAddress *addr, const gchar *addr_ipv6);
 G_GNUC_WARN_UNUSED_RESULT
 gboolean
 nice_address_set_ipv4_from_string (NiceAddress *addr, const gchar *str);
+
+void
+nice_address_set_from_sockaddr_in (NiceAddress *addr, struct sockaddr_in *sin);
 
 gboolean
 nice_address_equal (NiceAddress *a, NiceAddress *b);
