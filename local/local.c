@@ -40,14 +40,7 @@ nice_list_local_interfaces ()
 
           iface = g_slice_new0 (NiceInterface);
           iface->name = g_strdup (i->ifa_name);
-
-          if (addr->sin_family == AF_INET)
-            nice_address_set_ipv4 (&iface->addr,
-                ntohl (addr->sin_addr.s_addr));
-          else
-            nice_address_set_ipv6 (&iface->addr,
-                (gchar *) &((struct sockaddr_in6 *) addr)->sin6_addr);
-
+          nice_address_set_from_sockaddr_in (&(iface->addr), addr);
           ret = g_slist_append (ret, iface);
         }
     }
