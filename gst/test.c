@@ -91,7 +91,7 @@ send_connectivity_check (
     msg = stun_message_unpack (len, packed);
     dump = stun_message_dump (msg);
     g_assert (0 == strcmp (dump,
-        "BINDING-REQUEST ac2f75c0:43fbc367:09d315f2:245746d8\n"
+        "BINDING-REQUEST 588c3ac1:e62757ae:5851a519:4d480994\n"
         "  USERNAME \"usernameS9PObXR5\"\n"));
     g_free (dump);
     stun_message_free (msg);

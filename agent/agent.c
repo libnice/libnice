@@ -711,7 +711,6 @@ RESPOND:
   /* XXX: possibly we shouldn't do this if we're being an ICE Lite agent */
 
     {
-      NiceRNG *rng;
       StunMessage *extra;
       gchar *username;
       guint len;
@@ -724,9 +723,7 @@ RESPOND:
       extra->attributes[0] = stun_attribute_username_new (username);
       g_free (username);
 
-      rng = nice_rng_new ();
-      nice_rng_generate_bytes (rng, 16, extra->transaction_id);
-      nice_rng_free (rng);
+      nice_rng_generate_bytes (agent->rng, 16, extra->transaction_id);
 
       len = stun_message_pack (extra, &packed);
       nice_udp_socket_send (&local->sock, &from, len, packed);
