@@ -30,8 +30,12 @@ CLEANFILES += $(BUILT_SOURCES)
 libagent_la_SOURCES = \
 	candidate.h \
 	candidate.c \
+	component.h \
+	component.c \
 	agent.h \
 	agent.c \
+	stream.h \
+	stream.c \
 	$(BUILT_SOURCES)
 
 libagent_la_LIBADD = \
