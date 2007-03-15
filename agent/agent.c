@@ -263,10 +263,11 @@ nice_agent_class_init (NiceAgentClass *klass)
          G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY));
 
   g_object_class_install_property (gobject_class, PROP_STUN_SERVER,
-      g_param_spec_pointer (
+      g_param_spec_string (
         "stun-server",
         "STUN server",
         "The STUN server used to obtain server-reflexive candidates",
+        NULL,
         G_PARAM_READWRITE));
 
   /* install signals */
