@@ -479,7 +479,7 @@ _handle_stun_binding_request (
   StunMessage *msg)
 {
   GSList *i;
-  StunAttribute **attr;
+  StunAttribute *attr;
   gchar *username = NULL;
   NiceCandidate *remote = NULL;
 
@@ -510,17 +510,13 @@ _handle_stun_binding_request (
    *    --> send error
    */
 
-  if (msg->attributes)
-    for (attr = msg->attributes; *attr; attr++)
-      if ((*attr)->type == STUN_ATTRIBUTE_USERNAME)
-        {
-          username = (*attr)->username;
-          break;
-        }
+  attr = stun_message_find_attribute (msg, STUN_ATTRIBUTE_USERNAME);
 
-  if (username == NULL)
+  if (attr == NULL)
     /* no username attribute found */
     goto ERROR;
+
+  username = attr->username;
 
   /* validate username */
   /* XXX: Should first try and find a remote candidate with a matching
