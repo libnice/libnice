@@ -1040,7 +1040,8 @@ nice_agent_get_local_candidates (
   NiceAgent *agent,
   guint stream_id,
   guint component_id)
-{ Component *component;
+{
+  Component *component;
 
   if (!find_component (agent, stream_id, component_id, NULL, &component))
     return NULL;
