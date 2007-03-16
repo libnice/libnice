@@ -973,19 +973,6 @@ nice_agent_send (
 
 
 /**
- * Set the STUN server from which to obtain server-reflexive candidates.
- */
-/*
-void
-nice_agent_set_stun_server (
-  NiceAgent *agent,
-  NiceAddress *addr)
-{
-}
-*/
-
-
-/**
  * nice_agent_get_local_candidates:
  *  @agent: A NiceAgent
  *
