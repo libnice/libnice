@@ -45,7 +45,7 @@ gfloat
 nice_candidate_jingle_priority (NiceCandidate *candidate);
 
 guint32
-nice_candidate_ice_priority (NiceCandidate *candidate);
+nice_candidate_ice_priority (const NiceCandidate *candidate);
 
 G_END_DECLS
 

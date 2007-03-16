@@ -67,8 +67,9 @@ _candidate_ice_priority (
 }
 
 
+G_GNUC_CONST
 guint32
-nice_candidate_ice_priority (NiceCandidate *candidate)
+nice_candidate_ice_priority (const NiceCandidate *candidate)
 {
   guint8 type_preference = 0;
 
