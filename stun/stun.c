@@ -338,3 +338,17 @@ stun_message_dump (StunMessage *msg)
   return g_string_free (tmp, FALSE);
 }
 
+StunAttribute *
+stun_message_find_attribute (StunMessage *msg, StunAttributeType type)
+{
+  StunAttribute **attr;
+
+  if (!msg->attributes)
+    return NULL;
+
+  for (attr = msg->attributes; *attr; attr++)
+    if ((*attr)->type == type)
+      return *attr;
+
+  return NULL;
+}

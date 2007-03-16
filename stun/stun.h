@@ -123,6 +123,9 @@ G_GNUC_WARN_UNUSED_RESULT
 StunMessage *
 stun_message_unpack (guint length, const gchar *s);
 
+StunAttribute *
+stun_message_find_attribute (StunMessage *msg, StunAttributeType type);
+
 G_END_DECLS
 
 #endif /* __STUN_H__ */

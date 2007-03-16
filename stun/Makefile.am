@@ -25,7 +25,8 @@ check_PROGRAMS = \
 	test-message-pack \
 	test-message-dump \
 	test-message-dump-unknown \
-	test-message-unpack
+	test-message-unpack \
+	test-message-find-attribute
 
 test_attribute_pack_LDADD                = libstun.la
 test_attribute_pack_unknown_LDADD        = libstun.la
@@ -38,6 +39,7 @@ test_message_pack_LDADD                  = libstun.la
 test_message_dump_LDADD                  = libstun.la
 test_message_dump_unknown_LDADD          = libstun.la
 test_message_unpack_LDADD                = libstun.la
+test_message_find_attribute_LDADD        = libstun.la
 
 TESTS = $(check_PROGRAMS)
 
