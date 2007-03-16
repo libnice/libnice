@@ -12,52 +12,11 @@
 #include "stream.h"
 
 
-/*** candidate_pair ***/
-
-
-typedef struct _CandidatePair CandidatePair;
-
-struct _CandidatePair
-{
-  NiceCandidate *local;
-  NiceCandidate *remote;
-};
-
-
-/* ICE-13 §5.7 (p24) */
-typedef enum
-{
-  CHECK_STATE_WAITING,
-  CHECK_STATE_IN_PROGRESS,
-  CHECK_STATE_SUCCEEDED,
-  CHECK_STATE_FAILED,
-  CHECK_STATE_FROZEN,
-} CheckState;
-
-
 typedef enum
 {
   CHECK_LIST_STATE_RUNNING,
   CHECK_LIST_STATE_COMPLETED,
 } CheckListState;
-
-
-#if 0
-/* ICE-13 §5.7 */
-guint64
-candidate_pair_priority (
-      guint64 offerer_prio,
-      guint64 answerer_prio)
-{
-  return (
-      0x100000000LL * MIN (offerer_prio, answerer_prio) +
-      2 * MAX (offerer_prio, answerer_prio) +
-      (offerer_prio > answerer_prio ? 1 : 0));
-}
-#endif
-
-
-/*** agent ***/
 
 
 G_DEFINE_TYPE (NiceAgent, nice_agent, G_TYPE_OBJECT);
