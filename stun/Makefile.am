@@ -6,6 +6,8 @@
 #
 # Licensed under MPL 1.1/LGPL 2.1. See file COPYING.
 
+SUBDIRS = . tests
+
 include $(top_srcdir)/common.mk
 
 AM_CFLAGS = $(ERROR_CFLAGS) $(GLIB_CFLAGS)
@@ -14,12 +16,16 @@ LIBS = $(GLIB_LIBS)
 
 noinst_LTLIBRARIES = libstun.la
 
-libstun_la_SOURCES = stun.h stun.c
+libstun_la_SOURCES = stun.h stun.c \
+	stun-msg.h stunsend.c stunrecv.c crc32.c hmac.c \
+	bind.h bind.c
+libstun_la_CFLAGS = $(AM_CFLAGS) $(OPENSSL_CFLAGS)
+libstun_la_LIBADD = $(LIBS) $(OPENSSL_LIBS) $(LIBRT)
 
-noinst_PROGRAMS = stun-client stun-server
+noinst_PROGRAMS = stun-client stund
 
 stun_client_LDADD = libstun.la
-stun_server_LDADD = libstun.la
+stund_LDADD = libstun.la -lpthread
 
 check_PROGRAMS = \
 	test-attribute-pack \
