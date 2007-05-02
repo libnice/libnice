@@ -22,6 +22,7 @@ T nice_agent_recv
 T nice_agent_recv_sock
 T nice_agent_remove_stream
 T nice_agent_send
+T nice_agent_set_remote_candidates
 
 T nice_candidate_free
 T nice_candidate_ice_priority
