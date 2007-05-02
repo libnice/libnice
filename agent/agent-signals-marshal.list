@@ -1,2 +1,4 @@
 # component-status-changed
 VOID:UINT,UINT,UINT
+# candidate-gathering-done
+VOID:VOID

@@ -50,23 +50,28 @@ typedef enum
   NICE_CANDIDATE_TYPE_RELAYED,
 } NiceCandidateType;
 
+typedef enum
+{
+  NICE_CANDIDATE_TRANSPORT_UDP,
+} NiceCandidateTransport;
 
 typedef struct _NiceCandidate NiceCandidate;
 
 struct _NiceCandidate
 {
   NiceCandidateType type;
-  guint id;
+  NiceCandidateTransport transport;
+  guint id;               
   NiceAddress addr;
   NiceAddress base_addr;
   guint32 priority;
   guint stream_id;
   guint component_id;
   // guint generation;
-  // gchar *foundation;
+  gchar *foundation;      /* note: if NULL, derive foundation from 'id' */
   NiceUDPSocket sock;
-  gchar username[128];
-  gchar password[128];
+  gchar username[128];    /* XXX: why 128 chars? */
+  gchar password[128];    /* XXX: why 128 chars? */
   GSource *source;
 };
 

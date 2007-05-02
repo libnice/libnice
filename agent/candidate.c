@@ -65,6 +65,9 @@ nice_candidate_free (NiceCandidate *candidate)
   if (candidate->source)
     g_source_destroy (candidate->source);
 
+  if (candidate->foundation)
+    g_free (candidate->foundation);
+
   g_slice_free (NiceCandidate, candidate);
 }
 

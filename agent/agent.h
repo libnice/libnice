@@ -71,10 +71,33 @@ G_BEGIN_DECLS
 
 typedef enum
 {
-  NICE_COMPONENT_STATE_DISCONNECTED,
-  NICE_COMPONENT_STATE_CONNECTING,
-  NICE_COMPONENT_STATE_CONNECTED,
+  NICE_COMPONENT_STATE_DISCONNECTED, /* no activity scheduled */
+  NICE_COMPONENT_STATE_GATHERING,    /* gathering local candidates */
+  NICE_COMPONENT_STATE_CONNECTING,   /* establishing connectivity */
+  NICE_COMPONENT_STATE_CONNECTED,    /* at least one working candidate pair */
+  NICE_COMPONENT_STATE_READY,        /* ICE concluded, candidate pair
+					selection is now final */
+  NICE_COMPONENT_STATE_FAILED        /* connectivity checks have been completed, 
+					but connectivity was not established */
 } NiceComponentState;
+
+typedef enum
+{
+  NICE_COMPONENT_TYPE_RTP = 1,
+  NICE_COMPONENT_TYPE_RTCP = 2
+} NiceComponentType;
+
+typedef struct _NiceCandidateDesc NiceCandidateDesc;
+
+struct _NiceCandidateDesc {
+  const gchar *foundation;         
+  guint component_id;
+  NiceCandidateTransport transport;
+  guint32 priority;
+  const NiceAddress *addr;
+  NiceCandidateType type;
+  const NiceAddress *related_addr;  /* optional */
+};
 
 typedef struct _NiceAgent NiceAgent;
 
@@ -87,6 +110,7 @@ struct _NiceAgent
   GObject parent;
   guint next_candidate_id;
   guint next_stream_id;
+  gboolean full_mode;
   NiceUDPSocketFactory *socket_factory;
   GSList *local_addresses;
   GSList *streams;
@@ -94,7 +118,14 @@ struct _NiceAgent
   GMainContext *main_context;
   NiceAgentRecvFunc read_func;
   gpointer read_func_data;
-  gchar *stun_server;
+  GSList *discovery_list;
+  guint discovery_unsched_items;
+  GSList *conncheck_list;
+  gchar *stun_server_ip;
+  guint stun_server_port;
+  gchar *turn_server_ip;
+  guint turn_server_port;
+  GTimeVal next_check_tv;
   NiceRNG *rng;
 };
 
@@ -132,6 +163,13 @@ nice_agent_add_remote_candidate (
   NiceAddress *addr,
   const gchar *username,
   const gchar *password);
+
+void
+nice_agent_set_remote_candidates (
+  NiceAgent *agent,
+  guint stream_id,
+  guint component_id,
+  GSList *candidates);
 
 guint
 nice_agent_recv (
