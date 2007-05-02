@@ -19,8 +19,10 @@ SUBDIRS = \
 	nice
 
 if WITH_GSTREAMER
- 	SUBDIRS += gst
+	SUBDIRS += gst
 endif
+
+DIST_SUBDIRS = $(SUBDIRS) gst
 
 EXTRA_DIST = scripts common.mk
 
