@@ -37,25 +37,34 @@
 # include <config.h>
 #endif
 
-#include <openssl/hmac.h>
+#include <stdio.h>
+#include <stdlib.h>
 
-#include <sys/types.h>
-#include <sys/socket.h>
-#include "stun-msg.h"
+#include <stdint.h>
+#include "../crc32.c"
 
-#include <assert.h>
 
-void stun_sha1 (const uint8_t *msg, uint8_t *sha, const void *key, size_t keylen)
+static void test (const void *in, size_t n, uint32_t out)
 {
-	size_t mlen = stun_length (msg);
-	assert (mlen >= 32);
+	static unsigned num = 0;
 
-	/*
-	 * + 20 bytes for STUN header
-	 * - 24 bytes for MESSAGE-INTEGRITY attribute
-	 * -  8 bytes for FINGERPRINT attribute
-	 */
-	mlen -= 12;
-
-	HMAC (EVP_sha1 (), key, keylen, msg, mlen, sha, NULL);
+	num++;
+	if (crc32 (in, n) != out)
+	{
+		fprintf (stderr, "Test %u failed: %08x instead of %08x\n",
+		         num, crc32 (in, n), out);
+		exit (1);
+	}
 }
+
+
+int main (void)
+{
+	test (NULL, 0, 0);
+	test (&(uint32_t ){ 0 }, 0, 0);
+	test ("foo", 3, 0x8c736521);
+	return 0;
+}
+
+
+

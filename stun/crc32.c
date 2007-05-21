@@ -53,15 +53,13 @@ static uint32_t crc32 (const void *buf, size_t size);
  * Computes the FINGERPRINT of a STUN message.
  * @return fingerprint value in <b>host</b> byte order.
  */
-uint32_t stun_fingerprint (const void *msg)
+uint32_t stun_fingerprint (const uint8_t *msg)
 {
-	const uint8_t *ptr = msg;
-
 	assert (msg != NULL);
 
 	/* Don't hash last 8-bytes (= the FINGERPRINT attribute) */
-	assert (stun_length (ptr) >= 8);
-	size_t len = 20 + stun_length (ptr) - 8;
+	assert (stun_length (msg) >= 8);
+	size_t len = 20u + stun_length (msg) - 8;
 
 	return crc32 (msg, len) ^ 0x5354554e;
 }

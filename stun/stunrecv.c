@@ -49,77 +49,67 @@
 
 #ifndef NDEBUG
 static inline
-int stun_valid (const void *m)
+int stun_valid (const uint8_t *msg)
 {
-	size_t length = 20u + stun_length (m);
-	return stun_validate (m, length) == (ssize_t)length;
+	size_t length = 20u + stun_length (msg);
+	return stun_validate (msg, length) == (ssize_t)length;
 }
 #endif
 
-/**
- * Verifies that a packet is a valid STUN message.
- *
- * @return actual byte length of the message if valid (>0),
- * 0 if it the packet is incomplete or -1 in case of other error.
- */
-ssize_t stun_validate (const void *m, size_t len)
+ssize_t stun_validate (const uint8_t *msg, size_t len)
 {
-	const uint8_t *ptr = m;
-
-	DBG ("Validating message @%p (%u bytes):\n", m, (unsigned)len);
 	if (len < 1)
 	{
-		DBG (" No data!\n");
+		DBG ("STUN error: No data!\n");
 		return 0;
 	}
 
-	if (ptr[0] >> 6)
+	if (msg[0] >> 6)
 	{
-		DBG (" RTP or other non-protocol packet!\n");
+		DBG ("STUN error: RTP or other non-protocol packet!\n");
 		return -1; // RTP or other non-STUN packet
 	}
 
 	if (len < 4)
 	{
-		DBG (" Incomplete STUN message header!\n");
+		DBG ("STUN error: Incomplete STUN message header!\n");
 		return 0;
 	}
 
-	size_t mlen = 20 + stun_length (ptr);
+	size_t mlen = 20u + stun_length (msg);
 	if (stun_padding (mlen))
 	{
-		DBG (" Invalid message length: %u!\n", (unsigned)mlen);
+		DBG ("STUN error: Invalid message length: %u!\n", (unsigned)mlen);
 		return -1; // wrong padding
 	}
 
 	if (len < mlen)
 	{
-		DBG (" Incomplete STUN message: %u of %u bytes!\n", len,
+		DBG ("STUN error: Incomplete message: %u of %u bytes!\n", len,
 		     (unsigned)mlen);
 		return 0; // partial message
 	}
 
-	ptr += 20;
+	msg += 20;
 
 	/* from then on, we know we have the entire packet in buffer */
-	for (const uint8_t *end = ptr + (mlen - 20); end > ptr;)
+	for (const uint8_t *end = msg + (mlen - 20); end > msg;)
 	{
-		ptr += 4;
- 		/* thanks to padding check, if (end > ptr) then there is not only one
+		msg += 4;
+ 		/* thanks to padding check, if (end > msg) then there is not only one
 		 * but at least 4 bytes left */
-		assert ((end - ptr) >= 0);
+		assert ((end - msg) >= 0);
 
-		size_t alen = stun_align (stun_getw (ptr - 2));
-		ptr += alen;
-		if ((end - ptr) < 0)
+		size_t alen = stun_align (stun_getw (msg - 2));
+		msg += alen;
+		if ((end - msg) < 0)
 		{
-			DBG (" No room for STUN attribute: %u instead of %u bytes!\n",
-			     (unsigned)(end - (ptr - alen)), (unsigned)alen);
+			DBG ("STUN error: %u instead of %u bytes for attribute!\n",
+			     (unsigned)(end - (msg - alen)), (unsigned)alen);
 			return -1; // no room for attribute value + padding
 		}
 	}
 
-	DBG (" Valid message of %u bytes!\n", mlen);
 	return mlen;
 }
 
@@ -133,55 +123,62 @@ ssize_t stun_validate (const void *m, size_t len)
  * otherwise NULL.
  */
 static const void *
-stun_find (const void *restrict msg, stun_attr_type_t type,
+stun_find (const uint8_t *restrict msg, stun_attr_type_t type,
                uint16_t *restrict palen)
 {
-	const uint8_t *ptr = msg;
 	assert (msg != NULL);
 	assert (stun_valid (msg));
 	assert (palen != NULL);
 
-	size_t length = stun_length (ptr);
-	ptr += 20;
+	size_t length = stun_length (msg);
+	msg += 20;
 
 	while (length > 0)
 	{
 		assert (length >= 4);
-		uint16_t atype = stun_getw (ptr);
-		unsigned alen = stun_length (ptr);
+		uint16_t atype = stun_getw (msg);
+		unsigned alen = stun_length (msg);
 
 		length -= 4;
-		ptr += 4;
+		msg += 4;
 
 		assert (length >= stun_align (alen));
 		if (atype == type)
 		{
 			assert (alen <= 0xffff);
 			*palen = alen;
-			return ptr;
+			return msg;
 		}
 
 		alen = stun_align (alen);
 		length -= alen;
-		ptr += alen;
+		msg += alen;
 	}
 
 	return NULL;
 }
 
 
-#if 0
-/**
- * Extracts a 32-bits attribute from a valid STUN message.
- * @param msg valid STUN message buffer
- * @param type STUN attribute type (host byte order)
- * @param pval [OUT] where to store the host byte ordered value
- * @return 0 on success, ENOENT if attribute not found,
- * EINVAL if attribute payload was not 32-bits.
- */
-static int
-stun_find32 (const void *restrict msg, stun_attr_type_t type,
-                 uint32_t *restrict pval)
+bool stun_present (const uint8_t *msg, stun_attr_type_t type)
+{
+	return stun_find (msg, type, &(uint16_t){ 0 }) != NULL;
+}
+
+
+int stun_find_flag (const uint8_t *msg, stun_attr_type_t type)
+{
+	uint16_t len;
+	const void *ptr = stun_find (msg, type, &len);
+
+	if (ptr == NULL)
+		return ENOENT;
+	return (len == 0) ? 0 : EINVAL;
+}
+
+
+int
+stun_find32 (const uint8_t *restrict msg, stun_attr_type_t type,
+             uint32_t *restrict pval)
 {
 	uint16_t len;
 	const void *ptr = stun_find (msg, type, &len);
@@ -197,23 +194,44 @@ stun_find32 (const void *restrict msg, stun_attr_type_t type,
 	}
 	return EINVAL;
 }
-#endif
 
 
-/**
- * Extracts a network address attribute from a valid STUN message.
- * @param msg valid STUN message buffer
- * @param type STUN attribute type (host byte order)
- * @param addr [OUT] where to store the socket address
- * @param addrlen [IN/OUT] pointer to the size of the socket address
- * buffer upon entry, set to the length of the extracted socket
- * address upon return,
- * @return 0 on success, ENOENT if attribute not found,
- * EINVAL if attribute payload size was wrong or addrlen too small,
- * EAFNOSUPPORT if address family is unknown.
- */
+int stun_find64 (const uint8_t *msg, stun_attr_type_t type, uint64_t *pval)
+{
+	uint16_t len;
+	const void *ptr = stun_find (msg, type, &len);
+	if (ptr == NULL)
+		return ENOENT;
+
+	if (len == 8)
+	{
+		uint32_t tab[2];
+		memcpy (tab, ptr, sizeof (tab));
+		*pval = ((uint64_t)ntohl (tab[0]) << 32) | ntohl (tab[1]);
+		return 0;
+	}
+	return EINVAL;
+}
+
+
+ssize_t stun_find_string (const uint8_t *restrict msg, stun_attr_type_t type,
+                          char *buf, size_t buflen)
+{
+	uint16_t len;
+	const char *ptr = stun_find (msg, type, &len);
+	if (ptr == NULL)
+		return -1;
+
+	memcpy (buf, ptr, (len < buflen) ? len : buflen);
+	if (len < buflen)
+		buf[len] = '\0';
+
+	return len;
+}
+
+
 int
-stun_find_addr (const void *restrict msg, stun_attr_type_t type,
+stun_find_addr (const uint8_t *restrict msg, stun_attr_type_t type,
                 struct sockaddr *restrict addr, socklen_t *restrict addrlen)
 {
 	uint16_t len;
@@ -272,7 +290,7 @@ stun_find_addr (const void *restrict msg, stun_attr_type_t type,
 }
 
 
-int stun_xor_address (const void *restrict msg,
+int stun_xor_address (const uint8_t *restrict msg,
                       struct sockaddr *restrict addr, socklen_t addrlen)
 {
 	switch (addr->sa_family)
@@ -304,20 +322,8 @@ int stun_xor_address (const void *restrict msg,
 }
 
 
-/**
- * Extracts an obfuscated network address attribute from a valid STUN message.
- * @param msg valid STUN message buffer
- * @param type STUN attribute type (host byte order)
- * @param addr [OUT] where to store the socket address
- * @param addrlen [IN/OUT] pointer to the size of the socket address
- * buffer upon entry, set to the length of the extracted socket
- * address upon return,
- * @return 0 on success, ENOENT if attribute not found,
- * EINVAL if attribute payload size was wrong or addrlen too small,
- * EAFNOSUPPORT if address family is unknown.
- */
 int
-stun_find_xor_addr (const void *restrict msg, stun_attr_type_t type,
+stun_find_xor_addr (const uint8_t *restrict msg, stun_attr_type_t type,
                     struct sockaddr *restrict addr,
                     socklen_t *restrict addrlen)
 {
@@ -328,29 +334,59 @@ stun_find_xor_addr (const void *restrict msg, stun_attr_type_t type,
 	return stun_xor_address (msg, addr, *addrlen);
 }
 
-
-static bool check_cookie (const void *msg)
+#if 0
+/**
+ * Compares the length and content of an attribute.
+ *
+ * @param msg valid STUN message buffer
+ * @param type STUN attribute type (host byte order)
+ * @param data pointer to value to compare with
+ * @param len byte length of the value
+ * @return 0 in case of match, ENOENT if attribute was not found,
+ * EINVAL if it did not match
+ */
+int stun_memcmp (const uint8_t *restrict msg, stun_attr_type_t type,
+                 const void *data, size_t len)
 {
-	uint32_t value;
-	memcpy (&value, ((const uint8_t *)msg) + 4, sizeof (value));
-	return value == htonl (STUN_COOKIE);
-}
+	uint16_t alen;
+	const void *ptr = stun_find (msg, type, &alen);
+	if (ptr == NULL)
+		return ENOENT;
 
-
-static const uint8_t *stun_end (const void *msg)
-{
-	return ((const uint8_t *)msg) + 20 + stun_length (msg);
+	if ((len != alen) || memcmp (ptr, data, len))
+		return EINVAL;
+	return 0;
 }
 
 
 /**
- * Checks whether a packet on a mutiplexed STUN/non-STUN channel looks like a
- * STUN message. It is assumed that stun_validate succeeded first (i.e.
- * returned a stricly positive value).
- *
- * @return true if STUN message with cookie and fingerprint, 0 otherwise.
+ * Compares the content of an attribute with a string.
+ * @param msg valid STUN message buffer
+ * @param type STUN attribute type (host byte order)
+ * @param str string to compare with
+ * @return 0 in case of match, ENOENT if attribute was not found,
+ * EINVAL if it did not match
  */
-bool stun_demux (const void *msg)
+int stun_strcmp (const uint8_t *restrict msg, stun_attr_type_t type,
+                 const char *str)
+{
+	return stun_memcmp (msg, type, str, strlen (str));
+}
+#endif
+
+static inline bool check_cookie (const uint8_t *msg)
+{
+	return memcmp (msg + 4, &(uint32_t){ htonl (STUN_COOKIE) }, 4) == 0;
+}
+
+
+static const uint8_t *stun_end (const uint8_t *msg)
+{
+	return msg + 20 + stun_length (msg);
+}
+
+
+bool stun_demux (const uint8_t *msg)
 {
 	assert (stun_valid (msg));
 
@@ -395,10 +431,13 @@ bool stun_demux (const void *msg)
  * valid MESSAGE-INTEGRITY attribute.
  */
 int
-stun_verify_key (const void *msg, const void *key, size_t keylen)
+stun_verify_key (const uint8_t *msg, const void *key, size_t keylen)
 {
 	uint8_t sha[20];
 	uint16_t hlen;
+
+	assert (msg != NULL);
+	assert ((keylen == 0) || (key != NULL));
 
 	DBG ("Authenticating STUN message @%p\n", msg);
 
@@ -416,7 +455,17 @@ stun_verify_key (const void *msg, const void *key, size_t keylen)
 	stun_sha1 (msg, sha, key, keylen);
 	if (memcmp (sha, hash, sizeof (sha)))
 	{
-		DBG (" Message HMAC-SHA1 fingerprint mismatch!\n");
+		DBG (" Message HMAC-SHA1 fingerprint mismatch!"
+		     "\n  key     : 0x");
+		for (unsigned i = 0; i < keylen; i++)
+			DBG ("%02x", ((uint8_t *)key)[i]);
+		DBG ("\n  expected: 0x");
+		for (unsigned i = 0; i < 20; i++)
+			DBG ("%02x", sha[i]);
+		DBG ("\n  received: 0x");
+		for (unsigned i = 0; i < 20; i++)
+			DBG ("%02x", hash[i]);
+		DBG ("\n");
 		return EPERM;
 	}
 
@@ -425,10 +474,15 @@ stun_verify_key (const void *msg, const void *key, size_t keylen)
 }
 
 
-int stun_verify_password (const void *msg, const char *pw)
+/**
+ * @param msg valid STUN message
+ * @param pw nul-terminated HMAC shared secret password
+ * @return 0 if the message integrity has been successfully verified with the
+ * specified key. EPERM if the hash was incorrect. ENOENT if there was no
+ * valid MESSAGE-INTEGRITY attribute.
+ */
+int stun_verify_password (const uint8_t *msg, const char *pw)
 {
-	assert (msg != NULL);
-	assert (pw != NULL);
 	return stun_verify_key (msg, pw, strlen (pw));
 }
 
@@ -437,14 +491,17 @@ int stun_verify_password (const void *msg, const char *pw)
  * @param msg valid STUN message
  * @param method STUN method number (host byte order)
  * @param id STUN transaction id
+ * @param key HMAC key, or NULL if there is no authentication
+ * @param keylen HMAC key byte length, 0 is no authentication
  * @param error [OUT] set to true iif the response is an error response
  *
  * @return true if and only if the message is a response or an error response
  * with the STUN cookie and specified method and transaction identifier.
  */
-bool
-stun_match_answer (const void *msg, stun_method_t method,
-                   const stun_transid_t id, bool *restrict error)
+static bool
+stun_match_answer (const uint8_t *msg, stun_method_t method,
+                   const uint8_t *id, const uint8_t *key, size_t keylen,
+                   bool *restrict error)
 {
 	assert (stun_valid (msg));
 	assert (error != NULL);
@@ -464,9 +521,86 @@ stun_match_answer (const void *msg, stun_method_t method,
 			break;
 	}
 
-	return (stun_get_method (msg) == method)
-	    && check_cookie (msg)
-	    && !memcmp (((const uint8_t *)msg) + 8, id, 12);
+	if ((stun_get_method (msg) != method) /* wrong request type */
+	 || !check_cookie (msg) /* response to old-style request */
+	 || memcmp (msg + 8, id, 12)) /* wrong transaction ID */
+		return false;
+
+	if ((key != NULL) && stun_verify_key (msg, key, keylen))
+		return false;
+
+	return true;
+}
+
+
+/**
+ * Matches a response (or error response) to a request.
+ *
+ * @param msg valid STUN message
+ * @param method STUN method number (host byte order)
+ * @param id STUN transaction id
+ * @param key HMAC key, or NULL if there is no authentication
+ * @param keylen HMAC key byte length, 0 is no authentication
+ * @param error [OUT] set to true iif the response is an error response
+ *
+ * @return true if and only if the message is a response or an error response
+ * with the STUN cookie and specified method and transaction identifier.
+ */
+bool stun_match_messages (const uint8_t *restrict resp,
+                          const uint8_t *restrict req,
+                          const uint8_t *key, size_t keylen,
+                          bool *restrict error)
+{
+	assert (stun_valid (resp));
+	assert (stun_valid (req));
+	assert ((stun_get_class (req) >> 1) == 0);
+
+	return stun_match_answer (resp, stun_get_method (req),
+	                          stun_id (req), key, keylen, error);
+}
+
+
+/**
+ * @param type host-byte order STUN attribute type
+ *
+ * @return true if @a type is an attribute type unknown to this library
+ * (regardless of being a mandatory or optional attribute type)
+ */
+bool stun_is_unknown (uint16_t type)
+{
+	switch (type)
+	{
+		/* Mandatory */
+		case STUN_MAPPED_ADDRESS:
+		case STUN_OLD_RESPONSE_ADDRESS:
+		case STUN_OLD_CHANGE_REQUEST:
+		case STUN_OLD_SOURCE_ADDRESS:
+		case STUN_OLD_CHANGED_ADDRESS:
+		case STUN_USERNAME:
+		case STUN_PASSWORD:
+		case STUN_MESSAGE_INTEGRITY:
+		case STUN_ERROR_CODE:
+		case STUN_UNKNOWN_ATTRIBUTES:
+		case STUN_OLD_REFLECTED_FROM:
+
+		case STUN_REALM:
+		case STUN_NONCE:
+
+		case STUN_XOR_MAPPED_ADDRESS:
+		case STUN_PRIORITY:
+		case STUN_USE_CANDIDATE:
+
+		/* Optional */
+		case STUN_SERVER:
+		case STUN_ALTERNATE_SERVER:
+		case STUN_REFRESH_INTERVAL:
+		case STUN_FINGERPRINT:
+		case STUN_ICE_CONTROLLED:
+		case STUN_ICE_CONTROLLING:
+			return false;
+	}
+
+	return true;
 }
 
 
@@ -478,38 +612,33 @@ stun_match_answer (const void *msg, stun_method_t method,
  * @return the number of unknown mandatory attributes up to max.
  */
 unsigned
-stun_find_unknown (const void *restrict msg, uint16_t *restrict list,
+stun_find_unknown (const uint8_t *restrict msg, uint16_t *restrict list,
                    unsigned max)
 {
-	const uint8_t *ptr = msg;
 	unsigned count = 0;
-	uint16_t len = stun_length (ptr);
+	uint16_t len = stun_length (msg);
 
 	assert (stun_valid (msg));
-	ptr += 20;
+	msg += 20;
 
 	while ((len > 0) && (count < max))
 	{
-		uint16_t type = stun_getw (ptr);
-		uint16_t alen = stun_length (ptr);
-		ptr += 4 + alen;
+		uint16_t type = stun_getw (msg);
+		size_t alen = stun_align (stun_length (msg));
+		msg += 4 + alen;
+		assert (len >= (4 + alen));
 		len -= 4 + alen;
 
-		if (stun_optional (type))
-			continue; /* non-mandatory attribute */
-		if ((type >= STUN_MAPPED_ADDRESS)
-		 && (type <= STUN_OLD_REFLECTED_FROM))
-			continue;
-		if ((type >= STUN_REALM) && (type <= STUN_NONCE))
-			continue;
-		if (type == STUN_XOR_MAPPED_ADDRESS)
-			continue;
-
-		DBG (" found unknown attribute: 0x%04x (%u bytes)\n",
-		     (unsigned)type, (unsigned)alen);
-		list[count++] = type;
+		if (!stun_optional (type)
+		 && stun_is_unknown (type))
+		{
+			DBG (" found unknown attribute: 0x%04x (%u bytes)\n",
+			     (unsigned)type, (unsigned)alen);
+			list[count++] = type;
+		}
 	}
 
-	DBG (" %u unknown mandatory attributes\n", count);
+	DBG (" %u unknown mandatory attribute%s\n", count,
+	     (count != 1) ? "s" : "");
 	return count;
 }

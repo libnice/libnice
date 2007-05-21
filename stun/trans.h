@@ -33,29 +33,45 @@
  * file under either the MPL or the LGPL.
  */
 
-#ifdef HAVE_CONFIG_H
-# include <config.h>
-#endif
+#ifndef STUN_TRANS_H
+# define STUN_TRANS_H 1
 
-#include <openssl/hmac.h>
+# include <sys/types.h>
+# include <sys/socket.h>
 
-#include <sys/types.h>
-#include <sys/socket.h>
-#include "stun-msg.h"
+# include <stdbool.h>
 
-#include <assert.h>
+# include "timer.h"
 
-void stun_sha1 (const uint8_t *msg, uint8_t *sha, const void *key, size_t keylen)
+typedef struct stun_trans_s
 {
-	size_t mlen = stun_length (msg);
-	assert (mlen >= 32);
+	stun_timer_t timer;
+	size_t       msglen;
+	stun_msg_t   msg;
 
-	/*
-	 * + 20 bytes for STUN header
-	 * - 24 bytes for MESSAGE-INTEGRITY attribute
-	 * -  8 bytes for FINGERPRINT attribute
-	 */
-	mlen -= 12;
+	bool ownfd;
+	int fd;
+	socklen_t srvlen;
+	struct sockaddr_storage srv;
+} stun_trans_t;
 
-	HMAC (EVP_sha1 (), key, keylen, msg, mlen, sha, NULL);
+
+# ifdef __cplusplus
+extern "C" {
+# endif
+
+int stun_trans_init (stun_trans_t *restrict tr, int fd,
+                     const struct sockaddr *restrict srv, socklen_t srvlen);
+void stun_trans_deinit (stun_trans_t *restrict tr);
+
+int stun_trans_start (stun_trans_t *restrict tr);
+int stun_trans_tick (stun_trans_t *tr);
+
+unsigned stun_trans_timeout (const stun_trans_t *tr);
+int stun_trans_fd (const stun_trans_t *tr);
+
+# ifdef __cplusplus
 }
+# endif
+
+#endif /* !STUN_TRANS_H */

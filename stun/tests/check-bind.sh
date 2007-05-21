@@ -1,35 +1,42 @@
 #! /bin/sh
 
-LOG=test-bind.log
-rm -f "$LOG"
+STUNC=../stunbdc
+STUND=../stund
+
+set -xe
+
+# Dummy command line parsing tests
+$STUNC -h
+$STUNC -V
+! $STUNC server port dummy
+
+# Timeout tests
+! $STUNC -4 127.0.0.1 1
+! $STUNC -6 ::1 1
+
+# Real tests
 
 # Start the STUN test daemon if needed
-../stund -4 &
-../stund -6 &
+rm -f stund-*.err stunc-*.log
+
+exit 77
+# FIXME: kill daemons properly
+# FIXME: use custom port number
+
+( $STUND -4 || echo ABORT > stund-IPv4.err ) &
+( $STUND -6 || echo ABORT > stund-IPv6.err ) &
 
 # Run the test client
-{
-	./test-bind
-	echo "test-bind returned $?"
-} | tee "$LOG"
+$STUNC -4 > stunc-IPv4.log || test -f stund-IPv4.err
+$STUNC -6 > stunc-IPv6.log || test -f stund-IPv6.err
 
 # Terminate the test daemon
-kill -INT %1
-kill -INT %2
+kill -INT %1 2>/dev/null || true
+kill -INT %2 2>/dev/null || true
 
-if ! grep "test-bind returned 0" "$LOG"; then
-	echo "test-bind failed" >&2
-	exit 1
-fi
+# Check client results
+if test -f stund-IPv4.err; then exit 77; fi
+grep -e "^Mapped address: 127.0.0.1" stunc-IPv4.log || exit 4
 
-for a in 127.0.0.1 ::1; do
-	for t in Auto UDP; do
-		if ! grep -e "^$t discovery *: $a port " "$LOG"; then
-			echo "Unexpected mapping from test-bind" >&2
-			exit 1
-		fi
-	done
-done
-
-rm -f "$LOG"
-exit 0
+if test -f stund-IPv6.err; then exit 77; fi
+grep -e "^Mapped address: ::1" stunc-IPv6.log || exit 6

@@ -62,6 +62,7 @@
 static
 int listen_socket (int fam, int type, int proto, uint16_t port)
 {
+	int yes = 1;
 	int fd = socket (fam, type, proto);
 	if (fd == -1)
 	{
@@ -88,7 +89,8 @@ int listen_socket (int fam, int type, int proto, uint16_t port)
 
 		case AF_INET6:
 #ifdef IPV6_V6ONLY
-			setsockopt (fd, SOL_IPV6, IPV6_V6ONLY, &(int){ 1 }, sizeof (int));
+			if (setsockopt (fd, SOL_IPV6, IPV6_V6ONLY, &yes, sizeof (yes)))
+				goto error;
 #endif
 			((struct sockaddr_in6 *)&addr)->sin6_port = port;
 			break;
@@ -105,13 +107,12 @@ int listen_socket (int fam, int type, int proto, uint16_t port)
 		switch (fam)
 		{
 			case AF_INET:
-				setsockopt (fd, SOL_IP, IP_PKTINFO, &(int){ 1 },
-				            sizeof (int));
+				setsockopt (fd, SOL_IP, IP_PKTINFO, &yes, sizeof (yes));
 				break;
 
 			case AF_INET6:
-				setsockopt (fd, SOL_IPV6, IPV6_RECVPKTINFO, &(int){ 1 },
-				            sizeof (int));
+				setsockopt (fd, SOL_IPV6, IPV6_RECVPKTINFO, &yes,
+				            sizeof (yes));
 				break;
 		}
 	}
@@ -132,14 +133,15 @@ error:
 }
 
 
-#include "stun-msg.h"
+#include "stun-msg.h" // FIXME: remove
+#include "bind.h"
 
 static int dgram_process (int sock)
 {
 	struct sockaddr_storage addr;
 	stun_msg_t buf;
 	char ctlbuf[CMSG_SPACE (sizeof (struct in6_pktinfo))];
-	struct iovec iov = { &buf, sizeof (buf) };
+	struct iovec iov = { buf, sizeof (buf) };
 	struct msghdr mh;
 
 	memset (&mh, 0, sizeof (mh));
@@ -163,37 +165,13 @@ static int dgram_process (int sock)
 		return EMSGSIZE;
 	}
 
-	len = stun_validate (&buf, len);
-	if (len <= 0)
-	{
-		DBG ("Invalid STUN message ignored.\n");
+	if (stun_validate (buf, len) <= 0)
 		return EINVAL;
-	}
 
-	DBG ("%u-bytes STUN message received.\n", (unsigned)len);
-
-	if (stun_get_class (&buf) != STUN_REQUEST)
-		return 0;
-
-	if (stun_get_method (&buf) != STUN_BINDING)
-		return 0; // FIXME: SPEC: return an error response
-	// FIXME: check for unsupported attributes et al
-
-	bool compat = !stun_demux (&buf);
-	DBG (" %s-style STUN message.\n", compat ? "Old" : "New");
-
-	stun_init_response (&buf, &buf);
-	len = compat
-		? stun_append_addr (&buf, STUN_MAPPED_ADDRESS,
-		                    (struct sockaddr *)&addr, mh.msg_namelen)
-		: stun_append_xor_addr (&buf, STUN_XOR_MAPPED_ADDRESS,
-		                        (struct sockaddr *)&addr, mh.msg_namelen);
-	if (len)
-		return len; // FIXME: send 600 error
-
-	iov.iov_len = len = stun_finish (&buf);
-	if (len == 0)
-		return ENOBUFS; // FIXME: send 600 error
+	len = stun_bind_reply (buf, &iov.iov_len, buf,
+	                       mh.msg_name, mh.msg_namelen, false);
+	if (iov.iov_len == 0)
+		return len;
 
 	len = sendmsg (sock, &mh, 0);
 	if (len == -1)

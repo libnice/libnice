@@ -33,29 +33,29 @@
  * file under either the MPL or the LGPL.
  */
 
-#ifdef HAVE_CONFIG_H
-# include <config.h>
-#endif
+#ifndef STUN_TIMER_H
+# define STUN_TIMER_H 1
 
-#include <openssl/hmac.h>
+# include <sys/types.h>
+# include <time.h>
 
-#include <sys/types.h>
-#include <sys/socket.h>
-#include "stun-msg.h"
-
-#include <assert.h>
-
-void stun_sha1 (const uint8_t *msg, uint8_t *sha, const void *key, size_t keylen)
+typedef struct stun_timer_s
 {
-	size_t mlen = stun_length (msg);
-	assert (mlen >= 32);
+	struct timespec deadline;
+	unsigned delay;
+} stun_timer_t;
 
-	/*
-	 * + 20 bytes for STUN header
-	 * - 24 bytes for MESSAGE-INTEGRITY attribute
-	 * -  8 bytes for FINGERPRINT attribute
-	 */
-	mlen -= 12;
 
-	HMAC (EVP_sha1 (), key, keylen, msg, mlen, sha, NULL);
+# ifdef __cplusplus
+extern "C" {
+# endif
+
+void stun_timer_start (stun_timer_t *timer);
+int stun_timer_refresh (stun_timer_t *timer);
+unsigned stun_timer_remainder (const stun_timer_t *timer);
+
+# ifdef __cplusplus
 }
+# endif
+
+#endif /* !STUN_TIMER_H */

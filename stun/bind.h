@@ -36,23 +36,178 @@
 #ifndef STUN_BIND_H
 # define STUN_BIND_H 1
 
+/**
+ * @file bind.h
+ * @brief STUN binding discovery
+ */
+
+# ifndef IPPORT_STUN
+/** Default port for STUN binding discovery */
+#  define IPPORT_STUN  3478
+# endif
+
 typedef struct stun_bind_s stun_bind_t;
+# include <stdbool.h>
+# include <stdint.h>
 
 # ifdef __cplusplus
 extern "C" {
 # endif
 
+/**
+ * Performs STUN Binding discovery in blocking mode.
+ *
+ * @param fd socket to use for binding discovery, or -1 to create one
+ * @param srv STUN server socket address
+ * @param srvlen STUN server socket address byte length
+ * @param addr [OUT] pointer to a socket address structure to hold 
+ * discovered binding (Remember that it can be an IPv6 even if the socket
+ * local family is IPv4, so you should use a sockaddr_storage buffer)
+ * @param addrlen [IN/OUT] pointer to the byte length of addr, set to the byte
+ * length of the binding socket address on return.
+ *
+ * @return 0 on success, a standard error value in case of error.
+ * In case of error, addr and addrlen are undefined.
+ */
 int stun_bind_run (int fd,
                    const struct sockaddr *restrict srv, socklen_t srvlen,
                    struct sockaddr *restrict addr, socklen_t *addrlen);
+
+/**
+ * Starts STUN Binding discovery in non-blocking mode.
+ *
+ * @param context pointer to an opaque pointer that will be passed to
+ * stun_bind_resume() afterward
+ * @param fd socket to use for discovery, or -1 to create one
+ * @param srv STUN server socket address
+ * @param srvlen STUN server socket address length
+ *
+ * @return 0 on success, a standard error value otherwise.
+ */
 int stun_bind_start (stun_bind_t **restrict context, int fd,
-                     const struct sockaddr *restrict srv,
-                     socklen_t srvlen);
+                     const struct sockaddr *restrict srv, socklen_t srvlen);
+
+/**
+ * Aborts a running STUN Binding discovery.
+ * @param context binding discovery (or conncheck) context pointer
+ * to be released.
+ */
+void stun_bind_cancel (stun_bind_t *context);
+
+/**
+ * This is meant to integrate with I/O pooling loops and event frameworks.
+ *
+ * @param context binding discovery (or conncheck) context pointer
+ * @return recommended maximum delay (in milliseconds) to wait for a
+ * response.
+ */
+unsigned stun_bind_timeout (const stun_bind_t *context);
+
+/**
+ * Handles retransmission timeout, and sends request retransmit if needed.
+ * This should be called whenever event polling indicates that
+ * stun_bind_timeout() has elapsed. It is however safe to call this earlier
+ * (in which case retransmission will not occur) or later (in which case
+ * late retransmission will be done).
+ *
+ * @param context binding discovery (or conncheck) context pointer
+ *
+ * @return ETIMEDOUT if the transaction has timed out, or EAGAIN if it is
+ * still pending.
+ *
+ * If anything except EAGAIN (but including zero) is returned, the context
+ * is free'd and must no longer be used.
+ */
+int stun_bind_elapse (stun_bind_t *context);
+
+/**
+ * This is meant to integrate with I/O polling loops and event frameworks.
+ * @return file descriptor used by the STUN Binding discovery context.
+ * Always succeeds.
+ */
+int stun_bind_fd (const stun_bind_t *context);
+
+
+/**
+ * Gives data to be processed within the context of a STUN Binding discovery
+ * or ICE connectivity check.
+ *
+ * @param context context (from stun_bind_start() or stun_conncheck_start())
+ * @param buf pointer to received data to be processed
+ * @param len byte length of data at @a buf
+ * @param addr socket address pointer to receive mapped address in case of
+ * successful processing
+ * @param addrlen [IN/OUT] pointer to the size of the socket address buffer
+ * at @a addr upon entry, set to the useful size on success
+ *
+ * @return 0 on success, an error code otherwise:
+ * - EAGAIN: ignored invalid message (non-fatal error)
+ * - ECONNREFUSED: error message from server
+ * - EPROTO: unsupported message from server
+ * - ENOENT: no mapped address in message from server
+ * - EAFNOSUPPORT: unsupported mapped address family from server
+ * - EINVAL: invalid mapped address from server
+ *
+ * If anything except EAGAIN (but including zero) is returned, the context
+ * is free'd and must no longer be used.
+ */
+int stun_bind_process (stun_bind_t *restrict context,
+                       const void *restrict buf, size_t len,
+                       struct sockaddr *restrict addr, socklen_t *addrlen);
+
+/**
+ * Continues STUN Binding discovery in non-blocking mode:
+ * Tries to dequeue a data from the network and processes it,
+ * updates the transaction timer if needed.
+ *
+ * @param context binding discovery context (from stun_bind_start())
+ * @param addr pointer to a socket address structure to hold the discovered
+ * binding (remember this can be either IPv4 or IPv6 regardless of the socket
+ * family) [OUT]
+ * @param addrlen pointer to the byte length of @a addr [IN], set to the byte
+ * length of the binding socket address on return.
+ *
+ * @return EAGAIN is returned if the discovery has not completed yet. 
+   0 is returned on successful completion, another standard error value
+ * otherwise. If the return value is not EAGAIN, @a context is freed and must
+ * not be re-used.
+ */
 int stun_bind_resume (stun_bind_t *restrict context,
                       struct sockaddr *restrict addr, socklen_t *addrlen);
-void stun_bind_cancel (stun_bind_t *restrict context);
-int stun_bind_fd (const stun_bind_t *restrict context);
-unsigned stun_bind_timeout (const stun_bind_t *restrict context);
+
+
+/**
+ * Tries to parse a STUN Binding request and format a Binding response
+ * accordingly.
+ *
+ * @param buf [OUT] output buffer to write a Binding response to. May refer
+ * to the same buffer space as the request message
+ * @param plen [IN/OUT] output buffer size on entry, response length on exit
+ * @param msg pointer to the first byte of a valid STUN message (check message
+ * validity with stun_validate() first)
+ * @param src socket address the message was received from
+ * @param srclen byte length of the socket address
+ * @param muxed If true, non-multiplexed (old RFC3489-style) messages will be
+ * considered as invalid.
+ *
+ * @return 0 if successful (@a rbuf contains a <b>non-error</b> response),
+ * EINVAL: malformatted request message or socket address,
+ * EAFNOSUPPORT: unsupported socket address family,
+ * EPROTO: unsupported request message type or parameter,
+ * ENOBUFS: insufficient response buffer space.
+ *
+ * In case of error, the value at @a plen is set to the size of an error
+ * response, or 0 if no error response should be sent.
+ */
+int
+stun_bind_reply (uint8_t *buf, size_t *plen, const uint8_t *msg,
+                 const struct sockaddr *restrict src, socklen_t srclen,
+                 bool muxed);
+
+# ifndef STUN_VALIDATE_DECLARATION
+#  define STUN_VALIDATE_DECLARATION 2
+ssize_t stun_validate (const uint8_t *msg, size_t len);
+# endif
 
 # ifdef __cplusplus
 }

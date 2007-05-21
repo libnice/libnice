@@ -53,28 +53,8 @@
 #include <sys/poll.h>
 #include <fcntl.h>
 
-/**
- * Initial STUN timeout (milliseconds). The spec says it should be 100ms,
- * but that's way too short for most types of wireless Internet access.
- */
-#define STUN_INIT_TIMEOUT 600
-#define STUN_END_TIMEOUT 4800
+/** Blocking mode STUN binding discovery */
 
-/**
- * Performs STUN Binding discovery in blocking mode.
- *
- * @param fd socket to use for binding discovery, or -1 to create one
- * @param srv STUN server socket address
- * @param srvlen STUN server socket address byte length
- * @param addr pointer to a socket address structure to hold the discovered
- * binding (remember this can be either IPv4 or IPv6 regardless of the socket
- * family) [OUT]
- * @param addrlen pointer to the byte length of addr [IN], set to the byte
- * length of the binding socket address on return.
- *
- * @return 0 on success, a standard error value in case of error.
- * In case of error, addr and addrlen are undefined.
- */
 int stun_bind_run (int fd,
                    const struct sockaddr *restrict srv, socklen_t srvlen,
                    struct sockaddr *restrict addr, socklen_t *addrlen)
@@ -102,118 +82,24 @@ int stun_bind_run (int fd,
 	return val;
 }
 
+/** Non-blocking mode STUN binding discovery */
+
 #include "stun-msg.h"
+#include "trans.h"
 
 struct stun_bind_s
 {
-	struct sockaddr_storage srv;
-	socklen_t srvlen;
-
-	struct timespec deadline;
-	unsigned delay;
-
-	int fd;
-	bool ownfd;
-
-	stun_transid_t transid;
+	stun_trans_t trans;
+	size_t       keylen;
+	uint8_t      key[0];
 };
 
-static int
-stun_bind_req (stun_bind_t *ctx)
-{
-	/* FIXME: support for TCP */
-	stun_msg_t msg;
-	stun_init (&msg, STUN_REQUEST, STUN_BINDING, ctx->transid);
 
-	size_t len = stun_finish (&msg);
-	if (!len)
-		return errno;
-
-	ssize_t val = sendto (ctx->fd, &msg, len, 0,
-	                      (struct sockaddr *)&ctx->srv, ctx->srvlen);
-	if (val == -1)
-		return errno;
-	if (val < (ssize_t)len)
-		return EMSGSIZE;
-	return 0;
-}
-
-
-static void stun_gettime (struct timespec *restrict now)
-{
-#if (_POSIX_MONOTONIC_CLOCK - 0) >= 0
-	if (clock_gettime (CLOCK_MONOTONIC, now))
-#endif
-	{	// fallback to wall clock
-		struct timeval tv;
-		gettimeofday (&tv, NULL);
-		now->tv_sec = tv.tv_sec;
-		now->tv_nsec = tv.tv_usec * 1000;
-	}
-}
-
+/** Initialization/deinitization */
 
 /**
- * Sets deadline = now + delay
- */
-static void
-stun_setto (struct timespec *restrict deadline, unsigned delay)
-{
-	div_t d = div (delay, 1000);
-	stun_gettime (deadline);
-
-	// add delay to current time
-	deadline->tv_sec += d.quot;
-	deadline->tv_nsec += d.rem * 1000000;
-	DBG ("New STUN timeout is %ums\n", delay);
-}
-
-
-/**
- * @return Remaining delay = deadline - now, or 0 if behind schedule.
- */
-static unsigned
-stun_getto (const struct timespec *restrict deadline)
-{
-	unsigned delay;
-	struct timespec now;
-
-	stun_gettime (&now);
-	if (now.tv_sec > deadline->tv_sec)
-		return 0;
-
-	delay = deadline->tv_sec - now.tv_sec;
-	if ((delay == 0) && (now.tv_nsec >= deadline->tv_nsec))
-		return 0;
-
-	delay *= 1000;
-	delay += ((signed)(deadline->tv_nsec - now.tv_nsec)) / 1000000;
-	DBG ("Current STUN timeout is %ums\n", delay);
-	return delay;
-}
-
-
-/**
- * Aborts a running STUN Binding dicovery.
- */
-void stun_bind_cancel (stun_bind_t *restrict context)
-{
-	int val = errno;
-
-	if (context->ownfd)
-		close (context->fd);
-#ifndef NDEBUG
-	context->fd = -1;
-#endif
-	free (context);
-
-	errno = val;
-}
-
-
-
-/**
- * Starts STUN Binding discovery in non-blocking mode.
+ * Initializes a STUN Binding discovery context. Does not send anything.
+ * This allows customization of the STUN Binding Request.
  *
  * @param context pointer to an opaque pointer that will be passed to
  * stun_bind_resume() afterward
@@ -223,170 +109,224 @@ void stun_bind_cancel (stun_bind_t *restrict context)
  *
  * @return 0 on success, a standard error value otherwise.
  */
+static int
+stun_bind_alloc (stun_bind_t **restrict context, int fd,
+                 const struct sockaddr *restrict srv, socklen_t srvlen)
+{
+	stun_bind_t *ctx = malloc (sizeof (*ctx));
+	if (ctx == NULL)
+		return ENOMEM;
+	memset (ctx, 0, sizeof (*ctx));
+	*context = ctx;
+
+	int val = stun_trans_init (&ctx->trans, fd, srv, srvlen);
+	if (val)
+	{
+		free (ctx);
+		return val;
+	}
+
+	ctx->keylen = (size_t)(-1);
+
+	stun_init_request (ctx->trans.msg, STUN_BINDING);
+	return 0;
+}
+
+
+void stun_bind_cancel (stun_bind_t *context)
+{
+	stun_trans_deinit (&context->trans);
+	free (context);
+}
+
+
+static int
+stun_bind_launch (stun_bind_t *ctx)
+{
+	int val = stun_trans_start (&ctx->trans);
+	if (val)
+		stun_bind_cancel (ctx);
+	return val;
+}
+
+
 int stun_bind_start (stun_bind_t **restrict context, int fd,
                      const struct sockaddr *restrict srv,
                      socklen_t srvlen)
 {
-	stun_bind_t *ctx = malloc (sizeof (*ctx));
-	if (ctx == NULL)
-		return errno;
-	memset (ctx, 0, sizeof (*ctx));
-	*context = ctx;
+	stun_bind_t *ctx;
 
-	if (srvlen > sizeof (ctx->srv))
-	{
-		stun_bind_cancel (ctx);
-		return ENOBUFS;
-	}
-	memcpy (&ctx->srv, srv, ctx->srvlen = srvlen);
+	int val = stun_bind_alloc (context, fd, srv, srvlen);
+	if (val)
+		return val;
 
-	if (fd == -1)
-	{
-		if (srvlen < sizeof (struct sockaddr))
-		{
-			stun_bind_cancel (ctx);
-			return EINVAL;
-		}
+	ctx = *context;
 
-		fd = socket (ctx->srv.ss_family, SOCK_DGRAM, 0);
-		if (fd == -1)
-		{
-			stun_bind_cancel (ctx);
-			return errno;
-		}
-
-#ifdef FD_CLOEXEC
-		fcntl (fd, F_SETFD, fcntl (fd, F_GETFD) | FD_CLOEXEC);
-#endif
-#ifdef O_NONBLOCK
-		fcntl (fd, F_SETFL, fcntl (fd, F_GETFL) | O_NONBLOCK);
-#endif
-		ctx->ownfd = true;
-	}
-	ctx->fd = fd;
-	stun_setto (&ctx->deadline, ctx->delay = STUN_INIT_TIMEOUT);
-	stun_make_transid (ctx->transid);
-
-	int val = stun_bind_req (ctx);
+	ctx->trans.msglen = sizeof (ctx->trans.msg);
+	val = stun_finish (ctx->trans.msg, &ctx->trans.msglen);
 	if (val)
 	{
 		stun_bind_cancel (ctx);
 		return val;
 	}
 
+	return stun_bind_launch (ctx);
+}
+
+
+/** Timer and retransmission handling */
+
+unsigned stun_bind_timeout (const stun_bind_t *context)
+{
+	assert (context != NULL);
+	return stun_trans_timeout (&context->trans);
+}
+
+
+int stun_bind_elapse (stun_bind_t *context)
+{
+	int val = stun_trans_tick (&context->trans);
+	if (val != EAGAIN)
+		stun_bind_cancel (context);
+	return val;
+}
+
+
+/** Incoming packets handling */
+
+int stun_bind_fd (const stun_bind_t *context)
+{
+	assert (context != NULL);
+	return stun_trans_fd (&context->trans);
+}
+
+
+int stun_bind_process (stun_bind_t *restrict ctx,
+                       const void *restrict buf, size_t len,
+                       struct sockaddr *restrict addr, socklen_t *addrlen)
+{
+	bool error;
+	int val = stun_validate (buf, len);
+	if (val <= 0)
+		return EAGAIN;
+
+	assert (ctx != NULL);
+
+	DBG ("Received %u-bytes STUN message\n", (unsigned)val);
+
+	if (!stun_match_messages (buf, ctx->trans.msg,
+	                          (ctx->keylen != (size_t)(-1)) ? ctx->key : NULL,
+	                          (ctx->keylen != (size_t)(-1)) ? ctx->keylen : 0,
+	                          &error))
+		return EAGAIN;
+
+	if (error)
+	{
+		stun_bind_cancel (ctx);
+		return ECONNREFUSED; // FIXME: better error value
+	}
+
+	if (stun_has_unknown (buf))
+	{
+		stun_bind_cancel (ctx);
+		return EPROTO;
+	}
+
+	val = stun_find_xor_addr (buf, STUN_XOR_MAPPED_ADDRESS, addr, addrlen);
+	if (val)
+	{
+		DBG (" No XOR-MAPPED-ADDRESS: %s\n", strerror (val));
+		val = stun_find_addr (buf, STUN_MAPPED_ADDRESS, addr, addrlen);
+		if (val)
+		{
+			DBG (" No MAPPED-ADDRESS: %s\n", strerror (val));
+			stun_bind_cancel (ctx);
+			return val;
+		}
+	}
+
+	DBG (" Mapped address found!\n");
+	stun_bind_cancel (ctx);
 	return 0;
 }
 
-/**
- * Continues STUN Binding discovery in non-blocking mode.
- *
- * @param addr pointer to a socket address structure to hold the discovered
- * binding (remember this can be either IPv4 or IPv6 regardless of the socket
- * family) [OUT]
- * @param addrlen pointer to the byte length of addr [IN], set to the byte
- * length of the binding socket address on return.
- *
- * @return EAGAIN is returned if the discovery has not completed yet. 
-   0 is returned on successful completion, another standard error value
- * otherwise. If the return value is not EAGAIN, <context> is freed and must
- * not be re-used.
- *
- * FIXME: document file descriptor closure semantics.
- */
+
 int stun_bind_resume (stun_bind_t *restrict context,
                       struct sockaddr *restrict addr, socklen_t *addrlen)
 {
 	stun_msg_t buf;
 	ssize_t len;
-	bool error;
 
 	assert (context != NULL);
-	assert (context->fd != -1);
 
-	// FIXME: should we only accept packet from server IP:port ?
-	// FIXME: write a function to wrap this?
-	len = recv (context->fd, &buf, sizeof (buf), MSG_DONTWAIT);
-	if (len < 0)
-		goto skip;
+	len = recv (context->trans.fd, &buf, sizeof (buf), MSG_DONTWAIT);
+	if (len >= 0)
+		return stun_bind_process (context, &buf, len, addr, addrlen);
 
-	len = stun_validate (&buf, len);
-	if (len <= 0)
-		goto skip;
-
-	DBG ("Received %u-bytes STUN message\n", (unsigned)len);
-
-	if (!stun_match_answer (&buf, STUN_BINDING, context->transid, &error))
-		goto skip;
-
-	if (error)
-	{
-		stun_bind_cancel (context);
-		return ECONNREFUSED; // FIXME: better error value
-	}
-
-	if (stun_has_unknown (&buf))
-	{
-		stun_bind_cancel (context);
-		return EPROTO;
-	}
-
-	len = stun_find_xor_addr (&buf, STUN_XOR_MAPPED_ADDRESS, addr, addrlen);
-	if (len)
-	{
-		DBG (" No XOR-MAPPED-ADDRESS: %s\n", strerror (len));
-		len = stun_find_addr (&buf, STUN_MAPPED_ADDRESS, addr, addrlen);
-		if (len)
-		{
-			DBG (" No MAPPED-ADDRESS: %s\n", strerror (len));
-			stun_bind_cancel (context);
-			return len;
-		}
-	}
-
-	DBG (" Mapped address found!\n");
-	stun_bind_cancel (context);
-	return 0;
-
-skip:
-	// FIXME: we call gettimeofday() twice here (minor problem)
-	if (!stun_getto (&context->deadline))
-	{
-		if (context->delay >= STUN_END_TIMEOUT)
-		{
-			DBG ("Received no valid responses. STUN transaction failed.\n");
-			stun_bind_cancel (context);
-			return ETIMEDOUT; // fatal error!
-		}
-
-		context->delay *= 2;
-		DBG ("Retrying with longer timeout... %ums\n", context->delay);
-		stun_bind_req (context);
-		stun_setto (&context->deadline, context->delay);
-	}
-	return EAGAIN;
+	return stun_bind_elapse (context);
 }
 
 
-/**
- * @return recommended maximum delay (in milliseconds) to wait for a
- * response.
- * This is meant to integrate with I/O pooling loops and event frameworks.
- */
-unsigned stun_bind_timeout (const stun_bind_t *restrict context)
-{
-	assert (context != NULL);
-	assert (context->fd != -1);
-	return stun_getto (&context->deadline);
-}
+/** Connectivity checks */
+#include "conncheck.h"
 
-
-/**
- * @return file descriptor used by the STUN Binding discovery context.
- * Always succeeds.
- * This is meant to integrate with I/O polling loops and event frameworks.
- */
-int stun_bind_fd (const stun_bind_t *restrict context)
+int
+stun_conncheck_start (stun_bind_t **restrict context, int fd,
+                      const struct sockaddr *restrict srv, socklen_t srvlen,
+                      const char *username, const char *password,
+                      bool cand_use, bool controlling, uint32_t priority,
+                      uint64_t tie)
 {
-	assert (context != NULL);
-	return context->fd;
+	int val;
+	stun_bind_t *ctx;
+
+	assert (username != NULL);
+	assert (password != NULL);
+
+	val = stun_bind_alloc (context, fd, srv, srvlen);
+	if (val)
+		return val;
+
+	val = strlen (password);
+	ctx = realloc (*context, sizeof (*ctx) + val + 1);
+	if (ctx == NULL)
+	{
+		val = ENOMEM;
+		goto error;
+	}
+
+	*context = ctx;
+	memcpy (ctx->key, password, val);
+	ctx->keylen = val;
+
+	if (cand_use)
+	{
+		val = stun_append_flag (ctx->trans.msg, sizeof (ctx->trans.msg),
+		                        STUN_USE_CANDIDATE);
+		if (val)
+			goto error;
+	}
+
+	val = stun_append32 (ctx->trans.msg, sizeof (ctx->trans.msg),
+	                     STUN_PRIORITY, priority);
+	if (val)
+		goto error;
+
+	val = stun_append64 (ctx->trans.msg, sizeof (ctx->trans.msg),
+	                     controlling ? STUN_ICE_CONTROLLING
+	                                 : STUN_ICE_CONTROLLED, tie);
+	if (val)
+		goto error;
+
+	ctx->trans.msglen = sizeof (ctx->trans.msg);
+	val = stun_finish_short (ctx->trans.msg, &ctx->trans.msglen,
+	                         username, password, NULL, 0);
+	if (val)
+		goto error;
+
+	return stun_bind_launch (ctx);
+
+error:
+	stun_bind_cancel (*context);
+	return val;
 }
