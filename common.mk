@@ -5,8 +5,6 @@ ERROR_CFLAGS = \
 	-Wextra \
 	-Wundef \
 	-Wnested-externs \
-	-Wvolatile-register-var \
-	-Wno-missing-field-initializers \
 	-Wwrite-strings \
 	-Wpointer-arith \
 	-Wbad-function-cast \

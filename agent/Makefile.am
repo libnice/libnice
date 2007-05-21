@@ -22,11 +22,12 @@ COMMON_LDADD = libagent.la $(GLIB_LIBS)
 noinst_LTLIBRARIES = libagent.la
 
 %-signals-marshal.h: %-signals-marshal.list
-	glib-genmarshal --header --prefix=$(subst -,_,$*)_marshal $< > $*-signals-marshal.h
+	glib-genmarshal --header --prefix=$(subst -,_,$*)_marshal $< > $@
 
-%-signals-marshal.c: %-signals-marshal.list
-	glib-genmarshal --body --prefix=$(subst -,_,$*)_marshal $< > $*-signals-marshal.c
-	sed -i "1i#include \"$*-signals-marshal.h\"" $*-signals-marshal.c
+%-signals-marshal.c: %-signals-marshal.list Makefile.am
+	glib-genmarshal --body --prefix=$(subst -,_,$*)_marshal $< > $@
+	sed -i "1i#include \"$*-signals-marshal.h\"" $@
+	sed -ie 's/^}$$/(void)return_value;(void)invocation_hint;}/' $@
 
 BUILT_SOURCES = \
 	agent-signals-marshal.h \
@@ -40,9 +41,14 @@ libagent_la_SOURCES = \
 	component.h \
 	component.c \
 	agent.h \
+	agent-priv.h \
 	agent.c \
 	stream.h \
 	stream.c \
+	conncheck.c \
+	conncheck.h \
+	discovery.c \
+	discovery.h \
 	$(BUILT_SOURCES)
 
 libagent_la_LIBADD = \
@@ -55,11 +61,15 @@ check_PROGRAMS = \
 	test \
 	test-add-remove-stream \
 	test-recv \
-	test-send \
-	test-stun \
 	test-priority \
 	test-poll \
-	test-mainloop
+	test-mainloop \
+	test-fullmode
+
+# disabled test programs (using the old STUN API):
+noinst_PROGRAMS = \
+	test-stun \
+	test-send
 
 TESTS = $(check_PROGRAMS)
 
@@ -78,6 +88,8 @@ test_priority_LDADD = $(COMMON_LDADD)
 test_poll_LDADD = $(COMMON_LDADD)
 
 test_mainloop_LDADD = $(COMMON_LDADD)
+
+test_fullmode_LDADD = $(COMMON_LDADD)
 
 pkginclude_HEADERS = agent.h candidate.h
 
