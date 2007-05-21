@@ -76,7 +76,7 @@ nice_list_local_interfaces ()
 
           iface = g_slice_new0 (NiceInterface);
           iface->name = g_strdup (i->ifa_name);
-          nice_address_set_from_sockaddr_in (&(iface->addr), addr);
+          nice_address_set_from_sockaddr (&(iface->addr), (const struct sockaddr *)addr);
           ret = g_slist_append (ret, iface);
         }
     }
