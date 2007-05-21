@@ -36,15 +36,18 @@
  */
 
 #include "agent.h"
+#include "agent-priv.h"
 #include "udp-fake.h"
+#include <string.h>
 
 int
 main (void)
 {
   NiceAgent *agent;
-  NiceAddress addr = {0,};
+  NiceAddress addr;
   NiceUDPSocketFactory factory;
 
+  memset (&addr, 0, sizeof (addr));
   g_type_init ();
 
   nice_udp_fake_socket_factory_init (&factory);

@@ -1,0 +1,103 @@
+/*
+ * This file is part of the Nice GLib ICE library.
+ *
+ * (C) 2006, 2007 Collabora Ltd.
+ *  Contact: Dafydd Harries
+ * (C) 2006, 2007 Nokia Corporation. All rights reserved.
+ *  Contact: Kai Vehmanen
+ *
+ * The contents of this file are subject to the Mozilla Public License Version
+ * 1.1 (the "License"); you may not use this file except in compliance with
+ * the License. You may obtain a copy of the License at
+ * http://www.mozilla.org/MPL/
+ *
+ * Software distributed under the License is distributed on an "AS IS" basis,
+ * WITHOUT WARRANTY OF ANY KIND, either express or implied. See the License
+ * for the specific language governing rights and limitations under the
+ * License.
+ *
+ * The Original Code is the Nice GLib ICE library.
+ *
+ * The Initial Developers of the Original Code are Collabora Ltd and Nokia
+ * Corporation. All Rights Reserved.
+ *
+ * Contributors:
+ *   Dafydd Harries, Collabora Ltd.
+ *   Kai Vehmanen, Nokia
+ *
+ * Alternatively, the contents of this file may be used under the terms of the
+ * the GNU Lesser General Public License Version 2.1 (the "LGPL"), in which
+ * case the provisions of LGPL are applicable instead of those above. If you
+ * wish to allow use of your version of this file only under the terms of the
+ * LGPL and not to allow others to use your version of this file under the
+ * MPL, indicate your decision by deleting the provisions above and replace
+ * them with the notice and other provisions required by the LGPL. If you do
+ * not delete the provisions above, a recipient may use your version of this
+ * file under either the MPL or the LGPL.
+ */
+
+#ifndef _NICE_CONNCHECK_H
+#define _NICE_CONNCHECK_H
+
+/* note: this is a private header to libnice */
+
+#include "agent.h"
+#include "stream.h"
+#include "stun.h"     /* XXX: using the old STUN API, to be removed */
+#include "stun/conncheck.h"    /* note: the new STUN API */
+
+typedef enum
+{
+  NICE_CHECK_WAITING = 1,   /**< waiting to be scheduled */
+  NICE_CHECK_IN_PROGRESS,   /**< conn. checks started */
+  NICE_CHECK_SUCCEEDED,     /**< conn. succesfully checked */
+  NICE_CHECK_FAILED,        /**< no connectivity, retransmissions ceased */
+  NICE_CHECK_FROZEN,        /**< waiting to be scheduled to WAITING */
+  NICE_CHECK_CANCELLED      /**< check cancelled */
+} NiceCheckState;
+
+typedef enum
+{
+  NICE_CHECKLIST_NOT_STARTED = 1,
+  NICE_CHECKLIST_RUNNING,
+  NICE_CHECKLIST_COMPLETED,
+  NICE_CHECKLIST_FAILED
+} NiceCheckListState;
+
+typedef struct _CandidateCheckPair CandidateCheckPair;
+
+struct _CandidateCheckPair
+{
+  NiceAgent *agent;         /* back pointer to owner */
+  guint stream_id;
+  guint component_id;
+  NiceCandidate *local;
+  NiceCandidate *remote;
+  gchar *foundation;
+  NiceCheckState state;
+  gboolean nominated;
+  guint64 priority; 
+  GTimeVal next_tick;       /* next tick timestamp */
+  stun_bind_t *stun_ctx;
+};
+
+int conn_check_add_for_candidate (NiceAgent *agent, guint stream_id, Component *component, NiceCandidate *remote);
+void conn_check_free_item (gpointer data, gpointer user_data);
+void conn_check_free (NiceAgent *agent);
+void conn_check_schedule_next (NiceAgent *agent);
+int conn_check_send (NiceAgent *agent, CandidateCheckPair *pair);
+gboolean conn_check_prune_stream (NiceAgent *agent, guint stream_id);
+gboolean conn_check_handle_inbound_stun (NiceAgent *agent, Stream *stream, Component *component, const NiceAddress *from, gchar *buf, guint len);
+
+/* functions using the old STUN API: 
+ * ---------------------------------*/
+
+void conn_check_handle_inbound_stun_old (
+  NiceAgent *agent,
+  Stream *stream,
+  Component *component,
+  NiceCandidate *local,
+  NiceAddress from,
+  StunMessage *msg);
+
+#endif /*_NICE_CONNCHECK_H */

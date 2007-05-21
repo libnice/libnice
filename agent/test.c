@@ -39,16 +39,19 @@
 
 #include "udp-fake.h"
 #include "agent.h"
+#include "agent-priv.h"
 
 gint
 main (void)
 {
   NiceAgent *agent;
-  NiceAddress addr_local = {0,}, addr_remote = {0,};
+  NiceAddress addr_local, addr_remote;
   NiceCandidate *candidate;
   NiceUDPSocketFactory factory;
   GSList *candidates;
 
+  memset (&addr_local, 0, sizeof (addr_local));
+  memset (&addr_remote, 0, sizeof (addr_remote));
   g_type_init ();
 
   nice_udp_fake_socket_factory_init (&factory);
@@ -78,7 +81,7 @@ main (void)
   /* fake socket manager uses incremental port numbers starting at 1 */
   addr_local.port = 1;
   g_assert (nice_address_equal (&(candidate->addr), &addr_local));
-  g_assert (candidate->id == 1);
+  g_assert (strncmp (candidate->foundation, "1", 1) == 0);
   g_slist_free (candidates);
 
   /* add remote candidate */

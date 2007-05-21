@@ -23,6 +23,7 @@
  *
  * Contributors:
  *   Dafydd Harries, Collabora Ltd.
+ *   Kai Vehmanen, Nokia
  *
  * Alternatively, the contents of this file may be used under the terms of the
  * the GNU Lesser General Public License Version 2.1 (the "LGPL"), in which
@@ -66,13 +67,14 @@ int
 main (void)
 {
   NiceAgent *agent;
-  NiceAddress addr = {0,};
+  NiceAddress addr;
   NiceUDPSocketFactory factory;
   NiceUDPSocket *sock;
   gint pipe_fds[2];
   GSList *fds = NULL;
   GSList *readable;
 
+  memset (&addr, 0, sizeof (addr));
   g_type_init ();
 
   /* set up agent */
@@ -91,7 +93,7 @@ main (void)
 
         candidates = nice_agent_get_local_candidates (agent, 1, 1);
         candidate = candidates->data;
-        sock = &candidate->sock;
+        sock = candidate->sockptr;
         g_slist_free (candidates);
       }
 

@@ -42,11 +42,22 @@ main (void)
 {
   NiceCandidate *candidate;
 
+  /* test 1 */
   candidate = nice_candidate_new (NICE_CANDIDATE_TYPE_HOST);
   g_assert (nice_candidate_ice_priority (candidate) == 0x78000200);
   g_assert (nice_candidate_jingle_priority (candidate) == 1.0);
   nice_candidate_free (candidate);
 
+  /* test 2 */
+  
+  /* 2^32*MIN(O,A) + 2*MAX(O,A) + (O>A?1:0) 
+     = 2^32*1 + 2*5000 + 0 
+     = 4294977296 */
+  g_assert (nice_candidate_pair_priority (1,5000) == 4294977296);
+
+  /* 2^32*1 + 2*5000 + 1 = 4294977297 */
+  g_assert (nice_candidate_pair_priority (5000, 1) == 4294977297);
+  
   return 0;
 }
 

@@ -23,6 +23,7 @@
  *
  * Contributors:
  *   Dafydd Harries, Collabora Ltd.
+ *   Kai Vehmanen, Nokia
  *
  * Alternatively, the contents of this file may be used under the terms of the
  * the GNU Lesser General Public License Version 2.1 (the "LGPL"), in which
@@ -59,19 +60,35 @@ typedef enum
 
 
 typedef struct _Component Component;
+typedef struct _CandidatePair CandidatePair;
+
+struct _CandidatePair
+{
+  NiceCandidate *local;
+  NiceCandidate *remote;
+  guint64 priority;           /**< candidate pair priority */  
+};
 
 struct _Component
 {
   ComponentType type;
-  /* the local candidate that last received a valid connectivity check */
+  guint id;
+  NiceComponentState state;
+  GSList *local_candidates;    /**< list of Candidate objs */
+  GSList *remote_candidates;   /**< list of Candidate objs */
+  GSList *sockets;             /**< list of NiceUDPSocket objs */
+  GSList *gsources;            /**< list of GSource objs */
+  CandidatePair selected_pair; /**< independent from checklists, 
+				    see ICE 11.1.1 (ID-15) */
+
+  /* XXX: **to be removed**
+   * --cut-- 
+  GSList *checks;
+   * the local candidate that last received a valid connectivity */
   NiceCandidate *active_candidate;
   /* the remote address that the last connectivity check came from */
   NiceAddress peer_addr;
-  guint id;
-  NiceComponentState state;
-  GSList *local_candidates;
-  GSList *remote_candidates;
-  GSList *checks;
+  /* --cut-- */
 };
 
 Component *
@@ -81,6 +98,9 @@ component_new (
 
 void
 component_free (Component *cmp);
+
+NiceUDPSocket *
+component_find_udp_socket_by_fd (Component *component, guint fd);
 
 G_END_DECLS
 

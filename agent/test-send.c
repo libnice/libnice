@@ -23,6 +23,7 @@
  *
  * Contributors:
  *   Dafydd Harries, Collabora Ltd.
+ *   Kai Vehmanen, Nokia
  *
  * Alternatively, the contents of this file may be used under the terms of the
  * the GNU Lesser General Public License Version 2.1 (the "LGPL"), in which
@@ -66,7 +67,7 @@ static gboolean
 fd_is_readable (guint fd)
 {
   fd_set fds;
-  struct timeval timeout = {0,};
+  struct timeval timeout = { 0, 0 };
 
   FD_ZERO (&fds);
   FD_SET (fd, &fds);
@@ -101,7 +102,7 @@ send_connectivity_check (
     candidates = nice_agent_get_local_candidates (agent, 1, 1);
     g_assert (g_slist_length (candidates) > 0);
     local = candidates->data;
-    g_assert (local->id == 1);
+    g_assert (strncmp (local->foundation, "1", 1) == 0);
     g_slist_free (candidates);
   }
 
@@ -114,7 +115,7 @@ send_connectivity_check (
     g_slist_free (candidates);
   }
 
-  sock = &local->sock;
+  sock = local->sockptr;
 
   username = g_strconcat (local->username, remote->username, NULL);
 
@@ -135,11 +136,12 @@ send_connectivity_check (
 
   {
     StunMessage *msg;
-    NiceAddress addr = {0,};
+    NiceAddress addr;
     gchar packed[1024];
     gchar *dump;
     guint len;
 
+    memset (&addr, 0, sizeof (addr));
     len = nice_udp_fake_socket_pop_send (sock, &addr, 1024, packed);
     g_assert (nice_address_equal (&addr, remote_addr));
     msg = stun_message_unpack (len, packed);
@@ -154,11 +156,12 @@ send_connectivity_check (
 
   {
     StunMessage *msg;
-    NiceAddress addr = {0,};
+    NiceAddress addr;
     gchar packed[1024];
     gchar *dump;
     guint len;
 
+    memset (&addr, 0, sizeof (addr));
     len = nice_udp_fake_socket_pop_send (sock, &addr, 1024, packed);
     g_assert (nice_address_equal (&addr, remote_addr));
     msg = stun_message_unpack (len, packed);
@@ -179,9 +182,11 @@ main (void)
 {
   NiceUDPSocketFactory factory;
   NiceAgent *agent;
-  NiceAddress local_addr = {0,};
-  NiceAddress remote_addr = {0,};
+  NiceAddress local_addr;
+  NiceAddress remote_addr;
 
+  memset (&local_addr, 0, sizeof (local_addr));
+  memset (&remote_addr, 0, sizeof (remote_addr));
   g_type_init ();
 
   /* set up */
@@ -221,7 +226,7 @@ main (void)
 
         candidates = nice_agent_get_local_candidates (agent, 1, 1);
         candidate = candidates->data;
-        sock = &candidate->sock;
+        sock = candidate->sockptr;
         g_slist_free (candidates);
       }
 

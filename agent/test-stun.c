@@ -23,6 +23,7 @@
  *
  * Contributors:
  *   Dafydd Harries, Collabora Ltd.
+ *   Kai Vehmanen, Nokia
  *
  * Alternatively, the contents of this file may be used under the terms of the
  * the GNU Lesser General Public License Version 2.1 (the "LGPL"), in which
@@ -47,12 +48,13 @@ test_stun_no_password (
   NiceAddress from,
   NiceUDPSocket *sock)
 {
-  NiceAddress to = {0,};
+  NiceAddress to;
   guint len;
   gchar buf[1024];
   guint packed_len;
   gchar *packed;
 
+  memset (&to, 0, sizeof (to));
   memset (buf, '\0', 1024);
 
     {
@@ -97,12 +99,13 @@ test_stun_invalid_password (
   NiceAddress from,
   NiceUDPSocket *sock)
 {
-  NiceAddress to = {0,};
+  NiceAddress to;
   guint len;
   gchar buf[1024];
   guint packed_len;
   gchar *packed;
 
+  memset (&to, 0, sizeof (to));
   memset (buf, '\0', 1024);
 
     {
@@ -149,13 +152,14 @@ test_stun_valid_password (
   NiceCandidate *candidate,
   NiceUDPSocket *sock)
 {
-  NiceAddress to = {0,};
+  NiceAddress to;
   guint len;
   guint packed_len;
   gchar buf[1024];
   gchar *packed;
   gchar *username;
 
+  memset (&to, 0, sizeof (to));
   memset (buf, '\0', 1024);
 
   username = g_strconcat (candidate->username, "username", NULL);
@@ -207,13 +211,15 @@ int
 main (void)
 {
   NiceAgent *agent;
-  NiceAddress local_addr = {0,};
-  NiceAddress remote_addr = {0,};
+  NiceAddress local_addr;
+  NiceAddress remote_addr;
   NiceCandidate *candidate;
   NiceUDPSocketFactory factory;
   NiceUDPSocket *sock;
   GSList *candidates;
 
+  memset (&local_addr, 0, sizeof (local_addr));
+  memset (&remote_addr, 0, sizeof (remote_addr));
   g_type_init ();
 
   nice_udp_fake_socket_factory_init (&factory);
@@ -231,7 +237,7 @@ main (void)
 
   candidates = nice_agent_get_local_candidates (agent, 1, 1);
   candidate = candidates->data;
-  sock = &(candidate->sock);
+  sock = candidate->sockptr;
   g_slist_free (candidates);
 
   /* run tests */

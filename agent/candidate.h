@@ -23,6 +23,7 @@
  *
  * Contributors:
  *   Dafydd Harries, Collabora Ltd.
+ *   Kai Vehmanen, Nokia
  *
  * Alternatively, the contents of this file may be used under the terms of the
  * the GNU Lesser General Public License Version 2.1 (the "LGPL"), in which
@@ -41,6 +42,11 @@
 #include "udp.h"
 
 G_BEGIN_DECLS
+
+#define NICE_CANDIDATE_TYPE_PREF_HOST                 120
+#define NICE_CANDIDATE_TYPE_PREF_PEER_REFLEXIVE       110
+#define NICE_CANDIDATE_TYPE_PREF_SERVER_REFLEXIVE     100
+#define NICE_CANDIDATE_TYPE_PREF_RELAYED               60
 
 typedef enum
 {
@@ -61,17 +67,15 @@ struct _NiceCandidate
 {
   NiceCandidateType type;
   NiceCandidateTransport transport;
-  guint id;               
   NiceAddress addr;
   NiceAddress base_addr;
   guint32 priority;
   guint stream_id;
   guint component_id;
-  // guint generation;
-  gchar *foundation;      /* note: if NULL, derive foundation from 'id' */
-  NiceUDPSocket sock;
-  gchar username[128];    /* XXX: why 128 chars? */
-  gchar password[128];    /* XXX: why 128 chars? */
+  gchar *foundation;      
+  NiceUDPSocket *sockptr; /* XXX: to replace 'sock', see comment above */
+  gchar *username;        /* pointer to a NULL-terminated username string */
+  gchar *password;        /* pointer to a NULL-terminated password string */
   GSource *source;
 };
 
@@ -86,7 +90,13 @@ gfloat
 nice_candidate_jingle_priority (NiceCandidate *candidate);
 
 guint32
+nice_candidate_ice_priority_full (guint type_pref, guint local_pref, guint component_id);
+
+guint32
 nice_candidate_ice_priority (const NiceCandidate *candidate);
+
+guint64
+nice_candidate_pair_priority (guint32 o_prio, guint32 a_prio);
 
 G_END_DECLS
 

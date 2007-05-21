@@ -23,6 +23,7 @@
  *
  * Contributors:
  *   Dafydd Harries, Collabora Ltd.
+ *   Kai Vehmanen, Nokia
  *
  * Alternatively, the contents of this file may be used under the terms of the
  * the GNU Lesser General Public License Version 2.1 (the "LGPL"), in which
@@ -36,7 +37,7 @@
  */
 
 #include "agent.h"
-
+#include "component.h"
 
 /* (ICE-13 §4.1.1) Every candidate is a transport address. It also has a type and
  * a base. Three types are defined and gathered by this specification - host
@@ -59,11 +60,14 @@ nice_candidate_free (NiceCandidate *candidate)
 {
   /* better way of checking if socket is allocated? */
 
-  if (candidate->sock.addr.addr_ipv4 != 0)
-    nice_udp_socket_close (&(candidate->sock));
-
   if (candidate->source)
     g_source_destroy (candidate->source);
+
+  if (candidate->username)
+    g_free (candidate->username);
+
+  if (candidate->password)
+    g_free (candidate->password);
 
   if (candidate->foundation)
     g_free (candidate->foundation);
@@ -88,10 +92,10 @@ nice_candidate_jingle_priority (NiceCandidate *candidate)
 }
 
 
-/* ICE-13 §4.1.2; returns number between 1 and 0x7effffff */
+/* ICE-15 §4.1.2.1; returns number between 1 and 0x7effffff */
 G_GNUC_CONST
-static guint32
-_candidate_ice_priority (
+guint32
+nice_candidate_ice_priority_full (
   // must be ∈ (0, 126) (max 2^7 - 2)
   guint type_preference,
   // must be ∈ (0, 65535) (max 2^16 - 1)
@@ -114,12 +118,28 @@ nice_candidate_ice_priority (const NiceCandidate *candidate)
 
   switch (candidate->type)
     {
-    case NICE_CANDIDATE_TYPE_HOST:             type_preference = 120; break;
-    case NICE_CANDIDATE_TYPE_PEER_REFLEXIVE:   type_preference = 110; break;
-    case NICE_CANDIDATE_TYPE_SERVER_REFLEXIVE: type_preference = 100; break;
-    case NICE_CANDIDATE_TYPE_RELAYED:          type_preference =  60; break;
+    case NICE_CANDIDATE_TYPE_HOST:             
+      type_preference = NICE_CANDIDATE_TYPE_PREF_HOST; break;
+    case NICE_CANDIDATE_TYPE_PEER_REFLEXIVE:   
+      type_preference = NICE_CANDIDATE_TYPE_PREF_PEER_REFLEXIVE; break;
+    case NICE_CANDIDATE_TYPE_SERVER_REFLEXIVE:
+      type_preference = NICE_CANDIDATE_TYPE_PREF_SERVER_REFLEXIVE; break;
+    case NICE_CANDIDATE_TYPE_RELAYED:         
+      type_preference = NICE_CANDIDATE_TYPE_PREF_RELAYED; break;
     }
 
-  return _candidate_ice_priority (type_preference, 1, candidate->component_id);
+  /* return _candidate_ice_priority (type_preference, 1, candidate->component_id); */
+  return nice_candidate_ice_priority_full (type_preference, 1, candidate->component_id);
 }
 
+/** 
+ * Calculates the pair priority as specified in ICE -15 spec 5.7.2.
+ */
+guint64
+nice_candidate_pair_priority (guint32 o_prio, guint32 a_prio)
+{
+  guint32 max = o_prio > a_prio ? o_prio : a_prio;
+  guint32 min = o_prio < a_prio ? o_prio : a_prio;
+
+  return ((guint64)1 << 32) * min + 2 * max + (o_prio > a_prio ? 1 : 0);
+}

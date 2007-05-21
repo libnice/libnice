@@ -35,6 +35,8 @@
  * file under either the MPL or the LGPL.
  */
 
+#include <string.h>
+
 #include "stream.h"
 
 Stream *
@@ -44,6 +46,9 @@ stream_new (void)
 
   stream = g_slice_new0 (Stream);
   stream->component = component_new (COMPONENT_TYPE_RTP);
+  stream->n_components = 1;
+  stream->initial_binding_request_received = FALSE;
+
   return stream;
 }
 

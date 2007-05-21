@@ -23,6 +23,7 @@
  *
  * Contributors:
  *   Dafydd Harries, Collabora Ltd.
+ *   Kai Vehmanen, Nokia
  *
  * Alternatively, the contents of this file may be used under the terms of the
  * the GNU Lesser General Public License Version 2.1 (the "LGPL"), in which
@@ -44,9 +45,10 @@ int
 main (void)
 {
   NiceAgent *agent;
-  NiceAddress addr = {0,};
+  NiceAddress addr;
   NiceUDPSocketFactory factory;
 
+  memset (&addr, 0, sizeof (addr));
   g_type_init ();
 
   nice_udp_fake_socket_factory_init (&factory);
@@ -69,7 +71,7 @@ main (void)
       candidates = nice_agent_get_local_candidates (agent, 1, 1);
       candidate = candidates->data;
       g_slist_free (candidates);
-      sock = &(candidate->sock);
+      sock = candidate->sockptr;
       nice_udp_fake_socket_push_recv (sock, &addr, 7, "\x80lalala");
       len = nice_agent_recv (agent, candidate->stream_id,
           candidate->component_id, 1024, buf);

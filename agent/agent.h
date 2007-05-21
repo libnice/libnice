@@ -23,6 +23,7 @@
  *
  * Contributors:
  *   Dafydd Harries, Collabora Ltd.
+ *   Kai Vehmanen, Nokia
  *
  * Alternatively, the contents of this file may be used under the terms of the
  * the GNU Lesser General Public License Version 2.1 (the "LGPL"), in which
@@ -77,8 +78,9 @@ typedef enum
   NICE_COMPONENT_STATE_CONNECTED,    /* at least one working candidate pair */
   NICE_COMPONENT_STATE_READY,        /* ICE concluded, candidate pair
 					selection is now final */
-  NICE_COMPONENT_STATE_FAILED        /* connectivity checks have been completed, 
+  NICE_COMPONENT_STATE_FAILED,       /* connectivity checks have been completed, 
 					but connectivity was not established */
+  NICE_COMPONENT_STATE_LAST           
 } NiceComponentState;
 
 typedef enum
@@ -105,29 +107,6 @@ typedef void (*NiceAgentRecvFunc) (
   NiceAgent *agent, guint stream_id, guint component_id, guint len,
   gchar *buf, gpointer user_data);
 
-struct _NiceAgent
-{
-  GObject parent;
-  guint next_candidate_id;
-  guint next_stream_id;
-  gboolean full_mode;
-  NiceUDPSocketFactory *socket_factory;
-  GSList *local_addresses;
-  GSList *streams;
-  gboolean main_context_set;
-  GMainContext *main_context;
-  NiceAgentRecvFunc read_func;
-  gpointer read_func_data;
-  GSList *discovery_list;
-  guint discovery_unsched_items;
-  GSList *conncheck_list;
-  gchar *stun_server_ip;
-  guint stun_server_port;
-  gchar *turn_server_ip;
-  guint turn_server_port;
-  GTimeVal next_check_tv;
-  NiceRNG *rng;
-};
 
 typedef struct _NiceAgentClass NiceAgentClass;
 
@@ -153,6 +132,18 @@ void
 nice_agent_remove_stream (
   NiceAgent *agent,
   guint stream_id);
+
+gboolean
+nice_agent_set_remote_credentials (
+  NiceAgent *agent,
+  guint stream_id,
+  const gchar *ufrag, const gchar *pwd);
+
+gboolean
+nice_agent_get_local_credentials (
+  NiceAgent *agent,
+  guint stream_id,
+  const gchar **ufrag, const gchar **pwd);
 
 void
 nice_agent_add_remote_candidate (

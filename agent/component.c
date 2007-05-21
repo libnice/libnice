@@ -55,22 +55,50 @@ component_free (Component *cmp)
 {
   GSList *i;
 
-  for (i = cmp->local_candidates; i; i = i->next)
-    {
-      NiceCandidate *candidate = i->data;
+  for (i = cmp->local_candidates; i; i = i->next) {
+    NiceCandidate *candidate = i->data;
+    nice_candidate_free (candidate);
+  }
 
-      nice_candidate_free (candidate);
-    }
+  for (i = cmp->remote_candidates; i; i = i->next) {
+    NiceCandidate *candidate = i->data;
+    nice_candidate_free (candidate);
+  }
 
-  for (i = cmp->remote_candidates; i; i = i->next)
-    {
-      NiceCandidate *candidate = i->data;
+  for (i = cmp->sockets; i; i = i->next) {
+    NiceUDPSocket *udpsocket = i->data;
+    nice_udp_socket_close (udpsocket);
+  }
 
-      nice_candidate_free (candidate);
-    }
+  for (i = cmp->gsources; i; i = i->next) {
+    GSource *source = i->data;
+    g_source_destroy (source);
+  }
+
+  g_slist_free (cmp->gsources),
+    cmp->gsources = NULL;
 
   g_slist_free (cmp->local_candidates);
   g_slist_free (cmp->remote_candidates);
+  g_slist_free (cmp->sockets);
   g_slice_free (Component, cmp);
 }
 
+NiceUDPSocket *
+component_find_udp_socket_by_fd (Component *component, guint fd)
+{
+  GSList *i;
+
+  /* XXX: this won't work anymore, a single fd may be used
+  *       by multiple candidates */
+  
+  for (i = component->sockets; i; i = i->next)
+    {
+      NiceUDPSocket *sockptr = i->data;
+
+      if (sockptr->fileno == fd)
+        return sockptr;
+    }
+
+  return NULL;
+}

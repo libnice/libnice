@@ -1,9 +1,7 @@
 /*
  * This file is part of the Nice GLib ICE library.
  *
- * (C) 2006, 2007 Collabora Ltd.
- *  Contact: Dafydd Harries
- * (C) 2006, 2007 Nokia Corporation. All rights reserved.
+ * (C) 2007 Nokia Corporation. All rights reserved.
  *  Contact: Kai Vehmanen
  *
  * The contents of this file are subject to the Mozilla Public License Version
@@ -22,7 +20,6 @@
  * Corporation. All Rights Reserved.
  *
  * Contributors:
- *   Dafydd Harries, Collabora Ltd.
  *   Kai Vehmanen, Nokia
  *
  * Alternatively, the contents of this file may be used under the terms of the
@@ -36,66 +33,49 @@
  * file under either the MPL or the LGPL.
  */
 
-#include <string.h>
+#ifndef _NICE_DISCOVERY_H
+#define _NICE_DISCOVERY_H
 
-#include <nice/nice.h>
+/* note: this is a private header to libnice */
 
-static GMainLoop *loop = NULL;
+#include "stun/bind.h"
+#include "agent.h"
 
-static void
-recv_cb (
+typedef struct _CandidateDiscovery CandidateDiscovery;
+
+struct _CandidateDiscovery
+{
+  NiceAgent *agent;         /**< back pointer to owner */
+  NiceCandidateType type;   /**< candidate type STUN or TURN */
+  guint socket;             /**< XXX: should be taken from local cand: existing socket to use */
+  NiceUDPSocket *nicesock;  /**< XXX: should be taken from local cand: existing socket to use */
+  const gchar *server_addr; /**< STUN/TURN server address, not owned */ 
+  NiceAddress *interface;   /**< Address of local interface */
+  stun_bind_t *stun_ctx;
+  GTimeVal next_tick;       /**< next tick timestamp */
+  gboolean pending;         /**< is discovery in progress? */
+  gboolean done;            /**< is discovery complete? */
+  Stream *stream;
+  Component *component;
+}; 
+
+void discovery_free_item (gpointer data, gpointer user_data);
+void discovery_free (NiceAgent *agent);
+gboolean discovery_prune_stream (NiceAgent *agent, guint stream_id);
+void discovery_schedule (NiceAgent *agent);
+
+NiceCandidate *discovery_add_local_host_candidate (
   NiceAgent *agent,
   guint stream_id,
   guint component_id,
-  guint len,
-  gchar *buf,
-  gpointer data)
-{
-  g_assert (agent != NULL);
-  g_assert (stream_id == 1);
-  g_assert (component_id == 1);
-  g_assert (len == 6);
-  g_assert (0 == strncmp (buf,  "\x80hello", len));
-  g_assert (42 == GPOINTER_TO_UINT (data));
-  g_main_loop_quit (loop);
-}
+  NiceAddress *address);
 
-int
-main (void)
-{
-  NiceAgent *agent;
-  NiceAddress addr;
-  NiceUDPSocketFactory factory;
+NiceCandidate* 
+discovery_add_server_reflexive_candidate (
+  NiceAgent *agent,
+  guint stream_id,
+  guint component_id,
+  NiceAddress *address,
+  NiceUDPSocket *base_socket);
 
-  memset (&addr, 0, sizeof (addr));
-  g_type_init ();
-
-  nice_udp_fake_socket_factory_init (&factory);
-  agent = nice_agent_new (&factory);
-  nice_address_set_ipv4 (&addr, 0x7f000001);
-  nice_agent_add_local_address (agent, &addr);
-  nice_agent_add_stream (agent, 1);
-  // attach to default main context
-  nice_agent_main_context_attach (agent, NULL, recv_cb, GUINT_TO_POINTER (42));
-
-    {
-      NiceUDPSocket *sock;
-      NiceCandidate *candidate;
-      GSList *candidates;
-
-      candidates = nice_agent_get_local_candidates (agent, 1, 1);
-      candidate = candidates->data;
-      sock = candidate->sockptr;
-      g_slist_free (candidates);
-
-      nice_udp_fake_socket_push_recv (sock, &addr, 6, "\x80hello");
-    }
-
-  loop = g_main_loop_new (NULL, FALSE);
-  g_main_loop_run (loop);
-
-  g_object_unref (agent);
-  nice_udp_socket_factory_close (&factory);
-  return 0;
-}
-
+#endif /*_NICE_CONNCHECK_H */
