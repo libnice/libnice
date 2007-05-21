@@ -54,14 +54,14 @@ typedef enum
 
 typedef struct _NiceAddress NiceAddress;
 
-/* XXX: need access to fields to convert to sockaddr_in */
+/* note: clients need to know the storage size, so needs to be public */
 struct _NiceAddress
 {
   NiceAddressType type;
   union
   {
     guint32 addr_ipv4;
-    guchar addr_ipv6[16];
+    guchar addr_ipv6[INET_ADDRSTRLEN];
   };
   guint16 port;
 };
@@ -86,10 +86,13 @@ gboolean
 nice_address_set_ipv4_from_string (NiceAddress *addr, const gchar *str);
 
 void
-nice_address_set_from_sockaddr_in (NiceAddress *addr, struct sockaddr_in *sin);
+nice_address_set_from_sockaddr (NiceAddress *addr, const struct sockaddr *sin);
+
+void
+nice_address_copy_to_sockaddr (const NiceAddress *addr, struct sockaddr *sin);
 
 gboolean
-nice_address_equal (NiceAddress *a, NiceAddress *b);
+nice_address_equal (const NiceAddress *a, const NiceAddress *b);
 
 void
 nice_address_to_string (NiceAddress *addr, gchar *dst);

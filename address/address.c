@@ -23,6 +23,7 @@
  *
  * Contributors:
  *   Dafydd Harries, Collabora Ltd.
+ *   Kai Vehmanen, Nokia
  *
  * Alternatively, the contents of this file may be used under the terms of the
  * the GNU Lesser General Public License Version 2.1 (the "LGPL"), in which
@@ -89,25 +90,59 @@ nice_address_set_ipv4_from_string (NiceAddress *addr, const gchar *str)
     }
 }
 
-
+/**
+ * Sets address to match socket address struct 'sin'.
+ */
 void
-nice_address_set_from_sockaddr_in (NiceAddress *addr, struct sockaddr_in *sin)
+nice_address_set_from_sockaddr (NiceAddress *addr, const struct sockaddr *sin)
 {
-  if (sin->sin_family == AF_INET6)
+  const struct sockaddr_in *sin4 = (const struct sockaddr_in *)sin;
+  const struct sockaddr_in6 *sin6 = (const struct sockaddr_in6 *)sin;
+
+  if (sin4->sin_family == AF_INET)
+    {
+      addr->type = NICE_ADDRESS_TYPE_IPV4;
+      nice_address_set_ipv4 (addr, ntohl (sin4->sin_addr.s_addr));
+    }
+  else if (sin4->sin_family == AF_INET6)
     {
       addr->type = NICE_ADDRESS_TYPE_IPV6;
       nice_address_set_ipv6 (addr,
-          (gchar *) &((struct sockaddr_in6 *) sin)->sin6_addr);
+          (gchar *) &sin6->sin6_addr);
     }
   else
-    {
-      addr->type = NICE_ADDRESS_TYPE_IPV4;
-      nice_address_set_ipv4 (addr, ntohl (sin->sin_addr.s_addr));
-    }
+    g_assert_not_reached ();
 
-  addr->port = ntohs (sin->sin_port);
+  addr->port = ntohs (sin4->sin_port);
 }
 
+
+/**
+ * Copies IPv4 NiceAddrress to socket address struct 'sin'.
+ */
+void
+nice_address_copy_to_sockaddr (const NiceAddress *addr, struct sockaddr *sin)
+{
+  struct sockaddr_in *sin4 = (struct sockaddr_in *)sin;
+  struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)sin;
+
+  g_assert (sin);
+  
+  if (addr->type == NICE_ADDRESS_TYPE_IPV4)
+    {
+      sin4->sin_family = AF_INET;
+      sin4->sin_addr.s_addr = htonl (addr->addr_ipv4);
+    }
+  else if (addr->type == NICE_ADDRESS_TYPE_IPV6)
+    {
+      sin4->sin_family = AF_INET6;
+      memcpy (&sin6->sin6_addr.s6_addr, addr->addr_ipv6, sizeof (addr->addr_ipv6));
+    }
+  else
+    g_assert_not_reached ();
+  
+  sin4->sin_port = htons (addr->port);
+}
 
 void
 nice_address_to_string (NiceAddress *addr, gchar *dst)
@@ -131,13 +166,16 @@ nice_address_to_string (NiceAddress *addr, gchar *dst)
 
 
 gboolean
-nice_address_equal (NiceAddress *a, NiceAddress *b)
+nice_address_equal (const NiceAddress *a, const NiceAddress *b)
 {
   if (a->type != b->type)
     return FALSE;
 
   if (a->type == NICE_ADDRESS_TYPE_IPV4)
     return (a->addr_ipv4 == b->addr_ipv4) && (a->port == b->port);
+
+  if (a->type == NICE_ADDRESS_TYPE_IPV6)
+    return (memcmp (a->addr_ipv6, b->addr_ipv6, INET_ADDRSTRLEN) == 0) && (a->port == b->port);
 
   g_assert_not_reached ();
 }
