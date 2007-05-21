@@ -29,6 +29,7 @@ Limitations
 Structure
 ---------
 
+ docs/    - design documentation
  address/ - IP address convenience library
  local/   - local address gathering code
  random/  - random number generation
@@ -42,12 +43,14 @@ Relevant standards
 
 These standards are relevant to nice's current implementation.
 
-ICE draft 13
-  http://tools.ietf.org/html/draft-ietf-mmusic-ice-13
+ICE draft 15
+  http://tools.ietf.org/wg/mmusic/draft-ietf-mmusic-ice/
 STUN
   http://tools.ietf.org/html/rfc3489
 STUN bis (used by ICE)
-  http://tools.ietf.org/html/draft-ietf-behave-rfc3489bis-04
+  http://tools.ietf.org/wg/behave/draft-ietf-behave-rfc3489bis/
+TURN 
+  http://tools.ietf.org/wg/behave/draft-ietf-behave-turn/
 RTP
   http://tools.ietf.org/html/rfc3550
 XMPP Jingle ICE transport

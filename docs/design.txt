@@ -1,0 +1,206 @@
+Nice: Design documentation
+==========================
+
+Socket ownership
+----------------
+
+For UDP candidates, one socket is created for each component and bound
+to INADDR_ANY. The same local socket is used for the host candidate,
+STUN candidate as well as the TURN candidate. The socket handles are
+stored to the Component structure.
+
+The library will use the source address of incoming packets in order
+to identify from which remote candidates, if any (peer-derived
+candidates), packets were sent.
+
+Real-time considerations
+------------------------
+
+One potential use for libnice code is providing network connectivity
+for media transport in voice and video telephony applications. This
+means that the libnice code is potentially run in real-time context
+(for instance under POSIX SCHED_FIFO/SHCED_RR scheduling policy) and
+ideally has deterministic execution time.
+
+To be real-time friendly, operations with non-deterministic execution
+time (dynamic memory allocation, file and other resource access) should
+be done at startup/initialization phase. During an active session
+(connectivity has been established and non-STUN traffic is being sent),
+code should be as deterministic as possible.
+
+Memory management
+-----------------
+
+To work on platforms where available memory may be constrained, libnice
+should gracefully handle out of memory situations. If memory allocation
+fails, the library should return an error via the originating public
+library API function.
+
+Use of glib creates some challenges to meet the above:
+
+- A lot of glib's internal code assumes memory allocations will
+  always work. Use of these glib facilities should be limited.
+  While the glib default policy (see g_malloc() documentation) of terminating 
+  the process is ok for applications, this is not acceptable for library 
+  components.
+- Glib has weak support for preallocating structures needed at
+  runtime (for instance use of timers creates a lot of memory 
+  allocation activity). 
+
+To work around the above limitations, the following guidelines need
+to be followed:
+
+- Always check return values of glib functions.
+- Use safe variants: g_malloc_try(), etc
+- Current issues (last update 2007-05-04)
+     - g_slist_append() will crash if alloc fails
+
+Timers
+------
+
+Management of timers is handled by the 'agent' module. Other modules 
+may use timer APIs to get timestamps, but they do not run timers. 
+
+Glib's timer interface has some problems that have affected the design:
+
+ - an expired timer will destroy the source (a potentially costly
+   operation)
+ - it is not possible to cancel, or adjust the timer expiration
+   timer without destroying the associated source and creating 
+   a new one, which again causes malloc/frees and is potentially
+   a costly operation
+ - on Linux, glib uses gettimeofday() which is subject to clock
+   skew, and no monotonic timer API is available
+
+Due to the above, 'agent' code runs fixed interval periodic timers
+(started with g_timeout_add()) during candidate gathering, connectivity
+check, and session keepalive phases. Timer frequency is set separately
+for each phase of processing. A more elegant design would use dynamic
+timeouts, but this would be too expensive with glib timer
+infrastructure.
+
+Control flow for NICE agent API (NiceAgentClass)
+------------------------------------------------
+
+The main library interface for applications using libnice is the
+NiceAgent GObject interface defined in 'nice/agent.h'.
+
+The rough order of control follow is as follows:
+
+- client should initialize glib with g_type_init()
+- creation of NiceAgent object instance (a UDP socket factory object
+  instance must be given as a parameter)
+- setting agent properties such as STUN and TURN server addresses, and
+  selection of ICE operating mode
+- connecting the GObject signals with g_signal_connect() to application
+  callback functions
+- adding local interface addresses to use with
+  nice_agent_add_local_address()
+- attach the mainloop context to connect the NiceAgent state machine to
+  the application's event loop (using nice_agent_main_context_attach())
+
+And continues when making an initial offer:
+
+- creating the streams with nice_agent_add_stream()
+- the application should wait for the "candidate-gathering-done" signal
+  before going forward (so that ICE can gather the needed set of local
+  connectiviy candidates) 
+- get the information needed for sending offer using
+  nice_agent_get_local_candidates() and
+  nice_agent_get_local_credentials()
+- client should now send the session offer
+- once it receives an answer, it can pass the information to NiceAgent
+  using nice_agent_set_remote_candidates() and
+  nice_agent_set_remote_credentials()
+
+Alternatively, when answering to an initial offer:
+
+- the first three steps are the same as above (making initial offer)
+- pass the remote session information to NiceAgent using 
+  nice_agent_set_remote_candidates() and
+  nice_agent_set_remote_credentials()
+- client can send the answer to session offer
+
+Special considerations for a SIP client:
+
+- Upon sending the initial offer/answer, client should pick one
+  local candidate as the default one, and encode it to the SDP
+  "m" and "c" lines, in addition to the ICE "a=candidate" lines.
+- Client should connect to "new-selected-pair" signals. If this
+  signal is received, a new candidate pair has been set as 
+  a selected pair (highest priority nominated pair). See 
+  ICE specification for a definition of "nominated pairs". 
+- Once all components of a stream have reached the
+  "NICE_COMPONENT_STATE_READY" state (as reported by 
+  "component-state-changed" signals), the client should check
+  whether its original default candidate matches the latest 
+  selected pair. If not, it needs to send an updated offer
+  it is in controlling mode. Before sending the offer, client
+  should check the "controlling-mode" property to check that
+  it still is in controlling mode (might change during ICE
+  processing due to ICE role conflicts).
+
+Notes about sending media:
+
+- Client may send media once all components of a stream have reached
+  state of NICE_COMPONENT_STATE_CONNECTED or NICE_COMPONENT_STATE_READY,
+  (as reported by "component-state-changed" signals), and a selected pair 
+  is set for all components (as reported by "new-selected-pair" signals).
+
+STUN API
+--------
+
+The underlying STUN library takes care of:
+- formatting and parsing STUN messages (lower layer),
+- running STUN transactions for different STUN usages (higher layer).
+
+Applications should only need to use the higher layer API which then
+uses the lower layer API.
+
+The following STUN usages are currently implemented by the
+transaction layer:
+- Binding discovery (RFC3489bis with RFC3489 backward compatibility)
+- ICE connectivity checks
+
+The following usages are planned but not implemented currently:
+- Relay (TURN)
+- Binding keep-alive
+
+STUN transaction API
+--------------------
+
+STUN transaction are supported through a set of non-blocking functions.
+The application is responsible for blocking polling operation, so that
+it can run any number of STUN transactions and other work within the
+same thread:
+- Initialization and initiation of the transaction: stun_*_start()
+- I/O event polling: stun_*_fd() resp. stun_*_timeout() specify which
+  file description resp. how long to wait for it
+- Incoming data processing: stun_*_process()
+- Timeout processing: stun_*_elapse()
+- Cancellation (at any time) of the transaction: stun_*_cancel()
+
+On the "server" side, STUN requires that requests processing be
+indempotent, and there are no timeouts in the currently supported
+usages. As such, each usage is made of a single function that
+parses a request and formats an answer: stun_*_reply()
+
+STUN message API
+----------------
+
+STUN message API provide thin wrappers to parse and format STUN
+messages. To achieve maximum cross-architectures portability and retain
+real-time friendliness, these functions are fully "computational" [1].
+They also make no assumption about endianess or memory alignment
+(reading single bytes or using memcpy()).
+
+Message buffers are provided by the caller (so these can be
+preallocated). Because STUN uses a relatively computer-friendly binary
+format, STUN messages are stored in wire format within the buffers.
+There is no intermediary translation, so the APIs can operate directly
+with data received from or sent to the network.
+
+[1] With two exceptions: creating a new message might require locking
+to ensure uniqueness; and OpenSSL which is used for cryptographic
+hashing and random number generation might access the system entropy
+pool, use threading synchronization...
