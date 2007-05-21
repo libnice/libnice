@@ -43,6 +43,7 @@
 #include <arpa/inet.h>
 
 #include <unistd.h>
+#include <string.h>
 
 #include "udp-bsd.h"
 
@@ -56,9 +57,10 @@ socket_recv (
   gchar *buf)
 {
   gint recvd;
-  struct sockaddr_in sin = {0,};
+  struct sockaddr_in sin;
   guint from_len = sizeof (sin);
 
+  memset (&sin, 0, sizeof (sin));
   recvd = recvfrom (sock->fileno, buf, len, 0, (struct sockaddr *) &sin,
       &from_len);
 
@@ -102,9 +104,10 @@ socket_factory_init_socket (
   NiceAddress *addr)
 {
   gint sockfd;
-  struct sockaddr_in name = {0,};
+  struct sockaddr_in name;
   guint name_len = sizeof (name);
 
+  memset (&name, 0, sizeof (name));
   sockfd = socket (PF_INET, SOCK_DGRAM, 0);
 
   if (sockfd < 0)

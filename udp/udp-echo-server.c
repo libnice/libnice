@@ -36,14 +36,16 @@
  */
 
 #include "udp-bsd.h"
+#include <string.h>
 
 gint
 main (void)
 {
   NiceUDPSocketFactory factory;
   NiceUDPSocket sock;
-  NiceAddress addr = {0,};
+  NiceAddress addr;
 
+  memset (&addr, 0, sizeof (addr));
   nice_udp_bsd_socket_factory_init (&factory);
   addr.port = 9999;
 

@@ -45,9 +45,10 @@ main (void)
   NiceUDPSocketFactory factory;
   NiceUDPSocket server;
   NiceUDPSocket client;
-  NiceAddress tmp = {0,};
+  NiceAddress tmp;
   gchar buf[5];
 
+  memset (&tmp, 0, sizeof (tmp));
   nice_udp_bsd_socket_factory_init (&factory);
 
   g_assert (nice_udp_socket_factory_make (&factory, &server, NULL));

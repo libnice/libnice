@@ -45,10 +45,11 @@ main (void)
 {
   NiceUDPSocketFactory man;
   NiceUDPSocket sock;
-  NiceAddress addr = {0,};
+  NiceAddress addr;
   guint len;
   gchar buf[1024];
 
+  memset (&addr, 0, sizeof (addr));
   nice_udp_fake_socket_factory_init (&man);
 
   memset (buf, '\0', 1024);
