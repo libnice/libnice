@@ -23,6 +23,7 @@
  *
  * Contributors:
  *   Dafydd Harries, Collabora Ltd.
+ *   Kai Vehmanen, Nokia
  *
  * Alternatively, the contents of this file may be used under the terms of the
  * the GNU Lesser General Public License Version 2.1 (the "LGPL"), in which
@@ -54,6 +55,8 @@ handle_recv (
   gchar *buf, gpointer user_data)
 {
   g_debug ("got media");
+  (void)agent; (void)stream_id; (void)component_id; (void)len; (void)buf;
+  (void)user_data;
 }
 
 /* create an agent and give it one fixed local IP address */
@@ -80,12 +83,12 @@ make_agent (
   candidates = nice_agent_get_local_candidates (agent, 1, 1);
   g_assert (candidates != NULL);
   candidate = candidates->data;
-  g_debug ("allocated socket %d port %d for candidate %d",
-      candidate->sock.fileno, candidate->sock.addr.port, candidate->id);
+  g_debug ("allocated socket %d port %d for candidate %s",
+      candidate->sockptr->fileno, candidate->sockptr->addr.port, candidate->foundation);
   g_slist_free (candidates);
 
   *ret_agent = agent;
-  *ret_sock = &(candidate->sock);
+  *ret_sock = candidate->sockptr;
 
   return TRUE;
 }

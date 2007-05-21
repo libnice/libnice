@@ -146,9 +146,10 @@ OUT:
 int
 main (gint argc, gchar *argv[])
 {
-  struct sockaddr_in sin = {0,};
+  struct sockaddr_in sin;
   gint sock;
 
+  memset (&sin, 0, sizeof (sin));
   sock = socket (AF_INET, SOCK_STREAM, 0);
 
   if (argc != 2)

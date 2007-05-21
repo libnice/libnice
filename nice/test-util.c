@@ -43,10 +43,11 @@
 int
 main (void)
 {
-  NiceAddress addr = {0,};
+  NiceAddress addr;
   NiceCandidate *candidate;
   gchar *str;
 
+  memset (&addr, 0, sizeof (addr));
   candidate = nice_candidate_from_string ("x");
   g_assert (candidate == NULL);
 

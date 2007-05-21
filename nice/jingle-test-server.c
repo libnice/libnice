@@ -182,9 +182,10 @@ main (void)
 {
   NiceUDPSocketFactory factory;
   NiceUDPSocket sock;
-  NiceAddress addr = {0,};
+  NiceAddress addr;
   guint ret;
 
+  memset (&addr, 0, sizeof (addr));
   g_type_init ();
 
   addr.port = 1234;

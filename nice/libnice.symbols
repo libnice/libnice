@@ -1,9 +1,10 @@
+T nice_address_copy_to_sockaddr
 T nice_address_dup
 T nice_address_equal
 T nice_address_free
 T nice_address_is_private
 T nice_address_new
-T nice_address_set_from_sockaddr_in
+T nice_address_set_from_sockaddr
 T nice_address_set_ipv4
 T nice_address_set_ipv4_from_string
 T nice_address_set_ipv6
@@ -13,6 +14,7 @@ T nice_agent_add_local_address
 T nice_agent_add_remote_candidate
 T nice_agent_add_stream
 T nice_agent_get_local_candidates
+T nice_agent_get_local_credentials
 T nice_agent_get_remote_candidates
 T nice_agent_get_type
 T nice_agent_main_context_attach
@@ -23,11 +25,14 @@ T nice_agent_recv_sock
 T nice_agent_remove_stream
 T nice_agent_send
 T nice_agent_set_remote_candidates
+T nice_agent_set_remote_credentials
 
 T nice_candidate_free
 T nice_candidate_ice_priority
+T nice_candidate_ice_priority_full
 T nice_candidate_jingle_priority
 T nice_candidate_new
+T nice_candidate_pair_priority
 
 T nice_interface_free
 T nice_interface_new
