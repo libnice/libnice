@@ -62,7 +62,7 @@ struct _NiceAddress
   {
     guint32 addr_ipv4;
     guchar addr_ipv6[INET_ADDRSTRLEN];
-  };
+  } addr;
   guint16 port;
 };
 

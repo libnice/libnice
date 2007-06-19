@@ -35,6 +35,9 @@
  * not delete the provisions above, a recipient may use your version of this
  * file under either the MPL or the LGPL.
  */
+#ifdef HAVE_CONFIG_H
+# include "config.h"
+#endif
 
 #include <string.h>
 
@@ -86,14 +89,28 @@ test_ipv4 (void)
   nice_address_set_ipv4 (&other, 0x01020304);
   addr.port = 1;
   g_assert (FALSE == nice_address_equal (&addr, &other));
+
+  /* test private address check */
+  {
+    NiceAddress *heap_addr = nice_address_new ();
+    g_assert (nice_address_set_ipv4_from_string (heap_addr, "127.0.0.1") == TRUE);
+    g_assert (nice_address_is_private (heap_addr) == TRUE);
+    g_assert (nice_address_set_ipv4_from_string (heap_addr, "127.0.0.1.1") != TRUE);
+    nice_address_free (heap_addr);
+  }
 }
 
 static void
 test_ipv6 (void)
 {
-  NiceAddress addr, other;
+  NiceAddress addr, other, v4addr;
   gchar str[NICE_ADDRESS_STRING_LEN];
-  struct sockaddr_in6 sin;
+  struct sockaddr_in6 sin, sin2;
+  
+  g_assert (nice_address_set_ipv4_from_string (&v4addr, "172.1.0.1") == TRUE);
+
+  memset (&sin, 0, sizeof (sin));
+  memset (&sin2, 0, sizeof (sin2));
 
   sin.sin6_family = AF_INET6;
   sin.sin6_port = htons (9876);
@@ -112,9 +129,32 @@ test_ipv6 (void)
 
   addr.port = 9876; /* in native byte order */
   nice_address_set_from_sockaddr (&other, (struct sockaddr*)&sin);
+  nice_address_copy_to_sockaddr (&other, (struct sockaddr*)&sin2);
+  g_assert (memcmp (&sin, &sin2, sizeof(sin)) == 0);
   nice_address_to_string (&addr, str);
   nice_address_to_string (&other, str);
-  g_assert (TRUE == nice_address_equal (&addr, &other));
+  g_assert (nice_address_equal (&addr, &other) == TRUE);
+
+  /* private IPv6 address */
+  nice_address_set_ipv6 (&addr,
+      "\xfc\x00\x00\x00"
+      "\x00\x00\x00\x00"
+      "\x00\x00\x00\x00"
+      "\x00\x00\x00\x01");
+  g_assert (nice_address_is_private (&addr) == TRUE);
+  nice_address_set_ipv6 (&addr,
+      "\x00\x00\x00\x00"
+      "\x00\x00\x00\x00"
+      "\x00\x00\x00\x00"
+      "\x00\x00\x00\x01");
+  g_assert (nice_address_is_private (&addr) == TRUE);
+
+  /* mismatching address families */
+  g_assert (nice_address_equal (&addr, &v4addr) != TRUE);
+
+  /* mismatched type */
+  addr.type = -1;
+  /*g_assert (nice_address_equal (&addr, &v4addr) != TRUE);*/
 }
 
 int
