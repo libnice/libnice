@@ -34,6 +34,9 @@
  * not delete the provisions above, a recipient may use your version of this
  * file under either the MPL or the LGPL.
  */
+#ifdef HAVE_CONFIG_H
+# include "config.h"
+#endif
 
 #include <glib.h>
 
@@ -42,20 +45,20 @@
 
 #include "local.h"
 
-NiceInterface *
+NICEAPI_EXPORT NiceInterface *
 nice_interface_new ()
 {
   return g_slice_new0 (NiceInterface);
 }
 
-void
+NICEAPI_EXPORT void
 nice_interface_free (NiceInterface *iface)
 {
   g_free (iface->name);
   g_slice_free (NiceInterface, iface);
 }
 
-GSList *
+NICEAPI_EXPORT GSList *
 nice_list_local_interfaces ()
 {
   GSList *ret = NULL;
@@ -66,17 +69,19 @@ nice_list_local_interfaces ()
 
   for (i = ifs; i; i = i->ifa_next)
     {
-      struct sockaddr_in *addr;
+      const struct sockaddr *addr;
 
-      addr = (struct sockaddr_in *) i->ifa_addr;
+      addr = (struct sockaddr *) i->ifa_addr;
+      if (addr == NULL)
+          continue; /* interface with no address */
 
-      if (addr->sin_family == AF_INET || addr->sin_family == AF_INET6)
+      if (addr->sa_family == AF_INET || addr->sa_family == AF_INET6)
         {
           NiceInterface *iface;
 
-          iface = g_slice_new0 (NiceInterface);
+          iface = nice_interface_new ();
           iface->name = g_strdup (i->ifa_name);
-          nice_address_set_from_sockaddr (&(iface->addr), (const struct sockaddr *)addr);
+          nice_address_set_from_sockaddr (&(iface->addr), addr);
           ret = g_slist_append (ret, iface);
         }
     }
