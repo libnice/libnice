@@ -10,13 +10,16 @@ include $(top_srcdir)/common.mk
 
 lib_LTLIBRARIES = libnice.la
 
-libnice_la_SOURCES = libnice.ver
+libnice_la_SOURCES =
+libnice_la_DEPENDENCIES = libnice.sym
 
 libnice_la_LIBADD = \
 	$(top_builddir)/local/liblocal.la \
 	$(top_builddir)/agent/libagent.la
 
-libnice_la_LDFLAGS = -Wl,--version-script,$(srcdir)/libnice.ver
+libnice_la_LDFLAGS = \
+	-export-symbols $(srcdir)/libnice.sym \
+	-version-info 0:0:0
 
 AM_CFLAGS = \
 	$(ERROR_CFLAGS) \
@@ -28,7 +31,7 @@ AM_CFLAGS = \
 	-I $(top_srcdir)/udp \
 	-I $(top_srcdir)/stun
 
-noinst_PROGRAMS = \
+EXTRA_PROGRAMS = \
 	ice-test-client \
 	ice-test-server \
 	jingle-test-server
@@ -59,7 +62,7 @@ check_PROGRAMS = \
 	test-readline
 
 # XXX: test programs disabled due to changes in API
-EXTRA_PROGRAMS = \
+EXTRA_PROGRAMS += \
 	test-util
 
 test_readline_SOURCES = test-readline.c readline.h readline.c
@@ -73,11 +76,18 @@ test_util_LDADD = $(COMMON_LDADD)
 test-symbols.sh::
 	chmod +x $(srcdir)/$@
 
+libnice.symbols: libnice.sym Makefile
+	rm -f $@
+	while read s; do echo "T $$s"; done < $< > $@
+
+CLEANFILES += libnice.symbols
+
 check_SCRIPTS = test-symbols.sh
+check_DATA = libnice.symbols
 
 TESTS = $(check_PROGRAMS) $(check_SCRIPTS)
 
-EXTRA_DIST = $(check_SCRIPTS) libnice.symbols
+EXTRA_DIST = $(check_SCRIPTS) libnice.sym
 
 pkginclude_HEADERS = nice.h
 

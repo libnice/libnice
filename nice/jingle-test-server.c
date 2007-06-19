@@ -39,6 +39,9 @@
  * This program interoperates with the test-rtp-jingle program from the
  * Farsight tests/ directory. It echoes received media to the sender.
  */
+#ifdef HAVE_CONFIG_H
+# include "config.h"
+#endif
 
 #include <stdlib.h>
 #include <string.h>
