@@ -36,23 +36,39 @@
 #ifndef STUN_TRANS_H
 # define STUN_TRANS_H 1
 
+/**
+ * @file trans.h
+ * @brief STUN client generic transaction layer
+ */
+
 # include <sys/types.h>
 # include <sys/socket.h>
-
-# include <stdbool.h>
 
 # include "timer.h"
 
 typedef struct stun_trans_s
 {
 	stun_timer_t timer;
-	size_t       msglen;
-	stun_msg_t   msg;
+	unsigned  flags;
 
-	bool ownfd;
-	int fd;
-	socklen_t srvlen;
-	struct sockaddr_storage srv;
+	struct
+	{
+		size_t  length, offset;
+		uint8_t buf[STUN_MAXMSG];
+	} msg;
+
+	struct
+	{
+		int                     fd;
+		socklen_t               dstlen;
+		struct sockaddr_storage dst;
+	} sock;
+
+	struct
+	{
+		size_t  length;
+		uint8_t *value;
+	} key;
 } stun_trans_t;
 
 
@@ -60,14 +76,50 @@ typedef struct stun_trans_s
 extern "C" {
 # endif
 
+/**
+ * Initializes a new STUN request transaction
+ *
+ * @param tr pointer to an unused STUN transaction struct
+ * @param fd socket descriptor to use
+ * @param srv STUN server socket address (ignored if @a srvlen is 0)
+ * @param srvlen STUN server socket address length (or 0 @a fd is connected)
+ */
 int stun_trans_init (stun_trans_t *restrict tr, int fd,
                      const struct sockaddr *restrict srv, socklen_t srvlen);
+
+/**
+ * Initializes a new STUN request transaction with its dedicated socket
+ *
+ * @param tr pointer to an unused STUN transaction struct
+ * @param sotype socket type (as in socket() second parameter)
+ * @param proto socket protocol (as is socket() third parameter)
+ * @param srv STUN server socket address (ignored if @a srvlen is 0)
+ * @param srvlen STUN server socket address length (or 0 @a fd is connected)
+ */
+int stun_trans_create (stun_trans_t *restrict tr, int sotype, int proto,
+                       const struct sockaddr *restrict srv, socklen_t srvlen);
+
 void stun_trans_deinit (stun_trans_t *restrict tr);
 
 int stun_trans_start (stun_trans_t *restrict tr);
 int stun_trans_tick (stun_trans_t *tr);
+int stun_trans_preprocess (stun_trans_t *restrict tr,
+                           const void *restrict buf, size_t len);
 
+/**
+ * This is meant to integrate with I/O pooling loops and event frameworks.
+ *
+ * @return recommended maximum delay (in milliseconds) to wait for a
+ * response.
+ */
 unsigned stun_trans_timeout (const stun_trans_t *tr);
+
+/**
+ * This is meant to integrate with I/O polling loops and event frameworks.
+ *
+ * @return file descriptor used by the STUN Binding discovery context.
+ * Always succeeds.
+ */
 int stun_trans_fd (const stun_trans_t *tr);
 
 # ifdef __cplusplus

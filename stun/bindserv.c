@@ -69,8 +69,6 @@ stun_binding_reply (uint8_t *buf, size_t *restrict plen, const uint8_t *msg,
                     const struct sockaddr *restrict src, socklen_t srclen,
                     bool muxed, const char *restrict pass)
 {
-	assert (plen != NULL);
-
 	size_t len = *plen;
 	int val;
 	*plen = 0;
@@ -82,7 +80,7 @@ stun_binding_reply (uint8_t *buf, size_t *restrict plen, const uint8_t *msg,
 	if (stun_get_class (msg) != STUN_REQUEST)
 	{
 		DBG (" Unhandled non-request (class %u) message.\n",
-		     (unsigned)stun_get_class (msg));
+		     stun_get_class (msg));
 		return EINVAL;
 	}
 
@@ -133,7 +131,7 @@ stun_binding_reply (uint8_t *buf, size_t *restrict plen, const uint8_t *msg,
 	if (stun_get_method (msg) != STUN_BINDING)
 	{
 		DBG (" Bad request (method %u) message.\n",
-		     (unsigned)stun_get_method (msg));
+		     stun_get_method (msg));
 		err (STUN_BAD_REQUEST);
 		return EPROTO;
 	}
@@ -185,7 +183,7 @@ stun_bind_reply (uint8_t *buf, size_t *restrict plen, const uint8_t *msg,
 
 
 /** Connectivity checks **/
-#include "conncheck.h"
+#include "stun-ice.h"
 
 int
 stun_conncheck_reply (uint8_t *buf, size_t *restrict plen, const uint8_t *msg,
@@ -229,16 +227,20 @@ stun_conncheck_reply (uint8_t *buf, size_t *restrict plen, const uint8_t *msg,
 char *stun_conncheck_username (const uint8_t *restrict msg,
                                char *restrict buf, size_t buflen)
 {
+	size_t i;
 	ssize_t len = stun_find_string (msg, STUN_USERNAME, buf, buflen);
+
 	if ((len == -1) || ((size_t)len >= buflen))
 		return NULL;
 
-	for (size_t i = 0; i < (size_t)len; i++)
+	for (i = 0; i < (size_t)len; i++)
 	{
 		char c = buf[i];
+		/* ref ICE sect 7.1.1.4. (ID-16) */
 		if (((c >= '/') && (c <= '9')) || ((c >= 'A') && (c <= 'Z'))
-		 || ((c >= 'a') && (c <= 'z')) || (c == '+'))
+		 || ((c >= 'a') && (c <= 'z')) || (c == '+') || (c == ':'))
 			continue;
+
 		return NULL;
 	}
 
@@ -249,6 +251,7 @@ char *stun_conncheck_username (const uint8_t *restrict msg,
 uint32_t stun_conncheck_priority (const uint8_t *msg)
 {
 	uint32_t value;
+
 	if (stun_find32 (msg, STUN_PRIORITY, &value))
 		return 0;
 	return value;

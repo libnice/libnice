@@ -58,6 +58,8 @@ int stun_valid (const uint8_t *msg)
 
 ssize_t stun_validate (const uint8_t *msg, size_t len)
 {
+	size_t mlen;
+
 	if (len < 1)
 	{
 		DBG ("STUN error: No data!\n");
@@ -76,7 +78,7 @@ ssize_t stun_validate (const uint8_t *msg, size_t len)
 		return 0;
 	}
 
-	size_t mlen = 20u + stun_length (msg);
+	mlen = 20u + stun_length (msg);
 	if (stun_padding (mlen))
 	{
 		DBG ("STUN error: Invalid message length: %u!\n", (unsigned)mlen);
@@ -85,29 +87,33 @@ ssize_t stun_validate (const uint8_t *msg, size_t len)
 
 	if (len < mlen)
 	{
-		DBG ("STUN error: Incomplete message: %u of %u bytes!\n", len,
-		     (unsigned)mlen);
+		DBG ("STUN error: Incomplete message: %u of %u bytes!\n",
+		     (unsigned)len, (unsigned)mlen);
 		return 0; // partial message
 	}
 
 	msg += 20;
+	len = mlen - 20;
 
 	/* from then on, we know we have the entire packet in buffer */
-	for (const uint8_t *end = msg + (mlen - 20); end > msg;)
+	while (len > 0)
 	{
-		msg += 4;
+		size_t alen = stun_align (stun_length (msg));
+
  		/* thanks to padding check, if (end > msg) then there is not only one
 		 * but at least 4 bytes left */
-		assert ((end - msg) >= 0);
+		assert (len >= 4);
+		len -= 4;
 
-		size_t alen = stun_align (stun_getw (msg - 2));
-		msg += alen;
-		if ((end - msg) < 0)
+		if (len < alen)
 		{
 			DBG ("STUN error: %u instead of %u bytes for attribute!\n",
-			     (unsigned)(end - (msg - alen)), (unsigned)alen);
+			     (unsigned)len, (unsigned)alen);
 			return -1; // no room for attribute value + padding
 		}
+
+		len -= alen;
+		msg += 4 + alen;
 	}
 
 	return mlen;
@@ -124,20 +130,21 @@ ssize_t stun_validate (const uint8_t *msg, size_t len)
  */
 static const void *
 stun_find (const uint8_t *restrict msg, stun_attr_type_t type,
-               uint16_t *restrict palen)
+           uint16_t *restrict palen)
 {
-	assert (msg != NULL);
+	size_t length = stun_length (msg);
+
 	assert (stun_valid (msg));
 	assert (palen != NULL);
 
-	size_t length = stun_length (msg);
 	msg += 20;
 
 	while (length > 0)
 	{
-		assert (length >= 4);
+		size_t alen = stun_length (msg);
 		uint16_t atype = stun_getw (msg);
-		unsigned alen = stun_length (msg);
+
+		assert (length >= 4);
 
 		length -= 4;
 		msg += 4;
@@ -161,15 +168,17 @@ stun_find (const uint8_t *restrict msg, stun_attr_type_t type,
 
 bool stun_present (const uint8_t *msg, stun_attr_type_t type)
 {
-	return stun_find (msg, type, &(uint16_t){ 0 }) != NULL;
+	uint16_t dummy;
+	return stun_find (msg, type, &dummy) != NULL;
 }
 
 
 int stun_find_flag (const uint8_t *msg, stun_attr_type_t type)
 {
+	const void *ptr;
 	uint16_t len;
-	const void *ptr = stun_find (msg, type, &len);
 
+	ptr = stun_find (msg, type, &len);
 	if (ptr == NULL)
 		return ENOENT;
 	return (len == 0) ? 0 : EINVAL;
@@ -180,14 +189,17 @@ int
 stun_find32 (const uint8_t *restrict msg, stun_attr_type_t type,
              uint32_t *restrict pval)
 {
+	const void *ptr;
 	uint16_t len;
-	const void *ptr = stun_find (msg, type, &len);
+
+	ptr = stun_find (msg, type, &len);
 	if (ptr == NULL)
 		return ENOENT;
 
 	if (len == 4)
 	{
 		uint32_t val;
+
 		memcpy (&val, ptr, sizeof (val));
 		*pval = ntohl (val);
 		return 0;
@@ -198,14 +210,17 @@ stun_find32 (const uint8_t *restrict msg, stun_attr_type_t type,
 
 int stun_find64 (const uint8_t *msg, stun_attr_type_t type, uint64_t *pval)
 {
+	const void *ptr;
 	uint16_t len;
-	const void *ptr = stun_find (msg, type, &len);
+
+	ptr = stun_find (msg, type, &len);
 	if (ptr == NULL)
 		return ENOENT;
 
 	if (len == 8)
 	{
 		uint32_t tab[2];
+
 		memcpy (tab, ptr, sizeof (tab));
 		*pval = ((uint64_t)ntohl (tab[0]) << 32) | ntohl (tab[1]);
 		return 0;
@@ -217,8 +232,10 @@ int stun_find64 (const uint8_t *msg, stun_attr_type_t type, uint64_t *pval)
 ssize_t stun_find_string (const uint8_t *restrict msg, stun_attr_type_t type,
                           char *buf, size_t buflen)
 {
+	const char *ptr;
 	uint16_t len;
-	const char *ptr = stun_find (msg, type, &len);
+
+	ptr = stun_find (msg, type, &len);
 	if (ptr == NULL)
 		return -1;
 
@@ -234,8 +251,10 @@ int
 stun_find_addr (const uint8_t *restrict msg, stun_attr_type_t type,
                 struct sockaddr *restrict addr, socklen_t *restrict addrlen)
 {
+	const uint8_t *ptr;
 	uint16_t len;
-	const uint8_t *ptr = stun_find (msg, type, &len);
+
+	ptr = stun_find (msg, type, &len);
 	if (ptr == NULL)
 		return ENOENT;
 
@@ -309,11 +328,13 @@ int stun_xor_address (const uint8_t *restrict msg,
 		case AF_INET6:
 		{
 			struct sockaddr_in6 *ip6 = (struct sockaddr_in6 *)addr;
+			unsigned short i;
+
 			if (addrlen < sizeof (*ip6))
 				return EINVAL;
 
 			ip6->sin6_port ^= htons (STUN_COOKIE >> 16);
-			for (unsigned i = 0; i < 16; i++)
+			for (i = 0; i < 16; i++)
 				ip6->sin6_addr.s6_addr[i] ^= ((uint8_t *)msg)[4 + i];
 			return 0;
 		}
@@ -376,7 +397,8 @@ int stun_strcmp (const uint8_t *restrict msg, stun_attr_type_t type,
 
 static inline bool check_cookie (const uint8_t *msg)
 {
-	return memcmp (msg + 4, &(uint32_t){ htonl (STUN_COOKIE) }, 4) == 0;
+	uint32_t cookie = htonl (STUN_COOKIE);
+	return memcmp (msg + 4, &cookie, 4) == 0;
 }
 
 
@@ -388,6 +410,10 @@ static const uint8_t *stun_end (const uint8_t *msg)
 
 bool stun_demux (const uint8_t *msg)
 {
+	const void *fpr;
+	uint32_t crc32;
+	uint16_t fprlen;
+
 	assert (stun_valid (msg));
 
 	DBG ("Demultiplexing STUN message @%p\n", msg);
@@ -400,8 +426,7 @@ bool stun_demux (const uint8_t *msg)
 	}
 
 	/* Looks for FINGERPRINT */
-	uint16_t fprlen;
-	const void *fpr = stun_end (msg) - 4;
+	fpr = stun_end (msg) - 4;
 	if ((fpr != stun_find (msg, STUN_FINGERPRINT, &fprlen)) || (fprlen != 4))
 	{
 		DBG (" No FINGERPRINT attribute!\n");
@@ -409,7 +434,7 @@ bool stun_demux (const uint8_t *msg)
 	}
 
 	/* Checks FINGERPRINT */
-	uint32_t crc32 = htonl (stun_fingerprint (msg));
+	crc32 = htonl (stun_fingerprint (msg));
 	if (memcmp (fpr, &crc32, 4))
 	{
 		DBG (" Incorrect message fingerprint (expected: 0x%08x)!\n",
@@ -433,6 +458,7 @@ bool stun_demux (const uint8_t *msg)
 int
 stun_verify_key (const uint8_t *msg, const void *key, size_t keylen)
 {
+	const uint8_t *hash;
 	uint8_t sha[20];
 	uint16_t hlen;
 
@@ -441,7 +467,7 @@ stun_verify_key (const uint8_t *msg, const void *key, size_t keylen)
 
 	DBG ("Authenticating STUN message @%p\n", msg);
 
-	const uint8_t *hash = stun_end (msg) - 20;
+	hash = stun_end (msg) - 20;
 	if (stun_demux (msg))
 		hash -= 8; // room for FINGERPRINT at the end
 
@@ -455,17 +481,21 @@ stun_verify_key (const uint8_t *msg, const void *key, size_t keylen)
 	stun_sha1 (msg, sha, key, keylen);
 	if (memcmp (sha, hash, sizeof (sha)))
 	{
+#ifndef NDEBUG
+		unsigned i;
+
 		DBG (" Message HMAC-SHA1 fingerprint mismatch!"
 		     "\n  key     : 0x");
-		for (unsigned i = 0; i < keylen; i++)
+		for (i = 0; i < keylen; i++)
 			DBG ("%02x", ((uint8_t *)key)[i]);
 		DBG ("\n  expected: 0x");
-		for (unsigned i = 0; i < 20; i++)
+		for (i = 0; i < 20; i++)
 			DBG ("%02x", sha[i]);
 		DBG ("\n  received: 0x");
-		for (unsigned i = 0; i < 20; i++)
+		for (i = 0; i < 20; i++)
 			DBG ("%02x", hash[i]);
 		DBG ("\n");
+#endif
 		return EPERM;
 	}
 
@@ -623,18 +653,19 @@ stun_find_unknown (const uint8_t *restrict msg, uint16_t *restrict list,
 
 	while ((len > 0) && (count < max))
 	{
-		uint16_t type = stun_getw (msg);
 		size_t alen = stun_align (stun_length (msg));
+		uint16_t atype = stun_getw (msg);
+
 		msg += 4 + alen;
 		assert (len >= (4 + alen));
 		len -= 4 + alen;
 
-		if (!stun_optional (type)
-		 && stun_is_unknown (type))
+		if (!stun_optional (atype)
+		 && stun_is_unknown (atype))
 		{
 			DBG (" found unknown attribute: 0x%04x (%u bytes)\n",
-			     (unsigned)type, (unsigned)alen);
-			list[count++] = type;
+			     (unsigned)atype, (unsigned)alen);
+			list[count++] = atype;
 		}
 	}
 

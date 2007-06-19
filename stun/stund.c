@@ -108,11 +108,17 @@ int listen_socket (int fam, int type, int proto, uint16_t port)
 		{
 			case AF_INET:
 				setsockopt (fd, SOL_IP, IP_PKTINFO, &yes, sizeof (yes));
+#ifdef IP_RECVERR
+				setsockopt (fd, SOL_IP, IP_RECVERR, &yes, sizeof (yes));
+#endif
 				break;
 
 			case AF_INET6:
 				setsockopt (fd, SOL_IPV6, IPV6_RECVPKTINFO, &yes,
 				            sizeof (yes));
+#ifdef IPV6_RECVERR
+				setsockopt (fd, SOL_IPV6, IPV6_RECVERR, &yes, sizeof (yes));
+#endif
 				break;
 		}
 	}
@@ -130,6 +136,16 @@ int listen_socket (int fam, int type, int proto, uint16_t port)
 error:
 	close (fd);
 	return -1;
+}
+
+
+static inline int err_dequeue (int fd)
+{
+#ifdef MSG_ERRQUEUE
+	struct msghdr hdr;
+	memset (&hdr, 0, sizeof (hdr));
+	return recvmsg (fd, &hdr, MSG_ERRQUEUE) == 0;
+#endif
 }
 
 
@@ -156,45 +172,41 @@ static int dgram_process (int sock)
 	if (len < 0)
 	{
 		DBG ("Receive error: %s\n", strerror (errno));
-		return errno;
+		return -1;
 	}
 
 	if (mh.msg_flags & MSG_TRUNC)
 	{
 		DBG ("Truncated datagram ignored.\n");
-		return EMSGSIZE;
+		return -1;
 	}
 
 	if (stun_validate (buf, len) <= 0)
-		return EINVAL;
+		return -1;
 
 	len = stun_bind_reply (buf, &iov.iov_len, buf,
 	                       mh.msg_name, mh.msg_namelen, false);
 	if (iov.iov_len == 0)
-		return len;
+		return -1;
 
-	len = sendmsg (sock, &mh, 0);
-	if (len == -1)
-		return errno;
-	if ((size_t)len < iov.iov_len)
-		return EMSGSIZE;
+	do
+		len = sendmsg (sock, &mh, 0);
+	while ((len == -1) && err_dequeue (sock));
+
+	if (len < (ssize_t)iov.iov_len)
+		return -1;
 	return 0;
 }
 
 
-static int run (int family, int protocol)
+static int run (int family, int protocol, unsigned port)
 {
-	int sock = listen_socket (family, SOCK_DGRAM, protocol,
-	                          htons (IPPORT_STUN));
+	int sock = listen_socket (family, SOCK_DGRAM, protocol, htons (port));
 	if (sock == -1)
 		return -1;
 
 	for (;;)
-	{
-		int val = dgram_process (sock);
-		if (val)
-			DBG ("stund: %s\n", strerror (val));
-	}
+		dgram_process (sock);
 }
 
 
@@ -210,6 +222,7 @@ static void exit_handler (int signum)
 int main (int argc, char *argv[])
 {
 	int family = AF_INET;
+	unsigned port = IPPORT_STUN;
 
 	for (;;)
 	{
@@ -229,7 +242,10 @@ int main (int argc, char *argv[])
 		}
 	}
 
+	if (optind < argc)
+		port = atoi (argv[optind++]);
+
 	signal (SIGINT, exit_handler);
 	signal (SIGTERM, exit_handler);
-	return -run (family, IPPROTO_UDP);
+	return run (family, IPPROTO_UDP, port) ? EXIT_FAILURE : EXIT_SUCCESS;
 }

@@ -41,6 +41,7 @@
 #include <sys/socket.h>
 
 #include "bind.h"
+#include "stun-msg.h"
 
 #include <assert.h>
 #include <string.h>
@@ -50,7 +51,9 @@
 #include <errno.h>
 #include <unistd.h>
 #include <sys/time.h>
-#include <sys/poll.h>
+#ifdef HAVE_POLL
+# include <sys/poll.h>
+#endif
 #include <fcntl.h>
 
 /** Blocking mode STUN binding discovery */
@@ -59,8 +62,11 @@ int stun_bind_run (int fd,
                    const struct sockaddr *restrict srv, socklen_t srvlen,
                    struct sockaddr *restrict addr, socklen_t *addrlen)
 {
+#ifdef HAVE_POLL
 	stun_bind_t *ctx;
-	int val;
+	uint8_t buf[STUN_MAXMSG];
+	size_t len = 0;
+	ssize_t val;
 
 	val = stun_bind_start (&ctx, fd, srv, srvlen);
 	if (val)
@@ -68,30 +74,39 @@ int stun_bind_run (int fd,
 
 	do
 	{
-		unsigned delay = stun_bind_timeout (ctx);
 		struct pollfd ufd[1];
+		unsigned delay = stun_bind_timeout (ctx);
+
 		memset (ufd, 0, sizeof (ufd));
 		ufd[0].fd = stun_bind_fd (ctx),
 		ufd[0].events = POLLIN;
 
 		poll (ufd, sizeof (ufd) / sizeof (ufd[0]), delay);
-		val = stun_bind_resume (ctx, addr, addrlen);
+		val = recv (ufd[0].fd, buf + len, sizeof (buf) - len, MSG_DONTWAIT);
+		if (val == -1)
+			val = stun_bind_elapse (ctx);
+		else
+		{
+			len += val;
+			val = stun_bind_process (ctx, buf, len, addr, addrlen);
+		}
 	}
 	while (val == EAGAIN);
 
 	return val;
+#else
+	(void)fd; (void)srv; (void)srvlen; (void)addr; (void)addrlen;
+	return ENOSYS;
+#endif
 }
 
 /** Non-blocking mode STUN binding discovery */
 
-#include "stun-msg.h"
 #include "trans.h"
 
 struct stun_bind_s
 {
 	stun_trans_t trans;
-	size_t       keylen;
-	uint8_t      key[0];
 };
 
 
@@ -113,22 +128,26 @@ static int
 stun_bind_alloc (stun_bind_t **restrict context, int fd,
                  const struct sockaddr *restrict srv, socklen_t srvlen)
 {
+	int val;
+
 	stun_bind_t *ctx = malloc (sizeof (*ctx));
 	if (ctx == NULL)
 		return ENOMEM;
+
 	memset (ctx, 0, sizeof (*ctx));
 	*context = ctx;
 
-	int val = stun_trans_init (&ctx->trans, fd, srv, srvlen);
+	val = (fd != -1)
+		? stun_trans_init (&ctx->trans, fd, srv, srvlen)
+		: stun_trans_create (&ctx->trans, SOCK_DGRAM, 0, srv, srvlen);
+
 	if (val)
 	{
 		free (ctx);
 		return val;
 	}
 
-	ctx->keylen = (size_t)(-1);
-
-	stun_init_request (ctx->trans.msg, STUN_BINDING);
+	stun_init_request (ctx->trans.msg.buf, STUN_BINDING);
 	return 0;
 }
 
@@ -162,8 +181,8 @@ int stun_bind_start (stun_bind_t **restrict context, int fd,
 
 	ctx = *context;
 
-	ctx->trans.msglen = sizeof (ctx->trans.msg);
-	val = stun_finish (ctx->trans.msg, &ctx->trans.msglen);
+	ctx->trans.msg.length = sizeof (ctx->trans.msg.buf);
+	val = stun_finish (ctx->trans.msg.buf, &ctx->trans.msg.length);
 	if (val)
 	{
 		stun_bind_cancel (ctx);
@@ -205,31 +224,20 @@ int stun_bind_process (stun_bind_t *restrict ctx,
                        const void *restrict buf, size_t len,
                        struct sockaddr *restrict addr, socklen_t *addrlen)
 {
-	bool error;
-	int val = stun_validate (buf, len);
-	if (val <= 0)
-		return EAGAIN;
+	int val;
 
 	assert (ctx != NULL);
 
-	DBG ("Received %u-bytes STUN message\n", (unsigned)val);
-
-	if (!stun_match_messages (buf, ctx->trans.msg,
-	                          (ctx->keylen != (size_t)(-1)) ? ctx->key : NULL,
-	                          (ctx->keylen != (size_t)(-1)) ? ctx->keylen : 0,
-	                          &error))
-		return EAGAIN;
-
-	if (error)
+	val = stun_trans_preprocess (&ctx->trans, buf, len);
+	switch (val)
 	{
-		stun_bind_cancel (ctx);
-		return ECONNREFUSED; // FIXME: better error value
-	}
-
-	if (stun_has_unknown (buf))
-	{
-		stun_bind_cancel (ctx);
-		return EPROTO;
+		case EAGAIN:
+			return EAGAIN;
+		case 0:
+			break;
+		default:
+			stun_bind_cancel (ctx);
+			return val;
 	}
 
 	val = stun_find_xor_addr (buf, STUN_XOR_MAPPED_ADDRESS, addr, addrlen);
@@ -251,24 +259,27 @@ int stun_bind_process (stun_bind_t *restrict ctx,
 }
 
 
-int stun_bind_resume (stun_bind_t *restrict context,
-                      struct sockaddr *restrict addr, socklen_t *addrlen)
+/** ICE keep-alives (Binding discovery indication!) */
+
+int
+stun_bind_keepalive (int fd, const struct sockaddr *restrict srv,
+                     socklen_t srvlen)
 {
-	stun_msg_t buf;
-	ssize_t len;
+	size_t val;
+	uint8_t buf[28];
 
-	assert (context != NULL);
+	stun_init_indication (buf, STUN_BINDING);
+	(void)stun_finish (buf, &val);
 
-	len = recv (context->trans.fd, &buf, sizeof (buf), MSG_DONTWAIT);
-	if (len >= 0)
-		return stun_bind_process (context, &buf, len, addr, addrlen);
-
-	return stun_bind_elapse (context);
+	/* NOTE: hopefully, this is only needed for non-stream sockets */
+	if (sendto (fd, buf, val, MSG_DONTWAIT, srv, srvlen) == -1)
+		return errno;
+	return 0;
 }
 
 
 /** Connectivity checks */
-#include "conncheck.h"
+#include "stun-ice.h"
 
 int
 stun_conncheck_start (stun_bind_t **restrict context, int fd,
@@ -283,43 +294,43 @@ stun_conncheck_start (stun_bind_t **restrict context, int fd,
 	assert (username != NULL);
 	assert (password != NULL);
 
-	val = stun_bind_alloc (context, fd, srv, srvlen);
+	val = stun_bind_alloc (&ctx, fd, srv, srvlen);
 	if (val)
 		return val;
 
-	val = strlen (password);
-	ctx = realloc (*context, sizeof (*ctx) + val + 1);
-	if (ctx == NULL)
+	ctx->trans.key.length = strlen (password);
+	ctx->trans.key.value = malloc (ctx->trans.key.length);
+	if (ctx->trans.key.value == NULL)
 	{
 		val = ENOMEM;
 		goto error;
 	}
 
 	*context = ctx;
-	memcpy (ctx->key, password, val);
-	ctx->keylen = val;
+	memcpy (ctx->trans.key.value, password, ctx->trans.key.length);
 
 	if (cand_use)
 	{
-		val = stun_append_flag (ctx->trans.msg, sizeof (ctx->trans.msg),
+		val = stun_append_flag (ctx->trans.msg.buf,
+		                        sizeof (ctx->trans.msg.buf),
 		                        STUN_USE_CANDIDATE);
 		if (val)
 			goto error;
 	}
 
-	val = stun_append32 (ctx->trans.msg, sizeof (ctx->trans.msg),
+	val = stun_append32 (ctx->trans.msg.buf, sizeof (ctx->trans.msg.buf),
 	                     STUN_PRIORITY, priority);
 	if (val)
 		goto error;
 
-	val = stun_append64 (ctx->trans.msg, sizeof (ctx->trans.msg),
+	val = stun_append64 (ctx->trans.msg.buf, sizeof (ctx->trans.msg.buf),
 	                     controlling ? STUN_ICE_CONTROLLING
 	                                 : STUN_ICE_CONTROLLED, tie);
 	if (val)
 		goto error;
 
-	ctx->trans.msglen = sizeof (ctx->trans.msg);
-	val = stun_finish_short (ctx->trans.msg, &ctx->trans.msglen,
+	ctx->trans.msg.length = sizeof (ctx->trans.msg.buf);
+	val = stun_finish_short (ctx->trans.msg.buf, &ctx->trans.msg.length,
 	                         username, password, NULL, 0);
 	if (val)
 		goto error;

@@ -39,7 +39,7 @@
 
 #include <sys/types.h>
 #include <sys/socket.h>
-#include "stun/conncheck.h"
+#include "stun/stun-ice.h"
 #include "stun/stun-msg.h"
 
 #include <stdlib.h>
@@ -57,10 +57,11 @@ int main (void)
 {
 	struct sockaddr_in ip4;
 	stun_msg_t req, resp;
+	const uint64_t tie = 0x8000000000000000LL;
 	ssize_t val;
 	size_t len;
-	const uint64_t tie = 0x8000000000000000LL;
 	static const char name[] = "admin", pass[] = "secret";
+	char nbuf[6];
 	bool control = false;
 
 	memset (&ip4, 0, sizeof (ip4));
@@ -95,9 +96,17 @@ int main (void)
 	                            sizeof (ip4), pass, &control, tie);
 	assert (val == EPERM);
 	assert (len > 0);
+	assert (stun_conncheck_username (req, NULL, 0) == NULL);
+	assert (stun_conncheck_username (req, nbuf, sizeof (nbuf)) == NULL);
+	assert (stun_conncheck_priority (req) == 0);
+	assert (stun_conncheck_use_candidate (req) == false);
 
 	/* Good message */
 	stun_init_request (req, STUN_BINDING);
+	val = stun_append32 (req, sizeof (req), STUN_PRIORITY, 0x12345678);
+	assert (val == 0);
+	val = stun_append_flag (req, sizeof (req), STUN_USE_CANDIDATE);
+	assert (val == 0);
 	len = sizeof (req);
 	val = stun_finish_short (req, &len, name, pass, NULL, 0);
 	assert (val == 0);
@@ -107,6 +116,25 @@ int main (void)
 	                            sizeof (ip4), pass, &control, tie);
 	assert (val == 0);
 	assert (len > 0);
+
+	assert (stun_conncheck_priority (req) == 0x12345678);
+	assert (stun_conncheck_use_candidate (req) == true);
+
+	/* Error cases for username extraction */
+	assert (stun_conncheck_username (req, NULL, 0) == NULL);
+	assert (stun_conncheck_username (req, nbuf, strlen (name) - 1) == NULL);
+	/* Username extraction */
+	strcpy (nbuf, "haxor");
+	assert (stun_conncheck_username (req, nbuf, sizeof (nbuf)) == nbuf);
+	assert (strcmp (nbuf, name) == 0);
+
+
+	/* Bad username */
+	stun_init_request (req, STUN_BINDING);
+	len = sizeof (req);
+	val = stun_finish_short (req, &len, "ab\xff", pass, NULL, 0);
+	assert (val == 0);
+	assert (stun_conncheck_username (req, nbuf, sizeof (nbuf)) == NULL);
 
 	/* Bad fingerprint */
 	val = stun_conncheck_reply (resp, &len, req, (struct sockaddr *)&ip4,

@@ -41,7 +41,6 @@
 
 #include <stddef.h>
 #include <stdint.h>
-#include <assert.h>
 
 #include <sys/socket.h>
 #include "stun-msg.h"
@@ -55,12 +54,8 @@ static uint32_t crc32 (const void *buf, size_t size);
  */
 uint32_t stun_fingerprint (const uint8_t *msg)
 {
-	assert (msg != NULL);
-
 	/* Don't hash last 8-bytes (= the FINGERPRINT attribute) */
-	assert (stun_length (msg) >= 8);
-	size_t len = 20u + stun_length (msg) - 8;
-
+	size_t len = 12u + stun_length (msg); // 20 - 8 = 12
 	return crc32 (msg, len) ^ 0x5354554e;
 }
 

@@ -56,13 +56,14 @@
 static int listen_dgram (void)
 {
 	struct addrinfo hints, *res;
+	int val = -1;
+
 	memset (&hints, 0, sizeof (hints));
 	hints.ai_socktype = SOCK_DGRAM;
 
 	if (getaddrinfo (NULL, "0", &hints, &res))
 		return -1;
 
-	int val = -1;
 	for (const struct addrinfo *ptr = res; ptr != NULL; ptr = ptr->ai_next)
 	{
 		int fd = socket (ptr->ai_family, ptr->ai_socktype, ptr->ai_protocol);
@@ -88,6 +89,7 @@ static int listen_dgram (void)
 static void bad_family (void)
 {
 	struct sockaddr addr, dummy;
+	int val;
 
 	memset (&addr, 0, sizeof (addr));
 	addr.sa_family = AF_UNSPEC;
@@ -95,8 +97,8 @@ static void bad_family (void)
 	addr.sa_len = sizeof (addr);
 #endif
 
-	int val = stun_bind_run (-1, &addr, sizeof (addr),
-	                         &dummy, &(socklen_t){ sizeof (dummy) });
+	val = stun_bind_run (-1, &addr, sizeof (addr),
+	                     &dummy, &(socklen_t){ sizeof (dummy) });
 	assert (val != 0);
 }
 
@@ -105,6 +107,7 @@ static void bad_family (void)
 static void small_srv_addr (void)
 {
 	struct sockaddr addr, dummy;
+	int val;
 
 	memset (&addr, 0, sizeof (addr));
 	addr.sa_family = AF_INET;
@@ -112,8 +115,8 @@ static void small_srv_addr (void)
 	addr.sa_len = sizeof (addr);
 #endif
 
-	int val = stun_bind_run (-1, &addr, 1,
-	                         &dummy, &(socklen_t){ sizeof (dummy) });
+	val = stun_bind_run (-1, &addr, 1,
+	                     &dummy, &(socklen_t){ sizeof (dummy) });
 	assert (val == EINVAL);
 }
 
@@ -123,13 +126,14 @@ static void big_srv_addr (void)
 {
 	uint8_t buf[sizeof (struct sockaddr_storage) + 16];
 	struct sockaddr dummy;
+	int fd, val;
 
-	int fd = socket (AF_INET, SOCK_DGRAM, 0);
+	fd = socket (AF_INET, SOCK_DGRAM, 0);
 	assert (fd != -1);
 
 	memset (buf, 0, sizeof (buf));
-	int val = stun_bind_run (fd, (struct sockaddr *)buf, sizeof (buf),
-	                         &dummy, &(socklen_t){ sizeof (dummy) });
+	val = stun_bind_run (fd, (struct sockaddr *)buf, sizeof (buf),
+	                     &dummy, &(socklen_t){ sizeof (dummy) });
 	assert (val == ENOBUFS);
 	close (fd);
 }
@@ -138,10 +142,10 @@ static void big_srv_addr (void)
 /** Timeout test */
 static void timeout (void)
 {
-	int val;
 	struct sockaddr_storage srv;
 	struct sockaddr dummy;
 	socklen_t srvlen = sizeof (srv);
+	int val;
 
 	/* Allocate a local UDP port, so we are 100% sure nobody responds there */
 	int servfd = listen_dgram ();
@@ -161,10 +165,10 @@ static void timeout (void)
 /** Malformed responses test */
 static void bad_responses (void)
 {
-	ssize_t val;
+	stun_bind_t *ctx;
 	struct sockaddr_storage addr;
 	socklen_t addrlen = sizeof (addr);
-	stun_bind_t *ctx;
+	ssize_t val;
 	uint8_t buf[1000];
 
 	/* Allocate a local UDP port */
@@ -186,16 +190,20 @@ static void bad_responses (void)
 	assert (val == 0);
 
 	/* Send crap response */
-	send (servfd, "foobar", 6, 0);
-	val = stun_bind_resume (ctx, (struct sockaddr *)&addr, &addrlen);
+	val = getsockname (servfd, (struct sockaddr *)&addr, &addrlen);
+	assert (val == 0);
+	val = stun_bind_process (ctx, "foobar", 6,
+	                         (struct sockaddr *)&addr, &addrlen);
 	assert (val == EAGAIN);
 
 	/* Send non-matching message (request instead of response) */
+	val = getsockname (servfd, (struct sockaddr *)&addr, &addrlen);
+	assert (val == 0);
 	val = recv (servfd, buf, 1000, MSG_DONTWAIT);
 	assert (val >= 0);
 
-	send (servfd, buf, val, 0);
-	val = stun_bind_resume (ctx, (struct sockaddr *)&addr, &addrlen);
+	val = stun_bind_process (ctx, buf, val,
+	                         (struct sockaddr *)&addr, &addrlen);
 	assert (val == EAGAIN);
 
 	stun_bind_cancel (ctx);
@@ -206,22 +214,23 @@ static void bad_responses (void)
 /** Various responses test */
 static void responses (void)
 {
-	ssize_t val;
-	size_t len;
+	stun_bind_t *ctx;
 	struct sockaddr_storage addr;
 	socklen_t addrlen = sizeof (addr);
-	stun_bind_t *ctx;
+	ssize_t val;
+	size_t len;
+	int servfd, fd;
 	stun_msg_t buf;
 
 	/* Allocate a local UDP port for server */
-	int servfd = listen_dgram ();
+	servfd = listen_dgram ();
 	assert (servfd != -1);
 
 	val = getsockname (servfd, (struct sockaddr *)&addr, &addrlen);
 	assert (val == 0);
 
 	/* Allocate a client socket and connect to server */
-	int fd = socket (addr.ss_family, SOCK_DGRAM, 0);
+	fd = socket (addr.ss_family, SOCK_DGRAM, 0);
 	assert (fd != -1);
 
 	val = connect (fd, (struct sockaddr *)&addr, addrlen);
@@ -246,8 +255,10 @@ static void responses (void)
 	val = stun_finish (buf, &len);
 	assert (val == 0);
 
-	send (servfd, buf, len, 0);
-	val = stun_bind_resume (ctx, (struct sockaddr *)&addr, &addrlen);
+	val = getsockname (servfd, (struct sockaddr *)&addr, &addrlen);
+	assert (val == 0);
+	val = stun_bind_process (ctx, buf, len,
+	                         (struct sockaddr *)&addr, &addrlen);
 	assert (val == ECONNREFUSED);
 
 	/* Send response with an unknown attribute */
@@ -265,8 +276,11 @@ static void responses (void)
 	val = stun_finish (buf, &len);
 	assert (val == 0);
 
-	send (servfd, buf, len, 0);
-	val = stun_bind_resume (ctx, (struct sockaddr *)&addr, &addrlen);
+	val = getsockname (servfd, (struct sockaddr *)&addr, &addrlen);
+	assert (val == 0);
+
+	val = stun_bind_process (ctx, buf, len,
+	                         (struct sockaddr *)&addr, &addrlen);
 	assert (val == EPROTO);
 
 	/* Send response with a no mapped address at all */
@@ -281,8 +295,11 @@ static void responses (void)
 	val = stun_finish (buf, &len);
 	assert (val == 0);
 
-	send (servfd, buf, len, 0);
-	val = stun_bind_resume (ctx, (struct sockaddr *)&addr, &addrlen);
+	val = getsockname (servfd, (struct sockaddr *)&addr, &addrlen);
+	assert (val == 0);
+
+	val = stun_bind_process (ctx, buf, len,
+	                         (struct sockaddr *)&addr, &addrlen);
 	assert (val == ENOENT);
 
 	/* Send old-style response */
@@ -300,8 +317,11 @@ static void responses (void)
 	val = stun_finish (buf, &len);
 	assert (val == 0);
 
-	send (servfd, buf, len, 0);
-	val = stun_bind_resume (ctx, (struct sockaddr *)&addr, &addrlen);
+	val = getsockname (servfd, (struct sockaddr *)&addr, &addrlen);
+	assert (val == 0);
+
+	val = stun_bind_process (ctx, buf, len,
+	                         (struct sockaddr *)&addr, &addrlen);
 	assert (val == 0);
 
 	/* End */

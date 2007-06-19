@@ -7,6 +7,7 @@
 
 include $(top_srcdir)/common.mk
 AM_CPPFLAGS = -I$(top_srcdir)
+AM_CFLAGS = -std=gnu99
 LDADD = ../libstun.la
 
 check_PROGRAMS = test-crc32 test-parse test-format \
@@ -14,4 +15,5 @@ check_PROGRAMS = test-crc32 test-parse test-format \
 
 dist_check_SCRIPTS = check-bind.sh
 
-TESTS = $(check_PROGRAMS) $(dist_check_SCRIPTS)
+TESTS = $(check_PROGRAMS)
+#$(dist_check_SCRIPTS)

@@ -69,7 +69,8 @@ printaddr (const char *str, const struct sockaddr *addr, socklen_t addrlen)
 static int run (int family, const char *hostname, const char *service)
 {
 	struct addrinfo hints, *res;
-	int retval = -1;
+	const struct addrinfo *ptr;
+	int ret = -1;
 
 	memset (&hints, 0, sizeof (hints));
 	hints.ai_family = family;
@@ -77,18 +78,19 @@ static int run (int family, const char *hostname, const char *service)
 	if (service == NULL)
 		service = "3478";
 
-	int val = getaddrinfo (hostname, service, &hints, &res);
-	if (val)
+	ret = getaddrinfo (hostname, service, &hints, &res);
+	if (ret)
 	{
 		fprintf (stderr, "%s (port %s): %s\n", hostname, service,
-		         gai_strerror (val));
+		         gai_strerror (ret));
 		return -1;
 	}
 
-	for (const struct addrinfo *ptr = res; ptr != NULL; ptr = ptr->ai_next)
+	for (ptr = res; ptr != NULL; ptr = ptr->ai_next)
 	{
 		struct sockaddr_storage addr;
 		socklen_t addrlen = sizeof (addr);
+		int val;
 
 		printaddr ("Server address", ptr->ai_addr, ptr->ai_addrlen);
 
@@ -99,12 +101,12 @@ static int run (int family, const char *hostname, const char *service)
 		else
 		{
 			printaddr ("Mapped address", (struct sockaddr *)&addr, addrlen);
-			retval = 0;
+			ret = 0;
 		}
 	}
 
 	freeaddrinfo (res);
-	return retval;
+	return ret;
 }
 
 
@@ -115,7 +117,8 @@ int main (int argc, char *argv[])
 		{ "ipv4",    no_argument, NULL, '4' },
 		{ "ipv6",    no_argument, NULL, '6' },
 		{ "help",    no_argument, NULL, 'h' },
-		{ "version", no_argument, NULL, 'V' }
+		{ "version", no_argument, NULL, 'V' },
+		{ NULL,      0,           NULL, 0   }
 	};
 	const char *server = NULL, *port = NULL;
 	int family = AF_UNSPEC;
@@ -149,6 +152,9 @@ int main (int argc, char *argv[])
 				printf ("stunbcd: STUN Binding Discovery client (%s v%s)\n",
 				        PACKAGE, VERSION);
 				return 0;
+
+			default:
+				return 2;
 		}
 	}
 

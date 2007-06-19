@@ -45,73 +45,94 @@
 #include <sys/time.h>
 #include <unistd.h>
 #include <errno.h>
+#include <netinet/in.h>
 
 #include "stun-msg.h"
 #include "trans.h"
 
-/**
- * Initializes a new STUN request transaction
- */
+#define TRANS_OWN_FD   0x1 /* descriptor belongs to us */
+#define TRANS_RELIABLE 0x2 /* reliable transport */
+
 int stun_trans_init (stun_trans_t *restrict tr, int fd,
                      const struct sockaddr *restrict srv, socklen_t srvlen)
 {
-	if (fd == -1)
+	int sotype;
+	socklen_t solen = sizeof (sotype);
+
+	assert (fd != -1);
+
+	if (srvlen > sizeof (tr->sock.dst))
+		return ENOBUFS;
+
+	tr->flags = 0;
+	tr->msg.offset = 0;
+	tr->sock.fd = fd;
+	memcpy (&tr->sock.dst, srv, tr->sock.dstlen = srvlen);
+	tr->key.length = 0;
+	tr->key.value = NULL;
+
+	if (getsockopt (fd, SOL_SOCKET, SO_TYPE, &sotype, &solen))
+		return errno;
+
+	switch (sotype)
 	{
-		if (srvlen < sizeof (struct sockaddr))
-			return EINVAL;
-
-		fd = socket (srv->sa_family, SOCK_DGRAM, 0);
-		if (fd == -1)
-			return errno;
-
-#ifdef FD_CLOEXEC
-		fcntl (fd, F_SETFD, fcntl (fd, F_GETFD) | FD_CLOEXEC);
-#endif
-#ifdef O_NONBLOCK
-		fcntl (fd, F_SETFL, fcntl (fd, F_GETFL) | O_NONBLOCK);
-#endif
-
-		if (connect (fd, srv, srvlen))
-		{
-			close (fd);
-			return errno;
-		}
-
-		tr->ownfd = true;
-		tr->srvlen = 0;
-	}
-	else
-	{
-		if (srvlen > sizeof (tr->srv))
-			return ENOBUFS;
-
-		tr->ownfd = false;
-		memcpy (&tr->srv, srv, tr->srvlen = srvlen);
+		case SOCK_STREAM:
+		case SOCK_SEQPACKET:
+			tr->flags |= TRANS_RELIABLE;
 	}
 
-	tr->fd = fd;
 	return 0;
 }
 
 
-/**
- * Sends a STUN request
- */
-static int
-stun_trans_send (stun_trans_t *tr)
+int stun_trans_create (stun_trans_t *restrict tr, int type, int proto,
+                       const struct sockaddr *restrict srv, socklen_t srvlen)
 {
-	/* FIXME: support for TCP */
-	ssize_t val;
-	if (tr->srvlen > 0)
-		val = sendto (tr->fd, tr->msg, tr->msglen, 0,
-		              (struct sockaddr *)&tr->srv, tr->srvlen);
-	else
-		val = send (tr->fd, tr->msg, tr->msglen, 0);
+	int fd, val;
 
-	if (val == -1)
+	if (srvlen < sizeof (struct sockaddr))
+		return EINVAL;
+
+	fd = socket (srv->sa_family, type, proto);
+	if (fd == -1)
 		return errno;
-	if (val < (ssize_t)tr->msglen)
-		return EMSGSIZE;
+
+#ifdef FD_CLOEXEC
+	fcntl (fd, F_SETFD, fcntl (fd, F_GETFD) | FD_CLOEXEC);
+#endif
+#ifdef O_NONBLOCK
+	fcntl (fd, F_SETFL, fcntl (fd, F_GETFL) | O_NONBLOCK);
+#endif
+
+#ifdef MSG_ERRQUEUE
+	if (type == SOCK_DGRAM)
+	{
+		/* Linux specifics for ICMP errors on non-connected sockets */
+		int yes = 1;
+		switch (srv->sa_family)
+		{
+			case AF_INET:
+				setsockopt (fd, SOL_IP, IP_RECVERR, &yes, sizeof (yes));
+				break;
+			case AF_INET6:
+				setsockopt (fd, SOL_IPV6, IPV6_RECVERR, &yes, sizeof (yes));
+				break;
+		}
+	}
+#endif
+
+	if (connect (fd, srv, srvlen) && (errno != EINPROGRESS))
+		val = errno;
+	else
+		val = stun_trans_init (tr, fd, NULL, 0);
+
+	if (val)
+	{
+		close (fd);
+		return val;
+	}
+
+	tr->flags |= TRANS_OWN_FD;
 	return 0;
 }
 
@@ -119,53 +140,91 @@ stun_trans_send (stun_trans_t *tr)
 void stun_trans_deinit (stun_trans_t *tr)
 {
 	int saved = errno;
-	if (tr->ownfd)
-		close (tr->fd);
+	if (tr->flags & TRANS_OWN_FD)
+		close (tr->sock.fd);
+	free (tr->key.value);
+
 #ifndef NDEBUG
-	tr->fd = -1;
+	tr->sock.fd = -1;
 #endif
 	errno = saved;
 }
 
 
+#ifndef MSG_DONTWAIT
+# define MSG_DONTWAIT 0
+#endif
+#ifndef MSG_NOSIGNAL
+# define MSG_NOSIGNAL 0
+#endif
+
+
+static int stun_trans_send (stun_trans_t *tr);
+
 int stun_trans_start (stun_trans_t *tr)
 {
-	int val = stun_trans_send (tr);
+	int val;
+
+	assert (tr->msg.offset == 0);
+
+	val = stun_trans_send (tr);
 	if (val)
 		return val;
 
-	stun_timer_start (&tr->timer);
+	if (tr->flags & TRANS_RELIABLE)
+		stun_timer_start_reliable (&tr->timer);
+	else
+		stun_timer_start (&tr->timer);
+
 	DBG ("STUN transaction @%p started (timeout: %ums)\n", tr,
 	     stun_trans_timeout (tr));
 	return 0;
 }
 
 
-/**
- * This is meant to integrate with I/O pooling loops and event frameworks.
- *
- * @return recommended maximum delay (in milliseconds) to wait for a
- * response.
- */
-unsigned stun_trans_timeout (const stun_trans_t *tr)
+static inline int stun_err_dequeue (int fd)
 {
-	assert (tr != NULL);
-	assert (tr->fd != -1);
-	return stun_timer_remainder (&tr->timer);
+#ifdef MSG_ERRQUEUE
+	struct msghdr hdr;
+	memset (&hdr, 0, sizeof (hdr));
+	return recvmsg (fd, &hdr, MSG_ERRQUEUE) == 0;
+#else
+	return 0;
+#endif
 }
 
 
 /**
- * This is meant to integrate with I/O polling loops and event frameworks.
- *
- * @return file descriptor used by the STUN Binding discovery context.
- * Always succeeds.
+ * Try to send STUN request/indication
  */
-int stun_trans_fd (const stun_trans_t *tr)
+static int
+stun_trans_send (stun_trans_t *tr)
 {
-	assert (tr != NULL);
-	assert (tr->fd != -1);
-	return tr->fd;
+	const uint8_t *data = tr->msg.buf + tr->msg.offset;
+	size_t len = tr->msg.length - tr->msg.offset;
+	ssize_t val;
+	int errval;
+
+	do
+	{
+		if (tr->sock.dstlen > 0)
+			val = sendto (tr->sock.fd, data, len, MSG_DONTWAIT | MSG_NOSIGNAL,
+			              (struct sockaddr *)&tr->sock.dst, tr->sock.dstlen);
+		else
+			val = send (tr->sock.fd, data, len, MSG_DONTWAIT | MSG_NOSIGNAL);
+
+		if (val >= 0)
+		{
+			/* Message sent succesfully! */
+			tr->msg.offset += val;
+			return 0;
+		}
+
+		errval = errno;
+	}
+	while (stun_err_dequeue (tr->sock.fd));
+
+	return errval;
 }
 
 
@@ -183,4 +242,46 @@ int stun_trans_tick (stun_trans_t *tr)
 			     stun_trans_timeout (tr));
 	}
 	return EAGAIN;
+}
+
+
+int stun_trans_preprocess (stun_trans_t *restrict tr,
+                           const void *restrict buf, size_t len)
+{
+	bool code;
+
+	if (stun_validate (buf, len) <= 0)
+		return EAGAIN;
+
+	DBG ("Received %u-bytes STUN message\n",
+	     (unsigned)stun_validate (buf, len));
+	/* FIXME: some error messages cannot be authenticated!! */
+
+	if (!stun_match_messages (buf, tr->msg.buf, tr->key.value, tr->key.length,
+	                          &code))
+		return EAGAIN;
+
+	if (code)
+		return ECONNREFUSED; // FIXME: better error value
+
+	if (stun_has_unknown (buf))
+		return EPROTO;
+
+	return 0;
+}
+
+
+unsigned stun_trans_timeout (const stun_trans_t *tr)
+{
+	assert (tr != NULL);
+	assert (tr->sock.fd != -1);
+	return stun_timer_remainder (&tr->timer);
+}
+
+
+int stun_trans_fd (const stun_trans_t *tr)
+{
+	assert (tr != NULL);
+	assert (tr->sock.fd != -1);
+	return tr->sock.fd;
 }

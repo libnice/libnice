@@ -77,7 +77,7 @@ int stun_bind_run (int fd,
  * Starts STUN Binding discovery in non-blocking mode.
  *
  * @param context pointer to an opaque pointer that will be passed to
- * stun_bind_resume() afterward
+ * other stun_bind_*() functions afterward
  * @param fd socket to use for discovery, or -1 to create one
  * @param srv STUN server socket address
  * @param srvlen STUN server socket address length
@@ -156,24 +156,15 @@ int stun_bind_process (stun_bind_t *restrict context,
                        struct sockaddr *restrict addr, socklen_t *addrlen);
 
 /**
- * Continues STUN Binding discovery in non-blocking mode:
- * Tries to dequeue a data from the network and processes it,
- * updates the transaction timer if needed.
+ * Sends a STUN Binding indication, aka ICE keep-alive packet.
  *
- * @param context binding discovery context (from stun_bind_start())
- * @param addr pointer to a socket address structure to hold the discovered
- * binding (remember this can be either IPv4 or IPv6 regardless of the socket
- * family) [OUT]
- * @param addrlen pointer to the byte length of @a addr [IN], set to the byte
- * length of the binding socket address on return.
- *
- * @return EAGAIN is returned if the discovery has not completed yet. 
-   0 is returned on successful completion, another standard error value
- * otherwise. If the return value is not EAGAIN, @a context is freed and must
- * not be re-used.
+ * @param fd socket descriptor to send packet through
+ * @param srv destination socket address (possibly NULL if connected)
+ * @param srvlen destination socket address length (possibly 0)
+ * @return 0 on success, an error code from sendto() otherwise.
  */
-int stun_bind_resume (stun_bind_t *restrict context,
-                      struct sockaddr *restrict addr, socklen_t *addrlen);
+int stun_bind_keepalive (int fd, const struct sockaddr *restrict srv,
+                         socklen_t srvlen);
 
 
 /**

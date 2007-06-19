@@ -140,6 +140,7 @@ int main (void)
 {
 	uint8_t msg[STUN_MAXMSG + 8];
 	size_t len;
+	struct sockaddr addr;
 
 	/* Request formatting test */
 	stun_init_request (msg, STUN_BINDING);
@@ -169,11 +170,11 @@ int main (void)
 
 	/* Overflow tests */
 	stun_init_request (msg, STUN_BINDING);
-	for (unsigned i = 0;
+	for (len = 0;
 	     stun_append_flag (msg, sizeof (msg), 0xffff) != ENOBUFS;
-	     i++)
+	     len += 4)
 	{
-		if ((i << 2) > 0xffff)
+		if (len > 0xffff)
 			fatal ("Overflow protection test failed");
 	}
 
@@ -185,7 +186,6 @@ int main (void)
 	if (stun_append_string (msg, sizeof (msg), 0xffff, "foobar") != ENOBUFS)
 		fatal ("String overflow test failed");
 
-	struct sockaddr addr;
 	memset (&addr, 0, sizeof (addr));
 	addr.sa_family = AF_INET;
 #ifdef HAVE_SA_LEN

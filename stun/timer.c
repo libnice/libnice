@@ -54,6 +54,8 @@
 #define STUN_INIT_TIMEOUT 600
 #define STUN_END_TIMEOUT 4800
 
+#define STUN_RELIABLE_TIMEOUT 7900
+
 /**
  * Clock used throughout the STUN code.
  * STUN requires a monotonic 1kHz clock to operate properly.
@@ -86,15 +88,19 @@ static inline void add_delay (struct timespec *ts, unsigned delay)
 }
 
 
-/**
- * Starts a STUN transaction retransmission timer.
- * @param timer structure for internal timer state
- */
 void stun_timer_start (stun_timer_t *timer)
 {
 	stun_gettime (&timer->deadline);
 	add_delay (&timer->deadline, timer->delay = STUN_INIT_TIMEOUT);
 }
+
+
+void stun_timer_start_reliable (stun_timer_t *timer)
+{
+	stun_gettime (&timer->deadline);
+	add_delay (&timer->deadline, timer->delay = STUN_RELIABLE_TIMEOUT);
+}
+
 
 
 unsigned stun_timer_remainder (const stun_timer_t *timer)
@@ -116,18 +122,14 @@ unsigned stun_timer_remainder (const stun_timer_t *timer)
 }
 
 
-/**
- * Updates a STUN transaction retransmission timer.
- * @param timer internal timer state
- * @return -1 if the transaction timed out,
- * 0 if the transaction should be retransmitted,
- * otherwise milliseconds left until next time out or retransmit.
- */
 int stun_timer_refresh (stun_timer_t *timer)
 {
 	unsigned delay = stun_timer_remainder (timer);
 	if (delay == 0)
 	{
+#if STUN_END_TIMEOUT > STUN_RELIABLE_TIMEOUT
+# error Inconsistent STUN timeout values!
+#endif
 		if (timer->delay >= STUN_END_TIMEOUT)
 			return -1;
 

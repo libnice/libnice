@@ -59,6 +59,10 @@ int main (void)
 	stun_msg_t buf;
 	ssize_t val;
 	size_t len;
+	static const uint8_t req[] =
+		"\x00\x01" "\x00\x00"
+		"\x00\x01\x02\x03\x04\x05\x06\x07"
+		"\x08\x09\x0A\x0B\x0C\x0D\x0E\x0F";
 
 	memset (&ip4, 0, sizeof (ip4));
 	ip4.sin_family = AF_INET;
@@ -122,9 +126,6 @@ int main (void)
 	assert (len > 0);
 
 	/* Non-multiplexed message */
-	static const uint8_t req[] =
-		"\x00\x01" "\x00\x00"
-		"\x00\x01\x02\x03\x04\x05\x06\x07\x08\x09\x0A\x0B\x0C\x0D\x0E\x0F";
 	len = sizeof (buf);
 	val = stun_bind_reply (buf, &len, req,
 	                       (struct sockaddr *)&ip4, sizeof (ip4), false);

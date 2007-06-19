@@ -179,7 +179,7 @@ static void test_message (void)
 /* Tests for message attribute parsing */
 static void test_attribute (void)
 {
-	uint8_t acme[] =
+	static const uint8_t acme[] =
 		"\x15\x55\x00\x4c" // <-- update message length if needed!!
 		"\x21\x12\xA4\x42" // cookie
 		"\x76\x54\x32\x10"
@@ -284,7 +284,6 @@ static void test_attribute (void)
 	if (stun_verify_key (acme, "bad__guy", 8) != EPERM)
 		fatal ("Bad secret HMAC test failed");
 }
-
 
 
 int main (void)

@@ -38,6 +38,12 @@
 #ifndef STUN_MSG_H
 # define STUN_MSG_H 1
 
+/**
+ * @file stun-msg.h
+ * @brief STUN low-level message formatting and parsing
+ */
+
+
 # ifndef NDEBUG
 #  include <stdio.h>
 #  include <stdarg.h>
@@ -85,7 +91,8 @@ typedef enum
 typedef enum
 {
 	STUN_BINDING=0x001,
-	STUN_SHARED_SECRET=0x002
+	STUN_SHARED_SECRET=0x002,
+	STUN_ALLOCATE=0x003
 } stun_method_t;
 
 /* Attribute types */
@@ -113,7 +120,7 @@ typedef enum
 	STUN_USE_CANDIDATE=0x0025, /* ICE-15 */
 
 	/* Optional attributes */
-    STUN_SERVER=0x8022,
+	STUN_SERVER=0x8022,
 	STUN_ALTERNATE_SERVER=0x8023,
 	STUN_REFRESH_INTERVAL=0x8024,
 
@@ -187,19 +194,20 @@ static inline uint16_t stun_length (const uint8_t *ptr)
 /**
  * @return STUN message class in host byte order (value from 0 to 3)
  */
-static inline uint16_t stun_get_class (const uint8_t *msg)
+static inline stun_class_t stun_get_class (const uint8_t *msg)
 {
 	uint16_t t = stun_getw (msg);
-	return ((t & 0x0100) >> 7) | ((t & 0x0010) >> 4);
+	return (stun_class_t)(((t & 0x0100) >> 7) | ((t & 0x0010) >> 4));
 }
 
 /**
  * @return STUN message method (value from 0 to 0xfff)
  */
-static inline uint16_t stun_get_method (const uint8_t *msg)
+static inline stun_method_t stun_get_method (const uint8_t *msg)
 {
 	uint16_t t = stun_getw (msg);
-	return ((t & 0x3e00) >> 2) | ((t & 0x00e0) >> 1) | (t & 0x000f);
+	return (stun_method_t)(((t & 0x3e00) >> 2) | ((t & 0x00e0) >> 1) |
+	                        (t & 0x000f));
 }
 
 /**
@@ -219,6 +227,11 @@ extern "C" {
 uint32_t stun_fingerprint (const uint8_t *msg);
 void stun_sha1 (const uint8_t *msg, uint8_t *sha,
                 const void *key, size_t keylen);
+
+/**
+ * Generates a pseudo-random secure STUN transaction ID.
+ */
+void stun_make_transid (stun_transid_t id);
 
 int stun_xor_address (const uint8_t *msg,
                       struct sockaddr *addr, socklen_t addrlen);
@@ -357,11 +370,64 @@ int stun_strcmp (const uint8_t *restrict msg, stun_attr_type_t type,
 bool stun_is_unknown (uint16_t type);
 unsigned stun_find_unknown (const uint8_t *msg, uint16_t *list, unsigned max);
 
-/* Message formatting functions */
+/**
+ * @section stunsend
+ * @brief Message formatting functions
+ */
+
+/**
+ * Initializes a STUN request message buffer, with no attributes.
+ * @param m STUN message method (host byte order)
+ */
 void stun_init_request (uint8_t *msg, stun_method_t m);
+
+/**
+ * Initializes a STUN indication message buffer, with no attributes.
+ * @param m STUN message method (host byte order)
+ */
+void stun_init_indication (uint8_t *msg, stun_method_t m);
+
+/**
+ * Initializes a STUN message buffer with no attributes,
+ * in response to a given valid STUN request messsage.
+ * STUN method and transaction ID are copied from the request message.
+ *
+ * @param ans [OUT] STUN message buffer
+ * @param req STUN message query
+ *
+ * ans == req is allowed.
+ */
 void stun_init_response (uint8_t *ans, const uint8_t *req);
+
+/**
+ * Initializes a STUN error response message buffer with an ERROR-CODE
+ * attribute, in response to a given valid STUN request messsage.
+ * STUN method and transaction ID are copied from the request message.
+ *
+ * @param ans [OUT] STUN message buffer
+ * @param msize STUN message buffer size
+ * @param req STUN message to copy method and transaction ID from
+ * @param err host-byte order STUN integer error code
+ *
+ * @return 0 on success, ENOBUFS on error
+ *
+ * ans == req is allowed.
+ */
 int stun_init_error (uint8_t *ans,  size_t msize, const uint8_t *req,
                      stun_error_t err);
+
+/**
+ * Initializes a STUN error response message buffer, in response to a valid
+ * STUN request messsage with unknown attributes. STUN method, transaction ID
+ * and unknown attribute IDs are copied from the request message.
+ *
+ * @param ans [OUT] STUN message buffer
+ * @param msize STUN message buffer size
+ * @param req STUN request message
+ * @return 0 on success, ENOBUFS otherwise
+ *
+ * ans == req is allowed.
+ */
 int stun_init_error_unknown (uint8_t *ans, size_t msize, const uint8_t *req);
 
 /**
@@ -394,17 +460,75 @@ size_t stun_finish_short (uint8_t *msg, size_t *restrict plen,
  */
 size_t stun_finish (uint8_t *restrict msg, size_t *restrict plen);
 
+/**
+ * Appends an empty ("flag") attribute to a STUN message.
+ * @param msg STUN message buffer
+ * @param msize STUN message buffer size
+ * @param type attribute type (host byte order)
+ * @return 0 on success, ENOBUFS on error.
+ */
 int stun_append_flag (uint8_t *msg, size_t msize, stun_attr_type_t type);
+
+/**
+ * Appends an attribute consisting of a 32-bits value to a STUN message.
+ * @param msg STUN message buffer
+ * @param msize STUN message buffer size
+ * @param type attribute type (host byte order)
+ * @param value payload (host byte order)
+ * @return 0 on success, ENOBUFS on error.
+ */
 int stun_append32 (uint8_t *msg, size_t msize,
                    stun_attr_type_t type, uint32_t value);
+
+/**
+ * Appends an attribute consisting of a 64-bits value to a STUN message.
+ * @param msg STUN message buffer
+ * @param msize STUN message buffer size
+ * @param type attribute type (host byte order)
+ * @param value payload (host byte order)
+ * @return 0 on success, ENOBUFS on error.
+ */
 int stun_append64 (uint8_t *msg, size_t msize,
                    stun_attr_type_t type, uint64_t value);
+
+/**
+ * Appends an attribute from a nul-terminated string.
+ * @param msg STUN message buffer
+ * @param msize STUN message buffer size
+ * @param type attribute type (host byte order)
+ * @param str nul-terminated string
+ * @return 0 on success, ENOBUFS on error.
+ */
 int stun_append_string (uint8_t *restrict msg, size_t msize,
                         stun_attr_type_t type, const char *str);
+
+/**
+ * Appends an attribute consisting of a network address to a STUN message.
+ * @param msg STUN message buffer
+ * @param msize STUN message buffer size
+ * @param type attribyte type (host byte order)
+ * @param addr socket address to convert into an attribute
+ * @param addrlen byte length of socket address
+ * @return 0 on success, ENOBUFS if the message buffer overflowed,
+ * EAFNOSUPPORT is the socket address family is not supported,
+ * EINVAL if the socket address length is too small w.r.t. the address family.
+ */
 int stun_append_addr (uint8_t *restrict msg, size_t msize,
                       stun_attr_type_t type,
                       const struct sockaddr *restrict addr,
                       socklen_t addrlen);
+
+/**
+ * Appends an attribute consisting of a xor'ed network address.
+ * @param msg STUN message buffer
+ * @param msize STUN message buffer size
+ * @param type attribyte type (host byte order)
+ * @param addr socket address to convert into an attribute
+ * @param addrlen byte length of socket address
+ * @return 0 on success, ENOBUFS if the message buffer overflowed,
+ * EAFNOSUPPORT is the socket address family is not supported,
+ * EINVAL if the socket address length is too small w.r.t. the address family.
+ */
 int stun_append_xor_addr (uint8_t *restrict msg, size_t msize,
                           stun_attr_type_t type,
                           const struct sockaddr *restrict addr,

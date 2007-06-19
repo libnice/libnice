@@ -14,29 +14,35 @@ $STUNC -V
 ! $STUNC -4 127.0.0.1 1
 ! $STUNC -6 ::1 1
 
-# Real tests
+# Allocate a likely unused port number
+PORT=$((32768+$$))
+if test $PORT -le 1024; then
+	PORT=$(($PORT+1024))
+fi
+
+echo "Using local UDP port number $PORT ..."
 
 # Start the STUN test daemon if needed
-rm -f stund-*.err stunc-*.log
+rm -f stund?.pid stund?.fail stunc?.log
 
-exit 77
-# FIXME: kill daemons properly
-# FIXME: use custom port number
-
-( $STUND -4 || echo ABORT > stund-IPv4.err ) &
-( $STUND -6 || echo ABORT > stund-IPv6.err ) &
+for v in 4 6; do
+	(($SHELL -c "echo \$\$ > stund$v.pid ; exec $STUND -$v $PORT") || \
+		touch stund$v.fail) &
+done
 
 # Run the test client
-$STUNC -4 > stunc-IPv4.log || test -f stund-IPv4.err
-$STUNC -6 > stunc-IPv6.log || test -f stund-IPv6.err
+$STUNC -4 127.0.0.1 $PORT > stunc4.log || test -f stund4.fail
+$STUNC -6 ::1 $PORT > stunc6.log || test -f stund6.fail
 
 # Terminate the test daemon
-kill -INT %1 2>/dev/null || true
-kill -INT %2 2>/dev/null || true
+for v in 4 6; do kill -INT $(cat stund$v.pid) || true; done
+wait
 
 # Check client results
-if test -f stund-IPv4.err; then exit 77; fi
-grep -e "^Mapped address: 127.0.0.1" stunc-IPv4.log || exit 4
+if test -f stund4.fail; then exit 77; fi
+grep -e "^Mapped address: 127.0.0.1" stunc4.log || exit 4
 
-if test -f stund-IPv6.err; then exit 77; fi
-grep -e "^Mapped address: ::1" stunc-IPv6.log || exit 6
+if test -f stund6.fail; then exit 77; fi
+grep -e "^Mapped address: ::1" stunc6.log || exit 6
+
+rm -f stund?.fail stund?.pid stunc?.log

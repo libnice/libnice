@@ -11,27 +11,30 @@ DIST_SUBDIRS = tests
 
 include $(top_srcdir)/common.mk
 
-AM_CFLAGS = $(ERROR_CFLAGS) $(GLIB_CFLAGS) $(OPENSSL_CFLAGS)
+AM_CFLAGS = -std=gnu99 $(ERROR_CFLAGS) $(GLIB_CFLAGS) $(OPENSSL_CFLAGS)
 AM_CPPFLAGS = -I$(top_srcdir)
 
 LIBS = $(GLIB_LIBS)
 
 noinst_LTLIBRARIES = libstun.la
 
-libstun_la_SOURCES = stun.h stun.c \
+libstun_la_SOURCES = \
 	stun-msg.h stunsend.c stunrecv.c crc32.c hmac.c \
 	timer.h timer.c trans.h trans.c \
-	bind.h conncheck.h bind.c bindserv.c
+	bind.h stun-ice.h bind.c bindserv.c \
+	relay.h relay.c
 libstun_la_LIBADD = $(LIBS) $(OPENSSL_LIBS) $(LIBRT)
 
-noinst_PROGRAMS = stun-client
+EXTRA_libstun_la_SOURCES = stun.h stun.c
+EXTRA_PROGRAMS = stun-client
 bin_PROGRAMS = stund stunbdc
+check_PROGRAMS = stund
 
 stun_client_LDADD = libstun.la
 stund_LDADD = libstun.la -lpthread
 stunbdc_LDADD = libstun.la
 
-check_PROGRAMS = \
+EXTRA_PROGRAMS += \
 	test-attribute-pack \
 	test-attribute-pack-unknown \
 	test-attribute-dump \
@@ -57,6 +60,3 @@ test_message_dump_LDADD                  = libstun.la
 test_message_dump_unknown_LDADD          = libstun.la
 test_message_unpack_LDADD                = libstun.la
 test_message_find_attribute_LDADD        = libstun.la
-
-TESTS = $(check_PROGRAMS)
-

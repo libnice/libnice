@@ -33,47 +33,56 @@
  * file under either the MPL or the LGPL.
  */
 
-#ifndef STUN_TIMER_H
-# define STUN_TIMER_H 1
+#ifndef STUN_RELAY_H
+# define STUN_RELAY_H 1
 
 /**
- * @file timer.h
- * @brief STUN retransmission timer
+ * @file relay.h
+ * @brief STUN relay usage (TURN)
  */
 
-# include <sys/types.h>
-# include <time.h>
+typedef struct turn_s turn_t;
 
-typedef struct stun_timer_s
+typedef enum
 {
-	struct timespec deadline;
-	unsigned delay;
-} stun_timer_t;
-
+	TURN_PROTO_TCP=6,
+	TURN_PROTO_UDP=17
+} turn_proto_t;
 
 # ifdef __cplusplus
 extern "C" {
 # endif
 
-/**
- * Starts a STUN transaction retransmission timer.
- * @param timer structure for internal timer state
- */
-void stun_timer_start (stun_timer_t *timer);
-void stun_timer_start_reliable (stun_timer_t *timer);
+turn_t *turn_socket (int fd, int family, turn_proto_t proto,
+                     const struct sockaddr *restrict srv, socklen_t srvlen);
 
-/**
- * Updates a STUN transaction retransmission timer.
- * @param timer internal timer state
- * @return -1 if the transaction timed out,
- * 0 if the transaction should be retransmitted,
- * otherwise milliseconds left until next time out or retransmit.
- */
-int stun_timer_refresh (stun_timer_t *timer);
-unsigned stun_timer_remainder (const stun_timer_t *timer);
+int turn_setbandwidth (turn_t *ctx, unsigned kbits);
+int turn_setrealm (turn_t *restrict ctx, const char *realm);
+int turn_setusername (turn_t *restrict ctx, const char *username);
+int turn_setpassword (turn_t *restrict ctx, const char *password);
+
+int turn_connect (turn_t *restrict ctx, const struct sockaddr *restrict dst,
+                  socklen_t len);
+
+ssize_t turn_sendto (turn_t *restrict ctx, const void *data, size_t datalen,
+                     int flags, const struct sockaddr *restrict dst,
+                     socklen_t dstlen);
+ssize_t turn_send (turn_t *restrict ctx, const void *data, size_t len,
+                   int flags);
+
+ssize_t turn_recvfrom (turn_t *restrict ctx, void *data, size_t len, int flags,
+                       const struct sockaddr *restrict src, socklen_t *srclen);
+ssize_t turn_recv (turn_t *restrict ctx, void *data, size_t len, int flags);
+
+int turn_getsockname (turn_t *restrict ctx,
+                      const struct sockaddr *restrict name, socklen_t *len);
+int turn_getpeername (turn_t *restrict ctx,
+                      const struct sockaddr *restrict name, socklen_t *len);
+
+int turn_close (turn_t *ctx);
 
 # ifdef __cplusplus
 }
 # endif
 
-#endif /* !STUN_TIMER_H */
+#endif
