@@ -34,8 +34,10 @@
  * not delete the provisions above, a recipient may use your version of this
  * file under either the MPL or the LGPL.
  */
+#ifdef HAVE_CONFIG_H
+# include "config.h"
+#endif
 
-#include "config.h"
 #include "gstnicesrc.h"
 #include "gstnicesink.h"
 
