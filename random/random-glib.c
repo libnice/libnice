@@ -34,6 +34,9 @@
  * not delete the provisions above, a recipient may use your version of this
  * file under either the MPL or the LGPL.
  */
+#ifdef HAVE_CONFIG_H
+# include "config.h"
+#endif
 
 #include "random-glib.h"
 
@@ -42,6 +45,7 @@ rng_seed (
   G_GNUC_UNUSED
   NiceRNG *rng, guint32 seed)
 {
+  (void)rng;
   g_random_set_seed (seed);
 }
 
@@ -54,6 +58,8 @@ rng_generate_bytes (
 {
   guint i;
 
+  (void)rng;
+
   for (i = 0; i < len; i++)
     buf[i] = g_random_int_range (0, 256);
 }
@@ -65,6 +71,7 @@ rng_generate_int (
   guint low,
   guint high)
 {
+  (void)rng;
   return g_random_int_range (low, high);
 }
 
@@ -74,7 +81,7 @@ rng_free (NiceRNG *rng)
   g_slice_free (NiceRNG, rng);
 }
 
-NiceRNG *
+NICEAPI_EXPORT NiceRNG *
 nice_rng_glib_new (void)
 {
   NiceRNG *ret;
@@ -87,7 +94,7 @@ nice_rng_glib_new (void)
   return ret;
 }
 
-NiceRNG *
+NICEAPI_EXPORT NiceRNG *
 nice_rng_glib_new_predictable (void)
 {
   NiceRNG *rng;

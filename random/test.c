@@ -34,6 +34,9 @@
  * not delete the provisions above, a recipient may use your version of this
  * file under either the MPL or the LGPL.
  */
+#ifdef HAVE_CONFIG_H
+# include "config.h"
+#endif
 
 #include <string.h>
 
@@ -43,19 +46,21 @@ int
 main (void)
 {
   NiceRNG *rng;
-  gchar buf[9];
+  const int rngsize = 256;
+  gchar buf[rngsize];
 
-  buf[8] = '\0';
+  buf[rngsize - 1] = '\0';
 
   nice_rng_set_new_func (nice_rng_glib_new_predictable);
   rng = nice_rng_new ();
 
-  nice_rng_generate_bytes_print (rng, 8, buf);
-  //g_debug ("%s", buf);
-  g_assert (0 == strcmp (buf, "S9PObXR5"));
+  nice_rng_generate_bytes_print (rng, rngsize - 1, buf);
+  /* g_debug ("%s", buf); */
+  g_assert (0 == strcmp (buf, "sv1AD7DnJTVykXGYYM6BmnXuYRlZNIJUzQzF+PvASjYxzdTTOngBJ5/gfK0Xj+Ly3ciAAk1Fmo0RPEpq6f4BBnp5jm3LuSbAOj1M5qULEGEv/0DMk0oOPUj6XPN1VwxFpjAfFeAxykiwdDiqNwnVJ/AKyr6/X7C5i+je7DSujURybOp6BkKWroLCzQg2AmTuqz48oNeY9CDeirNwoITfIaC40Ds9OgEDtL8WN5tL4QYdVuZQ85219Thogk775GV"));
 
-  nice_rng_generate_bytes (rng, 8, buf);
-  g_assert (0 == strcmp (buf, "\x09\xd3\x15\xf2\x24\x57\x46\xd8"));
+  nice_rng_generate_bytes (rng, 4, buf);
+  buf[4] = 0;
+  g_assert (0 == strcmp (buf, "\x1f\x0d\x47\xb8"));
 
   nice_rng_free (rng);
   return 0;

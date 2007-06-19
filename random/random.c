@@ -23,6 +23,7 @@
  *
  * Contributors:
  *   Dafydd Harries, Collabora Ltd.
+ *   Kai Vehmanen, Nokia
  *
  * Alternatively, the contents of this file may be used under the terms of the
  * the GNU Lesser General Public License Version 2.1 (the "LGPL"), in which
@@ -34,13 +35,21 @@
  * not delete the provisions above, a recipient may use your version of this
  * file under either the MPL or the LGPL.
  */
+#ifdef HAVE_CONFIG_H
+# include "config.h"
+#endif
+
+#include <string.h>
 
 #include "random.h"
 #include "random-glib.h"
 
 static NiceRNG * (*nice_rng_new_func) (void) = NULL;
 
-NiceRNG *
+/** 
+ * Creates a new random number generator instance.
+ */
+NICEAPI_EXPORT NiceRNG *
 nice_rng_new (void)
 {
   if (nice_rng_new_func == NULL)
@@ -49,40 +58,74 @@ nice_rng_new (void)
     return nice_rng_new_func ();
 }
 
-void
+/**
+ * Sets a new generator function.
+ */
+NICEAPI_EXPORT void
 nice_rng_set_new_func (NiceRNG * (*func) (void))
 {
   nice_rng_new_func = func;
 }
 
-void
+/**
+ * Frees the random number generator instance.
+ *
+ * @param rng context
+ */
+NICEAPI_EXPORT void
 nice_rng_free (NiceRNG *rng)
 {
   rng->free (rng);
 }
 
-void
+/**
+ * Generates random octets.
+ *
+ * @param rng context
+ * @param len number of octets to product
+ * @param buf buffer to store the results
+ */
+NICEAPI_EXPORT void
 nice_rng_generate_bytes (NiceRNG *rng, guint len, gchar *buf)
 {
   rng->generate_bytes (rng, len, buf);
 }
 
-guint
+/**
+ * Generates a random unsigned integer.
+ * 
+ * @param rng context
+ * @param low closed lower bound
+ * @param high open upper bound
+ */
+NICEAPI_EXPORT guint
 nice_rng_generate_int (NiceRNG *rng, guint low, guint high)
 {
   return rng->generate_int (rng, low, high);
 }
 
-void
+/**
+ * Generates a stream of octets containing only characters
+ * with ASCII codecs of 0x41-5A (A-Z), 0x61-7A (a-z), 
+ * 0x30-39 (0-9), 0x2b (+) and 0x2f (/). This matches 
+ * the definition of 'ice-char' in ICE Ispecification,
+ * section 15.1 (ID-16).
+ *
+ * @param rng context
+ * @param len number of octets to product
+ * @param buf buffer to store the results
+ */
+NICEAPI_EXPORT void
 nice_rng_generate_bytes_print (NiceRNG *rng, guint len, gchar *buf)
 {
   guint i;
   const gchar *chars =
     "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
     "abcdefghijklmnopqrstuvwxyz"
-    "01234567890";
+    "0123456789"
+    "+/";
 
   for (i = 0; i < len; i++)
-    buf[i] = chars[nice_rng_generate_int (rng, 0, 62)];
+    buf[i] = chars[nice_rng_generate_int (rng, 0, strlen (chars))];
 }
 
