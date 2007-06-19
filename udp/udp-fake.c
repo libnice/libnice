@@ -34,6 +34,9 @@
  * not delete the provisions above, a recipient may use your version of this
  * file under either the MPL or the LGPL.
  */
+#ifdef HAVE_CONFIG_H
+# include "config.h"
+#endif
 
 #include <string.h>
 
@@ -112,7 +115,7 @@ fake_socket_init (
 
   sock->fileno = fds[1];
   sock->addr.type = addr->type;
-  sock->addr.addr_ipv4 = addr->addr_ipv4;
+  sock->addr.addr.addr_ipv4 = addr->addr.addr_ipv4;
 
   if (addr->port == 0)
     sock->addr.port = port++;
@@ -126,7 +129,7 @@ fake_socket_init (
   return TRUE;
 }
 
-void
+NICEAPI_EXPORT void
 nice_udp_fake_socket_push_recv (
   NiceUDPSocket *sock,
   NiceAddress *from,
@@ -142,7 +145,7 @@ nice_udp_fake_socket_push_recv (
   write (priv->net_sock, buf, len);
 }
 
-guint
+NICEAPI_EXPORT guint
 nice_udp_fake_socket_pop_send (
   NiceUDPSocket *sock,
   NiceAddress *to,
@@ -160,7 +163,7 @@ nice_udp_fake_socket_pop_send (
   return len;
 }
 
-guint
+NICEAPI_EXPORT guint
 nice_udp_fake_socket_get_peer_fd (
   NiceUDPSocket *sock)
 {
@@ -177,7 +180,7 @@ fake_socket_factory_close (
 {
 }
 
-void
+NICEAPI_EXPORT void
 nice_udp_fake_socket_factory_init (NiceUDPSocketFactory *man)
 {
   man->init = fake_socket_init;

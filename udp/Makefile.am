@@ -32,6 +32,7 @@ udp_client_LDADD = $(COMMON_LDADD)
 udp_echo_server_LDADD = $(COMMON_LDADD)
 
 check_PROGRAMS = test-fake test-bsd
+dist_check_SCRIPTS = test-echo.sh
 
 test_fake_LDADD = $(COMMON_LDADD)
 
@@ -40,9 +41,7 @@ test_bsd_LDADD = $(COMMON_LDADD)
 test-echo.sh::
 	chmod +x $(srcdir)/$@
 
-EXTRA_DIST = test-echo.sh
-
-TESTS = test-echo.sh $(check_PROGRAMS)
+TESTS = $(dist_check_SCRIPTS) $(check_PROGRAMS)
 
 pkginclude_HEADERS = udp.h udp-fake.h udp-bsd.h
 

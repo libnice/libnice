@@ -34,6 +34,9 @@
  * not delete the provisions above, a recipient may use your version of this
  * file under either the MPL or the LGPL.
  */
+#ifdef HAVE_CONFIG_H
+# include "config.h"
+#endif
 
 #include <string.h>
 
@@ -63,7 +66,7 @@ main (void)
 
   memcpy (buf, "he\0lo", 5);
   len = 5;
-  addr.addr_ipv4 = 0x01020304;
+  addr.addr.addr_ipv4 = 0x01020304;
   addr.port = 2345;
   nice_udp_fake_socket_push_recv (&sock, &addr, len, buf);
 
@@ -73,7 +76,7 @@ main (void)
   len = nice_udp_socket_recv (&sock, &addr, sizeof (buf), buf);
   g_assert (len == 5);
   g_assert (memcmp (buf, "he\0lo", 5) == 0);
-  g_assert (addr.addr_ipv4 == 0x01020304);
+  g_assert (addr.addr.addr_ipv4 == 0x01020304);
   g_assert (addr.port == 2345);
 
   /* test send */
@@ -88,7 +91,7 @@ main (void)
   len = nice_udp_fake_socket_pop_send (&sock, &addr, sizeof (buf), buf);
   g_assert (len == 5);
   g_assert (0 == memcmp (buf, "la\0la", 5));
-  g_assert (addr.addr_ipv4 == 0x01020304);
+  g_assert (addr.addr.addr_ipv4 == 0x01020304);
   g_assert (addr.port == 2345);
 
   nice_udp_socket_close (&sock);

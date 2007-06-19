@@ -34,6 +34,9 @@
  * not delete the provisions above, a recipient may use your version of this
  * file under either the MPL or the LGPL.
  */
+#ifdef HAVE_CONFIG_H
+# include "config.h"
+#endif
 
 #include <arpa/inet.h>
 
@@ -41,7 +44,7 @@
 
 #include <udp.h>
 
-gboolean
+NICEAPI_EXPORT gboolean
 nice_udp_socket_factory_make (
   NiceUDPSocketFactory *man,
   NiceUDPSocket *sock,
@@ -50,13 +53,13 @@ nice_udp_socket_factory_make (
   return man->init (man, sock, addr);
 }
 
-void
+NICEAPI_EXPORT void
 nice_udp_socket_factory_close (NiceUDPSocketFactory *man)
 {
   man->close (man);
 }
 
-guint
+NICEAPI_EXPORT guint
 nice_udp_socket_recv (
   NiceUDPSocket *sock,
   NiceAddress *from,
@@ -66,7 +69,7 @@ nice_udp_socket_recv (
   return sock->recv (sock, from, len, buf);
 }
 
-void
+NICEAPI_EXPORT void
 nice_udp_socket_send (
   NiceUDPSocket *sock,
   NiceAddress *to,
@@ -76,7 +79,7 @@ nice_udp_socket_send (
   sock->send (sock, to, len, buf);
 }
 
-void
+NICEAPI_EXPORT void
 nice_udp_socket_close (NiceUDPSocket *sock)
 {
   sock->close (sock);

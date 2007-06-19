@@ -34,6 +34,9 @@
  * not delete the provisions above, a recipient may use your version of this
  * file under either the MPL or the LGPL.
  */
+#ifdef HAVE_CONFIG_H
+# include "config.h"
+#endif
 
 #include <string.h>
 
@@ -53,13 +56,13 @@ main (void)
 
   g_assert (nice_udp_socket_factory_make (&factory, &server, NULL));
   // not bound to a particular interface
-  g_assert (server.addr.addr_ipv4 == 0);
+  g_assert (server.addr.addr.addr_ipv4 == 0);
   // is bound to a particular port
   g_assert (server.addr.port != 0);
 
   g_assert (nice_udp_socket_factory_make (&factory, &client, NULL));
   // not bound to a particular interface
-  g_assert (client.addr.addr_ipv4 == 0);
+  g_assert (client.addr.addr.addr_ipv4 == 0);
   // is bound to a particular port
   g_assert (client.addr.port != 0);
 

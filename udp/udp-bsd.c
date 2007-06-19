@@ -39,6 +39,9 @@
  * Implementation of UDP socket interface using Berkeley sockets. (See
  * http://en.wikipedia.org/wiki/Berkeley_sockets.)
  */
+#ifdef HAVE_CONFIG_H
+# include "config.h"
+#endif
 
 #include <arpa/inet.h>
 
@@ -65,7 +68,7 @@ socket_recv (
       &from_len);
 
   from->type = NICE_ADDRESS_TYPE_IPV4;
-  from->addr_ipv4 = ntohl (sin.sin_addr.s_addr);
+  from->addr.addr_ipv4 = ntohl (sin.sin_addr.s_addr);
   from->port = ntohs (sin.sin_port);
 
   return recvd;
@@ -81,7 +84,7 @@ socket_send (
   struct sockaddr_in sin;
 
   sin.sin_family = AF_INET;
-  sin.sin_addr.s_addr = htonl (to->addr_ipv4);
+  sin.sin_addr.s_addr = htonl (to->addr.addr_ipv4);
   sin.sin_port = htons (to->port);
 
   sendto (sock->fileno, buf, len, 0, (struct sockaddr *) &sin, sizeof (sin));
@@ -107,6 +110,7 @@ socket_factory_init_socket (
   struct sockaddr_in name;
   guint name_len = sizeof (name);
 
+  (void)man;
   memset (&name, 0, sizeof (name));
   sockfd = socket (PF_INET, SOCK_DGRAM, 0);
 
@@ -117,8 +121,8 @@ socket_factory_init_socket (
 
   if (addr != NULL)
     {
-      if (addr->addr_ipv4 != 0)
-        name.sin_addr.s_addr = htonl (addr->addr_ipv4);
+      if (addr->addr.addr_ipv4 != 0)
+        name.sin_addr.s_addr = htonl (addr->addr.addr_ipv4);
       else
         name.sin_addr.s_addr = INADDR_ANY;
 
@@ -139,9 +143,9 @@ socket_factory_init_socket (
     }
 
   if (name.sin_addr.s_addr == INADDR_ANY)
-    sock->addr.addr_ipv4 = 0;
+    sock->addr.addr.addr_ipv4 = 0;
   else
-    sock->addr.addr_ipv4 = ntohl (name.sin_addr.s_addr);
+    sock->addr.addr.addr_ipv4 = ntohl (name.sin_addr.s_addr);
 
   sock->addr.port = ntohs (name.sin_port);
 
@@ -157,9 +161,10 @@ socket_factory_close (
   G_GNUC_UNUSED
   NiceUDPSocketFactory *man)
 {
+  (void)man;
 }
 
-void
+NICEAPI_EXPORT void
 nice_udp_bsd_socket_factory_init (
   G_GNUC_UNUSED
   NiceUDPSocketFactory *man)
