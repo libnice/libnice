@@ -13,6 +13,9 @@ The library will use the source address of incoming packets in order
 to identify from which remote candidates, if any (peer-derived
 candidates), packets were sent.
 
+XXX: Describe the subtle issues with ICMP error handling when one
+socket is used to send to multiple destinations.
+
 Real-time considerations
 ------------------------
 
@@ -139,6 +142,11 @@ Special considerations for a SIP client:
   should check the "controlling-mode" property to check that
   it still is in controlling mode (might change during ICE
   processing due to ICE role conflicts).
+- The "remote-attributes" SDP attribute can be created from
+  the information provided by "component-state-changed" (which
+  components are ready), "new-selected-pair" (which candidates
+  are selected) and "new-remote-candidate" (peer-reflexive
+  candidates discovered during processing) signals.
 
 Notes about sending media:
 
