@@ -80,6 +80,8 @@ struct _Component
   GSList *gsources;            /**< list of GSource objs */
   CandidatePair selected_pair; /**< independent from checklists, 
 				    see ICE 11.1.1 (ID-15) */
+  gboolean media_after_tick;   /**< true if media received since last
+				    keepalive tick */
 
   /* XXX: **to be removed**
    * --cut-- 

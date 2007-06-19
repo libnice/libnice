@@ -35,6 +35,15 @@
  * file under either the MPL or the LGPL.
  */
 
+/**
+ * @file component.c
+ * @brief ICE component functions
+ */
+
+#ifdef HAVE_CONFIG_H
+# include <config.h>
+#endif
+
 #include "component.h"
 
 Component *

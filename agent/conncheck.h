@@ -44,7 +44,9 @@
 #include "agent.h"
 #include "stream.h"
 #include "stun.h"     /* XXX: using the old STUN API, to be removed */
-#include "stun/conncheck.h"    /* note: the new STUN API */
+#include "stun-ice.h"    /* note: the new STUN API */
+
+#define NICE_CANDIDATE_PAIR_MAX_FOUNDATION        NICE_CANDIDATE_MAX_FOUNDATION*2
 
 typedef enum
 {
@@ -53,7 +55,8 @@ typedef enum
   NICE_CHECK_SUCCEEDED,     /**< conn. succesfully checked */
   NICE_CHECK_FAILED,        /**< no connectivity, retransmissions ceased */
   NICE_CHECK_FROZEN,        /**< waiting to be scheduled to WAITING */
-  NICE_CHECK_CANCELLED      /**< check cancelled */
+  NICE_CHECK_CANCELLED,     /**< check cancelled */
+  NICE_CHECK_DISCOVERED     /**< a valid candidate pair not on check list */
 } NiceCheckState;
 
 typedef enum
@@ -73,11 +76,12 @@ struct _CandidateCheckPair
   guint component_id;
   NiceCandidate *local;
   NiceCandidate *remote;
-  gchar *foundation;
+  gchar foundation[NICE_CANDIDATE_PAIR_MAX_FOUNDATION];
   NiceCheckState state;
   gboolean nominated;
   guint64 priority; 
   GTimeVal next_tick;       /* next tick timestamp */
+  gboolean traffic_after_tick;
   stun_bind_t *stun_ctx;
 };
 
@@ -87,17 +91,7 @@ void conn_check_free (NiceAgent *agent);
 void conn_check_schedule_next (NiceAgent *agent);
 int conn_check_send (NiceAgent *agent, CandidateCheckPair *pair);
 gboolean conn_check_prune_stream (NiceAgent *agent, guint stream_id);
-gboolean conn_check_handle_inbound_stun (NiceAgent *agent, Stream *stream, Component *component, const NiceAddress *from, gchar *buf, guint len);
-
-/* functions using the old STUN API: 
- * ---------------------------------*/
-
-void conn_check_handle_inbound_stun_old (
-  NiceAgent *agent,
-  Stream *stream,
-  Component *component,
-  NiceCandidate *local,
-  NiceAddress from,
-  StunMessage *msg);
+gboolean conn_check_handle_inbound_stun (NiceAgent *agent, Stream *stream, Component *component, NiceUDPSocket *udp_socket, const NiceAddress *from, gchar *buf, guint len);
+gint conn_check_compare (const CandidateCheckPair *a, const CandidateCheckPair *b);
 
 #endif /*_NICE_CONNCHECK_H */

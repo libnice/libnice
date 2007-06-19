@@ -27,7 +27,7 @@ noinst_LTLIBRARIES = libagent.la
 %-signals-marshal.c: %-signals-marshal.list Makefile.am
 	glib-genmarshal --body --prefix=$(subst -,_,$*)_marshal $< > $@
 	sed -i "1i#include \"$*-signals-marshal.h\"" $@
-	sed -ie 's/^}$$/(void)return_value;(void)invocation_hint;}/' $@
+	sed -i -e 's/^}$$/(void)return_value;(void)invocation_hint;}/' $@
 
 BUILT_SOURCES = \
 	agent-signals-marshal.h \
@@ -66,12 +66,15 @@ check_PROGRAMS = \
 	test-mainloop \
 	test-fullmode
 
+check_SCRIPTS = \
+	check-test-fullmode-with-stun.sh
+
 # disabled test programs (using the old STUN API):
-noinst_PROGRAMS = \
+EXTRA_PROGRAMS = \
 	test-stun \
 	test-send
 
-TESTS = $(check_PROGRAMS)
+TESTS = $(check_PROGRAMS) $(check_SCRIPTS)
 
 test_LDADD = $(COMMON_LDADD)
 

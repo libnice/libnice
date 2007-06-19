@@ -34,6 +34,9 @@
  * not delete the provisions above, a recipient may use your version of this
  * file under either the MPL or the LGPL.
  */
+#ifdef HAVE_CONFIG_H
+# include <config.h>
+#endif
 
 #include "agent.h"
 
@@ -53,10 +56,10 @@ main (void)
   /* 2^32*MIN(O,A) + 2*MAX(O,A) + (O>A?1:0) 
      = 2^32*1 + 2*5000 + 0 
      = 4294977296 */
-  g_assert (nice_candidate_pair_priority (1,5000) == 4294977296);
+  g_assert (nice_candidate_pair_priority (1,5000) == 4294977296LL);
 
   /* 2^32*1 + 2*5000 + 1 = 4294977297 */
-  g_assert (nice_candidate_pair_priority (5000, 1) == 4294977297);
+  g_assert (nice_candidate_pair_priority (5000, 1) == 4294977297LL);
   
   return 0;
 }

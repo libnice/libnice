@@ -49,6 +49,7 @@
 #include "stream.h"
 #include "conncheck.h"
 
+/** As specified in ICE spec ID-15 */
 #define NICE_AGENT_TIMER_TA_DEFAULT 20      /* timer Ta, msecs */
 #define NICE_AGENT_TIMER_TR_DEFAULT 15000   /* timer Tr, msecs */
 
@@ -59,6 +60,7 @@
 struct _NiceAgent
 {
   GObject parent;                 /**< gobject pointer */
+
   gboolean full_mode;             /**< property: full-mode */
   NiceUDPSocketFactory *socket_factory; /**< property: socket factory */
   GTimeVal next_check_tv;         /**< property: next conncheck timestamp */
@@ -67,6 +69,8 @@ struct _NiceAgent
   gchar *turn_server_ip;          /**< property: TURN server IP */
   guint turn_server_port;         /**< property: TURN server port */
   gboolean controlling_mode;      /**< property: controlling-mode */
+  guint timer_ta;                 /**< property: timer Ta */
+
   GSList *local_addresses;        /**< list of NiceAddresses for local
 				     interfaces */
   GSList *streams;                /**< list of Stream objects */
@@ -83,6 +87,10 @@ struct _NiceAgent
   GSList *conncheck_list;         /**< list of CandidatePair items */
   guint conncheck_timer_id;       /**< id of discovery timer */
   NiceCheckListState conncheck_state; /**< checklist state */
+  guint keepalive_timer_id;       /**< id of keepalive timer */
+  guint64 tie_breaker;            /**< tie breaker (ICE ID-16 sect
+				     5.2) */
+  gchar ufragtmp[NICE_STREAM_MAX_UNAME]; /**< preallocated buffer for uname processing */ 
   /* XXX: add pointer to internal data struct for ABI-safe extensions */
 };
 
@@ -114,6 +122,8 @@ void agent_signal_component_state_change (
 void agent_signal_new_candidate (
   NiceAgent *agent,
   NiceCandidate *candidate);
+
+void agent_signal_new_remote_candidate (NiceAgent *agent, NiceCandidate *candidate);
 
 void agent_signal_initial_binding_request_received (NiceAgent *agent, Stream *stream);
 

@@ -50,6 +50,7 @@ struct _CandidateDiscovery
   guint socket;             /**< XXX: should be taken from local cand: existing socket to use */
   NiceUDPSocket *nicesock;  /**< XXX: should be taken from local cand: existing socket to use */
   const gchar *server_addr; /**< STUN/TURN server address, not owned */ 
+  guint server_port;        /**< STUN/TURN server port */ 
   NiceAddress *interface;   /**< Address of local interface */
   stun_bind_t *stun_ctx;
   GTimeVal next_tick;       /**< next tick timestamp */
@@ -64,7 +65,8 @@ void discovery_free (NiceAgent *agent);
 gboolean discovery_prune_stream (NiceAgent *agent, guint stream_id);
 void discovery_schedule (NiceAgent *agent);
 
-NiceCandidate *discovery_add_local_host_candidate (
+NiceCandidate *
+discovery_add_local_host_candidate (
   NiceAgent *agent,
   guint stream_id,
   guint component_id,
@@ -77,5 +79,22 @@ discovery_add_server_reflexive_candidate (
   guint component_id,
   NiceAddress *address,
   NiceUDPSocket *base_socket);
+
+NiceCandidate* 
+discovery_add_peer_reflexive_candidate (
+  NiceAgent *agent,
+  guint stream_id,
+  guint component_id,
+  NiceAddress *address,
+  NiceUDPSocket *base_socket);
+
+NiceCandidate *
+discovery_learn_remote_peer_reflexive_candidate (
+  NiceAgent *agent,
+  Stream *stream,
+  Component *component,
+  guint32 priority, 
+  const NiceAddress *remote_address,
+  NiceUDPSocket *udp_socket);
 
 #endif /*_NICE_CONNCHECK_H */

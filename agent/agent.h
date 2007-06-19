@@ -70,6 +70,13 @@ G_BEGIN_DECLS
   (G_TYPE_INSTANCE_GET_CLASS ((obj), \
   NICE_TYPE_AGENT, NiceAgentClass))
 
+/** 
+ * A hard limit for number for remote candidates. This
+ * limit is enforced to protect against malevolent remote 
+ * clients.
+ */
+#define NICE_AGENT_MAX_REMOTE_CANDIDATES    25
+
 typedef enum
 {
   NICE_COMPONENT_STATE_DISCONNECTED, /* no activity scheduled */
@@ -92,13 +99,13 @@ typedef enum
 typedef struct _NiceCandidateDesc NiceCandidateDesc;
 
 struct _NiceCandidateDesc {
-  const gchar *foundation;         
+  gchar *foundation;         
   guint component_id;
   NiceCandidateTransport transport;
   guint32 priority;
-  const NiceAddress *addr;
+  NiceAddress *addr;
   NiceCandidateType type;
-  const NiceAddress *related_addr;  /* optional */
+  NiceAddress *related_addr;  /* optional */
 };
 
 typedef struct _NiceAgent NiceAgent;
@@ -120,7 +127,7 @@ GType nice_agent_get_type (void);
 NiceAgent *
 nice_agent_new (NiceUDPSocketFactory *factory);
 
-void
+gboolean
 nice_agent_add_local_address (NiceAgent *agent, NiceAddress *addr);
 
 guint
@@ -145,7 +152,7 @@ nice_agent_get_local_credentials (
   guint stream_id,
   const gchar **ufrag, const gchar **pwd);
 
-void
+gboolean
 nice_agent_add_remote_candidate (
   NiceAgent *agent,
   guint stream_id,
@@ -155,12 +162,12 @@ nice_agent_add_remote_candidate (
   const gchar *username,
   const gchar *password);
 
-void
+int
 nice_agent_set_remote_candidates (
   NiceAgent *agent,
   guint stream_id,
   guint component_id,
-  GSList *candidates);
+  const GSList *candidates);
 
 guint
 nice_agent_recv (
@@ -186,7 +193,7 @@ nice_agent_poll_read (
   NiceAgentRecvFunc func,
   gpointer data);
 
-void
+gint
 nice_agent_send (
   NiceAgent *agent,
   guint stream_id,

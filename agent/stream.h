@@ -44,10 +44,13 @@
 
 G_BEGIN_DECLS
 
-/* Following do not including the terminating NULL */
+/* Following include the terminating NULL */
 
-#define NICE_STREAM_MAX_UFRAG_LEN    4 
-#define NICE_STREAM_MAX_PWD_LEN     22
+#define NICE_STREAM_MAX_UFRAG   1024 + 1
+#define NICE_STREAM_MAX_UNAME   1024 + 1024 + 1 + 1 /* colon plus NULL */
+#define NICE_STREAM_MAX_PWD     1024 + 1
+#define NICE_STREAM_DEF_UFRAG   4 + 1
+#define NICE_STREAM_DEF_PWD     22 + 1
 
 typedef struct _Stream Stream;
 
@@ -58,10 +61,10 @@ struct _Stream
   gboolean initial_binding_request_received;
   /* XXX: streams can have multiple components */
   Component *component;
-  gchar local_ufrag[NICE_STREAM_MAX_UFRAG_LEN + 1];
-  gchar local_password[NICE_STREAM_MAX_PWD_LEN + 1];
-  gchar remote_ufrag[NICE_STREAM_MAX_UFRAG_LEN + 1];
-  gchar remote_password[NICE_STREAM_MAX_PWD_LEN + 1];
+  gchar local_ufrag[NICE_STREAM_MAX_UFRAG];
+  gchar local_password[NICE_STREAM_MAX_PWD];
+  gchar remote_ufrag[NICE_STREAM_MAX_UFRAG];
+  gchar remote_password[NICE_STREAM_MAX_PWD];
 };
 
 Stream *

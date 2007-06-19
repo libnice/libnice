@@ -35,6 +35,9 @@
  * not delete the provisions above, a recipient may use your version of this
  * file under either the MPL or the LGPL.
  */
+#ifdef HAVE_CONFIG_H
+# include <config.h>
+#endif
 
 #include <string.h>
 
@@ -187,7 +190,7 @@ test_stun_valid_password (
       bres = stun_message_new (STUN_MESSAGE_BINDING_RESPONSE,
           "0123456789abcdef", 2);
       bres->attributes[0] = stun_attribute_mapped_address_new (
-          from.addr_ipv4, 5678);
+          from.addr.addr_ipv4, 5678);
       bres->attributes[1] = stun_attribute_username_new (username);
       packed_len = stun_message_pack (bres, &packed);
       stun_message_free (bres);

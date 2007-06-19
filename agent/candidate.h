@@ -48,6 +48,8 @@ G_BEGIN_DECLS
 #define NICE_CANDIDATE_TYPE_PREF_SERVER_REFLEXIVE     100
 #define NICE_CANDIDATE_TYPE_PREF_RELAYED               60
 
+#define NICE_CANDIDATE_MAX_FOUNDATION                  16
+
 typedef enum
 {
   NICE_CANDIDATE_TYPE_HOST,
@@ -72,11 +74,10 @@ struct _NiceCandidate
   guint32 priority;
   guint stream_id;
   guint component_id;
-  gchar *foundation;      
-  NiceUDPSocket *sockptr; /* XXX: to replace 'sock', see comment above */
+  gchar foundation[NICE_CANDIDATE_MAX_FOUNDATION];
+  NiceUDPSocket *sockptr;
   gchar *username;        /* pointer to a NULL-terminated username string */
   gchar *password;        /* pointer to a NULL-terminated password string */
-  GSource *source;
 };
 
 

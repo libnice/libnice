@@ -36,6 +36,15 @@
  * file under either the MPL or the LGPL.
  */
 
+/**
+ * @file candidate.c
+ * @brief ICE candidate functions
+ */
+
+#ifdef HAVE_CONFIG_H
+# include <config.h>
+#endif
+
 #include "agent.h"
 #include "component.h"
 
@@ -44,7 +53,7 @@
  * candidates, server reflexive candidates, and relayed candidates. */
 
 
-NiceCandidate *
+NICEAPI_EXPORT NiceCandidate *
 nice_candidate_new (NiceCandidateType type)
 {
   NiceCandidate *candidate;
@@ -55,13 +64,10 @@ nice_candidate_new (NiceCandidateType type)
 }
 
 
-void
+NICEAPI_EXPORT void
 nice_candidate_free (NiceCandidate *candidate)
 {
   /* better way of checking if socket is allocated? */
-
-  if (candidate->source)
-    g_source_destroy (candidate->source);
 
   if (candidate->username)
     g_free (candidate->username);
@@ -69,14 +75,11 @@ nice_candidate_free (NiceCandidate *candidate)
   if (candidate->password)
     g_free (candidate->password);
 
-  if (candidate->foundation)
-    g_free (candidate->foundation);
-
   g_slice_free (NiceCandidate, candidate);
 }
 
 
-gfloat
+NICEAPI_EXPORT gfloat
 nice_candidate_jingle_priority (NiceCandidate *candidate)
 {
   switch (candidate->type)
@@ -94,7 +97,7 @@ nice_candidate_jingle_priority (NiceCandidate *candidate)
 
 /* ICE-15 §4.1.2.1; returns number between 1 and 0x7effffff */
 G_GNUC_CONST
-guint32
+NICEAPI_EXPORT guint32
 nice_candidate_ice_priority_full (
   // must be ∈ (0, 126) (max 2^7 - 2)
   guint type_preference,
@@ -111,7 +114,7 @@ nice_candidate_ice_priority_full (
 
 
 G_GNUC_CONST
-guint32
+NICEAPI_EXPORT guint32
 nice_candidate_ice_priority (const NiceCandidate *candidate)
 {
   guint8 type_preference = 0;
@@ -135,7 +138,7 @@ nice_candidate_ice_priority (const NiceCandidate *candidate)
 /** 
  * Calculates the pair priority as specified in ICE -15 spec 5.7.2.
  */
-guint64
+NICEAPI_EXPORT guint64
 nice_candidate_pair_priority (guint32 o_prio, guint32 a_prio)
 {
   guint32 max = o_prio > a_prio ? o_prio : a_prio;

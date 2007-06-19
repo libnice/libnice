@@ -35,6 +35,9 @@
  * not delete the provisions above, a recipient may use your version of this
  * file under either the MPL or the LGPL.
  */
+#ifdef HAVE_CONFIG_H
+# include <config.h>
+#endif
 
 #include <string.h>
 
@@ -73,6 +76,7 @@ main (void)
   gint pipe_fds[2];
   GSList *fds = NULL;
   GSList *readable;
+  ssize_t w;
 
   memset (&addr, 0, sizeof (addr));
   g_type_init ();
@@ -102,7 +106,8 @@ main (void)
   if (pipe (pipe_fds) != 0)
     g_assert_not_reached ();
 
-  write (pipe_fds[1], "hello", 5);
+  w = write (pipe_fds[1], "hello", 5);
+  g_assert (w == 5);
 
   fds = g_slist_append (fds, GUINT_TO_POINTER (pipe_fds[0]));
 

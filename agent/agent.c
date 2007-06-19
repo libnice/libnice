@@ -36,15 +36,20 @@
  * file under either the MPL or the LGPL.
  */
 
+/**
+ * @file agent.c
+ * @brief ICE agent API implementation
+ */
+
+#ifdef HAVE_CONFIG_H
+# include <config.h>
+#endif
+
 #include <string.h>
 #include <errno.h>
 
 #include <sys/select.h>
 #include <sys/socket.h>
-#ifndef _BSD_SOURCE
-#error "timercmp() macros needed"
-#endif
-#include <sys/time.h> /* timercmp() macro, BSD */
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
@@ -75,7 +80,8 @@ enum
   PROP_TURN_SERVER, 
   PROP_TURN_SERVER_PORT,
   PROP_CONTROLLING_MODE,
-  PROP_FULL_MODE
+  PROP_FULL_MODE,
+  PROP_STUN_PACING_TIMER
 };
 
 
@@ -85,6 +91,7 @@ enum
   SIGNAL_CANDIDATE_GATHERING_DONE,
   SIGNAL_NEW_SELECTED_PAIR,
   SIGNAL_NEW_CANDIDATE,
+  SIGNAL_NEW_REMOTE_CANDIDATE,
   SIGNAL_INITIAL_BINDING_REQUEST_RECEIVED,
   N_SIGNALS,
 };
@@ -168,11 +175,6 @@ nice_agent_class_init (NiceAgentClass *klass)
 
   /* install properties */
   
-  /* XXX: add properties:
-   *  - Ta-timer (construct-property, msec) 
-   *  - make the others construct-time only as well...?
-   */ 
-
   g_object_class_install_property (gobject_class, PROP_SOCKET_FACTORY,
       g_param_spec_pointer (
          "socket-factory",
@@ -194,10 +196,10 @@ nice_agent_class_init (NiceAgentClass *klass)
         "STUN server port",
         "The STUN server used to obtain server-reflexive candidates",
         1, 65536, 
-	IPPORT_STUN, /* default port */
+	1, /* not a construct property, ignored */
         G_PARAM_READWRITE));
 
-  g_object_class_install_property (gobject_class, PROP_STUN_SERVER,
+  g_object_class_install_property (gobject_class, PROP_TURN_SERVER,
       g_param_spec_string (
         "turn-server",
         "TURN server",
@@ -205,13 +207,13 @@ nice_agent_class_init (NiceAgentClass *klass)
         NULL,
         G_PARAM_READWRITE));
 
-  g_object_class_install_property (gobject_class, PROP_STUN_SERVER_PORT,
+  g_object_class_install_property (gobject_class, PROP_TURN_SERVER_PORT,
       g_param_spec_uint (
         "turn-server-port",
         "TURN server port",
-        "The STUN server used to obtain relay candidates",
+        "The TURN server used to obtain relay candidates",
         1, 65536, 
-	3478, /* no default port for TURN, use the STUN default*/
+	1, /* not a construct property, ignored */
         G_PARAM_READWRITE));
 
   g_object_class_install_property (gobject_class, PROP_CONTROLLING_MODE,
@@ -228,6 +230,15 @@ nice_agent_class_init (NiceAgentClass *klass)
         "ICE full mode",
         "Whether agent runs in ICE full mode",
 	TRUE, /* use full mode by default */
+        G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY));
+
+  g_object_class_install_property (gobject_class, PROP_STUN_PACING_TIMER,
+      g_param_spec_uint (
+        "stun-pacing-timer",
+        "STUN pacing timer",
+        "Timer 'Ta' (msecs) used in the IETF ICE specification for pacing candidate gathering and sending of connectivity checks",
+        1, 0xffffffff, 
+	NICE_AGENT_TIMER_TA_DEFAULT,
         G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY));
 
   /* install signals */
@@ -292,6 +303,21 @@ nice_agent_class_init (NiceAgentClass *klass)
           G_TYPE_UINT, G_TYPE_UINT, G_TYPE_STRING,
           G_TYPE_INVALID);
 
+ /* signature: void cb(NiceAgent *agent, guint stream_id, guint component_id, gchar *foundation) */
+  signals[SIGNAL_NEW_REMOTE_CANDIDATE] =
+      g_signal_new (
+          "new-remote-candidate",
+          G_OBJECT_CLASS_TYPE (klass),
+          G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
+          0,
+          NULL,
+          NULL,
+          agent_marshal_VOID__UINT_UINT_STRING,
+          G_TYPE_NONE,
+          3,
+          G_TYPE_UINT, G_TYPE_UINT, G_TYPE_STRING,
+          G_TYPE_INVALID);
+
   /* signature: void cb(NiceAgent *agent, guint stream_id, gpointer self) */
   signals[SIGNAL_INITIAL_BINDING_REQUEST_RECEIVED] =
       g_signal_new (
@@ -309,6 +335,10 @@ nice_agent_class_init (NiceAgentClass *klass)
 
 }
 
+static void priv_generate_tie_breaker (NiceAgent *agent) 
+{
+  nice_rng_generate_bytes (agent->rng, 8, (gchar*)&agent->tie_breaker);
+}
 
 static void
 nice_agent_init (NiceAgent *agent)
@@ -327,8 +357,10 @@ nice_agent_init (NiceAgent *agent)
   agent->discovery_unsched_items = 0;
   agent->discovery_timer_id = 0;
   agent->conncheck_timer_id = 0;
+  agent->keepalive_timer_id = 0;
 
   agent->rng = nice_rng_new ();
+  priv_generate_tie_breaker (agent);
 }
 
 
@@ -340,7 +372,7 @@ nice_agent_init (NiceAgent *agent)
  *
  * Returns: the new agent
  **/
-NiceAgent *
+NICEAPI_EXPORT NiceAgent *
 nice_agent_new (NiceUDPSocketFactory *factory)
 {
   return g_object_new (NICE_TYPE_AGENT,
@@ -388,6 +420,10 @@ nice_agent_get_property (
       g_value_set_boolean (value, agent->full_mode);
       break;
 
+    case PROP_STUN_PACING_TIMER:
+      g_value_set_uint (value, agent->timer_ta);
+      break;
+
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
     }
@@ -429,6 +465,10 @@ nice_agent_set_property (
       agent->full_mode = g_value_get_boolean (value);
       break;
 
+    case PROP_STUN_PACING_TIMER:
+      agent->timer_ta = g_value_get_uint (value);
+      break;
+
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
     }
@@ -462,6 +502,14 @@ void agent_signal_new_selected_pair (NiceAgent *agent, guint stream_id, guint co
 void agent_signal_new_candidate (NiceAgent *agent, NiceCandidate *candidate)
 {
   g_signal_emit (agent, signals[SIGNAL_NEW_CANDIDATE], 0, 
+		 candidate->stream_id, 
+		 candidate->component_id, 
+		 candidate->foundation);
+}
+
+void agent_signal_new_remote_candidate (NiceAgent *agent, NiceCandidate *candidate)
+{
+  g_signal_emit (agent, signals[SIGNAL_NEW_REMOTE_CANDIDATE], 0, 
 		 candidate->stream_id, 
 		 candidate->component_id, 
 		 candidate->foundation);
@@ -508,33 +556,43 @@ static void priv_signal_component_state_connecting (NiceAgent *agent, guint stre
  *
  * Add a data stream to @agent.
  *
+ * @pre local addresses must be set with nice_agent_add_local_address()
+ *
  * Returns: the ID of the new stream, 0 on failure
  **/
-guint
+NICEAPI_EXPORT guint
 nice_agent_add_stream (
   NiceAgent *agent,
   guint n_components)
 {
   Stream *stream;
-  GSList *i;
+  GSList *i, *modified_list = NULL;
 
   g_assert (n_components == 1);
 
-  /* XXX: make memory-allocation safe */
-
-  if (!agent->streams) {
-    /* note: this contains a Y2038 issue */
-    agent->next_check_tv.tv_sec = 
-      agent->next_check_tv.tv_usec = (long)-1;
-  }
+  if (!agent->local_addresses)
+    return 0;
 
   stream = stream_new ();
-  stream->id = agent->next_stream_id++;
-  /* note: generate ufrag/pwd for the stream (see ICE ID-15 15.4) */
-  nice_rng_generate_bytes_print (agent->rng, NICE_STREAM_MAX_UFRAG_LEN, stream->local_ufrag);
-  nice_rng_generate_bytes_print (agent->rng, NICE_STREAM_MAX_PWD_LEN, stream->local_password);
+  if (stream) {
+    modified_list = g_slist_append (agent->streams, stream);
+    if (modified_list) {
+      stream->id = agent->next_stream_id++;
+      g_debug ("allocating stream id %u (%p)", stream->id, stream);
+      
+      /* note: generate ufrag/pwd for the stream (see ICE ID-15 15.4) */
+      nice_rng_generate_bytes_print (agent->rng, NICE_STREAM_DEF_UFRAG - 1, stream->local_ufrag);
+      nice_rng_generate_bytes_print (agent->rng, NICE_STREAM_DEF_PWD - 1, stream->local_password);
 
-  agent->streams = g_slist_append (agent->streams, stream);
+      agent->streams = modified_list;
+    }
+    else
+      stream_free (stream);
+  }
+
+  /* note: error in allocating objects */
+  if (!modified_list)
+    return 0;
 
   g_debug ("In %s mode, starting candidate gathering.", agent->full_mode ? "ICE-FULL" : "ICE-LITE");
 
@@ -550,27 +608,40 @@ nice_agent_add_stream (
       host_candidate = discovery_add_local_host_candidate (agent, stream->id,
 							   stream->component->id, addr);
       
-      if (host_candidate &&
-	  agent->full_mode &&
+      if (!host_candidate) {
+	stream->id = 0; 
+	break;
+      }
+
+      if (agent->full_mode &&
 	  agent->stun_server_ip) {
 
-	/* XXX: need to check for redundant candidates? -> not yet,
-	 *  this is done later on */
+	/* note: no need to check for redundant candidates, as this is
+	 *       done later on in the process */
 	
 	cand = g_slice_new0 (CandidateDiscovery);
 	if (cand) {
-	  cand->type = NICE_CANDIDATE_TYPE_SERVER_REFLEXIVE;
-	  cand->socket = host_candidate->sockptr->fileno;
-	  cand->nicesock = host_candidate->sockptr;
-	  cand->server_addr = agent->stun_server_ip;
-	  cand->interface = addr;
-	  cand->stream = stream;
-	  /* XXX: not multi-component ready */
-	  cand->component = stream->component;
-	  cand->agent = agent;
-	  g_debug ("Adding new srv-rflx candidate %p\n", cand);
-	  agent->discovery_list = g_slist_append (agent->discovery_list, cand);
-	  ++agent->discovery_unsched_items;
+	  modified_list = g_slist_append (agent->discovery_list, cand);
+	  
+	  if (modified_list) {
+	    agent->discovery_list = modified_list;
+	    cand->type = NICE_CANDIDATE_TYPE_SERVER_REFLEXIVE;
+	    cand->socket = host_candidate->sockptr->fileno;
+	    cand->nicesock = host_candidate->sockptr;
+	    cand->server_addr = agent->stun_server_ip;
+	    cand->server_port = agent->stun_server_port;
+	    cand->interface = addr;
+	    cand->stream = stream;
+	    /* XXX: not multi-component ready */
+	    cand->component = stream->component;
+	    cand->agent = agent;
+	    g_debug ("Adding new srv-rflx candidate %p\n", cand);
+	    modified_list = g_slist_append (agent->discovery_list, cand);
+	    if (modified_list) {
+	      agent->discovery_list = modified_list;
+	      ++agent->discovery_unsched_items;
+	    }
+	  }
 	}
 	else {
 	  /* note: memory allocation failure, return error */
@@ -582,16 +653,26 @@ nice_agent_add_stream (
 
   /* step: attach the newly created sockets to the mainloop
    *       context */
-  if (agent->main_context_set)
+  if (agent->main_context_set && stream->id > 0)
     priv_attach_new_stream (agent, stream);
 
   /* note: no async discoveries pending, signal that we are ready */
   if (agent->discovery_unsched_items == 0)
     agent_signal_gathering_done (agent);
-  else if (agent->discovery_list)
+  else {
+    g_assert (agent->discovery_list);
     discovery_schedule (agent);
+  }
 
   return stream->id;
+}
+
+static void priv_remove_keepalive_timer (NiceAgent *agent)
+{
+  if (agent->keepalive_timer_id) {
+    g_source_remove (agent->keepalive_timer_id),
+      agent->keepalive_timer_id = 0;
+  }
 }
 
 /**
@@ -599,7 +680,7 @@ nice_agent_add_stream (
  *  @agent: a NiceAgent
  *  @stream_id: the ID of the stream to remove
  **/
-void
+NICEAPI_EXPORT void
 nice_agent_remove_stream (
   NiceAgent *agent,
   guint stream_id)
@@ -619,8 +700,11 @@ nice_agent_remove_stream (
 
   /* remove the stream itself */
   priv_deattach_stream (stream);
-  stream_free (stream);
   agent->streams = g_slist_remove (agent->streams, stream);
+  stream_free (stream);
+
+  if (!agent->streams)
+    priv_remove_keepalive_timer (agent);
 }
 
 /**
@@ -628,25 +712,28 @@ nice_agent_remove_stream (
  *  @agent: A NiceAgent
  *  @addr: the address of a local IP interface
  *
- * Inform the agent of the presence of an address that a local network
- * interface is bound to.
+ * Inform the agent of the presence of an address that a local 
+ * network interface is bound to.
+ *
+ * @return FALSE on fatal (memory allocation) errors
  **/
-void
+NICEAPI_EXPORT gboolean
 nice_agent_add_local_address (NiceAgent *agent, NiceAddress *addr)
 {
   NiceAddress *dup;
+  GSList *modified_list;
 
   dup = nice_address_dup (addr);
   dup->port = 0;
-  agent->local_addresses = g_slist_append (agent->local_addresses, dup);
-
-  /* XXX: Should we generate local candidates for existing streams at this
-   * point, or require that local addresses are set before media streams are
-   * added?
-   */
+  modified_list = g_slist_append (agent->local_addresses, dup);
+  if (modified_list) {
+    agent->local_addresses = modified_list;
+    return TRUE;
+  }
+  return FALSE;
 }
 
-static void priv_add_remote_candidate (
+static gboolean priv_add_remote_candidate (
   NiceAgent *agent,
   guint stream_id,
   guint component_id,
@@ -661,41 +748,70 @@ static void priv_add_remote_candidate (
 {
   Component *component;
   NiceCandidate *candidate;
-
-  /* XXX: dear compiler, these are for you: */
-  (void)username; (void)password; (void)priority;
+  gchar *username_dup = NULL, *password_dup = NULL;
+  gboolean error_flag = FALSE;
 
   if (!agent_find_component (agent, stream_id, component_id, NULL, &component))
-    return;
-
-  candidate = nice_candidate_new (type);
-
-  candidate->stream_id = stream_id;
-  candidate->component_id = component_id;
-
-  candidate->type = type;
-  if (addr)
-    candidate->addr = *addr;
-  if (related_addr)
-    candidate->base_addr = *related_addr;
-
-  candidate->transport = transport;
+    return FALSE;
 
   if (username)
-    candidate->username = g_strdup (username);
-  if (password)
-    candidate->password = g_strdup (password);
+    username_dup = g_strdup (username);
+  if (password) 
+    password_dup = g_strdup (password);
 
-  if (foundation)
-    candidate->foundation = g_strdup (foundation);
+  candidate = nice_candidate_new (type);
+  if (candidate) {
+    GSList *modified_list = g_slist_append (component->remote_candidates, candidate);
+    if (modified_list) {
+      component->remote_candidates = modified_list;
+  
+      candidate->stream_id = stream_id;
+      candidate->component_id = component_id;
 
-  component->remote_candidates = g_slist_append (component->remote_candidates,
-      candidate);
+      candidate->type = type;
+      if (addr)
+	candidate->addr = *addr;
+#ifndef NDEBUG
+      {
+	gchar tmpbuf[INET6_ADDRSTRLEN];
+	nice_address_to_string ((NiceAddress *)addr, tmpbuf);
+	g_debug ("Adding remote candidate with addr %s:%u.", tmpbuf, addr->port);
+      }
+#endif
+ 
+      if (related_addr)
+	candidate->base_addr = *related_addr;
+    
+      candidate->transport = transport;
+      candidate->priority = priority;
+      candidate->username = username_dup;
+      candidate->password = password_dup;
+    
+      if (foundation)
+	g_strlcpy (candidate->foundation, foundation, NICE_CANDIDATE_MAX_FOUNDATION);
 
-  /* XXX: may be called before candidate-gathering-done is signalled,
-   *      make sure this is handled correctly! */
+      /* XXX: may be called before candidate-gathering-done is signalled,
+       *      make sure this is handled correctly! */
 
-  conn_check_add_for_candidate (agent, stream_id, component, candidate);
+      if (conn_check_add_for_candidate (agent, stream_id, component, candidate) < 0)
+	error_flag = TRUE;
+    }
+    else /* memory alloc error: list insert */
+      error_flag = TRUE;
+  }
+  else /* memory alloc error: candidate creation */
+    error_flag = TRUE;
+  
+
+  if (error_flag) {
+    if (candidate) 
+      nice_candidate_free (candidate);
+    g_free (username_dup);
+    g_free (password_dup);
+    return FALSE;
+  }
+
+  return TRUE;
 }
 
 /**
@@ -711,7 +827,7 @@ static void priv_add_remote_candidate (
  *
  * @return TRUE on success
  */
-gboolean
+NICEAPI_EXPORT gboolean
 nice_agent_set_remote_credentials (
   NiceAgent *agent,
   guint stream_id,
@@ -723,8 +839,8 @@ nice_agent_set_remote_credentials (
   /* note: oddly enough, ufrag and pwd can be empty strings */
   if (stream && ufrag && pwd) {
 
-    strncpy (stream->remote_ufrag, ufrag, NICE_STREAM_MAX_UFRAG_LEN);
-    strncpy (stream->remote_password, pwd, NICE_STREAM_MAX_PWD_LEN);
+    g_strlcpy (stream->remote_ufrag, ufrag, NICE_STREAM_MAX_UFRAG);
+    g_strlcpy (stream->remote_password, pwd, NICE_STREAM_MAX_PWD);
 
     return TRUE;
   }
@@ -744,7 +860,7 @@ nice_agent_set_remote_credentials (
  *
  * @return TRUE on success
  */
-gboolean
+NICEAPI_EXPORT gboolean
 nice_agent_get_local_credentials (
   NiceAgent *agent,
   guint stream_id,
@@ -776,8 +892,12 @@ nice_agent_get_local_credentials (
  *  @password: the new candidate's password (XXX: candidates don't have usernames)
  *
  * Add a candidate our peer has informed us about to the agent's list.
+ *
+ * Note: NICE_AGENT_MAX_REMOTE_CANDIDATES is the absolute
+ *       maximum limit for remote candidates
+ * @return FALSE on fatal (memory alloc) errors
  **/
-void
+NICEAPI_EXPORT gboolean
 nice_agent_add_remote_candidate (
   NiceAgent *agent,
   guint stream_id,
@@ -787,19 +907,20 @@ nice_agent_add_remote_candidate (
   const gchar *username,
   const gchar *password)
 {
-  priv_add_remote_candidate (agent,
-			     stream_id,
-			     component_id,
-			     type,
-			     addr,
-			     NULL,
-			     NICE_CANDIDATE_TRANSPORT_UDP,
-			     0,
-			     username,
-			     password,
-			     NULL);
+  return 
+    priv_add_remote_candidate (agent,
+			       stream_id,
+			       component_id,
+			       type,
+			       addr,
+			       NULL,
+			       NICE_CANDIDATE_TRANSPORT_UDP,
+			       0,
+			       username,
+			       password,
+			       NULL);
 
-  /* later: for each component, generate a new check with the new
+  /* XXX/later: for each component, generate a new check with the new
      candidate, see below set_remote_candidates() */
 }
 
@@ -812,51 +933,55 @@ nice_agent_add_remote_candidate (
  *
  * Sets the remote candidates for a component of a stream. Replaces
  * any existing remote candidates.
+ *
+ * Note: NICE_AGENT_MAX_REMOTE_CANDIDATES is the absolute
+ *       maximum limit for remote candidates
+ *
+ * @return number of candidates added, negative on fatal (memory
+ *         allocs) errors
  **/
-void
-nice_agent_set_remote_candidates (NiceAgent *agent, guint stream_id, guint component_id, GSList *candidates)
+NICEAPI_EXPORT int
+nice_agent_set_remote_candidates (NiceAgent *agent, guint stream_id, guint component_id, const GSList *candidates)
 {
- GSList *i; 
+  const GSList *i; 
+  int added = 0;
 
  /* XXX: clean up existing remote candidates, and abort any 
   *      connectivity checks using these candidates */
 
- for (i = candidates; i; i = i->next) {
+ for (i = candidates; i && added >= 0; i = i->next) {
    NiceCandidateDesc *d = (NiceCandidateDesc*) i->data;
-   priv_add_remote_candidate (agent,
-			      stream_id,
-			      component_id,
-			      d->type,
-			      d->addr,
-			      d->related_addr,
-			      d->transport,
-			      d->priority,
-			      NULL,
-			      NULL,
-			      d->foundation);
+   gboolean res = 
+     priv_add_remote_candidate (agent,
+				stream_id,
+				component_id,
+				d->type,
+				d->addr,
+				d->related_addr,
+				d->transport,
+				d->priority,
+				NULL,
+				NULL,
+				d->foundation);
+   if (res)
+     ++added;
+   else 
+     added = -1;
  }
- 
- conn_check_schedule_next (agent);
+
+ if (added > 0)
+   conn_check_schedule_next (agent);
+
+ return added;
 }
 
-#if 0
-static NiceCandidate *
-_local_candidate_lookup (NiceAgent *agent, guint candidate_id)
-{
-  GSList *i;
 
-  for (i = agent->local_candidates; i; i = i->next)
-    {
-      NiceCandidate *c = i->data;
-
-      if (c->id == candidate_id)
-        return c;
-    }
-
-  return NULL;
-}
-#endif
-
+/**
+ * Reads data from a ready, nonblocking socket attached to an ICE
+ * stream component.
+ *
+ * @return number of octets received, or zero on error
+ */
 static guint
 _nice_agent_recv (
   NiceAgent *agent,
@@ -869,10 +994,16 @@ _nice_agent_recv (
   NiceAddress from;
   guint len;
 
-  g_debug ("Packet received on local socket %d.", udp_socket->fileno);
-
   len = nice_udp_socket_recv (udp_socket, &from,
-      buf_len, buf);
+			      buf_len, buf);
+
+#ifndef NDEBUG
+  {
+    gchar tmpbuf[INET6_ADDRSTRLEN];
+    nice_address_to_string (&from, tmpbuf);
+    g_debug ("Packet received on local socket %u from %s:%u (%u octets).", udp_socket->fileno, tmpbuf, from.port, len);
+  }
+#endif
 
   if (len == 0)
     return 0;
@@ -884,32 +1015,11 @@ _nice_agent_recv (
       return 0;
     }
 
-  /* XXX: verify sender; maybe:
-   * 
-   * if (candidate->other != NULL)
-   *   {
-   *     if (from != candidate->other.addr)
-   *       // ignore packet from unexpected sender
-   *       return;
-   *   }
-   * else
-   *   {
-   *     // go through remote candidates, looking for one matching packet from
-   *     // address; if found, assign it to candidate->other and call handler,
-   *     // otherwise ignore it
-   *   }
-   *
-   * Perhaps remote socket affinity is superfluous and all we need is the
-   * second part.
-   * Perhaps we should also check whether this candidate is supposed to be
-   * active.
-   */
-
-  /* The top two bits of an RTP message are the version number; the current
-   * version number is 2. The top two bits of a STUN message are always 0.
-   */
-
   /* step: check for a RTP fingerprint 
+   *
+   * The top two bits of an RTP message are the version number; the current
+   * version number is 2. The top two bits of a STUN message are always 0.
+   *
    *   - XXX: should use a two-phase check, first a lightweight check,
    *     and then full validation */
   if ((buf[0] & 0xc0) == 0x80)
@@ -918,10 +1028,10 @@ _nice_agent_recv (
       return len;
     }
   /* step: validate using the new STUN API */
-  /*    - XXX: old check '((buf[0] & 0xc0) == 0)' */
+  /*    - note: old check '((buf[0] & 0xc0) == 0)' */
   else if (stun_validate ((uint8_t*)buf, len) > 0) 
     {
-      conn_check_handle_inbound_stun (agent, stream, component, &from, buf, len);
+      conn_check_handle_inbound_stun (agent, stream, component, udp_socket, &from, buf, len);
     }
   else 
     {
@@ -929,32 +1039,8 @@ _nice_agent_recv (
       return len;
     }
 
-  /* code using the old SUTN API */
-#if 0
-    {
-      /* looks like a STUN message (connectivity check) */
-      /* connectivity checks are described in ICE-13 §7. */
-
-      /* XXX: still using the old STUN API below 
-       *   - with new API, call stun_bind_process() or some such
-       *     to process the incoming STUN packet */
-
-      StunMessage *msg;
-      
-      msg = stun_message_unpack (len, buf);
-      
-      if (msg != NULL)
-	{
-	  conn_check_handle_inbound_stun_old (agent, stream, component, candidate, from, msg);
-	  stun_message_free (msg);
-	}
-    }
-#endif
-
-  /* anything else is ignored */
   return 0;
 }
-
 
 /**
  * nice_agent_recv:
@@ -968,7 +1054,7 @@ _nice_agent_recv (
  *
  * Returns: the amount of data read into @buf
  **/
-guint
+NICEAPI_EXPORT guint
 nice_agent_recv (
   NiceAgent *agent,
   guint stream_id,
@@ -1027,11 +1113,12 @@ nice_agent_recv (
         }
     }
 
-  g_assert_not_reached ();
+  /* note: commented out to avoid compiler warnings 
+   *
+   * g_assert_not_reached (); */
 }
 
-
-guint
+NICEAPI_EXPORT guint
 nice_agent_recv_sock (
   NiceAgent *agent,
   guint stream_id,
@@ -1068,7 +1155,7 @@ nice_agent_recv_sock (
  *
  * Returns: A list of file descriptors from @other_fds that are readable
  **/
-GSList *
+NICEAPI_EXPORT GSList *
 nice_agent_poll_read (
   NiceAgent *agent,
   GSList *other_fds,
@@ -1118,11 +1205,17 @@ nice_agent_poll_read (
   for (j = 0; j <= max_fd; j++)
     if (FD_ISSET (j, &fds))
       {
-        if (g_slist_find (other_fds, GUINT_TO_POINTER (j)))
-          ret = g_slist_append (ret, GUINT_TO_POINTER (j));
+        if (g_slist_find (other_fds, GUINT_TO_POINTER (j))) {
+	  GSList *modified_list = g_slist_append (ret, GUINT_TO_POINTER (j));
+	  if (modified_list == NULL) {
+	    g_slist_free (ret);
+	    return NULL;
+	  }
+	  ret = modified_list;
+	}
         else
           {
-            NiceUDPSocket *socket;
+            NiceUDPSocket *socket = NULL;
             Stream *stream = NULL;
             gchar buf[MAX_STUN_DATAGRAM_PAYLOAD];
             guint len;
@@ -1157,7 +1250,15 @@ nice_agent_poll_read (
 }
 
 
-void
+
+/**
+ * Sends a data payload over a stream component.
+ * 
+ * @pre component state MUST be NICE_COMPONENT_STATE_READY
+ *
+ * @return number of bytes sent, or negative error code
+ */
+NICEAPI_EXPORT gint
 nice_agent_send (
   NiceAgent *agent,
   guint stream_id,
@@ -1168,7 +1269,7 @@ nice_agent_send (
   Stream *stream;
   Component *component;
 
-  /* XXX: dear compiler, these are for you: */
+  /* note: dear compiler, these are for you: */
   (void)component_id;
 
   stream = agent_find_stream (agent, stream_id);
@@ -1181,15 +1282,19 @@ nice_agent_send (
       NiceUDPSocket *sock;
       NiceAddress *addr;
 
-#if 1
+#ifndef NDEBUG
       g_debug ("s%d:%d: sending %d bytes to %08x:%d", stream_id, component_id,
-          len, component->selected_pair.remote->addr.addr_ipv4, component->selected_pair.remote->addr.port);
+          len, component->selected_pair.remote->addr.addr.addr_ipv4, component->selected_pair.remote->addr.port);
 #endif
 
       sock = component->selected_pair.local->sockptr;
       addr = &component->selected_pair.remote->addr;
       nice_udp_socket_send (sock, addr, len, buf);
+      component->media_after_tick = TRUE;
+      return len;
     }
+
+  return -1;
 }
 
 
@@ -1201,9 +1306,9 @@ nice_agent_send (
  * it. To get full results, the client should wait for the
  * 'candidates-gathering-done' signal.
  *
- * Returns: a GSList of local candidates belonging to @agent
+ * Returns: a GSList of local candidates (NiceCandidate) belonging to @agent
  **/
-GSList *
+NICEAPI_EXPORT GSList *
 nice_agent_get_local_candidates (
   NiceAgent *agent,
   guint stream_id,
@@ -1225,9 +1330,13 @@ nice_agent_get_local_candidates (
  * The caller owns the returned GSList but not the candidates contained within
  * it.
  *
- * Returns: a GSList of remote candidates belonging to @agent
+ * Note: the list of remote candidates can change during processing.
+ * The client should register for the "new-remote-candidate" signal to
+ * get notification of new remote candidates.
+ *
+ * Returns: a GSList of remote candidates (NiceCandidate) belonging to @agent
  **/
-GSList *
+NICEAPI_EXPORT GSList *
 nice_agent_get_remote_candidates (
   NiceAgent *agent,
   guint stream_id,
@@ -1244,7 +1353,6 @@ nice_agent_get_remote_candidates (
   return g_slist_copy (component->remote_candidates);
 }
 
-
 static void
 nice_agent_dispose (GObject *object)
 {
@@ -1258,6 +1366,8 @@ nice_agent_dispose (GObject *object)
   /* step: free resources for the connectivity check timers */
   conn_check_free (agent);
   g_assert (agent->conncheck_list == NULL);
+
+  priv_remove_keepalive_timer (agent);
 
   for (i = agent->local_addresses; i; i = i->next)
     {
@@ -1345,7 +1455,7 @@ nice_agent_g_source_cb (
   gchar buf[MAX_STUN_DATAGRAM_PAYLOAD];
   guint len;
 
-  /* XXX: dear compiler, these are for you: */
+  /* note: dear compiler, these are for you: */
   (void)source;
 
   len = _nice_agent_recv (agent, stream, component, ctx->socket, 
@@ -1375,6 +1485,7 @@ static gboolean priv_attach_new_stream (NiceAgent *agent, Stream *stream)
     GIOChannel *io;
     GSource *source;
     IOCtx *ctx;
+    GSList *modified_list;
     
     io = g_io_channel_unix_new (udp_socket->fileno);
     source = g_io_create_watch (io, G_IO_IN);
@@ -1383,11 +1494,12 @@ static gboolean priv_attach_new_stream (NiceAgent *agent, Stream *stream)
 			   ctx, (GDestroyNotify) io_ctx_free);
     g_debug ("Attach source %p (stream %u).", source, stream->id);
     g_source_attach (source, NULL);
-    component->gsources = g_slist_append (component->gsources, source);
-    if (!component->gsources) {
+    modified_list = g_slist_append (component->gsources, source);
+    if (!modified_list) {
       g_source_destroy (source);
       return FALSE;
     }
+    component->gsources = modified_list;
   }
 
   return TRUE;
@@ -1415,7 +1527,7 @@ static void priv_deattach_stream (Stream *stream)
     component->gsources = NULL;
 }
 
-gboolean
+NICEAPI_EXPORT gboolean
 nice_agent_main_context_attach (
   NiceAgent *agent,
   GMainContext *ctx,
@@ -1427,9 +1539,6 @@ nice_agent_main_context_attach (
   if (agent->main_context_set)
     return FALSE;
 
-  /* XXX: when sockets are not yet created, or new streams are added,
-   *      the mainloop integration won't then work anymore! */
-  
   /* attach candidates */
 
   for (i = agent->streams; i; i = i->next) {
