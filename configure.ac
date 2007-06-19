@@ -1,5 +1,5 @@
 
-AC_PREREQ(2.60)
+AC_PREREQ(2.59c)
 AC_INIT(nice, 0.0.1)
 AC_CONFIG_SRCDIR([agent/agent.c])
 AC_CONFIG_HEADER([config.h])
@@ -22,19 +22,23 @@ AC_CONFIG_FILES([
 # Checks for programs.
 
 AC_PROG_CC
-AC_PROG_CC_C99
+dnl AC_PROG_CC_C99
 AC_USE_SYSTEM_EXTENSIONS
 AC_PROG_LIBTOOL
 
 # Checks for compiler features
 
 AC_C_RESTRICT
+AC_C_VARARRAYS
 AC_HEADER_ASSERT
 AC_HEADER_STDBOOL
 AC_DEFINE([_FORTIFY_SOURCE], [2], [Define to `2' to get GNU/libc warnings.])
+AC_DEFINE([NICEAPI_EXPORT], [ ], [Public library function implementation])
+AC_CHECK_HEADERS([arpa/inet.h net/in.h ifaddrs.h])
 
 # Checks for libraries.
 AC_CHECK_LIB(rt, clock_gettime, [LIBRT="-lrt"], [LIBRT=""])
+AC_CHECK_FUNCS([poll])
 AC_SUBST(LIBRT)
 
 PKG_CHECK_MODULES(OPENSSL, [openssl])
@@ -49,22 +53,39 @@ AC_ARG_WITH(gstreamer,
 	[with_gstreamer=${withval}],
 	[with_gstreamer=auto])
 
-if test "$with_gstreamer" != no; then
+AS_IF([test "$with_gstreamer" != no], [
 	PKG_CHECK_MODULES(GST, [
 		gstreamer-0.10 >= 0.10.0
 		gstreamer-base-0.10 >= 0.10.0
 		],
 		[with_gstreamer=yes],
 		[
-		if test "$with_gstreamer" = yes; then
+		AS_IF([test "$with_gstreamer" = yes], [
 			AC_MSG_ERROR([GStreamer support was requested but GStreamer libraries are not available])
-		fi
+		])
 
 		with_gstreamer=no
 		])
-fi
+])
 
 AM_CONDITIONAL(WITH_GSTREAMER, test "$with_gstreamer" = yes)
+
+dnl Doxygen
+AC_PATH_PROG([DOXYGEN], [doxygen], [false])
+AC_ARG_VAR([DOXYGEN], [Doxygen documentation system])
+
+dnl Test coverage
+AC_ARG_ENABLE([coverage],
+	[AS_HELP_STRING([--enable-coverage],
+		[build for test coverage (default disabled)])],,
+	[enable_coverage="no"])
+AS_IF([test "${enable_coverage}" != "no"], [
+	CFLAGS="${CFLAGS} -g -O0 -fprofile-arcs -ftest-coverage"
+	LDFLAGS="-lgcov"
+	CCACHE_DISABLE=1
+])
+AC_SUBST(CCACHE_DISABLE)
+
 
 AC_OUTPUT
 

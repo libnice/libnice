@@ -8,7 +8,7 @@
 
 include common.mk
 
-SUBDIRS = \
+ALWAYS_SUBDIRS = \
 	address \
 	local \
 	stun \
@@ -17,14 +17,25 @@ SUBDIRS = \
 	random \
 	agent \
 	nice
+SUBDIRS = $(ALWAYS_SUBDIRS)
 
 if WITH_GSTREAMER
 	SUBDIRS += gst
 endif
 
-DIST_SUBDIRS = $(SUBDIRS) gst
+DIST_SUBDIRS = $(ALWAYS_SUBDIRS) gst
+DISTCHECK_CONFIGURE_FLAGS = --disable-assert --without-gstreamer
 
-EXTRA_DIST = scripts common.mk
+EXTRA_DIST = \
+	common.mk \
+	Doxyfile.in \
+	scripts/lcov.mk \
+	scripts/lcov.sh \
+	scripts/valgrind.sh
+
+dist_check_SCRIPTS = \
+	scripts/check-symbols.sh \
+	scripts/make-symbol-list.sh
 
 lcov:
 	find -name '*.gcda' -delete
@@ -43,4 +54,15 @@ lcov-report:
 	lcov -r lcov/lcov.info `cat lcov/lcov.remove` 2>/dev/null > lcov/lcov.info.clean
 	genhtml -o lcov lcov/lcov.info.clean
 
-.PHONY: lcov-report lcov
+Doxyfile: Doxyfile.in config.status
+	$(SHELL) ./config.status --file=$@
+
+doc: Doxyfile
+	$(DOXYGEN) $<
+
+CLEANFILES += Doxyfile
+
+clean-local:
+	rm -rf doc
+
+.PHONY: doc lcov-report lcov
