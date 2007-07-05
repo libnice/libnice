@@ -25,5 +25,6 @@ sleep 1
 error=$?
 
 kill -- "$(cat "$pidfile")"
+rm -f -- "$pidfile"
 wait
 exit ${error}
