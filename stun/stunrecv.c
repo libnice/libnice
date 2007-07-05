@@ -395,6 +395,7 @@ int stun_strcmp (const uint8_t *restrict msg, stun_attr_type_t type,
 }
 #endif
 
+
 static inline bool check_cookie (const uint8_t *msg)
 {
 	uint32_t cookie = htonl (STUN_COOKIE);
@@ -517,13 +518,37 @@ int stun_verify_password (const uint8_t *msg, const char *pw)
 }
 
 
+static
+int stun_find_errno (const uint8_t *restrict msg, int *restrict code)
+{
+	uint16_t alen;
+	const uint8_t *ptr = stun_find (msg, STUN_ERROR_CODE, &alen);
+
+	*code = -1;
+
+	if (ptr == NULL)
+		return ENOENT;
+	if (alen < 4)
+		return EINVAL;
+
+	*code = ((ptr[2] & 0x7) * 100) + ptr[3];
+	/* NOTE: we are a bit laxist here. We should also ignore packets where
+	 * the "Number" (ptr[3]) > 99 */
+	if ((*code < 100) || (*code > 699))
+		return EINVAL;
+
+	return 0;
+}
+
+
 /**
  * @param msg valid STUN message
  * @param method STUN method number (host byte order)
  * @param id STUN transaction id
  * @param key HMAC key, or NULL if there is no authentication
  * @param keylen HMAC key byte length, 0 is no authentication
- * @param error [OUT] set to true iif the response is an error response
+ * @param error [OUT] set to -1 if the response is not an error,
+ * to the error code ([0..799]) if it is an error response.
  *
  * @return true if and only if the message is a response or an error response
  * with the STUN cookie and specified method and transaction identifier.
@@ -531,7 +556,7 @@ int stun_verify_password (const uint8_t *msg, const char *pw)
 static bool
 stun_match_answer (const uint8_t *msg, stun_method_t method,
                    const uint8_t *id, const uint8_t *key, size_t keylen,
-                   bool *restrict error)
+                   int *restrict error)
 {
 	assert (stun_valid (msg));
 	assert (error != NULL);
@@ -543,11 +568,15 @@ stun_match_answer (const uint8_t *msg, stun_method_t method,
 			return false;
 
 		case STUN_RESPONSE:
-			*error = false;
+			*error = -1;
 			break;
 
 		case STUN_ERROR:
-			*error = true;
+			if (stun_find_errno (msg, error))
+			{
+				assert (*error == -1);
+				return false; // missing ERROR-CODE?!
+			}
 			break;
 	}
 
@@ -563,23 +592,10 @@ stun_match_answer (const uint8_t *msg, stun_method_t method,
 }
 
 
-/**
- * Matches a response (or error response) to a request.
- *
- * @param msg valid STUN message
- * @param method STUN method number (host byte order)
- * @param id STUN transaction id
- * @param key HMAC key, or NULL if there is no authentication
- * @param keylen HMAC key byte length, 0 is no authentication
- * @param error [OUT] set to true iif the response is an error response
- *
- * @return true if and only if the message is a response or an error response
- * with the STUN cookie and specified method and transaction identifier.
- */
 bool stun_match_messages (const uint8_t *restrict resp,
                           const uint8_t *restrict req,
                           const uint8_t *key, size_t keylen,
-                          bool *restrict error)
+                          int *restrict error)
 {
 	assert (stun_valid (resp));
 	assert (stun_valid (req));
@@ -590,12 +606,6 @@ bool stun_match_messages (const uint8_t *restrict resp,
 }
 
 
-/**
- * @param type host-byte order STUN attribute type
- *
- * @return true if @a type is an attribute type unknown to this library
- * (regardless of being a mandatory or optional attribute type)
- */
 bool stun_is_unknown (uint16_t type)
 {
 	switch (type)
@@ -634,13 +644,6 @@ bool stun_is_unknown (uint16_t type)
 }
 
 
-/**
- * Looks for unknown mandatory attributes in a valid STUN message.
- * @param msg valid STUN message
- * @param list [OUT] table pointer to store unknown attributes IDs
- * @param max size of the table in units of uint16_t
- * @return the number of unknown mandatory attributes up to max.
- */
 unsigned
 stun_find_unknown (const uint8_t *restrict msg, uint16_t *restrict list,
                    unsigned max)

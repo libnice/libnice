@@ -261,10 +261,24 @@ ssize_t stun_validate (const uint8_t *msg, size_t len);
  */
 bool stun_demux (const uint8_t *msg);
 
+/**
+ * Matches a response (or error response) to a request.
+ *
+ * @param msg valid STUN message
+ * @param method STUN method number (host byte order)
+ * @param id STUN transaction id
+ * @param key HMAC key, or NULL if there is no authentication
+ * @param keylen HMAC key byte length, 0 is no authentication
+ * @param error [OUT] set to -1 if the response is not an error,
+ * to the error code if it is an error response.
+ *
+ * @return true if and only if the message is a response or an error response
+ * with the STUN cookie and specified method and transaction identifier.
+ */
 bool stun_match_messages (const uint8_t *restrict resp,
                           const uint8_t *restrict req,
                           const uint8_t *key, size_t keylen,
-                          bool *restrict error);
+                          int *restrict error);
 int stun_verify_key (const uint8_t *msg, const void *key, size_t keylen);
 int stun_verify_password (const uint8_t *msg, const char *pw);
 
@@ -367,7 +381,21 @@ int stun_memcmp (const uint8_t *restrict msg, stun_attr_type_t type,
 int stun_strcmp (const uint8_t *restrict msg, stun_attr_type_t type,
                  const char *str);
 
+/**
+ * @param type host-byte order STUN attribute type
+ *
+ * @return true if @a type is an attribute type unknown to this library
+ * (regardless of being a mandatory or optional attribute type)
+ */
 bool stun_is_unknown (uint16_t type);
+
+/**
+ * Looks for unknown mandatory attributes in a valid STUN message.
+ * @param msg valid STUN message
+ * @param list [OUT] table pointer to store unknown attributes IDs
+ * @param max size of the table in units of uint16_t
+ * @return the number of unknown mandatory attributes up to max.
+ */
 unsigned stun_find_unknown (const uint8_t *msg, uint16_t *list, unsigned max);
 
 /**

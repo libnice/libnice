@@ -248,7 +248,7 @@ int stun_trans_tick (stun_trans_t *tr)
 int stun_trans_preprocess (stun_trans_t *restrict tr,
                            const void *restrict buf, size_t len)
 {
-	bool code;
+	int code;
 
 	if (stun_validate (buf, len) <= 0)
 		return EAGAIN;
@@ -261,8 +261,11 @@ int stun_trans_preprocess (stun_trans_t *restrict tr,
 	                          &code))
 		return EAGAIN;
 
-	if (code)
+	if (code >= 0)
+	{
+		DBG (" STUN error message received (code: %d)\n", code);
 		return ECONNREFUSED; // FIXME: better error value
+	}
 
 	if (stun_has_unknown (buf))
 		return EPROTO;
