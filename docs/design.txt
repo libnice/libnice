@@ -147,6 +147,17 @@ Special considerations for a SIP client:
   components are ready), "new-selected-pair" (which candidates
   are selected) and "new-remote-candidate" (peer-reflexive
   candidates discovered during processing) signals.
+- Supporting forked calls is not yet supported by the API (multiple
+  sets of remote candidates for one local set of candidates).
+
+Restarting ICE:
+
+- ICE processing can be restarted by calling nice_agent_set_remote_candidates()
+  again for a stream.
+- To use the "dribble" mode, client first has to restart the stream with
+  calling nice_agent_set_remote_candidates() with an empty set of 
+  candidates, and then start adding new remote candidates with 
+  nice_agent_add_remote_candidate().
 
 Notes about sending media:
 
