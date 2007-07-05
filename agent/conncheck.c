@@ -234,7 +234,6 @@ static gboolean priv_conn_check_tick (gpointer pointer)
       (succeeded && nominated == 0))
     keep_timer_going = TRUE;
 
-
   /* step: nominate some candidate
    *   -  no work left but still no nominated checks (possibly
    *      caused by a controlling-controlling role conflict)
@@ -391,7 +390,7 @@ static gboolean priv_add_new_check_pair (NiceAgent *agent, guint stream_id, Comp
       pair->priority = nice_candidate_pair_priority (local->priority, remote->priority);
     else
       pair->priority = nice_candidate_pair_priority (remote->priority, local->priority);
-    pair->state = NICE_CHECK_FROZEN;
+    pair->state = initial_state;
     pair->nominated = use_candidate;
 
     /* note: for the first added check */
@@ -669,7 +668,7 @@ int conn_check_send (NiceAgent *agent, CandidateCheckPair *pair)
 static void priv_update_check_list_state (NiceAgent *agent, Stream *stream)
 {
   GSList *i;
-  guint c, completed = 0;
+  guint c;
 
   /* note: iterate the conncheck list for each component separately */
   for (c = 0; c < stream->n_components; c++) {
@@ -698,17 +697,16 @@ static void priv_update_check_list_state (NiceAgent *agent, Stream *stream)
 					   (c + 1), /* component-id */
 					   NICE_COMPONENT_STATE_FAILED);
 
-    /* note: no pair was ready/discovered and nominated */
-    if (i == NULL) 
-      ++completed;
   }
 }
 
 /**
- * Updated the check list state for a stream component.
+ * Updates the check list state for a stream component.
  *
- * Implements the algorithm described in ICE ID-15 8.2 as
- * it applies to checks of a certain component. 
+ * Implements the algorithm described in ICE sect 8.1.2 (ID-16)
+ * as it applies to checks of a certain component. If any
+ * there are any nominated pairs, ICE processing may be 
+ * concluded, and component state is changed to READY.
  */
 static void priv_update_check_list_state_for_component (NiceAgent *agent, Stream *stream, Component *component)
 {
@@ -857,7 +855,7 @@ static gboolean priv_schedule_triggered_check (NiceAgent *agent, Stream *stream,
  * described by 'component' and 'remotecand' is nominated
  * for use.
  */
-static void priv_mark_pair_nominated (NiceAgent *agent, Component *component, NiceCandidate *remotecand)
+static void priv_mark_pair_nominated (NiceAgent *agent, Stream *stream, Component *component, NiceCandidate *remotecand)
 {
   GSList *i;
 
@@ -875,6 +873,7 @@ static void priv_mark_pair_nominated (NiceAgent *agent, Component *component, Ni
       if (pair->state == NICE_CHECK_SUCCEEDED ||
 	  pair->state == NICE_CHECK_DISCOVERED)
 	priv_update_selected_pair (agent, component, pair);
+      priv_update_check_list_state_for_component (agent, stream, component);
     }
   }
 }
@@ -904,7 +903,7 @@ static void priv_reply_to_conn_check (NiceAgent *agent, Stream *stream, Componen
   nice_udp_socket_send (udp_socket, &cand->addr, rbuf_len, (const gchar*)rbuf);
   
   if (use_candidate)
-    priv_mark_pair_nominated (agent, component, cand);
+    priv_mark_pair_nominated (agent, stream, component, cand);
 
   /* note: upon succesful check, make the reserve check immediately */
   priv_schedule_triggered_check (agent, stream, component, udp_socket, cand, use_candidate);
@@ -1024,12 +1023,12 @@ static gboolean priv_map_reply_to_conn_check_request (NiceAgent *agent, Stream *
 					     NICE_COMPONENT_STATE_CONNECTED);
 
 
-	/* step: update pair states (ICE 7.1.2.2.3, ID-16) */
-	priv_update_check_list_state_for_component (agent, stream, component);
-	
-	/* step: updating nominated flag (ICE 7.1.2.2.4, ID-15 */
+	/* step: updating nominated flag (ICE 7.1.2.2.4, ID-16 */
 	if (ok_pair->nominated == TRUE) 
 	  priv_update_selected_pair (agent, component, ok_pair);
+
+	/* step: update pair states (ICE 7.1.2.2.3 and 8.1.2, ID-16) */
+	priv_update_check_list_state_for_component (agent, stream, component);
 
 	trans_found = TRUE;
       }
@@ -1106,7 +1105,7 @@ static gboolean priv_map_reply_to_discovery_request (NiceAgent *agent, gchar *bu
   return trans_found;
 }
 
-static gboolean priv_verify_inbound_username (NiceAgent *agent, Stream *stream, const char *uname)
+static gboolean priv_verify_inbound_username (Stream *stream, const char *uname)
 {
   const char *colon;
 
@@ -1204,7 +1203,7 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, Stream *stream, Compo
       return FALSE;
     }
      									   
-    if (priv_verify_inbound_username (agent, stream, agent->ufragtmp) != TRUE) {
+    if (priv_verify_inbound_username (stream, agent->ufragtmp) != TRUE) {
       g_debug ("USERNAME does not match local streams, ignoring.");
       return FALSE;
     }
