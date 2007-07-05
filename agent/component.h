@@ -82,15 +82,6 @@ struct _Component
 				    see ICE 11.1.1 (ID-15) */
   gboolean media_after_tick;   /**< true if media received since last
 				    keepalive tick */
-
-  /* XXX: **to be removed**
-   * --cut-- 
-  GSList *checks;
-   * the local candidate that last received a valid connectivity */
-  NiceCandidate *active_candidate;
-  /* the remote address that the last connectivity check came from */
-  NiceAddress peer_addr;
-  /* --cut-- */
 };
 
 Component *
