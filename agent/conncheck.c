@@ -54,7 +54,6 @@
 #include "agent-priv.h"
 #include "conncheck.h"
 #include "discovery.h"
-#include "stun.h"
 #include "stun-msg.h"
 
 static inline int priv_timer_expired (GTimeVal *restrict timer, GTimeVal *restrict now)
