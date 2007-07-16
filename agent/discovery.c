@@ -167,6 +167,37 @@ static gboolean priv_add_local_candidate_pruned (Component *component, NiceCandi
 }
 
 /**
+ * Assings a foundation to the candidate.
+ *
+ * Implements the mechanism described in ICE (ID-16) sect 
+ * 4.1.1.4 (Computing Foundations).
+ */
+static void priv_assign_foundation (NiceAgent *agent, Component *component, NiceCandidate *candidate)
+{
+  GSList *i;
+
+  for (i = component->local_candidates; i; i = i->next) {
+    NiceCandidate *n = i->data;
+    NiceAddress temp = n->base_addr;
+    
+    /* note: ports are not be compared */
+    temp.port = candidate->base_addr.port;
+
+    if (candidate->type == n->type &&
+	nice_address_equal (&candidate->base_addr, &n->base_addr)) {
+      /* note: currently only one STUN/TURN server per stream at a
+       *       time is supported, so there is no need to check
+       *       for candidates that would otherwise share the
+       *       foundation, but have different STUN/TURN servers */
+      memcpy (candidate->foundation, n->foundation, NICE_CANDIDATE_MAX_FOUNDATION);
+      return;
+    }
+  }
+  
+  g_snprintf (candidate->foundation, NICE_CANDIDATE_MAX_FOUNDATION, "%u", agent->next_candidate_id++);
+}
+
+/**
  * Creates a local host candidate for 'component_id' of stream
  * 'stream_id'.
  *
@@ -191,9 +222,7 @@ NiceCandidate *discovery_add_local_host_candidate (
   if (candidate) {
     NiceUDPSocket *udp_socket = g_slice_new0 (NiceUDPSocket);
     if (udp_socket) {
-      /* XXX: implement the foundation assignment as defined in
-      *       ICE sect 4.1.1.4 ID-15: */
-      g_snprintf (candidate->foundation, NICE_CANDIDATE_MAX_FOUNDATION, "%u", agent->next_candidate_id++);
+      priv_assign_foundation (agent, component, candidate);
       candidate->stream_id = stream_id;
       candidate->component_id = component_id;
       candidate->addr = *address;
@@ -270,7 +299,7 @@ discovery_add_server_reflexive_candidate (
     candidate->priority = 
       nice_candidate_ice_priority_full 
         (NICE_CANDIDATE_TYPE_PREF_SERVER_REFLEXIVE, 0, component_id);
-    g_snprintf (candidate->foundation, NICE_CANDIDATE_MAX_FOUNDATION, "%u", agent->next_candidate_id++);
+    priv_assign_foundation (agent, component, candidate);
     candidate->stream_id = stream_id;
     candidate->component_id = component_id;
     candidate->addr = *address;
@@ -280,7 +309,10 @@ discovery_add_server_reflexive_candidate (
     candidate->base_addr = base_socket->addr;
 
     result = priv_add_local_candidate_pruned (component, candidate);
-    if (result != TRUE) {
+    if (result) {
+      agent_signal_new_candidate (agent, candidate);
+    }
+    else {
       /* error: memory allocation, or duplicate candidatet */
       nice_candidate_free (candidate), candidate = NULL;
     }
@@ -320,7 +352,7 @@ discovery_add_peer_reflexive_candidate (
         (NICE_CANDIDATE_TYPE_PREF_PEER_REFLEXIVE, 0, component_id);
     candidate->stream_id = stream_id;
     candidate->component_id = component_id;
-    g_snprintf (candidate->foundation, NICE_CANDIDATE_MAX_FOUNDATION, "%u", agent->next_candidate_id++);
+    priv_assign_foundation (agent, component, candidate);
     candidate->addr = *address;
     candidate->base_addr = base_socket->addr;
 

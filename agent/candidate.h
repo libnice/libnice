@@ -48,7 +48,8 @@ G_BEGIN_DECLS
 #define NICE_CANDIDATE_TYPE_PREF_SERVER_REFLEXIVE     100
 #define NICE_CANDIDATE_TYPE_PREF_RELAYED               60
 
-#define NICE_CANDIDATE_MAX_FOUNDATION                  16
+/* Max foundation size '1*32ice-char' ICE ID-17  */
+#define NICE_CANDIDATE_MAX_FOUNDATION                32+1 
 
 typedef enum
 {

@@ -49,12 +49,12 @@
 Component *
 component_new (
   G_GNUC_UNUSED
-  ComponentType type)
+  guint id)
 {
   Component *component;
 
   component = g_slice_new0 (Component);
-  component->id = 1;
+  component->id = id;
   return component;
 }
 
@@ -93,6 +93,12 @@ component_free (Component *cmp)
   g_slice_free (Component, cmp);
 }
 
+/**
+ * Returns a component UDP socket struct that uses handle 'fd'.
+ *
+ * Note: there might be multiple sockets using the same
+ *       handle.
+ */
 NiceUDPSocket *
 component_find_udp_socket_by_fd (Component *component, guint fd)
 {

@@ -42,10 +42,12 @@
 #include "agent.h"
 #include "udp-bsd.h"
 
-static const guint test_component_id = 1;
-
 static NiceComponentState global_lagent_state = NICE_COMPONENT_STATE_LAST;
 static NiceComponentState global_ragent_state = NICE_COMPONENT_STATE_LAST;
+static guint global_components_ready = 0;
+static guint global_components_ready_exit = 0;
+static guint global_components_failed = 0;
+static guint global_components_failed_exit = 0;
 static GMainLoop *global_mainloop = NULL;
 static gboolean global_lagent_gathering_done = FALSE;
 static gboolean global_ragent_gathering_done = FALSE;
@@ -104,11 +106,10 @@ static void cb_candidate_gathering_done(NiceAgent *agent, gpointer data)
   (void)agent;
 }
 
+#if 0
 static void cb_component_state_changed(NiceAgent *agent, guint stream_id, guint component_id, guint state, gpointer data)
 {
   g_debug ("%s: %p", __func__, data);
-
-  g_assert (test_component_id == component_id);
 
   if ((int)data == 1)
     global_lagent_state = state;
@@ -132,12 +133,44 @@ static void cb_component_state_changed(NiceAgent *agent, guint stream_id, guint 
   /* XXX: dear compiler, these are for you: */
   (void)agent; (void)stream_id; (void)data;
 }
+#endif
+
+static void cb_component_state_changed (NiceAgent *agent, guint stream_id, guint component_id, guint state, gpointer data)
+{
+  g_debug ("%s: %p", __func__, data);
+
+  if ((int)data == 1)
+    global_lagent_state = state;
+  else if ((int)data == 2)
+    global_ragent_state = state;
+  
+  if (state == NICE_COMPONENT_STATE_READY)
+    global_components_ready++;
+  if (state == NICE_COMPONENT_STATE_FAILED)
+    global_components_failed++;
+
+  g_debug ("READY %u exit at %u.", global_components_ready, global_components_ready_exit);
+
+  /* signal status via a global variable */
+  if (global_components_ready == global_components_ready_exit) {
+    g_main_loop_quit (global_mainloop); 
+    return;
+  }
+
+  /* signal status via a global variable */
+  if (global_components_failed == global_components_failed_exit) {
+    g_main_loop_quit (global_mainloop); 
+    return;
+  }
+
+  /* XXX: dear compiler, these are for you: */
+  (void)agent; (void)stream_id; (void)data; (void)component_id;
+}
 
 static void cb_new_selected_pair(NiceAgent *agent, guint stream_id, guint component_id, 
 				 gchar *lfoundation, gchar* rfoundation, gpointer data)
 {
   g_debug ("%s: %p", __func__, data);
-  g_assert (test_component_id == component_id);
 
   if ((int)data == 1)
     ++global_lagent_cands;
@@ -145,16 +178,16 @@ static void cb_new_selected_pair(NiceAgent *agent, guint stream_id, guint compon
     ++global_ragent_cands;
 
   /* XXX: dear compiler, these are for you: */
-  (void)agent; (void)stream_id;
+  (void)agent; (void)stream_id; (void)component_id;
 }
 
 static void cb_new_candidate(NiceAgent *agent, guint stream_id, guint component_id, 
 			     gchar *foundation, gpointer data)
 {
   g_debug ("%s: %p", __func__, data);
-  g_assert (test_component_id == component_id);
+
   /* XXX: dear compiler, these are for you: */
-  (void)agent; (void)stream_id; (void)data;
+  (void)agent; (void)stream_id; (void)data; (void)component_id;
 }
 
 static void cb_initial_binding_request_received(NiceAgent *agent, guint stream_id, gpointer data)
@@ -170,23 +203,40 @@ static void cb_initial_binding_request_received(NiceAgent *agent, guint stream_i
   (void)agent; (void)stream_id; (void)data;
 }
 
+static void priv_get_local_addr (NiceAgent *agent, guint stream_id, guint component_id, NiceAddress *dstaddr)
+{
+  GSList *cands, *i;
+  cands = nice_agent_get_local_candidates(agent, stream_id, component_id);
+  for (i = cands; i; i = i->next) {
+    NiceCandidate *cand = i->data;
+    if (cand) {
+      g_assert (dstaddr);
+      *dstaddr = cand->addr;
+    }
+  }
+  g_slist_free (cands);
+}
+
 static int run_full_test (NiceAgent *lagent, NiceAgent *ragent, NiceAddress *baseaddr)
 {
-  NiceAddress laddr, raddr;   
+  NiceAddress laddr, raddr, laddr_rtcp, raddr_rtcp;   
   NiceCandidateDesc cdes = {       /* candidate description (no ports) */
     (gchar *)"1",                  /* foundation */
-    test_component_id,
+    0,                             /* component-id; filled later */
     NICE_CANDIDATE_TRANSPORT_UDP,  /* transport */
     100000,  /* priority */
     NULL,    /* address */
     NICE_CANDIDATE_TYPE_HOST, /* type */ 
     NULL     /* base-address */
   };
-  GSList *cands, *i;
+  GSList *cands;
   guint ls_id, rs_id;
 
-  global_lagent_state = NICE_COMPONENT_STATE_LAST;
-  global_ragent_state = NICE_COMPONENT_STATE_LAST;
+  /* step: initialize variables modified by the callbacks */
+  global_components_ready = 0;
+  global_components_ready_exit = 4;
+  global_components_failed = 0;
+  global_components_failed_exit = 4;
   global_lagent_gathering_done = FALSE;
   global_ragent_gathering_done = FALSE;
   global_lagent_ibr_received =
@@ -197,9 +247,9 @@ static int run_full_test (NiceAgent *lagent, NiceAgent *ragent, NiceAddress *bas
   g_object_set (G_OBJECT (lagent), "controlling-mode", TRUE, NULL);
   g_object_set (G_OBJECT (ragent), "controlling-mode", FALSE, NULL);
 
-  /* step: add one stream, with one component, to each agent */
-  ls_id = nice_agent_add_stream (lagent, 1);
-  rs_id = nice_agent_add_stream (ragent, 1);
+  /* step: add one stream, with RTP+RTCP components, to each agent */
+  ls_id = nice_agent_add_stream (lagent, 2);
+  rs_id = nice_agent_add_stream (ragent, 2);
   g_assert (ls_id > 0);
   g_assert (rs_id > 0);
 
@@ -214,25 +264,19 @@ static int run_full_test (NiceAgent *lagent, NiceAgent *ragent, NiceAddress *bas
   }
 
   /* step: find out the local candidates of each agent */
-  cands = nice_agent_get_local_candidates(lagent, ls_id, NICE_COMPONENT_TYPE_RTP);
-  for (i = cands; i; i = i->next) {
-    NiceCandidate *cand = i->data;
-    if (cand) {
-      g_debug ("test-fullmode: local port L %u", cand->addr.port);
-      laddr = cand->addr;
-    }
-  }
-  g_slist_free (cands);
 
-  cands = nice_agent_get_local_candidates(ragent, rs_id, NICE_COMPONENT_TYPE_RTP);
-  for (i = cands; i; i = i->next) {
-    NiceCandidate *cand = i->data;
-    if (cand) {
-      g_debug ("test-fullmode: local port R %u", cand->addr.port);
-      raddr = cand->addr;
-    }
-  }
-  g_slist_free (cands);
+  priv_get_local_addr (ragent, rs_id, NICE_COMPONENT_TYPE_RTP, &raddr);
+  g_debug ("test-fullmode: local RTP port R %u", raddr.port);
+
+  priv_get_local_addr (lagent, ls_id, NICE_COMPONENT_TYPE_RTP, &laddr);
+  g_debug ("test-fullmode: local RTP port L %u", laddr.port);
+
+  priv_get_local_addr (ragent, rs_id, NICE_COMPONENT_TYPE_RTCP, &raddr_rtcp);
+  g_debug ("test-fullmode: local RTCP port R %u", raddr_rtcp.port);
+
+  priv_get_local_addr (lagent, ls_id, NICE_COMPONENT_TYPE_RTCP, &laddr_rtcp);
+  g_debug ("test-fullmode: local RTCP port L %u", laddr_rtcp.port);
+
   g_debug ("test-fullmode: Got local candidates...");
  
   /* step: pass the remote candidates to agents  */
@@ -246,10 +290,17 @@ static int run_full_test (NiceAgent *lagent, NiceAgent *ragent, NiceAddress *bas
       nice_agent_set_remote_credentials (lagent,
 					 ls_id, ufrag, password);
   }
+  cdes.component_id = NICE_COMPONENT_TYPE_RTP;
   cdes.addr = &raddr;
   nice_agent_set_remote_candidates (lagent, ls_id, NICE_COMPONENT_TYPE_RTP, cands);
   cdes.addr = &laddr;  
   nice_agent_set_remote_candidates (ragent, rs_id, NICE_COMPONENT_TYPE_RTP, cands);
+  cdes.component_id = NICE_COMPONENT_TYPE_RTCP;
+  cdes.addr = &raddr_rtcp;
+  nice_agent_set_remote_candidates (lagent, ls_id, NICE_COMPONENT_TYPE_RTCP, cands);
+  cdes.addr = &laddr_rtcp;  
+  nice_agent_set_remote_candidates (ragent, rs_id, NICE_COMPONENT_TYPE_RTCP, cands);
+
   g_slist_free (cands);
 
   g_debug ("test-fullmode: Set properties, next running mainloop until connectivity checks succeed...");
@@ -263,8 +314,8 @@ static int run_full_test (NiceAgent *lagent, NiceAgent *ragent, NiceAddress *bas
   g_assert (global_ragent_ibr_received == TRUE);
 
   /* note: verify that correct number of local candidates were reported */
-  g_assert (global_lagent_cands == 1);
-  g_assert (global_ragent_cands == 1);
+  g_assert (global_lagent_cands == 2);
+  g_assert (global_ragent_cands == 2);
 
   /* note: test payload send and receive */
   global_ragent_read = 0;
@@ -287,7 +338,7 @@ static int run_full_test_wrong_password (NiceAgent *lagent, NiceAgent *ragent, N
   NiceAddress laddr, raddr;   
   NiceCandidateDesc cdes = {       /* candidate description (no ports) */
     (gchar *)"1",                  /* foundation */
-    test_component_id,
+    NICE_COMPONENT_TYPE_RTP,
     NICE_CANDIDATE_TRANSPORT_UDP,  /* transport */
     100000,  /* priority */
     NULL,    /* address */
@@ -297,6 +348,10 @@ static int run_full_test_wrong_password (NiceAgent *lagent, NiceAgent *ragent, N
   GSList *cands, *i;
   guint ls_id, rs_id;
 
+  global_components_ready = 0;
+  global_components_ready_exit = 2;
+  global_components_failed = 0;
+  global_components_failed_exit = 2;
   global_lagent_state = 
     global_ragent_state = NICE_COMPONENT_STATE_LAST;
   global_lagent_gathering_done = 
@@ -387,7 +442,7 @@ static int run_full_test_control_conflict (NiceAgent *lagent, NiceAgent *ragent,
   NiceAddress laddr, raddr;   
   NiceCandidateDesc cdes = {       /* candidate description (no ports) */
     (gchar *)"1",                  /* foundation */
-    test_component_id,
+    NICE_COMPONENT_TYPE_RTP,
     NICE_CANDIDATE_TRANSPORT_UDP,  /* transport */
     100000,  /* priority */
     NULL,    /* address */
@@ -397,6 +452,10 @@ static int run_full_test_control_conflict (NiceAgent *lagent, NiceAgent *ragent,
   GSList *cands, *i;
   guint ls_id, rs_id;
 
+  global_components_ready = 0;
+  global_components_ready_exit = 2;
+  global_components_failed = 0;
+  global_components_failed_exit = 2;
   global_lagent_state =
     global_ragent_state = NICE_COMPONENT_STATE_LAST;
   global_lagent_gathering_done =

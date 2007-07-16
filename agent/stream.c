@@ -46,26 +46,107 @@
  * @file stream.c
  * @brief ICE stream functionality
  */
-
 Stream *
-stream_new (void)
+stream_new (guint n_components)
 {
   Stream *stream;
+  guint n;
+  gboolean errors = FALSE;
+  GSList *modified_list;
+  Component *component;
 
   stream = g_slice_new0 (Stream);
-  stream->component = component_new (COMPONENT_TYPE_RTP);
-  stream->n_components = 1;
+  for (n = 0; n < n_components; n++) {
+    component = component_new (n + 1);
+    if (component) {
+      modified_list = g_slist_append (stream->components, component);
+      if (modified_list)
+	stream->components = modified_list;
+      else 
+	errors = TRUE;
+    }
+    else
+      errors = TRUE;
+  }
+
+  if (errors) {
+    stream_free (stream);
+    return NULL;
+  }
+
+  stream->n_components = n_components;
   stream->initial_binding_request_received = FALSE;
 
   return stream;
 }
 
-
 void
 stream_free (Stream *stream)
 {
-  component_free (stream->component);
+  GSList *i;
+
+  for (i = stream->components; i; i = i->next) {
+    Component *component = i->data;
+    component_free (component);
+    i->data = NULL;
+  }
+  g_slist_free (stream->components);
   g_slice_free (Stream, stream);
 }
 
+Component *
+stream_find_component_by_id (const Stream *stream, guint id)
+{
+  GSList *i;
 
+  for (i = stream->components; i; i = i->next) {
+    Component *component = i->data;
+    if (component && component->id == id)
+      return component;
+  }
+  
+  return NULL;
+}
+
+/**
+ * Returns true if all components of the stream are either
+ * 'CONNECTED' or 'READY' (connected plus nominated).
+ */
+gboolean
+stream_all_components_ready (const Stream *stream)
+{
+  GSList *i;
+
+  for (i = stream->components; i; i = i->next) {
+    Component *component = i->data;
+    if (component && 
+	(component->state == NICE_COMPONENT_STATE_CONNECTED ||
+	 component->state == NICE_COMPONENT_STATE_READY))
+      return FALSE;
+  }
+  
+  return TRUE;
+}
+
+
+/**
+ * Returns the component that owns a UDP socket using
+ * handle 'fd'.
+ *
+ * See also component_find_udp_socket_by_fd()
+ */
+Component *
+stream_find_component_by_fd (const Stream *stream, guint fd)
+{
+  GSList *i;
+
+  for (i = stream->components; i; i = i->next) {
+    Component *component = i->data;
+    NiceUDPSocket *socket = 
+      component_find_udp_socket_by_fd (component, fd);
+    if (socket)
+      return component;
+  }
+
+  return NULL;
+}

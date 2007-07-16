@@ -46,18 +46,11 @@
 
 G_BEGIN_DECLS
 
-/* (ICE-13 §4.1.1) For RTP-based media streams, the RTP itself has a component
+/* (ICE-16 §4.1.1.1) For RTP-based media streams, the RTP itself has a component
  * ID of 1, and RTCP a component ID of 2.  If an agent is using RTCP it MUST
  * obtain a candidate for it.  If an agent is using both RTP and RTCP, it
  * would end up with 2*K host candidates if an agent has K interfaces.
  */
-
-typedef enum
-{
-  COMPONENT_TYPE_RTP,
-  COMPONENT_TYPE_RTCP,
-} ComponentType;
-
 
 typedef struct _Component Component;
 typedef struct _CandidatePair CandidatePair;
@@ -71,7 +64,7 @@ struct _CandidatePair
 
 struct _Component
 {
-  ComponentType type;
+  NiceComponentType type;
   guint id;
   NiceComponentState state;
   GSList *local_candidates;    /**< list of Candidate objs */
@@ -87,7 +80,7 @@ struct _Component
 Component *
 component_new (
   G_GNUC_UNUSED
-  ComponentType type);
+  guint component_id);
 
 void
 component_free (Component *cmp);

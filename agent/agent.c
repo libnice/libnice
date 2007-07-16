@@ -127,9 +127,6 @@ agent_find_component (
 {
   Stream *s;
 
-  if (component_id != 1)
-    return FALSE;
-
   s = agent_find_stream (agent, stream_id);
 
   if (s == NULL)
@@ -139,7 +136,7 @@ agent_find_component (
     *stream = s;
 
   if (component)
-    *component = s->component;
+    *component = stream_find_component_by_id (s, component_id);
 
   return TRUE;
 }
@@ -548,6 +545,44 @@ static void priv_signal_component_state_connecting (NiceAgent *agent, guint stre
 }
 #endif
 
+static gboolean 
+priv_add_srv_rfx_candidate_discovery (NiceAgent *agent, NiceCandidate *host_candidate, const gchar *stun_server_ip, const guint stun_server_port, Stream *stream, guint component_id, NiceAddress *addr)
+{
+  CandidateDiscovery *cdisco;
+  GSList *modified_list;
+
+  /* note: no need to check for redundant candidates, as this is
+   *       done later on in the process */
+  
+  cdisco = g_slice_new0 (CandidateDiscovery);
+  if (cdisco) {
+    modified_list = g_slist_append (agent->discovery_list, cdisco);
+	  
+    if (modified_list) {
+      agent->discovery_list = modified_list;
+      cdisco->type = NICE_CANDIDATE_TYPE_SERVER_REFLEXIVE;
+      cdisco->socket = host_candidate->sockptr->fileno;
+      cdisco->nicesock = host_candidate->sockptr;
+      cdisco->server_addr = stun_server_ip;
+      cdisco->server_port = stun_server_port;
+      cdisco->interface = addr;
+      cdisco->stream = stream;
+      cdisco->component = stream_find_component_by_id (stream, component_id);
+      cdisco->agent = agent;
+      g_debug ("Adding new srv-rflx candidate discovery %p\n", cdisco);
+      modified_list = g_slist_append (agent->discovery_list, cdisco);
+      if (modified_list) {
+	agent->discovery_list = modified_list;
+	++agent->discovery_unsched_items;
+      }
+    }
+
+    return TRUE;
+  }
+
+  return FALSE;
+}
+
 /**
  * nice_agent_add_stream:
  *  @agent: a NiceAgent
@@ -566,13 +601,12 @@ nice_agent_add_stream (
 {
   Stream *stream;
   GSList *i, *modified_list = NULL;
-
-  g_assert (n_components == 1);
+  guint n;
 
   if (!agent->local_addresses)
     return 0;
 
-  stream = stream_new ();
+  stream = stream_new (n_components);
   if (stream) {
     modified_list = g_slist_append (agent->streams, stream);
     if (modified_list) {
@@ -600,55 +634,38 @@ nice_agent_add_stream (
   for (i = agent->local_addresses; i; i = i->next)
     {
       NiceAddress *addr = i->data;
-      CandidateDiscovery *cand;
       NiceCandidate *host_candidate;
 
-      /* XXX: not multi-component ready */
-      host_candidate = discovery_add_local_host_candidate (agent, stream->id,
-							   stream->component->id, addr);
+      for (n = 0; n < n_components; n++) {
+	host_candidate = discovery_add_local_host_candidate (agent, stream->id,
+							     n + 1, addr);
       
-      if (!host_candidate) {
-	stream->id = 0; 
-	break;
-      }
-
-      if (agent->full_mode &&
-	  agent->stun_server_ip) {
-
-	/* note: no need to check for redundant candidates, as this is
-	 *       done later on in the process */
-	
-	cand = g_slice_new0 (CandidateDiscovery);
-	if (cand) {
-	  modified_list = g_slist_append (agent->discovery_list, cand);
-	  
-	  if (modified_list) {
-	    agent->discovery_list = modified_list;
-	    cand->type = NICE_CANDIDATE_TYPE_SERVER_REFLEXIVE;
-	    cand->socket = host_candidate->sockptr->fileno;
-	    cand->nicesock = host_candidate->sockptr;
-	    cand->server_addr = agent->stun_server_ip;
-	    cand->server_port = agent->stun_server_port;
-	    cand->interface = addr;
-	    cand->stream = stream;
-	    /* XXX: not multi-component ready */
-	    cand->component = stream->component;
-	    cand->agent = agent;
-	    g_debug ("Adding new srv-rflx candidate %p\n", cand);
-	    modified_list = g_slist_append (agent->discovery_list, cand);
-	    if (modified_list) {
-	      agent->discovery_list = modified_list;
-	      ++agent->discovery_unsched_items;
-	    }
-	  }
-	}
-	else {
-	  /* note: memory allocation failure, return error */
-	  stream->id = 0;
+	if (!host_candidate) {
+	  stream->id = 0; 
 	  break;
+	}
+
+	if (agent->full_mode &&
+	    agent->stun_server_ip) {
+
+	  gboolean res = 
+	    priv_add_srv_rfx_candidate_discovery (agent, 
+						  host_candidate, 
+						  agent->stun_server_ip, 
+						  agent->stun_server_port,
+						  stream,
+						  n + 1 /* component-id */,
+						  addr);
+
+	  if (res != TRUE) {
+	    /* note: memory allocation failure, return error */
+	    stream->id = 0;
+	    break;
+	  }
 	}
       }
     }
+
 
   /* step: attach the newly created sockets to the mainloop
    *       context */
@@ -1102,7 +1119,7 @@ nice_agent_recv (
 
 		socket = component_find_udp_socket_by_fd (component, j);
                 g_assert (socket);
-
+		
                 len = _nice_agent_recv (agent, stream, component, socket,
 					buf_len, buf);
 
@@ -1136,8 +1153,7 @@ nice_agent_recv_sock (
   socket = component_find_udp_socket_by_fd (component, sock);
   g_assert (socket);
 
-  /* XXX: not multi-component ready */
-  return _nice_agent_recv (agent, stream, stream->component,
+  return _nice_agent_recv (agent, stream, component,
 			   socket, buf_len, buf);
 }
 
@@ -1172,18 +1188,21 @@ nice_agent_poll_read (
 
   for (i = agent->streams; i; i = i->next)
     {
-      GSList *j;
+      GSList *j, *k;
       Stream *stream = i->data;
-      /* XXX: not multi-component ready */
-      Component *component = stream->component;
 
-      for (j = component->sockets; j; j = j->next)
-        {
-          NiceUDPSocket *sockptr = j->data;
-
-          FD_SET (sockptr->fileno, &fds);
-          max_fd = MAX (sockptr->fileno, max_fd);
-        }
+      for (k = stream->components; k; k = k->next)
+	{
+	  Component *component = k->data;
+	  
+	  for (j = component->sockets; j; j = j->next)
+	    {
+	      NiceUDPSocket *sockptr = j->data;
+	      
+	      FD_SET (sockptr->fileno, &fds);
+	      max_fd = MAX (sockptr->fileno, max_fd);
+	    }
+	}
     }
 
   for (i = other_fds; i; i = i->next)
@@ -1216,31 +1235,32 @@ nice_agent_poll_read (
           {
             NiceUDPSocket *socket = NULL;
             Stream *stream = NULL;
+	    Component *component = NULL;
             gchar buf[MAX_STUN_DATAGRAM_PAYLOAD];
             guint len;
 
             for (i = agent->streams; i; i = i->next)
               {
                 Stream *s = i->data;
-                Component *c = s->component;
+                Component *c = stream_find_component_by_fd (s, j);
 
 		socket = component_find_udp_socket_by_fd (c, j);
 
                 if (socket != NULL) {
 		  stream = s;
+		  component = c;
                   break;
 		}
               }
 	    
-            if (socket == NULL || stream == NULL)
+            if (socket == NULL || stream == NULL || component == NULL)
               break;
 
-	    /* XXX: not multi-component ready */
-            len = _nice_agent_recv (agent, stream, stream->component,
+            len = _nice_agent_recv (agent, stream, component,
 				    socket, MAX_STUN_DATAGRAM_PAYLOAD, buf);
 
             if (len && func != NULL)
-              func (agent, stream->id, stream->component->id, len, buf,
+              func (agent, stream->id, component->id, len, buf,
 		    data);
           }
       }
@@ -1268,13 +1288,7 @@ nice_agent_send (
   Stream *stream;
   Component *component;
 
-  /* note: dear compiler, these are for you: */
-  (void)component_id;
-
-  stream = agent_find_stream (agent, stream_id);
-
-  /* XXX: not multi-component ready */
-  component = stream->component;
+  agent_find_component (agent, stream_id, component_id, &stream, &component);
 
   if (component->selected_pair.local != NULL)
     {
@@ -1475,30 +1489,32 @@ nice_agent_g_source_cb (
  */
 static gboolean priv_attach_new_stream (NiceAgent *agent, Stream *stream)
 {
-  GSList *j;
-  /* XXX: not multi-component ready */
-  Component *component = stream->component;
+  GSList *i, *j;
 
-  for (j = component->sockets; j; j = j->next) {
-    NiceUDPSocket *udp_socket = j->data;
-    GIOChannel *io;
-    GSource *source;
-    IOCtx *ctx;
-    GSList *modified_list;
+  for (i = stream->components; i; i = i->next) {
+    Component *component = i->data;
+
+    for (j = component->sockets; j; j = j->next) {
+      NiceUDPSocket *udp_socket = j->data;
+      GIOChannel *io;
+      GSource *source;
+      IOCtx *ctx;
+      GSList *modified_list;
     
-    io = g_io_channel_unix_new (udp_socket->fileno);
-    source = g_io_create_watch (io, G_IO_IN);
-    ctx = io_ctx_new (agent, stream, component, udp_socket);
-    g_source_set_callback (source, (GSourceFunc) nice_agent_g_source_cb,
-			   ctx, (GDestroyNotify) io_ctx_free);
-    g_debug ("Attach source %p (stream %u).", source, stream->id);
-    g_source_attach (source, NULL);
-    modified_list = g_slist_append (component->gsources, source);
-    if (!modified_list) {
-      g_source_destroy (source);
-      return FALSE;
+      io = g_io_channel_unix_new (udp_socket->fileno);
+      source = g_io_create_watch (io, G_IO_IN);
+      ctx = io_ctx_new (agent, stream, component, udp_socket);
+      g_source_set_callback (source, (GSourceFunc) nice_agent_g_source_cb,
+			     ctx, (GDestroyNotify) io_ctx_free);
+      g_debug ("Attach source %p (stream %u).", source, stream->id);
+      g_source_attach (source, NULL);
+      modified_list = g_slist_append (component->gsources, source);
+      if (!modified_list) {
+	g_source_destroy (source);
+	return FALSE;
+      }
+      component->gsources = modified_list;
     }
-    component->gsources = modified_list;
   }
 
   return TRUE;
@@ -1512,18 +1528,20 @@ static gboolean priv_attach_new_stream (NiceAgent *agent, Stream *stream)
  */
 static void priv_deattach_stream (Stream *stream)
 {
-  GSList *j;
-  /* XXX: not multi-component ready */
-  Component *component = stream->component;
+  GSList *i, *j;
 
-  for (j = component->gsources; j; j = j->next) {
-    GSource *source = j->data;
-    g_debug ("Detach source %p (stream %u).", source, stream->id);
-    g_source_destroy (source);
-  }
+  for (i = stream->components; i; i = i->next) {
+    Component *component = i->data;
 
-  g_slist_free (component->gsources),
+    for (j = component->gsources; j; j = j->next) {
+      GSource *source = j->data;
+      g_debug ("Detach source %p (stream %u).", source, stream->id);
+      g_source_destroy (source);
+    }
+
+    g_slist_free (component->gsources),
     component->gsources = NULL;
+  }
 }
 
 NICEAPI_EXPORT gboolean

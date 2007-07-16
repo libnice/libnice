@@ -23,6 +23,7 @@
  *
  * Contributors:
  *   Dafydd Harries, Collabora Ltd.
+ *   Kai Vehmanen, Nokia
  *
  * Alternatively, the contents of this file may be used under the terms of the
  * the GNU Lesser General Public License Version 2.1 (the "LGPL"), in which
@@ -62,8 +63,8 @@ main (void)
   nice_agent_add_local_address (agent, &addr);
 
   g_assert (nice_agent_add_stream (agent, 1) == 1);
-  g_assert (nice_agent_add_stream (agent, 1) == 2);
-  g_assert (nice_agent_add_stream (agent, 1) == 3);
+  g_assert (nice_agent_add_stream (agent, 10) == 2);
+  g_assert (nice_agent_add_stream (agent, 2) == 3);
 
   g_assert (NULL != agent->streams);
 
