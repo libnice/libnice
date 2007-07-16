@@ -217,6 +217,9 @@ stun_trans_send (stun_trans_t *tr)
 		{
 			/* Message sent succesfully! */
 			tr->msg.offset += val;
+			assert (tr->msg.offset <= tr->msg.length);
+			if (tr->msg.offset == tr->msg.length) 
+				tr->msg.offset = 0;
 			return 0;
 		}
 
