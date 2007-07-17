@@ -190,6 +190,7 @@ static void priv_conn_check_unfreeze_related (NiceAgent *agent, CandidateCheckPa
 	  strcmp (p->foundation, ok_check->foundation) == 0) {
 	g_debug ("Unfreezing check %p (after succesful check %p).", p, ok_check);
 	p->state = NICE_CHECK_WAITING;
+	++unfrozen;
       }
     }
   }
@@ -451,6 +452,10 @@ gint conn_check_compare (const CandidateCheckPair *a, const CandidateCheckPair *
   return 0;
 }
 
+/**
+ * Creates a new connectivity check pair and adds it to
+ * the agent's list of checks.
+ */
 static gboolean priv_add_new_check_pair (NiceAgent *agent, guint stream_id, Component *component, NiceCandidate *local, NiceCandidate *remote, NiceCheckState initial_state, gboolean use_candidate)
 {
   gboolean result = FALSE;
