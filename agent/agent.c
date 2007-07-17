@@ -559,7 +559,6 @@ priv_add_srv_rfx_candidate_discovery (NiceAgent *agent, NiceCandidate *host_cand
     modified_list = g_slist_append (agent->discovery_list, cdisco);
 	  
     if (modified_list) {
-      agent->discovery_list = modified_list;
       cdisco->type = NICE_CANDIDATE_TYPE_SERVER_REFLEXIVE;
       cdisco->socket = host_candidate->sockptr->fileno;
       cdisco->nicesock = host_candidate->sockptr;
@@ -570,11 +569,8 @@ priv_add_srv_rfx_candidate_discovery (NiceAgent *agent, NiceCandidate *host_cand
       cdisco->component = stream_find_component_by_id (stream, component_id);
       cdisco->agent = agent;
       g_debug ("Adding new srv-rflx candidate discovery %p\n", cdisco);
-      modified_list = g_slist_append (agent->discovery_list, cdisco);
-      if (modified_list) {
-	agent->discovery_list = modified_list;
-	++agent->discovery_unsched_items;
-      }
+      agent->discovery_list = modified_list;
+      ++agent->discovery_unsched_items;
     }
 
     return TRUE;
