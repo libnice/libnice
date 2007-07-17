@@ -64,7 +64,8 @@ check_PROGRAMS = \
 	test-priority \
 	test-poll \
 	test-mainloop \
-	test-fullmode
+	test-fullmode \
+	test-restart
 
 check_SCRIPTS = \
 	check-test-fullmode-with-stun.sh
@@ -93,6 +94,8 @@ test_poll_LDADD = $(COMMON_LDADD)
 test_mainloop_LDADD = $(COMMON_LDADD)
 
 test_fullmode_LDADD = $(COMMON_LDADD)
+
+test_restart_LDADD = $(COMMON_LDADD)
 
 pkginclude_HEADERS = agent.h candidate.h
 
