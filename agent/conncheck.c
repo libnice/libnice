@@ -531,6 +531,10 @@ int conn_check_add_for_candidate (NiceAgent *agent, guint stream_id, Component *
       result = priv_add_new_check_pair (agent, stream_id, component, local, remote, NICE_CHECK_FROZEN, FALSE);
       if (result) {
 	++added;
+	agent_signal_component_state_change (agent, 
+					     stream_id,
+					     component->id,
+					     NICE_COMPONENT_STATE_CONNECTING);
       }
       else {
 	added = -1;
