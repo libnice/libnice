@@ -102,16 +102,18 @@ stun_binding_reply (uint8_t *buf, size_t *restrict plen, const uint8_t *msg,
 		if (!stun_has_integrity (msg))
 		{
 			DBG (" Message Authentication Code missing.\n");
-			err (STUN_UNAUTHORIZED);
+			err (STUN_BAD_REQUEST);
 			return EPERM;
 		}
 
 		if (!stun_present (msg, STUN_USERNAME))
 		{
 			DBG (" Username missing.\n");
-			err (STUN_MISSING_USERNAME);
+			err (STUN_BAD_REQUEST);
 			return EPERM;
 		}
+
+		/* FIXME: verify USERNAME, return 401 if wrong */
 
 		/* NOTE: should check in that order:
 		 * - missing realm
@@ -167,7 +169,6 @@ stun_binding_reply (uint8_t *buf, size_t *restrict plen, const uint8_t *msg,
 	return 0;
 
 failure:
-	err (STUN_GLOBAL_FAILURE);
 	return val;
 }
 #undef err

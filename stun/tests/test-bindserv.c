@@ -150,7 +150,6 @@ int main (void)
 	val = stun_bind_reply (buf, &len, buf,
 	                       (struct sockaddr *)&ip4, sizeof (ip4), false);
 	assert (val == EAFNOSUPPORT);
-	assert (len > 0);
 
 	return 0;
 }

@@ -232,17 +232,29 @@ static const char *stun_strerror (stun_error_t code)
 		{ STUN_BAD_REQUEST, "Bad request" },
 		{ STUN_UNAUTHORIZED, "Authorization required" },
 		{ STUN_UNKNOWN_ATTRIBUTE, "Unknown attribute" },
+		/*
 		{ STUN_STALE_CREDENTIALS, "Authentication expired" },
+		*/
 		{ STUN_INTEGRITY_CHECK_FAILURE, "Incorrect username/password" },
+		/*
 		{ STUN_MISSING_USERNAME, "Username required" },
 		{ STUN_USE_TLS, "Secure connection required" },
 		{ STUN_MISSING_REALM, "Authentication domain required" },
 		{ STUN_MISSING_NONCE, "Authentication token missing" },
 		{ STUN_UNKNOWN_USERNAME, "Unknown user name" },
+		*/
+		{ STUN_NO_BINDING, "Session expired" },
 		{ STUN_STALE_NONCE, "Authentication token expired" },
+		{ STUN_ACT_DST_ALREADY, "Changing remote peer forbidden" },
+		{ STUN_UNSUPP_TRANSPORT, "Unknown transport protocol" },
+		{ STUN_INVALID_IP, "Address unavailable" },
+		{ STUN_INVALID_PORT, "Port unavailable" },
+		{ STUN_OP_TCP_ONLY, "Invalid operation" },
+		{ STUN_CONN_ALREADY, "Connection already established" },
+		{ STUN_ALLOC_OVER_QUOTA, "Quota reached" },
 		{ STUN_ROLE_CONFLICT, "Role conflict" },
 		{ STUN_SERVER_ERROR, "Temporary server error" },
-		{ STUN_GLOBAL_FAILURE, "Unrecoverable failure" },
+		{ STUN_SERVER_CAPACITY, "Temporary server congestion" },
 		{ 0, "" }
 	};
 	unsigned i;
