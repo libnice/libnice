@@ -1362,6 +1362,37 @@ nice_agent_get_remote_candidates (
   return g_slist_copy (component->remote_candidates);
 }
 
+/**
+ * nice_agent_restart
+ *  @agent: A NiceAgent
+ *
+ * Restarts the session as defined in ICE spec (ID-17). This function
+ * needs to be called both when initiating (ICE spec section 9.1.1.1.
+ * "ICE Restarts"), as well as when reacting (spec section 9.2.1.1. 
+ * "Detecting ICE Restart") to a restart.
+ *
+ * Returns: FALSE on error
+ **/
+gboolean 
+nice_agent_restart (
+  NiceAgent *agent)
+{
+  GSList *i;
+  gboolean res = TRUE;
+
+  /* clean up all connectivity checks */
+  conn_check_free (agent);
+
+  for (i = agent->streams; i && res; i = i->next) {
+    Stream *stream = i->data;
+
+    /* reset local credentials */
+    res = stream_restart (stream, agent->rng);
+  }
+
+  return res;
+}
+
 static void
 nice_agent_dispose (GObject *object)
 {

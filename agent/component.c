@@ -56,6 +56,8 @@ component_new (
 
   component = g_slice_new0 (Component);
   component->id = id;
+  component->state = NICE_COMPONENT_STATE_DISCONNECTED;
+  component->restart_candidate = NULL;
   return component;
 }
 
@@ -74,6 +76,10 @@ component_free (Component *cmp)
     NiceCandidate *candidate = i->data;
     nice_candidate_free (candidate);
   }
+
+  if (cmp->restart_candidate)
+    nice_candidate_free (cmp->restart_candidate),
+      cmp->restart_candidate = NULL;
 
   for (i = cmp->sockets; i; i = i->next) {
     NiceUDPSocket *udpsocket = i->data;
@@ -118,4 +124,35 @@ component_find_udp_socket_by_fd (Component *component, guint fd)
     }
 
   return NULL;
+}
+
+/**
+ * Resets the component state to that of a ICE restarted
+ * session.
+ */
+gboolean
+component_restart (Component *cmp)
+{
+  GSList *i;
+
+  for (i = cmp->remote_candidates; i; i = i->next) {
+    NiceCandidate *candidate = i->data;
+
+    /* note: do not remove the remote candidate that is
+     *       currently part of the 'selected pair', see ICE
+     *       9.1.1.1. "ICE Restarts" (ID-17) */
+    if (candidate == cmp->selected_pair.remote) {
+      if (cmp->restart_candidate)
+	nice_candidate_free (cmp->restart_candidate);
+      cmp->restart_candidate = candidate;
+    }
+    else 
+      nice_candidate_free (candidate);
+  }
+  g_slist_free (cmp->remote_candidates),
+    cmp->remote_candidates = NULL;
+
+  /* note: component state managed by agent */
+
+  return TRUE;
 }

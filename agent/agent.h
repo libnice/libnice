@@ -213,6 +213,10 @@ nice_agent_get_remote_candidates (
   guint stream_id,
   guint component_id);
 
+gboolean 
+nice_agent_restart (
+  NiceAgent *agent);
+
 gboolean
 nice_agent_main_context_attach (
   NiceAgent *agent,

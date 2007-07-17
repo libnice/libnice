@@ -59,7 +59,7 @@ struct _Stream
   guint id;
   guint n_components;
   gboolean initial_binding_request_received;
-  GSList *components; /* list of components */
+  GSList *components; /* list of 'Component' structs */
   gchar local_ufrag[NICE_STREAM_MAX_UFRAG];
   gchar local_password[NICE_STREAM_MAX_PWD];
   gchar remote_ufrag[NICE_STREAM_MAX_UFRAG];
@@ -80,6 +80,12 @@ stream_find_component_by_id (const Stream *stream, guint id);
 
 Component *
 stream_find_component_by_fd (const Stream *stream, guint fd);
+
+void
+stream_initialize_credentials (Stream *stream, NiceRNG *rng);
+
+gboolean 
+stream_restart (Stream *stream, NiceRNG *rng);
 
 G_END_DECLS
 

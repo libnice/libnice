@@ -75,6 +75,7 @@ struct _Component
 				    see ICE 11.1. "Sending Media" (ID-17) */
   gboolean media_after_tick;   /**< true if media received since last
 				    keepalive tick */
+  NiceCandidate *restart_candidate; /**< for storing active remote candidate during a restart */
 };
 
 Component *
@@ -87,6 +88,9 @@ component_free (Component *cmp);
 
 NiceUDPSocket *
 component_find_udp_socket_by_fd (Component *component, guint fd);
+
+gboolean
+component_restart (Component *cmp);
 
 G_END_DECLS
 

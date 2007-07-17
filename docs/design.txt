@@ -152,12 +152,17 @@ Special considerations for a SIP client:
 
 Restarting ICE:
 
-- ICE processing can be restarted by calling nice_agent_set_remote_candidates()
-  again for a stream.
-- To use the "dribble" mode, client first has to restart the stream with
+- ICE processing can be restarted by calling nice_agent_restart()
+- Restart will clean the set of remote candidates, so client must
+  afterwards call nice_agent_set_remote_candidates() after receiving 
+  a new offer/answer for the restarted ICE session.
+- Restart will reinitialize the local credentials (see 
+  nice_agent_get_local_credentials()).
+- To use the "dribble" mode, client first has to initialize the stream with
   calling nice_agent_set_remote_candidates() with an empty set of 
   candidates, and then start adding new remote candidates with 
   nice_agent_add_remote_candidate().
+     - XXX: initial plan, needs review...
 
 Notes about sending media:
 

@@ -150,3 +150,38 @@ stream_find_component_by_fd (const Stream *stream, guint fd)
 
   return NULL;
 }
+
+/**
+ * Initialized the local crendentials for the stream.
+ */
+void stream_initialize_credentials (Stream *stream, NiceRNG *rng)
+{
+  /* note: generate ufrag/pwd for the stream (see ICE 15.4.
+   *       '"ice-ufrag" and "ice-pwd" Attributes', ID-17) */
+  nice_rng_generate_bytes_print (rng, NICE_STREAM_DEF_UFRAG - 1, stream->local_ufrag);
+  nice_rng_generate_bytes_print (rng, NICE_STREAM_DEF_PWD - 1, stream->local_password);
+}
+
+/**
+ * Resets the stream state to that of a ICE restarted
+ * session.
+ */
+gboolean 
+stream_restart (Stream *stream, NiceRNG *rng)
+{
+  GSList *i;
+  gboolean res = TRUE;
+
+  stream->initial_binding_request_received = FALSE;
+
+  stream_initialize_credentials (stream, rng);
+
+  for (i = stream->components; i && res; i = i->next) {
+    Component *component = i->data;
+    
+    res = component_restart (component);
+  }
+  
+  return res;
+}
+
