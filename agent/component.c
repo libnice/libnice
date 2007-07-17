@@ -23,6 +23,7 @@
  *
  * Contributors:
  *   Dafydd Harries, Collabora Ltd.
+ *   Kai Vehmanen, Nokia
  *
  * Alternatively, the contents of this file may be used under the terms of the
  * the GNU Lesser General Public License Version 2.1 (the "LGPL"), in which
@@ -77,6 +78,7 @@ component_free (Component *cmp)
   for (i = cmp->sockets; i; i = i->next) {
     NiceUDPSocket *udpsocket = i->data;
     nice_udp_socket_close (udpsocket);
+    g_slice_free (NiceUDPSocket, udpsocket);
   }
 
   for (i = cmp->gsources; i; i = i->next) {
