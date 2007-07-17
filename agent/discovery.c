@@ -82,9 +82,11 @@ void discovery_free_item (gpointer data, gpointer user_data)
 void discovery_free (NiceAgent *agent)
 {
   if (agent->discovery_list) {
-    g_slist_foreach (agent->discovery_list, discovery_free_item, NULL);
-    g_slist_free (agent->discovery_list),
-      agent->discovery_list = NULL;
+    GSList *tmp = agent->discovery_list;
+    agent->discovery_list = NULL;
+
+    g_slist_foreach (tmp, discovery_free_item, NULL);
+    g_slist_free (tmp);
 
     agent->discovery_unsched_items = 0;
   }

@@ -519,7 +519,7 @@ void agent_signal_component_state_change (NiceAgent *agent, guint stream_id, gui
     return;
 
   if (component->state != state && state < NICE_COMPONENT_STATE_LAST) {
-    g_debug ("stream %u component %u state change %u -> %u.",
+    g_debug ("stream %u component %u STATE-CHANGE %u -> %u.",
 	     stream_id, component_id, component->state, state);
     component->state = state;
 
@@ -527,23 +527,6 @@ void agent_signal_component_state_change (NiceAgent *agent, guint stream_id, gui
 		   stream_id, component_id, component->state);
   }
 }
-
-#if 0
-static void priv_signal_component_state_connecting (NiceAgent *agent, guint stream_id, guint component_id)
-{
-  Component *component;
-
-  if (!agent_find_component (agent, stream_id, component_id, NULL, &component))
-    return;
-
-  if (component->state != NICE_COMPONENT_STATE_CONNECTING) {
-    component->state = NICE_COMPONENT_STATE_CONNECTING;
-
-    g_signal_emit (agent, signals[SIGNAL_COMPONENT_STATE_CHANGED], 0,
-		   stream_id, component_id, component->state);
-  }
-}
-#endif
 
 static gboolean 
 priv_add_srv_rfx_candidate_discovery (NiceAgent *agent, NiceCandidate *host_candidate, const gchar *stun_server_ip, const guint stun_server_port, Stream *stream, guint component_id, NiceAddress *addr)
@@ -608,10 +591,8 @@ nice_agent_add_stream (
     if (modified_list) {
       stream->id = agent->next_stream_id++;
       g_debug ("allocating stream id %u (%p)", stream->id, stream);
-      
-      /* note: generate ufrag/pwd for the stream (see ICE ID-15 15.4) */
-      nice_rng_generate_bytes_print (agent->rng, NICE_STREAM_DEF_UFRAG - 1, stream->local_ufrag);
-      nice_rng_generate_bytes_print (agent->rng, NICE_STREAM_DEF_PWD - 1, stream->local_password);
+     
+      stream_initialize_credentials (stream, agent->rng);
 
       agent->streams = modified_list;
     }
@@ -919,6 +900,10 @@ nice_agent_add_remote_candidate (
   const gchar *username,
   const gchar *password)
 {
+
+  /* XXX: should we allow use of this method without an 
+   *      initial call to nice_agent_set_remote_candidates()
+   *      with an empty set? */
   return 
     priv_add_remote_candidate (agent,
 			       stream_id,
