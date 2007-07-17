@@ -46,10 +46,10 @@
 
 G_BEGIN_DECLS
 
-/* (ICE-16 §4.1.1.1) For RTP-based media streams, the RTP itself has a component
+/* (ICE §4.1.1.1, ID-17) ""For RTP-based media streams, the RTP itself has a component
  * ID of 1, and RTCP a component ID of 2.  If an agent is using RTCP it MUST
  * obtain a candidate for it.  If an agent is using both RTP and RTCP, it
- * would end up with 2*K host candidates if an agent has K interfaces.
+ * would end up with 2*K host candidates if an agent has K interfaces.""
  */
 
 typedef struct _Component Component;
@@ -72,7 +72,7 @@ struct _Component
   GSList *sockets;             /**< list of NiceUDPSocket objs */
   GSList *gsources;            /**< list of GSource objs */
   CandidatePair selected_pair; /**< independent from checklists, 
-				    see ICE 11.1.1 (ID-15) */
+				    see ICE 11.1. "Sending Media" (ID-17) */
   gboolean media_after_tick;   /**< true if media received since last
 				    keepalive tick */
 };

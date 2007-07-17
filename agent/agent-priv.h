@@ -49,9 +49,8 @@
 #include "stream.h"
 #include "conncheck.h"
 
-/** As specified in ICE spec ID-15 */
-#define NICE_AGENT_TIMER_TA_DEFAULT 20      /* timer Ta, msecs */
-#define NICE_AGENT_TIMER_TR_DEFAULT 15000   /* timer Tr, msecs */
+#define NICE_AGENT_TIMER_TA_DEFAULT 20      /* timer Ta, msecs (impl. defined) */
+#define NICE_AGENT_TIMER_TR_DEFAULT 15000   /* timer Tr, msecs (ICE ID-17) */
 
 /** An upper limit to size of STUN packets handled (based on Ethernet
  * MTU and estimated typical sizes of ICE STUN packet */
@@ -88,8 +87,8 @@ struct _NiceAgent
   guint conncheck_timer_id;       /**< id of discovery timer */
   NiceCheckListState conncheck_state; /**< checklist state */
   guint keepalive_timer_id;       /**< id of keepalive timer */
-  guint64 tie_breaker;            /**< tie breaker (ICE ID-16 sect
-				     5.2) */
+  guint64 tie_breaker;            /**< tie breaker (ICE sect 5.2
+				     "Determining Role" ID-17) */
   gchar ufragtmp[NICE_STREAM_MAX_UNAME]; /**< preallocated buffer for uname processing */ 
   /* XXX: add pointer to internal data struct for ABI-safe extensions */
 };

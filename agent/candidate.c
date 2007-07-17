@@ -48,10 +48,10 @@
 #include "agent.h"
 #include "component.h"
 
-/* (ICE-13 §4.1.1) Every candidate is a transport address. It also has a type and
- * a base. Three types are defined and gathered by this specification - host
- * candidates, server reflexive candidates, and relayed candidates. */
-
+/* (ICE 4.1.1 "Gathering Candidates") ""Every candidate is a transport
+ * address. It also has a type and a base. Three types are defined and 
+ * gathered by this specification - host candidates, server reflexive 
+ * candidates, and relayed candidates."" (ID-17) */
 
 NICEAPI_EXPORT NiceCandidate *
 nice_candidate_new (NiceCandidateType type)
@@ -95,7 +95,10 @@ nice_candidate_jingle_priority (NiceCandidate *candidate)
 }
 
 
-/* ICE-15 §4.1.2.1; returns number between 1 and 0x7effffff */
+/**
+ * ICE 4.1.2.1. "Recommended Formula" (ID-17):
+ * returns number between 1 and 0x7effffff 
+ */
 G_GNUC_CONST
 NICEAPI_EXPORT guint32
 nice_candidate_ice_priority_full (
@@ -136,7 +139,8 @@ nice_candidate_ice_priority (const NiceCandidate *candidate)
 }
 
 /** 
- * Calculates the pair priority as specified in ICE -15 spec 5.7.2.
+ * Calculates the pair priority as specified in ICE 
+ * sect 5.7.2. "Computing Pair Priority and Ordering Pairs" (ID-17).
  */
 NICEAPI_EXPORT guint64
 nice_candidate_pair_priority (guint32 o_prio, guint32 a_prio)

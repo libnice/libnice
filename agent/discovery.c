@@ -136,7 +136,8 @@ gboolean discovery_prune_stream (NiceAgent *agent, guint stream_id)
 
 /**
  * Adds a new local candidate. Implements the candidate pruning
- * defined in ICE spec section 4.1.1.3 (ID-16).
+ * defined in ICE spec section 4.1.1.3 "Eliminating Redundant
+ * Candidates" (ID-17).
  */
 static gboolean priv_add_local_candidate_pruned (Component *component, NiceCandidate *candidate)
 {
@@ -169,8 +170,8 @@ static gboolean priv_add_local_candidate_pruned (Component *component, NiceCandi
 /**
  * Assings a foundation to the candidate.
  *
- * Implements the mechanism described in ICE (ID-16) sect 
- * 4.1.1.4 (Computing Foundations).
+ * Implements the mechanism described in ICE sect 
+ * 4.1.1.4 "Computing Foundations" (ID-17).
  */
 static void priv_assign_foundation (NiceAgent *agent, Component *component, NiceCandidate *candidate)
 {
@@ -390,7 +391,7 @@ static guint priv_highest_remote_foundation (Component *component)
  * remote candidates. The candidate is however not paired with
  * existing local candidates.
  *
- * See ICE ID-16 sect 7.2.1.3.
+ * See ICE sect 7.2.1.3 "Learning Peer Reflexive Candidates" (ID-17).
  *
  * @return pointer to the created candidate, or NULL on error
  */
