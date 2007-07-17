@@ -66,7 +66,7 @@ static void priv_print_global_status (void)
 
 static gboolean timer_cb (gpointer pointer)
 {
-  g_debug ("%s: %p", G_STRFUNC, pointer);
+  g_debug ("test-fullmode:%s: %p", G_STRFUNC, pointer);
 
   /* signal status via a global variable */
 
@@ -78,7 +78,7 @@ static gboolean timer_cb (gpointer pointer)
 
 static void cb_nice_recv (NiceAgent *agent, guint stream_id, guint component_id, guint len, gchar *buf, gpointer user_data)
 {
-  g_debug ("%s: %p", G_STRFUNC, user_data);
+  g_debug ("test-fullmode:%s: %p", G_STRFUNC, user_data);
 
   /* XXX: dear compiler, these are for you: */
   (void)agent; (void)stream_id; (void)component_id; (void)buf;
@@ -91,7 +91,7 @@ static void cb_nice_recv (NiceAgent *agent, guint stream_id, guint component_id,
 
 static void cb_candidate_gathering_done(NiceAgent *agent, gpointer data)
 {
-  g_debug ("%s: %p", G_STRFUNC, data);
+  g_debug ("test-fullmode:%s: %p", G_STRFUNC, data);
 
   if ((int)data == 1)
     global_lagent_gathering_done = TRUE;
@@ -106,38 +106,9 @@ static void cb_candidate_gathering_done(NiceAgent *agent, gpointer data)
   (void)agent;
 }
 
-#if 0
-static void cb_component_state_changed(NiceAgent *agent, guint stream_id, guint component_id, guint state, gpointer data)
-{
-  g_debug ("%s: %p", __func__, data);
-
-  if ((int)data == 1)
-    global_lagent_state = state;
-  else if ((int)data == 2)
-    global_ragent_state = state;
-
-  /* signal status via a global variable */
-  if (global_lagent_state == NICE_COMPONENT_STATE_READY &&
-      global_ragent_state == NICE_COMPONENT_STATE_READY) {
-    g_main_loop_quit (global_mainloop); 
-    return;
-  }
-
-  /* signal status via a global variable */
-  if (global_lagent_state == NICE_COMPONENT_STATE_FAILED &&
-      global_ragent_state == NICE_COMPONENT_STATE_FAILED) {
-    g_main_loop_quit (global_mainloop); 
-    return;
-  }
-
-  /* XXX: dear compiler, these are for you: */
-  (void)agent; (void)stream_id; (void)data;
-}
-#endif
-
 static void cb_component_state_changed (NiceAgent *agent, guint stream_id, guint component_id, guint state, gpointer data)
 {
-  g_debug ("%s: %p", __func__, data);
+  g_debug ("test-fullmode:%s: %p", __func__, data);
 
   if ((int)data == 1)
     global_lagent_state = state;
@@ -149,7 +120,7 @@ static void cb_component_state_changed (NiceAgent *agent, guint stream_id, guint
   if (state == NICE_COMPONENT_STATE_FAILED)
     global_components_failed++;
 
-  g_debug ("READY %u exit at %u.", global_components_ready, global_components_ready_exit);
+  g_debug ("test-fullmode: READY %u exit at %u.", global_components_ready, global_components_ready_exit);
 
   /* signal status via a global variable */
   if (global_components_ready == global_components_ready_exit) {
@@ -170,7 +141,7 @@ static void cb_component_state_changed (NiceAgent *agent, guint stream_id, guint
 static void cb_new_selected_pair(NiceAgent *agent, guint stream_id, guint component_id, 
 				 gchar *lfoundation, gchar* rfoundation, gpointer data)
 {
-  g_debug ("%s: %p", __func__, data);
+  g_debug ("test-fullmode:%s: %p", __func__, data);
 
   if ((int)data == 1)
     ++global_lagent_cands;
@@ -184,7 +155,7 @@ static void cb_new_selected_pair(NiceAgent *agent, guint stream_id, guint compon
 static void cb_new_candidate(NiceAgent *agent, guint stream_id, guint component_id, 
 			     gchar *foundation, gpointer data)
 {
-  g_debug ("%s: %p", __func__, data);
+  g_debug ("test-fullmode:%s: %p", __func__, data);
 
   /* XXX: dear compiler, these are for you: */
   (void)agent; (void)stream_id; (void)data; (void)component_id;
@@ -192,7 +163,7 @@ static void cb_new_candidate(NiceAgent *agent, guint stream_id, guint component_
 
 static void cb_initial_binding_request_received(NiceAgent *agent, guint stream_id, gpointer data)
 {
-  g_debug ("%s: %p", __func__, data);
+  g_debug ("test-fullmode:%s: %p", __func__, data);
 
   if ((int)data == 1)
     global_lagent_ibr_received = TRUE;
@@ -277,8 +248,6 @@ static int run_full_test (NiceAgent *lagent, NiceAgent *ragent, NiceAddress *bas
   priv_get_local_addr (lagent, ls_id, NICE_COMPONENT_TYPE_RTCP, &laddr_rtcp);
   g_debug ("test-fullmode: local RTCP port L %u", laddr_rtcp.port);
 
-  g_debug ("test-fullmode: Got local candidates...");
- 
   /* step: pass the remote candidates to agents  */
   cands = g_slist_append (NULL, &cdes);
   {
@@ -609,6 +578,7 @@ int main (void)
     g_object_set (G_OBJECT (ragent), "stun-server-port", atoi (stun_server_port),  NULL);
   }
 
+  /* step: test setter/getter functions for properties */
   {
     gpointer pointer;
     gchar *string = NULL;
@@ -618,9 +588,11 @@ int main (void)
     g_assert (pointer == (gpointer)&udpfactory);
     g_object_get (G_OBJECT (lagent), "stun-server", &string, NULL);
     g_assert (stun_server == NULL || strcmp (string, stun_server) == 0);
+    g_free (string);
     g_object_get (G_OBJECT (lagent), "stun-server-port", &port, NULL);
     g_assert (stun_server_port == NULL || port == (guint)atoi (stun_server_port));
     g_object_get (G_OBJECT (lagent), "turn-server", &string, NULL);
+    g_free (string);
     g_object_get (G_OBJECT (lagent), "turn-server-port", &port, NULL);
     g_object_get (G_OBJECT (lagent), "controlling-mode", &mode, NULL);
     g_assert (mode == TRUE);
