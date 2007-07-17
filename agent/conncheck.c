@@ -54,7 +54,6 @@
 #include "agent-priv.h"
 #include "conncheck.h"
 #include "discovery.h"
-#include "stun-msg.h"
 
 static inline int priv_timer_expired (GTimeVal *restrict timer, GTimeVal *restrict now)
 {
@@ -1290,15 +1289,10 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, Stream *stream, Compo
     bool use_candidate = 
       stun_conncheck_use_candidate ((const uint8_t*)buf);
 
-    /* XXX: uses stun-msg.h, remove later */
-    bool error_response = 
-      (stun_get_class ((const uint8_t*)rbuf) == STUN_ERROR);
-    g_debug ("error in request %d.", error_response);
-
     if (agent->controlling_mode) 
       use_candidate = TRUE;
 
-    /* XXX: verify the USERNAME with stun_connecheck_username() */
+    /* note: verify the USERNAME */
     if (stun_conncheck_username ((const uint8_t*)buf, agent->ufragtmp, NICE_STREAM_MAX_UNAME) == NULL) {
       g_debug ("No USERNAME attribute in incoming STUN request, ignoring.");
       return FALSE;
@@ -1334,14 +1328,7 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, Stream *stream, Compo
 
     gboolean trans_found = FALSE;
 
-    /* XXX: uses stun-msg.h, remove later */
-    bool error_response = 
-      (stun_get_class ((const uint8_t*)buf) == STUN_ERROR);
-    g_debug ("error in response %d", error_response);
-
-    g_debug ("Not a STUN connectivity check request, might be a reply or keepalive...");
-
-    /* note: ICE ID-15, 7.1.2 */
+    /* note: ICE sect 7.1.2. "Processing the Response" (ID-17) */
 
     /* step: let's try to match the response to an existing check context */
     if (trans_found != TRUE)
@@ -1357,7 +1344,7 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, Stream *stream, Compo
       g_debug ("Unable to match to an existing transaction, probably a keepalive.");
   }
   else {
-    g_debug ("Invalid STUN connectivity check request. Ignoring... %s", strerror(errno));
+    g_debug ("Invalid STUN packet, ignoring... %s", strerror(errno));
     return FALSE;
   }
 
