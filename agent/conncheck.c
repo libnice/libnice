@@ -189,7 +189,7 @@ static void priv_conn_check_unfreeze_related (NiceAgent *agent, CandidateCheckPa
     if (p->stream_id == ok_check->stream_id) {
       if (p->state == NICE_CHECK_FROZEN &&
 	  strcmp (p->foundation, ok_check->foundation) == 0) {
-	g_debug ("Unfreezing check %p (related to %p).", p, ok_check);
+	g_debug ("Unfreezing check %p (after succesful check %p).", p, ok_check);
 	p->state = NICE_CHECK_WAITING;
       }
     }
@@ -208,7 +208,7 @@ static void priv_conn_check_unfreeze_related (NiceAgent *agent, CandidateCheckPa
 	    p->stream_id != ok_check->stream_id) {
 	  if (p->state == NICE_CHECK_FROZEN &&
 	      strcmp (p->foundation, ok_check->foundation) == 0) {
-	    g_debug ("Unfreezing check %p from stream %u (related to %p).", p, s->id, ok_check);
+	    g_debug ("Unfreezing check %p from stream %u (after succesful check %p).", p, s->id, ok_check);
 	    p->state = NICE_CHECK_WAITING;
 	    ++unfrozen;
 					    
@@ -243,14 +243,6 @@ static gboolean priv_conn_check_tick (gpointer pointer)
   int frozen = 0, inprogress = 0, waiting = 0, succeeded = 0, nominated = 0;
 
   pair = priv_conn_check_find_next_waiting (agent->conncheck_list);
-
-#ifndef NDEBUG
-  {
-    static int tick_counter = 0;
-    if (++tick_counter % 20 == 0)
-      g_debug ("conncheck tick #%d with list %p (1)", tick_counter, pair);
-  }
-#endif
 
   if (pair) {
     priv_conn_check_initiate (agent, pair);
@@ -303,15 +295,6 @@ static gboolean priv_conn_check_tick (gpointer pointer)
       ++nominated;
   }
   
-#ifndef NDEBUG
-  {
-    static int tick_counter = 0;
-    if (++tick_counter % 20 == 0 || keep_timer_going != TRUE)
-      g_debug ("timer: %d frozen, %d in-progress, %d waiting, %d succeeded, %d nominated.", 
-	       frozen, inprogress, waiting, succeeded, nominated);
-  }
-#endif
-  
   /* note: keep the timer going as long as there is work to be done */
   if (frozen || inprogress || waiting ||
       (succeeded && nominated == 0))
@@ -340,6 +323,15 @@ static gboolean priv_conn_check_tick (gpointer pointer)
       }
     }
   }
+
+#ifndef NDEBUG
+  {
+    static int tick_counter = 0;
+    if (tick_counter++ % 50 == 0 || keep_timer_going != TRUE)
+      g_debug ("timer(%p) tick #%d: %d frozen, %d in-progress, %d waiting, %d succeeded, %d nominated.", 
+	       agent, tick_counter, frozen, inprogress, waiting, succeeded, nominated);
+  }
+#endif
   
   /* step: stop timer if no work left */
   if (keep_timer_going != TRUE) {
@@ -370,8 +362,6 @@ static gboolean priv_conn_keepalive_tick (gpointer pointer)
   NiceAgent *agent = pointer;
   GSList *i, *j;
   int errors = 0;
-
-  g_debug ("%s", G_STRFUNC);
 
   /* case 1: session established and media flowing
    *         (ref ICE sect 10 "Keepalives" ID-17)  */
@@ -492,7 +482,7 @@ static gboolean priv_add_new_check_pair (NiceAgent *agent, guint stream_id, Comp
       if (modified_list) {
 	agent->conncheck_list = modified_list;
 	result = TRUE;
-	g_debug ("added a new conncheck item with foundation of '%s'.", pair->foundation);
+	g_debug ("added a new conncheck %p with foundation of '%s'.", pair, pair->foundation);
       }
       else { /* memory alloc failed: list insert */
 	conn_check_free_item (pair, NULL);
@@ -595,14 +585,11 @@ gboolean conn_check_prune_stream (NiceAgent *agent, guint stream_id)
   CandidateCheckPair *pair;
   GSList *i;
 
-  g_debug ("pruning stream %u conn checks.", stream_id);
-
   for (i = agent->conncheck_list; i ; ) {
     pair = i->data;
 
     if (pair->stream_id == stream_id) {
       GSList *next = i->next;
-      g_debug ("conncheck, pruning item %p.", i);
       agent->conncheck_list = 
 	g_slist_remove (agent->conncheck_list, pair);
       conn_check_free_item (pair, NULL);
@@ -741,8 +728,6 @@ int conn_check_send (NiceAgent *agent, CandidateCheckPair *pair)
     /* note: convert from milli to microseconds for g_time_val_add() */
     g_get_current_time (&pair->next_tick);
     g_time_val_add (&pair->next_tick, timeout * 10);
-    g_debug ("set timeout for conncheck %p to %u.", pair, timeout);
-
     pair->traffic_after_tick = TRUE; /* for keepalive timer */
   }
     

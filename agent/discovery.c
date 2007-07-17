@@ -104,14 +104,11 @@ gboolean discovery_prune_stream (NiceAgent *agent, guint stream_id)
   CandidateDiscovery *cand;
   GSList *i;
 
-  g_debug ("pruning stream %u discovery items.", stream_id);
-
   for (i = agent->discovery_list; i ; ) {
     cand = i->data;
 
     if (cand->stream->id == stream_id) {
       GSList *next = i->next;
-      g_debug ("discovery, pruning item %p.", i);
       agent->discovery_list = 
 	g_slist_remove (agent->discovery_list, cand);
       discovery_free_item (cand, NULL);
@@ -455,7 +452,7 @@ static gboolean priv_discovery_tick (gpointer pointer)
 #ifndef NDEBUG
   {
     static int tick_counter = 0;
-    if (++tick_counter % 1 == 0)
+    if (tick_counter++ % 50 == 0)
       g_debug ("discovery tick #%d with list %p (1)", tick_counter, agent->discovery_list);
   }
 #endif
