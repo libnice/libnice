@@ -163,6 +163,9 @@ Restarting ICE:
   candidates, and then start adding new remote candidates with 
   nice_agent_add_remote_candidate().
      - XXX: initial plan, needs review...
+- Note that to modify the set of local candidates, a new stream 
+  has to be created. For the remote party, this looks like a ICE
+  restart as well.
 
 Notes about sending media:
 
