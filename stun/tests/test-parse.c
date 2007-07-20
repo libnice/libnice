@@ -39,6 +39,7 @@
 
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <netinet/in.h>
 
 #include "stun/stun-msg.h"
 #include <stdio.h>
@@ -180,7 +181,7 @@ static void test_message (void)
 static void test_attribute (void)
 {
 	static const uint8_t acme[] =
-		"\x15\x55\x00\x4c" // <-- update message length if needed!!
+		"\x15\x55\x00\x64" // <-- update message length if needed!!
 		"\x21\x12\xA4\x42" // cookie
 		"\x76\x54\x32\x10"
 		"\xfe\xdc\xba\x98"
@@ -209,16 +210,28 @@ static void test_attribute (void)
 		"\xc0\x00\x02\x01"
 		"\x66\x60\x00\x00"
 
+		/* FF06: valid xor'd IPv6 address, 160-bits */
+		"\xff\x06\x00\x14"
+		"\x00\x02\x12\x34"
+		"\x01\x13\xa9\xfa"
+		"\xa8\xf9\x8c\xff"
+		"\x20\x26\x74\x48"
+		"\x8c\x9a\xec\xfd"
+
 		/* MESSAGE-INTEGRITY attribute */
 		"\x00\x08\x00\x14"
-		"\xd2\x0c\x85\xcd"
-		"\x43\x3b\xec\x9e"
-		"\x4d\x84\x2d\x87"
-		"\x82\x80\x5b\x3b"
-		"\xd5\x54\xd8\xa8"
+		"\x20\x10\xee\x8d"
+		"\x61\xc9\x3e\x46"
+		"\xbe\x41\xad\x5c"
+		"\xad\x38\xaa\x4c"
+		"\xe8\xf1\xaf\x07"
 		;
 
-	struct sockaddr addr;
+	union
+	{
+		struct sockaddr sa;
+		struct sockaddr_in6 s6;
+	} addr;
 	socklen_t addrlen;
 	uint32_t dword;
 	uint64_t qword;
@@ -264,20 +277,25 @@ static void test_attribute (void)
 		fatal ("String test failed");
 
 	addrlen = sizeof (addr);
-	if (stun_find_addr (acme, 0xff01, &addr, &addrlen) != EINVAL)
+	if (stun_find_addr (acme, 0xff01, &addr.sa, &addrlen) != EINVAL)
 		fatal ("Too short addres test failed");
 	addrlen = sizeof (addr);
-	if (stun_find_addr (acme, 0xff02, &addr, &addrlen) != EAFNOSUPPORT)
+	if (stun_find_addr (acme, 0xff02, &addr.sa, &addrlen) != EAFNOSUPPORT)
 		fatal ("Unknown address family test failed");
 	addrlen = sizeof (addr);
-	if (stun_find_addr (acme, 0xff03, &addr, &addrlen) != EINVAL)
+	if (stun_find_addr (acme, 0xff03, &addr.sa, &addrlen) != EINVAL)
 		fatal ("Too short IPv6 address test failed");
 	addrlen = sizeof (addr);
-	if (stun_find_addr (acme, 0xff04, &addr, &addrlen) != 0)
+	if (stun_find_addr (acme, 0xff04, &addr.sa, &addrlen) != 0)
 		fatal ("IPv4 address test failed");
 	addrlen = sizeof (addr);
-	if (stun_find_addr (acme, 0xff05, &addr, &addrlen) != EINVAL)
+	if (stun_find_addr (acme, 0xff05, &addr.sa, &addrlen) != EINVAL)
 		fatal ("Too big IPv4 address test failed");
+	addrlen = sizeof (addr);
+	if (stun_find_xor_addr (acme, 0xff06, &addr.sa, &addrlen)
+	 || memcmp (&addr.s6.sin6_addr, "\x20\x01\x0d\xb8""\xde\xad\xbe\xef"
+	                                "\xde\xfa\xce\xd0""\xfa\xce\xde\xed", 16))
+		fatal ("IPv6 address test failed");
 
 	if (stun_verify_key (acme, "good_guy", 8) != 0)
 		fatal ("Good secret HMAC test failed");

@@ -96,10 +96,32 @@ int main (void)
 	                            sizeof (ip4), pass, &control, tie);
 	assert (val == EPERM);
 	assert (len > 0);
+	assert (stun_get_class (resp) == STUN_ERROR);
+	assert (!stun_present (resp, STUN_MESSAGE_INTEGRITY));
 	assert (stun_conncheck_username (req, NULL, 0) == NULL);
 	assert (stun_conncheck_username (req, nbuf, sizeof (nbuf)) == NULL);
 	assert (stun_conncheck_priority (req) == 0);
 	assert (stun_conncheck_use_candidate (req) == false);
+
+
+	/* Bad username */
+	stun_init_request (req, STUN_BINDING);
+	len = sizeof (req);
+	val = stun_finish_short (req, &len, "ab\xff", pass, NULL, 0);
+	assert (val == 0);
+	assert (stun_conncheck_username (req, nbuf, sizeof (nbuf)) == NULL);
+
+	/* FIXME: use conncheck_reply */
+
+	/* Bad fingerprint */
+	len = sizeof (resp);
+	val = stun_conncheck_reply (resp, &len, req, (struct sockaddr *)&ip4,
+	                            sizeof (ip4), "bad", &control, tie);
+	assert (val == EPERM);
+	assert (len > 0);
+	assert (stun_get_class (resp) == STUN_ERROR);
+	assert (!stun_present (resp, STUN_MESSAGE_INTEGRITY));
+
 
 	/* Good message */
 	stun_init_request (req, STUN_BINDING);
@@ -116,6 +138,8 @@ int main (void)
 	                            sizeof (ip4), pass, &control, tie);
 	assert (val == 0);
 	assert (len > 0);
+	assert (stun_get_class (resp) == STUN_RESPONSE);
+	assert (stun_present (resp, STUN_MESSAGE_INTEGRITY));
 
 	assert (stun_conncheck_priority (req) == 0x12345678);
 	assert (stun_conncheck_use_candidate (req) == true);
@@ -128,19 +152,6 @@ int main (void)
 	assert (stun_conncheck_username (req, nbuf, sizeof (nbuf)) == nbuf);
 	assert (strcmp (nbuf, name) == 0);
 
-
-	/* Bad username */
-	stun_init_request (req, STUN_BINDING);
-	len = sizeof (req);
-	val = stun_finish_short (req, &len, "ab\xff", pass, NULL, 0);
-	assert (val == 0);
-	assert (stun_conncheck_username (req, nbuf, sizeof (nbuf)) == NULL);
-
-	/* Bad fingerprint */
-	val = stun_conncheck_reply (resp, &len, req, (struct sockaddr *)&ip4,
-	                            sizeof (ip4), "bad", &control, tie);
-	assert (val == EPERM);
-	assert (len > 0);
 
 	/* Lost role conflict */
 	stun_init_request (req, STUN_BINDING);
@@ -157,6 +168,8 @@ int main (void)
 	assert (val == EACCES);
 	assert (len > 0);
 	assert (control == false);
+	assert (stun_get_class (resp) == STUN_RESPONSE);
+	assert (stun_present (resp, STUN_MESSAGE_INTEGRITY));
 
 	/* Won role conflict */
 	stun_init_request (req, STUN_BINDING);
@@ -173,6 +186,8 @@ int main (void)
 	assert (val == 0);
 	assert (len > 0);
 	assert (control == false);
+	assert (stun_get_class (resp) == STUN_ERROR);
+	assert (stun_present (resp, STUN_MESSAGE_INTEGRITY));
 
 	return 0;
 }

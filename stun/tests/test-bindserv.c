@@ -85,9 +85,20 @@ int main (void)
 	assert (len > 0);
 	assert (stun_present (buf, STUN_XOR_MAPPED_ADDRESS));
 
+	/* Same with too small response buffer */
+	stun_init_request (buf, STUN_BINDING);
+	len = sizeof (buf);
+	stun_finish (buf, &len);
+
+	len = 20 + 12 + 4 + stun_align (strlen (PACKAGE_STRING)) + 7;
+	val = stun_bind_reply (buf, &len, buf,
+	                       (struct sockaddr *)&ip4, sizeof (ip4), false);
+	assert (val == ENOBUFS);
+	assert (len == 0);
+
 	/* Incorrect message class */
 	stun_init_request (buf, STUN_BINDING);
-	stun_init_response (buf, buf);
+	stun_init_response (buf, sizeof (buf), buf);
 	len = sizeof (buf);
 	val = stun_finish (buf, &len);
 	assert (val == 0);
@@ -124,6 +135,18 @@ int main (void)
 	                       (struct sockaddr *)&ip4, sizeof (ip4), false);
 	assert (val == EPROTO);
 	assert (len > 0);
+
+	/* Same with too small response buffer */
+	stun_init_request (buf, STUN_BINDING);
+	stun_append_string (buf, sizeof (buf), 0x666, "Unknown attribute!");
+	len = sizeof (buf);
+	stun_finish (buf, &len);
+
+	len = 20 + 4 + stun_align (strlen (PACKAGE_STRING)) + 7;
+	val = stun_bind_reply (buf, &len, buf,
+	                       (struct sockaddr *)&ip4, sizeof (ip4), false);
+	assert (val == ENOBUFS);
+	assert (len == 0);
 
 	/* Non-multiplexed message */
 	len = sizeof (buf);

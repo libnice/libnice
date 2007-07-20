@@ -149,7 +149,7 @@ int main (void)
 		fatal ("Request formatting test failed");
 
 	/* Response formatting test */
-	stun_init_response (msg, msg);
+	stun_init_response (msg, sizeof (msg), msg);
 	finish_check (msg);
 	if (memcmp (msg, "\x01\x01", 2))
 		fatal ("Response formatting test failed");

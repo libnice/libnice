@@ -168,7 +168,7 @@ static void bad_responses (void)
 	stun_bind_t *ctx;
 	struct sockaddr_storage addr;
 	socklen_t addrlen = sizeof (addr);
-	ssize_t val;
+	ssize_t val, len;
 	uint8_t buf[1000];
 
 	/* Allocate a local UDP port */
@@ -196,15 +196,29 @@ static void bad_responses (void)
 	                         (struct sockaddr *)&addr, &addrlen);
 	assert (val == EAGAIN);
 
-	/* Send non-matching message (request instead of response) */
+	/* Send request instead of response */
 	val = getsockname (servfd, (struct sockaddr *)&addr, &addrlen);
 	assert (val == 0);
-	val = recv (servfd, buf, 1000, MSG_DONTWAIT);
-	assert (val >= 0);
+	len = recv (servfd, buf, 1000, MSG_DONTWAIT);
+	assert (len >= 20);
 
-	val = stun_bind_process (ctx, buf, val,
+	val = stun_bind_process (ctx, buf, len,
 	                         (struct sockaddr *)&addr, &addrlen);
 	assert (val == EAGAIN);
+
+	/* Send response with wrong request type */
+	buf[0] |= 0x03;
+	val = stun_bind_process (ctx, buf, len,
+	                         (struct sockaddr *)&addr, &addrlen);
+	assert (val == EAGAIN);
+	buf[0] ^= 0x02;
+
+	/* Send error response without ERROR-CODE */
+	buf[1] |= 0x10;
+	val = stun_bind_process (ctx, buf, len,
+	                         (struct sockaddr *)&addr, &addrlen);
+	assert (val == EAGAIN);
+
 
 	stun_bind_cancel (ctx);
 	close (servfd);
@@ -250,7 +264,7 @@ static void responses (void)
 	val = recv (servfd, buf, 1000, MSG_DONTWAIT);
 	assert (val >= 0);
 
-	stun_init_error (buf, sizeof (buf), buf, STUN_GLOBAL_FAILURE);
+	stun_init_error (buf, sizeof (buf), buf, STUN_SERVER_ERROR);
 	len = sizeof (buf);
 	val = stun_finish (buf, &len);
 	assert (val == 0);
@@ -268,7 +282,7 @@ static void responses (void)
 	val = recv (servfd, buf, 1000, MSG_DONTWAIT);
 	assert (val >= 0);
 
-	stun_init_response (buf, buf);
+	stun_init_response (buf, sizeof (buf), buf);
 	val = stun_append_string (buf, sizeof (buf), 0x6000,
 	                          "This is an unknown attribute!");
 	assert (val == 0);
@@ -290,7 +304,7 @@ static void responses (void)
 	val = recv (servfd, buf, 1000, MSG_DONTWAIT);
 	assert (val >= 0);
 
-	stun_init_response (buf, buf);
+	stun_init_response (buf, sizeof (buf), buf);
 	len = sizeof (buf);
 	val = stun_finish (buf, &len);
 	assert (val == 0);
@@ -309,7 +323,7 @@ static void responses (void)
 	val = recv (servfd, buf, 1000, MSG_DONTWAIT);
 	assert (val >= 0);
 
-	stun_init_response (buf, buf);
+	stun_init_response (buf, sizeof (buf), buf);
 	val = stun_append_addr (buf, sizeof (buf), STUN_MAPPED_ADDRESS,
 	                        (struct sockaddr *)&addr, addrlen);
 	assert (val == 0);
@@ -323,6 +337,41 @@ static void responses (void)
 	val = stun_bind_process (ctx, buf, len,
 	                         (struct sockaddr *)&addr, &addrlen);
 	assert (val == 0);
+
+	/* End */
+	close (servfd);
+
+	val = close (fd);
+	assert (val == 0);
+}
+
+
+static void keepalive (void)
+{
+	struct sockaddr_storage addr;
+	socklen_t addrlen = sizeof (addr);
+	size_t len;
+	int val, servfd, fd;
+
+	/* Allocate a local UDP port for server */
+	servfd = listen_dgram ();
+	assert (servfd != -1);
+
+	val = getsockname (servfd, (struct sockaddr *)&addr, &addrlen);
+	assert (val == 0);
+
+	/* Allocate a client socket and connect to server */
+	fd = socket (addr.ss_family, SOCK_DGRAM, 0);
+	assert (fd != -1);
+
+	/* Keep alive sending smoke test */
+	val = stun_bind_keepalive (fd, (struct sockaddr *)&addr, addrlen);
+	assert (val == 0);
+
+	/* Wrong address family test */
+	addr.ss_family = addr.ss_family == AF_INET ? AF_INET6 : AF_INET;
+	val = stun_bind_keepalive (fd, (struct sockaddr *)&addr, addrlen);
+	assert (val != 0);
 
 	/* End */
 	close (servfd);
@@ -347,8 +396,9 @@ int main (void)
 	test (bad_family, "Bad socket family");
 	test (small_srv_addr, "Too small server address");
 	test (big_srv_addr, "Too big server address");
-	test (timeout, "Binding discovery timeout");
 	test (bad_responses, "Bad responses");
 	test (responses, "Error responses");
+	test (keepalive, "Keep alives");
+	test (timeout, "Binding discovery timeout");
 	return 0;
 }
