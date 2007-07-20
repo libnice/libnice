@@ -139,7 +139,7 @@ error:
 }
 
 
-static inline int err_dequeue (int fd)
+static int err_dequeue (int fd)
 {
 #ifdef MSG_ERRQUEUE
 	struct msghdr hdr;
@@ -149,13 +149,12 @@ static inline int err_dequeue (int fd)
 }
 
 
-#include "stun-msg.h" // FIXME: remove
 #include "bind.h"
 
 static int dgram_process (int sock)
 {
 	struct sockaddr_storage addr;
-	stun_msg_t buf;
+	uint8_t buf[1500];
 	char ctlbuf[CMSG_SPACE (sizeof (struct in6_pktinfo))];
 	struct iovec iov = { buf, sizeof (buf) };
 	struct msghdr mh;
@@ -171,15 +170,12 @@ static int dgram_process (int sock)
 	ssize_t len = recvmsg (sock, &mh, 0);
 	if (len < 0)
 	{
-		DBG ("Receive error: %s\n", strerror (errno));
+		err_dequeue (sock);
 		return -1;
 	}
 
 	if (mh.msg_flags & MSG_TRUNC)
-	{
-		DBG ("Truncated datagram ignored.\n");
 		return -1;
-	}
 
 	if (stun_validate (buf, len) <= 0)
 		return -1;
