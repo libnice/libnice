@@ -404,6 +404,9 @@ NiceCandidate *discovery_learn_remote_peer_reflexive_candidate (
 {
   NiceCandidate *candidate;
 
+  /* XXX: for use compiler */
+  (void)udp_socket;
+
   candidate = nice_candidate_new (NICE_CANDIDATE_TYPE_PEER_REFLEXIVE);
   if (candidate) {
     GSList *modified_list;

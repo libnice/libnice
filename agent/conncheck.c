@@ -381,7 +381,7 @@ static gboolean priv_conn_keepalive_tick (gpointer pointer)
 	
 	res = stun_bind_keepalive (p->local->sockptr->fileno,
 				   &sockaddr, sizeof (sockaddr));
-	g_debug ("stun_bind_keepalive for pair %p res %d.", p, res);
+	g_debug ("stun_bind_keepalive for pair %p res %d (%s).", p, res, strerror (res));
 	if (res < 0)
 	  ++errors;
       }
@@ -475,6 +475,7 @@ static gboolean priv_add_new_check_pair (NiceAgent *agent, guint stream_id, Comp
       pair->priority = nice_candidate_pair_priority (remote->priority, local->priority);
     pair->state = initial_state;
     pair->nominated = use_candidate;
+    pair->controlling = agent->controlling_mode;
 
     /* note: for the first added check */
     if (!agent->conncheck_list)
@@ -1033,12 +1034,49 @@ static CandidateCheckPair *priv_add_peer_reflexive_pair (NiceAgent *agent, guint
       else
 	pair->priority = nice_candidate_pair_priority (parent_pair->remote->priority, local_cand->priority);
       pair->nominated = FALSE;
+      pair->controlling = agent->controlling_mode;
       g_debug ("added a new peer-discovered pair with foundation of '%s'.", pair->foundation);
       return pair;
     }
   }
 
   return NULL;
+}
+
+/**
+ * Recalculates priorities of all candidate pairs. This
+ * is required after a conflict in ICE roles.
+ */
+static void priv_recalculate_pair_priorities (NiceAgent *agent)
+{
+  GSList *i;
+
+  for (i = agent->conncheck_list; i; i = i->next) {
+    CandidateCheckPair *p = i->data;
+    if (agent->controlling_mode == TRUE)
+      p->priority = nice_candidate_pair_priority (p->local->priority, p->remote->priority);
+    else
+      p->priority = nice_candidate_pair_priority (p->remote->priority, p->local->priority);
+  }
+}
+
+/**
+ * Change the agent role if different from 'control'. Can be
+ * initiated both by handling of incoming connectivity checks,
+ * and by processing the responses to checks sent by us.
+ */
+static void priv_check_for_role_conflict (NiceAgent *agent, gboolean control)
+{
+  /* role conflict, change mode; wait for a new conn. check */
+  if (control != agent->controlling_mode) {
+    g_debug ("Role conflict, changing agent role to %d.", control);
+    agent->controlling_mode = control;
+    /* the pair priorities depend on the roles, so recalculation
+     * is needed */
+    priv_recalculate_pair_priorities (agent);
+  }
+  else 
+    g_debug ("Role conflict, agent role already changed to %d.", control);
 }
 
 /**
@@ -1060,7 +1098,7 @@ static gboolean priv_map_reply_to_conn_check_request (NiceAgent *agent, Stream *
     CandidateCheckPair *p = i->data;
     if (p->stun_ctx) {
       res = stun_bind_process (p->stun_ctx, buf, len, &sockaddr, &socklen); 
-      g_debug ("stun_bind_process/conncheck for %p res %d (controlling=%d).", p, res, agent->controlling_mode);
+      g_debug ("stun_bind_process/conncheck for %p res %d (%s) (controlling=%d).", p, res, strerror (res), agent->controlling_mode);
       if (res == 0) {
 	/* case: found a matching connectivity check request */
 
@@ -1136,6 +1174,19 @@ static gboolean priv_map_reply_to_conn_check_request (NiceAgent *agent, Stream *
 
 	trans_found = TRUE;
       }
+      else if (res == ECONNRESET) {
+	/* case: role conflict error, need to restart with new role */
+	g_debug ("conncheck %p ROLE CONFLICT, restarting", p);
+	
+	/* note: our role might already have changed due to an
+	 * incoming request, but if not, change role now;
+	 * follows ICE 7.1.2.1 "Failure Cases" (ID-17) */
+	priv_check_for_role_conflict (agent, !p->controlling);
+
+	p->stun_ctx = NULL;
+	p->state = NICE_CHECK_WAITING;
+	trans_found = TRUE;
+      }
       else if (res != EAGAIN) {
 	/* case: STUN error, the check STUN context was freed */
 	g_debug ("conncheck %p FAILED.", p);
@@ -1143,15 +1194,11 @@ static gboolean priv_map_reply_to_conn_check_request (NiceAgent *agent, Stream *
 	trans_found = TRUE;
       }
       else {
+	/* case: STUN could not parse, skip */
+	/* XXX: added by Remi, needs review */
 	g_assert (res == EAGAIN);
 	
-	/* XXX: stun won't restart automatically, so cancel and
-	 *   restart, should do this only for 487 errors (role conflict) */
-	g_debug ("cancelling and restarting check for pair %p", p);
-
-	stun_bind_cancel (p->stun_ctx), 
-	  p->stun_ctx = NULL;
-	p->state = NICE_CHECK_WAITING;
+	g_debug ("conncheck %p SKIPPED", p);
       }
     }
   }
@@ -1177,7 +1224,7 @@ static gboolean priv_map_reply_to_discovery_request (NiceAgent *agent, gchar *bu
     CandidateDiscovery *d = i->data;
     if (d->stun_ctx) {
       res = stun_bind_process (d->stun_ctx, buf, len, &sockaddr, &socklen); 
-      g_debug ("stun_bind_process/disc for %p res %d.", d, res);
+      g_debug ("stun_bind_process/disc for %p res %d (%s).", d, res, strerror (res));
       if (res == 0) {
 	/* case: succesful binding discovery, create a new local candidate */
 	NiceAddress niceaddr;
@@ -1230,23 +1277,6 @@ static gboolean priv_verify_inbound_username (Stream *stream, const char *uname)
 }
 
 /**
- * Recalculates priorities of all candidate pairs. This
- * is required after a conflict in ICE roles.
- */
-static void priv_recalculate_pair_priorities (NiceAgent *agent)
-{
-  GSList *i;
-
-  for (i = agent->conncheck_list; i; i = i->next) {
-    CandidateCheckPair *p = i->data;
-    if (agent->controlling_mode == TRUE)
-      p->priority = nice_candidate_pair_priority (p->local->priority, p->remote->priority);
-    else
-      p->priority = nice_candidate_pair_priority (p->remote->priority, p->local->priority);
-  }
-}
-
-/**
  * Processing an incoming STUN message.
  *
  * @param agent self pointer
@@ -1274,25 +1304,18 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, Stream *stream, Compo
   /* note: contents of 'buf' already validated, so it is 
    *       a valid and fully received STUN message */
 
-  g_debug ("inbound STUN packet for stream/component %u/%u:", stream->id, component->id);
+  g_debug ("inbound STUN packet for %p/%u/%u (agent/stream/component):", agent, stream->id, component->id);
 
   /* note: ICE  7.2. "STUN Server Procedures" (ID-17) */
 
   res = stun_conncheck_reply (rbuf, &rbuf_len, (const uint8_t*)buf, &sockaddr, sizeof (sockaddr), 
 			      stream->local_password, &control, agent->tie_breaker);
-  if (res == EACCES) {
-    /* role conflict, change mode and regenarate reply */
-    if (control != agent->controlling_mode) {
-      g_debug ("Conflict in controller selection, switching to mode %d.", control);
-      agent->controlling_mode = control;
-      /* the pair priorities depend on the roles, so recalculation
-       * is needed */
-      priv_recalculate_pair_priorities (agent);
-    }
-  }
+
+  if (res == EACCES)
+    priv_check_for_role_conflict (agent, control);
 
   if (res == 0 || res == EACCES) {
-    /* case 1: valid incoming request, send a reply */
+    /* case 1: valid incoming request, send a reply/error */
     
     GSList *i;
     bool use_candidate = 

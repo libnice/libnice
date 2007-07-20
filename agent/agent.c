@@ -1254,7 +1254,9 @@ nice_agent_poll_read (
 /**
  * Sends a data payload over a stream component.
  * 
- * @pre component state MUST be NICE_COMPONENT_STATE_READY
+ * @pre component state MUST be NICE_COMPONENT_STATE_READY,
+ * or as a special case, in any state if component was 
+ * in READY state before and was then restarted
  *
  * @return number of bytes sent, or negative error code
  */
@@ -1365,13 +1367,17 @@ nice_agent_restart (
   GSList *i;
   gboolean res = TRUE;
 
-  /* clean up all connectivity checks */
+  /* step: clean up all connectivity checks */
   conn_check_free (agent);
+
+  /* step: regenerate tie-breaker value */
+  priv_generate_tie_breaker (agent);
 
   for (i = agent->streams; i && res; i = i->next) {
     Stream *stream = i->data;
 
-    /* reset local credentials */
+    /* step: reset local credentials for the stream and 
+     * clean up the list of remote candidates */
     res = stream_restart (stream, agent->rng);
   }
 

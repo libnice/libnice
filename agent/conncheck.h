@@ -78,6 +78,7 @@ struct _CandidateCheckPair
   gchar foundation[NICE_CANDIDATE_PAIR_MAX_FOUNDATION];
   NiceCheckState state;
   gboolean nominated;
+  gboolean controlling;
   guint64 priority; 
   GTimeVal next_tick;       /* next tick timestamp */
   gboolean traffic_after_tick;
