@@ -40,6 +40,7 @@
 #include <string.h>
 
 #include "agent.h"
+#include "agent-priv.h" /* for testing purposes */
 #include "udp-bsd.h"
 
 static NiceComponentState global_lagent_state = NICE_COMPONENT_STATE_LAST;
@@ -56,6 +57,7 @@ static gboolean global_ragent_ibr_received = FALSE;
 static int global_lagent_cands = 0;
 static int global_ragent_cands = 0;
 static gint global_ragent_read = 0;
+static gint global_ragent_read_exit = 0;
 
 static void priv_print_global_status (void)
 {
@@ -84,7 +86,10 @@ static void cb_nice_recv (NiceAgent *agent, guint stream_id, guint component_id,
   (void)agent; (void)stream_id; (void)component_id; (void)buf;
 
   if ((int)user_data == 2) {
-    global_ragent_read = len;
+    global_ragent_read += len;
+
+    if (global_ragent_read == global_ragent_read_exit)
+      g_main_loop_quit (global_mainloop);
   }
 }
 
@@ -148,7 +153,7 @@ static void cb_new_selected_pair(NiceAgent *agent, guint stream_id, guint compon
     ++global_ragent_cands;
 
   /* XXX: dear compiler, these are for you: */
-  (void)agent; (void)stream_id; (void)component_id;
+  (void)agent; (void)stream_id; (void)component_id; (void)lfoundation; (void)rfoundation;
 }
 
 static void cb_new_candidate(NiceAgent *agent, guint stream_id, guint component_id, 
@@ -157,7 +162,7 @@ static void cb_new_candidate(NiceAgent *agent, guint stream_id, guint component_
   g_debug ("test-restart:%s: %p", __func__, data);
 
   /* XXX: dear compiler, these are for you: */
-  (void)agent; (void)stream_id; (void)data; (void)component_id;
+  (void)agent; (void)stream_id; (void)data; (void)component_id; (void)foundation;
 }
 
 static void cb_initial_binding_request_received(NiceAgent *agent, guint stream_id, gpointer data)
@@ -201,6 +206,10 @@ static int run_restart_test (NiceAgent *lagent, NiceAgent *ragent, NiceAddress *
   };
   GSList *cands;
   guint ls_id, rs_id;
+  guint64 tie_breaker;
+
+  /* XXX: dear compiler, these are for you: */
+  (void)baseaddr;
 
   /* step: initialize variables modified by the callbacks */
   global_components_ready = 0;
@@ -213,6 +222,7 @@ static int run_restart_test (NiceAgent *lagent, NiceAgent *ragent, NiceAddress *
     global_ragent_ibr_received = FALSE;
   global_lagent_cands = 
     global_ragent_cands = 0;
+  global_ragent_read_exit = -1;
 
   g_object_set (G_OBJECT (lagent), "controlling-mode", TRUE, NULL);
   g_object_set (G_OBJECT (ragent), "controlling-mode", FALSE, NULL);
@@ -297,7 +307,9 @@ static int run_restart_test (NiceAgent *lagent, NiceAgent *ragent, NiceAddress *
   g_assert (nice_agent_send (lagent, ls_id, 1, 16, "1234567812345678") == 16);
 
   /* step: restart agents, exchange updated credentials */
+  tie_breaker = ragent->tie_breaker;
   nice_agent_restart (ragent);
+  g_assert (tie_breaker != ragent->tie_breaker);
   nice_agent_restart (lagent);
   {
       const gchar *ufrag = NULL, *password = NULL;
@@ -308,12 +320,15 @@ static int run_restart_test (NiceAgent *lagent, NiceAgent *ragent, NiceAddress *
       nice_agent_set_remote_credentials (lagent,
 					 ls_id, ufrag, password);
   }
+  
+  /* send another packet after restart */
+  g_assert (nice_agent_send (lagent, ls_id, 1, 16, "1234567812345678") == 16);
 
   /* step: reset state variables */
   global_lagent_ibr_received = FALSE;
   global_ragent_ibr_received = FALSE;
   global_components_ready = 0;
-  global_components_ready_exit = 4;
+  global_ragent_read_exit = 32;
 
   /* step: exchange remote candidates */
   cdes.component_id = NICE_COMPONENT_TYPE_RTP;
@@ -330,7 +345,7 @@ static int run_restart_test (NiceAgent *lagent, NiceAgent *ragent, NiceAddress *
   g_main_loop_run (global_mainloop);
 
   /* note: verify that payload was succesfully received */
-  g_assert (global_ragent_read == 16);
+  g_assert (global_ragent_read == 32);
   /* note: verify binding requests were resent after restart */
   g_assert (global_lagent_ibr_received == TRUE);
   g_assert (global_ragent_ibr_received == TRUE);
