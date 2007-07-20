@@ -78,18 +78,30 @@ int stun_bind_run (int fd,
 		unsigned delay = stun_bind_timeout (ctx);
 
 		memset (ufd, 0, sizeof (ufd));
-		ufd[0].fd = stun_bind_fd (ctx),
+		ufd[0].fd = fd = stun_bind_fd (ctx),
 		ufd[0].events = POLLIN;
 
-		poll (ufd, sizeof (ufd) / sizeof (ufd[0]), delay);
-		val = recv (ufd[0].fd, buf + len, sizeof (buf) - len, MSG_DONTWAIT);
-		if (val == -1)
-			val = stun_bind_elapse (ctx);
-		else
+		if (poll (ufd, sizeof (ufd) / sizeof (ufd[0]), delay) <= 0)
 		{
-			len += val;
-			val = stun_bind_process (ctx, buf, len, addr, addrlen);
+			val = stun_bind_elapse (ctx);
+			continue;
 		}
+
+		val = recv (fd, buf + len, sizeof (buf) - len, MSG_DONTWAIT);
+		if (val == -1)
+		{
+#ifdef MSG_ERRQUEUE
+			/* FIXME: do proper ICMP error handling? */
+			struct msghdr hdr;
+			memset (&hdr, 0, sizeof (hdr));
+			recvmsg (fd, &hdr, MSG_ERRQUEUE);
+#endif
+			val = EAGAIN;
+			continue;
+		}
+
+		len += val;
+		val = stun_bind_process (ctx, buf, len, addr, addrlen);
 	}
 	while (val == EAGAIN);
 
@@ -224,11 +236,11 @@ int stun_bind_process (stun_bind_t *restrict ctx,
                        const void *restrict buf, size_t len,
                        struct sockaddr *restrict addr, socklen_t *addrlen)
 {
-	int val;
+	int val, code;
 
 	assert (ctx != NULL);
 
-	val = stun_trans_preprocess (&ctx->trans, buf, len);
+	val = stun_trans_preprocess (&ctx->trans, &code, buf, len);
 	switch (val)
 	{
 		case EAGAIN:
@@ -236,6 +248,8 @@ int stun_bind_process (stun_bind_t *restrict ctx,
 		case 0:
 			break;
 		default:
+			if (code == STUN_ROLE_CONFLICT)
+				val = ECONNRESET;
 			stun_bind_cancel (ctx);
 			return val;
 	}
@@ -265,14 +279,16 @@ int
 stun_bind_keepalive (int fd, const struct sockaddr *restrict srv,
                      socklen_t srvlen)
 {
-	size_t val;
 	uint8_t buf[28];
+	size_t len = sizeof (buf);
+	int val;
 
 	stun_init_indication (buf, STUN_BINDING);
-	(void)stun_finish (buf, &val);
+	val = stun_finish (buf, &len);
+	assert (val == 0);
 
 	/* NOTE: hopefully, this is only needed for non-stream sockets */
-	if (sendto (fd, buf, val, MSG_DONTWAIT, srv, srvlen) == -1)
+	if (stun_sendto (fd, buf, len, srv, srvlen) == -1)
 		return errno;
 	return 0;
 }

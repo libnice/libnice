@@ -142,7 +142,8 @@ int stun_bind_fd (const stun_bind_t *context);
  *
  * @return 0 on success, an error code otherwise:
  * - EAGAIN: ignored invalid message (non-fatal error)
- * - ECONNREFUSED: error message from server
+ * - ECONNRESET: role conflict error from server
+ * - ECONNREFUSED: any other fatal error message from server
  * - EPROTO: unsupported message from server
  * - ENOENT: no mapped address in message from server
  * - EAFNOSUPPORT: unsupported mapped address family from server

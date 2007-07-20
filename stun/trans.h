@@ -103,7 +103,7 @@ void stun_trans_deinit (stun_trans_t *restrict tr);
 
 int stun_trans_start (stun_trans_t *restrict tr);
 int stun_trans_tick (stun_trans_t *tr);
-int stun_trans_preprocess (stun_trans_t *restrict tr,
+int stun_trans_preprocess (stun_trans_t *restrict tr, int *code,
                            const void *restrict buf, size_t len);
 
 /**
@@ -121,6 +121,9 @@ unsigned stun_trans_timeout (const stun_trans_t *tr);
  * Always succeeds.
  */
 int stun_trans_fd (const stun_trans_t *tr);
+
+ssize_t stun_sendto (int fd, const uint8_t *buf, size_t len,
+                     const struct sockaddr *dst, socklen_t dstlen);
 
 # ifdef __cplusplus
 }

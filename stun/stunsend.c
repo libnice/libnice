@@ -111,15 +111,6 @@ void stun_init_indication (uint8_t *req, stun_method_t m)
 }
 
 
-void stun_init_response (uint8_t *ans, const uint8_t *req)
-{
-	//assert (stun_valid (req));
-	assert (stun_get_class (req) == STUN_REQUEST);
-
-	stun_init (ans, STUN_RESPONSE, stun_get_method (req), stun_id (req));
-}
-
-
 /**
  * Reserves room for appending an attribute to an unfinished STUN message.
  * @param msg STUN message buffer
@@ -137,6 +128,7 @@ stun_append (uint8_t *msg, size_t msize, stun_attr_type_t type, size_t length)
 	uint8_t *a;
 	uint16_t mlen = stun_length (msg);
 
+	assert (stun_valid (msg));
 	assert (stun_padding (mlen) == 0);
 
 	if (msize > STUN_MAXMSG)
@@ -216,6 +208,26 @@ stun_append_string (uint8_t *restrict msg, size_t msize,
 }
 
 
+static int stun_append_server (uint8_t *restrict msg, size_t msize)
+{
+	static const char server[] = PACKAGE_STRING;
+	assert (strlen (server) < 128);
+
+	return stun_append_string (msg, msize, STUN_SERVER, server);
+}
+
+
+void stun_init_response (uint8_t *ans, size_t msize, const uint8_t *req)
+{
+	assert (stun_valid (req));
+	assert (stun_get_class (req) == STUN_REQUEST);
+	assert (msize >= 20u);
+
+	stun_init (ans, STUN_RESPONSE, stun_get_method (req), stun_id (req));
+	(void)stun_append_server (ans, msize);
+}
+
+
 /**
  * @param code host-byte order error code
  * @return a static pointer to a nul-terminated error message string.
@@ -257,15 +269,21 @@ static const char *stun_strerror (stun_error_t code)
 		{ STUN_SERVER_CAPACITY, "Temporary server congestion" },
 		{ 0, "" }
 	};
+	const char *str = "Unknown error";
 	unsigned i;
 
 	for (i = 0; tab[i].phrase[0]; i++)
 	{
 		if (tab[i].code == code)
-			return tab[i].phrase;
+		{
+			str = tab[i].phrase;
+			break;
+		}
 	}
 
-	return "Unknown error";
+	/* Maximum allowed error message length */
+	assert (strlen (str) < 128);
+	return str;
 }
 
 
@@ -299,9 +317,11 @@ stun_append_error (uint8_t *restrict msg, size_t msize, stun_error_t code)
 int stun_init_error (uint8_t *ans, size_t msize, const uint8_t *req,
                       stun_error_t err)
 {
-	//assert (stun_valid (req));
+	assert (stun_valid (req));
+	assert (msize >= 20u);
 
 	stun_init (ans, STUN_ERROR, stun_get_method (req), stun_id (req));
+	(void)stun_append_server (ans, msize);
 	return stun_append_error (ans, msize, err);
 }
 
@@ -315,7 +335,7 @@ int stun_init_error_unknown (uint8_t *ans, size_t msize, const uint8_t *req)
 	uint16_t ids[256];
 #endif
 
-	//assert (stun_valid (req));
+	assert (stun_valid (req));
 	assert (stun_get_class (req) == STUN_REQUEST);
 
 	counter = stun_find_unknown (req, ids, sizeof (ids) / sizeof (ids[0]));
@@ -390,13 +410,16 @@ int stun_append_xor_addr (uint8_t *restrict msg, size_t msize,
                           const struct sockaddr *restrict addr,
                           socklen_t addrlen)
 {
-	struct sockaddr_storage xor;
 	int val;
+	union
+	{
+		struct sockaddr addr;
+		char fill[addrlen];
+	} xor;
 
-	if (addrlen > sizeof (xor))
-		return ENOBUFS;
-
+	assert (sizeof (xor) >= addrlen);
 	memcpy (&xor, addr, addrlen);
+
 	val = stun_xor_address (msg, (struct sockaddr *)&xor, addrlen);
 	if (val)
 		return val;

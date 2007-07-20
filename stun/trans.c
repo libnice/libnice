@@ -71,8 +71,8 @@ int stun_trans_init (stun_trans_t *restrict tr, int fd,
 	tr->key.length = 0;
 	tr->key.value = NULL;
 
-	if (getsockopt (fd, SOL_SOCKET, SO_TYPE, &sotype, &solen))
-		return errno;
+	assert (getsockopt (fd, SOL_SOCKET, SO_TYPE, &sotype, &solen) == 0);
+	(void)getsockopt (fd, SOL_SOCKET, SO_TYPE, &sotype, &solen);
 
 	switch (sotype)
 	{
@@ -186,13 +186,35 @@ static inline int stun_err_dequeue (int fd)
 {
 #ifdef MSG_ERRQUEUE
 	struct msghdr hdr;
+	int saved_errno = errno, ret;
+
 	memset (&hdr, 0, sizeof (hdr));
-	return recvmsg (fd, &hdr, MSG_ERRQUEUE) == 0;
+	ret = (recvmsg (fd, &hdr, MSG_ERRQUEUE) >= 0);
+	errno = saved_errno;
+	return ret;
 #else
 	return 0;
 #endif
 }
 
+
+ssize_t stun_sendto (int fd, const uint8_t *buf, size_t len,
+                     const struct sockaddr *dst, socklen_t dstlen)
+{
+	static const int flags = MSG_DONTWAIT | MSG_NOSIGNAL;
+	ssize_t val;
+
+	do
+	{
+		if (dstlen > 0)
+			val = sendto (fd, buf, len, flags, dst, dstlen);
+		else
+			val = send (fd, buf, len, flags);
+	}
+	while ((val == -1) && stun_err_dequeue (fd));
+
+	return val;
+}
 
 /**
  * Try to send STUN request/indication
@@ -203,31 +225,18 @@ stun_trans_send (stun_trans_t *tr)
 	const uint8_t *data = tr->msg.buf + tr->msg.offset;
 	size_t len = tr->msg.length - tr->msg.offset;
 	ssize_t val;
-	int errval;
 
-	do
-	{
-		if (tr->sock.dstlen > 0)
-			val = sendto (tr->sock.fd, data, len, MSG_DONTWAIT | MSG_NOSIGNAL,
-			              (struct sockaddr *)&tr->sock.dst, tr->sock.dstlen);
-		else
-			val = send (tr->sock.fd, data, len, MSG_DONTWAIT | MSG_NOSIGNAL);
+	val = stun_sendto (tr->sock.fd, data, len,
+	                   (struct sockaddr *)&tr->sock.dst, tr->sock.dstlen);
+	if (val < 0)
+		return errno;
 
-		if (val >= 0)
-		{
-			/* Message sent succesfully! */
-			tr->msg.offset += val;
-			assert (tr->msg.offset <= tr->msg.length);
-			if (tr->msg.offset == tr->msg.length) 
-				tr->msg.offset = 0;
-			return 0;
-		}
-
-		errval = errno;
-	}
-	while (stun_err_dequeue (tr->sock.fd));
-
-	return errval;
+	/* Message sent succesfully! */
+	tr->msg.offset += val;
+	assert (tr->msg.offset <= tr->msg.length);
+	if (tr->msg.offset == tr->msg.length) 
+		tr->msg.offset = 0; // FIXME: temporary hack, may break TCP
+	return 0;
 }
 
 
@@ -248,26 +257,27 @@ int stun_trans_tick (stun_trans_t *tr)
 }
 
 
-int stun_trans_preprocess (stun_trans_t *restrict tr,
+int stun_trans_preprocess (stun_trans_t *restrict tr, int *pcode,
                            const void *restrict buf, size_t len)
 {
-	int code;
+	assert (pcode != NULL);
 
 	if (stun_validate (buf, len) <= 0)
 		return EAGAIN;
 
 	DBG ("Received %u-bytes STUN message\n",
 	     (unsigned)stun_validate (buf, len));
-	/* FIXME: some error messages cannot be authenticated!! */
+	/* NOTE: currently we ignore unauthenticated messages if the context
+	 * is authenticated, for security reasons. */
 
 	if (!stun_match_messages (buf, tr->msg.buf, tr->key.value, tr->key.length,
-	                          &code))
+	                          pcode))
 		return EAGAIN;
 
-	if (code >= 0)
+	if (*pcode >= 0)
 	{
-		DBG (" STUN error message received (code: %d)\n", code);
-		return ECONNREFUSED; // FIXME: better error value
+		DBG (" STUN error message received (code: %d)\n", *pcode);
+		return ECONNREFUSED;
 	}
 
 	if (stun_has_unknown (buf))

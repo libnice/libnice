@@ -179,7 +179,7 @@ typedef enum
 	STUN_ROLE_CONFLICT=487,			/* ICE-17 */
 	STUN_SERVER_ERROR=500,			/* RFC3489bis-07 */
 	STUN_SERVER_CAPACITY=507,		/* TURN-04 */
-	STUN_GLOBAL_FAILURE=600 // FIXME
+	STUN_ERROR_MAX=699
 } stun_error_t;
 
 
@@ -441,21 +441,23 @@ void stun_init_request (uint8_t *msg, stun_method_t m);
 void stun_init_indication (uint8_t *msg, stun_method_t m);
 
 /**
- * Initializes a STUN message buffer with no attributes,
- * in response to a given valid STUN request messsage.
+ * Initializes a STUN message buffer with a SERVER attribute (if there is
+ * enough room for it), in response to a given valid STUN request messsage.
  * STUN method and transaction ID are copied from the request message.
  *
  * @param ans [OUT] STUN message buffer
+ * @param msize STUN message buffer size
  * @param req STUN message query
  *
  * ans == req is allowed.
  */
-void stun_init_response (uint8_t *ans, const uint8_t *req);
+void stun_init_response (uint8_t *ans, size_t msize, const uint8_t *req);
 
 /**
  * Initializes a STUN error response message buffer with an ERROR-CODE
- * attribute, in response to a given valid STUN request messsage.
- * STUN method and transaction ID are copied from the request message.
+ * and a SERVER attributes, in response to a given valid STUN request
+ * messsage. STUN method and transaction ID are copied from the request
+ * message.
  *
  * @param ans [OUT] STUN message buffer
  * @param msize STUN message buffer size
@@ -611,5 +613,23 @@ static inline bool stun_has_integrity (const uint8_t *msg)
 {
 	return stun_present (msg, STUN_MESSAGE_INTEGRITY);
 }
+
+
+# ifndef NDEBUG
+/**
+ * This function is for debugging only, which is why it is only defined under
+ * !NDEBUG. It should really only be used in run-time assertions, as it cannot
+ * detect all possible errors. stun_validate() should be used instead in real
+ * code.
+ *
+ * @param msg pointer to a potential STUN message
+ * @return whether the pointer refers to a valid STUN message
+ */
+static inline bool stun_valid (const uint8_t *msg)
+{
+	size_t length = 20u + stun_length (msg);
+	return stun_validate (msg, length) == (ssize_t)length;
+}
+# endif
 
 #endif

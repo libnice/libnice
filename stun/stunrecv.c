@@ -523,20 +523,19 @@ int stun_find_errno (const uint8_t *restrict msg, int *restrict code)
 {
 	uint16_t alen;
 	const uint8_t *ptr = stun_find (msg, STUN_ERROR_CODE, &alen);
-
-	*code = -1;
+	uint8_t class, number;
 
 	if (ptr == NULL)
 		return ENOENT;
 	if (alen < 4)
 		return EINVAL;
 
-	*code = ((ptr[2] & 0x7) * 100) + ptr[3];
-	/* NOTE: we are a bit laxist here. We should also ignore packets where
-	 * the "Number" (ptr[3]) > 99 */
-	if ((*code < 100) || (*code > 699))
+	class = ptr[2] & 0x7;
+	number = ptr[3];
+	if ((class < 3) || (class > 6) || (number > 99))
 		return EINVAL;
 
+	*code = (class * 100) + number;
 	return 0;
 }
 
@@ -561,6 +560,11 @@ stun_match_answer (const uint8_t *msg, stun_method_t method,
 	assert (stun_valid (msg));
 	assert (error != NULL);
 
+	if ((stun_get_method (msg) != method) /* wrong request type */
+	 || !check_cookie (msg) /* response to old-style request */
+	 || memcmp (msg + 8, id, 12)) /* wrong transaction ID */
+		return false;
+
 	switch (stun_get_class (msg))
 	{
 		case STUN_REQUEST:
@@ -573,17 +577,9 @@ stun_match_answer (const uint8_t *msg, stun_method_t method,
 
 		case STUN_ERROR:
 			if (stun_find_errno (msg, error))
-			{
-				assert (*error == -1);
-				return false; // missing ERROR-CODE?!
-			}
+				return false; // missing ERROR-CODE: ignore message
 			break;
 	}
-
-	if ((stun_get_method (msg) != method) /* wrong request type */
-	 || !check_cookie (msg) /* response to old-style request */
-	 || memcmp (msg + 8, id, 12)) /* wrong transaction ID */
-		return false;
 
 	if ((key != NULL) && stun_verify_key (msg, key, keylen))
 		return false;

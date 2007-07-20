@@ -50,14 +50,21 @@ static int
 stun_bind_error (uint8_t *buf, size_t *plen, const uint8_t *req,
                  stun_error_t code, const char *pass)
 {
-	int val = stun_init_error (buf, *plen, req, code);
+	size_t len = *plen;
+	int val;
+
+	*plen = 0;
+	DBG ("STUN Binding Error Reply (buffer size: %u)...\n", (unsigned)len);
+
+	val = stun_init_error (buf, len, req, code);
 	if (val)
 		return val;
 
-	val = stun_finish_short (buf, plen, NULL, pass, NULL, 0);
+	val = stun_finish_short (buf, &len, NULL, pass, NULL, 0);
 	if (val)
 		return val;
 
+	*plen = len;
 	DBG (" Error response (%u) of %u bytes\n", (unsigned)code,
 	     (unsigned)*plen);
 	return 0;
@@ -71,11 +78,16 @@ stun_binding_reply (uint8_t *buf, size_t *restrict plen, const uint8_t *msg,
 {
 	size_t len = *plen;
 	int val;
-	*plen = 0;
 
 #define err( code ) \
 	stun_bind_error (buf, &len, msg, code, pass); \
 	*plen = len
+#define autherr( code ) \
+	stun_bind_error (buf, &len, msg, code, NULL); \
+	*plen = len
+
+	*plen = 0;
+	DBG ("STUN Binding Reply (buffer size = %u)...\n", (unsigned)len);
 
 	if (stun_get_class (msg) != STUN_REQUEST)
 	{
@@ -102,30 +114,23 @@ stun_binding_reply (uint8_t *buf, size_t *restrict plen, const uint8_t *msg,
 		if (!stun_has_integrity (msg))
 		{
 			DBG (" Message Authentication Code missing.\n");
-			err (STUN_BAD_REQUEST);
+			autherr (STUN_UNAUTHORIZED);
 			return EPERM;
 		}
 
 		if (!stun_present (msg, STUN_USERNAME))
 		{
 			DBG (" Username missing.\n");
-			err (STUN_BAD_REQUEST);
+			autherr (STUN_UNAUTHORIZED);
 			return EPERM;
 		}
 
-		/* FIXME: verify USERNAME, return 401 if wrong */
-
-		/* NOTE: should check in that order:
-		 * - missing realm
-		 * - missing nonce
-		 * - stale nonce
-		 * - unknown user / stale credentials
-		 */
+		/* FIXME: verify USERNAME, return STUN_UNAUTHORIZED if wrong */
 
 		if (stun_verify_password (msg, pass))
 		{
 			DBG (" Integrity check failed.\n");
-			err (STUN_INTEGRITY_CHECK_FAILURE);
+			autherr (STUN_INTEGRITY_CHECK_FAILURE);
 			return EPERM;
 		}
 	}
@@ -151,7 +156,7 @@ stun_binding_reply (uint8_t *buf, size_t *restrict plen, const uint8_t *msg,
 		return EPROTO;
 	}
 
-	stun_init_response (buf, msg);
+	stun_init_response (buf, len, msg);
 	val = muxed
 	 ? stun_append_xor_addr (buf, len, STUN_XOR_MAPPED_ADDRESS, src, srclen)
 	 : stun_append_addr (buf, len, STUN_MAPPED_ADDRESS, src, srclen);
@@ -166,9 +171,12 @@ stun_binding_reply (uint8_t *buf, size_t *restrict plen, const uint8_t *msg,
 		goto failure;
 
 	*plen = len;
+	DBG (" All done (response size: %u)\n", (unsigned)len);
 	return 0;
 
 failure:
+	assert (*plen == 0);
+	DBG (" Fatal error formatting Binding Response: %s\n", strerror (val));
 	return val;
 }
 #undef err
@@ -191,6 +199,7 @@ stun_conncheck_reply (uint8_t *buf, size_t *restrict plen, const uint8_t *msg,
                       const struct sockaddr *restrict src, socklen_t srclen,
                       const char *pass, bool *restrict control, uint64_t tie)
 {
+	size_t len = *plen;
 	uint64_t q;
 
 	int val = stun_binding_reply (buf, plen, msg, src, srclen, true, pass);
@@ -198,8 +207,7 @@ stun_conncheck_reply (uint8_t *buf, size_t *restrict plen, const uint8_t *msg,
 		return val;
 
 	/* Role conflict handling */
-
-	// FIXME: breaks if buf == msg
+	assert (buf != msg); /* cannot operate in place */
 	assert (val == 0);
 	if (!stun_find64 (msg, *control ? STUN_ICE_CONTROLLING
 	                                : STUN_ICE_CONTROLLED, &q))
@@ -217,9 +225,16 @@ stun_conncheck_reply (uint8_t *buf, size_t *restrict plen, const uint8_t *msg,
 		{
 			DBG (" staying \"controll%s\" (sending error)\n",
 			     *control ? "ing" : "ed");
+			*plen = len;
 			stun_bind_error (buf, plen, msg, STUN_ROLE_CONFLICT, pass);
 		}
 	}
+#ifndef NDEBUG
+	else
+	if (stun_find64 (msg, *control ? STUN_ICE_CONTROLLED
+	                               : STUN_ICE_CONTROLLING, &q))
+		DBG ("STUN Role not specified by peer!\n");
+#endif
 
 	return val;
 }
