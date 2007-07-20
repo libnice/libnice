@@ -47,10 +47,27 @@
 
 #include <unistd.h>
 #include <string.h>
+#include <errno.h>
 
 #include "udp-bsd.h"
 
 /*** NiceUDPSocket ***/
+static int sock_recv_err (int fd)
+{
+#ifdef MSG_ERRQUEUE
+  /* Silently dequeue any error message if any */
+  struct msghdr hdr;
+  int saved = errno, val;
+
+  memset (&hdr, 0, sizeof (hdr));
+  val = recvmsg (fd, &hdr, MSG_ERRQUEUE);
+  errno = saved;
+  return val == 0;
+#else
+  return 0;
+#endif
+}
+
 
 static gint
 socket_recv (
@@ -66,6 +83,11 @@ socket_recv (
   memset (&sin, 0, sizeof (sin));
   recvd = recvfrom (sock->fileno, buf, len, 0, (struct sockaddr *) &sin,
       &from_len);
+  if (recvd == -1)
+  {
+    sock_recv_err (sock->fileno);
+    return -1;
+  }
 
   from->type = NICE_ADDRESS_TYPE_IPV4;
   from->addr.addr_ipv4 = ntohl (sin.sin_addr.s_addr);
@@ -82,13 +104,18 @@ socket_send (
   const gchar *buf)
 {
   struct sockaddr_in sin;
+  ssize_t sent;
 
   sin.sin_family = AF_INET;
   sin.sin_addr.s_addr = htonl (to->addr.addr_ipv4);
   sin.sin_port = htons (to->port);
 
-  sendto (sock->fileno, buf, len, 0, (struct sockaddr *) &sin, sizeof (sin));
-  return TRUE;
+  do
+    sent = sendto (sock->fileno, buf, len, 0, (struct sockaddr *) &sin,
+          sizeof (sin));
+  while ((sent == -1) && sock_recv_err (sock->fileno));
+  
+  return sent == (ssize_t)len;
 }
 
 static void
@@ -116,6 +143,13 @@ socket_factory_init_socket (
 
   if (sockfd < 0)
     return FALSE;
+#ifdef IP_RECVERR
+  else
+  {
+    int yes = 1;
+    setsockopt (sockfd, SOL_IP, IP_RECVERR, &yes, sizeof (yes));
+  }
+#endif
 
   name.sin_family = AF_INET;
 
