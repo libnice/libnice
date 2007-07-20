@@ -21,8 +21,8 @@ noinst_LTLIBRARIES = libstun.la
 libstun_la_SOURCES = \
 	stun-msg.h stunsend.c stunrecv.c crc32.c hmac.c \
 	timer.h timer.c trans.h trans.c \
-	bind.h stun-ice.h bind.c bindserv.c \
-	relay.h relay.c
+	bind.h stun-ice.h bind.c bindserv.c
+#	relay.h relay.c
 libstun_la_LIBADD = $(LIBS) $(OPENSSL_LIBS) $(LIBRT)
 
 EXTRA_libstun_la_SOURCES = stun.h stun.c
