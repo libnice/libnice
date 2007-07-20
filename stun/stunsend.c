@@ -475,7 +475,7 @@ stun_finish_long (uint8_t *msg, size_t *restrict plen,
 	if (sha != NULL)
 	{
 		stun_sha1 (msg, sha, key, keylen);
-#if 0
+#ifndef NDEBUG
 		DBG (" Message HMAC-SHA1 fingerprint:"
 		     "\n  key     : 0x");
 		for (unsigned i = 0; i < keylen; i++)

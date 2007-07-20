@@ -47,15 +47,6 @@
 #include <errno.h>
 #include <netinet/in.h>
 
-#ifndef NDEBUG
-static inline
-int stun_valid (const uint8_t *msg)
-{
-	size_t length = 20u + stun_length (msg);
-	return stun_validate (msg, length) == (ssize_t)length;
-}
-#endif
-
 ssize_t stun_validate (const uint8_t *msg, size_t len)
 {
 	size_t mlen;
@@ -417,12 +408,10 @@ bool stun_demux (const uint8_t *msg)
 
 	assert (stun_valid (msg));
 
-	DBG ("Demultiplexing STUN message @%p\n", msg);
-
 	/* Checks cookie */
 	if (!check_cookie (msg))
 	{
-		DBG (" No STUN cookie!\n");
+		DBG ("STUN demux error: no cookie!\n");
 		return 0;
 	}
 
@@ -430,7 +419,7 @@ bool stun_demux (const uint8_t *msg)
 	fpr = stun_end (msg) - 4;
 	if ((fpr != stun_find (msg, STUN_FINGERPRINT, &fprlen)) || (fprlen != 4))
 	{
-		DBG (" No FINGERPRINT attribute!\n");
+		DBG ("STUN demux error: no FINGERPRINT attribute!\n");
 		return 0;
 	}
 
@@ -438,12 +427,12 @@ bool stun_demux (const uint8_t *msg)
 	crc32 = htonl (stun_fingerprint (msg));
 	if (memcmp (fpr, &crc32, 4))
 	{
-		DBG (" Incorrect message fingerprint (expected: 0x%08x)!\n",
+		DBG ("STUN demux error: bad fingerprint (expected: 0x%08x)!\n",
 		     stun_fingerprint (msg));
 		return 0;
 	}
 
-	DBG (" Valid multiplexed STUN message!\n");
+	DBG ("STUN demux: OK!\n");
 	return 1;
 }
 
@@ -466,8 +455,6 @@ stun_verify_key (const uint8_t *msg, const void *key, size_t keylen)
 	assert (msg != NULL);
 	assert ((keylen == 0) || (key != NULL));
 
-	DBG ("Authenticating STUN message @%p\n", msg);
-
 	hash = stun_end (msg) - 20;
 	if (stun_demux (msg))
 		hash -= 8; // room for FINGERPRINT at the end
@@ -475,7 +462,7 @@ stun_verify_key (const uint8_t *msg, const void *key, size_t keylen)
 	if ((stun_find (msg, STUN_MESSAGE_INTEGRITY, &hlen) != hash)
 	 || (hlen != 20))
 	{
-		DBG (" No MESSAGE-INTEGRITY attribute!\n");
+		DBG ("STUN auth error: no MESSAGE-INTEGRITY attribute!\n");
 		return ENOENT;
 	}
 
@@ -485,7 +472,7 @@ stun_verify_key (const uint8_t *msg, const void *key, size_t keylen)
 #ifndef NDEBUG
 		unsigned i;
 
-		DBG (" Message HMAC-SHA1 fingerprint mismatch!"
+		DBG ("STUN auth error: SHA1 fingerprint mismatch!"
 		     "\n  key     : 0x");
 		for (i = 0; i < keylen; i++)
 			DBG ("%02x", ((uint8_t *)key)[i]);
@@ -500,7 +487,7 @@ stun_verify_key (const uint8_t *msg, const void *key, size_t keylen)
 		return EPERM;
 	}
 
-	DBG (" Message authenticated successfully!\n");
+	DBG ("STUN auth: OK!\n");
 	return 0;
 }
 
@@ -673,13 +660,12 @@ stun_find_unknown (const uint8_t *restrict msg, uint16_t *restrict list,
 		if (!stun_optional (atype)
 		 && stun_is_unknown (atype))
 		{
-			DBG (" found unknown attribute: 0x%04x (%u bytes)\n",
+			DBG ("STUN unknown: attribute 0x%04x(%u bytes)\n",
 			     (unsigned)atype, (unsigned)alen);
 			list[count++] = atype;
 		}
 	}
 
-	DBG (" %u unknown mandatory attribute%s\n", count,
-	     (count != 1) ? "s" : "");
+	DBG ("STUN unknown: %u mandatory attribute(s)!\n", count);
 	return count;
 }
