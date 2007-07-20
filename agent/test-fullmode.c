@@ -149,7 +149,7 @@ static void cb_new_selected_pair(NiceAgent *agent, guint stream_id, guint compon
     ++global_ragent_cands;
 
   /* XXX: dear compiler, these are for you: */
-  (void)agent; (void)stream_id; (void)component_id;
+  (void)agent; (void)stream_id; (void)component_id; (void)lfoundation; (void)rfoundation;
 }
 
 static void cb_new_candidate(NiceAgent *agent, guint stream_id, guint component_id, 
@@ -158,7 +158,7 @@ static void cb_new_candidate(NiceAgent *agent, guint stream_id, guint component_
   g_debug ("test-fullmode:%s: %p", __func__, data);
 
   /* XXX: dear compiler, these are for you: */
-  (void)agent; (void)stream_id; (void)data; (void)component_id;
+  (void)agent; (void)stream_id; (void)data; (void)component_id; (void)foundation;
 }
 
 static void cb_initial_binding_request_received(NiceAgent *agent, guint stream_id, gpointer data)
@@ -202,6 +202,9 @@ static int run_full_test (NiceAgent *lagent, NiceAgent *ragent, NiceAddress *bas
   };
   GSList *cands;
   guint ls_id, rs_id;
+
+  /* XXX: dear compiler, this is for you */
+  (void)baseaddr;
 
   /* step: initialize variables modified by the callbacks */
   global_components_ready = 0;
@@ -317,6 +320,9 @@ static int run_full_test_wrong_password (NiceAgent *lagent, NiceAgent *ragent, N
   GSList *cands, *i;
   guint ls_id, rs_id;
 
+  /* XXX: dear compiler, this is for you */
+  (void)baseaddr;
+
   global_components_ready = 0;
   global_components_ready_exit = 2;
   global_components_failed = 0;
@@ -420,6 +426,9 @@ static int run_full_test_control_conflict (NiceAgent *lagent, NiceAgent *ragent,
   };
   GSList *cands, *i;
   guint ls_id, rs_id;
+
+  /* XXX: dear compiler, this is for you */
+  (void)baseaddr;
 
   global_components_ready = 0;
   global_components_ready_exit = 2;
