@@ -51,72 +51,118 @@
 NICEAPI_EXPORT NiceAddress *
 nice_address_new (void)
 {
-  return g_slice_new0 (NiceAddress);
+  NiceAddress *addr = g_slice_new0 (NiceAddress);
+  memset (addr, 0, sizeof (addr));
+  addr->s.addr.sa_family = AF_UNSPEC;
+#ifdef HAVE_SA_LEN
+  addr->s.addr.sa_len = sizeof (addr->s.addr);
+#endif
+  return addr;
 }
 
 
 NICEAPI_EXPORT void
 nice_address_set_ipv4 (NiceAddress *addr, guint32 addr_ipv4)
 {
-  addr->type = NICE_ADDRESS_TYPE_IPV4;
-  addr->addr.addr_ipv4 = addr_ipv4;
+  addr->s.ip4.sin_family = AF_INET;
+#ifdef HAVE_SA_LEN
+  addr->s.ip4.sin_len = sizeof (addr->sa.ip4);
+#endif
+  addr->s.ip4.sin_addr.s_addr = addr_ipv4 ? htonl (addr_ipv4) : INADDR_ANY;
 }
 
 
 NICEAPI_EXPORT void
-nice_address_set_ipv6 (NiceAddress *addr, const gchar *addr_ipv6)
+nice_address_set_ipv6 (NiceAddress *addr, const guchar *addr_ipv6)
 {
-  addr->type = NICE_ADDRESS_TYPE_IPV6;
-  memcpy (addr->addr.addr_ipv6, addr_ipv6, sizeof (addr->addr.addr_ipv6));
+  addr->s.ip6.sin6_family = AF_INET6;
+#ifdef HAVE_SA_LEN
+  addr->s.ip6.sin6_len = sizeof (addr->sa.ip6);
+#endif
+  memcpy (addr->s.ip6.sin6_addr.s6_addr, addr_ipv6, 16);
+}
+
+
+NICEAPI_EXPORT void
+nice_address_set_port (NiceAddress *addr, guint port)
+{
+  g_assert (addr);
+
+  switch (addr->s.addr.sa_family)
+    {
+    case AF_INET:
+      addr->s.ip4.sin_port = htons (port);
+      break;
+    case AF_INET6:
+      addr->s.ip6.sin6_port = htons (port);
+      break;
+    default:
+      g_assert_not_reached();
+    }
+}
+
+
+guint
+nice_address_get_port (const NiceAddress *addr)
+{
+  g_assert (addr);
+
+  switch (addr->s.addr.sa_family)
+    {
+    case AF_INET:
+      return ntohs (addr->s.ip4.sin_port);
+    case AF_INET6:
+      return ntohs (addr->s.ip6.sin6_port);
+    }
+
+  g_assert_not_reached();
 }
 
 
 /**
- * address_set_ipv4_from_string ()
+ * address_set_from_string ()
  *
  * Returns FALSE on error.
  */
 NICEAPI_EXPORT gboolean
-nice_address_set_ipv4_from_string (NiceAddress *addr, const gchar *str)
+nice_address_set_from_string (NiceAddress *addr, const gchar *str)
 {
-  struct in_addr iaddr;
+  union
+  {
+    struct in_addr  ipv4;
+    struct in6_addr ipv6;
+  } a;
 
-  if (inet_aton (str, &iaddr) != 0)
-    {
-      nice_address_set_ipv4 (addr, ntohl (iaddr.s_addr));
-      return TRUE;
-    }
+  if (inet_pton (AF_INET, str, &a.ipv4) > 0)
+      nice_address_set_ipv4 (addr, ntohl (a.ipv4.s_addr));
   else
-    {
-      /* invalid address */
-      return FALSE;
-    }
+  if (inet_pton (AF_INET6, str, &a.ipv6) > 0)
+      nice_address_set_ipv6 (addr, a.ipv6.s6_addr);
+  else
+    return FALSE; /* Invalid address */
+
+  return TRUE;
 }
+
 
 /**
  * Sets address to match socket address struct 'sin'.
  */
 NICEAPI_EXPORT void
-nice_address_set_from_sockaddr (NiceAddress *addr, const struct sockaddr *sin)
+nice_address_set_from_sockaddr (NiceAddress *addr,
+                                const struct sockaddr *sa)
 {
-  const struct sockaddr_in *sin4 = (const struct sockaddr_in *)sin;
-  const struct sockaddr_in6 *sin6 = (const struct sockaddr_in6 *)sin;
-
-  g_assert (sin4->sin_family == AF_INET || sin4->sin_family == AF_INET6);
-
-  if (sin4->sin_family == AF_INET)
+  switch (sa->sa_family)
     {
-      addr->type = NICE_ADDRESS_TYPE_IPV4;
-      nice_address_set_ipv4 (addr, ntohl (sin4->sin_addr.s_addr));
+    case AF_INET:
+      memcpy(&addr->s.ip4, sa, sizeof (addr->s.ip4));
+      break;
+    case AF_INET6:
+      memcpy(&addr->s.ip6, sa, sizeof (addr->s.ip6));
+      break;
+    default:
+      g_assert_not_reached();
     }
-  else /* (sin4->sin_family == AF_INET6) */
-    {
-      addr->type = NICE_ADDRESS_TYPE_IPV6;
-      nice_address_set_ipv6 (addr,
-          (gchar *) &sin6->sin6_addr);
-    }
-
-  addr->port = ntohs (sin4->sin_port);
 }
 
 
@@ -124,45 +170,43 @@ nice_address_set_from_sockaddr (NiceAddress *addr, const struct sockaddr *sin)
  * Copies NiceAddress to socket address struct 'sin'.
  */
 NICEAPI_EXPORT void
-nice_address_copy_to_sockaddr (const NiceAddress *addr, struct sockaddr *sin)
+nice_address_copy_to_sockaddr (const NiceAddress *addr,
+                               struct sockaddr *sa)
 {
-  struct sockaddr_in *sin4 = (struct sockaddr_in *)sin;
-  struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)sin;
+  struct sockaddr_in *sin4 = (struct sockaddr_in *)sa;
+  struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)sa;
 
-  g_assert (sin);
-  g_assert (addr->type == NICE_ADDRESS_TYPE_IPV4 || addr->type == NICE_ADDRESS_TYPE_IPV6);
-  
-  if (addr->type == NICE_ADDRESS_TYPE_IPV4)
+  g_assert (sa);
+
+  switch (addr->s.addr.sa_family)
     {
-      sin4->sin_family = AF_INET;
-      sin4->sin_addr.s_addr = htonl (addr->addr.addr_ipv4);
+    case AF_INET:
+      memcpy (sin4, &addr->s.ip4, sizeof (*sin4));
+      break;
+    case AF_INET6:
+      memcpy (sin6, &addr->s.ip6, sizeof (*sin6));
+      break;
+    default:
+      g_assert_not_reached ();
     }
-  else /* (addr->type == NICE_ADDRESS_TYPE_IPV6) */
-    {
-      sin4->sin_family = AF_INET6;
-      memcpy (&sin6->sin6_addr.s6_addr, addr->addr.addr_ipv6,
-              sizeof (addr->addr.addr_ipv6));
-    }
-  
-  sin4->sin_port = htons (addr->port);
 }
 
 NICEAPI_EXPORT void
-nice_address_to_string (NiceAddress *addr, gchar *dst)
+nice_address_to_string (const NiceAddress *addr, gchar *dst)
 {
-  struct in_addr iaddr = {0,};
   const gchar *ret = NULL;
 
-  switch (addr->type)
+  switch (addr->s.addr.sa_family)
     {
-    case NICE_ADDRESS_TYPE_IPV4:
-      iaddr.s_addr = htonl (addr->addr.addr_ipv4);
-      ret = inet_ntop (AF_INET, &iaddr, dst, INET_ADDRSTRLEN);
+    case AF_INET:
+      ret = inet_ntop (AF_INET, &addr->s.ip4.sin_addr, dst, INET_ADDRSTRLEN);
       break;
-    case NICE_ADDRESS_TYPE_IPV6:
-      ret = inet_ntop (AF_INET6, &addr->addr.addr_ipv6, dst,
+    case AF_INET6:
+      ret = inet_ntop (AF_INET6, &addr->s.ip6.sin6_addr, dst,
                        INET6_ADDRSTRLEN);
       break;
+    default:
+      g_assert_not_reached();
     }
 
   g_assert (ret == dst);
@@ -172,21 +216,27 @@ nice_address_to_string (NiceAddress *addr, gchar *dst)
 NICEAPI_EXPORT gboolean
 nice_address_equal (const NiceAddress *a, const NiceAddress *b)
 {
-  g_assert (a->type == NICE_ADDRESS_TYPE_IPV4 || a->type == NICE_ADDRESS_TYPE_IPV6);
-
-  if (a->type != b->type)
+  if (a->s.addr.sa_family != b->s.addr.sa_family)
     return FALSE;
 
-  if (a->type == NICE_ADDRESS_TYPE_IPV4)
-    return (a->addr.addr_ipv4 == b->addr.addr_ipv4) && (a->port == b->port);
+  switch (a->s.addr.sa_family)
+    {
+    case AF_INET:
+      return (a->s.ip4.sin_addr.s_addr == b->s.ip4.sin_addr.s_addr)
+          && (a->s.ip4.sin_port == b->s.ip4.sin_port);
 
-  else /* (a->type == NICE_ADDRESS_TYPE_IPV6) */
-    return (memcmp (a->addr.addr_ipv6, b->addr.addr_ipv6, sizeof (a->addr.addr_ipv6)) == 0) && (a->port == b->port);
+    case AF_INET6:
+      return IN6_ARE_ADDR_EQUAL (&a->s.ip6.sin6_addr, &b->s.ip6.sin6_addr)
+          && (a->s.ip6.sin6_port == b->s.ip6.sin6_port)
+          && (a->s.ip6.sin6_scope_id == b->s.ip6.sin6_scope_id);
+    }
+
+  g_assert_not_reached ();
 }
 
 
 NICEAPI_EXPORT NiceAddress *
-nice_address_dup (NiceAddress *a)
+nice_address_dup (const NiceAddress *a)
 {
   NiceAddress *dup = g_slice_new0 (NiceAddress);
 
@@ -206,6 +256,8 @@ nice_address_free (NiceAddress *addr)
 static gboolean
 ipv4_address_is_private (guint32 addr)
 {
+  addr = ntohl (addr);
+
   /* http://tools.ietf.org/html/rfc3330 */
   return (
       /* 10.0.0.0/8 */
@@ -236,13 +288,16 @@ ipv6_address_is_private (const guchar *addr)
 
 
 NICEAPI_EXPORT gboolean
-nice_address_is_private (NiceAddress *a)
+nice_address_is_private (const NiceAddress *a)
 {
-  g_assert (a->type == NICE_ADDRESS_TYPE_IPV4 || a->type == NICE_ADDRESS_TYPE_IPV6);
+  switch (a->s.addr.sa_family)
+    {
+    case AF_INET:
+      return ipv4_address_is_private (a->s.ip4.sin_addr.s_addr);
+    case AF_INET6:
+      return ipv6_address_is_private (a->s.ip6.sin6_addr.s6_addr);
+    }
 
-  if (a->type == NICE_ADDRESS_TYPE_IPV4)
-    return ipv4_address_is_private (a->addr.addr_ipv4);
-  else /* (a->type == NICE_ADDRESS_TYPE_IPV6) */
-    return ipv6_address_is_private (a->addr.addr_ipv6);
+  g_assert_not_reached ();
 }
 

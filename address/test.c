@@ -62,7 +62,7 @@ test_ipv4 (void)
   memset (&addr, 0, sizeof (addr));
   memset (&other, 0, sizeof (other));
   nice_address_set_ipv4 (&addr, 0x01020304);
-  g_assert (addr.type == NICE_ADDRESS_TYPE_IPV4);
+  g_assert (addr.s.ip4.sin_family == AF_INET);
 
   nice_address_to_string (&addr, str);
   g_assert (0 == strcmp (str, "1.2.3.4"));
@@ -74,8 +74,8 @@ test_ipv4 (void)
   g_assert (TRUE == nice_address_equal (&addr, &other));
 
   /* from sockaddr_in */
-  other.port = 9876; /* in native byte order */
-  other.type = NICE_ADDRESS_TYPE_IPV4;
+  nice_address_set_port (&other, 9876); /* in native byte order */
+  other.s.ip4.sin_family = AF_INET;
   nice_address_set_from_sockaddr (&addr, (struct sockaddr*)&sin);
   nice_address_to_string (&addr, str);
   nice_address_to_string (&other, str);
@@ -87,15 +87,15 @@ test_ipv4 (void)
 
   /* different port */
   nice_address_set_ipv4 (&other, 0x01020304);
-  addr.port = 1;
+  nice_address_set_port (&addr, 1);
   g_assert (FALSE == nice_address_equal (&addr, &other));
 
   /* test private address check */
   {
     NiceAddress *heap_addr = nice_address_new ();
-    g_assert (nice_address_set_ipv4_from_string (heap_addr, "127.0.0.1") == TRUE);
+    g_assert (nice_address_set_from_string (heap_addr, "127.0.0.1") == TRUE);
     g_assert (nice_address_is_private (heap_addr) == TRUE);
-    g_assert (nice_address_set_ipv4_from_string (heap_addr, "127.0.0.1.1") != TRUE);
+    g_assert (nice_address_set_from_string (heap_addr, "127.0.0.1.1") != TRUE);
     nice_address_free (heap_addr);
   }
 }
@@ -107,7 +107,7 @@ test_ipv6 (void)
   gchar str[NICE_ADDRESS_STRING_LEN];
   struct sockaddr_in6 sin, sin2;
   
-  g_assert (nice_address_set_ipv4_from_string (&v4addr, "172.1.0.1") == TRUE);
+  g_assert (nice_address_set_from_string (&v4addr, "172.1.0.1") == TRUE);
 
   memset (&sin, 0, sizeof (sin));
   memset (&sin2, 0, sizeof (sin2));
@@ -117,17 +117,17 @@ test_ipv6 (void)
   g_assert (inet_pton (AF_INET6, "11:2233:4455:6677:8899:aabb:ccdd:eeff", &sin.sin6_addr) > 0);
 
   memset (&addr, 0, sizeof (addr));
-  nice_address_set_ipv6 (&addr,
+  nice_address_set_ipv6 (&addr, (guchar *)
       "\x00\x11\x22\x33"
       "\x44\x55\x66\x77"
       "\x88\x99\xaa\xbb"
       "\xcc\xdd\xee\xff");
-  g_assert (addr.type == NICE_ADDRESS_TYPE_IPV6);
+  g_assert (addr.s.ip6.sin6_family == AF_INET6);
 
   nice_address_to_string (&addr, str);
   g_assert (0 == strcmp (str, "11:2233:4455:6677:8899:aabb:ccdd:eeff"));
 
-  addr.port = 9876; /* in native byte order */
+  nice_address_set_port (&addr, 9876); /* in native byte order */
   nice_address_set_from_sockaddr (&other, (struct sockaddr*)&sin);
   nice_address_copy_to_sockaddr (&other, (struct sockaddr*)&sin2);
   g_assert (memcmp (&sin, &sin2, sizeof(sin)) == 0);
@@ -136,13 +136,13 @@ test_ipv6 (void)
   g_assert (nice_address_equal (&addr, &other) == TRUE);
 
   /* private IPv6 address */
-  nice_address_set_ipv6 (&addr,
+  nice_address_set_ipv6 (&addr, (guchar *)
       "\xfc\x00\x00\x00"
       "\x00\x00\x00\x00"
       "\x00\x00\x00\x00"
       "\x00\x00\x00\x01");
   g_assert (nice_address_is_private (&addr) == TRUE);
-  nice_address_set_ipv6 (&addr,
+  nice_address_set_ipv6 (&addr, (guchar *)
       "\x00\x00\x00\x00"
       "\x00\x00\x00\x00"
       "\x00\x00\x00\x00"
@@ -153,7 +153,7 @@ test_ipv6 (void)
   g_assert (nice_address_equal (&addr, &v4addr) != TRUE);
 
   /* mismatched type */
-  addr.type = -1;
+  addr.s.addr.sa_family = AF_UNSPEC;
   /*g_assert (nice_address_equal (&addr, &v4addr) != TRUE);*/
 }
 

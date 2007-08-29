@@ -38,17 +38,13 @@
 #ifndef _ADDRESS_H
 #define _ADDRESS_H
 
+#include <sys/types.h>
+#include <sys/socket.h>
 #include <netinet/in.h>
 
 #include <glib.h>
 
 G_BEGIN_DECLS
-
-typedef enum
-{
-  NICE_ADDRESS_TYPE_IPV4,
-  NICE_ADDRESS_TYPE_IPV6,
-} NiceAddressType;
 
 #define NICE_ADDRESS_STRING_LEN INET6_ADDRSTRLEN
 
@@ -57,13 +53,12 @@ typedef struct _NiceAddress NiceAddress;
 /* note: clients need to know the storage size, so needs to be public */
 struct _NiceAddress
 {
-  NiceAddressType type;
   union
   {
-    guint32 addr_ipv4;
-    guchar addr_ipv6[INET_ADDRSTRLEN];
-  } addr;
-  guint16 port;
+    struct sockaddr     addr;
+    struct sockaddr_in  ip4;
+    struct sockaddr_in6 ip6;
+  } s;
 };
 
 NiceAddress *
@@ -73,17 +68,23 @@ void
 nice_address_free (NiceAddress *addr);
 
 NiceAddress *
-nice_address_dup (NiceAddress *a);
+nice_address_dup (const NiceAddress *a);
 
 void
 nice_address_set_ipv4 (NiceAddress *addr, guint32 addr_ipv4);
 
 void
-nice_address_set_ipv6 (NiceAddress *addr, const gchar *addr_ipv6);
+nice_address_set_ipv6 (NiceAddress *addr, const guchar *addr_ipv6);
+
+void
+nice_address_set_port (NiceAddress *addr, guint port);
+
+guint
+nice_address_get_port (const NiceAddress *addr);
 
 G_GNUC_WARN_UNUSED_RESULT
 gboolean
-nice_address_set_ipv4_from_string (NiceAddress *addr, const gchar *str);
+nice_address_set_from_string (NiceAddress *addr, const gchar *str);
 
 void
 nice_address_set_from_sockaddr (NiceAddress *addr, const struct sockaddr *sin);
@@ -95,10 +96,10 @@ gboolean
 nice_address_equal (const NiceAddress *a, const NiceAddress *b);
 
 void
-nice_address_to_string (NiceAddress *addr, gchar *dst);
+nice_address_to_string (const NiceAddress *addr, gchar *dst);
 
 gboolean
-nice_address_is_private (NiceAddress *a);
+nice_address_is_private (const NiceAddress *a);
 
 G_END_DECLS
 
