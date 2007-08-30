@@ -5,8 +5,8 @@ nice_address_free
 nice_address_is_private
 nice_address_new
 nice_address_set_from_sockaddr
+nice_address_set_from_string
 nice_address_set_ipv4
-nice_address_set_ipv4_from_string
 nice_address_set_ipv6
 nice_address_to_string
 nice_agent_add_local_address

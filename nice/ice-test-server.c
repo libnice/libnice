@@ -77,7 +77,7 @@ make_agent (
 
   agent = nice_agent_new (factory);
 
-  if (!nice_address_set_ipv4_from_string (&addr_local, ip))
+  if (!nice_address_set_from_string (&addr_local, ip))
     g_assert_not_reached ();
 
   nice_agent_add_local_address (agent, &addr_local);

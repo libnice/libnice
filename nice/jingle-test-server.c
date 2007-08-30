@@ -69,7 +69,7 @@ make_agent (NiceUDPSocketFactory *factory)
 
   agent = nice_agent_new (factory);
 
-  if (!nice_address_set_ipv4_from_string (&addr, "127.0.0.1"))
+  if (!nice_address_set_from_string (&addr, "127.0.0.1"))
     g_assert_not_reached ();
 
   nice_agent_add_local_address (agent, &addr);
@@ -164,7 +164,7 @@ accept_connection (
           return 3;
         }
 
-      if (!nice_address_set_ipv4_from_string (&addr, bits[3]))
+      if (!nice_address_set_from_string (&addr, bits[3]))
         g_assert_not_reached ();
 
       addr.port = atoi (bits[4]);

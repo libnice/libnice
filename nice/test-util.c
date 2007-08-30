@@ -54,7 +54,7 @@ main (void)
   candidate = nice_candidate_from_string ("x");
   g_assert (candidate == NULL);
 
-  g_assert (nice_address_set_ipv4_from_string (&addr, "192.168.0.1"));
+  g_assert (nice_address_set_from_string (&addr, "192.168.0.1"));
   addr.port = 1234;
   candidate = nice_candidate_from_string ("H/192.168.0.1/1234/foo/bar");
   g_assert (candidate != NULL);

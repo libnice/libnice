@@ -77,7 +77,7 @@ handle_signal (
       return 3;
     }
 
-  if (!nice_address_set_ipv4_from_string (&addr, bits[3]))
+  if (!nice_address_set_from_string (&addr, bits[3]))
     g_assert_not_reached ();
 
   addr.port = atoi (bits[4]);
@@ -103,7 +103,7 @@ main (gint argc, gchar *argv[])
 
   gst_init (&argc, &argv);
 
-  if (!nice_address_set_ipv4_from_string (&addr, "127.0.0.1"))
+  if (!nice_address_set_from_string (&addr, "127.0.0.1"))
     return 1;
 
   addr.port = 1234;
