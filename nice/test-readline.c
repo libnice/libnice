@@ -47,7 +47,7 @@
 #include "readline.h"
 
 /* this overrides libc read() -- is this reliable? */
-int
+ssize_t
 read (
   G_GNUC_UNUSED
   int fd,
