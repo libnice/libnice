@@ -977,9 +977,9 @@ nice_agent_set_remote_candidates (NiceAgent *agent, guint stream_id, guint compo
  * Reads data from a ready, nonblocking socket attached to an ICE
  * stream component.
  *
- * @return number of octets received, or zero on error
+ * @return number of octets received, or negative on error
  */
-static guint
+static gint
 _nice_agent_recv (
   NiceAgent *agent,
   Stream *stream,
@@ -989,13 +989,13 @@ _nice_agent_recv (
   gchar *buf)
 {
   NiceAddress from;
-  guint len;
+  gint len;
 
   len = nice_udp_socket_recv (udp_socket, &from,
 			      buf_len, buf);
 
 #ifndef NDEBUG
-  {
+  if (len >= 0) {
     gchar tmpbuf[INET6_ADDRSTRLEN];
     nice_address_to_string (&from, tmpbuf);
     g_debug ("Packet received on local socket %u from %s:%u (%u octets).", udp_socket->fileno, tmpbuf, from.port, len);
@@ -1005,7 +1005,7 @@ _nice_agent_recv (
   if (len == 0)
     return 0;
 
-  if (len > buf_len)
+  if ((guint)len > buf_len)
     {
       /* buffer is not big enough to accept this packet */
       /* XXX: test this case */
@@ -1059,7 +1059,7 @@ nice_agent_recv (
   guint buf_len,
   gchar *buf)
 {
-  guint len = 0;
+  gint len = 0;
   fd_set fds;
   guint max_fd = 0;
   gint num_readable;
@@ -1104,7 +1104,7 @@ nice_agent_recv (
                 len = _nice_agent_recv (agent, stream, component, socket,
 					buf_len, buf);
 
-                if (len > 0)
+                if (len >= 0)
                   return len;
               }
         }
@@ -1524,7 +1524,9 @@ static gboolean priv_attach_new_stream (NiceAgent *agent, Stream *stream)
       GSList *modified_list;
     
       io = g_io_channel_unix_new (udp_socket->fileno);
-      source = g_io_create_watch (io, G_IO_IN);
+      /* note: without G_IO_ERR the glib mainloop goes into
+       *       busyloop if errors are encountered */
+      source = g_io_create_watch (io, G_IO_IN | G_IO_ERR);
       ctx = io_ctx_new (agent, stream, component, udp_socket);
       g_source_set_callback (source, (GSourceFunc) nice_agent_g_source_cb,
 			     ctx, (GDestroyNotify) io_ctx_free);
