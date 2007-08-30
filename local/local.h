@@ -48,8 +48,8 @@ typedef struct _NiceInterface NiceInterface;
 
 struct _NiceInterface
 {
-  gchar *name;
-  NiceAddress addr;
+  NiceAddress *addr;
+  gchar name[16];
 };
 
 NiceInterface *

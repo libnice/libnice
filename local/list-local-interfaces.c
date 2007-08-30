@@ -55,7 +55,7 @@ main (void)
       NiceInterface *iface = i->data;
       gchar addr[NICE_ADDRESS_STRING_LEN];
 
-      nice_address_to_string (&iface->addr, addr);
+      nice_address_to_string (iface->addr, addr);
       g_print ("%s: %s\n", iface->name, addr);
       nice_interface_free (iface);
     }
