@@ -717,7 +717,7 @@ nice_agent_add_local_address (NiceAgent *agent, NiceAddress *addr)
   GSList *modified_list;
 
   dup = nice_address_dup (addr);
-  dup->port = 0;
+  nice_address_set_port (dup, 0);
   modified_list = g_slist_append (agent->local_addresses, dup);
   if (modified_list) {
     agent->local_addresses = modified_list;
@@ -767,8 +767,9 @@ static gboolean priv_add_remote_candidate (
 #ifndef NDEBUG
       {
 	gchar tmpbuf[INET6_ADDRSTRLEN];
-	nice_address_to_string ((NiceAddress *)addr, tmpbuf);
-	g_debug ("Adding remote candidate with addr %s:%u.", tmpbuf, addr->port);
+	nice_address_to_string (addr, tmpbuf);
+	g_debug ("Adding remote candidate with addr [%s]:%u.", tmpbuf,
+                 nice_address_get_port (addr));
       }
 #endif
  
@@ -880,7 +881,6 @@ nice_agent_get_local_credentials (
  *  @component_id: the ID of the component the candidate is for
  *  @type: the type of the new candidate
  *  @addr: the new candidate's IP address
- *  @port: the new candidate's port
  *  @username: the new candidate's username (XXX: candidates don't have usernames)
  *  @password: the new candidate's password (XXX: candidates don't have usernames)
  *
@@ -1279,8 +1279,12 @@ nice_agent_send (
       NiceAddress *addr;
 
 #ifndef NDEBUG
-      g_debug ("s%d:%d: sending %d bytes to %08x:%d", stream_id, component_id,
-          len, component->selected_pair.remote->addr.addr.addr_ipv4, component->selected_pair.remote->addr.port);
+      gchar tmpbuf[INET6_ADDRSTRLEN];
+      nice_address_to_string (&component->selected_pair.remote->addr, tmpbuf);
+
+      g_debug ("s%d:%d: sending %d bytes to [%s]:%d", stream_id, component_id,
+          len, tmpbuf,
+          nice_address_get_port (&component->selected_pair.remote->addr));
 #endif
 
       sock = component->selected_pair.local->sockptr;

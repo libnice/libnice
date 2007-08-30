@@ -246,16 +246,20 @@ static int run_restart_test (NiceAgent *lagent, NiceAgent *ragent, NiceAddress *
   /* step: find out the local candidates of each agent */
 
   priv_get_local_addr (ragent, rs_id, NICE_COMPONENT_TYPE_RTP, &raddr);
-  g_debug ("test-restart: local RTP port R %u", raddr.port);
+  g_debug ("test-restart: local RTP port R %u",
+           nice_address_get_port (&raddr));
 
   priv_get_local_addr (lagent, ls_id, NICE_COMPONENT_TYPE_RTP, &laddr);
-  g_debug ("test-restart: local RTP port L %u", laddr.port);
+  g_debug ("test-restart: local RTP port L %u",
+           nice_address_get_port (&laddr));
 
   priv_get_local_addr (ragent, rs_id, NICE_COMPONENT_TYPE_RTCP, &raddr_rtcp);
-  g_debug ("test-restart: local RTCP port R %u", raddr_rtcp.port);
+  g_debug ("test-restart: local RTCP port R %u",
+           nice_address_get_port (&raddr_rtcp));
 
   priv_get_local_addr (lagent, ls_id, NICE_COMPONENT_TYPE_RTCP, &laddr_rtcp);
-  g_debug ("test-restart: local RTCP port L %u", laddr_rtcp.port);
+  g_debug ("test-restart: local RTCP port L %u",
+           nice_address_get_port (&laddr_rtcp));
 
   /* step: pass the remote candidates to agents  */
   cands = g_slist_append (NULL, &cdes);
@@ -392,7 +396,7 @@ int main (void)
   timer_id = g_timeout_add (30000, timer_cb, NULL);
 
   /* step: specify which local interface to use */
-  if (!nice_address_set_ipv4_from_string (&baseaddr, "127.0.0.1"))
+  if (!nice_address_set_from_string (&baseaddr, "127.0.0.1"))
     g_assert_not_reached ();
   nice_agent_add_local_address (lagent, &baseaddr);
   nice_agent_add_local_address (ragent, &baseaddr);

@@ -475,27 +475,21 @@ static gboolean priv_discovery_tick (gpointer pointer)
       
       if (cand->type == NICE_CANDIDATE_TYPE_SERVER_REFLEXIVE &&
 	  cand->server_addr) {
-	
-	struct sockaddr_in stun_server;
+        NiceAddress stun_server;
 	int res;
 
-	memset (&stun_server, 0, sizeof(stun_server));
+        /* XXX FIXME TODO: handle error here?! Kai, help me! */
+        if (!nice_address_set_from_string (&stun_server, cand->server_addr))
+          g_assert_not_reached();
+        nice_address_set_port (&stun_server, cand->server_port);
 
-	if (strchr (cand->server_addr, ':') == NULL)
-	    stun_server.sin_family = AF_INET;
-	else
-	    stun_server.sin_family = AF_INET6;
-	stun_server.sin_addr.s_addr = inet_addr(cand->server_addr);
-	stun_server.sin_port = htons(cand->server_port);
-
-	agent_signal_component_state_change (agent, 
+	agent_signal_component_state_change (agent,
 					     cand->stream->id,
 					     cand->component->id,
 					     NICE_COMPONENT_STATE_GATHERING);
 
 	res = stun_bind_start (&cand->stun_ctx, cand->socket, 
-			 (struct sockaddr*)&stun_server, sizeof(stun_server));
-	
+			       &stun_server.s.addr, sizeof(stun_server.s));
 	if (res == 0) {
 	  /* case: success, start waiting for the result */
 	  g_get_current_time (&cand->next_tick);

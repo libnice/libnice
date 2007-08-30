@@ -477,7 +477,8 @@ static int run_full_test_control_conflict (NiceAgent *lagent, NiceAgent *ragent,
   for (i = cands; i; i = i->next) {
     NiceCandidate *cand = i->data;
     if (cand) {
-      g_debug ("test-fullmode: local port R %u", cand->addr.port);
+      g_debug ("test-fullmode: local port R %u",
+               nice_address_get_port (&cand->addr));
       raddr = cand->addr;
     }
   }
@@ -552,7 +553,7 @@ int main (void)
   timer_id = g_timeout_add (30000, timer_cb, NULL);
 
   /* step: specify which local interface to use */
-  if (!nice_address_set_ipv4_from_string (&baseaddr, "127.0.0.1"))
+  if (!nice_address_set_from_string (&baseaddr, "127.0.0.1"))
     g_assert_not_reached ();
   nice_agent_add_local_address (lagent, &baseaddr);
   nice_agent_add_local_address (ragent, &baseaddr);

@@ -525,7 +525,7 @@ int conn_check_add_for_candidate (NiceAgent *agent, guint stream_id, Component *
 
     /* note: match pairs only if transport and address family are the same */
     if (local->transport == remote->transport &&
-	local->addr.type == remote->addr.type) {
+	local->addr.s.addr.sa_family == remote->addr.s.addr.sa_family) {
 
       gboolean result;
 
@@ -991,7 +991,7 @@ static void priv_reply_to_conn_check (NiceAgent *agent, Stream *stream, Componen
     nice_address_to_string (&cand->addr, tmpbuf);
     g_debug ("STUN-CC RESP to '%s:%u', socket=%u, len=%u, cand=%p (c-id:%u), use-cand=%d.",
 	     tmpbuf,
-	     cand->addr.port,
+	     nice_address_get_port (&cand->addr),
 	     udp_socket->fileno,
 	     rbuf_len,
 	     cand, component->id,
@@ -1228,10 +1228,7 @@ static gboolean priv_map_reply_to_discovery_request (NiceAgent *agent, gchar *bu
       if (res == 0) {
 	/* case: succesful binding discovery, create a new local candidate */
 	NiceAddress niceaddr;
-	struct sockaddr_in *mapped = (struct sockaddr_in *)&sockaddr;
-	niceaddr.type = NICE_ADDRESS_TYPE_IPV4;
-	niceaddr.addr.addr_ipv4 = ntohl(mapped->sin_addr.s_addr);
-	niceaddr.port = ntohs(mapped->sin_port);
+        nice_address_set_from_sockaddr (&niceaddr, &sockaddr);
 
 	discovery_add_server_reflexive_candidate (
 	  d->agent,

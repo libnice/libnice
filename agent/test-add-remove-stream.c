@@ -56,7 +56,7 @@ main (void)
 
   nice_udp_fake_socket_factory_init (&factory);
 
-  if (!nice_address_set_ipv4_from_string (&addr, "127.0.0.1"))
+  if (!nice_address_set_from_string (&addr, "127.0.0.1"))
     g_assert_not_reached ();
 
   agent = nice_agent_new (&factory);
