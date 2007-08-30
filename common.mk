@@ -18,6 +18,6 @@ ERROR_CFLAGS = \
 CLEANFILES = *.gcno *.gcda
 
 check-valgrind:
-	$(MAKE) TESTS_ENVIRONMENT="sh $(abspath $(top_srcdir))/scripts/valgrind.sh" check
+	$(MAKE) TESTS_ENVIRONMENT="sh $$(cd "$(top_srcdir)" && pwd)/scripts/valgrind.sh" check
 
 .PHONY: check-valgrind
