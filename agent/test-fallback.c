@@ -1,6 +1,9 @@
 /*
  * This file is part of the Nice GLib ICE library.
  *
+ * Contains a unit test for functionality to fallback to non-ICE 
+ * operation if remote party does not support ICE.
+ *
  * (C) 2007 Nokia Corporation. All rights reserved.
  *  Contact: Kai Vehmanen
  *
@@ -68,7 +71,7 @@ static void priv_print_global_status (void)
 
 static gboolean timer_cb (gpointer pointer)
 {
-  g_debug ("test-restart:%s: %p", G_STRFUNC, pointer);
+  g_debug ("test-fallback:%s: %p", G_STRFUNC, pointer);
 
   /* signal status via a global variable */
 
@@ -80,7 +83,7 @@ static gboolean timer_cb (gpointer pointer)
 
 static void cb_nice_recv (NiceAgent *agent, guint stream_id, guint component_id, guint len, gchar *buf, gpointer user_data)
 {
-  g_debug ("test-restart:%s: %p", G_STRFUNC, user_data);
+  g_debug ("test-fallback:%s: %p", G_STRFUNC, user_data);
 
   /* XXX: dear compiler, these are for you: */
   (void)agent; (void)stream_id; (void)component_id; (void)buf;
@@ -95,7 +98,7 @@ static void cb_nice_recv (NiceAgent *agent, guint stream_id, guint component_id,
 
 static void cb_candidate_gathering_done(NiceAgent *agent, gpointer data)
 {
-  g_debug ("test-restart:%s: %p", G_STRFUNC, data);
+  g_debug ("test-fallback:%s: %p", G_STRFUNC, data);
 
   if ((intptr_t)data == 1)
     global_lagent_gathering_done = TRUE;
@@ -112,7 +115,7 @@ static void cb_candidate_gathering_done(NiceAgent *agent, gpointer data)
 
 static void cb_component_state_changed (NiceAgent *agent, guint stream_id, guint component_id, guint state, gpointer data)
 {
-  g_debug ("test-restart:%s: %p", __func__, data);
+  g_debug ("test-fallback:%s: %p", __func__, data);
 
   if ((intptr_t)data == 1)
     global_lagent_state = state;
@@ -124,7 +127,7 @@ static void cb_component_state_changed (NiceAgent *agent, guint stream_id, guint
   if (state == NICE_COMPONENT_STATE_FAILED)
     global_components_failed++;
 
-  g_debug ("test-restart: READY %u exit at %u.", global_components_ready, global_components_ready_exit);
+  g_debug ("test-fallback: READY %u exit at %u.", global_components_ready, global_components_ready_exit);
 
   /* signal status via a global variable */
   if (global_components_ready == global_components_ready_exit) {
@@ -145,7 +148,7 @@ static void cb_component_state_changed (NiceAgent *agent, guint stream_id, guint
 static void cb_new_selected_pair(NiceAgent *agent, guint stream_id, guint component_id, 
 				 gchar *lfoundation, gchar* rfoundation, gpointer data)
 {
-  g_debug ("test-restart:%s: %p", __func__, data);
+  g_debug ("test-fallback:%s: %p", __func__, data);
 
   if ((intptr_t)data == 1)
     ++global_lagent_cands;
@@ -159,7 +162,7 @@ static void cb_new_selected_pair(NiceAgent *agent, guint stream_id, guint compon
 static void cb_new_candidate(NiceAgent *agent, guint stream_id, guint component_id, 
 			     gchar *foundation, gpointer data)
 {
-  g_debug ("test-restart:%s: %p", __func__, data);
+  g_debug ("test-fallback:%s: %p", __func__, data);
 
   /* XXX: dear compiler, these are for you: */
   (void)agent; (void)stream_id; (void)data; (void)component_id; (void)foundation;
@@ -167,7 +170,7 @@ static void cb_new_candidate(NiceAgent *agent, guint stream_id, guint component_
 
 static void cb_initial_binding_request_received(NiceAgent *agent, guint stream_id, gpointer data)
 {
-  g_debug ("test-restart:%s: %p", __func__, data);
+  g_debug ("test-fallback:%s: %p", __func__, data);
 
   if ((intptr_t)data == 1)
     global_lagent_ibr_received = TRUE;
@@ -187,12 +190,13 @@ static void priv_get_local_addr (NiceAgent *agent, guint stream_id, guint compon
     if (cand) {
       g_assert (dstaddr);
       *dstaddr = cand->addr;
+      break;
     }
   }
   g_slist_free (cands);
 }
 
-static int run_restart_test (NiceAgent *lagent, NiceAgent *ragent, NiceAddress *baseaddr)
+static int run_fallback_test (NiceAgent *lagent, NiceAgent *ragent, NiceAddress *baseaddr)
 {
   NiceAddress laddr, raddr, laddr_rtcp, raddr_rtcp;   
   NiceCandidateDesc cdes = {       /* candidate description (no ports) */
@@ -202,11 +206,10 @@ static int run_restart_test (NiceAgent *lagent, NiceAgent *ragent, NiceAddress *
     100000,  /* priority */
     NULL,    /* address */
     NICE_CANDIDATE_TYPE_HOST, /* type */ 
-    NULL     /* base-address */
+    baseaddr /* base-address */
   };
   GSList *cands;
   guint ls_id, rs_id;
-  guint64 tie_breaker;
 
   /* XXX: dear compiler, these are for you: */
   (void)baseaddr;
@@ -237,7 +240,7 @@ static int run_restart_test (NiceAgent *lagent, NiceAgent *ragent, NiceAddress *
    *       (see timer_cb() above) */
   if (global_lagent_gathering_done != TRUE ||
       global_ragent_gathering_done != TRUE) {
-    g_debug ("test-restart: Added streams, running mainloop until 'candidate-gathering-done'...");
+    g_debug ("test-fallback: Added streams, running mainloop until 'candidate-gathering-done'...");
     g_main_loop_run (global_mainloop);
     g_assert (global_lagent_gathering_done == TRUE);
     g_assert (global_ragent_gathering_done == TRUE);
@@ -246,32 +249,24 @@ static int run_restart_test (NiceAgent *lagent, NiceAgent *ragent, NiceAddress *
   /* step: find out the local candidates of each agent */
 
   priv_get_local_addr (ragent, rs_id, NICE_COMPONENT_TYPE_RTP, &raddr);
-  g_debug ("test-restart: local RTP port R %u",
+  g_debug ("test-fallback: local RTP port R %u",
            nice_address_get_port (&raddr));
 
   priv_get_local_addr (lagent, ls_id, NICE_COMPONENT_TYPE_RTP, &laddr);
-  g_debug ("test-restart: local RTP port L %u",
+  g_debug ("test-fallback: local RTP port L %u",
            nice_address_get_port (&laddr));
 
   priv_get_local_addr (ragent, rs_id, NICE_COMPONENT_TYPE_RTCP, &raddr_rtcp);
-  g_debug ("test-restart: local RTCP port R %u",
+  g_debug ("test-fallback: local RTCP port R %u",
            nice_address_get_port (&raddr_rtcp));
 
   priv_get_local_addr (lagent, ls_id, NICE_COMPONENT_TYPE_RTCP, &laddr_rtcp);
-  g_debug ("test-restart: local RTCP port L %u",
+  g_debug ("test-fallback: local RTCP port L %u",
            nice_address_get_port (&laddr_rtcp));
 
-  /* step: pass the remote candidates to agents  */
+  /* step: exchange candidate information but not the credentials */
+
   cands = g_slist_append (NULL, &cdes);
-  {
-      const gchar *ufrag = NULL, *password = NULL;
-      nice_agent_get_local_credentials(lagent, ls_id, &ufrag, &password);
-      nice_agent_set_remote_credentials (ragent,
-					 rs_id, ufrag, password);
-      nice_agent_get_local_credentials(ragent, rs_id, &ufrag, &password);
-      nice_agent_set_remote_credentials (lagent,
-					 ls_id, ufrag, password);
-  }
   cdes.component_id = NICE_COMPONENT_TYPE_RTP;
   cdes.addr = &raddr;
   nice_agent_set_remote_candidates (lagent, ls_id, NICE_COMPONENT_TYPE_RTP, cands);
@@ -283,84 +278,46 @@ static int run_restart_test (NiceAgent *lagent, NiceAgent *ragent, NiceAddress *
   cdes.addr = &laddr_rtcp;  
   nice_agent_set_remote_candidates (ragent, rs_id, NICE_COMPONENT_TYPE_RTCP, cands);
 
-  g_debug ("test-restart: Set properties, next running mainloop until connectivity checks succeed...");
+  /* step: fall back to non-ICE mode on both sides */
+  g_assert (nice_agent_set_selected_pair (lagent, ls_id, NICE_COMPONENT_TYPE_RTP, "1", "1") == TRUE);
+  g_assert (nice_agent_set_selected_pair (lagent, ls_id, NICE_COMPONENT_TYPE_RTCP, "1", "1") == TRUE);
+  g_assert (nice_agent_set_selected_pair (ragent, rs_id, NICE_COMPONENT_TYPE_RTP, "1", "1") == TRUE);
+  g_assert (nice_agent_set_selected_pair (ragent, rs_id, NICE_COMPONENT_TYPE_RTCP, "1", "1") == TRUE);
+
+  g_debug ("test-fallback: Requested for fallback, running mainloop until component state change is completed...");
 
   /* step: run the mainloop until connectivity checks succeed 
    *       (see timer_cb() above) */
-  g_main_loop_run (global_mainloop);
+  if (global_components_ready < global_components_ready_exit)
+    g_main_loop_run (global_mainloop);
 
-  /* note: verify that STUN binding requests were sent */
-  g_assert (global_lagent_ibr_received == TRUE);
-  g_assert (global_ragent_ibr_received == TRUE);
-  /* note: verify that correct number of local candidates were reported */
-  g_assert (global_lagent_cands == 2);
-  g_assert (global_ragent_cands == 2);
   /* note: verify that agents are in correct state */
   g_assert (global_lagent_state == NICE_COMPONENT_STATE_READY);
   g_assert (global_ragent_state == NICE_COMPONENT_STATE_READY);
 
-  /* step: next send a packet (should work during restart) and
-   *       then request an ICE restart by resetting the remote
-   *       candidates for agent R */
+  /* step: next send a packet -> should work even if no ICE processing
+   *       has been done */
 
-  g_debug ("-------------------------------------------\n"
-	   "test-restart: Requesting a RESTART...");
+  g_debug ("test-fallback: Sent a payload packet, run mainloop until packet received.");
 
   /* step: send a new test packet from L ot R */
   global_ragent_read = 0;
   g_assert (nice_agent_send (lagent, ls_id, 1, 16, "1234567812345678") == 16);
-
-  /* step: restart agents, exchange updated credentials */
-  tie_breaker = ragent->tie_breaker;
-  nice_agent_restart (ragent);
-  g_assert (tie_breaker != ragent->tie_breaker);
-  nice_agent_restart (lagent);
-  {
-      const gchar *ufrag = NULL, *password = NULL;
-      nice_agent_get_local_credentials(lagent, ls_id, &ufrag, &password);
-      nice_agent_set_remote_credentials (ragent,
-					 rs_id, ufrag, password);
-      nice_agent_get_local_credentials(ragent, rs_id, &ufrag, &password);
-      nice_agent_set_remote_credentials (lagent,
-					 ls_id, ufrag, password);
-  }
-  
-  /* send another packet after restart */
-  g_assert (nice_agent_send (lagent, ls_id, 1, 16, "1234567812345678") == 16);
-
-  /* step: reset state variables */
-  global_lagent_ibr_received = FALSE;
-  global_ragent_ibr_received = FALSE;
-  global_components_ready = 0;
-  global_ragent_read_exit = 32;
-
-  /* step: exchange remote candidates */
-  cdes.component_id = NICE_COMPONENT_TYPE_RTP;
-  cdes.addr = &raddr;
-  nice_agent_set_remote_candidates (lagent, ls_id, NICE_COMPONENT_TYPE_RTP, cands);
-  cdes.addr = &laddr;  
-  nice_agent_set_remote_candidates (ragent, rs_id, NICE_COMPONENT_TYPE_RTP, cands);
-  cdes.component_id = NICE_COMPONENT_TYPE_RTCP;
-  cdes.addr = &raddr_rtcp;
-  nice_agent_set_remote_candidates (lagent, ls_id, NICE_COMPONENT_TYPE_RTCP, cands);
-  cdes.addr = &laddr_rtcp;  
-  nice_agent_set_remote_candidates (ragent, rs_id, NICE_COMPONENT_TYPE_RTCP, cands);
-
+  global_ragent_read_exit = 16;
   g_main_loop_run (global_mainloop);
 
   /* note: verify that payload was succesfully received */
-  g_assert (global_ragent_read == 32);
-  /* note: verify binding requests were resent after restart */
-  g_assert (global_lagent_ibr_received == TRUE);
-  g_assert (global_ragent_ibr_received == TRUE);
+  g_assert (global_ragent_read == 16);
 
-  g_debug ("test-restart: Ran mainloop, removing streams...");
+  g_debug ("test-fallback: Ran mainloop, removing streams...");
 
   /* step: clean up resources and exit */
 
   g_slist_free (cands);
   nice_agent_remove_stream (lagent, ls_id);
   nice_agent_remove_stream (ragent, rs_id);
+
+  g_debug ("test-fallback: test COMPLETED");
 
   return 0;
 }
@@ -432,8 +389,8 @@ int main (void)
   }
 
   /* step: run test the first time */
-  g_debug ("test-restart: TEST STARTS / restart test");
-  result = run_restart_test (lagent, ragent, &baseaddr);
+  g_debug ("test-fallback: TEST STARTS / fallback test");
+  result = run_fallback_test (lagent, ragent, &baseaddr);
   priv_print_global_status ();
   g_assert (result == 0);
   g_assert (global_lagent_state == NICE_COMPONENT_STATE_READY);

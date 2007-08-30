@@ -1,6 +1,8 @@
 /*
  * This file is part of the Nice GLib ICE library.
  *
+ * Unit test for ICE full-mode related features.
+ *
  * (C) 2007 Nokia Corporation. All rights reserved.
  *  Contact: Kai Vehmanen
  *
@@ -83,7 +85,7 @@ static void cb_nice_recv (NiceAgent *agent, guint stream_id, guint component_id,
   /* XXX: dear compiler, these are for you: */
   (void)agent; (void)stream_id; (void)component_id; (void)buf;
 
-  if ((int)user_data == 2) {
+  if ((intptr_t)user_data == 2) {
     global_ragent_read = len;
     g_main_loop_quit (global_mainloop);
   }
@@ -93,9 +95,9 @@ static void cb_candidate_gathering_done(NiceAgent *agent, gpointer data)
 {
   g_debug ("test-fullmode:%s: %p", G_STRFUNC, data);
 
-  if ((int)data == 1)
+  if ((intptr_t)data == 1)
     global_lagent_gathering_done = TRUE;
-  else if ((int)data == 2)
+  else if ((intptr_t)data == 2)
     global_ragent_gathering_done = TRUE;
 
   if (global_lagent_gathering_done &&
@@ -110,9 +112,9 @@ static void cb_component_state_changed (NiceAgent *agent, guint stream_id, guint
 {
   g_debug ("test-fullmode:%s: %p", __func__, data);
 
-  if ((int)data == 1)
+  if ((intptr_t)data == 1)
     global_lagent_state = state;
-  else if ((int)data == 2)
+  else if ((intptr_t)data == 2)
     global_ragent_state = state;
   
   if (state == NICE_COMPONENT_STATE_READY)
@@ -143,9 +145,9 @@ static void cb_new_selected_pair(NiceAgent *agent, guint stream_id, guint compon
 {
   g_debug ("test-fullmode:%s: %p", __func__, data);
 
-  if ((int)data == 1)
+  if ((intptr_t)data == 1)
     ++global_lagent_cands;
-  else if ((int)data == 2)
+  else if ((intptr_t)data == 2)
     ++global_ragent_cands;
 
   /* XXX: dear compiler, these are for you: */
@@ -165,9 +167,9 @@ static void cb_initial_binding_request_received(NiceAgent *agent, guint stream_i
 {
   g_debug ("test-fullmode:%s: %p", __func__, data);
 
-  if ((int)data == 1)
+  if ((intptr_t)data == 1)
     global_lagent_ibr_received = TRUE;
-  else if ((int)data == 2)
+  else if ((intptr_t)data == 2)
     global_ragent_ibr_received = TRUE;
 
   /* XXX: dear compiler, these are for you: */
@@ -240,16 +242,20 @@ static int run_full_test (NiceAgent *lagent, NiceAgent *ragent, NiceAddress *bas
   /* step: find out the local candidates of each agent */
 
   priv_get_local_addr (ragent, rs_id, NICE_COMPONENT_TYPE_RTP, &raddr);
-  g_debug ("test-fullmode: local RTP port R %u", raddr.port);
+  g_debug ("test-fullmode: local RTP port R %u",
+           nice_address_get_port (&raddr));
 
   priv_get_local_addr (lagent, ls_id, NICE_COMPONENT_TYPE_RTP, &laddr);
-  g_debug ("test-fullmode: local RTP port L %u", laddr.port);
+  g_debug ("test-fullmode: local RTP port L %u",
+           nice_address_get_port (&laddr));
 
   priv_get_local_addr (ragent, rs_id, NICE_COMPONENT_TYPE_RTCP, &raddr_rtcp);
-  g_debug ("test-fullmode: local RTCP port R %u", raddr_rtcp.port);
+  g_debug ("test-fullmode: local RTCP port R %u",
+           nice_address_get_port (&raddr_rtcp));
 
   priv_get_local_addr (lagent, ls_id, NICE_COMPONENT_TYPE_RTCP, &laddr_rtcp);
-  g_debug ("test-fullmode: local RTCP port L %u", laddr_rtcp.port);
+  g_debug ("test-fullmode: local RTCP port L %u",
+           nice_address_get_port (&laddr_rtcp));
 
   /* step: pass the remote candidates to agents  */
   cands = g_slist_append (NULL, &cdes);
@@ -358,7 +364,8 @@ static int run_full_test_wrong_password (NiceAgent *lagent, NiceAgent *ragent, N
   for (i = cands; i; i = i->next) {
     NiceCandidate *cand = i->data;
     if (cand) {
-      g_debug ("test-fullmode: local port L %u", cand->addr.port);
+      g_debug ("test-fullmode: local port L %u",
+               nice_address_get_port (&cand->addr));
       laddr = cand->addr;
     }
   }
@@ -368,7 +375,8 @@ static int run_full_test_wrong_password (NiceAgent *lagent, NiceAgent *ragent, N
   for (i = cands; i; i = i->next) {
     NiceCandidate *cand = i->data;
     if (cand) {
-      g_debug ("test-fullmode: local port R %u", cand->addr.port);
+      g_debug ("test-fullmode: local port R %u",
+               nice_address_get_port (&cand->addr));
       raddr = cand->addr;
     }
   }
@@ -467,7 +475,8 @@ static int run_full_test_control_conflict (NiceAgent *lagent, NiceAgent *ragent,
   for (i = cands; i; i = i->next) {
     NiceCandidate *cand = i->data;
     if (cand) {
-      g_debug ("test-fullmode: local port L %u", cand->addr.port);
+      g_debug ("test-fullmode: local port L %u",
+               nice_address_get_port (&cand->addr));
       laddr = cand->addr;
     }
   }

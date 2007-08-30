@@ -45,7 +45,10 @@
 # include <config.h>
 #endif
 
+#include <string.h>
+
 #include "component.h"
+#include "agent-priv.h"
 
 Component *
 component_new (
@@ -127,6 +130,43 @@ component_find_udp_socket_by_fd (Component *component, guint fd)
 }
 
 /**
+ * Finds a candidate pair that has matching foundation ids.
+ *
+ * @return TRUE if pair found, pointer to pair stored at 'pair'
+ */
+gboolean
+component_find_pair (Component *cmp, NiceAgent *agent, const gchar *lfoundation, const gchar *rfoundation, CandidatePair *pair)
+{
+  GSList *i;
+  CandidatePair result = { NULL, NULL, 0 };
+
+  for (i = cmp->local_candidates; i; i = i->next) {
+    NiceCandidate *candidate = i->data;
+    if (strncmp (candidate->foundation, lfoundation, NICE_CANDIDATE_MAX_FOUNDATION) == 0) {
+      result.local = candidate;
+      break;
+    }
+  }
+
+  for (i = cmp->remote_candidates; i; i = i->next) {
+    NiceCandidate *candidate = i->data;
+    if (strncmp (candidate->foundation, rfoundation, NICE_CANDIDATE_MAX_FOUNDATION) == 0) {
+      result.remote = candidate;
+      break;
+    }
+  }
+
+  if (result.local && result.remote) {
+    result.priority = agent_candidate_pair_priority (agent, result.local, result.remote);
+    if (pair)
+      *pair = result;
+    return TRUE;
+  }
+
+  return FALSE;
+}
+
+/**
  * Resets the component state to that of a ICE restarted
  * session.
  */
@@ -155,4 +195,19 @@ component_restart (Component *cmp)
   /* note: component state managed by agent */
 
   return TRUE;
+}
+
+/**
+ * Changes the selected pair for the component to 'pair'. Does not
+ * emit the "selected-pair-changed" signal.
+ */ 
+void component_update_selected_pair (Component *component, const CandidatePair *pair)
+{
+  g_assert (component);
+  g_assert (pair);
+  g_debug ("setting SELECTED PAIR for component %u: %s:%s (prio:%lu).", 
+	   component->id, pair->local->foundation, pair->remote->foundation, (long unsigned)pair->priority);
+  component->selected_pair.local = pair->local;
+  component->selected_pair.remote = pair->remote;
+  component->selected_pair.priority = pair->priority;
 }

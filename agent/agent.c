@@ -528,6 +528,15 @@ void agent_signal_component_state_change (NiceAgent *agent, guint stream_id, gui
   }
 }
 
+guint64
+agent_candidate_pair_priority (NiceAgent *agent, NiceCandidate *local, NiceCandidate *remote)
+{
+  if (agent->controlling_mode == TRUE)
+    return nice_candidate_pair_priority (local->priority, remote->priority);
+
+  return nice_candidate_pair_priority (remote->priority, local->priority);
+}
+
 static gboolean 
 priv_add_srv_rfx_candidate_discovery (NiceAgent *agent, NiceCandidate *host_candidate, const gchar *stun_server_ip, const guint stun_server_port, Stream *stream, guint component_id, NiceAddress *addr)
 {
@@ -998,7 +1007,8 @@ _nice_agent_recv (
   if (len >= 0) {
     gchar tmpbuf[INET6_ADDRSTRLEN];
     nice_address_to_string (&from, tmpbuf);
-    g_debug ("Packet received on local socket %u from %s:%u (%u octets).", udp_socket->fileno, tmpbuf, from.port, len);
+    g_debug ("Packet received on local socket %u from [%s]:%u (%u octets).",
+             udp_socket->fileno, tmpbuf, nice_address_get_port (&from), len);
   }
 #endif
 
@@ -1593,6 +1603,44 @@ nice_agent_main_context_attach (
   agent->main_context_set = TRUE;
   agent->read_func = func;
   agent->read_func_data = data;
+
+  return TRUE;
+}
+
+/**
+ * Sets the selected candidate pair for media transmission
+ * for given stream component. Calling this function will
+ * disable all further ICE processing (connection check,
+ * state machine updates, etc). Note that keepalives will 
+ * continue to be sent.
+ */
+NICEAPI_EXPORT gboolean 
+nice_agent_set_selected_pair (
+  NiceAgent *agent,
+  guint stream_id,
+  guint component_id,
+  const gchar *lfoundation,
+  const gchar *rfoundation)
+{
+  Component *component;
+  CandidatePair pair;
+
+  /* step: check that params specify an existing pair */
+  if (!agent_find_component (agent, stream_id, component_id, NULL, &component))
+    return FALSE;
+
+  if (!component_find_pair (component, agent, lfoundation, rfoundation, &pair))
+    return FALSE;
+
+  /* step: stop connectivity checks (note: for the whole stream) */
+  conn_check_prune_stream (agent, stream_id); 
+
+  /* step: change component state */
+  agent_signal_component_state_change (agent, stream_id, component_id, NICE_COMPONENT_STATE_READY);
+
+  /* step: set the selected pair */
+  component_update_selected_pair (component, &pair);
+  agent_signal_new_selected_pair (agent, stream_id, component_id, lfoundation, rfoundation);
 
   return TRUE;
 }

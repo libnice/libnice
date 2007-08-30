@@ -95,7 +95,7 @@ static gboolean priv_conn_check_initiate (NiceAgent *agent, CandidateCheckPair *
    * see  "7.2.1.4 Triggered Checks"
    */
   g_get_current_time (&pair->next_tick);
-  g_time_val_add (&pair->next_tick, agent->timer_ta * 10);
+  g_time_val_add (&pair->next_tick, agent->timer_ta * 1000);
   pair->state = NICE_CHECK_IN_PROGRESS;
   conn_check_send (agent, pair);
   return TRUE;
@@ -118,7 +118,6 @@ static gboolean priv_conn_check_unfreeze_next (NiceAgent *agent, GSList *connche
   GSList *i;
   guint c;
   guint max_components = 0;
-  gboolean frozen = FALSE;
 
   /* step: calculate the max number of components across streams */
   for (i = agent->streams; i; i = i->next) {
@@ -142,7 +141,6 @@ static gboolean priv_conn_check_unfreeze_next (NiceAgent *agent, GSList *connche
       CandidateCheckPair *p = i->data;
       if (p->component_id == c + 1) {
 	if (p->state == NICE_CHECK_FROZEN) {
-	  frozen = TRUE;
 	  if (p->priority > max_frozen_priority) {
 	    max_frozen_priority = p->priority;
 	    pair = p;
@@ -255,7 +253,6 @@ static gboolean priv_conn_check_tick (gpointer pointer)
     CandidateCheckPair *p = i->data;
     
     if (p->state == NICE_CHECK_IN_PROGRESS) {
-      /* note: macro from sys/time.h but compatible with GTimeVal */
       if (p->stun_ctx == NULL) {
 	g_debug ("STUN connectivity check was cancelled, marking as done.");
 	p->state = NICE_CHECK_FAILED;
@@ -267,8 +264,8 @@ static gboolean priv_conn_check_tick (gpointer pointer)
 	  unsigned int timeout = stun_bind_timeout (p->stun_ctx);
 	  
 	  /* note: convert from milli to microseconds for g_time_val_add() */
-	  g_get_current_time (&p->next_tick);
-	  g_time_val_add (&p->next_tick, timeout * 10);
+	  p->next_tick = now;
+	  g_time_val_add (&p->next_tick, timeout * 1000);
 	  
 	  keep_timer_going = TRUE;
 	  p->traffic_after_tick = TRUE; /* for keepalive timer */
@@ -468,11 +465,8 @@ static gboolean priv_add_new_check_pair (NiceAgent *agent, guint stream_id, Comp
     pair->local = local; 
     pair->remote = remote;
     g_snprintf (pair->foundation, NICE_CANDIDATE_PAIR_MAX_FOUNDATION, "%s:%s", local->foundation, remote->foundation);
-    
-    if (agent->controlling_mode == TRUE)
-      pair->priority = nice_candidate_pair_priority (local->priority, remote->priority);
-    else
-      pair->priority = nice_candidate_pair_priority (remote->priority, local->priority);
+
+    pair->priority = agent_candidate_pair_priority (agent, local, remote);
     pair->state = initial_state;
     pair->nominated = use_candidate;
     pair->controlling = agent->controlling_mode;
@@ -736,7 +730,7 @@ int conn_check_send (NiceAgent *agent, CandidateCheckPair *pair)
     timeout = stun_bind_timeout (pair->stun_ctx);
     /* note: convert from milli to microseconds for g_time_val_add() */
     g_get_current_time (&pair->next_tick);
-    g_time_val_add (&pair->next_tick, timeout * 10);
+    g_time_val_add (&pair->next_tick, timeout * 1000);
     pair->traffic_after_tick = TRUE; /* for keepalive timer */
   }
     
@@ -891,6 +885,7 @@ static gboolean priv_update_selected_pair (NiceAgent *agent, Component *componen
 static gboolean priv_schedule_triggered_check (NiceAgent *agent, Stream *stream, Component *component, NiceUDPSocket *local_socket, NiceCandidate *remote_cand, gboolean use_candidate)
 {
   GSList *i;
+  gboolean result = FALSE;
 
   for (i = agent->conncheck_list; i ; i = i->next) {
       CandidateCheckPair *p = i->data;
@@ -931,7 +926,6 @@ static gboolean priv_schedule_triggered_check (NiceAgent *agent, Stream *stream,
   }
 
   {
-    gboolean result = FALSE;
     NiceCandidate *local = NULL;
 
     for (i = component->local_candidates; i ; i = i->next) {
@@ -947,7 +941,7 @@ static gboolean priv_schedule_triggered_check (NiceAgent *agent, Stream *stream,
       g_debug ("Didn't find a matching pair for triggered check (remote-cand=%p).", remote_cand);
   }
 
-  return FALSE;
+  return result;
 }
 
 /**
@@ -993,7 +987,7 @@ static void priv_reply_to_conn_check (NiceAgent *agent, Stream *stream, Componen
 	     tmpbuf,
 	     nice_address_get_port (&cand->addr),
 	     udp_socket->fileno,
-	     rbuf_len,
+	     (unsigned)rbuf_len,
 	     cand, component->id,
 	     (int)use_candidate);
   }
@@ -1030,9 +1024,9 @@ static CandidateCheckPair *priv_add_peer_reflexive_pair (NiceAgent *agent, guint
       pair->state = NICE_CHECK_DISCOVERED;
       g_snprintf (pair->foundation, NICE_CANDIDATE_PAIR_MAX_FOUNDATION, "%s:%s", local_cand->foundation, parent_pair->remote->foundation);
       if (agent->controlling_mode == TRUE)
-	pair->priority = nice_candidate_pair_priority (local_cand->priority, parent_pair->remote->priority);
+	pair->priority = nice_candidate_pair_priority (local_cand->priority, parent_pair->priority);
       else
-	pair->priority = nice_candidate_pair_priority (parent_pair->remote->priority, local_cand->priority);
+	pair->priority = nice_candidate_pair_priority (parent_pair->priority, local_cand->priority);
       pair->nominated = FALSE;
       pair->controlling = agent->controlling_mode;
       g_debug ("added a new peer-discovered pair with foundation of '%s'.", pair->foundation);
@@ -1053,10 +1047,7 @@ static void priv_recalculate_pair_priorities (NiceAgent *agent)
 
   for (i = agent->conncheck_list; i; i = i->next) {
     CandidateCheckPair *p = i->data;
-    if (agent->controlling_mode == TRUE)
-      p->priority = nice_candidate_pair_priority (p->local->priority, p->remote->priority);
-    else
-      p->priority = nice_candidate_pair_priority (p->remote->priority, p->local->priority);
+    p->priority = agent_candidate_pair_priority (agent, p->local, p->remote);
   }
 }
 
@@ -1098,7 +1089,7 @@ static gboolean priv_map_reply_to_conn_check_request (NiceAgent *agent, Stream *
     CandidateCheckPair *p = i->data;
     if (p->stun_ctx) {
       res = stun_bind_process (p->stun_ctx, buf, len, &sockaddr, &socklen); 
-      g_debug ("stun_bind_process/conncheck for %p res %d (%s) (controlling=%d).", p, res, strerror (res), agent->controlling_mode);
+      g_debug ("stun_bind_process/conncheck for %p res %d (%s) (controlling=%d).", p, (int)res, strerror (res), agent->controlling_mode);
       if (res == 0) {
 	/* case: found a matching connectivity check request */
 
@@ -1224,7 +1215,8 @@ static gboolean priv_map_reply_to_discovery_request (NiceAgent *agent, gchar *bu
     CandidateDiscovery *d = i->data;
     if (d->stun_ctx) {
       res = stun_bind_process (d->stun_ctx, buf, len, &sockaddr, &socklen); 
-      g_debug ("stun_bind_process/disc for %p res %d (%s).", d, res, strerror (res));
+      g_debug ("stun_bind_process/disc for %p res %d (%s).", d, (int)res,
+               strerror (res));
       if (res == 0) {
 	/* case: succesful binding discovery, create a new local candidate */
 	NiceAddress niceaddr;

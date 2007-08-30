@@ -224,6 +224,14 @@ nice_agent_main_context_attach (
   NiceAgentRecvFunc func,
   gpointer data);
 
+gboolean 
+nice_agent_set_selected_pair (
+  NiceAgent *agent,
+  guint stream_id,
+  guint component_id,
+  const gchar *lfoundation,
+  const gchar *rfoundation);
+
 G_END_DECLS
 
 #endif /* _AGENT_H */

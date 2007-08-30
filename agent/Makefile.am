@@ -65,7 +65,8 @@ check_PROGRAMS = \
 	test-poll \
 	test-mainloop \
 	test-fullmode \
-	test-restart
+	test-restart \
+	test-fallback
 
 check_SCRIPTS = \
 	check-test-fullmode-with-stun.sh

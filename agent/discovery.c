@@ -172,28 +172,35 @@ static gboolean priv_add_local_candidate_pruned (Component *component, NiceCandi
  * Implements the mechanism described in ICE sect 
  * 4.1.1.4 "Computing Foundations" (ID-17).
  */
-static void priv_assign_foundation (NiceAgent *agent, Component *component, NiceCandidate *candidate)
+static void priv_assign_foundation (NiceAgent *agent, NiceCandidate *candidate)
 {
-  GSList *i;
+  GSList *i, *j, *k;
 
-  for (i = component->local_candidates; i; i = i->next) {
-    NiceCandidate *n = i->data;
-    NiceAddress temp = n->base_addr;
+  for (i = agent->streams; i; i = i->next) {
+    Stream *stream = i->data;
+    for (j = stream->components; j; j = j->next) {
+      Component *component = j->data;
+      for (k = component->local_candidates; k; k = k->next) {
+	NiceCandidate *n = k->data;
+	NiceAddress temp = n->base_addr;
     
-    /* note: ports are not be compared */
-    temp.port = candidate->base_addr.port;
-
-    if (candidate->type == n->type &&
-	nice_address_equal (&candidate->base_addr, &n->base_addr)) {
-      /* note: currently only one STUN/TURN server per stream at a
-       *       time is supported, so there is no need to check
-       *       for candidates that would otherwise share the
-       *       foundation, but have different STUN/TURN servers */
-      memcpy (candidate->foundation, n->foundation, NICE_CANDIDATE_MAX_FOUNDATION);
-      return;
+	/* note: ports are not be compared */
+	nice_address_set_port (&temp,
+               nice_address_get_port (&candidate->base_addr));
+	
+	if (candidate->type == n->type &&
+	    nice_address_equal (&candidate->base_addr, &temp)) {
+	  /* note: currently only one STUN/TURN server per stream at a
+	   *       time is supported, so there is no need to check
+	   *       for candidates that would otherwise share the
+	   *       foundation, but have different STUN/TURN servers */
+	  memcpy (candidate->foundation, n->foundation, NICE_CANDIDATE_MAX_FOUNDATION);
+	  return;
+	}
+      }
     }
   }
-  
+      
   g_snprintf (candidate->foundation, NICE_CANDIDATE_MAX_FOUNDATION, "%u", agent->next_candidate_id++);
 }
 
@@ -222,12 +229,13 @@ NiceCandidate *discovery_add_local_host_candidate (
   if (candidate) {
     NiceUDPSocket *udp_socket = g_slice_new0 (NiceUDPSocket);
     if (udp_socket) {
-      priv_assign_foundation (agent, component, candidate);
       candidate->stream_id = stream_id;
       candidate->component_id = component_id;
       candidate->addr = *address;
       candidate->base_addr = *address;
       candidate->priority = nice_candidate_ice_priority (candidate);
+
+      priv_assign_foundation (agent, candidate);
 
       /* note: candidate username and password are left NULL as stream 
 	 level ufrag/password are used */
@@ -299,7 +307,6 @@ discovery_add_server_reflexive_candidate (
     candidate->priority = 
       nice_candidate_ice_priority_full 
         (NICE_CANDIDATE_TYPE_PREF_SERVER_REFLEXIVE, 0, component_id);
-    priv_assign_foundation (agent, component, candidate);
     candidate->stream_id = stream_id;
     candidate->component_id = component_id;
     candidate->addr = *address;
@@ -307,6 +314,8 @@ discovery_add_server_reflexive_candidate (
     /* step: link to the base candidate+socket */
     candidate->sockptr = base_socket;
     candidate->base_addr = base_socket->addr;
+
+    priv_assign_foundation (agent, candidate);
 
     result = priv_add_local_candidate_pruned (component, candidate);
     if (result) {
@@ -352,7 +361,7 @@ discovery_add_peer_reflexive_candidate (
         (NICE_CANDIDATE_TYPE_PREF_PEER_REFLEXIVE, 0, component_id);
     candidate->stream_id = stream_id;
     candidate->component_id = component_id;
-    priv_assign_foundation (agent, component, candidate);
+    priv_assign_foundation (agent, candidate);
     candidate->addr = *address;
     candidate->base_addr = base_socket->addr;
 
@@ -471,7 +480,8 @@ static gboolean priv_discovery_tick (gpointer pointer)
       if (agent->discovery_unsched_items)
 	--agent->discovery_unsched_items;
       
-      g_debug ("discovery - scheduling cand type %u addr %s and socket %d.\n", cand->type, cand->server_addr, cand->socket);
+      g_debug ("discovery - scheduling cand type %u addr %s and socket %d.\n",
+               cand->type, cand->server_addr, cand->socket);
       
       if (cand->type == NICE_CANDIDATE_TYPE_SERVER_REFLEXIVE &&
 	  cand->server_addr) {
@@ -518,7 +528,6 @@ static gboolean priv_discovery_tick (gpointer pointer)
 	g_debug ("STUN discovery was cancelled, marking discovery done.");
 	cand->done = TRUE;
       }
-      /* note: macro from sys/time.h but compatible with GTimeVal */
       else if (priv_timer_expired (&cand->next_tick, &now)) {
 	int res = stun_bind_elapse (cand->stun_ctx);
 	if (res == EAGAIN) {
@@ -526,8 +535,8 @@ static gboolean priv_discovery_tick (gpointer pointer)
 	  unsigned int timeout = stun_bind_timeout (cand->stun_ctx);
 	  
 	  /* note: convert from milli to microseconds for g_time_val_add() */
-	  g_get_current_time (&cand->next_tick);
-	  g_time_val_add (&cand->next_tick, timeout * 10);
+	  cand->next_tick = now;
+	  g_time_val_add (&cand->next_tick, timeout * 1000);
 	  
 	  ++not_done; /* note: retry later */
 	}

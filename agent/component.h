@@ -65,7 +65,7 @@ struct _CandidatePair
 struct _Component
 {
   NiceComponentType type;
-  guint id;
+  guint id;                    /**< component id */
   NiceComponentState state;
   GSList *local_candidates;    /**< list of Candidate objs */
   GSList *remote_candidates;   /**< list of Candidate objs */
@@ -90,7 +90,13 @@ NiceUDPSocket *
 component_find_udp_socket_by_fd (Component *component, guint fd);
 
 gboolean
+component_find_pair (Component *cmp, NiceAgent *agent, const gchar *lfoundation, const gchar *rfoundation, CandidatePair *pair);
+
+gboolean
 component_restart (Component *cmp);
+
+void
+component_update_selected_pair (Component *component, const CandidatePair *pair);
 
 G_END_DECLS
 

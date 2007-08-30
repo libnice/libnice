@@ -126,6 +126,6 @@ void agent_signal_new_remote_candidate (NiceAgent *agent, NiceCandidate *candida
 
 void agent_signal_initial_binding_request_received (NiceAgent *agent, Stream *stream);
 
-void agent_free_discovery_candidate_udp (gpointer data, gpointer user_data);
+guint64 agent_candidate_pair_priority (NiceAgent *agent, NiceCandidate *local, NiceCandidate *remote);
 
 #endif /*_NICE_AGENT_PRIV_H */
