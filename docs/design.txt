@@ -167,6 +167,17 @@ Restarting ICE:
   has to be created. For the remote party, this looks like a ICE
   restart as well.
 
+Handling fallback to non-ICE operation:
+
+- If we are the offering party, and the remote party indicates
+  it doesn't support ICE, we can use nice_agent_set_selected_pair()
+  to force selection of a candidate pair (for remote party, 
+  the information on SDP 'm=' and 'c=' lines needs to be used
+  to generate one remote candidate for each component of the
+  streams). This function will halt all ICE processing (excluding
+  keepalives), while still allowing to send and receive media (assuming
+  NATs won't interfere).
+
 Notes about sending media:
 
 - Client may send media once all components of a stream have reached
