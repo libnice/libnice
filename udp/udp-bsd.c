@@ -23,6 +23,8 @@
  *
  * Contributors:
  *   Dafydd Harries, Collabora Ltd.
+ *   Rémi Denis-Courmont, Nokia
+ *   Kai Vehmanen
  *
  * Alternatively, the contents of this file may be used under the terms of the
  * the GNU Lesser General Public License Version 2.1 (the "LGPL"), in which
@@ -77,11 +79,10 @@ socket_recv (
   gchar *buf)
 {
   gint recvd;
-  struct sockaddr_in sin;
-  guint from_len = sizeof (sin);
+  struct sockaddr_storage sa;
+  guint from_len = sizeof (sa);
 
-  memset (&sin, 0, sizeof (sin));
-  recvd = recvfrom (sock->fileno, buf, len, 0, (struct sockaddr *) &sin,
+  recvd = recvfrom (sock->fileno, buf, len, 0, (struct sockaddr *) &sa,
       &from_len);
   if (recvd == -1)
   {
@@ -89,30 +90,25 @@ socket_recv (
     return -1;
   }
 
-  from->type = NICE_ADDRESS_TYPE_IPV4;
-  from->addr.addr_ipv4 = ntohl (sin.sin_addr.s_addr);
-  from->port = ntohs (sin.sin_port);
-
+  nice_address_set_from_sockaddr (from, (struct sockaddr *)&sa);
   return recvd;
 }
 
 static gboolean
 socket_send (
   NiceUDPSocket *sock,
-  NiceAddress *to,
+  const NiceAddress *to,
   guint len,
   const gchar *buf)
 {
-  struct sockaddr_in sin;
+  struct sockaddr_storage sa;
   ssize_t sent;
 
-  sin.sin_family = AF_INET;
-  sin.sin_addr.s_addr = htonl (to->addr.addr_ipv4);
-  sin.sin_port = htons (to->port);
+  nice_address_copy_to_sockaddr (to, (struct sockaddr *)&sa);
 
   do
-    sent = sendto (sock->fileno, buf, len, 0, (struct sockaddr *) &sin,
-          sizeof (sin));
+    sent = sendto (sock->fileno, buf, len, 0, (struct sockaddr *) &sa,
+                   sizeof (sa));
   while ((sent == -1) && sock_recv_err (sock->fileno));
   
   return sent == (ssize_t)len;
@@ -134,7 +130,7 @@ socket_factory_init_socket (
   NiceAddress *addr)
 {
   gint sockfd;
-  struct sockaddr_in name;
+  struct sockaddr_storage name;
   guint name_len = sizeof (name);
 
   (void)man;
@@ -151,20 +147,21 @@ socket_factory_init_socket (
   }
 #endif
 
-  name.sin_family = AF_INET;
 
   if (addr != NULL)
     {
-      if (addr->addr.addr_ipv4 != 0)
-        name.sin_addr.s_addr = htonl (addr->addr.addr_ipv4);
-      else
-        name.sin_addr.s_addr = INADDR_ANY;
-
-      if (addr->port != 0)
-        name.sin_port = htons (addr->port);
+      nice_address_copy_to_sockaddr(addr, (struct sockaddr *)&name);
     }
+  else
+    {
+       name.ss_family = AF_INET;
+#ifdef HAVE_SA_LEN
+       name.ss_len = sizeof (name);
+#endif
+    }
+ 
 
-  if (bind (sockfd, (struct sockaddr *) &name, sizeof (name)) != 0)
+  if(bind (sockfd, (struct sockaddr *) &name, sizeof (name)) != 0)
     {
       close (sockfd);
       return FALSE;
@@ -176,12 +173,7 @@ socket_factory_init_socket (
       return FALSE;
     }
 
-  if (name.sin_addr.s_addr == INADDR_ANY)
-    sock->addr.addr.addr_ipv4 = 0;
-  else
-    sock->addr.addr.addr_ipv4 = ntohl (name.sin_addr.s_addr);
-
-  sock->addr.port = ntohs (name.sin_port);
+  nice_address_set_from_sockaddr (&sock->addr, (struct sockaddr *)&name);
 
   sock->fileno = sockfd;
   sock->send = socket_send;

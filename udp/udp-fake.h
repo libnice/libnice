@@ -48,7 +48,7 @@ nice_udp_fake_socket_factory_init (NiceUDPSocketFactory *man);
 void
 nice_udp_fake_socket_push_recv (
   NiceUDPSocket *man,
-  NiceAddress *from,
+  const NiceAddress *from,
   guint len,
   const gchar *buf);
 

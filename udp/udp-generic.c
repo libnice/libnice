@@ -59,7 +59,7 @@ nice_udp_socket_factory_close (NiceUDPSocketFactory *man)
   man->close (man);
 }
 
-NICEAPI_EXPORT guint
+NICEAPI_EXPORT gint
 nice_udp_socket_recv (
   NiceUDPSocket *sock,
   NiceAddress *from,
@@ -72,7 +72,7 @@ nice_udp_socket_recv (
 NICEAPI_EXPORT void
 nice_udp_socket_send (
   NiceUDPSocket *sock,
-  NiceAddress *to,
+  const NiceAddress *to,
   guint len,
   const gchar *buf)
 {

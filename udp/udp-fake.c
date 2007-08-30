@@ -43,6 +43,9 @@
 #include <unistd.h>
 #include <sys/socket.h>
 #include <sys/un.h>
+#include <sys/uio.h>
+#include <stdlib.h>
+#include <pthread.h>
 
 #include <glib.h>
 
@@ -55,18 +58,60 @@ struct _UDPFakeSocketPriv
   guint net_sock;
 };
 
+
+static
+ssize_t do_send (int fd, const void *buf, size_t len, const NiceAddress *to)
+{
+  ssize_t total = sizeof (*to) + sizeof (len);
+  struct iovec iov[3];
+
+  iov[0].iov_base = (void *)to;
+  iov[0].iov_len = sizeof (*to);
+  iov[1].iov_base = &len;
+  iov[1].iov_len = sizeof (len);
+  iov[2].iov_base = (void *)buf;
+  iov[2].iov_len = len;
+  total += len;
+
+  if (writev (fd, iov, 3) != total)
+    return -1;
+
+  return len;
+}
+
+
+static
+ssize_t do_recv (int fd, void *buf, size_t len, NiceAddress *from)
+{
+  static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
+  struct iovec iov[2];
+  ssize_t res;
+
+  iov[0].iov_base = from;
+  iov[0].iov_len = sizeof (*from);
+  iov[1].iov_base = &len;
+  iov[1].iov_len = sizeof (len);
+
+  pthread_mutex_lock (&lock);
+  if ((readv (fd, iov, 2) != (sizeof (*from) + sizeof (len)))
+   || (read (fd, buf, len) != (ssize_t)len))
+    res = -1;
+  else
+    res = len;
+  pthread_mutex_unlock (&lock);
+
+  return len;
+}
+
+
 static gboolean
 fake_send (
   NiceUDPSocket *sock,
-  NiceAddress *to,
+  const NiceAddress *to,
   guint len,
   const gchar *buf)
 {
-  write (sock->fileno, to, sizeof (NiceAddress));
-  write (sock->fileno, &len, sizeof (guint));
-  write (sock->fileno, buf, len);
-
-  return TRUE;
+  return do_send (sock->fileno, buf, len, to) == (ssize_t)len;
 }
 
 static gint
@@ -76,11 +121,7 @@ fake_recv (
   guint len,
   gchar *buf)
 {
-  read (sock->fileno, from, sizeof (NiceAddress));
-  read (sock->fileno, &len, sizeof (guint));
-  read (sock->fileno, buf, len);
-
-  return len;
+  return do_recv (sock->fileno, buf, len, from);
 }
 
 static void
@@ -104,7 +145,7 @@ fake_socket_init (
   NiceAddress *addr)
 {
   int fds[2];
-  static int port = 1;
+  static unsigned int port = 1;
   UDPFakeSocketPriv *priv;
 
   if (socketpair (AF_LOCAL, SOCK_STREAM, 0, fds) != 0)
@@ -114,13 +155,13 @@ fake_socket_init (
   priv->net_sock = fds[0];
 
   sock->fileno = fds[1];
-  sock->addr.type = addr->type;
-  sock->addr.addr.addr_ipv4 = addr->addr.addr_ipv4;
-
-  if (addr->port == 0)
-    sock->addr.port = port++;
+  if (addr)
+    sock->addr = *addr;
   else
-    sock->addr.port = addr->port;
+    nice_address_set_ipv4 (&sock->addr, 0);
+
+  if (!addr || !nice_address_get_port (addr))
+    nice_address_set_port (&sock->addr, port++);
 
   sock->send = fake_send;
   sock->recv = fake_recv;
@@ -132,7 +173,7 @@ fake_socket_init (
 NICEAPI_EXPORT void
 nice_udp_fake_socket_push_recv (
   NiceUDPSocket *sock,
-  NiceAddress *from,
+  const NiceAddress *from,
   guint len,
   const gchar *buf)
 {
@@ -140,9 +181,9 @@ nice_udp_fake_socket_push_recv (
 
   priv = (UDPFakeSocketPriv *) sock->priv;
 
-  write (priv->net_sock, from, sizeof (NiceAddress));
-  write (priv->net_sock, &len, sizeof (guint));
-  write (priv->net_sock, buf, len);
+  if (do_send (priv->net_sock, buf, len, from) != (ssize_t)len)
+  /* Not much we can do here */
+    abort ();
 }
 
 NICEAPI_EXPORT guint
@@ -156,11 +197,7 @@ nice_udp_fake_socket_pop_send (
 
   priv = (UDPFakeSocketPriv *) sock->priv;
 
-  read (priv->net_sock, to, sizeof (NiceAddress));
-  read (priv->net_sock, &len, sizeof (guint));
-  read (priv->net_sock, buf, len);
-
-  return len;
+  return do_recv (priv->net_sock, buf, len, to);
 }
 
 NICEAPI_EXPORT guint

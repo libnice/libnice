@@ -48,9 +48,9 @@ main (void)
   NiceUDPSocket sock;
   NiceAddress addr;
 
-  memset (&addr, 0, sizeof (addr));
   nice_udp_bsd_socket_factory_init (&factory);
-  addr.port = 9999;
+  nice_address_set_ipv4 (&addr, 0);
+  nice_address_set_port (&addr, 9999);
 
   if (!nice_udp_socket_factory_make (&factory, &sock, &addr))
     {
@@ -61,7 +61,7 @@ main (void)
   for (;;)
     {
       gchar buf[1024];
-      guint length;
+      gint length;
 
       length = nice_udp_socket_recv (&sock, &addr, sizeof (buf), buf);
 #ifdef DEBUG

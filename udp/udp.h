@@ -50,7 +50,7 @@ struct _NiceUDPSocket
   guint fileno;
   gint (*recv) (NiceUDPSocket *sock, NiceAddress *from, guint len,
       gchar *buf);
-  gboolean (*send) (NiceUDPSocket *sock, NiceAddress *to, guint len,
+  gboolean (*send) (NiceUDPSocket *sock, const NiceAddress *to, guint len,
       const gchar *buf);
   void (*close) (NiceUDPSocket *sock);
   void *priv;
@@ -82,7 +82,7 @@ void
 nice_udp_socket_factory_close (NiceUDPSocketFactory *man);
 
 G_GNUC_WARN_UNUSED_RESULT
-guint
+gint
 nice_udp_socket_recv (
   NiceUDPSocket *sock,
   NiceAddress *from,
@@ -92,7 +92,7 @@ nice_udp_socket_recv (
 void
 nice_udp_socket_send (
   NiceUDPSocket *sock,
-  NiceAddress *to,
+  const NiceAddress *to,
   guint len,
   const gchar *buf);
 

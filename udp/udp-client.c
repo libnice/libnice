@@ -55,15 +55,15 @@ main (void)
   if (!nice_udp_socket_factory_make (&man, &sock, NULL))
     g_assert_not_reached ();
 
-  if (!nice_address_set_ipv4_from_string (&addr, "127.0.0.1"))
+  if (!nice_address_set_from_string (&addr, "127.0.0.1"))
     g_assert_not_reached ();
 
-  addr.port = 9999;
+  nice_address_set_port (&addr, 9999);
 
   for (;;)
     {
       gchar buf[1024];
-      guint length;
+      gint length;
 
       if (fgets (buf, sizeof (buf), stdin) == NULL)
         break;

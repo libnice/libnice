@@ -54,27 +54,31 @@ main (void)
   memset (&tmp, 0, sizeof (tmp));
   nice_udp_bsd_socket_factory_init (&factory);
 
-  g_assert (nice_udp_socket_factory_make (&factory, &server, NULL));
+  if (!nice_udp_socket_factory_make (&factory, &server, NULL))
+    g_assert_not_reached();
+
   // not bound to a particular interface
-  g_assert (server.addr.addr.addr_ipv4 == 0);
+  g_assert (server.addr.s.ip4.sin_addr.s_addr == 0);
   // is bound to a particular port
-  g_assert (server.addr.port != 0);
+  g_assert (nice_address_get_port (&server.addr) != 0);
 
   g_assert (nice_udp_socket_factory_make (&factory, &client, NULL));
   // not bound to a particular interface
-  g_assert (client.addr.addr.addr_ipv4 == 0);
+  g_assert (client.addr.s.ip4.sin_addr.s_addr == 0);
   // is bound to a particular port
-  g_assert (client.addr.port != 0);
+  g_assert (nice_address_get_port (&client.addr) != 0);
 
   nice_udp_socket_send (&client, &server.addr, 5, "hello");
   g_assert (5 == nice_udp_socket_recv (&server, &tmp, 5, buf));
   g_assert (0 == strncmp (buf, "hello", 5));
-  g_assert (tmp.port == client.addr.port);
+  g_assert (nice_address_get_port (&tmp)
+             == nice_address_get_port (&client.addr));
 
   nice_udp_socket_send (&server, &client.addr, 5, "uryyb");
   g_assert (5 == nice_udp_socket_recv (&client, &tmp, 5, buf));
   g_assert (0 == strncmp (buf, "uryyb", 5));
-  g_assert (tmp.port == server.addr.port);
+  g_assert (nice_address_get_port (&tmp)
+             == nice_address_get_port (&server.addr));
 
   nice_udp_socket_close (&client);
   nice_udp_socket_close (&server);
