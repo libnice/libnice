@@ -18,7 +18,7 @@ export NICE_STUN_SERVER_PORT=3800
 echo "Launching stund on port ${NICE_STUN_SERVER_PORT}."
 
 rm -f -- "$pidfile"
-(sh -c "echo \$\$ > \"$pidfile\" && exec ../stun/stund ${NICE_STUN_SERVER_PORT}") &
+(sh -c "echo \$\$ > \"$pidfile\" && exec "$STUND" ${NICE_STUN_SERVER_PORT}") &
 sleep 1
 
 ./test-fullmode

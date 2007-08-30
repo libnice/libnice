@@ -19,14 +19,15 @@ AM_CFLAGS = \
 
 COMMON_LDADD = libagent.la $(GLIB_LIBS)
 
+dist_noinst_DATA = agent-signals-marshal.list
 noinst_LTLIBRARIES = libagent.la
 
-%-signals-marshal.h: %-signals-marshal.list
-	glib-genmarshal --header --prefix=$(subst -,_,$*)_marshal $< > $@
+agent-signals-marshal.h: agent-signals-marshal.list
+	glib-genmarshal --header --prefix=agent_marshal $< > $@
 
-%-signals-marshal.c: %-signals-marshal.list Makefile.am
-	glib-genmarshal --body --prefix=$(subst -,_,$*)_marshal $< > $@
-	sed -i "1i#include \"$*-signals-marshal.h\"" $@
+agent-signals-marshal.c: agent-signals-marshal.list Makefile.am
+	glib-genmarshal --body --prefix=agent_marshal $< > $@
+	sed -i "1i#include \"agent-signals-marshal.h\"" $@
 	sed -i -e 's/^}$$/(void)return_value;(void)invocation_hint;}/' $@
 
 BUILT_SOURCES = \
@@ -68,25 +69,16 @@ check_PROGRAMS = \
 	test-restart \
 	test-fallback
 
-check_SCRIPTS = \
+dist_check_SCRIPTS = \
 	check-test-fullmode-with-stun.sh
 
-# disabled test programs (using the old STUN API):
-EXTRA_PROGRAMS = \
-	test-stun \
-	test-send
-
-TESTS = $(check_PROGRAMS) $(check_SCRIPTS)
+TESTS = $(check_PROGRAMS) $(dist_check_SCRIPTS)
 
 test_LDADD = $(COMMON_LDADD)
 
 test_add_remove_stream_LDADD = $(COMMON_LDADD)
 
 test_recv_LDADD = $(COMMON_LDADD)
-
-test_send_LDADD = $(COMMON_LDADD)
-
-test_stun_LDADD = $(COMMON_LDADD)
 
 test_priority_LDADD = $(COMMON_LDADD)
 
@@ -97,6 +89,8 @@ test_mainloop_LDADD = $(COMMON_LDADD)
 test_fullmode_LDADD = $(COMMON_LDADD)
 
 test_restart_LDADD = $(COMMON_LDADD)
+
+test_fallback_LDADD = $(COMMON_LDADD)
 
 pkginclude_HEADERS = agent.h candidate.h
 
