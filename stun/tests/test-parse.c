@@ -220,11 +220,11 @@ static void test_attribute (void)
 
 		/* MESSAGE-INTEGRITY attribute */
 		"\x00\x08\x00\x14"
-		"\x20\x10\xee\x8d"
-		"\x61\xc9\x3e\x46"
-		"\xbe\x41\xad\x5c"
-		"\xad\x38\xaa\x4c"
-		"\xe8\xf1\xaf\x07"
+		"\x42\x95\x4b\x54"
+		"\x73\x3c\x73\xef"
+		"\xa9\x75\xad\x6f"
+		"\xbe\xd5\x6b\x13"
+		"\x9d\x53\x5f\x57"
 		;
 
 	union
@@ -235,7 +235,7 @@ static void test_attribute (void)
 	socklen_t addrlen;
 	uint32_t dword;
 	uint64_t qword;
-	char str[5];
+	char str[STUN_MAX_STR];
 
 	printf ("Attribute test message length: %u\n", sizeof (acme));
 
@@ -268,11 +268,9 @@ static void test_attribute (void)
 	if (stun_find64 (acme, 0xff04, &qword) !=0)
 		fatal ("Quad-word test failed");
 
-	if (stun_find_string (acme, 0xff00, str, sizeof (str)) != -1)
+	if (stun_find_string (acme, 0xff00, str, STUN_MAX_CP) != ENOENT)
 		fatal ("Absent string test failed");
-	if ((stun_find_string (acme, 0xff02, str, 1) != 4) || (str[0] != 'A'))
-		fatal ("String buffer underflow test failed");
-	if ((stun_find_string (acme, 0xff02, str, sizeof (str)) != 4)
+	if ((stun_find_string (acme, 0xff02, str, STUN_MAX_CP) != 0)
 	 || strcmp (str, "ABCD"))
 		fatal ("String test failed");
 
@@ -304,9 +302,63 @@ static void test_attribute (void)
 }
 
 
+static void test_vectors (void)
+{
+	static const char username[] = "evtj:h6vY";
+	static const char password[] = "VOkJxbRl1RmTxUk/WvJxBt";
+	/* Request message */
+	static const unsigned char req[] =
+	"\x00\x01\x00\x44"
+	"\x21\x12\xa4\x42"
+	"\xb7\xe7\xa7\x01\xbc\x34\xd6\x86\xfa\x87\xdf\xae"
+	"\x00\x24\x00\x04"
+		"\x6e\x00\x01\xff"
+	"\x80\x29\x00\x08"
+		"\x93\x2f\xf9\xb1\x51\x26\x3b\x36"
+	"\x00\x06\x00\x09"
+		"\x65\x76\x74\x6a\x3a\x68\x36\x76\x59\x20\x20\x20"
+	"\x00\x08\x00\x14"
+		"\x62\x4e\xeb\xdc\x3c\xc9\x2d\xd8\x4b\x74\xbf\x85"
+		"\xd1\xc0\xf5\xde\x36\x87\xbd\x33"
+	"\x80\x28\x00\x04"
+		"\xad\x8a\x85\xff";
+	
+	/* Response message */
+	static const unsigned char resp[] =
+	"\x01\x01\x00\x3c"
+	"\x21\x12\xa4\x42"
+	"\xb7\xe7\xa7\x01\xbc\x34\xd6\x86\xfa\x87\xdf\xae"
+	"\x80\x22\x00\x0b"
+		"\x74\x65\x73\x74\x20\x76\x65\x63\x74\x6f\x72\x20"
+	"\x00\x20\x00\x08"
+		"\x00\x01\xa1\x47\x5e\x12\xa4\x43"
+	"\x00\x08\x00\x14"
+		"\xab\x4e\x53\x29\x61\x00\x08\x4c\x89\xf2\x7c\x69"
+		"\x30\x33\x5c\xa3\x58\x14\xea\x90"
+	"\x80\x28\x00\x04"
+		"\xae\x25\x8d\xf2";
+
+	puts ("Checking test vectors...");
+
+	if (stun_demux (req) != true)
+		fatal ("Request test vector checksum failed");
+	if (stun_verify_password (req, password) != 0)
+		fatal ("Request test vector authentication failed");
+
+	if (stun_demux (resp) != true)
+		fatal ("Response test vector checksum failed");
+	if (stun_verify_password (resp, password) != 0)
+		fatal ("Response test vector authentication failed");
+
+	puts ("Done.");
+}
+
+
+
 int main (void)
 {
 	test_message ();
 	test_attribute ();
+	test_vectors ();
 	return 0;
 }

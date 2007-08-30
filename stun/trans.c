@@ -46,12 +46,16 @@
 #include <unistd.h>
 #include <errno.h>
 #include <netinet/in.h>
+#ifdef HAVE_POLL
+# include <poll.h>
+#endif
 
 #include "stun-msg.h"
 #include "trans.h"
 
 #define TRANS_OWN_FD   0x1 /* descriptor belongs to us */
 #define TRANS_RELIABLE 0x2 /* reliable transport */
+#define TRANS_FGPRINT  0x4 /* whether to use FINGERPRINT */
 
 int stun_trans_init (stun_trans_t *restrict tr, int fd,
                      const struct sockaddr *restrict srv, socklen_t srvlen)
@@ -85,17 +89,15 @@ int stun_trans_init (stun_trans_t *restrict tr, int fd,
 }
 
 
-int stun_trans_create (stun_trans_t *restrict tr, int type, int proto,
-                       const struct sockaddr *restrict srv, socklen_t srvlen)
+/**
+ * Creates and connects a socket. This is useful when a socket is to be used
+ * for multiple consecutive transactions (e.g. TURN).
+ */
+static int stun_socket (int family, int type, int proto)
 {
-	int fd, val;
-
-	if (srvlen < sizeof (struct sockaddr))
-		return EINVAL;
-
-	fd = socket (srv->sa_family, type, proto);
+	int fd = socket (family, type, proto);
 	if (fd == -1)
-		return errno;
+		return -1;
 
 #ifdef FD_CLOEXEC
 	fcntl (fd, F_SETFD, fcntl (fd, F_GETFD) | FD_CLOEXEC);
@@ -109,7 +111,7 @@ int stun_trans_create (stun_trans_t *restrict tr, int type, int proto,
 	{
 		/* Linux specifics for ICMP errors on non-connected sockets */
 		int yes = 1;
-		switch (srv->sa_family)
+		switch (family)
 		{
 			case AF_INET:
 				setsockopt (fd, SOL_IP, IP_RECVERR, &yes, sizeof (yes));
@@ -121,25 +123,47 @@ int stun_trans_create (stun_trans_t *restrict tr, int type, int proto,
 	}
 #endif
 
-	if (connect (fd, srv, srvlen) && (errno != EINPROGRESS))
-		val = errno;
-	else
-		val = stun_trans_init (tr, fd, NULL, 0);
+	return fd;
+}
 
-	if (val)
+
+int stun_trans_create (stun_trans_t *restrict tr, int type, int proto,
+                       const struct sockaddr *restrict srv, socklen_t srvlen)
+{
+	int val, fd;
+
+	if (srvlen < sizeof(*srv))
+		return EINVAL;
+
+	fd = stun_socket (srv->sa_family, type, proto);
+	if (fd == -1)
+		return errno;
+
+	if (connect (fd, srv, srvlen) && (errno != EINPROGRESS))
 	{
-		close (fd);
-		return val;
+		val = errno;
+		goto error;
 	}
+
+	val = stun_trans_init (tr, fd, NULL, 0);
+	if (val)
+		goto error;
 
 	tr->flags |= TRANS_OWN_FD;
 	return 0;
+
+error:
+	close (fd);
+	return val;
 }
 
 
 void stun_trans_deinit (stun_trans_t *tr)
 {
 	int saved = errno;
+
+	assert (tr->sock.fd != -1);
+
 	if (tr->flags & TRANS_OWN_FD)
 		close (tr->sock.fd);
 	free (tr->key.value);
@@ -165,19 +189,23 @@ int stun_trans_start (stun_trans_t *tr)
 {
 	int val;
 
-	assert (tr->msg.offset == 0);
-
-	val = stun_trans_send (tr);
-	if (val)
-		return val;
+	tr->msg.offset = 0;
 
 	if (tr->flags & TRANS_RELIABLE)
+		/*
+		 * FIXME: wait for three-way handshake, somewhere
+		 */
 		stun_timer_start_reliable (&tr->timer);
 	else
 		stun_timer_start (&tr->timer);
 
 	DBG ("STUN transaction @%p started (timeout: %ums)\n", tr,
 	     stun_trans_timeout (tr));
+
+	val = stun_trans_send (tr);
+	if (val)
+		return val;
+
 	return 0;
 }
 
@@ -216,6 +244,54 @@ ssize_t stun_sendto (int fd, const uint8_t *buf, size_t len,
 	return val;
 }
 
+
+ssize_t stun_recvfrom (int fd, uint8_t *buf, size_t maxlen,
+                       struct sockaddr *restrict dst,
+                       socklen_t *restrict dstlen)
+{
+	static const int flags = MSG_DONTWAIT | MSG_NOSIGNAL;
+	ssize_t val;
+
+	if (dstlen != NULL)
+		val = recvfrom (fd, buf, maxlen, flags, dst, dstlen);
+	else
+		val = recv (fd, buf, maxlen, flags);
+
+	if ((val == -1) && stun_err_dequeue (fd))
+		errno = EAGAIN;
+
+	return val;
+}
+
+
+unsigned stun_trans_timeout (const stun_trans_t *tr)
+{
+	assert (tr != NULL);
+	assert (tr->sock.fd != -1);
+	return stun_timer_remainder (&tr->timer);
+}
+
+
+int stun_trans_fd (const stun_trans_t *tr)
+{
+	assert (tr != NULL);
+	assert (tr->sock.fd != -1);
+	return tr->sock.fd;
+}
+
+
+bool stun_trans_reading (const stun_trans_t *tr)
+{
+	return true;
+}
+
+
+bool stun_trans_writing (const stun_trans_t *tr)
+{
+	return false;
+}
+
+
 /**
  * Try to send STUN request/indication
  */
@@ -234,14 +310,15 @@ stun_trans_send (stun_trans_t *tr)
 	/* Message sent succesfully! */
 	tr->msg.offset += val;
 	assert (tr->msg.offset <= tr->msg.length);
-	if (tr->msg.offset == tr->msg.length) 
-		tr->msg.offset = 0; // FIXME: temporary hack, may break TCP
+
 	return 0;
 }
 
 
 int stun_trans_tick (stun_trans_t *tr)
 {
+	assert (tr->sock.fd != -1);
+
 	switch (stun_timer_refresh (&tr->timer))
 	{
 		case -1:
@@ -249,6 +326,10 @@ int stun_trans_tick (stun_trans_t *tr)
 			return ETIMEDOUT; // fatal error!
 
 		case 0:
+			/* Retransmit can only happen with non reliable transport */
+			assert ((tr->flags & TRANS_RELIABLE) == 0);
+			tr->msg.offset = 0;
+
 			stun_trans_send (tr);
 			DBG ("STUN transaction @%p retransmitted (timeout: %ums).\n", tr,
 			     stun_trans_timeout (tr));
@@ -257,11 +338,73 @@ int stun_trans_tick (stun_trans_t *tr)
 }
 
 
+/**
+ * Waits for a response or timeout to occur.
+ *
+ * @return ETIMEDOUT if the transaction has timed out, or 0 if an incoming
+ * message needs to be processed.
+ */
+static int stun_trans_wait (stun_trans_t *tr)
+{
+#ifdef HAVE_POLL
+	int val = 0;
+
+	do
+	{
+		struct pollfd ufd;
+		unsigned delay = stun_trans_timeout (tr);
+
+		memset (&ufd, 0, sizeof (ufd));
+		ufd.fd = stun_trans_fd (tr);
+
+		if (stun_trans_writing (tr))
+			ufd.events |= POLLOUT;
+		if (stun_trans_reading (tr))
+			ufd.events |= POLLIN;
+
+		if (poll (&ufd, 1, delay) <= 0)
+		{
+			val = stun_trans_tick (tr);
+			continue;
+		}
+
+		val = 0;
+	}
+	while (val == EAGAIN);
+
+	return val;
+#else
+	(void)tr;
+	return ENOSYS;
+#endif
+}
+
+
+int stun_trans_recv (stun_trans_t *tr, uint8_t *buf, size_t buflen)
+{
+	for (;;)
+	{
+		ssize_t val = stun_trans_wait (tr);
+		if (val)
+		{
+			errno = val /* = ETIMEDOUT */;
+			return -1;
+		}
+
+		val = stun_recv (tr->sock.fd, buf, buflen);
+		if (val >= 0)
+			return val;
+	}
+}
+
+
+
 int stun_trans_preprocess (stun_trans_t *restrict tr, int *pcode,
                            const void *restrict buf, size_t len)
 {
 	assert (pcode != NULL);
 
+	/* FIXME: possible infinite loop */
 	if (stun_validate (buf, len) <= 0)
 		return EAGAIN;
 
@@ -277,6 +420,49 @@ int stun_trans_preprocess (stun_trans_t *restrict tr, int *pcode,
 	if (*pcode >= 0)
 	{
 		DBG (" STUN error message received (code: %d)\n", *pcode);
+
+		/* ALTERNATE-SERVER mechanism */
+		if ((tr->key.value != NULL) && ((*pcode / 100) == 3))
+		{
+			struct sockaddr_storage srv;
+			socklen_t slen = sizeof (srv);
+
+			if (stun_find_addr (buf, STUN_ALTERNATE_SERVER,
+			                    (struct sockaddr *)&srv, &slen))
+			{
+				DBG (" Unexpectedly missing ALTERNATE-SERVER attribute\n");
+				return ECONNREFUSED;
+			}
+
+			if (tr->sock.dstlen == 0)
+			{
+				if (connect (tr->sock.fd, (struct sockaddr *)&srv, slen))
+				{
+					/* This error case includes address family mismatch */
+					DBG (" Error switching to alternate server: %s\n",
+					     strerror (errno));
+					return ECONNREFUSED;
+				}
+			}
+			else
+			{
+				if ((tr->sock.dst.ss_family != srv.ss_family)
+				 || (slen > sizeof (tr->sock.dst)))
+				{
+					DBG (" Unsupported alternate server\n");
+					return ECONNREFUSED;
+				}
+
+				memcpy (&tr->sock.dst, &srv, tr->sock.dstlen = slen);
+			}
+
+			DBG (" Restarting with alternate server\n");
+			if (stun_trans_start (tr) == 0)
+				return EAGAIN;
+
+			DBG (" Restart failed!\n");
+		}
+
 		return ECONNREFUSED;
 	}
 
@@ -284,20 +470,4 @@ int stun_trans_preprocess (stun_trans_t *restrict tr, int *pcode,
 		return EPROTO;
 
 	return 0;
-}
-
-
-unsigned stun_trans_timeout (const stun_trans_t *tr)
-{
-	assert (tr != NULL);
-	assert (tr->sock.fd != -1);
-	return stun_timer_remainder (&tr->timer);
-}
-
-
-int stun_trans_fd (const stun_trans_t *tr)
-{
-	assert (tr != NULL);
-	assert (tr->sock.fd != -1);
-	return tr->sock.fd;
 }

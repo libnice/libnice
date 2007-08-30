@@ -10,8 +10,11 @@ AM_CPPFLAGS = -I$(top_srcdir)
 AM_CFLAGS = -std=gnu99
 LDADD = ../libstun.la
 
-check_PROGRAMS = test-crc32 test-parse test-format \
-		test-bind test-bindserv test-conncheck
+check_PROGRAMS = \
+	test-parse \
+	test-format \
+	test-bind \
+	test-conncheck
 
 dist_check_SCRIPTS = check-bind.sh
 

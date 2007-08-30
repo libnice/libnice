@@ -51,66 +51,7 @@
 #include <errno.h>
 #include <unistd.h>
 #include <sys/time.h>
-#ifdef HAVE_POLL
-# include <sys/poll.h>
-#endif
 #include <fcntl.h>
-
-/** Blocking mode STUN binding discovery */
-
-int stun_bind_run (int fd,
-                   const struct sockaddr *restrict srv, socklen_t srvlen,
-                   struct sockaddr *restrict addr, socklen_t *addrlen)
-{
-#ifdef HAVE_POLL
-	stun_bind_t *ctx;
-	uint8_t buf[STUN_MAXMSG];
-	size_t len = 0;
-	ssize_t val;
-
-	val = stun_bind_start (&ctx, fd, srv, srvlen);
-	if (val)
-		return val;
-
-	do
-	{
-		struct pollfd ufd[1];
-		unsigned delay = stun_bind_timeout (ctx);
-
-		memset (ufd, 0, sizeof (ufd));
-		ufd[0].fd = fd = stun_bind_fd (ctx),
-		ufd[0].events = POLLIN;
-
-		if (poll (ufd, sizeof (ufd) / sizeof (ufd[0]), delay) <= 0)
-		{
-			val = stun_bind_elapse (ctx);
-			continue;
-		}
-
-		val = recv (fd, buf + len, sizeof (buf) - len, MSG_DONTWAIT);
-		if (val == -1)
-		{
-#ifdef MSG_ERRQUEUE
-			/* FIXME: do proper ICMP error handling? */
-			struct msghdr hdr;
-			memset (&hdr, 0, sizeof (hdr));
-			recvmsg (fd, &hdr, MSG_ERRQUEUE);
-#endif
-			val = EAGAIN;
-			continue;
-		}
-
-		len += val;
-		val = stun_bind_process (ctx, buf, len, addr, addrlen);
-	}
-	while (val == EAGAIN);
-
-	return val;
-#else
-	(void)fd; (void)srv; (void)srvlen; (void)addr; (void)addrlen;
-	return ENOSYS;
-#endif
-}
 
 /** Non-blocking mode STUN binding discovery */
 
@@ -164,13 +105,6 @@ stun_bind_alloc (stun_bind_t **restrict context, int fd,
 }
 
 
-void stun_bind_cancel (stun_bind_t *context)
-{
-	stun_trans_deinit (&context->trans);
-	free (context);
-}
-
-
 static int
 stun_bind_launch (stun_bind_t *ctx)
 {
@@ -205,6 +139,13 @@ int stun_bind_start (stun_bind_t **restrict context, int fd,
 }
 
 
+void stun_bind_cancel (stun_bind_t *context)
+{
+	stun_trans_deinit (&context->trans);
+	free (context);
+}
+
+
 /** Timer and retransmission handling */
 
 unsigned stun_bind_timeout (const stun_bind_t *context)
@@ -224,13 +165,6 @@ int stun_bind_elapse (stun_bind_t *context)
 
 
 /** Incoming packets handling */
-
-int stun_bind_fd (const stun_bind_t *context)
-{
-	assert (context != NULL);
-	return stun_trans_fd (&context->trans);
-}
-
 
 int stun_bind_process (stun_bind_t *restrict ctx,
                        const void *restrict buf, size_t len,
@@ -273,6 +207,37 @@ int stun_bind_process (stun_bind_t *restrict ctx,
 }
 
 
+/** Blocking mode STUN binding discovery */
+
+int stun_bind_run (int fd,
+                   const struct sockaddr *restrict srv, socklen_t srvlen,
+                   struct sockaddr *restrict addr, socklen_t *addrlen)
+{
+	stun_bind_t *ctx;
+	uint8_t buf[STUN_MAXMSG];
+	ssize_t val;
+
+	val = stun_bind_start (&ctx, fd, srv, srvlen);
+	if (val)
+		return val;
+
+	do
+	{
+		val = stun_trans_recv (&ctx->trans, buf, sizeof (buf));
+		if (val == -1)
+		{
+			val = errno;
+			continue;
+		}
+
+		val = stun_bind_process (ctx, buf, val, addr, addrlen);
+	}
+	while (val == EAGAIN);
+
+	return val;
+}
+
+
 /** ICE keep-alives (Binding discovery indication!) */
 
 int
@@ -286,6 +251,7 @@ stun_bind_keepalive (int fd, const struct sockaddr *restrict srv,
 	stun_init_indication (buf, STUN_BINDING);
 	val = stun_finish (buf, &len);
 	assert (val == 0);
+	(void)val;
 
 	/* NOTE: hopefully, this is only needed for non-stream sockets */
 	if (stun_sendto (fd, buf, len, srv, srvlen) == -1)
@@ -347,7 +313,7 @@ stun_conncheck_start (stun_bind_t **restrict context, int fd,
 
 	ctx->trans.msg.length = sizeof (ctx->trans.msg.buf);
 	val = stun_finish_short (ctx->trans.msg.buf, &ctx->trans.msg.length,
-	                         username, password, NULL, 0);
+	                         username, password, NULL);
 	if (val)
 		goto error;
 
@@ -357,3 +323,5 @@ error:
 	stun_bind_cancel (*context);
 	return val;
 }
+
+

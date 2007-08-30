@@ -172,18 +172,20 @@ static void bad_responses (void)
 	uint8_t buf[1000];
 
 	/* Allocate a local UDP port */
-	int servfd = listen_dgram ();
+	int servfd = listen_dgram (), fd;
 	assert (servfd != -1);
 
 	val = getsockname (servfd, (struct sockaddr *)&addr, &addrlen);
 	assert (val == 0);
 
-	val = stun_bind_start (&ctx, -1, (struct sockaddr *)&addr, addrlen);
+	fd = socket (addr.ss_family, SOCK_DGRAM, 0);
+	assert (fd != -1);
+
+	val = stun_bind_start (&ctx, fd, (struct sockaddr *)&addr, addrlen);
 	assert (val == 0);
 
 	/* Send to/receive from our client instance only */
-	val = getsockname (stun_bind_fd (ctx),
-	                   (struct sockaddr *)&addr, &addrlen);
+	val = getsockname (fd, (struct sockaddr *)&addr, &addrlen);
 	assert (val == 0);
 
 	val = connect (servfd, (struct sockaddr *)&addr, addrlen);
@@ -219,8 +221,8 @@ static void bad_responses (void)
 	                         (struct sockaddr *)&addr, &addrlen);
 	assert (val == EAGAIN);
 
-
 	stun_bind_cancel (ctx);
+	close (fd);
 	close (servfd);
 }
 

@@ -121,14 +121,6 @@ unsigned stun_bind_timeout (const stun_bind_t *context);
 int stun_bind_elapse (stun_bind_t *context);
 
 /**
- * This is meant to integrate with I/O polling loops and event frameworks.
- * @return file descriptor used by the STUN Binding discovery context.
- * Always succeeds.
- */
-int stun_bind_fd (const stun_bind_t *context);
-
-
-/**
  * Gives data to be processed within the context of a STUN Binding discovery
  * or ICE connectivity check.
  *
@@ -168,33 +160,6 @@ int stun_bind_keepalive (int fd, const struct sockaddr *restrict srv,
                          socklen_t srvlen);
 
 
-/**
- * Tries to parse a STUN Binding request and format a Binding response
- * accordingly.
- *
- * @param buf [OUT] output buffer to write a Binding response to. May refer
- * to the same buffer space as the request message
- * @param plen [IN/OUT] output buffer size on entry, response length on exit
- * @param msg pointer to the first byte of a valid STUN message (check message
- * validity with stun_validate() first)
- * @param src socket address the message was received from
- * @param srclen byte length of the socket address
- * @param muxed If true, non-multiplexed (old RFC3489-style) messages will be
- * considered as invalid.
- *
- * @return 0 if successful (@a rbuf contains a <b>non-error</b> response),
- * EINVAL: malformatted request message or socket address,
- * EAFNOSUPPORT: unsupported socket address family,
- * EPROTO: unsupported request message type or parameter,
- * ENOBUFS: insufficient response buffer space.
- *
- * In case of error, the value at @a plen is set to the size of an error
- * response, or 0 if no error response should be sent.
- */
-int
-stun_bind_reply (uint8_t *buf, size_t *plen, const uint8_t *msg,
-                 const struct sockaddr *restrict src, socklen_t srclen,
-                 bool muxed);
 
 # ifndef STUN_VALIDATE_DECLARATION
 #  define STUN_VALIDATE_DECLARATION 2

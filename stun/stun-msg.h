@@ -54,8 +54,18 @@ static inline void DBG (const char *fmt, ...)
 	vfprintf (stderr, fmt, ap);
 	va_end (ap);
 }
+
+static inline void DBG_bytes (const void *data, size_t len)
+{
+	size_t i;
+
+	DBG ("0x");
+	for (i = 0; i < len; i++)
+		DBG ("%02x", ((const unsigned char *)data)[i]);
+}
 # else
 #  define DBG( ... ) (void)0
+#  define DBG_bytes( data, len ) (void)0
 # endif
 
 # include <stdint.h>
@@ -63,9 +73,10 @@ static inline void DBG (const char *fmt, ...)
 # include <stdbool.h>
 
 # define STUN_MAXMSG 65552 /* bytes */
+# define STUN_MAXCHR 127u
+# define STUN_MAXSTR ((STUN_MAXCHR * 6u) + 1)
 
 # define STUN_COOKIE 0x2112A442
-# define STUN_COOKIE_BYTES 0x21, 0x12, 0xA4, 0x42
 
 typedef struct stun_hdr_s
 {
@@ -90,7 +101,7 @@ typedef enum
 /* Message methods */
 typedef enum
 {
-	STUN_BINDING=0x001,		/* RFC3489bis-07 */
+	STUN_BINDING=0x001,		/* RFC3489bis-08 */
 	STUN_OLD_SHARED_SECRET=0x002,	/* old RFC3489 */
 	STUN_ALLOCATE=0x003,		/* TURN-04 */
 	STUN_SET_ACTIVE_DST=0x004,	/* TURN-04 */
@@ -107,50 +118,64 @@ typedef enum
 typedef enum
 {
 	/* Mandatory attributes */
-	STUN_MAPPED_ADDRESS=0x0001,		/* RFC3489bis-07 */
+	/* 0x0000 */				/* reserved */
+	STUN_MAPPED_ADDRESS=0x0001,		/* RFC3489bis-08 */
 	STUN_OLD_RESPONSE_ADDRESS=0x0002,	/* old RFC3489 */
 	STUN_OLD_CHANGE_REQUEST=0x0003,		/* old RFC3489 */
 	STUN_OLD_SOURCE_ADDRESS=0x0004,		/* old RFC3489 */
 	STUN_OLD_CHANGED_ADDRESS=0x0005,	/* old RFC3489 */
-	STUN_USERNAME=0x0006,			/* RFC3489bis-07 */
+	STUN_USERNAME=0x0006,			/* RFC3489bis-08 */
 	STUN_OLD_PASSWORD=0x0007,		/* old RFC3489 */
-	STUN_MESSAGE_INTEGRITY=0x0008,		/* RFC3489bis-07 */
-	STUN_ERROR_CODE=0x0009,			/* RFC3489bis-07 */
-	STUN_UNKNOWN_ATTRIBUTES=0x000A,		/* RFC3489bis-07 */
+	STUN_MESSAGE_INTEGRITY=0x0008,		/* RFC3489bis-08 */
+	STUN_ERROR_CODE=0x0009,			/* RFC3489bis-08 */
+	STUN_UNKNOWN_ATTRIBUTES=0x000A,		/* RFC3489bis-08 */
 	STUN_OLD_REFLECTED_FROM=0x000B,		/* old RFC3489 */
+	/* 0x000C */				/* reserved */
 	STUN_LIFETIME=0x000D,			/* TURN-04 */
-
+	/* 0x000E */				/* reserved */
+	/* 0x000F */				/* reserved */
 	STUN_BANDWIDTH=0x0010,			/* TURN-04 */
+	/* 0x0011 */				/* reserved */
 	STUN_REMOTE_ADDRESS=0x0012,		/* TURN-04 */
 	STUN_DATA=0x0013,			/* TURN-04 */
-	STUN_REALM=0x0014,			/* RFC3489bis-07 */
-	STUN_NONCE=0x0015,			/* RFC3489bis-07 */
+	STUN_REALM=0x0014,			/* RFC3489bis-08 */
+	STUN_NONCE=0x0015,			/* RFC3489bis-08 */
 	STUN_RELAY_ADDRESS=0x0016,		/* TURN-04 */
 	STUN_REQUESTED_ADDRESS_TYPE=0x0017,	/* TURN-IPv6-03 */
 	STUN_REQUESTED_PORT_PROPS=0x0018,	/* TURN-04 */
 	STUN_REQUESTED_TRANSPORT=0x0019,	/* TURN-04 */
-
-	STUN_XOR_MAPPED_ADDRESS=0x0020,		/* RFC3489bis-07 */
+	/* 0x001A */				/* reserved */
+	/* 0x001B */				/* reserved */
+	/* 0x001C */				/* reserved */
+	/* 0x001D */				/* reserved */
+	/* 0x001E */				/* reserved */
+	/* 0x001F */				/* reserved */
+	STUN_XOR_MAPPED_ADDRESS=0x0020,		/* RFC3489bis-08 */
 	STUN_TIMER_VAL=0x0021,			/* TURN-04 */
 	STUN_REQUESTED_IP=0x0022,		/* TURN-04 */
 	STUN_CONNECT_STAT=0x0023,		/* TURN-04 */
 	STUN_PRIORITY=0x0024,			/* ICE-17 */
 	STUN_USE_CANDIDATE=0x0025,		/* ICE-17 */
+	/* 0x0026-0x7fff */			/* reserved */
 
 	/* Optional attributes */
-	STUN_SERVER=0x8022,			/* RFC3489bis-07 */
-	STUN_ALTERNATE_SERVER=0x8023,		/* RFC3489bis-07 */
-	STUN_REFRESH_INTERVAL=0x8024,		/* RFC3489bis-07 */
-
-	STUN_FINGERPRINT=0x8028,		/* RFC3489bis-07 */
+	/* 0x8000-0x8021 */			/* reserved */
+	STUN_SERVER=0x8022,			/* RFC3489bis-08 */
+	STUN_ALTERNATE_SERVER=0x8023,		/* RFC3489bis-08 */
+	STUN_REFRESH_INTERVAL=0x8024,		/* RFC3489bis-08 */
+	/* 0x8025 */				/* reserved */
+	/* 0x8026 */				/* reserved */
+	/* 0x8027 */				/* reserved */
+	STUN_FINGERPRINT=0x8028,		/* RFC3489bis-08 */
 	STUN_ICE_CONTROLLED=0x8029,		/* ICE-17 */
-	STUN_ICE_CONTROLLING=0x802A		/* ICE-17 */
+	STUN_ICE_CONTROLLING=0x802A,		/* ICE-17 */
+	/* 0x802B-0xFFFF */			/* reserved */
 } stun_attr_type_t;
 
 
-static inline int stun_optional (stun_attr_type_t t)
+static inline bool stun_optional (uint16_t t)
 {
-	return t >> 15;
+	return (t >> 15) == 1;
 }
 
 typedef uint8_t stun_transid_t[12];
@@ -159,17 +184,16 @@ typedef uint8_t stun_transid_t[12];
  * STUN error codes
  * Should be in sync with stun_strerror()
  */
-/* FIXME: consistent integrity check vs error handling ??? */
 typedef enum
 {
-	STUN_TRY_ALTERNATE=300,			/* RFC3489bis-07 */
-	STUN_BAD_REQUEST=400,			/* RFC3489bis-07 */
-	STUN_UNAUTHORIZED=401,			/* RFC3489bis-07 */
-	STUN_UNKNOWN_ATTRIBUTE=420,		/* RFC3489bis-07 */
-	STUN_INTEGRITY_CHECK_FAILURE=431, /* FIXME: missing from RFC3489-07! */
+	STUN_TRY_ALTERNATE=300,			/* RFC3489bis-08 */
+	STUN_BAD_REQUEST=400,			/* RFC3489bis-08 */
+	STUN_UNAUTHORIZED=401,			/* RFC3489bis-08 */
+	STUN_UNKNOWN_ATTRIBUTE=420,		/* RFC3489bis-08 */
 	STUN_NO_BINDING=437,			/* TURN-04 */
-	STUN_STALE_NONCE=438,			/* RFC3489bis-07 */
+	STUN_STALE_NONCE=438,			/* RFC3489bis-08 */
 	STUN_ACT_DST_ALREADY=439,		/* TURN-04 */
+	STUN_UNSUPP_FAMILY=440,			/* TURN-IPv6-03 */
 	STUN_UNSUPP_TRANSPORT=442,		/* TURN-04 */
 	STUN_INVALID_IP=443,			/* TURN-04 */
 	STUN_INVALID_PORT=444,			/* TURN-04 */
@@ -177,7 +201,7 @@ typedef enum
 	STUN_CONN_ALREADY=446,			/* TURN-04 */
 	STUN_ALLOC_OVER_QUOTA=486,		/* TURN-04 */
 	STUN_ROLE_CONFLICT=487,			/* ICE-17 */
-	STUN_SERVER_ERROR=500,			/* RFC3489bis-07 */
+	STUN_SERVER_ERROR=500,			/* RFC3489bis-08 */
 	STUN_SERVER_CAPACITY=507,		/* TURN-04 */
 	STUN_ERROR_MAX=699
 } stun_error_t;
@@ -235,6 +259,9 @@ static inline stun_method_t stun_get_method (const uint8_t *msg)
 	                        (t & 0x000f));
 }
 
+bool stun_has_cookie (const uint8_t *msg);
+
+
 /**
  * @return STUN message transaction ID
  */
@@ -249,9 +276,35 @@ static inline const uint8_t *stun_id (const uint8_t *msg)
 extern "C" {
 # endif
 
-uint32_t stun_fingerprint (const uint8_t *msg);
-void stun_sha1 (const uint8_t *msg, uint8_t *sha,
-                const void *key, size_t keylen);
+/**
+ * Computes the FINGERPRINT checksum of a STUN message.
+ * @param msg pointer to the STUN message
+ * @param len size of the message from header (inclusive) and up to
+ *            FINGERPRINT attribute (inclusive)
+ *
+ * @return fingerprint value in <b>host</b> byte order.
+ */
+uint32_t stun_fingerprint (const uint8_t *msg, size_t len);
+
+/**
+ * Computes the MESSAGE-INTEGRITY hash of a STUN message.
+ * @param msg pointer to the STUN message
+ * @param len size of the message from header (inclusive) and up to
+ *            MESSAGE-INTEGRITY attribute (inclusive)
+ * @param sha output buffer for SHA1 hash (20 bytes)
+ * @param key HMAC key
+ * @param keylen HMAC key bytes length
+ *
+ * @return fingerprint value in <b>host</b> byte order.
+ */
+void stun_sha1 (const uint8_t *msg, size_t len,
+                uint8_t *sha, const void *key, size_t keylen);
+
+/**
+ * SIP H(A1) computation
+ */
+void stun_hash_creds (const char *realm, const char *login, const char *pw,
+                      unsigned char md5[16]);
 
 /**
  * Generates a pseudo-random secure STUN transaction ID.
@@ -307,6 +360,17 @@ bool stun_match_messages (const uint8_t *restrict resp,
 int stun_verify_key (const uint8_t *msg, const void *key, size_t keylen);
 int stun_verify_password (const uint8_t *msg, const char *pw);
 
+/**
+ * Looks for an attribute in a *valid* STUN message.
+ * @param msg message buffer
+ * @param type STUN attribute type (host byte order)
+ * @param palen [OUT] pointer to store the byte length of the attribute
+ * @return a pointer to the start of the attribute payload if found,
+ * otherwise NULL.
+ */
+const void *
+stun_find (const uint8_t *restrict msg, stun_attr_type_t type,
+           uint16_t *restrict palen);
 
 /**
  * Checks if an attribute is present within a STUN message.
@@ -316,7 +380,12 @@ int stun_verify_password (const uint8_t *msg, const char *pw);
  *
  * @return whether there is a MESSAGE-INTEGRITY attribute
  */
-bool stun_present (const uint8_t *msg, stun_attr_type_t type);
+static inline bool stun_present (const uint8_t *msg, stun_attr_type_t type)
+{
+	uint16_t dummy;
+	return stun_find (msg, type, &dummy) != NULL;
+}
+
 
 /**
  * Looks for a flag attribute within a valid STUN message.
@@ -332,8 +401,10 @@ int stun_find_flag (const uint8_t *msg, stun_attr_type_t type);
  * @param msg valid STUN message buffer
  * @param type STUN attribute type (host byte order)
  * @param pval [OUT] where to store the host byte ordered value
+ *
  * @return 0 on success, ENOENT if attribute not found,
  * EINVAL if attribute payload was not 32-bits.
+ * In case of error, @a *pval is not modified.
  */
 int stun_find32 (const uint8_t *msg, stun_attr_type_t type, uint32_t *pval);
 
@@ -344,30 +415,28 @@ int stun_find32 (const uint8_t *msg, stun_attr_type_t type, uint32_t *pval);
  * @param pval [OUT] where to store the host byte ordered value
  * @return 0 on success, ENOENT if attribute not found,
  * EINVAL if attribute payload was not 64-bits.
+ * In case of error, @a *pval is not modified.
  */
 int stun_find64 (const uint8_t *msg, stun_attr_type_t type, uint64_t *pval);
 
 /**
- * Extracts a string from a valid STUN message.
+ * Extracts an UTF-8 string from a valid STUN message.
  * @param msg valid STUN message buffer
  * @param type STUN attribute type (host byte order)
  * @param buf buffer to store the extracted string
- * @param buflen byte length of @a buf
+ * @param maxcp maximum number of code points allowed
+ *  (@a buf should be (6*maxcp+1) bytes long)
  *
- * @return number of characters (not including terminating nul) that would
- * have been written to @a buf if @a buflen were big enough (if the return
- * value is strictly smaller than @a buflen then the call was successful);
- * -1 if the specified attribute could not be found.
+ * @return 0 on success, ENOENT if attribute not found, EINVAL if attribute
+ * improperly encoded, ENOBUFS if the buffer size was too small.
  *
- * @note A nul-byte is appended at the end (unless the buffer is not big
- * enough). However this function does not check for nul characters within
- * the extracted string; the caller is responsible for ensuring that the
- * extracted string does not contain any "illegal" bytes sequence (nul bytes
- * or otherwise, depending on the context).
+ * @note A nul-byte is appended at the end.
  */
-ssize_t stun_find_string (const uint8_t *restrict msg, stun_attr_type_t type,
-                          char *buf, size_t buflen);
+int stun_find_string (const uint8_t *restrict msg, stun_attr_type_t type,
+                      char *buf, size_t buflen);
 
+# define STUN_MAX_STR (763u)
+# define STUN_MAX_CP  (127u)
 
 /**
  * Extracts a network address attribute from a valid STUN message.
@@ -485,6 +554,11 @@ int stun_init_error (uint8_t *ans,  size_t msize, const uint8_t *req,
  */
 int stun_init_error_unknown (uint8_t *ans, size_t msize, const uint8_t *req);
 
+size_t
+stun_finish_long (uint8_t *msg, size_t *restrict plen,
+                  const char *realm, const char *username, const char *nonce,
+                  const void *restrict key, size_t keylen);
+
 /**
  * Completes a STUN message structure before sending it, and
  * authenticates it with short-term credentials.
@@ -495,14 +569,12 @@ int stun_init_error_unknown (uint8_t *ans, size_t msize, const uint8_t *req);
  * @param username nul-terminated STUN username (or NULL if none)
  * @param password nul-terminated STUN secret password (or NULL if none)
  * @param nonce STUN authentication nonce (or NULL if none)
- * @param noncelen STUN authentication once byte length
- * (ignored if nonce is NULL)
  *
  * @return 0 on success, ENOBUFS on error.
  */
 size_t stun_finish_short (uint8_t *msg, size_t *restrict plen,
                           const char *username, const char *password,
-                          const void *nonce, size_t noncelen);
+                          const char *nonce);
 
 /**
  * Completes a STUN message structure before sending it.
@@ -514,6 +586,12 @@ size_t stun_finish_short (uint8_t *msg, size_t *restrict plen,
  * @return 0 on success, ENOBUFS on error.
  */
 size_t stun_finish (uint8_t *restrict msg, size_t *restrict plen);
+
+
+void *stun_append (uint8_t *msg, size_t msize, stun_attr_type_t type,
+                   size_t length);
+int stun_append_bytes (uint8_t *restrict msg, size_t msize,
+                       stun_attr_type_t type, const void *data, size_t len);
 
 /**
  * Appends an empty ("flag") attribute to a STUN message.
@@ -602,16 +680,6 @@ static inline bool stun_has_unknown (const void *msg)
 {
 	uint16_t dummy;
 	return stun_find_unknown (msg, &dummy, 1);
-}
-
-
-/**
- * @param msg valid STUN message
- * @return whether there is a MESSAGE-INTEGRITY attribute
- */
-static inline bool stun_has_integrity (const uint8_t *msg)
-{
-	return stun_present (msg, STUN_MESSAGE_INTEGRITY);
 }
 
 

@@ -78,18 +78,21 @@ void stun_set_type (uint8_t *h, stun_class_t c, stun_method_t m)
  * Initializes a STUN message buffer, with no attributes.
  * @param c STUN message class (host byte order)
  * @param m STUN message method (host byte order)
- * @param id 12-bytes transaction ID
+ * @param id 16-bytes transaction ID
  */
 static void stun_init (uint8_t *msg, stun_class_t c, stun_method_t m,
                        const stun_transid_t id)
 {
-	static const uint8_t init[8] = { 0, 0, 0, 0, 0x21, 0x12, 0xA4, 0x42 };
-	memcpy (msg, init, sizeof (init));
+	memset (msg, 0, 4);
 	stun_set_type (msg, c, m);
-
 	msg += 8;
+
 	if (msg != id)
+	{
+		uint32_t cookie = htonl (STUN_COOKIE);
+		memcpy (msg - 4, &cookie, sizeof (cookie));
 		memcpy (msg, id, 12);
+	}
 }
 
 
@@ -122,7 +125,7 @@ void stun_init_indication (uint8_t *req, stun_method_t m)
  * enough room in the STUN message buffer. Return value is always on a
  * 32-bits boundary.
  */
-static void *
+void *
 stun_append (uint8_t *msg, size_t msize, stun_attr_type_t type, size_t length)
 {
 	uint8_t *a;
@@ -141,7 +144,9 @@ stun_append (uint8_t *msg, size_t msize, stun_attr_type_t type, size_t length)
 
 	a = msg + 20u + mlen;
 	a = stun_setw (a, type);
-	a = stun_setw (a, length);
+	/* NOTE: If cookie is not present, we need to force the attribute length
+	 * to a multiple of 4 for compatibility with old RFC3489 */
+	a = stun_setw (a, stun_has_cookie (msg) ? length : stun_align (length));
 
 	mlen += 4 + length;
 	/* Add padding if needed */
@@ -162,7 +167,7 @@ stun_append (uint8_t *msg, size_t msize, stun_attr_type_t type, size_t length)
  * @param len attribute payload length
  * @return 0 on success, ENOBUFS on error.
  */
-static int
+int
 stun_append_bytes (uint8_t *restrict msg, size_t msize, stun_attr_type_t type,
                    const void *data, size_t len)
 {
@@ -224,6 +229,8 @@ void stun_init_response (uint8_t *ans, size_t msize, const uint8_t *req)
 	assert (msize >= 20u);
 
 	stun_init (ans, STUN_RESPONSE, stun_get_method (req), stun_id (req));
+	/* For RFC3489 compatibility, we cannot assume the cookie */
+	memcpy (ans + 4, req + 4, 4);
 	(void)stun_append_server (ans, msize);
 }
 
@@ -246,9 +253,7 @@ static const char *stun_strerror (stun_error_t code)
 		{ STUN_UNKNOWN_ATTRIBUTE, "Unknown attribute" },
 		/*
 		{ STUN_STALE_CREDENTIALS, "Authentication expired" },
-		*/
 		{ STUN_INTEGRITY_CHECK_FAILURE, "Incorrect username/password" },
-		/*
 		{ STUN_MISSING_USERNAME, "Username required" },
 		{ STUN_USE_TLS, "Secure connection required" },
 		{ STUN_MISSING_REALM, "Authentication domain required" },
@@ -267,12 +272,11 @@ static const char *stun_strerror (stun_error_t code)
 		{ STUN_ROLE_CONFLICT, "Role conflict" },
 		{ STUN_SERVER_ERROR, "Temporary server error" },
 		{ STUN_SERVER_CAPACITY, "Temporary server congestion" },
-		{ 0, "" }
 	};
 	const char *str = "Unknown error";
-	unsigned i;
+	size_t i;
 
-	for (i = 0; tab[i].phrase[0]; i++)
+	for (i = 0; i < (sizeof (tab) / sizeof (tab[0])); i++)
 	{
 		if (tab[i].code == code)
 		{
@@ -315,12 +319,15 @@ stun_append_error (uint8_t *restrict msg, size_t msize, stun_error_t code)
 
 
 int stun_init_error (uint8_t *ans, size_t msize, const uint8_t *req,
-                      stun_error_t err)
+                     stun_error_t err)
 {
 	assert (stun_valid (req));
 	assert (msize >= 20u);
+	assert (stun_get_class (req) == STUN_REQUEST);
 
 	stun_init (ans, STUN_ERROR, stun_get_method (req), stun_id (req));
+	/* For RFC3489 compatibility, we cannot assume the cookie */
+	memcpy (ans + 4, req + 4, 4);
 	(void)stun_append_server (ans, msize);
 	return stun_append_error (ans, msize, err);
 }
@@ -330,13 +337,10 @@ int stun_init_error_unknown (uint8_t *ans, size_t msize, const uint8_t *req)
 {
 	unsigned counter, i;
 #ifdef HAVE_C_VARARRAYS
-	uint16_t ids[stun_length (req) / 4];
+	uint16_t ids[1 + (stun_length (req) / 4)];
 #else
 	uint16_t ids[256];
 #endif
-
-	assert (stun_valid (req));
-	assert (stun_get_class (req) == STUN_REQUEST);
 
 	counter = stun_find_unknown (req, ids, sizeof (ids) / sizeof (ids[0]));
 	assert (counter > 0);
@@ -346,6 +350,12 @@ int stun_init_error_unknown (uint8_t *ans, size_t msize, const uint8_t *req)
 
 	for (i = 0; i < counter; i++)
 		ids[i] = htons (ids[i]);
+
+	/* NOTE: Old RFC3489 compatibility:
+	 * When counter is odd, duplicate one value for 32-bits padding. */
+	if (!stun_has_cookie (req) && (counter & 1))
+		ids[counter++] = ids[0];
+
 	return stun_append_bytes (ans, msize, STUN_UNKNOWN_ATTRIBUTES, ids,
 	                          counter * 2);
 }
@@ -411,13 +421,11 @@ int stun_append_xor_addr (uint8_t *restrict msg, size_t msize,
                           socklen_t addrlen)
 {
 	int val;
-	union
-	{
-		struct sockaddr addr;
-		char fill[addrlen];
-	} xor;
+	/* Must be big enough to hold any supported address: */
+	struct sockaddr_storage xor;
 
-	assert (sizeof (xor) >= addrlen);
+	if (addrlen > sizeof (xor))
+		addrlen = sizeof (xor);
 	memcpy (&xor, addr, addrlen);
 
 	val = stun_xor_address (msg, (struct sockaddr *)&xor, addrlen);
@@ -429,14 +437,13 @@ int stun_append_xor_addr (uint8_t *restrict msg, size_t msize,
 }
 
 
-static size_t
+size_t
 stun_finish_long (uint8_t *msg, size_t *restrict plen,
-                  const char *realm, const char *username,
-                  const void *key, size_t keylen,
-                  const void *nonce, size_t noncelen)
+                  const char *realm, const char *username, const char *nonce,
+                  const void *restrict key, size_t keylen)
 {
 	size_t len = *plen;
-	uint8_t *sha = NULL, *crc;
+	uint8_t *ptr;
 	int val = ENOBUFS;
 	uint32_t fpr;
 
@@ -456,58 +463,55 @@ stun_finish_long (uint8_t *msg, size_t *restrict plen,
 
 	if (nonce != NULL)
 	{
-		val = stun_append_bytes (msg, len, STUN_NONCE, nonce, noncelen);
+		val = stun_append_string (msg, len, STUN_NONCE, nonce);
 		if (val)
 			return val;
 	}
 
 	if (key != NULL)
 	{
-		sha = stun_append (msg, len, STUN_MESSAGE_INTEGRITY, 20);
-		if (sha == NULL)
+		ptr = stun_append (msg, len, STUN_MESSAGE_INTEGRITY, 20);
+		if (ptr == NULL)
 			return ENOBUFS;
+
+		stun_sha1 (msg, ptr + 20 - msg, ptr, key, keylen);
+
+		DBG (" Message HMAC-SHA1 fingerprint:"
+		     "\n  key     : ");
+		DBG_bytes (key, keylen);
+		DBG ("\n  sent    : ");
+		DBG_bytes (ptr, 20);
+		DBG ("\n");
 	}
 
-	crc = stun_append (msg, len, STUN_FINGERPRINT, 4);
-	if (crc == NULL)
+	/*
+	 * NOTE: we always add a FINGERPRINT, even when it's not needed.
+	 * This is OK, as it is an optional attribute. It also makes my
+	 * software engineer's life easier.
+	 */
+	ptr = stun_append (msg, len, STUN_FINGERPRINT, 4);
+	if (ptr == NULL)
 		return ENOBUFS;
 
-	if (sha != NULL)
-	{
-		stun_sha1 (msg, sha, key, keylen);
-#ifndef NDEBUG
-		DBG (" Message HMAC-SHA1 fingerprint:"
-		     "\n  key     : 0x");
-		for (unsigned i = 0; i < keylen; i++)
-			DBG ("%02x", ((uint8_t *)key)[i]);
-		DBG ("\n  sent    : 0x");
-		for (unsigned i = 0; i < 20; i++)
-			DBG ("%02x", sha[i]);
-		DBG ("\n");
-#endif
-	}
+	*plen = ptr + 4 -msg;
 
-	fpr = htonl (stun_fingerprint (msg));
-	memcpy (crc, &fpr, sizeof (fpr));
+	fpr = htonl (stun_fingerprint (msg, *plen));
+	memcpy (ptr, &fpr, sizeof (fpr));
 
-	*plen = 20u + stun_length (msg);
 	return 0;
 }
 
 
 size_t stun_finish_short (uint8_t *msg, size_t *restrict plen,
-                          const char *username, const char *password,
-                          const void *nonce, size_t noncelen)
+                          const char *username, const char *restrict password,
+                          const char *nonce)
 {
-	size_t passlen = (password != NULL) ? strlen (password) : 0;
-	return stun_finish_long (msg, plen, NULL, username, password, passlen,
-	                         nonce, noncelen);
+	return stun_finish_long (msg, plen, NULL, username, nonce,
+	                         password, password ? strlen (password) : 0);
 }
 
 
 size_t stun_finish (uint8_t *msg, size_t *restrict plen)
 {
-	return stun_finish_short (msg, plen, NULL, NULL, NULL, 0);
+	return stun_finish_short (msg, plen, NULL, NULL, NULL);
 }
-
-

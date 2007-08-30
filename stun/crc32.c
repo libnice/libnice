@@ -41,22 +41,31 @@
 
 #include <stddef.h>
 #include <stdint.h>
+#include <assert.h>
 
+#include <sys/uio.h>
 #include <sys/socket.h>
+#include <netinet/in.h> /* htons() */
 #include "stun-msg.h"
 
-static uint32_t crc32 (const void *buf, size_t size);
+static inline uint32_t crc32 (const struct iovec *iov, size_t size);
 
-
-/**
- * Computes the FINGERPRINT of a STUN message.
- * @return fingerprint value in <b>host</b> byte order.
- */
-uint32_t stun_fingerprint (const uint8_t *msg)
+uint32_t stun_fingerprint (const uint8_t *msg, size_t len)
 {
-	/* Don't hash last 8-bytes (= the FINGERPRINT attribute) */
-	size_t len = 12u + stun_length (msg); // 20 - 8 = 12
-	return crc32 (msg, len) ^ 0x5354554e;
+	struct iovec iov[3];
+	uint16_t fakelen = htons (len - 20u);
+
+	assert (len >= 28u);
+
+	iov[0].iov_base = (void *)msg;
+	iov[0].iov_len = 2;
+	iov[1].iov_base = &fakelen;
+	iov[1].iov_len = 2;
+	iov[2].iov_base = (void *)(msg + 4);
+	/* first 4 bytes done, last 8 bytes not summed */
+	iov[2].iov_len = len - 12u;
+
+	return crc32 (iov, sizeof (iov) / sizeof (iov[0])) ^ 0x5354554e;
 }
 
 /*-
@@ -64,7 +73,7 @@ uint32_t stun_fingerprint (const uint8_t *msg)
  *  code or tables extracted from it, as desired without restriction.
  *
  *  Extracted from FreeBSD CVS (src/sys/libkern/crc32.c)
- *  and adapted by Rémi Denis-Courmont, 17 April 2007.
+ *  and adapted by Rémi Denis-Courmont, 2007.
  */
 
 /*
@@ -153,13 +162,20 @@ static const uint32_t crc32_tab[] = {
 };
 
 
-static
-uint32_t crc32 (const void *buf, size_t size)
+static inline
+uint32_t crc32 (const struct iovec *iov, size_t n)
 {
-	const uint8_t *p = buf;
+	size_t i;
 	uint32_t crc = 0xffffffff;
 
-	while (size--)
-		crc = crc32_tab[(crc ^ *p++) & 0xFF] ^ (crc >> 8);
+	for (i = 0; i < n; i++)
+	{
+		const uint8_t *p = iov[i].iov_base;
+		size_t size = iov[i].iov_len;
+
+		while (size--)
+			crc = crc32_tab[(crc ^ *p++) & 0xFF] ^ (crc >> 8);
+	}
+
 	return crc ^ 0xffffffff;
 }

@@ -89,7 +89,7 @@ finish_check (uint8_t *msg)
 	len = sizeof (mshort);
 	if (stun_verify_password (mshort, "toto") != ENOENT)
 		fatal ("Missing HMAC test failed");
-	if (stun_finish_short (mshort, &len, "ABCDE", "admin", "ABC", 3))
+	if (stun_finish_short (mshort, &len, "ABCDE", "admin", "ABC"))
 		fatal ("Cannot finish message with short-term creds");
 	dynamic_check (mshort, len);
 	if (stun_verify_password (mshort, "admin") != 0)
@@ -155,6 +155,7 @@ int main (void)
 		fatal ("Response formatting test failed");
 
 	/* Error formatting test */
+	stun_init_request (msg, STUN_BINDING);
 	if (stun_init_error (msg, sizeof (msg), msg, 400))
 		fatal ("Error initialization test failed");
 	finish_check (msg);
@@ -162,6 +163,7 @@ int main (void)
 		fatal ("Error formatting test failed");
 
 	/* Unknown error formatting test */
+	stun_init_request (msg, STUN_BINDING);
 	if (stun_init_error (msg, sizeof (msg), msg, 666))
 		fatal ("Unknown error initialization test failed");
 	finish_check (msg);
@@ -198,13 +200,13 @@ int main (void)
 	if (stun_finish (msg, &len) != ENOBUFS)
 		fatal ("Fingerprint overflow test failed");
 	len = sizeof (msg);
-	if (stun_finish_short (msg, &len, NULL, "secret", NULL, 0) != ENOBUFS)
+	if (stun_finish_short (msg, &len, NULL, "secret", NULL) != ENOBUFS)
 		fatal ("Message integrity overflow test failed");
 	len = sizeof (msg);
-	if (stun_finish_short (msg, &len, "login", "secret", NULL, 0) != ENOBUFS)
+	if (stun_finish_short (msg, &len, "login", "secret", NULL) != ENOBUFS)
 		fatal ("Username overflow test failed");
 	len = sizeof (msg);
-	if (stun_finish_short (msg, &len, NULL, "secret", "foobar", 6) != ENOBUFS)
+	if (stun_finish_short (msg, &len, NULL, "secret", "foobar") != ENOBUFS)
 		fatal ("Nonce overflow test failed");
 
 	/* Address attributes tests */

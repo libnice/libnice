@@ -59,7 +59,15 @@
 # define IPV6_RECVPKTINFO IPV6_PKTINFO
 #endif
 
-static
+/** Default port for STUN binding discovery */
+#define IPPORT_STUN  3478
+
+#include "stun-msg.h"
+#include "stund.h"
+
+/**
+ * Creates a listening socket
+ */
 int listen_socket (int fam, int type, int proto, uint16_t port)
 {
 	int yes = 1;
@@ -71,8 +79,6 @@ int listen_socket (int fam, int type, int proto, uint16_t port)
 	}
 	if (fd < 3)
 		goto error;
-
-	setsockopt (fd, SOL_SOCKET, SO_REUSEADDR, &(int){ 1 }, sizeof (int));
 
 	struct sockaddr_storage addr;
 	memset (&addr, 0, sizeof (addr));
@@ -89,8 +95,7 @@ int listen_socket (int fam, int type, int proto, uint16_t port)
 
 		case AF_INET6:
 #ifdef IPV6_V6ONLY
-			if (setsockopt (fd, SOL_IPV6, IPV6_V6ONLY, &yes, sizeof (yes)))
-				goto error;
+			setsockopt (fd, SOL_IPV6, IPV6_V6ONLY, &yes, sizeof (yes));
 #endif
 			((struct sockaddr_in6 *)&addr)->sin6_port = port;
 			break;
@@ -139,59 +144,107 @@ error:
 }
 
 
-static int err_dequeue (int fd)
+/** Dequeue error from a socket if applicable */
+static int recv_err (int fd)
 {
 #ifdef MSG_ERRQUEUE
 	struct msghdr hdr;
 	memset (&hdr, 0, sizeof (hdr));
-	return recvmsg (fd, &hdr, MSG_ERRQUEUE) == 0;
+	return recvmsg (fd, &hdr, MSG_ERRQUEUE) >= 0;
 #endif
 }
 
 
-#include "bind.h"
+/** Receives a message or dequeues an error from a socket */
+ssize_t recv_safe (int fd, struct msghdr *msg)
+{
+	ssize_t len = recvmsg (fd, msg, 0);
+	if (len == -1)
+		recv_err (fd);
+	else
+	if (msg->msg_flags & MSG_TRUNC)
+	{
+		errno = EMSGSIZE;
+		return -1;
+	}
+
+	return len;
+}
+
+
+/** Sends a message through a socket */
+ssize_t send_safe (int fd, const struct msghdr *msg)
+{
+	ssize_t len;
+
+	do
+		len = sendmsg (fd, msg, 0);
+	while ((len == -1) && (recv_err (fd) == 0));
+
+	return len;
+}
+
 
 static int dgram_process (int sock)
 {
 	struct sockaddr_storage addr;
-	uint8_t buf[1500];
+	uint8_t buf[STUN_MAXMSG];
 	char ctlbuf[CMSG_SPACE (sizeof (struct in6_pktinfo))];
 	struct iovec iov = { buf, sizeof (buf) };
-	struct msghdr mh;
-
-	memset (&mh, 0, sizeof (mh));
-	mh.msg_name = (struct sockaddr *)&addr;
-	mh.msg_namelen = sizeof (addr);
-	mh.msg_iov = &iov;
-	mh.msg_iovlen = 1;
-	mh.msg_control = ctlbuf;
-	mh.msg_controllen = sizeof (ctlbuf);
-
-	ssize_t len = recvmsg (sock, &mh, 0);
-	if (len < 0)
+	struct msghdr mh =
 	{
-		err_dequeue (sock);
+		.msg_name = (struct sockaddr *)&addr,
+		.msg_namelen = sizeof (addr),
+		.msg_iov = &iov,
+		.msg_iovlen = 1,
+		.msg_control = ctlbuf,
+		.msg_controllen = sizeof (ctlbuf)
+	};
+
+	size_t len = recv_safe (sock, &mh);
+	if (len == (size_t)-1)
 		return -1;
+
+	/* Mal-formatted packets */
+	if ((stun_validate (buf, len) <= 0)
+	 || (stun_get_class (buf) != STUN_REQUEST))
+		return -1;
+
+	/* Unknown attributes */
+	if (stun_has_unknown (buf))
+	{
+		stun_init_error_unknown (buf, sizeof (buf), buf);
+		goto finish;
 	}
 
-	if (mh.msg_flags & MSG_TRUNC)
-		return -1;
+	switch (stun_get_method (buf))
+	{
+		case STUN_BINDING:
+			stun_init_response (buf, sizeof (buf), buf);
+			if (stun_has_cookie (buf))
+				stun_append_xor_addr (buf, sizeof (buf),
+				                      STUN_XOR_MAPPED_ADDRESS,
+				                      mh.msg_name, mh.msg_namelen);
+			else
+	 			stun_append_addr (buf, sizeof (buf), STUN_MAPPED_ADDRESS,
+				                  mh.msg_name, mh.msg_namelen);
+			break;
 
-	if (stun_validate (buf, len) <= 0)
-		return -1;
+		case STUN_ALLOCATE:
+		case STUN_CONNECT:
+		case STUN_SET_ACTIVE_DST:
+			goto send;
 
-	len = stun_bind_reply (buf, &iov.iov_len, buf,
-	                       mh.msg_name, mh.msg_namelen, false);
-	if (iov.iov_len == 0)
-		return -1;
+		default:
+			stun_init_error (buf, sizeof (buf), buf, STUN_BAD_REQUEST);
+	}
 
-	do
-		len = sendmsg (sock, &mh, 0);
-	while ((len == -1) && err_dequeue (sock));
+finish:
+	stun_finish (buf, &iov.iov_len);
 
-	if (len < (ssize_t)iov.iov_len)
-		return -1;
-	return 0;
+send:
+	len = send_safe (sock, &mh);
+	return (len < iov.iov_len) ? -1 : 0;
 }
 
 

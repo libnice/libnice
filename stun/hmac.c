@@ -37,30 +37,53 @@
 # include <config.h>
 #endif
 
+#include <openssl/evp.h>
 #include <openssl/hmac.h>
 #include <openssl/rand.h>
 
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <netinet/in.h>
 #include <pthread.h>
 #include "stun-msg.h"
 
 #include <string.h>
 #include <assert.h>
 
-void stun_sha1 (const uint8_t *msg, uint8_t *sha, const void *key, size_t keylen)
+void stun_sha1 (const uint8_t *msg, size_t len, uint8_t *sha,
+                const void *restrict key, size_t keylen)
 {
-	size_t mlen = stun_length (msg);
-	assert (mlen >= 32);
+	HMAC_CTX ctx;
+	uint16_t fakelen = htons (len - 20u);
 
-	/*
-	 * + 20 bytes for STUN header
-	 * - 24 bytes for MESSAGE-INTEGRITY attribute
-	 * -  8 bytes for FINGERPRINT attribute
-	 */
-	mlen -= 12;
+	assert (len >= 44u);
 
-	HMAC (EVP_sha1 (), key, keylen, msg, mlen, sha, NULL);
+	HMAC_CTX_init (&ctx);
+	HMAC_Init_ex (&ctx, key, keylen, EVP_sha1 (), NULL);
+	HMAC_Update (&ctx, msg, 2);
+	HMAC_Update (&ctx, (const uint8_t *)&fakelen, 2);
+	/* first 4 bytes done, last 24 bytes not summed */
+	HMAC_Update (&ctx, msg + 4, len - 28u);
+	HMAC_Final (&ctx, sha, NULL);
+	HMAC_CTX_cleanup (&ctx);
+}
+
+
+void stun_hash_creds (const char *realm, const char *login, const char *pw,
+                      unsigned char md5[16])
+{
+	EVP_MD_CTX ctx;
+
+	assert (realm && login && pw && md5);
+
+	EVP_MD_CTX_init (&ctx);
+	EVP_DigestInit_ex (&ctx, EVP_md5 (), NULL);
+	EVP_DigestUpdate (&ctx, realm, strlen (realm));
+	EVP_DigestUpdate (&ctx, ":", 1);
+	EVP_DigestUpdate (&ctx, login, strlen (login));
+	EVP_DigestUpdate (&ctx, ":", 1);
+	EVP_DigestUpdate (&ctx, pw, strlen (pw));
+	EVP_DigestFinal (&ctx, md5, NULL);
 }
 
 

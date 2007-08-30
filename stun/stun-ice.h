@@ -87,10 +87,15 @@ int stun_conncheck_start (stun_bind_t **restrict context, int fd,
  * @param control [IN/OUT] whether we are controlling ICE or not
  * @param tie tie breaker value for ICE role determination
  *
- * @return same as stun_bind_reply() with one additionnal error code:
- * EACCES: ICE role conflict occured, please recheck the flag at @a control
+ * @return 0 if successful (@a rbuf contains a <b>non-error</b> response),
+ * EINVAL: malformatted request message or socket address,
+ * EAFNOSUPPORT: unsupported socket address family,
+ * EPROTO: unsupported request message type or parameter,
+ * ENOBUFS: insufficient response buffer space.
+ * EACCES: ICE role conflict occurred, please recheck the flag at @a control
  *
- * @note @a buf and @a msg <b>must not</b> collide.
+ * In case of error, the value at @a plen is set to the size of an error
+ * response, or 0 if no error response should be sent.
  */
 int
 stun_conncheck_reply (uint8_t *buf, size_t *restrict plen, const uint8_t *msg,

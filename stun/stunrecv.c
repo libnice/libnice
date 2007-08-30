@@ -111,15 +111,7 @@ ssize_t stun_validate (const uint8_t *msg, size_t len)
 }
 
 
-/**
- * Looks for an attribute in a *valid* STUN message.
- * @param msg message buffer
- * @param type STUN attribute type (host byte order)
- * @param palen [OUT] pointer to store the byte length of the attribute
- * @return a pointer to the start of the attribute payload if found,
- * otherwise NULL.
- */
-static const void *
+const void *
 stun_find (const uint8_t *restrict msg, stun_attr_type_t type,
            uint16_t *restrict palen)
 {
@@ -148,19 +140,25 @@ stun_find (const uint8_t *restrict msg, stun_attr_type_t type,
 			return msg;
 		}
 
+		/* Look for and ignore misordered attributes */
+		switch (atype)
+		{
+			case STUN_MESSAGE_INTEGRITY:
+				/* Only fingerprint may come after M-I */
+				if (type == STUN_FINGERPRINT)
+					break;
+
+			case STUN_FINGERPRINT:
+				/* Nothing may come after FPR */
+				return NULL;
+		}
+
 		alen = stun_align (alen);
 		length -= alen;
 		msg += alen;
 	}
 
 	return NULL;
-}
-
-
-bool stun_present (const uint8_t *msg, stun_attr_type_t type)
-{
-	uint16_t dummy;
-	return stun_find (msg, type, &dummy) != NULL;
 }
 
 
@@ -220,21 +218,90 @@ int stun_find64 (const uint8_t *msg, stun_attr_type_t type, uint64_t *pval)
 }
 
 
-ssize_t stun_find_string (const uint8_t *restrict msg, stun_attr_type_t type,
-                          char *buf, size_t buflen)
+int stun_find_string (const uint8_t *restrict msg, stun_attr_type_t type,
+                      char *buf, size_t maxcp)
 {
-	const char *ptr;
+	const unsigned char *ptr;
 	uint16_t len;
 
 	ptr = stun_find (msg, type, &len);
 	if (ptr == NULL)
-		return -1;
+		return ENOENT;
 
-	memcpy (buf, ptr, (len < buflen) ? len : buflen);
-	if (len < buflen)
-		buf[len] = '\0';
+	/* UTF-8 validation */
+	while (len > 0)
+	{
+		unsigned i;
+		unsigned char c = *ptr++;
 
-	return len;
+		if (maxcp == 0)
+			return ENOBUFS;
+		maxcp--;
+
+		if (c == 0)
+			return EINVAL; /* unexpected nul byte */
+		else
+		if (c < 0x80)
+			i = 0; /* 0x01-0x7F: ASCII code point */
+		else
+		if (c < 0xC2)
+			/* 0x80-0xBF: continuation byte */
+			/* 0xC0-0xC1: overlongs */
+			return EINVAL;
+		else
+		if (c < 0xE0)
+			i = 1; /* 0xC2-0xDF: two bytes code point */
+		else
+		if (c < 0xF0)
+		{
+			if (*ptr < 0xA0)
+				return EINVAL; /* overlong */
+			i = 2; /* 0xE0-0xEF: three bytes code point */
+		}
+		else
+		if (c < 0xF8)
+		{
+			if (*ptr < 0x90)
+				return EINVAL; /* overlong */
+			i = 3; /* 0xF0-0xF7: four bytes code point */
+		}
+		else
+		if (c < 0xFC)
+		{
+			if (*ptr < 0x88)
+				return EINVAL; /* overlong */
+			i = 4; /* 0xF8-0xFB: five bytes code point */
+		}
+		else
+		if (c < 0xFE)
+		{
+			if (*ptr < 0x84)
+				return EINVAL; /* overlong */
+			i = 5;
+		}
+		else
+			return EINVAL; /* 0xFE-0xFF: Byte-Order-Mark */
+
+		*buf++ = c;
+		len--;
+
+		if (i > len)
+			return EINVAL; /* too short */
+
+		while (i > 0)
+		{
+			c = *ptr++;
+			len--;
+
+			if ((c & 0xC0) != 0x80)
+				return EINVAL;
+
+			*buf++ = c;
+		}
+	}
+
+	*buf = '\0';
+	return 0;
 }
 
 
@@ -386,49 +453,43 @@ int stun_strcmp (const uint8_t *restrict msg, stun_attr_type_t type,
 }
 #endif
 
-
-static inline bool check_cookie (const uint8_t *msg)
+bool stun_has_cookie (const uint8_t *msg)
 {
 	uint32_t cookie = htonl (STUN_COOKIE);
-	return memcmp (msg + 4, &cookie, 4) == 0;
-}
-
-
-static const uint8_t *stun_end (const uint8_t *msg)
-{
-	return msg + 20 + stun_length (msg);
+	return memcmp (msg + 4, &cookie, sizeof (cookie)) == 0;
 }
 
 
 bool stun_demux (const uint8_t *msg)
 {
-	const void *fpr;
+	const uint8_t *fpr;
 	uint32_t crc32;
 	uint16_t fprlen;
 
 	assert (stun_valid (msg));
 
 	/* Checks cookie */
-	if (!check_cookie (msg))
+	if (!stun_has_cookie (msg))
 	{
 		DBG ("STUN demux error: no cookie!\n");
 		return 0;
 	}
 
 	/* Looks for FINGERPRINT */
-	fpr = stun_end (msg) - 4;
-	if ((fpr != stun_find (msg, STUN_FINGERPRINT, &fprlen)) || (fprlen != 4))
+	fpr = stun_find (msg, STUN_FINGERPRINT, &fprlen);
+	if ((fpr == NULL) || (fprlen != 4))
 	{
 		DBG ("STUN demux error: no FINGERPRINT attribute!\n");
 		return 0;
 	}
 
 	/* Checks FINGERPRINT */
-	crc32 = htonl (stun_fingerprint (msg));
+	crc32 = htonl (stun_fingerprint (msg, fpr + 4 - msg));
 	if (memcmp (fpr, &crc32, 4))
 	{
-		DBG ("STUN demux error: bad fingerprint (expected: 0x%08x)!\n",
-		     stun_fingerprint (msg));
+		DBG ("STUN demux error: bad fingerprint: 0x%08x, expected: 0x%08x!\n",
+		     (fpr[0] << 24) | (fpr[1] << 16) | (fpr[2] << 8) | fpr[3],
+		     stun_fingerprint (msg, fpr + 4 - msg));
 		return 0;
 	}
 
@@ -455,35 +516,26 @@ stun_verify_key (const uint8_t *msg, const void *key, size_t keylen)
 	assert (msg != NULL);
 	assert ((keylen == 0) || (key != NULL));
 
-	hash = stun_end (msg) - 20;
-	if (stun_demux (msg))
-		hash -= 8; // room for FINGERPRINT at the end
-
-	if ((stun_find (msg, STUN_MESSAGE_INTEGRITY, &hlen) != hash)
-	 || (hlen != 20))
+	hash = stun_find (msg, STUN_MESSAGE_INTEGRITY, &hlen);
+	if ((hash == NULL) || (hlen != 20))
 	{
 		DBG ("STUN auth error: no MESSAGE-INTEGRITY attribute!\n");
 		return ENOENT;
 	}
 
-	stun_sha1 (msg, sha, key, keylen);
+	stun_sha1 (msg, hash + 20 - msg, sha, key, keylen);
+	DBG (" Message HMAC-SHA1 fingerprint:"
+	     "\n  key     : ");
+	DBG_bytes (key, keylen);
+	DBG ("\n  expected: ");
+	DBG_bytes (sha, sizeof (sha));
+	DBG ("\n  received: ");
+	DBG_bytes (hash, sizeof (sha));
+	DBG ("\n");
+
 	if (memcmp (sha, hash, sizeof (sha)))
 	{
-#ifndef NDEBUG
-		unsigned i;
-
-		DBG ("STUN auth error: SHA1 fingerprint mismatch!"
-		     "\n  key     : 0x");
-		for (i = 0; i < keylen; i++)
-			DBG ("%02x", ((uint8_t *)key)[i]);
-		DBG ("\n  expected: 0x");
-		for (i = 0; i < 20; i++)
-			DBG ("%02x", sha[i]);
-		DBG ("\n  received: 0x");
-		for (i = 0; i < 20; i++)
-			DBG ("%02x", hash[i]);
-		DBG ("\n");
-#endif
+		DBG ("STUN auth error: SHA1 fingerprint mismatch!\n");
 		return EPERM;
 	}
 
@@ -532,7 +584,7 @@ int stun_find_errno (const uint8_t *restrict msg, int *restrict code)
  * @param method STUN method number (host byte order)
  * @param id STUN transaction id
  * @param key HMAC key, or NULL if there is no authentication
- * @param keylen HMAC key byte length, 0 is no authentication
+ * @param keylen HMAC key byte length, must be 0 if @a key is NULL
  * @param error [OUT] set to -1 if the response is not an error,
  * to the error code ([0..799]) if it is an error response.
  *
@@ -548,7 +600,7 @@ stun_match_answer (const uint8_t *msg, stun_method_t method,
 	assert (error != NULL);
 
 	if ((stun_get_method (msg) != method) /* wrong request type */
-	 || !check_cookie (msg) /* response to old-style request */
+	 || !stun_has_cookie (msg) /* response to old-style request */
 	 || memcmp (msg + 8, id, 12)) /* wrong transaction ID */
 		return false;
 
@@ -563,13 +615,25 @@ stun_match_answer (const uint8_t *msg, stun_method_t method,
 			break;
 
 		case STUN_ERROR:
-			if (stun_find_errno (msg, error))
+			if (stun_find_errno (msg, error) != 0)
 				return false; // missing ERROR-CODE: ignore message
 			break;
 	}
 
-	if ((key != NULL) && stun_verify_key (msg, key, keylen))
-		return false;
+	/* If a shared secret exists, verify the message hash.
+	 * If there is no shared secret, verify there is no hash at all. */
+	if (key != NULL)
+	{
+		/* FIXME: 401 errors do not have MESSAGE-INTEGRITY, so that we
+		 * currently ignore them. */
+		if (stun_verify_key (msg, key, keylen) != 0)
+			return false;
+	}
+	else
+	{
+		if (stun_present (msg, STUN_MESSAGE_INTEGRITY))
+			return false;
+	}
 
 	return true;
 }
@@ -586,55 +650,6 @@ bool stun_match_messages (const uint8_t *restrict resp,
 
 	return stun_match_answer (resp, stun_get_method (req),
 	                          stun_id (req), key, keylen, error);
-}
-
-
-bool stun_is_unknown (uint16_t type)
-{
-	switch (type)
-	{
-		/* Mandatory */
-		case STUN_MAPPED_ADDRESS:
-		case STUN_OLD_RESPONSE_ADDRESS:
-		case STUN_OLD_CHANGE_REQUEST:
-		case STUN_OLD_SOURCE_ADDRESS:
-		case STUN_OLD_CHANGED_ADDRESS:
-		case STUN_USERNAME:
-		case STUN_OLD_PASSWORD:
-		case STUN_MESSAGE_INTEGRITY:
-		case STUN_ERROR_CODE:
-		case STUN_UNKNOWN_ATTRIBUTES:
-		case STUN_OLD_REFLECTED_FROM:
-		case STUN_LIFETIME:
-
-		case STUN_BANDWIDTH:
-		case STUN_REMOTE_ADDRESS:
-		case STUN_DATA:
-		case STUN_REALM:
-		case STUN_NONCE:
-		case STUN_RELAY_ADDRESS:
-		case STUN_REQUESTED_ADDRESS_TYPE:
-		case STUN_REQUESTED_PORT_PROPS:
-		case STUN_REQUESTED_TRANSPORT:
-
-		case STUN_XOR_MAPPED_ADDRESS:
-		case STUN_TIMER_VAL:
-		case STUN_REQUESTED_IP:
-		case STUN_CONNECT_STAT:
-		case STUN_PRIORITY:
-		case STUN_USE_CANDIDATE:
-
-		/* Optional */
-		case STUN_SERVER:
-		case STUN_ALTERNATE_SERVER:
-		case STUN_REFRESH_INTERVAL:
-		case STUN_FINGERPRINT:
-		case STUN_ICE_CONTROLLED:
-		case STUN_ICE_CONTROLLING:
-			return false;
-	}
-
-	return true;
 }
 
 
@@ -657,8 +672,7 @@ stun_find_unknown (const uint8_t *restrict msg, uint16_t *restrict list,
 		assert (len >= (4 + alen));
 		len -= 4 + alen;
 
-		if (!stun_optional (atype)
-		 && stun_is_unknown (atype))
+		if (!stun_optional (atype) && stun_is_unknown (atype))
 		{
 			DBG ("STUN unknown: attribute 0x%04x(%u bytes)\n",
 			     (unsigned)atype, (unsigned)alen);
