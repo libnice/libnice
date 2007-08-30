@@ -24,12 +24,14 @@ libstun_la_SOURCES = \
 	unknown.c \
 	crc32.c hmac.c \
 	timer.h timer.c trans.h trans.c \
-	bind.h stun-ice.h bind.c bindserv.c
-#	relay.h relay.c
-libstun_la_LIBADD = $(LIBS) $(OPENSSL_LIBS) $(LIBRT)
+	bind.h bind.c \
+	stun-ice.h stun-ice.c
+libstun_la_LIBADD = $(OPENSSL_LIBS) $(LIBRT)
 
 bin_PROGRAMS = stund stunbdc
 check_PROGRAMS = stund
+
+stund_SOURCES = stund.c stund.h
 
 stund_LDADD = libstun.la -lpthread
 stunbdc_LDADD = libstun.la
