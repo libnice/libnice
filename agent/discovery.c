@@ -183,8 +183,11 @@ static void priv_assign_foundation (NiceAgent *agent, NiceCandidate *candidate)
       for (k = component->local_candidates; k; k = k->next) {
 	NiceCandidate *n = k->data;
 	NiceAddress temp = n->base_addr;
-    
-	/* note: ports are not be compared */
+
+	/* note: candidate must not on the local candidate list */
+	g_assert (candidate != n);
+
+	/* note: ports are not to be compared */
 	nice_address_set_port (&temp,
                nice_address_get_port (&candidate->base_addr));
 	
@@ -361,9 +364,9 @@ discovery_add_peer_reflexive_candidate (
         (NICE_CANDIDATE_TYPE_PREF_PEER_REFLEXIVE, 0, component_id);
     candidate->stream_id = stream_id;
     candidate->component_id = component_id;
-    priv_assign_foundation (agent, candidate);
     candidate->addr = *address;
     candidate->base_addr = base_socket->addr;
+    priv_assign_foundation (agent, candidate);
 
     /* step: link to the base candidate+socket */
     candidate->sockptr = base_socket;
