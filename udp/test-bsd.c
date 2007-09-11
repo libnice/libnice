@@ -51,7 +51,6 @@ main (void)
   NiceAddress tmp;
   gchar buf[5];
 
-  memset (&tmp, 0, sizeof (tmp));
   nice_udp_bsd_socket_factory_init (&factory);
 
   if (!nice_udp_socket_factory_make (&factory, &server, NULL))
@@ -68,13 +67,17 @@ main (void)
   // is bound to a particular port
   g_assert (nice_address_get_port (&client.addr) != 0);
 
-  nice_udp_socket_send (&client, &server.addr, 5, "hello");
+  tmp = server.addr;
+  if (!nice_address_set_from_string (&tmp, "127.0.0.1"))
+    g_assert_not_reached();
+  nice_udp_socket_send (&client, &tmp, 5, "hello");
+
   g_assert (5 == nice_udp_socket_recv (&server, &tmp, 5, buf));
   g_assert (0 == strncmp (buf, "hello", 5));
   g_assert (nice_address_get_port (&tmp)
              == nice_address_get_port (&client.addr));
 
-  nice_udp_socket_send (&server, &client.addr, 5, "uryyb");
+  nice_udp_socket_send (&server, &tmp, 5, "uryyb");
   g_assert (5 == nice_udp_socket_recv (&client, &tmp, 5, buf));
   g_assert (0 == strncmp (buf, "uryyb", 5));
   g_assert (nice_address_get_port (&tmp)
