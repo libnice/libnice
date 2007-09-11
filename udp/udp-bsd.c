@@ -147,6 +147,12 @@ socket_factory_init_socket (
   }
 #endif
 
+#ifdef FD_CLOEXEC
+  fcntl (fd, F_SETFD, fcntl (fd, F_GETFD) | FD_CLOEXEC);
+#endif
+#ifdef O_NONBLOCK
+  fcntl (fd, F_SETFL, fcntl (fd, F_GETFL) | O_NONBLOCK);
+#endif
 
   if (addr != NULL)
     {
