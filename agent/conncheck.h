@@ -58,6 +58,8 @@ typedef enum
   NICE_CHECK_DISCOVERED     /**< a valid candidate pair not on check list */
 } NiceCheckState;
 
+#if 0
+/* XXX: move to stream.h */
 typedef enum
 {
   NICE_CHECKLIST_NOT_STARTED = 1,
@@ -65,6 +67,7 @@ typedef enum
   NICE_CHECKLIST_COMPLETED,
   NICE_CHECKLIST_FAILED
 } NiceCheckListState;
+#endif
 
 typedef struct _CandidateCheckPair CandidateCheckPair;
 
@@ -90,7 +93,7 @@ void conn_check_free_item (gpointer data, gpointer user_data);
 void conn_check_free (NiceAgent *agent);
 void conn_check_schedule_next (NiceAgent *agent);
 int conn_check_send (NiceAgent *agent, CandidateCheckPair *pair);
-gboolean conn_check_prune_stream (NiceAgent *agent, guint stream_id);
+gboolean conn_check_prune_stream (NiceAgent *agent, Stream *stream);
 gboolean conn_check_handle_inbound_stun (NiceAgent *agent, Stream *stream, Component *component, NiceUDPSocket *udp_socket, const NiceAddress *from, gchar *buf, guint len);
 gint conn_check_compare (const CandidateCheckPair *a, const CandidateCheckPair *b);
 

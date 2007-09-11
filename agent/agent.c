@@ -697,7 +697,7 @@ nice_agent_remove_stream (
     return;
 
   /* note: remove items with matching stream_ids from both lists */
-  conn_check_prune_stream (agent, stream_id);
+  conn_check_prune_stream (agent, stream);
   discovery_prune_stream (agent, stream_id);
 
   /* remove the stream itself */
@@ -1410,7 +1410,6 @@ nice_agent_dispose (GObject *object)
 
   /* step: free resources for the connectivity check timers */
   conn_check_free (agent);
-  g_assert (agent->conncheck_list == NULL);
 
   priv_remove_keepalive_timer (agent);
 
@@ -1623,17 +1622,18 @@ nice_agent_set_selected_pair (
   const gchar *rfoundation)
 {
   Component *component;
+  Stream *stream;
   CandidatePair pair;
 
   /* step: check that params specify an existing pair */
-  if (!agent_find_component (agent, stream_id, component_id, NULL, &component))
+  if (!agent_find_component (agent, stream_id, component_id, &stream, &component))
     return FALSE;
 
   if (!component_find_pair (component, agent, lfoundation, rfoundation, &pair))
     return FALSE;
 
   /* step: stop connectivity checks (note: for the whole stream) */
-  conn_check_prune_stream (agent, stream_id); 
+  conn_check_prune_stream (agent, stream); 
 
   /* step: change component state */
   agent_signal_component_state_change (agent, stream_id, component_id, NICE_COMPONENT_STATE_READY);

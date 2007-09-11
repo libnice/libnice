@@ -44,10 +44,10 @@
 #include <glib.h>
 
 #include "agent.h"
-#include "component.h"
 #include "candidate.h"
 #include "stream.h"
 #include "conncheck.h"
+#include "component.h"
 
 #define NICE_AGENT_TIMER_TA_DEFAULT 20      /* timer Ta, msecs (impl. defined) */
 #define NICE_AGENT_TIMER_TR_DEFAULT 15000   /* timer Tr, msecs (ICE ID-17) */
@@ -83,9 +83,7 @@ struct _NiceAgent
   GSList *discovery_list;         /**< list of CandidateDiscovery items */
   guint discovery_unsched_items;  /**< number of discovery items unscheduled */
   guint discovery_timer_id;       /**< id of discovery timer */
-  GSList *conncheck_list;         /**< list of CandidatePair items */
   guint conncheck_timer_id;       /**< id of discovery timer */
-  NiceCheckListState conncheck_state; /**< checklist state */
   guint keepalive_timer_id;       /**< id of keepalive timer */
   guint64 tie_breaker;            /**< tie breaker (ICE sect 5.2
 				     "Determining Role" ID-17) */
