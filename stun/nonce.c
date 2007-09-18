@@ -48,7 +48,7 @@ static uint8_t unique_id[UNIQUE_SIZE];
 
 static void generate_unique_id (void)
 {
-	RAND_pseudo_bytes (unique_id, sizeof (unique_id));
+  RAND_pseudo_bytes (unique_id, sizeof (unique_id));
 }
 
 
@@ -56,45 +56,45 @@ static void
 stun_generate_nonce (uint8_t *nonce, time_t now,
                      const struct sockaddr_storage *restrict addr)
 {
-	static pthread_once_t once = PTHREAD_ONCE_INIT;
-	HMAC_CTX ctx;
-	uint32_t stamp = now;
+  static pthread_once_t once = PTHREAD_ONCE_INIT;
+  HMAC_CTX ctx;
+  uint32_t stamp = now;
 
-	pthread_once (&once, generate_unique_id);
+  pthread_once (&once, generate_unique_id);
 
-	/*
-	 * Nonce are generated from the current time and the client address and
-	 * port number, keyed with a pseudo-random secret.
-	 */
-	HMAC_CTX_init (&ctx);
-	HMAC_Init_ex (&ctx, unique_id, sizeof (unique_id), EVP_sha1 (), NULL);
-	HMAC_Update (&ctx, &stamp, 4);
-	HMAC_Update (&ctx, &ss->family, sizeof (ss->family));
-	switch (addr->ss_family)
-	{
-		case AF_INET:
-		{
-			const struct sockaddr_in *ip4 = (const struct sockaddr_in *)addr;
-			HMAC_Update (&ctx, &ip4->sin_addr, 4);
-			HMAC_Update (&ctx, &ip4->sin_port, 2);
-			break;
-		}
+  /*
+   * Nonce are generated from the current time and the client address and
+   * port number, keyed with a pseudo-random secret.
+   */
+  HMAC_CTX_init (&ctx);
+  HMAC_Init_ex (&ctx, unique_id, sizeof (unique_id), EVP_sha1 (), NULL);
+  HMAC_Update (&ctx, &stamp, 4);
+  HMAC_Update (&ctx, &ss->family, sizeof (ss->family));
+  switch (addr->ss_family)
+  {
+    case AF_INET:
+    {
+      const struct sockaddr_in *ip4 = (const struct sockaddr_in *)addr;
+      HMAC_Update (&ctx, &ip4->sin_addr, 4);
+      HMAC_Update (&ctx, &ip4->sin_port, 2);
+      break;
+    }
 
-		case AF_INET6:
-		{
-			const struct sockaddr_in6*ip6 = (const struct sockaddr_in6*)addr;
-			HMAC_Update (&ctx, &ip6->sin6_addr, 16);
-			HMAC_Update (&ctx, &ip6->sin6_port, 2);
-			if (IN6_IS_ADDR_LINK_LOCAL (&ip6->sin6_addr))
-				HMAC_Update (&ctx, &ip6->sin6_scope_id
-				             sizeof (ip6->sin6_scope_id));
-			break;
-		}
-	}
+    case AF_INET6:
+    {
+      const struct sockaddr_in6*ip6 = (const struct sockaddr_in6*)addr;
+      HMAC_Update (&ctx, &ip6->sin6_addr, 16);
+      HMAC_Update (&ctx, &ip6->sin6_port, 2);
+      if (IN6_IS_ADDR_LINK_LOCAL (&ip6->sin6_addr))
+        HMAC_Update (&ctx, &ip6->sin6_scope_id
+                     sizeof (ip6->sin6_scope_id));
+      break;
+    }
+  }
 
-	HMAC_Final (&ctx, nonce, NULL);
-	HMAC_CTX_cleanup (&ctx);
-	memcpy (nonce + 20, &stamp, 4);
+  HMAC_Final (&ctx, nonce, NULL);
+  HMAC_CTX_cleanup (&ctx);
+  memcpy (nonce + 20, &stamp, 4);
 }
 
 
@@ -102,9 +102,9 @@ static int
 stun_append_nonce (uint8_t *buf, size_t buflen,
                    const struct sockaddr_storage *restrict addr)
 {
-	uint8_t nonce[NONCE_SIZE];
-	stun_generate_nonce (nonce, time (NULL), addr);
-	return stun_append_bytes (buf, buflen, STUN_NONCE, nonce, sizeof (nonce));
+  uint8_t nonce[NONCE_SIZE];
+  stun_generate_nonce (nonce, time (NULL), addr);
+  return stun_append_bytes (buf, buflen, STUN_NONCE, nonce, sizeof (nonce));
 }
 
 
@@ -112,7 +112,7 @@ static int
 stun_verify_nonce (const uint8_t *buf, unsigned valid_time,
                    const struct sockaddr_storage *restrict addr)
 {
-	const uint8_t *
-	stun_generate_nonce (nonce, time (NULL), addr);
-	return stun_append_bytes (buf, buflen, STUN_NONCE, nonce, sizeof (nonce));
+  const uint8_t *
+  stun_generate_nonce (nonce, time (NULL), addr);
+  return stun_append_bytes (buf, buflen, STUN_NONCE, nonce, sizeof (nonce));
 }

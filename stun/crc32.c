@@ -52,20 +52,20 @@ static inline uint32_t crc32 (const struct iovec *iov, size_t size);
 
 uint32_t stun_fingerprint (const uint8_t *msg, size_t len)
 {
-	struct iovec iov[3];
-	uint16_t fakelen = htons (len - 20u);
+  struct iovec iov[3];
+  uint16_t fakelen = htons (len - 20u);
 
-	assert (len >= 28u);
+  assert (len >= 28u);
 
-	iov[0].iov_base = (void *)msg;
-	iov[0].iov_len = 2;
-	iov[1].iov_base = &fakelen;
-	iov[1].iov_len = 2;
-	iov[2].iov_base = (void *)(msg + 4);
-	/* first 4 bytes done, last 8 bytes not summed */
-	iov[2].iov_len = len - 12u;
+  iov[0].iov_base = (void *)msg;
+  iov[0].iov_len = 2;
+  iov[1].iov_base = &fakelen;
+  iov[1].iov_len = 2;
+  iov[2].iov_base = (void *)(msg + 4);
+  /* first 4 bytes done, last 8 bytes not summed */
+  iov[2].iov_len = len - 12u;
 
-	return crc32 (iov, sizeof (iov) / sizeof (iov[0])) ^ 0x5354554e;
+  return crc32 (iov, sizeof (iov) / sizeof (iov[0])) ^ 0x5354554e;
 }
 
 /*-
@@ -165,17 +165,17 @@ static const uint32_t crc32_tab[] = {
 static inline
 uint32_t crc32 (const struct iovec *iov, size_t n)
 {
-	size_t i;
-	uint32_t crc = 0xffffffff;
+  size_t i;
+  uint32_t crc = 0xffffffff;
 
-	for (i = 0; i < n; i++)
-	{
-		const uint8_t *p = iov[i].iov_base;
-		size_t size = iov[i].iov_len;
+  for (i = 0; i < n; i++)
+  {
+    const uint8_t *p = iov[i].iov_base;
+    size_t size = iov[i].iov_len;
 
-		while (size--)
-			crc = crc32_tab[(crc ^ *p++) & 0xFF] ^ (crc >> 8);
-	}
+    while (size--)
+      crc = crc32_tab[(crc ^ *p++) & 0xFF] ^ (crc >> 8);
+  }
 
-	return crc ^ 0xffffffff;
+  return crc ^ 0xffffffff;
 }

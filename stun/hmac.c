@@ -53,71 +53,71 @@
 void stun_sha1 (const uint8_t *msg, size_t len, uint8_t *sha,
                 const void *restrict key, size_t keylen)
 {
-	HMAC_CTX ctx;
-	uint16_t fakelen = htons (len - 20u);
+  HMAC_CTX ctx;
+  uint16_t fakelen = htons (len - 20u);
 
-	assert (len >= 44u);
+  assert (len >= 44u);
 
-	HMAC_CTX_init (&ctx);
-	HMAC_Init_ex (&ctx, key, keylen, EVP_sha1 (), NULL);
-	HMAC_Update (&ctx, msg, 2);
-	HMAC_Update (&ctx, (const uint8_t *)&fakelen, 2);
-	/* first 4 bytes done, last 24 bytes not summed */
-	HMAC_Update (&ctx, msg + 4, len - 28u);
-	HMAC_Final (&ctx, sha, NULL);
-	HMAC_CTX_cleanup (&ctx);
+  HMAC_CTX_init (&ctx);
+  HMAC_Init_ex (&ctx, key, keylen, EVP_sha1 (), NULL);
+  HMAC_Update (&ctx, msg, 2);
+  HMAC_Update (&ctx, (const uint8_t *)&fakelen, 2);
+  /* first 4 bytes done, last 24 bytes not summed */
+  HMAC_Update (&ctx, msg + 4, len - 28u);
+  HMAC_Final (&ctx, sha, NULL);
+  HMAC_CTX_cleanup (&ctx);
 }
 
 
 void stun_hash_creds (const char *realm, const char *login, const char *pw,
                       unsigned char md5[16])
 {
-	EVP_MD_CTX ctx;
+  EVP_MD_CTX ctx;
 
-	assert (realm && login && pw && md5);
+  assert (realm && login && pw && md5);
 
-	EVP_MD_CTX_init (&ctx);
-	EVP_DigestInit_ex (&ctx, EVP_md5 (), NULL);
-	EVP_DigestUpdate (&ctx, realm, strlen (realm));
-	EVP_DigestUpdate (&ctx, ":", 1);
-	EVP_DigestUpdate (&ctx, login, strlen (login));
-	EVP_DigestUpdate (&ctx, ":", 1);
-	EVP_DigestUpdate (&ctx, pw, strlen (pw));
-	EVP_DigestFinal (&ctx, md5, NULL);
+  EVP_MD_CTX_init (&ctx);
+  EVP_DigestInit_ex (&ctx, EVP_md5 (), NULL);
+  EVP_DigestUpdate (&ctx, realm, strlen (realm));
+  EVP_DigestUpdate (&ctx, ":", 1);
+  EVP_DigestUpdate (&ctx, login, strlen (login));
+  EVP_DigestUpdate (&ctx, ":", 1);
+  EVP_DigestUpdate (&ctx, pw, strlen (pw));
+  EVP_DigestFinal (&ctx, md5, NULL);
 }
 
 
 void stun_make_transid (stun_transid_t id)
 {
-	/*
-	 * transid = (HMAC_SHA1 (secret, counter) >> 64)
-	 * This consumes sizeof (secret) bytes of entropy every 2^64 messages.
-	 */
-	static struct
-	{
-		pthread_mutex_t lock;
-		uint64_t counter;
-		uint8_t secret[16];
-	} store = { PTHREAD_MUTEX_INITIALIZER, 0, "" };
+  /*
+   * transid = (HMAC_SHA1 (secret, counter) >> 64)
+   * This consumes sizeof (secret) bytes of entropy every 2^64 messages.
+   */
+  static struct
+  {
+    pthread_mutex_t lock;
+    uint64_t counter;
+    uint8_t secret[16];
+  } store = { PTHREAD_MUTEX_INITIALIZER, 0, "" };
 
-	union
-	{
-		uint64_t value;
-		uint8_t  bytes[1];
-	} counter;
-	uint8_t  key[16], sha[20];
+  union
+  {
+    uint64_t value;
+    uint8_t  bytes[1];
+  } counter;
+  uint8_t  key[16], sha[20];
 
-	pthread_mutex_lock (&store.lock);
+  pthread_mutex_lock (&store.lock);
 
-	counter.value = store.counter++;
-	if (counter.value == 0)
-		RAND_pseudo_bytes (store.secret, sizeof (store.secret));
-	memcpy (key, store.secret, sizeof (key));
+  counter.value = store.counter++;
+  if (counter.value == 0)
+    RAND_pseudo_bytes (store.secret, sizeof (store.secret));
+  memcpy (key, store.secret, sizeof (key));
 
-	pthread_mutex_unlock (&store.lock);
+  pthread_mutex_unlock (&store.lock);
 
-	/* Computes hash out of contentious area */
-	HMAC (EVP_sha1 (), key, sizeof (key), counter.bytes, sizeof (counter),
-	      sha, NULL);
-	memcpy (id, sha, 12);
+  /* Computes hash out of contentious area */
+  HMAC (EVP_sha1 (), key, sizeof (key), counter.bytes, sizeof (counter),
+        sha, NULL);
+  memcpy (id, sha, 12);
 }

@@ -53,120 +53,120 @@
 static void
 printaddr (const char *str, const struct sockaddr *addr, socklen_t addrlen)
 {
-	char hostbuf[NI_MAXHOST], servbuf[NI_MAXSERV];
+  char hostbuf[NI_MAXHOST], servbuf[NI_MAXSERV];
 
-	int val = getnameinfo (addr, addrlen, hostbuf, sizeof (hostbuf),
-	                       servbuf, sizeof (servbuf),
-	                       NI_NUMERICHOST | NI_NUMERICSERV);
-	if (val)
-		printf ("%s: %s\n", str, gai_strerror (val));
-	else
-		printf ("%s: %s port %s\n", str, hostbuf, servbuf);
+  int val = getnameinfo (addr, addrlen, hostbuf, sizeof (hostbuf),
+                         servbuf, sizeof (servbuf),
+                         NI_NUMERICHOST | NI_NUMERICSERV);
+  if (val)
+    printf ("%s: %s\n", str, gai_strerror (val));
+  else
+    printf ("%s: %s port %s\n", str, hostbuf, servbuf);
 }
 
 
 
 static int run (int family, const char *hostname, const char *service)
 {
-	struct addrinfo hints, *res;
-	const struct addrinfo *ptr;
-	int ret = -1;
+  struct addrinfo hints, *res;
+  const struct addrinfo *ptr;
+  int ret = -1;
 
-	memset (&hints, 0, sizeof (hints));
-	hints.ai_family = family;
-	hints.ai_socktype = SOCK_DGRAM;
-	if (service == NULL)
-		service = "3478";
+  memset (&hints, 0, sizeof (hints));
+  hints.ai_family = family;
+  hints.ai_socktype = SOCK_DGRAM;
+  if (service == NULL)
+    service = "3478";
 
-	ret = getaddrinfo (hostname, service, &hints, &res);
-	if (ret)
-	{
-		fprintf (stderr, "%s (port %s): %s\n", hostname, service,
-		         gai_strerror (ret));
-		return -1;
-	}
+  ret = getaddrinfo (hostname, service, &hints, &res);
+  if (ret)
+  {
+    fprintf (stderr, "%s (port %s): %s\n", hostname, service,
+             gai_strerror (ret));
+    return -1;
+  }
 
-	for (ptr = res; ptr != NULL; ptr = ptr->ai_next)
-	{
-		struct sockaddr_storage addr;
-		socklen_t addrlen = sizeof (addr);
-		int val;
+  for (ptr = res; ptr != NULL; ptr = ptr->ai_next)
+  {
+    struct sockaddr_storage addr;
+    socklen_t addrlen = sizeof (addr);
+    int val;
 
-		printaddr ("Server address", ptr->ai_addr, ptr->ai_addrlen);
+    printaddr ("Server address", ptr->ai_addr, ptr->ai_addrlen);
 
-		val = stun_bind_run (-1, ptr->ai_addr, ptr->ai_addrlen,
-		                     (struct sockaddr *)&addr, &addrlen);
-		if (val)
-			fprintf (stderr, "%s\n", strerror (val));
-		else
-		{
-			printaddr ("Mapped address", (struct sockaddr *)&addr, addrlen);
-			ret = 0;
-		}
-	}
+    val = stun_bind_run (-1, ptr->ai_addr, ptr->ai_addrlen,
+                         (struct sockaddr *)&addr, &addrlen);
+    if (val)
+      fprintf (stderr, "%s\n", strerror (val));
+    else
+    {
+      printaddr ("Mapped address", (struct sockaddr *)&addr, addrlen);
+      ret = 0;
+    }
+  }
 
-	freeaddrinfo (res);
-	return ret;
+  freeaddrinfo (res);
+  return ret;
 }
 
 
 int main (int argc, char *argv[])
 {
-	static const struct option opts[] =
-	{
-		{ "ipv4",    no_argument, NULL, '4' },
-		{ "ipv6",    no_argument, NULL, '6' },
-		{ "help",    no_argument, NULL, 'h' },
-		{ "version", no_argument, NULL, 'V' },
-		{ NULL,      0,           NULL, 0   }
-	};
-	const char *server = NULL, *port = NULL;
-	int family = AF_UNSPEC;
+  static const struct option opts[] =
+  {
+    { "ipv4",    no_argument, NULL, '4' },
+    { "ipv6",    no_argument, NULL, '6' },
+    { "help",    no_argument, NULL, 'h' },
+    { "version", no_argument, NULL, 'V' },
+    { NULL,      0,           NULL, 0   }
+  };
+  const char *server = NULL, *port = NULL;
+  int family = AF_UNSPEC;
 
-	for (;;)
-	{
-		int val = getopt_long (argc, argv, "46hV", opts, NULL);
-		if (val == EOF)
-			break;
+  for (;;)
+  {
+    int val = getopt_long (argc, argv, "46hV", opts, NULL);
+    if (val == EOF)
+      break;
 
-		switch (val)
-		{
-			case '4':
-				family = AF_INET;
-				break;
+    switch (val)
+    {
+      case '4':
+        family = AF_INET;
+        break;
 
-			case '6':
-				family = AF_INET6;
-				break;
+      case '6':
+        family = AF_INET6;
+        break;
 
-			case 'h':
-				printf ("Usage: %s [-4|-6] <server> [port number]\n"
-				        "Performs STUN Binding Discovery\n"
-				        "\n"
-				        "  -4, --ipv4 Force IP version 4\n"
-				        "  -6, --ipv6 Force IP version 6\n"
-						"\n", argv[0]);
-				return 0;
+      case 'h':
+        printf ("Usage: %s [-4|-6] <server> [port number]\n"
+                "Performs STUN Binding Discovery\n"
+                "\n"
+                "  -4, --ipv4 Force IP version 4\n"
+                "  -6, --ipv6 Force IP version 6\n"
+            "\n", argv[0]);
+        return 0;
 
-			case 'V':
-				printf ("stunbcd: STUN Binding Discovery client (%s v%s)\n",
-				        PACKAGE, VERSION);
-				return 0;
+      case 'V':
+        printf ("stunbcd: STUN Binding Discovery client (%s v%s)\n",
+                PACKAGE, VERSION);
+        return 0;
 
-			default:
-				return 2;
-		}
-	}
+      default:
+        return 2;
+    }
+  }
 
-	if (optind < argc)
-		server = argv[optind++];
-	if (optind < argc)
-		port = argv[optind++];
-	if (optind < argc)
-	{
-		fprintf (stderr, "%s: extra parameter `%s'\n", argv[0], argv[optind]);
-		return 2;
-	}
+  if (optind < argc)
+    server = argv[optind++];
+  if (optind < argc)
+    port = argv[optind++];
+  if (optind < argc)
+  {
+    fprintf (stderr, "%s: extra parameter `%s'\n", argv[0], argv[optind]);
+    return 2;
+  }
 
-	return run (family, server, port) ? 1 : 0;
+  return run (family, server, port) ? 1 : 0;
 }

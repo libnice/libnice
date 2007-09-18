@@ -60,32 +60,32 @@
 int stun_trans_init (stun_trans_t *restrict tr, int fd,
                      const struct sockaddr *restrict srv, socklen_t srvlen)
 {
-	int sotype;
-	socklen_t solen = sizeof (sotype);
+  int sotype;
+  socklen_t solen = sizeof (sotype);
 
-	assert (fd != -1);
+  assert (fd != -1);
 
-	if (srvlen > sizeof (tr->sock.dst))
-		return ENOBUFS;
+  if (srvlen > sizeof (tr->sock.dst))
+    return ENOBUFS;
 
-	tr->flags = 0;
-	tr->msg.offset = 0;
-	tr->sock.fd = fd;
-	memcpy (&tr->sock.dst, srv, tr->sock.dstlen = srvlen);
-	tr->key.length = 0;
-	tr->key.value = NULL;
+  tr->flags = 0;
+  tr->msg.offset = 0;
+  tr->sock.fd = fd;
+  memcpy (&tr->sock.dst, srv, tr->sock.dstlen = srvlen);
+  tr->key.length = 0;
+  tr->key.value = NULL;
 
-	assert (getsockopt (fd, SOL_SOCKET, SO_TYPE, &sotype, &solen) == 0);
-	(void)getsockopt (fd, SOL_SOCKET, SO_TYPE, &sotype, &solen);
+  assert (getsockopt (fd, SOL_SOCKET, SO_TYPE, &sotype, &solen) == 0);
+  (void)getsockopt (fd, SOL_SOCKET, SO_TYPE, &sotype, &solen);
 
-	switch (sotype)
-	{
-		case SOCK_STREAM:
-		case SOCK_SEQPACKET:
-			tr->flags |= TRANS_RELIABLE;
-	}
+  switch (sotype)
+  {
+    case SOCK_STREAM:
+    case SOCK_SEQPACKET:
+      tr->flags |= TRANS_RELIABLE;
+  }
 
-	return 0;
+  return 0;
 }
 
 
@@ -95,83 +95,83 @@ int stun_trans_init (stun_trans_t *restrict tr, int fd,
  */
 static int stun_socket (int family, int type, int proto)
 {
-	int fd = socket (family, type, proto);
-	if (fd == -1)
-		return -1;
+  int fd = socket (family, type, proto);
+  if (fd == -1)
+    return -1;
 
 #ifdef FD_CLOEXEC
-	fcntl (fd, F_SETFD, fcntl (fd, F_GETFD) | FD_CLOEXEC);
+  fcntl (fd, F_SETFD, fcntl (fd, F_GETFD) | FD_CLOEXEC);
 #endif
 #ifdef O_NONBLOCK
-	fcntl (fd, F_SETFL, fcntl (fd, F_GETFL) | O_NONBLOCK);
+  fcntl (fd, F_SETFL, fcntl (fd, F_GETFL) | O_NONBLOCK);
 #endif
 
 #ifdef MSG_ERRQUEUE
-	if (type == SOCK_DGRAM)
-	{
-		/* Linux specifics for ICMP errors on non-connected sockets */
-		int yes = 1;
-		switch (family)
-		{
-			case AF_INET:
-				setsockopt (fd, SOL_IP, IP_RECVERR, &yes, sizeof (yes));
-				break;
-			case AF_INET6:
-				setsockopt (fd, SOL_IPV6, IPV6_RECVERR, &yes, sizeof (yes));
-				break;
-		}
-	}
+  if (type == SOCK_DGRAM)
+  {
+    /* Linux specifics for ICMP errors on non-connected sockets */
+    int yes = 1;
+    switch (family)
+    {
+      case AF_INET:
+        setsockopt (fd, SOL_IP, IP_RECVERR, &yes, sizeof (yes));
+        break;
+      case AF_INET6:
+        setsockopt (fd, SOL_IPV6, IPV6_RECVERR, &yes, sizeof (yes));
+        break;
+    }
+  }
 #endif
 
-	return fd;
+  return fd;
 }
 
 
 int stun_trans_create (stun_trans_t *restrict tr, int type, int proto,
                        const struct sockaddr *restrict srv, socklen_t srvlen)
 {
-	int val, fd;
+  int val, fd;
 
-	if (srvlen < sizeof(*srv))
-		return EINVAL;
+  if (srvlen < sizeof(*srv))
+    return EINVAL;
 
-	fd = stun_socket (srv->sa_family, type, proto);
-	if (fd == -1)
-		return errno;
+  fd = stun_socket (srv->sa_family, type, proto);
+  if (fd == -1)
+    return errno;
 
-	if (connect (fd, srv, srvlen) && (errno != EINPROGRESS))
-	{
-		val = errno;
-		goto error;
-	}
+  if (connect (fd, srv, srvlen) && (errno != EINPROGRESS))
+  {
+    val = errno;
+    goto error;
+  }
 
-	val = stun_trans_init (tr, fd, NULL, 0);
-	if (val)
-		goto error;
+  val = stun_trans_init (tr, fd, NULL, 0);
+  if (val)
+    goto error;
 
-	tr->flags |= TRANS_OWN_FD;
-	return 0;
+  tr->flags |= TRANS_OWN_FD;
+  return 0;
 
 error:
-	close (fd);
-	return val;
+  close (fd);
+  return val;
 }
 
 
 void stun_trans_deinit (stun_trans_t *tr)
 {
-	int saved = errno;
+  int saved = errno;
 
-	assert (tr->sock.fd != -1);
+  assert (tr->sock.fd != -1);
 
-	if (tr->flags & TRANS_OWN_FD)
-		close (tr->sock.fd);
-	free (tr->key.value);
+  if (tr->flags & TRANS_OWN_FD)
+    close (tr->sock.fd);
+  free (tr->key.value);
 
 #ifndef NDEBUG
-	tr->sock.fd = -1;
+  tr->sock.fd = -1;
 #endif
-	errno = saved;
+  errno = saved;
 }
 
 
@@ -187,41 +187,41 @@ static int stun_trans_send (stun_trans_t *tr);
 
 int stun_trans_start (stun_trans_t *tr)
 {
-	int val;
+  int val;
 
-	tr->msg.offset = 0;
+  tr->msg.offset = 0;
 
-	if (tr->flags & TRANS_RELIABLE)
-		/*
-		 * FIXME: wait for three-way handshake, somewhere
-		 */
-		stun_timer_start_reliable (&tr->timer);
-	else
-		stun_timer_start (&tr->timer);
+  if (tr->flags & TRANS_RELIABLE)
+    /*
+     * FIXME: wait for three-way handshake, somewhere
+     */
+    stun_timer_start_reliable (&tr->timer);
+  else
+    stun_timer_start (&tr->timer);
 
-	DBG ("STUN transaction @%p started (timeout: %ums)\n", tr,
-	     stun_trans_timeout (tr));
+  DBG ("STUN transaction @%p started (timeout: %ums)\n", tr,
+       stun_trans_timeout (tr));
 
-	val = stun_trans_send (tr);
-	if (val)
-		return val;
+  val = stun_trans_send (tr);
+  if (val)
+    return val;
 
-	return 0;
+  return 0;
 }
 
 
 static inline int stun_err_dequeue (int fd)
 {
 #ifdef MSG_ERRQUEUE
-	struct msghdr hdr;
-	int saved_errno = errno, ret;
+  struct msghdr hdr;
+  int saved_errno = errno, ret;
 
-	memset (&hdr, 0, sizeof (hdr));
-	ret = (recvmsg (fd, &hdr, MSG_ERRQUEUE) >= 0);
-	errno = saved_errno;
-	return ret;
+  memset (&hdr, 0, sizeof (hdr));
+  ret = (recvmsg (fd, &hdr, MSG_ERRQUEUE) >= 0);
+  errno = saved_errno;
+  return ret;
 #else
-	return 0;
+  return 0;
 #endif
 }
 
@@ -229,19 +229,19 @@ static inline int stun_err_dequeue (int fd)
 ssize_t stun_sendto (int fd, const uint8_t *buf, size_t len,
                      const struct sockaddr *dst, socklen_t dstlen)
 {
-	static const int flags = MSG_DONTWAIT | MSG_NOSIGNAL;
-	ssize_t val;
+  static const int flags = MSG_DONTWAIT | MSG_NOSIGNAL;
+  ssize_t val;
 
-	do
-	{
-		if (dstlen > 0)
-			val = sendto (fd, buf, len, flags, dst, dstlen);
-		else
-			val = send (fd, buf, len, flags);
-	}
-	while ((val == -1) && stun_err_dequeue (fd));
+  do
+  {
+    if (dstlen > 0)
+      val = sendto (fd, buf, len, flags, dst, dstlen);
+    else
+      val = send (fd, buf, len, flags);
+  }
+  while ((val == -1) && stun_err_dequeue (fd));
 
-	return val;
+  return val;
 }
 
 
@@ -249,46 +249,48 @@ ssize_t stun_recvfrom (int fd, uint8_t *buf, size_t maxlen,
                        struct sockaddr *restrict dst,
                        socklen_t *restrict dstlen)
 {
-	static const int flags = MSG_DONTWAIT | MSG_NOSIGNAL;
-	ssize_t val;
+  static const int flags = MSG_DONTWAIT | MSG_NOSIGNAL;
+  ssize_t val;
 
-	if (dstlen != NULL)
-		val = recvfrom (fd, buf, maxlen, flags, dst, dstlen);
-	else
-		val = recv (fd, buf, maxlen, flags);
+  if (dstlen != NULL)
+    val = recvfrom (fd, buf, maxlen, flags, dst, dstlen);
+  else
+    val = recv (fd, buf, maxlen, flags);
 
-	if ((val == -1) && stun_err_dequeue (fd))
-		errno = EAGAIN;
+  if ((val == -1) && stun_err_dequeue (fd))
+    errno = EAGAIN;
 
-	return val;
+  return val;
 }
 
 
 unsigned stun_trans_timeout (const stun_trans_t *tr)
 {
-	assert (tr != NULL);
-	assert (tr->sock.fd != -1);
-	return stun_timer_remainder (&tr->timer);
+  assert (tr != NULL);
+  assert (tr->sock.fd != -1);
+  return stun_timer_remainder (&tr->timer);
 }
 
 
 int stun_trans_fd (const stun_trans_t *tr)
 {
-	assert (tr != NULL);
-	assert (tr->sock.fd != -1);
-	return tr->sock.fd;
+  assert (tr != NULL);
+  assert (tr->sock.fd != -1);
+  return tr->sock.fd;
 }
 
 
 bool stun_trans_reading (const stun_trans_t *tr)
 {
-	return true;
+  (void)tr;
+  return true;
 }
 
 
 bool stun_trans_writing (const stun_trans_t *tr)
 {
-	return false;
+  (void)tr;
+  return false;
 }
 
 
@@ -298,43 +300,43 @@ bool stun_trans_writing (const stun_trans_t *tr)
 static int
 stun_trans_send (stun_trans_t *tr)
 {
-	const uint8_t *data = tr->msg.buf + tr->msg.offset;
-	size_t len = tr->msg.length - tr->msg.offset;
-	ssize_t val;
+  const uint8_t *data = tr->msg.buf + tr->msg.offset;
+  size_t len = tr->msg.length - tr->msg.offset;
+  ssize_t val;
 
-	val = stun_sendto (tr->sock.fd, data, len,
-	                   (struct sockaddr *)&tr->sock.dst, tr->sock.dstlen);
-	if (val < 0)
-		return errno;
+  val = stun_sendto (tr->sock.fd, data, len,
+                     (struct sockaddr *)&tr->sock.dst, tr->sock.dstlen);
+  if (val < 0)
+    return errno;
 
-	/* Message sent succesfully! */
-	tr->msg.offset += val;
-	assert (tr->msg.offset <= tr->msg.length);
+  /* Message sent succesfully! */
+  tr->msg.offset += val;
+  assert (tr->msg.offset <= tr->msg.length);
 
-	return 0;
+  return 0;
 }
 
 
 int stun_trans_tick (stun_trans_t *tr)
 {
-	assert (tr->sock.fd != -1);
+  assert (tr->sock.fd != -1);
 
-	switch (stun_timer_refresh (&tr->timer))
-	{
-		case -1:
-			DBG ("STUN transaction @%p failed: time out.\n", tr);
-			return ETIMEDOUT; // fatal error!
+  switch (stun_timer_refresh (&tr->timer))
+  {
+    case -1:
+      DBG ("STUN transaction @%p failed: time out.\n", tr);
+      return ETIMEDOUT; // fatal error!
 
-		case 0:
-			/* Retransmit can only happen with non reliable transport */
-			assert ((tr->flags & TRANS_RELIABLE) == 0);
-			tr->msg.offset = 0;
+    case 0:
+      /* Retransmit can only happen with non reliable transport */
+      assert ((tr->flags & TRANS_RELIABLE) == 0);
+      tr->msg.offset = 0;
 
-			stun_trans_send (tr);
-			DBG ("STUN transaction @%p retransmitted (timeout: %ums).\n", tr,
-			     stun_trans_timeout (tr));
-	}
-	return EAGAIN;
+      stun_trans_send (tr);
+      DBG ("STUN transaction @%p retransmitted (timeout: %ums).\n", tr,
+           stun_trans_timeout (tr));
+  }
+  return EAGAIN;
 }
 
 
@@ -347,54 +349,54 @@ int stun_trans_tick (stun_trans_t *tr)
 static int stun_trans_wait (stun_trans_t *tr)
 {
 #ifdef HAVE_POLL
-	int val = 0;
+  int val = 0;
 
-	do
-	{
-		struct pollfd ufd;
-		unsigned delay = stun_trans_timeout (tr);
+  do
+  {
+    struct pollfd ufd;
+    unsigned delay = stun_trans_timeout (tr);
 
-		memset (&ufd, 0, sizeof (ufd));
-		ufd.fd = stun_trans_fd (tr);
+    memset (&ufd, 0, sizeof (ufd));
+    ufd.fd = stun_trans_fd (tr);
 
-		if (stun_trans_writing (tr))
-			ufd.events |= POLLOUT;
-		if (stun_trans_reading (tr))
-			ufd.events |= POLLIN;
+    if (stun_trans_writing (tr))
+      ufd.events |= POLLOUT;
+    if (stun_trans_reading (tr))
+      ufd.events |= POLLIN;
 
-		if (poll (&ufd, 1, delay) <= 0)
-		{
-			val = stun_trans_tick (tr);
-			continue;
-		}
+    if (poll (&ufd, 1, delay) <= 0)
+    {
+      val = stun_trans_tick (tr);
+      continue;
+    }
 
-		val = 0;
-	}
-	while (val == EAGAIN);
+    val = 0;
+  }
+  while (val == EAGAIN);
 
-	return val;
+  return val;
 #else
-	(void)tr;
-	return ENOSYS;
+  (void)tr;
+  return ENOSYS;
 #endif
 }
 
 
 int stun_trans_recv (stun_trans_t *tr, uint8_t *buf, size_t buflen)
 {
-	for (;;)
-	{
-		ssize_t val = stun_trans_wait (tr);
-		if (val)
-		{
-			errno = val /* = ETIMEDOUT */;
-			return -1;
-		}
+  for (;;)
+  {
+    ssize_t val = stun_trans_wait (tr);
+    if (val)
+    {
+      errno = val /* = ETIMEDOUT */;
+      return -1;
+    }
 
-		val = stun_recv (tr->sock.fd, buf, buflen);
-		if (val >= 0)
-			return val;
-	}
+    val = stun_recv (tr->sock.fd, buf, buflen);
+    if (val >= 0)
+      return val;
+  }
 }
 
 
@@ -402,72 +404,72 @@ int stun_trans_recv (stun_trans_t *tr, uint8_t *buf, size_t buflen)
 int stun_trans_preprocess (stun_trans_t *restrict tr, int *pcode,
                            const void *restrict buf, size_t len)
 {
-	assert (pcode != NULL);
+  assert (pcode != NULL);
 
-	/* FIXME: possible infinite loop */
-	if (stun_validate (buf, len) <= 0)
-		return EAGAIN;
+  /* FIXME: possible infinite loop */
+  if (stun_validate (buf, len) <= 0)
+    return EAGAIN;
 
-	DBG ("Received %u-bytes STUN message\n",
-	     (unsigned)stun_validate (buf, len));
-	/* NOTE: currently we ignore unauthenticated messages if the context
-	 * is authenticated, for security reasons. */
+  DBG ("Received %u-bytes STUN message\n",
+       (unsigned)stun_validate (buf, len));
+  /* NOTE: currently we ignore unauthenticated messages if the context
+   * is authenticated, for security reasons. */
 
-	if (!stun_match_messages (buf, tr->msg.buf, tr->key.value, tr->key.length,
-	                          pcode))
-		return EAGAIN;
+  if (!stun_match_messages (buf, tr->msg.buf, tr->key.value, tr->key.length,
+                            pcode))
+    return EAGAIN;
 
-	if (*pcode >= 0)
-	{
-		DBG (" STUN error message received (code: %d)\n", *pcode);
+  if (*pcode >= 0)
+  {
+    DBG (" STUN error message received (code: %d)\n", *pcode);
 
-		/* ALTERNATE-SERVER mechanism */
-		if ((tr->key.value != NULL) && ((*pcode / 100) == 3))
-		{
-			struct sockaddr_storage srv;
-			socklen_t slen = sizeof (srv);
+    /* ALTERNATE-SERVER mechanism */
+    if ((tr->key.value != NULL) && ((*pcode / 100) == 3))
+    {
+      struct sockaddr_storage srv;
+      socklen_t slen = sizeof (srv);
 
-			if (stun_find_addr (buf, STUN_ALTERNATE_SERVER,
-			                    (struct sockaddr *)&srv, &slen))
-			{
-				DBG (" Unexpectedly missing ALTERNATE-SERVER attribute\n");
-				return ECONNREFUSED;
-			}
+      if (stun_find_addr (buf, STUN_ALTERNATE_SERVER,
+                          (struct sockaddr *)&srv, &slen))
+      {
+        DBG (" Unexpectedly missing ALTERNATE-SERVER attribute\n");
+        return ECONNREFUSED;
+      }
 
-			if (tr->sock.dstlen == 0)
-			{
-				if (connect (tr->sock.fd, (struct sockaddr *)&srv, slen))
-				{
-					/* This error case includes address family mismatch */
-					DBG (" Error switching to alternate server: %s\n",
-					     strerror (errno));
-					return ECONNREFUSED;
-				}
-			}
-			else
-			{
-				if ((tr->sock.dst.ss_family != srv.ss_family)
-				 || (slen > sizeof (tr->sock.dst)))
-				{
-					DBG (" Unsupported alternate server\n");
-					return ECONNREFUSED;
-				}
+      if (tr->sock.dstlen == 0)
+      {
+        if (connect (tr->sock.fd, (struct sockaddr *)&srv, slen))
+        {
+          /* This error case includes address family mismatch */
+          DBG (" Error switching to alternate server: %s\n",
+               strerror (errno));
+          return ECONNREFUSED;
+        }
+      }
+      else
+      {
+        if ((tr->sock.dst.ss_family != srv.ss_family)
+         || (slen > sizeof (tr->sock.dst)))
+        {
+          DBG (" Unsupported alternate server\n");
+          return ECONNREFUSED;
+        }
 
-				memcpy (&tr->sock.dst, &srv, tr->sock.dstlen = slen);
-			}
+        memcpy (&tr->sock.dst, &srv, tr->sock.dstlen = slen);
+      }
 
-			DBG (" Restarting with alternate server\n");
-			if (stun_trans_start (tr) == 0)
-				return EAGAIN;
+      DBG (" Restarting with alternate server\n");
+      if (stun_trans_start (tr) == 0)
+        return EAGAIN;
 
-			DBG (" Restart failed!\n");
-		}
+      DBG (" Restart failed!\n");
+    }
 
-		return ECONNREFUSED;
-	}
+    return ECONNREFUSED;
+  }
 
-	if (stun_has_unknown (buf))
-		return EPROTO;
+  if (stun_has_unknown (buf))
+    return EPROTO;
 
-	return 0;
+  return 0;
 }

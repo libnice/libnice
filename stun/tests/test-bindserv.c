@@ -55,45 +55,45 @@
 
 int main (void)
 {
-	struct sockaddr_in ip4;
-	stun_msg_t buf;
-	ssize_t val;
-	size_t len;
-	static const uint8_t req[] =
-		"\x00\x01" "\x00\x00"
-		"\x00\x01\x02\x03\x04\x05\x06\x07"
-		"\x08\x09\x0A\x0B\x0C\x0D\x0E\x0F";
+  struct sockaddr_in ip4;
+  stun_msg_t buf;
+  ssize_t val;
+  size_t len;
+  static const uint8_t req[] =
+    "\x00\x01" "\x00\x00"
+    "\x00\x01\x02\x03\x04\x05\x06\x07"
+    "\x08\x09\x0A\x0B\x0C\x0D\x0E\x0F";
 
-	memset (&ip4, 0, sizeof (ip4));
-	ip4.sin_family = AF_INET;
+  memset (&ip4, 0, sizeof (ip4));
+  ip4.sin_family = AF_INET;
 #ifdef HAVE_SA_LEN
-	ip4.sin_len = sizeof (addr);
+  ip4.sin_len = sizeof (addr);
 #endif
-	ip4.sin_port = htons (12345);
-	ip4.sin_addr.s_addr = htonl (0x7f000001);
+  ip4.sin_port = htons (12345);
+  ip4.sin_addr.s_addr = htonl (0x7f000001);
 
-	/* Same with too small response buffer */
-	stun_init_request (buf, STUN_BINDING);
-	len = sizeof (buf);
-	stun_finish (buf, &len);
+  /* Same with too small response buffer */
+  stun_init_request (buf, STUN_BINDING);
+  len = sizeof (buf);
+  stun_finish (buf, &len);
 
-	len = 20 + 12 + 4 + stun_align (strlen (PACKAGE_STRING)) + 7;
-	val = stun_bind_reply (buf, &len, buf,
-	                       (struct sockaddr *)&ip4, sizeof (ip4), false);
-	assert (val == ENOBUFS);
-	assert (len == 0);
+  len = 20 + 12 + 4 + stun_align (strlen (PACKAGE_STRING)) + 7;
+  val = stun_bind_reply (buf, &len, buf,
+                         (struct sockaddr *)&ip4, sizeof (ip4), false);
+  assert (val == ENOBUFS);
+  assert (len == 0);
 
-	/* Same with too small response buffer */
-	stun_init_request (buf, STUN_BINDING);
-	stun_append_string (buf, sizeof (buf), 0x666, "Unknown attribute!");
-	len = sizeof (buf);
-	stun_finish (buf, &len);
+  /* Same with too small response buffer */
+  stun_init_request (buf, STUN_BINDING);
+  stun_append_string (buf, sizeof (buf), 0x666, "Unknown attribute!");
+  len = sizeof (buf);
+  stun_finish (buf, &len);
 
-	len = 20 + 4 + stun_align (strlen (PACKAGE_STRING)) + 7;
-	val = stun_bind_reply (buf, &len, buf,
-	                       (struct sockaddr *)&ip4, sizeof (ip4), false);
-	assert (val == ENOBUFS);
-	assert (len == 0);
+  len = 20 + 4 + stun_align (strlen (PACKAGE_STRING)) + 7;
+  val = stun_bind_reply (buf, &len, buf,
+                         (struct sockaddr *)&ip4, sizeof (ip4), false);
+  assert (val == ENOBUFS);
+  assert (len == 0);
 
-	return 0;
+  return 0;
 }

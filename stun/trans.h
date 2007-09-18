@@ -48,27 +48,27 @@
 
 typedef struct stun_trans_s
 {
-	stun_timer_t timer;
-	unsigned  flags;
+  stun_timer_t timer;
+  unsigned  flags;
 
-	struct
-	{
-		size_t  length, offset;
-		uint8_t buf[STUN_MAXMSG];
-	} msg;
+  struct
+  {
+    size_t  length, offset;
+    uint8_t buf[STUN_MAXMSG];
+  } msg;
 
-	struct
-	{
-		int                     fd;
-		socklen_t               dstlen;
-		struct sockaddr_storage dst;
-	} sock;
+  struct
+  {
+    int                     fd;
+    socklen_t               dstlen;
+    struct sockaddr_storage dst;
+  } sock;
 
-	struct
-	{
-		size_t  length;
-		uint8_t *value;
-	} key;
+  struct
+  {
+    size_t  length;
+    uint8_t *value;
+  } key;
 } stun_trans_t;
 
 
@@ -171,12 +171,12 @@ ssize_t stun_recvfrom (int fd, uint8_t *buf, size_t maxlen,
 
 static inline ssize_t stun_send (int fd, const uint8_t *buf, size_t len)
 {
-	return stun_sendto (fd, buf, len, NULL, 0);
+  return stun_sendto (fd, buf, len, NULL, 0);
 }
 
 static inline ssize_t stun_recv (int fd, uint8_t *buf, size_t maxlen)
 {
-	return stun_recvfrom (fd, buf, maxlen, NULL, NULL);
+  return stun_recvfrom (fd, buf, maxlen, NULL, NULL);
 }
 
 # ifdef __cplusplus

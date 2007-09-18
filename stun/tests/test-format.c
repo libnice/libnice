@@ -52,168 +52,168 @@
 
 static void fatal (const char *msg, ...)
 {
-	va_list ap;
-	va_start (ap, msg);
-	vfprintf (stderr, msg, ap);
-	va_end (ap);
-	fputc ('\n', stderr);
-	exit (1);
+  va_list ap;
+  va_start (ap, msg);
+  vfprintf (stderr, msg, ap);
+  va_end (ap);
+  fputc ('\n', stderr);
+  exit (1);
 }
 
 
 static void
 dynamic_check (const uint8_t *msg, size_t len)
 {
-	size_t len2 = stun_validate (msg, len);
-	if ((len != len2) || (len2 & 3))
-		fatal ("Invalid message (%u, %u)\n",
-		       (unsigned)len, (unsigned)len2);
-	if (!stun_demux (msg))
-		fatal ("Invalid message multiplexing");
+  size_t len2 = stun_validate (msg, len);
+  if ((len != len2) || (len2 & 3))
+    fatal ("Invalid message (%u, %u)\n",
+           (unsigned)len, (unsigned)len2);
+  if (!stun_demux (msg))
+    fatal ("Invalid message multiplexing");
 
-	printf ("Built message of %u bytes\n", (unsigned)len);
+  printf ("Built message of %u bytes\n", (unsigned)len);
 }
 
 
 static size_t
 finish_check (uint8_t *msg)
 {
-	stun_msg_t mshort;
-	size_t len = sizeof (stun_msg_t);
-	memcpy (mshort, msg, sizeof (mshort));
+  stun_msg_t mshort;
+  size_t len = sizeof (stun_msg_t);
+  memcpy (mshort, msg, sizeof (mshort));
 
-	if (stun_finish (msg, &len))
-		fatal ("Cannot finish message");
-	dynamic_check (msg, len);
+  if (stun_finish (msg, &len))
+    fatal ("Cannot finish message");
+  dynamic_check (msg, len);
 
-	len = sizeof (mshort);
-	if (stun_verify_password (mshort, "toto") != ENOENT)
-		fatal ("Missing HMAC test failed");
-	if (stun_finish_short (mshort, &len, "ABCDE", "admin", "ABC"))
-		fatal ("Cannot finish message with short-term creds");
-	dynamic_check (mshort, len);
-	if (stun_verify_password (mshort, "admin") != 0)
-		fatal ("Valid HMAC test failed");
+  len = sizeof (mshort);
+  if (stun_verify_password (mshort, "toto") != ENOENT)
+    fatal ("Missing HMAC test failed");
+  if (stun_finish_short (mshort, &len, "ABCDE", "admin", "ABC"))
+    fatal ("Cannot finish message with short-term creds");
+  dynamic_check (mshort, len);
+  if (stun_verify_password (mshort, "admin") != 0)
+    fatal ("Valid HMAC test failed");
 
-	return len;
+  return len;
 }
 
 
 static void
 check_af (const char *name, int family, socklen_t addrlen)
 {
-	struct sockaddr_storage addr;
-	stun_msg_t msg;
+  struct sockaddr_storage addr;
+  stun_msg_t msg;
 
-	assert (addrlen <= sizeof (addr));
+  assert (addrlen <= sizeof (addr));
 
-	memset (&addr, 0, sizeof (addr));
-	stun_init_request (msg, STUN_BINDING);
+  memset (&addr, 0, sizeof (addr));
+  stun_init_request (msg, STUN_BINDING);
 
-	if (stun_append_addr (msg, sizeof (msg), STUN_MAPPED_ADDRESS,
-	                      (struct sockaddr *)&addr, addrlen) != EAFNOSUPPORT)
-		fatal ("Unknown address family test failed");
-	if (stun_append_xor_addr (msg, sizeof (msg), STUN_XOR_MAPPED_ADDRESS,
-	                      (struct sockaddr *)&addr, addrlen) != EAFNOSUPPORT)
-		fatal ("Unknown address family xor test failed");
+  if (stun_append_addr (msg, sizeof (msg), STUN_MAPPED_ADDRESS,
+                        (struct sockaddr *)&addr, addrlen) != EAFNOSUPPORT)
+    fatal ("Unknown address family test failed");
+  if (stun_append_xor_addr (msg, sizeof (msg), STUN_XOR_MAPPED_ADDRESS,
+                        (struct sockaddr *)&addr, addrlen) != EAFNOSUPPORT)
+    fatal ("Unknown address family xor test failed");
 
-	addr.ss_family = family;
-	if (stun_append_addr (msg, sizeof (msg), STUN_MAPPED_ADDRESS,
-	                      (struct sockaddr *)&addr, addrlen - 1) != EINVAL)
-		fatal ("Too small %s sockaddr test failed", name);
+  addr.ss_family = family;
+  if (stun_append_addr (msg, sizeof (msg), STUN_MAPPED_ADDRESS,
+                        (struct sockaddr *)&addr, addrlen - 1) != EINVAL)
+    fatal ("Too small %s sockaddr test failed", name);
 
-	if (stun_append_xor_addr (msg, sizeof (msg), STUN_XOR_MAPPED_ADDRESS,
-	                      (struct sockaddr *)&addr, addrlen - 1) != EINVAL)
-		fatal ("Too small %s sockaddr xor test failed", name);
+  if (stun_append_xor_addr (msg, sizeof (msg), STUN_XOR_MAPPED_ADDRESS,
+                        (struct sockaddr *)&addr, addrlen - 1) != EINVAL)
+    fatal ("Too small %s sockaddr xor test failed", name);
 
-	if (stun_append_addr (msg, sizeof (msg), STUN_MAPPED_ADDRESS,
-	                      (struct sockaddr *)&addr, addrlen))
-		fatal ("%s sockaddr test failed", name);
+  if (stun_append_addr (msg, sizeof (msg), STUN_MAPPED_ADDRESS,
+                        (struct sockaddr *)&addr, addrlen))
+    fatal ("%s sockaddr test failed", name);
 
-	if (stun_append_xor_addr (msg, sizeof (msg), STUN_XOR_MAPPED_ADDRESS,
-	                          (struct sockaddr *)&addr, addrlen))
-		fatal ("%s sockaddr xor test failed", name);
+  if (stun_append_xor_addr (msg, sizeof (msg), STUN_XOR_MAPPED_ADDRESS,
+                            (struct sockaddr *)&addr, addrlen))
+    fatal ("%s sockaddr xor test failed", name);
 }
 
 
 int main (void)
 {
-	uint8_t msg[STUN_MAXMSG + 8];
-	size_t len;
-	struct sockaddr addr;
+  uint8_t msg[STUN_MAXMSG + 8];
+  size_t len;
+  struct sockaddr addr;
 
-	/* Request formatting test */
-	stun_init_request (msg, STUN_BINDING);
-	finish_check (msg);
-	if (memcmp (msg, "\x00\x01", 2))
-		fatal ("Request formatting test failed");
+  /* Request formatting test */
+  stun_init_request (msg, STUN_BINDING);
+  finish_check (msg);
+  if (memcmp (msg, "\x00\x01", 2))
+    fatal ("Request formatting test failed");
 
-	/* Response formatting test */
-	stun_init_response (msg, sizeof (msg), msg);
-	finish_check (msg);
-	if (memcmp (msg, "\x01\x01", 2))
-		fatal ("Response formatting test failed");
+  /* Response formatting test */
+  stun_init_response (msg, sizeof (msg), msg);
+  finish_check (msg);
+  if (memcmp (msg, "\x01\x01", 2))
+    fatal ("Response formatting test failed");
 
-	/* Error formatting test */
-	stun_init_request (msg, STUN_BINDING);
-	if (stun_init_error (msg, sizeof (msg), msg, 400))
-		fatal ("Error initialization test failed");
-	finish_check (msg);
-	if (memcmp (msg, "\x01\x11", 2))
-		fatal ("Error formatting test failed");
+  /* Error formatting test */
+  stun_init_request (msg, STUN_BINDING);
+  if (stun_init_error (msg, sizeof (msg), msg, 400))
+    fatal ("Error initialization test failed");
+  finish_check (msg);
+  if (memcmp (msg, "\x01\x11", 2))
+    fatal ("Error formatting test failed");
 
-	/* Unknown error formatting test */
-	stun_init_request (msg, STUN_BINDING);
-	if (stun_init_error (msg, sizeof (msg), msg, 666))
-		fatal ("Unknown error initialization test failed");
-	finish_check (msg);
-	if (memcmp (msg, "\x01\x11", 2))
-		fatal ("Unknown error formatting test failed");
+  /* Unknown error formatting test */
+  stun_init_request (msg, STUN_BINDING);
+  if (stun_init_error (msg, sizeof (msg), msg, 666))
+    fatal ("Unknown error initialization test failed");
+  finish_check (msg);
+  if (memcmp (msg, "\x01\x11", 2))
+    fatal ("Unknown error formatting test failed");
 
-	/* Overflow tests */
-	stun_init_request (msg, STUN_BINDING);
-	for (len = 0;
-	     stun_append_flag (msg, sizeof (msg), 0xffff) != ENOBUFS;
-	     len += 4)
-	{
-		if (len > 0xffff)
-			fatal ("Overflow protection test failed");
-	}
+  /* Overflow tests */
+  stun_init_request (msg, STUN_BINDING);
+  for (len = 0;
+       stun_append_flag (msg, sizeof (msg), 0xffff) != ENOBUFS;
+       len += 4)
+  {
+    if (len > 0xffff)
+      fatal ("Overflow protection test failed");
+  }
 
-	if (stun_append32 (msg, sizeof (msg), 0xffff, 0x12345678) != ENOBUFS)
-		fatal ("Double-word overflow test failed");
-	if (stun_append64 (msg, sizeof (msg), 0xffff,
-	                   0x123456789abcdef0) != ENOBUFS)
-		fatal ("Quad-word overflow test failed");
-	if (stun_append_string (msg, sizeof (msg), 0xffff, "foobar") != ENOBUFS)
-		fatal ("String overflow test failed");
+  if (stun_append32 (msg, sizeof (msg), 0xffff, 0x12345678) != ENOBUFS)
+    fatal ("Double-word overflow test failed");
+  if (stun_append64 (msg, sizeof (msg), 0xffff,
+                     0x123456789abcdef0) != ENOBUFS)
+    fatal ("Quad-word overflow test failed");
+  if (stun_append_string (msg, sizeof (msg), 0xffff, "foobar") != ENOBUFS)
+    fatal ("String overflow test failed");
 
-	memset (&addr, 0, sizeof (addr));
-	addr.sa_family = AF_INET;
+  memset (&addr, 0, sizeof (addr));
+  addr.sa_family = AF_INET;
 #ifdef HAVE_SA_LEN
-	addr.sa_len = sizeof (addr);
+  addr.sa_len = sizeof (addr);
 #endif
-	if (stun_append_xor_addr (msg, sizeof (msg), 0xffff, &addr,
-	                          sizeof (addr)) != ENOBUFS)
-		fatal ("Address overflow test failed");
-	len = sizeof (msg);
-	if (stun_finish (msg, &len) != ENOBUFS)
-		fatal ("Fingerprint overflow test failed");
-	len = sizeof (msg);
-	if (stun_finish_short (msg, &len, NULL, "secret", NULL) != ENOBUFS)
-		fatal ("Message integrity overflow test failed");
-	len = sizeof (msg);
-	if (stun_finish_short (msg, &len, "login", "secret", NULL) != ENOBUFS)
-		fatal ("Username overflow test failed");
-	len = sizeof (msg);
-	if (stun_finish_short (msg, &len, NULL, "secret", "foobar") != ENOBUFS)
-		fatal ("Nonce overflow test failed");
+  if (stun_append_xor_addr (msg, sizeof (msg), 0xffff, &addr,
+                            sizeof (addr)) != ENOBUFS)
+    fatal ("Address overflow test failed");
+  len = sizeof (msg);
+  if (stun_finish (msg, &len) != ENOBUFS)
+    fatal ("Fingerprint overflow test failed");
+  len = sizeof (msg);
+  if (stun_finish_short (msg, &len, NULL, "secret", NULL) != ENOBUFS)
+    fatal ("Message integrity overflow test failed");
+  len = sizeof (msg);
+  if (stun_finish_short (msg, &len, "login", "secret", NULL) != ENOBUFS)
+    fatal ("Username overflow test failed");
+  len = sizeof (msg);
+  if (stun_finish_short (msg, &len, NULL, "secret", "foobar") != ENOBUFS)
+    fatal ("Nonce overflow test failed");
 
-	/* Address attributes tests */
-	check_af ("IPv4", AF_INET, sizeof (struct sockaddr_in));
+  /* Address attributes tests */
+  check_af ("IPv4", AF_INET, sizeof (struct sockaddr_in));
 #ifdef AF_INET6
-	check_af ("IPv6", AF_INET6, sizeof (struct sockaddr_in6));
+  check_af ("IPv6", AF_INET6, sizeof (struct sockaddr_in6));
 #endif
 
-	return 0;
+  return 0;
 }

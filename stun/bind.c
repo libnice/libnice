@@ -59,7 +59,7 @@
 
 struct stun_bind_s
 {
-	stun_trans_t trans;
+  stun_trans_t trans;
 };
 
 
@@ -81,37 +81,37 @@ static int
 stun_bind_alloc (stun_bind_t **restrict context, int fd,
                  const struct sockaddr *restrict srv, socklen_t srvlen)
 {
-	int val;
+  int val;
 
-	stun_bind_t *ctx = malloc (sizeof (*ctx));
-	if (ctx == NULL)
-		return ENOMEM;
+  stun_bind_t *ctx = malloc (sizeof (*ctx));
+  if (ctx == NULL)
+    return ENOMEM;
 
-	memset (ctx, 0, sizeof (*ctx));
-	*context = ctx;
+  memset (ctx, 0, sizeof (*ctx));
+  *context = ctx;
 
-	val = (fd != -1)
-		? stun_trans_init (&ctx->trans, fd, srv, srvlen)
-		: stun_trans_create (&ctx->trans, SOCK_DGRAM, 0, srv, srvlen);
+  val = (fd != -1)
+    ? stun_trans_init (&ctx->trans, fd, srv, srvlen)
+    : stun_trans_create (&ctx->trans, SOCK_DGRAM, 0, srv, srvlen);
 
-	if (val)
-	{
-		free (ctx);
-		return val;
-	}
+  if (val)
+  {
+    free (ctx);
+    return val;
+  }
 
-	stun_init_request (ctx->trans.msg.buf, STUN_BINDING);
-	return 0;
+  stun_init_request (ctx->trans.msg.buf, STUN_BINDING);
+  return 0;
 }
 
 
 static int
 stun_bind_launch (stun_bind_t *ctx)
 {
-	int val = stun_trans_start (&ctx->trans);
-	if (val)
-		stun_bind_cancel (ctx);
-	return val;
+  int val = stun_trans_start (&ctx->trans);
+  if (val)
+    stun_bind_cancel (ctx);
+  return val;
 }
 
 
@@ -119,30 +119,30 @@ int stun_bind_start (stun_bind_t **restrict context, int fd,
                      const struct sockaddr *restrict srv,
                      socklen_t srvlen)
 {
-	stun_bind_t *ctx;
+  stun_bind_t *ctx;
 
-	int val = stun_bind_alloc (context, fd, srv, srvlen);
-	if (val)
-		return val;
+  int val = stun_bind_alloc (context, fd, srv, srvlen);
+  if (val)
+    return val;
 
-	ctx = *context;
+  ctx = *context;
 
-	ctx->trans.msg.length = sizeof (ctx->trans.msg.buf);
-	val = stun_finish (ctx->trans.msg.buf, &ctx->trans.msg.length);
-	if (val)
-	{
-		stun_bind_cancel (ctx);
-		return val;
-	}
+  ctx->trans.msg.length = sizeof (ctx->trans.msg.buf);
+  val = stun_finish (ctx->trans.msg.buf, &ctx->trans.msg.length);
+  if (val)
+  {
+    stun_bind_cancel (ctx);
+    return val;
+  }
 
-	return stun_bind_launch (ctx);
+  return stun_bind_launch (ctx);
 }
 
 
 void stun_bind_cancel (stun_bind_t *context)
 {
-	stun_trans_deinit (&context->trans);
-	free (context);
+  stun_trans_deinit (&context->trans);
+  free (context);
 }
 
 
@@ -150,17 +150,17 @@ void stun_bind_cancel (stun_bind_t *context)
 
 unsigned stun_bind_timeout (const stun_bind_t *context)
 {
-	assert (context != NULL);
-	return stun_trans_timeout (&context->trans);
+  assert (context != NULL);
+  return stun_trans_timeout (&context->trans);
 }
 
 
 int stun_bind_elapse (stun_bind_t *context)
 {
-	int val = stun_trans_tick (&context->trans);
-	if (val != EAGAIN)
-		stun_bind_cancel (context);
-	return val;
+  int val = stun_trans_tick (&context->trans);
+  if (val != EAGAIN)
+    stun_bind_cancel (context);
+  return val;
 }
 
 
@@ -170,40 +170,40 @@ int stun_bind_process (stun_bind_t *restrict ctx,
                        const void *restrict buf, size_t len,
                        struct sockaddr *restrict addr, socklen_t *addrlen)
 {
-	int val, code;
+  int val, code;
 
-	assert (ctx != NULL);
+  assert (ctx != NULL);
 
-	val = stun_trans_preprocess (&ctx->trans, &code, buf, len);
-	switch (val)
-	{
-		case EAGAIN:
-			return EAGAIN;
-		case 0:
-			break;
-		default:
-			if (code == STUN_ROLE_CONFLICT)
-				val = ECONNRESET;
-			stun_bind_cancel (ctx);
-			return val;
-	}
+  val = stun_trans_preprocess (&ctx->trans, &code, buf, len);
+  switch (val)
+  {
+    case EAGAIN:
+      return EAGAIN;
+    case 0:
+      break;
+    default:
+      if (code == STUN_ROLE_CONFLICT)
+        val = ECONNRESET;
+      stun_bind_cancel (ctx);
+      return val;
+  }
 
-	val = stun_find_xor_addr (buf, STUN_XOR_MAPPED_ADDRESS, addr, addrlen);
-	if (val)
-	{
-		DBG (" No XOR-MAPPED-ADDRESS: %s\n", strerror (val));
-		val = stun_find_addr (buf, STUN_MAPPED_ADDRESS, addr, addrlen);
-		if (val)
-		{
-			DBG (" No MAPPED-ADDRESS: %s\n", strerror (val));
-			stun_bind_cancel (ctx);
-			return val;
-		}
-	}
+  val = stun_find_xor_addr (buf, STUN_XOR_MAPPED_ADDRESS, addr, addrlen);
+  if (val)
+  {
+    DBG (" No XOR-MAPPED-ADDRESS: %s\n", strerror (val));
+    val = stun_find_addr (buf, STUN_MAPPED_ADDRESS, addr, addrlen);
+    if (val)
+    {
+      DBG (" No MAPPED-ADDRESS: %s\n", strerror (val));
+      stun_bind_cancel (ctx);
+      return val;
+    }
+  }
 
-	DBG (" Mapped address found!\n");
-	stun_bind_cancel (ctx);
-	return 0;
+  DBG (" Mapped address found!\n");
+  stun_bind_cancel (ctx);
+  return 0;
 }
 
 
@@ -213,28 +213,28 @@ int stun_bind_run (int fd,
                    const struct sockaddr *restrict srv, socklen_t srvlen,
                    struct sockaddr *restrict addr, socklen_t *addrlen)
 {
-	stun_bind_t *ctx;
-	uint8_t buf[STUN_MAXMSG];
-	ssize_t val;
+  stun_bind_t *ctx;
+  uint8_t buf[STUN_MAXMSG];
+  ssize_t val;
 
-	val = stun_bind_start (&ctx, fd, srv, srvlen);
-	if (val)
-		return val;
+  val = stun_bind_start (&ctx, fd, srv, srvlen);
+  if (val)
+    return val;
 
-	do
-	{
-		val = stun_trans_recv (&ctx->trans, buf, sizeof (buf));
-		if (val == -1)
-		{
-			val = errno;
-			continue;
-		}
+  do
+  {
+    val = stun_trans_recv (&ctx->trans, buf, sizeof (buf));
+    if (val == -1)
+    {
+      val = errno;
+      continue;
+    }
 
-		val = stun_bind_process (ctx, buf, val, addr, addrlen);
-	}
-	while (val == EAGAIN);
+    val = stun_bind_process (ctx, buf, val, addr, addrlen);
+  }
+  while (val == EAGAIN);
 
-	return val;
+  return val;
 }
 
 
@@ -244,19 +244,19 @@ int
 stun_bind_keepalive (int fd, const struct sockaddr *restrict srv,
                      socklen_t srvlen)
 {
-	uint8_t buf[28];
-	size_t len = sizeof (buf);
-	int val;
+  uint8_t buf[28];
+  size_t len = sizeof (buf);
+  int val;
 
-	stun_init_indication (buf, STUN_BINDING);
-	val = stun_finish (buf, &len);
-	assert (val == 0);
-	(void)val;
+  stun_init_indication (buf, STUN_BINDING);
+  val = stun_finish (buf, &len);
+  assert (val == 0);
+  (void)val;
 
-	/* NOTE: hopefully, this is only needed for non-stream sockets */
-	if (stun_sendto (fd, buf, len, srv, srvlen) == -1)
-		return errno;
-	return 0;
+  /* NOTE: hopefully, this is only needed for non-stream sockets */
+  if (stun_sendto (fd, buf, len, srv, srvlen) == -1)
+    return errno;
+  return 0;
 }
 
 
@@ -270,58 +270,58 @@ stun_conncheck_start (stun_bind_t **restrict context, int fd,
                       bool cand_use, bool controlling, uint32_t priority,
                       uint64_t tie)
 {
-	int val;
-	stun_bind_t *ctx;
+  int val;
+  stun_bind_t *ctx;
 
-	assert (username != NULL);
-	assert (password != NULL);
+  assert (username != NULL);
+  assert (password != NULL);
 
-	val = stun_bind_alloc (&ctx, fd, srv, srvlen);
-	if (val)
-		return val;
+  val = stun_bind_alloc (&ctx, fd, srv, srvlen);
+  if (val)
+    return val;
 
-	ctx->trans.key.length = strlen (password);
-	ctx->trans.key.value = malloc (ctx->trans.key.length);
-	if (ctx->trans.key.value == NULL)
-	{
-		val = ENOMEM;
-		goto error;
-	}
+  ctx->trans.key.length = strlen (password);
+  ctx->trans.key.value = malloc (ctx->trans.key.length);
+  if (ctx->trans.key.value == NULL)
+  {
+    val = ENOMEM;
+    goto error;
+  }
 
-	*context = ctx;
-	memcpy (ctx->trans.key.value, password, ctx->trans.key.length);
+  *context = ctx;
+  memcpy (ctx->trans.key.value, password, ctx->trans.key.length);
 
-	if (cand_use)
-	{
-		val = stun_append_flag (ctx->trans.msg.buf,
-		                        sizeof (ctx->trans.msg.buf),
-		                        STUN_USE_CANDIDATE);
-		if (val)
-			goto error;
-	}
+  if (cand_use)
+  {
+    val = stun_append_flag (ctx->trans.msg.buf,
+                            sizeof (ctx->trans.msg.buf),
+                            STUN_USE_CANDIDATE);
+    if (val)
+      goto error;
+  }
 
-	val = stun_append32 (ctx->trans.msg.buf, sizeof (ctx->trans.msg.buf),
-	                     STUN_PRIORITY, priority);
-	if (val)
-		goto error;
+  val = stun_append32 (ctx->trans.msg.buf, sizeof (ctx->trans.msg.buf),
+                       STUN_PRIORITY, priority);
+  if (val)
+    goto error;
 
-	val = stun_append64 (ctx->trans.msg.buf, sizeof (ctx->trans.msg.buf),
-	                     controlling ? STUN_ICE_CONTROLLING
-	                                 : STUN_ICE_CONTROLLED, tie);
-	if (val)
-		goto error;
+  val = stun_append64 (ctx->trans.msg.buf, sizeof (ctx->trans.msg.buf),
+                       controlling ? STUN_ICE_CONTROLLING
+                                   : STUN_ICE_CONTROLLED, tie);
+  if (val)
+    goto error;
 
-	ctx->trans.msg.length = sizeof (ctx->trans.msg.buf);
-	val = stun_finish_short (ctx->trans.msg.buf, &ctx->trans.msg.length,
-	                         username, password, NULL);
-	if (val)
-		goto error;
+  ctx->trans.msg.length = sizeof (ctx->trans.msg.buf);
+  val = stun_finish_short (ctx->trans.msg.buf, &ctx->trans.msg.length,
+                           username, password, NULL);
+  if (val)
+    goto error;
 
-	return stun_bind_launch (ctx);
+  return stun_bind_launch (ctx);
 
 error:
-	stun_bind_cancel (*context);
-	return val;
+  stun_bind_cancel (*context);
+  return val;
 }
 
 

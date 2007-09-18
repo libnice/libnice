@@ -63,80 +63,80 @@
 static void stun_gettime (struct timespec *restrict now)
 {
 #if (_POSIX_MONOTONIC_CLOCK - 0) >= 0
-	if (clock_gettime (CLOCK_MONOTONIC, now))
+  if (clock_gettime (CLOCK_MONOTONIC, now))
 #endif
-	{	// fallback to wall clock
-		struct timeval tv;
-		gettimeofday (&tv, NULL);
-		now->tv_sec = tv.tv_sec;
-		now->tv_nsec = tv.tv_usec * 1000;
-	}
+  {  // fallback to wall clock
+    struct timeval tv;
+    gettimeofday (&tv, NULL);
+    now->tv_sec = tv.tv_sec;
+    now->tv_nsec = tv.tv_usec * 1000;
+  }
 }
 
 
 static inline void add_delay (struct timespec *ts, unsigned delay)
 {
-	div_t d = div (delay, 1000);
-	ts->tv_sec += d.quot;
-	ts->tv_nsec += d.rem * 1000000;
+  div_t d = div (delay, 1000);
+  ts->tv_sec += d.quot;
+  ts->tv_nsec += d.rem * 1000000;
 
-	while (ts->tv_nsec > 1000000000)
-	{
-		ts->tv_nsec -= 1000000000;
-		ts->tv_sec++;
-	}
+  while (ts->tv_nsec > 1000000000)
+  {
+    ts->tv_nsec -= 1000000000;
+    ts->tv_sec++;
+  }
 }
 
 
 void stun_timer_start (stun_timer_t *timer)
 {
-	stun_gettime (&timer->deadline);
-	add_delay (&timer->deadline, timer->delay = STUN_INIT_TIMEOUT);
+  stun_gettime (&timer->deadline);
+  add_delay (&timer->deadline, timer->delay = STUN_INIT_TIMEOUT);
 }
 
 
 void stun_timer_start_reliable (stun_timer_t *timer)
 {
-	stun_gettime (&timer->deadline);
-	add_delay (&timer->deadline, timer->delay = STUN_RELIABLE_TIMEOUT);
+  stun_gettime (&timer->deadline);
+  add_delay (&timer->deadline, timer->delay = STUN_RELIABLE_TIMEOUT);
 }
 
 
 
 unsigned stun_timer_remainder (const stun_timer_t *timer)
 {
-	unsigned delay;
-	struct timespec now;
+  unsigned delay;
+  struct timespec now;
 
-	stun_gettime (&now);
-	if (now.tv_sec > timer->deadline.tv_sec)
-		return 0;
+  stun_gettime (&now);
+  if (now.tv_sec > timer->deadline.tv_sec)
+    return 0;
 
-	delay = timer->deadline.tv_sec - now.tv_sec;
-	if ((delay == 0) && (now.tv_nsec >= timer->deadline.tv_nsec))
-		return 0;
+  delay = timer->deadline.tv_sec - now.tv_sec;
+  if ((delay == 0) && (now.tv_nsec >= timer->deadline.tv_nsec))
+    return 0;
 
-	delay *= 1000;
-	delay += ((signed)(timer->deadline.tv_nsec - now.tv_nsec)) / 1000000;
-	return delay;
+  delay *= 1000;
+  delay += ((signed)(timer->deadline.tv_nsec - now.tv_nsec)) / 1000000;
+  return delay;
 }
 
 
 int stun_timer_refresh (stun_timer_t *timer)
 {
-	unsigned delay = stun_timer_remainder (timer);
-	if (delay == 0)
-	{
+  unsigned delay = stun_timer_remainder (timer);
+  if (delay == 0)
+  {
 #if STUN_RELIABLE_TIMEOUT < STUN_END_TIMEOUT
 /* Reliable timeout MUST be bigger (or equal) to end timeout, so that
  * retransmissions never happen with reliable transports. */
 # error Inconsistent STUN timeout values!
 #endif
-		if (timer->delay >= STUN_END_TIMEOUT)
-			return -1;
+    if (timer->delay >= STUN_END_TIMEOUT)
+      return -1;
 
-		add_delay (&timer->deadline, timer->delay *= 2);
-	}
+    add_delay (&timer->deadline, timer->delay *= 2);
+  }
 
-	return delay;
+  return delay;
 }

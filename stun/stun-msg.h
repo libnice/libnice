@@ -49,19 +49,19 @@
 #  include <stdarg.h>
 static inline void DBG (const char *fmt, ...)
 {
-	va_list ap;
-	va_start (ap, fmt);
-	vfprintf (stderr, fmt, ap);
-	va_end (ap);
+  va_list ap;
+  va_start (ap, fmt);
+  vfprintf (stderr, fmt, ap);
+  va_end (ap);
 }
 
 static inline void DBG_bytes (const void *data, size_t len)
 {
-	size_t i;
+  size_t i;
 
-	DBG ("0x");
-	for (i = 0; i < len; i++)
-		DBG ("%02x", ((const unsigned char *)data)[i]);
+  DBG ("0x");
+  for (i = 0; i < len; i++)
+    DBG ("%02x", ((const unsigned char *)data)[i]);
 }
 # else
 #  define DBG( ... ) (void)0
@@ -80,10 +80,10 @@ static inline void DBG_bytes (const void *data, size_t len)
 
 typedef struct stun_hdr_s
 {
-	uint16_t  msg_type;
-	uint16_t  msg_len;
-	uint32_t  msg_cookie;
-	uint32_t  msg_id[3];
+  uint16_t  msg_type;
+  uint16_t  msg_len;
+  uint32_t  msg_cookie;
+  uint32_t  msg_id[3];
 } stun_hdr_t;
 
 
@@ -92,23 +92,23 @@ typedef uint8_t stun_msg_t[STUN_MAXMSG];
 /* Message classes */
 typedef enum
 {
-	STUN_REQUEST=0,
-	STUN_INDICATION=1,
-	STUN_RESPONSE=2,
-	STUN_ERROR=3
+  STUN_REQUEST=0,
+  STUN_INDICATION=1,
+  STUN_RESPONSE=2,
+  STUN_ERROR=3
 } stun_class_t;
 
 /* Message methods */
 typedef enum
 {
-	STUN_BINDING=0x001,		/* RFC3489bis-08 */
-	STUN_OLD_SHARED_SECRET=0x002,	/* old RFC3489 */
-	STUN_ALLOCATE=0x003,		/* TURN-04 */
-	STUN_SET_ACTIVE_DST=0x004,	/* TURN-04 */
-	STUN_CONNECT=0x005,		/* TURN-04 */
-	STUN_IND_SEND=0x006,		/* TURN-04 */
-	STUN_IND_DATA=0x007,		/* TURN-04 */
-	STUN_IND_CONNECT_STATUS=0x008	/* TURN-04 */
+  STUN_BINDING=0x001,    /* RFC3489bis-08 */
+  STUN_OLD_SHARED_SECRET=0x002,  /* old RFC3489 */
+  STUN_ALLOCATE=0x003,    /* TURN-04 */
+  STUN_SET_ACTIVE_DST=0x004,  /* TURN-04 */
+  STUN_CONNECT=0x005,    /* TURN-04 */
+  STUN_IND_SEND=0x006,    /* TURN-04 */
+  STUN_IND_DATA=0x007,    /* TURN-04 */
+  STUN_IND_CONNECT_STATUS=0x008  /* TURN-04 */
 } stun_method_t;
 
 /**
@@ -117,65 +117,65 @@ typedef enum
  */
 typedef enum
 {
-	/* Mandatory attributes */
-	/* 0x0000 */				/* reserved */
-	STUN_MAPPED_ADDRESS=0x0001,		/* RFC3489bis-08 */
-	STUN_OLD_RESPONSE_ADDRESS=0x0002,	/* old RFC3489 */
-	STUN_OLD_CHANGE_REQUEST=0x0003,		/* old RFC3489 */
-	STUN_OLD_SOURCE_ADDRESS=0x0004,		/* old RFC3489 */
-	STUN_OLD_CHANGED_ADDRESS=0x0005,	/* old RFC3489 */
-	STUN_USERNAME=0x0006,			/* RFC3489bis-08 */
-	STUN_OLD_PASSWORD=0x0007,		/* old RFC3489 */
-	STUN_MESSAGE_INTEGRITY=0x0008,		/* RFC3489bis-08 */
-	STUN_ERROR_CODE=0x0009,			/* RFC3489bis-08 */
-	STUN_UNKNOWN_ATTRIBUTES=0x000A,		/* RFC3489bis-08 */
-	STUN_OLD_REFLECTED_FROM=0x000B,		/* old RFC3489 */
-	/* 0x000C */				/* reserved */
-	STUN_LIFETIME=0x000D,			/* TURN-04 */
-	/* 0x000E */				/* reserved */
-	/* 0x000F */				/* reserved */
-	STUN_BANDWIDTH=0x0010,			/* TURN-04 */
-	/* 0x0011 */				/* reserved */
-	STUN_REMOTE_ADDRESS=0x0012,		/* TURN-04 */
-	STUN_DATA=0x0013,			/* TURN-04 */
-	STUN_REALM=0x0014,			/* RFC3489bis-08 */
-	STUN_NONCE=0x0015,			/* RFC3489bis-08 */
-	STUN_RELAY_ADDRESS=0x0016,		/* TURN-04 */
-	STUN_REQUESTED_ADDRESS_TYPE=0x0017,	/* TURN-IPv6-03 */
-	STUN_REQUESTED_PORT_PROPS=0x0018,	/* TURN-04 */
-	STUN_REQUESTED_TRANSPORT=0x0019,	/* TURN-04 */
-	/* 0x001A */				/* reserved */
-	/* 0x001B */				/* reserved */
-	/* 0x001C */				/* reserved */
-	/* 0x001D */				/* reserved */
-	/* 0x001E */				/* reserved */
-	/* 0x001F */				/* reserved */
-	STUN_XOR_MAPPED_ADDRESS=0x0020,		/* RFC3489bis-08 */
-	STUN_TIMER_VAL=0x0021,			/* TURN-04 */
-	STUN_REQUESTED_IP=0x0022,		/* TURN-04 */
-	STUN_CONNECT_STAT=0x0023,		/* TURN-04 */
-	STUN_PRIORITY=0x0024,			/* ICE-17 */
-	STUN_USE_CANDIDATE=0x0025,		/* ICE-17 */
-	/* 0x0026-0x7fff */			/* reserved */
+  /* Mandatory attributes */
+  /* 0x0000 */        /* reserved */
+  STUN_MAPPED_ADDRESS=0x0001,    /* RFC3489bis-08 */
+  STUN_OLD_RESPONSE_ADDRESS=0x0002,  /* old RFC3489 */
+  STUN_OLD_CHANGE_REQUEST=0x0003,    /* old RFC3489 */
+  STUN_OLD_SOURCE_ADDRESS=0x0004,    /* old RFC3489 */
+  STUN_OLD_CHANGED_ADDRESS=0x0005,  /* old RFC3489 */
+  STUN_USERNAME=0x0006,      /* RFC3489bis-08 */
+  STUN_OLD_PASSWORD=0x0007,    /* old RFC3489 */
+  STUN_MESSAGE_INTEGRITY=0x0008,    /* RFC3489bis-08 */
+  STUN_ERROR_CODE=0x0009,      /* RFC3489bis-08 */
+  STUN_UNKNOWN_ATTRIBUTES=0x000A,    /* RFC3489bis-08 */
+  STUN_OLD_REFLECTED_FROM=0x000B,    /* old RFC3489 */
+  /* 0x000C */        /* reserved */
+  STUN_LIFETIME=0x000D,      /* TURN-04 */
+  /* 0x000E */        /* reserved */
+  /* 0x000F */        /* reserved */
+  STUN_BANDWIDTH=0x0010,      /* TURN-04 */
+  /* 0x0011 */        /* reserved */
+  STUN_REMOTE_ADDRESS=0x0012,    /* TURN-04 */
+  STUN_DATA=0x0013,      /* TURN-04 */
+  STUN_REALM=0x0014,      /* RFC3489bis-08 */
+  STUN_NONCE=0x0015,      /* RFC3489bis-08 */
+  STUN_RELAY_ADDRESS=0x0016,    /* TURN-04 */
+  STUN_REQUESTED_ADDRESS_TYPE=0x0017,  /* TURN-IPv6-03 */
+  STUN_REQUESTED_PORT_PROPS=0x0018,  /* TURN-04 */
+  STUN_REQUESTED_TRANSPORT=0x0019,  /* TURN-04 */
+  /* 0x001A */        /* reserved */
+  /* 0x001B */        /* reserved */
+  /* 0x001C */        /* reserved */
+  /* 0x001D */        /* reserved */
+  /* 0x001E */        /* reserved */
+  /* 0x001F */        /* reserved */
+  STUN_XOR_MAPPED_ADDRESS=0x0020,    /* RFC3489bis-08 */
+  STUN_TIMER_VAL=0x0021,      /* TURN-04 */
+  STUN_REQUESTED_IP=0x0022,    /* TURN-04 */
+  STUN_CONNECT_STAT=0x0023,    /* TURN-04 */
+  STUN_PRIORITY=0x0024,      /* ICE-17 */
+  STUN_USE_CANDIDATE=0x0025,    /* ICE-17 */
+  /* 0x0026-0x7fff */      /* reserved */
 
-	/* Optional attributes */
-	/* 0x8000-0x8021 */			/* reserved */
-	STUN_SERVER=0x8022,			/* RFC3489bis-08 */
-	STUN_ALTERNATE_SERVER=0x8023,		/* RFC3489bis-08 */
-	STUN_REFRESH_INTERVAL=0x8024,		/* RFC3489bis-08 */
-	/* 0x8025 */				/* reserved */
-	/* 0x8026 */				/* reserved */
-	/* 0x8027 */				/* reserved */
-	STUN_FINGERPRINT=0x8028,		/* RFC3489bis-08 */
-	STUN_ICE_CONTROLLED=0x8029,		/* ICE-17 */
-	STUN_ICE_CONTROLLING=0x802A,		/* ICE-17 */
-	/* 0x802B-0xFFFF */			/* reserved */
+  /* Optional attributes */
+  /* 0x8000-0x8021 */      /* reserved */
+  STUN_SERVER=0x8022,      /* RFC3489bis-08 */
+  STUN_ALTERNATE_SERVER=0x8023,    /* RFC3489bis-08 */
+  STUN_REFRESH_INTERVAL=0x8024,    /* RFC3489bis-08 */
+  /* 0x8025 */        /* reserved */
+  /* 0x8026 */        /* reserved */
+  /* 0x8027 */        /* reserved */
+  STUN_FINGERPRINT=0x8028,    /* RFC3489bis-08 */
+  STUN_ICE_CONTROLLED=0x8029,    /* ICE-17 */
+  STUN_ICE_CONTROLLING=0x802A,    /* ICE-17 */
+  /* 0x802B-0xFFFF */      /* reserved */
 } stun_attr_type_t;
 
 
 static inline bool stun_optional (uint16_t t)
 {
-	return (t >> 15) == 1;
+  return (t >> 15) == 1;
 }
 
 typedef uint8_t stun_transid_t[12];
@@ -186,24 +186,24 @@ typedef uint8_t stun_transid_t[12];
  */
 typedef enum
 {
-	STUN_TRY_ALTERNATE=300,			/* RFC3489bis-08 */
-	STUN_BAD_REQUEST=400,			/* RFC3489bis-08 */
-	STUN_UNAUTHORIZED=401,			/* RFC3489bis-08 */
-	STUN_UNKNOWN_ATTRIBUTE=420,		/* RFC3489bis-08 */
-	STUN_NO_BINDING=437,			/* TURN-04 */
-	STUN_STALE_NONCE=438,			/* RFC3489bis-08 */
-	STUN_ACT_DST_ALREADY=439,		/* TURN-04 */
-	STUN_UNSUPP_FAMILY=440,			/* TURN-IPv6-03 */
-	STUN_UNSUPP_TRANSPORT=442,		/* TURN-04 */
-	STUN_INVALID_IP=443,			/* TURN-04 */
-	STUN_INVALID_PORT=444,			/* TURN-04 */
-	STUN_OP_TCP_ONLY=445,			/* TURN-04 */
-	STUN_CONN_ALREADY=446,			/* TURN-04 */
-	STUN_ALLOC_OVER_QUOTA=486,		/* TURN-04 */
-	STUN_ROLE_CONFLICT=487,			/* ICE-17 */
-	STUN_SERVER_ERROR=500,			/* RFC3489bis-08 */
-	STUN_SERVER_CAPACITY=507,		/* TURN-04 */
-	STUN_ERROR_MAX=699
+  STUN_TRY_ALTERNATE=300,      /* RFC3489bis-08 */
+  STUN_BAD_REQUEST=400,      /* RFC3489bis-08 */
+  STUN_UNAUTHORIZED=401,      /* RFC3489bis-08 */
+  STUN_UNKNOWN_ATTRIBUTE=420,    /* RFC3489bis-08 */
+  STUN_NO_BINDING=437,      /* TURN-04 */
+  STUN_STALE_NONCE=438,      /* RFC3489bis-08 */
+  STUN_ACT_DST_ALREADY=439,    /* TURN-04 */
+  STUN_UNSUPP_FAMILY=440,      /* TURN-IPv6-03 */
+  STUN_UNSUPP_TRANSPORT=442,    /* TURN-04 */
+  STUN_INVALID_IP=443,      /* TURN-04 */
+  STUN_INVALID_PORT=444,      /* TURN-04 */
+  STUN_OP_TCP_ONLY=445,      /* TURN-04 */
+  STUN_CONN_ALREADY=446,      /* TURN-04 */
+  STUN_ALLOC_OVER_QUOTA=486,    /* TURN-04 */
+  STUN_ROLE_CONFLICT=487,      /* ICE-17 */
+  STUN_SERVER_ERROR=500,      /* RFC3489bis-08 */
+  STUN_SERVER_CAPACITY=507,    /* TURN-04 */
+  STUN_ERROR_MAX=699
 } stun_error_t;
 
 
@@ -212,7 +212,7 @@ typedef enum
  */
 static inline size_t stun_padding (size_t l)
 {
-	return (4 - (l & 3)) & 3;
+  return (4 - (l & 3)) & 3;
 }
 
 
@@ -221,7 +221,7 @@ static inline size_t stun_padding (size_t l)
  */
 static inline size_t stun_align (size_t l)
 {
-	return (l + 3) & ~3;
+  return (l + 3) & ~3;
 }
 
 
@@ -231,12 +231,12 @@ static inline size_t stun_align (size_t l)
  */
 static inline uint16_t stun_getw (const uint8_t *ptr)
 {
-	return ((ptr)[0] << 8) | ptr[1];
+  return ((ptr)[0] << 8) | ptr[1];
 }
 
 static inline uint16_t stun_length (const uint8_t *ptr)
 {
-	return stun_getw (ptr + 2);
+  return stun_getw (ptr + 2);
 }
 
 
@@ -245,8 +245,8 @@ static inline uint16_t stun_length (const uint8_t *ptr)
  */
 static inline stun_class_t stun_get_class (const uint8_t *msg)
 {
-	uint16_t t = stun_getw (msg);
-	return (stun_class_t)(((t & 0x0100) >> 7) | ((t & 0x0010) >> 4));
+  uint16_t t = stun_getw (msg);
+  return (stun_class_t)(((t & 0x0100) >> 7) | ((t & 0x0010) >> 4));
 }
 
 /**
@@ -254,9 +254,9 @@ static inline stun_class_t stun_get_class (const uint8_t *msg)
  */
 static inline stun_method_t stun_get_method (const uint8_t *msg)
 {
-	uint16_t t = stun_getw (msg);
-	return (stun_method_t)(((t & 0x3e00) >> 2) | ((t & 0x00e0) >> 1) |
-	                        (t & 0x000f));
+  uint16_t t = stun_getw (msg);
+  return (stun_method_t)(((t & 0x3e00) >> 2) | ((t & 0x00e0) >> 1) |
+                          (t & 0x000f));
 }
 
 bool stun_has_cookie (const uint8_t *msg);
@@ -267,8 +267,8 @@ bool stun_has_cookie (const uint8_t *msg);
  */
 static inline const uint8_t *stun_id (const uint8_t *msg)
 {
-	//assert (stun_valid (req));
-	return msg + 8;
+  //assert (stun_valid (req));
+  return msg + 8;
 }
 
 
@@ -382,8 +382,8 @@ stun_find (const uint8_t *restrict msg, stun_attr_type_t type,
  */
 static inline bool stun_present (const uint8_t *msg, stun_attr_type_t type)
 {
-	uint16_t dummy;
-	return stun_find (msg, type, &dummy) != NULL;
+  uint16_t dummy;
+  return stun_find (msg, type, &dummy) != NULL;
 }
 
 
@@ -678,8 +678,8 @@ int stun_append_xor_addr (uint8_t *restrict msg, size_t msize,
  */
 static inline bool stun_has_unknown (const void *msg)
 {
-	uint16_t dummy;
-	return stun_find_unknown (msg, &dummy, 1);
+  uint16_t dummy;
+  return stun_find_unknown (msg, &dummy, 1);
 }
 
 
@@ -695,8 +695,8 @@ static inline bool stun_has_unknown (const void *msg)
  */
 static inline bool stun_valid (const uint8_t *msg)
 {
-	size_t length = 20u + stun_length (msg);
-	return stun_validate (msg, length) == (ssize_t)length;
+  size_t length = 20u + stun_length (msg);
+  return stun_validate (msg, length) == (ssize_t)length;
 }
 # endif
 

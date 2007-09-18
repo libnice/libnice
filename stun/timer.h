@@ -46,8 +46,8 @@
 
 typedef struct stun_timer_s
 {
-	struct timespec deadline;
-	unsigned delay;
+  struct timespec deadline;
+  unsigned delay;
 } stun_timer_t;
 
 
