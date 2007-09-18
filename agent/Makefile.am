@@ -53,10 +53,15 @@ libagent_la_SOURCES = \
 	$(BUILT_SOURCES)
 
 libagent_la_LIBADD = \
-	$(top_builddir)/address/libaddress.la \
-	$(top_builddir)/random/librandom.la \
-	$(top_builddir)/udp/libudp.la \
-	$(top_builddir)/stun/libstun.la
+	../address/libaddress.la \
+	../random/librandom.la \
+	../udp/libudp.la \
+	../stun/libstun.la
+libagent_la_DEPENDENCIES = \
+	../address/libaddress.la \
+	../random/librandom.la \
+	../udp/libudp.la \
+	../stun/libstun.la
 
 check_PROGRAMS = \
 	test \
