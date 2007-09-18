@@ -50,27 +50,12 @@
 NICEAPI_EXPORT NiceInterface *
 nice_interface_new ()
 {
-  NiceInterface *iface;
-  NiceAddress *addr = nice_address_new ();
-  if (addr == NULL)
-    return NULL;
-
-  iface = g_slice_new0 (NiceInterface);
-  if (iface == NULL)
-  {
-    nice_address_free (addr);
-    return NULL;
-  }
-
-  iface->addr = addr;
-  return iface;
+  return g_slice_new0 (NiceInterface);
 }
 
 NICEAPI_EXPORT void
 nice_interface_free (NiceInterface *iface)
 {
-  if (iface->addr != NULL)
-    nice_address_free (iface->addr);
   g_slice_free (NiceInterface, iface);
 }
 
@@ -98,7 +83,7 @@ nice_list_local_interfaces ()
           iface = nice_interface_new ();
           strncpy (iface->name, i->ifa_name, sizeof (iface->name));
           iface->name[sizeof (iface->name) - 1] = '\0';
-          nice_address_set_from_sockaddr (iface->addr, addr);
+          nice_address_set_from_sockaddr (&(iface->addr), addr);
           ret = g_slist_append (ret, iface);
         }
     }
