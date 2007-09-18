@@ -52,11 +52,7 @@ NICEAPI_EXPORT NiceAddress *
 nice_address_new (void)
 {
   NiceAddress *addr = g_slice_new0 (NiceAddress);
-  memset (addr, 0, sizeof (addr));
-  addr->s.addr.sa_family = AF_UNSPEC;
-#ifdef HAVE_SA_LEN
-  addr->s.addr.sa_len = sizeof (addr->s.addr);
-#endif
+  nice_address_init (addr);
   return addr;
 }
 
@@ -69,6 +65,7 @@ nice_address_set_ipv4 (NiceAddress *addr, guint32 addr_ipv4)
   addr->s.ip4.sin_len = sizeof (addr->sa.ip4);
 #endif
   addr->s.ip4.sin_addr.s_addr = addr_ipv4 ? htonl (addr_ipv4) : INADDR_ANY;
+  addr->s.ip4.sin_port = 0;
 }
 
 
@@ -80,6 +77,7 @@ nice_address_set_ipv6 (NiceAddress *addr, const guchar *addr_ipv6)
   addr->s.ip6.sin6_len = sizeof (addr->sa.ip6);
 #endif
   memcpy (addr->s.ip6.sin6_addr.s6_addr, addr_ipv6, 16);
+  addr->s.ip6.sin6_port = addr->s.ip6.sin6_scope_id = 0;
 }
 
 

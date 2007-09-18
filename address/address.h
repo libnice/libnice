@@ -61,6 +61,12 @@ struct _NiceAddress
   } s;
 };
 
+static inline void
+nice_address_init (NiceAddress *addr)
+{
+  addr->s.addr.sa_family = AF_UNSPEC;
+}
+
 NiceAddress *
 nice_address_new (void);
 

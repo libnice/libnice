@@ -59,8 +59,8 @@ test_ipv4 (void)
   sin.sin_port = htons (9876);
   g_assert (inet_pton (AF_INET, "1.2.3.4", &sin.sin_addr) > 0);
 
-  memset (&addr, 0, sizeof (addr));
-  memset (&other, 0, sizeof (other));
+  nice_address_init (&addr);
+  nice_address_init (&other);
   nice_address_set_ipv4 (&addr, 0x01020304);
   g_assert (addr.s.ip4.sin_family == AF_INET);
 
@@ -116,7 +116,7 @@ test_ipv6 (void)
   sin.sin6_port = htons (9876);
   g_assert (inet_pton (AF_INET6, "11:2233:4455:6677:8899:aabb:ccdd:eeff", &sin.sin6_addr) > 0);
 
-  memset (&addr, 0, sizeof (addr));
+  nice_address_init (&addr);
   nice_address_set_ipv6 (&addr, (guchar *)
       "\x00\x11\x22\x33"
       "\x44\x55\x66\x77"
