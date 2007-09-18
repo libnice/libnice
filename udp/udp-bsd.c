@@ -50,6 +50,7 @@
 #include <unistd.h>
 #include <string.h>
 #include <errno.h>
+#include <fcntl.h>
 
 #include "udp-bsd.h"
 
@@ -129,30 +130,11 @@ socket_factory_init_socket (
   NiceUDPSocket *sock,
   NiceAddress *addr)
 {
-  gint sockfd;
+  int sockfd = -1;
   struct sockaddr_storage name;
   guint name_len = sizeof (name);
 
   (void)man;
-  memset (&name, 0, sizeof (name));
-  sockfd = socket (PF_INET, SOCK_DGRAM, 0);
-
-  if (sockfd < 0)
-    return FALSE;
-#ifdef IP_RECVERR
-  else
-  {
-    int yes = 1;
-    setsockopt (sockfd, SOL_IP, IP_RECVERR, &yes, sizeof (yes));
-  }
-#endif
-
-#ifdef FD_CLOEXEC
-  fcntl (fd, F_SETFD, fcntl (fd, F_GETFD) | FD_CLOEXEC);
-#endif
-#ifdef O_NONBLOCK
-  fcntl (fd, F_SETFL, fcntl (fd, F_GETFL) | O_NONBLOCK);
-#endif
 
   if (addr != NULL)
     {
@@ -160,12 +142,67 @@ socket_factory_init_socket (
     }
   else
     {
-       name.ss_family = AF_INET;
+      memset (&name, 0, sizeof (name));
+      name.ss_family = AF_UNSPEC;
+    }
+
+#if 0
+  if ((name.ss_family == AF_INET6) || (name.ss_family == AF_UNSPEC))
+    {
+      sockfd = socket (PF_INET6, SOCK_DGRAM, 0);
+      if (sockfd != -1)
+        {
+          int v6 = name.ss_family == AF_INET6;
+
+#if defined (IPV6_V6ONLY)
+          if (setsockopt (sockfd, IPPROTO_IPV6, IPV6_V6ONLY, &v6, sizeof (v6)))
+#else
+          if (!v6)
+#endif
+            {
+              close (sockfd);
+              sockfd = -1;
+            }
+          else
+            {
+# ifdef IPV6_RECVERR
+              int yes = 1;
+              setsockopt (sockfd, SOL_IPV6, IPV6_RECVERR, &yes, sizeof (yes));
+# endif
+              name.ss_family = AF_INET6;
+# ifdef HAVE_SA_LEN
+              name.ss_len = sizeof (struct sockaddr_in6);
+# endif
+            }
+        }
+    }
+#endif
+  if ((sockfd == -1)
+   && ((name.ss_family == AF_UNSPEC) || (name.ss_family == AF_INET)))
+    {
+      sockfd = socket (PF_INET, SOCK_DGRAM, 0);
+      name.ss_family = AF_INET;
 #ifdef HAVE_SA_LEN
-       name.ss_len = sizeof (name);
+      name.ss_len = sizeof (struct sockaddr_in);
 #endif
     }
- 
+
+  if (sockfd == -1)
+    return FALSE;
+#ifdef IP_RECVERR
+  else
+    {
+      int yes = 1;
+      setsockopt (sockfd, SOL_IP, IP_RECVERR, &yes, sizeof (yes));
+    }
+#endif
+
+#ifdef FD_CLOEXEC
+  fcntl (sockfd, F_SETFD, fcntl (sockfd, F_GETFD) | FD_CLOEXEC);
+#endif
+#ifdef O_NONBLOCK
+  fcntl (sockfd, F_SETFL, fcntl (sockfd, F_GETFL) | O_NONBLOCK);
+#endif
 
   if(bind (sockfd, (struct sockaddr *) &name, sizeof (name)) != 0)
     {
