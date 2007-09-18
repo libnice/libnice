@@ -11,11 +11,15 @@ include $(top_srcdir)/common.mk
 lib_LTLIBRARIES = libnice.la
 
 libnice_la_SOURCES =
-libnice_la_DEPENDENCIES = libnice.sym
+libnice_la_DEPENDENCIES = \
+	../local/liblocal.la \
+	../agent/libagent.la \
+	libnice.sym
 
 libnice_la_LIBADD = \
-	$(top_builddir)/local/liblocal.la \
-	$(top_builddir)/agent/libagent.la
+	$(GLIB_LIBS) \
+	../local/liblocal.la \
+	../agent/libagent.la
 
 libnice_la_LDFLAGS = \
 	-export-symbols $(srcdir)/libnice.sym \
