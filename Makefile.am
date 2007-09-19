@@ -28,7 +28,6 @@ DISTCHECK_CONFIGURE_FLAGS = --disable-assert --without-gstreamer
 
 EXTRA_DIST = \
 	common.mk \
-	Doxyfile.in \
 	scripts/lcov.mk \
 	scripts/lcov.sh \
 	scripts/valgrind.sh

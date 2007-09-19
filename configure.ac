@@ -70,10 +70,6 @@ AS_IF([test "$with_gstreamer" != no], [
 
 AM_CONDITIONAL(WITH_GSTREAMER, test "$with_gstreamer" = yes)
 
-dnl Doxygen
-AC_PATH_PROG([DOXYGEN], [doxygen], [false])
-AC_ARG_VAR([DOXYGEN], [Doxygen documentation system])
-
 dnl Test coverage
 AC_ARG_ENABLE([coverage],
 	[AS_HELP_STRING([--enable-coverage],
