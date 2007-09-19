@@ -53,14 +53,6 @@ lcov-report:
 	lcov -r lcov/lcov.info `cat lcov/lcov.remove` 2>/dev/null > lcov/lcov.info.clean
 	genhtml -o lcov lcov/lcov.info.clean
 
-Doxyfile: Doxyfile.in config.status
-	$(SHELL) ./config.status --file=$@
-
-doc: Doxyfile
-	$(DOXYGEN) $<
-
-CLEANFILES += Doxyfile
-
 clean-local:
 	rm -rf doc
 
