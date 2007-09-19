@@ -67,9 +67,10 @@ main (void)
   // is bound to a particular port
   g_assert (nice_address_get_port (&client.addr) != 0);
 
-  tmp = server.addr;
   if (!nice_address_set_from_string (&tmp, "127.0.0.1"))
     g_assert_not_reached();
+  g_assert (nice_address_get_port (&server.addr) != 0);
+  nice_address_set_port (&tmp, nice_address_get_port (&server.addr));
   nice_udp_socket_send (&client, &tmp, 5, "hello");
 
   g_assert (5 == nice_udp_socket_recv (&server, &tmp, 5, buf));
