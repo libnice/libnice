@@ -79,5 +79,5 @@ EXTRA_DIST = $(check_SCRIPTS) libnice.symbols
 pkginclude_HEADERS = nice.h
 
 pkgconfigdir = $(libdir)/pkgconfig
-pkgconfig_DATA = libnice.pc
+pkgconfig_DATA = nice.pc
 

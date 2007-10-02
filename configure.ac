@@ -13,7 +13,7 @@ AC_CONFIG_FILES([
 	local/Makefile
 	udp/Makefile
 	nice/Makefile
-	nice/libnice.pc
+	nice/nice.pc
 	random/Makefile
 	gst/Makefile
 	])
