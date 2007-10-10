@@ -24,7 +24,7 @@ sleep 1
 ./test-fullmode
 error=$?
 
-kill -- "$(cat "$pidfile")"
+kill "$(cat "$pidfile")"
 rm -f -- "$pidfile"
 wait
 exit ${error}
