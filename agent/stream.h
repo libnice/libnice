@@ -48,11 +48,11 @@ G_BEGIN_DECLS
  * last updated from ICE ID-18 
  * (the below sizes include the terminating NULL): */
 
-#define NICE_STREAM_MAX_UFRAG   1024 + 1
-#define NICE_STREAM_MAX_UNAME   1024 + 1024 + 1 + 1 /* colon plus NULL */
-#define NICE_STREAM_MAX_PWD     1024 + 1
-#define NICE_STREAM_DEF_UFRAG   4 + 1
-#define NICE_STREAM_DEF_PWD     22 + 1
+#define NICE_STREAM_MAX_UFRAG   256 + 1  /* ufrag + NULL */
+#define NICE_STREAM_MAX_UNAME   256 * 2 + 1 + 1 /* 2*ufrag + colon + NULL */
+#define NICE_STREAM_MAX_PWD     256 + 1  /* pwd + NULL */
+#define NICE_STREAM_DEF_UFRAG   4 + 1    /* ufrag + NULL */
+#define NICE_STREAM_DEF_PWD     22 + 1   /* pwd + NULL */
 
 /**
  * Checklist states. These match the definition given in
