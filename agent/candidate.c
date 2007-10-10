@@ -96,7 +96,7 @@ nice_candidate_jingle_priority (NiceCandidate *candidate)
 
 
 /**
- * ICE 4.1.2.1. "Recommended Formula" (ID-17):
+ * ICE 4.1.2.1. "Recommended Formula" (ID-18):
  * returns number between 1 and 0x7effffff 
  */
 G_GNUC_CONST
@@ -140,7 +140,7 @@ nice_candidate_ice_priority (const NiceCandidate *candidate)
 
 /** 
  * Calculates the pair priority as specified in ICE 
- * sect 5.7.2. "Computing Pair Priority and Ordering Pairs" (ID-17).
+ * sect 5.7.2. "Computing Pair Priority and Ordering Pairs" (ID-18).
  */
 NICEAPI_EXPORT guint64
 nice_candidate_pair_priority (guint32 o_prio, guint32 a_prio)

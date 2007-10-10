@@ -104,7 +104,7 @@ static gboolean priv_conn_check_initiate (NiceAgent *agent, CandidateCheckPair *
 /**
  * Unfreezes the next connectivity check in the list. Follows the
  * algorithm (2.) defined in 5.7.4 (Computing States) of the ICE spec
- * (ID-17), with some exceptions (see comments in code).
+ * (ID-18), with some exceptions (see comments in code).
  *
  * See also sect 7.1.2.2.3 (Updating Pair States), and
  * priv_conn_check_unfreeze_related().
@@ -158,7 +158,7 @@ static gboolean priv_conn_check_unfreeze_next (NiceAgent *agent)
  * Unfreezes the next next connectivity check in the list after
  * check 'success_check' has succesfully completed.
  *
- * See sect 7.1.2.2.3 (Updating Pair States) of ICE spec (ID-17).
+ * See sect 7.1.2.2.3 (Updating Pair States) of ICE spec (ID-18).
  * 
  * @param agent context
  * @param ok_check a connectivity check that has just completed
@@ -374,7 +374,7 @@ static gboolean priv_conn_keepalive_tick (gpointer pointer)
   int errors = 0;
 
   /* case 1: session established and media flowing
-   *         (ref ICE sect 10 "Keepalives" ID-17)  */
+   *         (ref ICE sect 10 "Keepalives" ID-18)  */
   for (i = agent->streams; i; i = i->next) {
 
     Stream *stream = i->data;
@@ -400,7 +400,7 @@ static gboolean priv_conn_keepalive_tick (gpointer pointer)
   }
   
   /* case 2: connectivity establishment ongoing
-   *         (ref ICE sect 4.1.1.5 "Keeping Candidates Alive" ID-17)  */
+   *         (ref ICE sect 4.1.1.4 "Keeping Candidates Alive" ID-18)  */
   for (i = agent->streams; i; i = i->next) {
     Stream *stream = i->data;
     if (stream->conncheck_state == NICE_CHECKLIST_RUNNING) {
@@ -516,7 +516,7 @@ static gboolean priv_add_new_check_pair (NiceAgent *agent, guint stream_id, Comp
  * Forms new candidate pairs by matching the new remote candidate
  * 'remote_cand' with all existing local candidates of 'component'.
  * Implements the logic described in ICE sect 5.7.1. "Forming Candidate
- * Pairs" (ID-17).
+ * Pairs" (ID-18).
  *
  * @param agent context
  * @param component pointer to the component
@@ -540,7 +540,7 @@ int conn_check_add_for_candidate (NiceAgent *agent, guint stream_id, Component *
       gboolean result;
 
       /* note: do not create pairs where local candidate is 
-       *       a srv-reflexive (ICE 5.7.3. "Pruning the Pairs" ID-17) */
+       *       a srv-reflexive (ICE 5.7.3. "Pruning the Pairs" ID-18) */
       if (local->type == NICE_CANDIDATE_TYPE_SERVER_REFLEXIVE)
 	continue;
 
@@ -761,7 +761,7 @@ int conn_check_send (NiceAgent *agent, CandidateCheckPair *pair)
  * Updates the check list state.
  *
  * Implements parts of the algorithm described in 
- * ICE sect 8.1.2. "Updating States" (ID-17) that apply 
+ * ICE sect 8.1.2. "Updating States" (ID-18) that apply 
  * to the whole check list.
  */
 static void priv_update_check_list_state (NiceAgent *agent, Stream *stream)
@@ -804,7 +804,7 @@ static void priv_update_check_list_state (NiceAgent *agent, Stream *stream)
 
 /**
  * Implemented the pruning steps described in ICE sect 8.1.2
- * "Updating States" (ID-17) after a pair has been nominated.
+ * "Updating States" (ID-18) after a pair has been nominated.
  *
  * @see priv_update_check_list_state_for_component()
  */
@@ -820,7 +820,7 @@ static void priv_prune_pending_checks (NiceAgent *agent, Stream *stream, guint c
 	  p->state == NICE_CHECK_WAITING)
 	p->state = NICE_CHECK_CANCELLED;
       
-      /* note: a SHOULD level req. in ICE 8.1.2. "Updating States" (ID-17) */
+      /* note: a SHOULD level req. in ICE 8.1.2. "Updating States" (ID-18) */
       if (p->state == NICE_CHECK_IN_PROGRESS) {
 	if (p->stun_ctx)
 	  stun_bind_cancel (p->stun_ctx),
@@ -835,7 +835,7 @@ static void priv_prune_pending_checks (NiceAgent *agent, Stream *stream, guint c
  * Updates the check list state for a stream component.
  *
  * Implements the algorithm described in ICE sect 8.1.2 
- * "Updating States" (ID-17) as it applies to checks of 
+ * "Updating States" (ID-18) as it applies to checks of 
  * a certain component. If any there are any nominated pairs, 
  * ICE processing may be concluded, and component state is 
  * changed to READY.
@@ -873,7 +873,7 @@ static void priv_update_check_list_state_for_component (NiceAgent *agent, Stream
 /**
  * Changes the selected pair for the component if 'pair' is nominated
  * and has higher priority than the currently selected pair. See
- * ICE sect 11.1.1. "Procedures for Full Implementations" (ID-17).
+ * ICE sect 11.1.1. "Procedures for Full Implementations" (ID-18).
  */ 
 static gboolean priv_update_selected_pair (NiceAgent *agent, Component *component, CandidateCheckPair *pair)
 {
@@ -894,7 +894,7 @@ static gboolean priv_update_selected_pair (NiceAgent *agent, Component *componen
 
 /**
  * Schedules a triggered check after a succesfully inbound 
- * connectivity check. Implements ICE sect 7.2.1.4 "Triggered Checks" (ID-17).
+ * connectivity check. Implements ICE sect 7.2.1.4 "Triggered Checks" (ID-18).
  * 
  * @param agent self pointer
  * @param component the check is related to
@@ -920,7 +920,7 @@ static gboolean priv_schedule_triggered_check (NiceAgent *agent, Stream *stream,
 	  priv_conn_check_initiate (agent, p);
 
 	if (p->state == NICE_CHECK_IN_PROGRESS) {
-	  /* XXX: according to ICE 7.2.1.4 "Triggered Checks" (ID-17),
+	  /* XXX: according to ICE 7.2.1.4 "Triggered Checks" (ID-18),
 	   * we should cancel the existing one, and send a new one...? :P */
 	  g_debug ("Skipping triggered check, already in progress..");
 	}
@@ -1097,7 +1097,7 @@ static void priv_check_for_role_conflict (NiceAgent *agent, gboolean control)
 /**
  * Tries to match STUN reply in 'buf' to an existing STUN connectivity
  * check transaction. If found, the reply is processed. Implements
- * section 7.1.2 "Processing the Response" of ICE spec (ID-17).
+ * section 7.1.2 "Processing the Response" of ICE spec (ID-18).
  * 
  * @return TRUE if a matching transaction is found
  */
@@ -1128,7 +1128,7 @@ static gboolean priv_map_reply_to_conn_check_request (NiceAgent *agent, Stream *
 	/* step: handle the possible case of a peer-reflexive
 	 *       candidate where the mapped-address in response does
 	 *       not match any local candidate, see 7.1.2.2.1
-	 *       "Discovering Peer Reflexive Candidates" ICE ID-17) */
+	 *       "Discovering Peer Reflexive Candidates" ICE ID-18) */
 	{
 	  NiceAddress mapped;
 	  GSList *j;
@@ -1162,7 +1162,7 @@ static gboolean priv_map_reply_to_conn_check_request (NiceAgent *agent, Stream *
 	    p->state = NICE_CHECK_FAILED;
 
 	    /* step: add a new discovered pair (see ICE 7.1.2.2.2
-	       "Constructing a Valid Pair" (ID-17)) */
+	       "Constructing a Valid Pair" (ID-18)) */
 	    new_pair = priv_add_peer_reflexive_pair (agent, stream->id, component->id, cand, p);
 	    ok_pair = new_pair;
 
@@ -1179,12 +1179,12 @@ static gboolean priv_map_reply_to_conn_check_request (NiceAgent *agent, Stream *
 
 
 	/* step: updating nominated flag (ICE 7.1.2.2.4 "Updating the
-	   Nominated Flag" (ID-17) */
+	   Nominated Flag" (ID-18) */
 	if (ok_pair->nominated == TRUE) 
 	  priv_update_selected_pair (agent, component, ok_pair);
 
 	/* step: update pair states (ICE 7.1.2.2.3 "Updating pair
-	   states" and 8.1.2 "Updating States", ID-17) */
+	   states" and 8.1.2 "Updating States", ID-18) */
 	priv_update_check_list_state_for_component (agent, stream, component);
 
 	trans_found = TRUE;
@@ -1195,7 +1195,7 @@ static gboolean priv_map_reply_to_conn_check_request (NiceAgent *agent, Stream *
 	
 	/* note: our role might already have changed due to an
 	 * incoming request, but if not, change role now;
-	 * follows ICE 7.1.2.1 "Failure Cases" (ID-17) */
+	 * follows ICE 7.1.2.1 "Failure Cases" (ID-18) */
 	priv_check_for_role_conflict (agent, !p->controlling);
 
 	p->stun_ctx = NULL;
@@ -1319,7 +1319,7 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, Stream *stream, Compo
 
   g_debug ("inbound STUN packet for %p/%u/%u (agent/stream/component):", agent, stream->id, component->id);
 
-  /* note: ICE  7.2. "STUN Server Procedures" (ID-17) */
+  /* note: ICE  7.2. "STUN Server Procedures" (ID-18) */
 
   res = stun_conncheck_reply (rbuf, &rbuf_len, (const uint8_t*)buf, &sockaddr, sizeof (sockaddr), 
 			      stream->local_password, &control, agent->tie_breaker);
@@ -1373,7 +1373,7 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, Stream *stream, Compo
 
     gboolean trans_found = FALSE;
 
-    /* note: ICE sect 7.1.2. "Processing the Response" (ID-17) */
+    /* note: ICE sect 7.1.2. "Processing the Response" (ID-18) */
 
     /* step: let's try to match the response to an existing check context */
     if (trans_found != TRUE)

@@ -49,6 +49,9 @@
 #include "conncheck.h"
 #include "component.h"
 
+/* XXX: starting from ICE ID-18, Ta SHOULD now be set according
+ *      to session bandwidth -> this is not yet implemented in NICE */
+
 #define NICE_AGENT_TIMER_TA_DEFAULT 20      /* timer Ta, msecs (impl. defined) */
 #define NICE_AGENT_TIMER_TR_DEFAULT 15000   /* timer Tr, msecs (ICE ID-17) */
 

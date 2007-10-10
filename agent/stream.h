@@ -44,7 +44,9 @@
 
 G_BEGIN_DECLS
 
-/* Following include the terminating NULL */
+/* Maximum and default sizes for ICE attributes, 
+ * last updated from ICE ID-18 
+ * (the below sizes include the terminating NULL): */
 
 #define NICE_STREAM_MAX_UFRAG   1024 + 1
 #define NICE_STREAM_MAX_UNAME   1024 + 1024 + 1 + 1 /* colon plus NULL */
@@ -54,7 +56,7 @@ G_BEGIN_DECLS
 
 /**
  * Checklist states. These match the definition given in
- * the ICE spec sect 5.7.4. "Computing States" (ID-17).
+ * the ICE spec sect 5.7.4. "Computing States" (ID-18).
  */
 typedef enum
 {

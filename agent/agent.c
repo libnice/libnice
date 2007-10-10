@@ -1367,7 +1367,7 @@ nice_agent_get_remote_candidates (
  * nice_agent_restart
  *  @agent: A NiceAgent
  *
- * Restarts the session as defined in ICE spec (ID-17). This function
+ * Restarts the session as defined in ICE spec (ID-18). This function
  * needs to be called both when initiating (ICE spec section 9.1.1.1.
  * "ICE Restarts"), as well as when reacting (spec section 9.2.1.1. 
  * "Detecting ICE Restart") to a restart.

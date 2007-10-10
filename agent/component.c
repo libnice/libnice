@@ -180,7 +180,7 @@ component_restart (Component *cmp)
 
     /* note: do not remove the remote candidate that is
      *       currently part of the 'selected pair', see ICE
-     *       9.1.1.1. "ICE Restarts" (ID-17) */
+     *       9.1.1.1. "ICE Restarts" (ID-18) */
     if (candidate == cmp->selected_pair.remote) {
       if (cmp->restart_candidate)
 	nice_candidate_free (cmp->restart_candidate);
