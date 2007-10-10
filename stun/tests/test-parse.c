@@ -322,33 +322,82 @@ static void test_vectors (void)
     "\xd1\xc0\xf5\xde\x36\x87\xbd\x33"
   "\x80\x28\x00\x04"
     "\xad\x8a\x85\xff";
-  
+
   /* Response message */
-  static const unsigned char resp[] =
+  static const unsigned char respv4[] =
   "\x01\x01\x00\x3c"
   "\x21\x12\xa4\x42"
   "\xb7\xe7\xa7\x01\xbc\x34\xd6\x86\xfa\x87\xdf\xae"
   "\x80\x22\x00\x0b"
     "\x74\x65\x73\x74\x20\x76\x65\x63\x74\x6f\x72\x20"
   "\x00\x20\x00\x08"
-    "\x00\x01\xa1\x47\x5e\x12\xa4\x43"
+    "\x00\x01\xa1\x47\xe1\x12\xa6\x43"
   "\x00\x08\x00\x14"
-    "\xab\x4e\x53\x29\x61\x00\x08\x4c\x89\xf2\x7c\x69"
-    "\x30\x33\x5c\xa3\x58\x14\xea\x90"
+    "\x2b\x91\xf5\x99\xfd\x9e\x90\xc3\x8c\x74\x89\xf9"
+    "\x2a\xf9\xba\x53\xf0\x6b\xe7\xd7"
   "\x80\x28\x00\x04"
-    "\xae\x25\x8d\xf2";
+    "\xc0\x7d\x4c\x96";
+  static const unsigned char respv6[] =
+  "\x01\x01\x00\x48"
+  "\x21\x12\xa4\x42"
+  "\xb7\xe7\xa7\x01\xbc\x34\xd6\x86\xfa\x87\xdf\xae"
+  "\x80\x22\x00\x0b"
+    "\x74\x65\x73\x74\x20\x76\x65\x63\x74\x6f\x72\x20"
+  "\x00\x20\x00\x14"
+    "\x00\x02\xa1\x47"
+    "\x01\x13\xa9\xfa\xa5\xd3\xf1\x79"
+    "\xbc\x25\xf4\xb5\xbe\xd2\xb9\xd9"
+  "\x00\x08\x00\x14"
+    "\xa3\x82\x95\x4e\x4b\xe6\x7b\xf1\x17\x84\xc9\x7c"
+    "\x82\x92\xc2\x75\xbf\xe3\xed\x41"
+  "\x80\x28\x00\x04"
+    "\xc8\xfb\x0b\x4c";
+  struct sockaddr_in ip4;
+  struct sockaddr_in6 ip6;
+  socklen_t addrlen;
+
+  memset (&ip4, 0, sizeof (ip4));
+  memset (&ip6, 0, sizeof (ip6));
 
   puts ("Checking test vectors...");
 
-  if (stun_demux (req) != true)
-    fatal ("Request test vector checksum failed");
   if (stun_verify_password (req, password) != 0)
     fatal ("Request test vector authentication failed");
+  if (stun_demux (req) != true)
+    fatal ("Request test vector checksum failed");
 
-  if (stun_demux (resp) != true)
-    fatal ("Response test vector checksum failed");
-  if (stun_verify_password (resp, password) != 0)
+  addrlen = sizeof (ip4);
+  if (stun_find_xor_addr (respv4, STUN_XOR_MAPPED_ADDRESS,
+                          (struct sockaddr *)&ip4, &addrlen) != 0)
+    fatal ("Response test vector IPv4 extraction failed");
+  if (ip4.sin_family != AF_INET)
+    fatal ("Response test vector IPv4 family failed");
+  if (ntohl (ip4.sin_addr.s_addr) != 0xC0000201)
+    fatal ("Response test vector IPv4 address failed");
+  if (ntohs (ip4.sin_port) != 32853)
+    fatal ("Response test vector IPv6 port failed");
+
+  if (stun_verify_password (respv4, password) != 0)
     fatal ("Response test vector authentication failed");
+  if (stun_demux (respv4) != true)
+    fatal ("Response test vector checksum failed");
+
+  addrlen = sizeof (ip6);
+  if (stun_find_xor_addr (respv6, STUN_XOR_MAPPED_ADDRESS,
+                          (struct sockaddr *)&ip6, &addrlen) != 0)
+    fatal ("Response test vector IPv6 extraction failed");
+  if (ip6.sin6_family != AF_INET6)
+    fatal ("Response test vector IPv6 family failed");
+  if (memcmp (ip6.sin6_addr.s6_addr, "\x20\x01\x0d\xb8\x12\x34\x56\x78"
+              "\x00\x11\x22\x33\x44\x55\x66\x77", 16) != 0)
+    fatal ("Response test vector IPv6 address failed");
+  if (ntohs (ip6.sin6_port) != 32853)
+    fatal ("Response test vector IPv6 port failed");
+
+  if (stun_verify_password (respv6, password) != 0)
+    fatal ("Response test vector authentication failed");
+  if (stun_demux (respv6) != true)
+    fatal ("Response test vector checksum failed");
 
   puts ("Done.");
 }
