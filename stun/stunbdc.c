@@ -50,6 +50,8 @@
 #include <stdio.h>
 #include <string.h>
 
+static int ai_flags = 0;
+
 static void
 printaddr (const char *str, const struct sockaddr *addr, socklen_t addrlen)
 {
@@ -75,6 +77,7 @@ static int run (int family, const char *hostname, const char *service)
   memset (&hints, 0, sizeof (hints));
   hints.ai_family = family;
   hints.ai_socktype = SOCK_DGRAM;
+  hints.ai_flags = ai_flags;
   if (service == NULL)
     service = "3478";
 
@@ -117,6 +120,7 @@ int main (int argc, char *argv[])
     { "ipv4",    no_argument, NULL, '4' },
     { "ipv6",    no_argument, NULL, '6' },
     { "help",    no_argument, NULL, 'h' },
+    { "numeric", no_argument, NULL, 'n' },
     { "version", no_argument, NULL, 'V' },
     { NULL,      0,           NULL, 0   }
   };
@@ -125,7 +129,7 @@ int main (int argc, char *argv[])
 
   for (;;)
   {
-    int val = getopt_long (argc, argv, "46hV", opts, NULL);
+    int val = getopt_long (argc, argv, "46hnV", opts, NULL);
     if (val == EOF)
       break;
 
@@ -147,6 +151,10 @@ int main (int argc, char *argv[])
                 "  -6, --ipv6 Force IP version 6\n"
             "\n", argv[0]);
         return 0;
+
+      case 'n':
+        ai_flags |= AI_NUMERICHOST;
+        break;
 
       case 'V':
         printf ("stunbcd: STUN Binding Discovery client (%s v%s)\n",
