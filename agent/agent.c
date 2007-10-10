@@ -996,8 +996,11 @@ nice_agent_set_remote_candidates (NiceAgent *agent, guint stream_id, guint compo
      added = -1;
  }
 
- if (added > 0)
-   conn_check_schedule_next (agent);
+ if (added > 0) {
+   gboolean res = conn_check_schedule_next (agent);
+   if (res != TRUE)
+     g_debug ("Warning: unable to schedule any conn checks!");
+ }
 
  return added;
 }
