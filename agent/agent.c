@@ -80,7 +80,8 @@ enum
   PROP_TURN_SERVER_PORT,
   PROP_CONTROLLING_MODE,
   PROP_FULL_MODE,
-  PROP_STUN_PACING_TIMER
+  PROP_STUN_PACING_TIMER,
+  PROP_MAX_CONNECTIVITY_CHECKS
 };
 
 
@@ -237,6 +238,16 @@ nice_agent_class_init (NiceAgentClass *klass)
 	NICE_AGENT_TIMER_TA_DEFAULT,
         G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY));
 
+  /* note: according to spec recommendation in sect 5.7.3 (ID-18) */
+  g_object_class_install_property (gobject_class, PROP_MAX_CONNECTIVITY_CHECKS,
+      g_param_spec_uint (
+        "max-connectivity-checks",
+        "Maximum number of connectivity checks",
+        "Upper limit for the total number of connectivity checks performed",
+        0, 0xffffffff, 
+	0, /* default set in init */
+        G_PARAM_READWRITE));
+
   /* install signals */
 
   /* signature: void cb(NiceAgent *agent, guint stream_id, guint component_id, guint state, gpointer self) */
@@ -348,6 +359,7 @@ nice_agent_init (NiceAgent *agent)
   agent->stun_server_port = IPPORT_STUN;
   agent->turn_server_port = IPPORT_STUN;
   agent->controlling_mode = TRUE;
+  agent->max_conn_checks = NICE_AGENT_MAX_CONNECTIVITY_CHECKS_DEFAULT;
 
   agent->discovery_list = NULL;
   agent->discovery_unsched_items = 0;
@@ -420,6 +432,11 @@ nice_agent_get_property (
       g_value_set_uint (value, agent->timer_ta);
       break;
 
+    case PROP_MAX_CONNECTIVITY_CHECKS:
+      g_value_set_uint (value, agent->max_conn_checks);
+      /* XXX: should we prune the list of already existing checks? */
+      break;
+
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
     }
@@ -463,6 +480,10 @@ nice_agent_set_property (
 
     case PROP_STUN_PACING_TIMER:
       agent->timer_ta = g_value_get_uint (value);
+      break;
+
+    case PROP_MAX_CONNECTIVITY_CHECKS:
+      agent->max_conn_checks = g_value_get_uint (value);
       break;
 
     default:
