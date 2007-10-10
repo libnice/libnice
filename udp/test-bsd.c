@@ -71,6 +71,8 @@ main (void)
     g_assert_not_reached();
   g_assert (nice_address_get_port (&server.addr) != 0);
   nice_address_set_port (&tmp, nice_address_get_port (&server.addr));
+  g_assert (nice_address_get_port (&tmp) != 0);
+
   nice_udp_socket_send (&client, &tmp, 5, "hello");
 
   g_assert (5 == nice_udp_socket_recv (&server, &tmp, 5, buf));
