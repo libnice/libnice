@@ -80,7 +80,7 @@ struct _CandidateCheckPair
 int conn_check_add_for_candidate (NiceAgent *agent, guint stream_id, Component *component, NiceCandidate *remote);
 void conn_check_free_item (gpointer data, gpointer user_data);
 void conn_check_free (NiceAgent *agent);
-void conn_check_schedule_next (NiceAgent *agent);
+gboolean conn_check_schedule_next (NiceAgent *agent);
 int conn_check_send (NiceAgent *agent, CandidateCheckPair *pair);
 gboolean conn_check_prune_stream (NiceAgent *agent, Stream *stream);
 gboolean conn_check_handle_inbound_stun (NiceAgent *agent, Stream *stream, Component *component, NiceUDPSocket *udp_socket, const NiceAddress *from, gchar *buf, guint len);

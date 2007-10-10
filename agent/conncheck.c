@@ -220,6 +220,106 @@ static void priv_conn_check_unfreeze_related (NiceAgent *agent, Stream *stream, 
 }
 
 /**
+ * Helper function for connectivity check timer callback that
+ * runs through the stream specific part of the state machine. 
+ *
+ * @param schedule if TRUE, schedule a new check
+ *
+ * @return will return FALSE when no more pending timers.
+ */
+static gboolean priv_conn_check_tick_stream (Stream *stream, NiceAgent *agent, GTimeVal *now)
+{
+  gboolean keep_timer_going = FALSE;
+  guint s_inprogress = 0, s_succeeded = 0, s_nominated = 0, s_waiting_for_nomination = 0;
+  guint frozen = 0, waiting = 0;
+  GSList *i, *k;
+
+  for (i = stream->conncheck_list; i ; i = i->next) {
+    CandidateCheckPair *p = i->data;
+      
+    if (p->state == NICE_CHECK_IN_PROGRESS) {
+      if (p->stun_ctx == NULL) {
+	g_debug ("STUN connectivity check was cancelled, marking as done.");
+	p->state = NICE_CHECK_FAILED;
+      }
+      else if (priv_timer_expired (&p->next_tick, now)) {
+	int res = stun_bind_elapse (p->stun_ctx);
+	if (res == EAGAIN) {
+	  /* case: not ready, so schedule a new timeout */
+	  unsigned int timeout = stun_bind_timeout (p->stun_ctx);
+	  
+	  /* note: convert from milli to microseconds for g_time_val_add() */
+	  p->next_tick = *now;
+	  g_time_val_add (&p->next_tick, timeout * 1000);
+	  
+	  keep_timer_going = TRUE;
+	  p->traffic_after_tick = TRUE; /* for keepalive timer */
+	}
+	else {
+	  /* case: error, abort processing */
+	  g_debug ("Retransmissions failed, giving up on connectivity check %p", p);
+	  p->state = NICE_CHECK_FAILED;
+	  p->stun_ctx = NULL;
+	}
+      }
+    }
+    
+    if (p->state == NICE_CHECK_FROZEN)
+      ++frozen;
+    else if (p->state == NICE_CHECK_IN_PROGRESS)
+      ++s_inprogress;
+    else if (p->state == NICE_CHECK_WAITING)
+      ++waiting;
+    else if (p->state == NICE_CHECK_SUCCEEDED)
+      ++s_succeeded;
+    
+    if (p->state == NICE_CHECK_SUCCEEDED && p->nominated)
+      ++s_nominated;
+    else if (p->state == NICE_CHECK_SUCCEEDED && !p->nominated)
+      ++s_waiting_for_nomination;
+    }
+    
+    /* note: keep the timer going as long as there is work to be done */
+  if (s_inprogress)
+    keep_timer_going = TRUE;
+  
+    /* note: if some components have established connectivity,
+     *       but yet no nominated pair, keep timer going */
+  if (s_nominated < stream->n_components &&
+      s_waiting_for_nomination) {
+    keep_timer_going = TRUE;
+    if (agent->controlling_mode) {
+      guint n;
+      for (n = 0; n < stream->n_components; n++) {
+	for (k = stream->conncheck_list; k ; k = k->next) {
+	  CandidateCheckPair *p = k->data;
+	  /* note: highest priority item selected (list always sorted) */
+	  if (p->state == NICE_CHECK_SUCCEEDED ||
+	      p->state == NICE_CHECK_DISCOVERED) {
+	    g_debug ("restarting check %p as the nominated pair.", p);
+	    p->nominated = TRUE;
+	    priv_conn_check_initiate (agent, p);	
+	    break; /* move to the next component */
+	  }
+	}
+      }
+    }
+  }
+  
+#ifndef NDEBUG
+  {
+    static int tick_counter = 0;
+    if (tick_counter++ % 50 == 0 || keep_timer_going != TRUE)
+      g_debug ("timer(%p) tick #%u: %u frozen, %u in-progress, %u waiting, %u succeeded, %u nominated, %u waiting-for-nom.", 
+	       agent, tick_counter, frozen, s_inprogress, waiting, s_succeeded, s_nominated, s_waiting_for_nomination);
+  }
+#endif
+
+  return keep_timer_going;
+
+}
+
+/**
  * Timer callback that handles initiating and managing connectivity
  * checks (paced by the Ta timer).
  *
@@ -231,10 +331,12 @@ static gboolean priv_conn_check_tick (gpointer pointer)
 {
   CandidateCheckPair *pair = NULL;
   NiceAgent *agent = pointer;
-  GSList *i, *j;
   gboolean keep_timer_going = FALSE;
+  GSList *i, *j;
   GTimeVal now;
-  int frozen = 0, inprogress = 0, waiting = 0, succeeded = 0, nominated = 0;
+
+  /* step: process ongoing STUN transactions */
+  g_get_current_time (&now);
 
   /* step: find the highest priority waiting check and send it */
   for (i = agent->streams; i ; i = i->next) {
@@ -250,98 +352,16 @@ static gboolean priv_conn_check_tick (gpointer pointer)
     priv_conn_check_initiate (agent, pair);
     keep_timer_going = TRUE;
   }
-
-  /* step: process ongoing STUN transactions */
-  g_get_current_time (&now);
+  else 
+    priv_conn_check_unfreeze_next (agent);
 
   for (j = agent->streams; j; j = j->next) {
     Stream *stream = j->data;
-    for (i = stream->conncheck_list; i ; i = i->next) {
-      CandidateCheckPair *p = i->data;
-    
-      if (p->state == NICE_CHECK_IN_PROGRESS) {
-	if (p->stun_ctx == NULL) {
-	  g_debug ("STUN connectivity check was cancelled, marking as done.");
-	  p->state = NICE_CHECK_FAILED;
-	}
-	else if (priv_timer_expired (&p->next_tick, &now)) {
-	  int res = stun_bind_elapse (p->stun_ctx);
-	  if (res == EAGAIN) {
-	    /* case: not ready, so schedule a new timeout */
-	    unsigned int timeout = stun_bind_timeout (p->stun_ctx);
-	    
-	    /* note: convert from milli to microseconds for g_time_val_add() */
-	    p->next_tick = now;
-	    g_time_val_add (&p->next_tick, timeout * 1000);
-	    
-	    keep_timer_going = TRUE;
-	    p->traffic_after_tick = TRUE; /* for keepalive timer */
-	  }
-	  else {
-	    /* case: error, abort processing */
-	    g_debug ("Retransmissions failed, giving up on connectivity check %p", p);
-	    p->state = NICE_CHECK_FAILED;
-	    p->stun_ctx = NULL;
-	  }
-	}
-      }
-
-      if (p->state == NICE_CHECK_FROZEN)
-	++frozen;
-      else if (p->state == NICE_CHECK_IN_PROGRESS)
-	++inprogress;
-      else if (p->state == NICE_CHECK_WAITING)
-	++waiting;
-      else if (p->state == NICE_CHECK_SUCCEEDED)
-	++succeeded;
-      
-      if (p->nominated)
-	++nominated;
-    }
+    gboolean res =
+      priv_conn_check_tick_stream (stream, agent, &now);
+    if (res)
+      keep_timer_going = res;
   }
-  
-  /* note: keep the timer going as long as there is work to be done */
-  if (frozen || inprogress || waiting ||
-      (succeeded && nominated == 0))
-    keep_timer_going = TRUE;
-
-  /* note: if no waiting checks, unfreeze one check */
-  /* XXX: unfreeze the next stream */
-  if (!waiting && frozen)
-    priv_conn_check_unfreeze_next (agent);
-
-  /* step: nominate some candidate if we are in controlling mode
-   *   - all checks have been completed but no pair has been
-   *   - can be caused by a controlling-controlling role conflict)
-   */
-  if (agent->controlling_mode &&
-      (!frozen && !inprogress && !waiting && !nominated)) {
-    g_debug ("no nominated checks, resending checks to select one");
-    for (j = agent->streams; j; j = j->next) {
-      Stream *stream = j->data;
-      for (i = stream->conncheck_list; i ; i = i->next) {
-	CandidateCheckPair *p = i->data;
-	/* note: highest priority item selected (list always sorted) */
-	if (p->state == NICE_CHECK_SUCCEEDED ||
-	    p->state == NICE_CHECK_DISCOVERED) {
-	  g_debug ("restarting check %p as the nominated pair.", p);
-	  p->nominated = TRUE;
-	  priv_conn_check_initiate (agent, p);	
-	  keep_timer_going = TRUE;
-	  break;
-	}
-      }
-    }
-  }
-
-#ifndef NDEBUG
-  {
-    static int tick_counter = 0;
-    if (tick_counter++ % 50 == 0 || keep_timer_going != TRUE)
-      g_debug ("timer(%p) tick #%d: %d frozen, %d in-progress, %d waiting, %d succeeded, %d nominated.", 
-	       agent, tick_counter, frozen, inprogress, waiting, succeeded, nominated);
-  }
-#endif
   
   /* step: stop timer if no work left */
   if (keep_timer_going != TRUE) {
@@ -426,20 +446,22 @@ static gboolean priv_conn_keepalive_tick (gpointer pointer)
 
 /**
  * Initiates the next pending connectivity check.
+ * 
+ * @return TRUE if a pending check was scheduled
  */
-void conn_check_schedule_next (NiceAgent *agent)
+gboolean conn_check_schedule_next (NiceAgent *agent)
 {
-  gboolean c = priv_conn_check_unfreeze_next (agent);
+  gboolean res = priv_conn_check_unfreeze_next (agent);
 
   if (agent->discovery_unsched_items > 0)
     g_debug ("WARN: starting conn checks before local candidate gathering is finished.");
 
-  if (c == TRUE) {
+  if (res == TRUE) {
     /* step: call once imediately */
-    gboolean res = priv_conn_check_tick ((gpointer) agent);
+    res = priv_conn_check_tick ((gpointer) agent);
 
     /* step: schedule timer if not running yet */
-    if (agent->conncheck_timer_id == 0 && res != FALSE) 
+    if (res && agent->conncheck_timer_id == 0) 
       agent->conncheck_timer_id = 
 	g_timeout_add (agent->timer_ta, priv_conn_check_tick, agent);
 
@@ -449,6 +471,8 @@ void conn_check_schedule_next (NiceAgent *agent)
 	g_timeout_add (NICE_AGENT_TIMER_TR_DEFAULT, priv_conn_keepalive_tick, agent);
 
   }
+
+  return res;
 }
 
 /** 
@@ -463,6 +487,46 @@ gint conn_check_compare (const CandidateCheckPair *a, const CandidateCheckPair *
   else if (a->priority < b->priority)
     return 1;
   return 0;
+}
+
+/** 
+ * Enforces the upper limit for connectivity checks as described
+ * in ICE spec section 5.7.3 (ID-18). See also 
+ * conn_check_add_for_candidate().
+ */
+static GSList *priv_limit_conn_check_list_size (GSList *conncheck_list, guint upper_limit)
+{
+  guint list_len = g_slist_length (conncheck_list);
+  guint c = 0;
+  GSList *result = conncheck_list;
+
+  if (list_len > upper_limit) {
+    c = list_len - upper_limit;
+    if (c == list_len) {
+      /* case: delete whole list */
+      g_slist_foreach (conncheck_list, conn_check_free_item, NULL);
+      g_slist_free (conncheck_list),
+	result = NULL;
+    }
+    else {
+      /* case: remove 'c' items from list end (lowest priority) */
+      GSList *i, *tmp;
+
+      g_assert (c > 0);
+      i = g_slist_nth (conncheck_list, c - 1);
+
+      tmp = i->next;
+      i->next = NULL;
+
+      if (tmp) {
+	/* delete the rest of the connectivity check list */
+	g_slist_foreach (tmp, conn_check_free_item, NULL);
+	g_slist_free (tmp);
+      }
+    }
+  }
+
+  return result;
 }
 
 /**
@@ -498,6 +562,15 @@ static gboolean priv_add_new_check_pair (NiceAgent *agent, guint stream_id, Comp
 	stream->conncheck_list = modified_list;
 	result = TRUE;
 	g_debug ("added a new conncheck %p with foundation of '%s' to list %u.", pair, pair->foundation, stream_id);
+
+	/* implement the hard upper limit for number of 
+	   checks (see sect 5.7.3 ICE ID-18): */
+	stream->conncheck_list = 
+	  priv_limit_conn_check_list_size (stream->conncheck_list, agent->max_conn_checks);
+	if (!stream->conncheck_list) {
+	  stream->conncheck_state = NICE_CHECKLIST_FAILED;  
+	  result = FALSE;
+	}
       }
       else { /* memory alloc failed: list insert */
 	conn_check_free_item (pair, NULL);
@@ -775,13 +848,12 @@ static void priv_update_check_list_state (NiceAgent *agent, Stream *stream)
 
   /* note: iterate the conncheck list for each component separately */
   for (c = 0; c < components; c++) {
-    guint not_failed = 0, checks = 0;
+    guint not_failed = 0;
     for (i = stream->conncheck_list; i; i = i->next) {
       CandidateCheckPair *p = i->data;
       
       if (p->stream_id == stream->id &&
 	  p->component_id == (c + 1)) {
-	++checks;
 
 	if (p->state != NICE_CHECK_FAILED)
 	  ++not_failed;
@@ -794,7 +866,7 @@ static void priv_update_check_list_state (NiceAgent *agent, Stream *stream)
     }
 
     /* note: all checks have failed */
-    if (checks > 0 && not_failed == 0)
+    if (not_failed == 0)
       agent_signal_component_state_change (agent, 
 					   stream->id,
 					   (c + 1), /* component-id */
