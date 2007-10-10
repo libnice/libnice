@@ -58,17 +58,6 @@ typedef enum
   NICE_CHECK_DISCOVERED     /**< a valid candidate pair not on check list */
 } NiceCheckState;
 
-#if 0
-/* XXX: move to stream.h */
-typedef enum
-{
-  NICE_CHECKLIST_NOT_STARTED = 1,
-  NICE_CHECKLIST_RUNNING,
-  NICE_CHECKLIST_COMPLETED,
-  NICE_CHECKLIST_FAILED
-} NiceCheckListState;
-#endif
-
 typedef struct _CandidateCheckPair CandidateCheckPair;
 
 struct _CandidateCheckPair
