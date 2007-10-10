@@ -53,7 +53,10 @@
  *      to session bandwidth -> this is not yet implemented in NICE */
 
 #define NICE_AGENT_TIMER_TA_DEFAULT 20      /* timer Ta, msecs (impl. defined) */
-#define NICE_AGENT_TIMER_TR_DEFAULT 15000   /* timer Tr, msecs (ICE ID-17) */
+#define NICE_AGENT_TIMER_TR_DEFAULT 25000   /* timer Tr, msecs (impl. defined) */
+#define NICE_AGENT_TIMER_TR_MIN     15000   /* timer Tr, msecs (ICE ID-18) */
+#define NICE_AGENT_MAX_CONNECTIVITY_CHECKS_DEFAULT 100 /* see spec 5.7.3 (ID-18) */
+
 
 /** An upper limit to size of STUN packets handled (based on Ethernet
  * MTU and estimated typical sizes of ICE STUN packet */
