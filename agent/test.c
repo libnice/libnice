@@ -53,8 +53,8 @@ main (void)
   NiceUDPSocketFactory factory;
   GSList *candidates;
 
-  memset (&addr_local, 0, sizeof (addr_local));
-  memset (&addr_remote, 0, sizeof (addr_remote));
+  nice_address_init (&addr_local);
+  nice_address_init (&addr_remote);
   g_type_init ();
 
   nice_udp_fake_socket_factory_init (&factory);

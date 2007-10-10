@@ -78,7 +78,7 @@ main (void)
   GSList *readable;
   ssize_t w;
 
-  memset (&addr, 0, sizeof (addr));
+  nice_address_init (&addr);
   g_type_init ();
 
   /* set up agent */

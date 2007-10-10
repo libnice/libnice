@@ -70,7 +70,7 @@ main (void)
   NiceAddress addr;
   NiceUDPSocketFactory factory;
 
-  memset (&addr, 0, sizeof (addr));
+  nice_address_init (&addr);
   g_type_init ();
 
   nice_udp_fake_socket_factory_init (&factory);
