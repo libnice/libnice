@@ -44,8 +44,8 @@
 #include "agent.h"
 #include "udp-bsd.h"
 
-static NiceComponentState global_lagent_state = NICE_COMPONENT_STATE_LAST;
-static NiceComponentState global_ragent_state = NICE_COMPONENT_STATE_LAST;
+static NiceComponentState global_lagent_state[2] = { NICE_COMPONENT_STATE_LAST, NICE_COMPONENT_STATE_LAST };
+static NiceComponentState global_ragent_state[2] = { NICE_COMPONENT_STATE_LAST, NICE_COMPONENT_STATE_LAST };
 static guint global_components_ready = 0;
 static guint global_components_ready_exit = 0;
 static guint global_components_failed = 0;
@@ -62,8 +62,8 @@ static gint global_ragent_read = 0;
 static void priv_print_global_status (void)
 {
   g_debug ("\tgathering_done=%d", global_lagent_gathering_done && global_ragent_gathering_done);
-  g_debug ("\tlstate=%d", global_lagent_state);
-  g_debug ("\trstate=%d", global_ragent_state);
+  g_debug ("\tlstate[rtp]=%d [rtcp]=%d", global_lagent_state[0], global_lagent_state[1]);
+  g_debug ("\trstate[rtp]=%d [rtcp]=%d", global_ragent_state[0], global_ragent_state[1]);
 }
 
 static gboolean timer_cb (gpointer pointer)
@@ -113,28 +113,32 @@ static void cb_component_state_changed (NiceAgent *agent, guint stream_id, guint
   g_debug ("test-fullmode:%s: %p", __func__, data);
 
   if ((intptr_t)data == 1)
-    global_lagent_state = state;
+    global_lagent_state[component_id - 1] = state;
   else if ((intptr_t)data == 2)
-    global_ragent_state = state;
+    global_ragent_state[component_id - 1] = state;
   
   if (state == NICE_COMPONENT_STATE_READY)
     global_components_ready++;
   if (state == NICE_COMPONENT_STATE_FAILED)
     global_components_failed++;
 
-  g_debug ("test-fullmode: READY %u exit at %u.", global_components_ready, global_components_ready_exit);
+  g_debug ("test-fullmode: checks READY/EXIT-AT %u/%u.", global_components_ready, global_components_ready_exit);
+  g_debug ("test-fullmode: checks FAILED/EXIT-AT %u/%u.", global_components_failed, global_components_failed_exit);
 
   /* signal status via a global variable */
-  if (global_components_ready == global_components_ready_exit) {
+  if (global_components_ready == global_components_ready_exit &&
+      global_components_failed == global_components_failed_exit) {
     g_main_loop_quit (global_mainloop); 
     return;
   }
 
+#if 0
   /* signal status via a global variable */
   if (global_components_failed == global_components_failed_exit) {
     g_main_loop_quit (global_mainloop); 
     return;
   }
+#endif
 
   /* XXX: dear compiler, these are for you: */
   (void)agent; (void)stream_id; (void)data; (void)component_id;
@@ -190,7 +194,7 @@ static void priv_get_local_addr (NiceAgent *agent, guint stream_id, guint compon
   g_slist_free (cands);
 }
 
-static int run_full_test (NiceAgent *lagent, NiceAgent *ragent, NiceAddress *baseaddr)
+static int run_full_test (NiceAgent *lagent, NiceAgent *ragent, NiceAddress *baseaddr, guint ready, guint failed)
 {
   NiceAddress laddr, raddr, laddr_rtcp, raddr_rtcp;   
   NiceCandidateDesc cdes = {       /* candidate description (no ports) */
@@ -210,9 +214,9 @@ static int run_full_test (NiceAgent *lagent, NiceAgent *ragent, NiceAddress *bas
 
   /* step: initialize variables modified by the callbacks */
   global_components_ready = 0;
-  global_components_ready_exit = 4;
+  global_components_ready_exit = ready;
   global_components_failed = 0;
-  global_components_failed_exit = 4;
+  global_components_failed_exit = failed;
   global_lagent_gathering_done = FALSE;
   global_ragent_gathering_done = FALSE;
   global_lagent_ibr_received =
@@ -291,10 +295,6 @@ static int run_full_test (NiceAgent *lagent, NiceAgent *ragent, NiceAddress *bas
   g_assert (global_lagent_ibr_received == TRUE);
   g_assert (global_ragent_ibr_received == TRUE);
 
-  /* note: verify that correct number of local candidates were reported */
-  g_assert (global_lagent_cands == 2);
-  g_assert (global_ragent_cands == 2);
-
   /* note: test payload send and receive */
   global_ragent_read = 0;
   g_assert (nice_agent_send (lagent, ls_id, 1, 16, "1234567812345678") == 16);
@@ -330,11 +330,12 @@ static int run_full_test_wrong_password (NiceAgent *lagent, NiceAgent *ragent, N
   (void)baseaddr;
 
   global_components_ready = 0;
-  global_components_ready_exit = 2;
+  global_components_ready_exit = 0;
   global_components_failed = 0;
   global_components_failed_exit = 2;
-  global_lagent_state = 
-    global_ragent_state = NICE_COMPONENT_STATE_LAST;
+  global_lagent_state[0] =   global_lagent_state[1] = 
+    global_ragent_state[0] = global_ragent_state[1] 
+    = NICE_COMPONENT_STATE_LAST;
   global_lagent_gathering_done = 
     global_ragent_gathering_done = FALSE;
   global_lagent_cands = 
@@ -441,9 +442,7 @@ static int run_full_test_control_conflict (NiceAgent *lagent, NiceAgent *ragent,
   global_components_ready = 0;
   global_components_ready_exit = 2;
   global_components_failed = 0;
-  global_components_failed_exit = 2;
-  global_lagent_state =
-    global_ragent_state = NICE_COMPONENT_STATE_LAST;
+  global_components_failed_exit = 0;
   global_lagent_gathering_done =
     global_ragent_gathering_done = FALSE;
   global_lagent_cands = 
@@ -600,6 +599,7 @@ int main (void)
   /* step: test setter/getter functions for properties */
   {
     gpointer pointer;
+    guint max_checks = 0;
     gchar *string = NULL;
     guint port = 0;
     gboolean mode = FALSE;
@@ -615,47 +615,92 @@ int main (void)
     g_object_get (G_OBJECT (lagent), "turn-server-port", &port, NULL);
     g_object_get (G_OBJECT (lagent), "controlling-mode", &mode, NULL);
     g_assert (mode == TRUE);
+    g_object_set (G_OBJECT (lagent), "max-connectivity-checks", 300, NULL);
+    g_object_get (G_OBJECT (lagent), "max-connectivity-checks", &max_checks, NULL);
+    g_assert (max_checks == 300);
   }
 
   /* step: run test the first time */
   g_debug ("test-fullmode: TEST STARTS / running test for the 1st time");
-  result = run_full_test (lagent, ragent, &baseaddr);
+  result = run_full_test (lagent, ragent, &baseaddr, 4 ,0);
   priv_print_global_status ();
   g_assert (result == 0);
-  g_assert (global_lagent_state == NICE_COMPONENT_STATE_READY);
-  g_assert (global_ragent_state == NICE_COMPONENT_STATE_READY);
+  g_assert (global_lagent_state[0] == NICE_COMPONENT_STATE_READY);
+  g_assert (global_lagent_state[1] == NICE_COMPONENT_STATE_READY);
+  g_assert (global_ragent_state[0] == NICE_COMPONENT_STATE_READY);
+  g_assert (global_ragent_state[1] == NICE_COMPONENT_STATE_READY);
+  /* note: verify that correct number of local candidates were reported */
+  g_assert (global_lagent_cands == 2);
+  g_assert (global_ragent_cands == 2);
+
 
   /* step: run test again without unref'ing agents */
   g_debug ("test-fullmode: TEST STARTS / running test for the 2nd time");
-  result = run_full_test (lagent, ragent, &baseaddr);
+  result = run_full_test (lagent, ragent, &baseaddr, 4, 0);
   priv_print_global_status ();
   g_assert (result == 0);
-  g_assert (global_lagent_state == NICE_COMPONENT_STATE_READY);
-  g_assert (global_ragent_state == NICE_COMPONENT_STATE_READY);
+  g_assert (global_lagent_state[0] == NICE_COMPONENT_STATE_READY);
+  g_assert (global_lagent_state[1] == NICE_COMPONENT_STATE_READY);
+  g_assert (global_ragent_state[0] == NICE_COMPONENT_STATE_READY);
+  g_assert (global_ragent_state[1] == NICE_COMPONENT_STATE_READY);
+  /* note: verify that correct number of local candidates were reported */
+  g_assert (global_lagent_cands == 2);
+  g_assert (global_ragent_cands == 2);
 
   /* run test with incorrect credentials (make sure process fails) */
   g_debug ("test-fullmode: TEST STARTS / incorrect credentials");
   result = run_full_test_wrong_password (lagent, ragent, &baseaddr);
   priv_print_global_status ();
   g_assert (result == 0);
-  g_assert (global_lagent_state == NICE_COMPONENT_STATE_FAILED);
-  g_assert (global_ragent_state == NICE_COMPONENT_STATE_FAILED);
+  g_assert (global_lagent_state[0] == NICE_COMPONENT_STATE_FAILED);
+  g_assert (global_lagent_state[1] == NICE_COMPONENT_STATE_LAST);
+  g_assert (global_ragent_state[0] == NICE_COMPONENT_STATE_FAILED);
+  g_assert (global_ragent_state[1] == NICE_COMPONENT_STATE_LAST);
+
+  /* step: run test with a hard limit for connecitivity checks */
+  g_debug ("test-fullmode: TEST STARTS / max connectivity checks");
+  g_object_set (G_OBJECT (lagent), "max-connectivity-checks", 1, NULL);
+  g_object_set (G_OBJECT (ragent), "max-connectivity-checks", 1, NULL);
+  result = run_full_test (lagent, ragent, &baseaddr, 2, 2);
+  priv_print_global_status ();
+  g_assert (result == 0); 
+  /* should FAIL as agent L can't send any checks: */
+  g_assert (global_lagent_state[0] == NICE_COMPONENT_STATE_FAILED ||
+	    global_lagent_state[1] == NICE_COMPONENT_STATE_FAILED);
+  g_assert (global_ragent_state[0] == NICE_COMPONENT_STATE_FAILED ||
+	    global_ragent_state[1] == NICE_COMPONENT_STATE_FAILED);
+  g_object_set (G_OBJECT (lagent), "max-connectivity-checks", 100, NULL);
+  g_object_set (G_OBJECT (ragent), "max-connectivity-checks", 100, NULL);
+  result = run_full_test (lagent, ragent, &baseaddr, 4, 0);
+  priv_print_global_status ();
+  /* should SUCCEED as agent L can send the checks: */
+  g_assert (result == 0); 
+  g_assert (global_lagent_state[0] == NICE_COMPONENT_STATE_READY);
+  g_assert (global_lagent_state[1] == NICE_COMPONENT_STATE_READY);
+  g_assert (global_ragent_state[0] == NICE_COMPONENT_STATE_READY);
+  g_assert (global_ragent_state[1] == NICE_COMPONENT_STATE_READY);
+  g_object_set (G_OBJECT (lagent), "max-connectivity-checks", 100, NULL);
 
   /* run test with a conflict in controlling mode: controlling-controlling */
   g_debug ("test-fullmode: TEST STARTS / controlling mode conflict case-1");
   result = run_full_test_control_conflict (lagent, ragent, &baseaddr, TRUE);
   priv_print_global_status ();
   g_assert (result == 0);
-  g_assert (global_lagent_state == NICE_COMPONENT_STATE_READY);
-  g_assert (global_ragent_state == NICE_COMPONENT_STATE_READY);
+
+  g_assert (global_lagent_state[0] == NICE_COMPONENT_STATE_READY);
+  g_assert (global_lagent_state[1] == NICE_COMPONENT_STATE_READY);
+  g_assert (global_ragent_state[0] == NICE_COMPONENT_STATE_READY);
+  g_assert (global_ragent_state[1] == NICE_COMPONENT_STATE_READY);
 
   /* run test with a conflict in controlling mode: controlled-controlled */
   g_debug ("test-fullmode: TEST STARTS / controlling mode conflict case-2");
   result = run_full_test_control_conflict (lagent, ragent, &baseaddr, FALSE);
   priv_print_global_status ();
   g_assert (result == 0);
-  g_assert (global_lagent_state == NICE_COMPONENT_STATE_READY);
-  g_assert (global_ragent_state == NICE_COMPONENT_STATE_READY);
+  g_assert (global_lagent_state[0] == NICE_COMPONENT_STATE_READY);
+  g_assert (global_lagent_state[1] == NICE_COMPONENT_STATE_READY);
+  g_assert (global_ragent_state[0] == NICE_COMPONENT_STATE_READY);
+  g_assert (global_ragent_state[1] == NICE_COMPONENT_STATE_READY);
 
   g_object_unref (lagent);
   g_object_unref (ragent);
