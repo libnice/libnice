@@ -345,7 +345,7 @@ stun_find_xor_addr (const uint8_t *restrict msg, stun_attr_type_t type,
   return stun_xor_address (msg, addr, *addrlen);
 }
 
-#if 0
+
 /**
  * Compares the length and content of an attribute.
  *
@@ -354,9 +354,10 @@ stun_find_xor_addr (const uint8_t *restrict msg, stun_attr_type_t type,
  * @param data pointer to value to compare with
  * @param len byte length of the value
  * @return 0 in case of match, ENOENT if attribute was not found,
- * EINVAL if it did not match
+ * EINVAL if it did not match (different length, or same length but
+ * different content)
  */
-int stun_memcmp (const uint8_t *restrict msg, stun_attr_type_t type,
+int stun_memcmp (const uint8_t *msg, stun_attr_type_t type,
                  const void *data, size_t len)
 {
   uint16_t alen;
@@ -378,12 +379,11 @@ int stun_memcmp (const uint8_t *restrict msg, stun_attr_type_t type,
  * @return 0 in case of match, ENOENT if attribute was not found,
  * EINVAL if it did not match
  */
-int stun_strcmp (const uint8_t *restrict msg, stun_attr_type_t type,
-                 const char *str)
+int stun_strcmp (const uint8_t *msg, stun_attr_type_t type, const char *str)
 {
   return stun_memcmp (msg, type, str, strlen (str));
 }
-#endif
+
 
 bool stun_has_cookie (const uint8_t *msg)
 {
