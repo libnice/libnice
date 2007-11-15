@@ -219,7 +219,7 @@ int stun_find64 (const uint8_t *msg, stun_attr_type_t type, uint64_t *pval)
 
 
 int stun_find_string (const uint8_t *restrict msg, stun_attr_type_t type,
-                      char *buf, size_t maxcp)
+                      char *buf, size_t buflen)
 {
   const unsigned char *ptr;
   uint16_t len;
@@ -228,79 +228,11 @@ int stun_find_string (const uint8_t *restrict msg, stun_attr_type_t type,
   if (ptr == NULL)
     return ENOENT;
 
-  /* UTF-8 validation */
-  while (len > 0)
-  {
-    unsigned i;
-    unsigned char c = *ptr++;
+  if (len >= buflen)
+    return ENOBUFS;
 
-    if (maxcp == 0)
-      return ENOBUFS;
-    maxcp--;
-
-    if (c == 0)
-      return EINVAL; /* unexpected nul byte */
-    else
-    if (c < 0x80)
-      i = 0; /* 0x01-0x7F: ASCII code point */
-    else
-    if (c < 0xC2)
-      /* 0x80-0xBF: continuation byte */
-      /* 0xC0-0xC1: overlongs */
-      return EINVAL;
-    else
-    if (c < 0xE0)
-      i = 1; /* 0xC2-0xDF: two bytes code point */
-    else
-    if (c < 0xF0)
-    {
-      if (*ptr < 0xA0)
-        return EINVAL; /* overlong */
-      i = 2; /* 0xE0-0xEF: three bytes code point */
-    }
-    else
-    if (c < 0xF8)
-    {
-      if (*ptr < 0x90)
-        return EINVAL; /* overlong */
-      i = 3; /* 0xF0-0xF7: four bytes code point */
-    }
-    else
-    if (c < 0xFC)
-    {
-      if (*ptr < 0x88)
-        return EINVAL; /* overlong */
-      i = 4; /* 0xF8-0xFB: five bytes code point */
-    }
-    else
-    if (c < 0xFE)
-    {
-      if (*ptr < 0x84)
-        return EINVAL; /* overlong */
-      i = 5;
-    }
-    else
-      return EINVAL; /* 0xFE-0xFF: Byte-Order-Mark */
-
-    *buf++ = c;
-    len--;
-
-    if (i > len)
-      return EINVAL; /* too short */
-
-    while (i > 0)
-    {
-      c = *ptr++;
-      len--;
-
-      if ((c & 0xC0) != 0x80)
-        return EINVAL;
-
-      *buf++ = c;
-    }
-  }
-
-  *buf = '\0';
+  memcpy (buf, ptr, len);
+  buf[len] = '\0';
   return 0;
 }
 
