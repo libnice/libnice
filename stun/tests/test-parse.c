@@ -304,7 +304,7 @@ static void test_attribute (void)
 
 static void test_vectors (void)
 {
-  static const char username[] = "evtj:h6vY";
+  /*static const char username[] = "evtj:h6vY";*/
   static const char password[] = "VOkJxbRl1RmTxUk/WvJxBt";
   /* Request message */
   static const unsigned char req[] =

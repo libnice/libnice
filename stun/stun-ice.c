@@ -76,9 +76,11 @@ stun_bind_error (uint8_t *buf, size_t *plen, const uint8_t *req,
 
 
 int
-stun_conncheck_reply (uint8_t *buf, size_t *restrict plen, const uint8_t *msg,
+stun_conncheck_reply (uint8_t *restrict buf, size_t *restrict plen,
+                      const uint8_t *msg,
                       const struct sockaddr *restrict src, socklen_t srclen,
-                      const char *pass, bool *restrict control, uint64_t tie)
+                      const char *username, const char *pass,
+                      bool *restrict control, uint64_t tie)
 {
   size_t len = *plen;
   uint64_t q;
@@ -119,15 +121,15 @@ stun_conncheck_reply (uint8_t *buf, size_t *restrict plen, const uint8_t *msg,
 
   /* Short term credentials checking */
   val = 0;
-  if (!stun_present (msg, STUN_MESSAGE_INTEGRITY) // FIXME: wrong!
+  if (!stun_present (msg, STUN_MESSAGE_INTEGRITY)
    || !stun_present (msg, STUN_USERNAME))
   {
     DBG (" Missing USERNAME or MESSAGE-INTEGRITY.\n");
     val = STUN_BAD_REQUEST;
   }
   else
-  /* FIXME: verify USERNAME, return STUN_UNAUTHORIZED if wrong */
-  if (stun_verify_password (msg, pass))
+  if (stun_strcmp (msg, STUN_USERNAME, username)
+   || stun_verify_password (msg, pass))
   {
     DBG (" Integrity check failed.\n");
     val = STUN_UNAUTHORIZED;
@@ -201,31 +203,6 @@ failure:
   return val;
 }
 #undef err
-
-
-/** FIXME: this needs to be merged with stun_conncheck_reply, REALLY! */
-char *stun_conncheck_username (const uint8_t *restrict msg,
-                               char *restrict buf, size_t buflen)
-{
-  size_t i;
-
-  if ((buflen == 0)
-   || stun_find_string (msg, STUN_USERNAME, buf, (buflen - 1) / 6))
-    return NULL;
-
-  for (i = 0; buf[i]; i++)
-  {
-    char c = buf[i];
-    /* ref ICE sect 7.1.1.4. (ID-16) */
-    if (((c >= '/') && (c <= '9')) || ((c >= 'A') && (c <= 'Z'))
-     || ((c >= 'a') && (c <= 'z')) || (c == '+') || (c == ':'))
-      continue;
-
-    return NULL;
-  }
-
-  return buf;
-}
 
 
 uint32_t stun_conncheck_priority (const uint8_t *msg)

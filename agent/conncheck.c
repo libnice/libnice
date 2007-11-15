@@ -776,8 +776,9 @@ int conn_check_send (NiceAgent *agent, CandidateCheckPair *pair)
       1,
       pair->local->component_id);
 
+  gchar uname[NICE_STREAM_MAX_UNAME];
   gboolean username_filled = 
-     priv_create_check_username (agent, pair, agent->ufragtmp, NICE_STREAM_MAX_UNAME);
+     priv_create_check_username (agent, pair, uname, sizeof (uname));
   const gchar *password = priv_create_check_password (agent, pair);
 
   bool controlling = agent->controlling_mode;
@@ -801,7 +802,7 @@ int conn_check_send (NiceAgent *agent, CandidateCheckPair *pair)
 	     pair->local->sockptr->fileno,
 	     pair->foundation, pair->component_id,
 	     (unsigned long long)agent->tie_breaker,
-	     agent->ufragtmp, password, priority);
+	     uname, password, priority);
 
   }
 #endif
@@ -816,7 +817,7 @@ int conn_check_send (NiceAgent *agent, CandidateCheckPair *pair)
 
     stun_conncheck_start (&pair->stun_ctx, pair->local->sockptr->fileno,
 			  &sockaddr, sizeof (sockaddr),
-			  agent->ufragtmp, password,
+			  uname, password,
 			  cand_use, controlling, priority,
 			  agent->tie_breaker);
 
@@ -880,7 +881,7 @@ static void priv_update_check_list_state (NiceAgent *agent, Stream *stream)
  *
  * @see priv_update_check_list_state_for_component()
  */
-static void priv_prune_pending_checks (NiceAgent *agent, Stream *stream, guint component_id)
+static void priv_prune_pending_checks (/*NiceAgent *agent, */Stream *stream, guint component_id)
 {
   GSList *i;
 
@@ -927,7 +928,7 @@ static void priv_update_check_list_state_for_component (NiceAgent *agent, Stream
 	  p->state == NICE_CHECK_DISCOVERED) {
 	++succeeded;
 	if (p->nominated == TRUE) {
-	  priv_prune_pending_checks (agent, stream, p->component_id);
+	  priv_prune_pending_checks (/*agent, */stream, p->component_id);
 	  agent_signal_component_state_change (agent,
 					       p->stream_id,
 					       p->component_id,
@@ -1383,8 +1384,11 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, Stream *stream, Compo
   ssize_t res;
   size_t rbuf_len = sizeof (rbuf);
   bool control = agent->controlling_mode;
+  gchar uname[NICE_STREAM_MAX_UNAME];
 
   nice_address_copy_to_sockaddr (from, &sockaddr);
+  g_snprintf (uname, sizeof (uname), "%s:%s", stream->local_ufrag,
+              stream->remote_ufrag);
 
   /* note: contents of 'buf' already validated, so it is 
    *       a valid and fully received STUN message */
@@ -1394,7 +1398,8 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, Stream *stream, Compo
   /* note: ICE  7.2. "STUN Server Procedures" (ID-18) */
 
   res = stun_conncheck_reply (rbuf, &rbuf_len, (const uint8_t*)buf, &sockaddr, sizeof (sockaddr), 
-			      stream->local_password, &control, agent->tie_breaker);
+                              uname, stream->local_password,
+                              &control, agent->tie_breaker);
 
   if (res == EACCES)
     priv_check_for_role_conflict (agent, control);
@@ -1409,13 +1414,7 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, Stream *stream, Compo
     if (agent->controlling_mode) 
       use_candidate = TRUE;
 
-    /* note: verify the USERNAME */
-    if (stun_conncheck_username ((const uint8_t*)buf, agent->ufragtmp, NICE_STREAM_MAX_UNAME) == NULL) {
-      g_debug ("No USERNAME attribute in incoming STUN request, ignoring.");
-      return FALSE;
-    }
-     									   
-    if (priv_verify_inbound_username (stream, agent->ufragtmp) != TRUE) {
+    if (priv_verify_inbound_username (stream, uname) != TRUE) {
       g_debug ("USERNAME does not match local streams, ignoring.");
       return FALSE;
     }

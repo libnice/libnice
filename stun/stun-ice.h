@@ -83,6 +83,7 @@ int stun_conncheck_start (stun_bind_t **restrict context, int fd,
  * @param msg pointer to the first byte of the binding request
  * @param src socket address the message was received from
  * @param srclen byte length of the socket address
+ * @param username STUN username
  * @param password HMAC secret password
  * @param control [IN/OUT] whether we are controlling ICE or not
  * @param tie tie breaker value for ICE role determination
@@ -98,20 +99,11 @@ int stun_conncheck_start (stun_bind_t **restrict context, int fd,
  * response, or 0 if no error response should be sent.
  */
 int
-stun_conncheck_reply (uint8_t *buf, size_t *restrict plen, const uint8_t *msg,
+stun_conncheck_reply (uint8_t *restrict buf, size_t *restrict plen,
+                      const uint8_t *msg,
                       const struct sockaddr *restrict src, socklen_t srclen,
-                      const char *pass, bool *restrict control, uint64_t tie);
-
-/**
- * Extracts the username from a STUN message.
- * @param msg pointer to the first byte of the binding request
- * @param buf where to store the username as a nul-terminated string
- * @param buflen byte length of @a buf buffer
- *
- * @return @a buf on success, NULL on error
- */
-char *stun_conncheck_username (const uint8_t *restrict msg,
-                               char *restrict buf, size_t buflen);
+                      const char *username, const char *pass,
+                      bool *restrict control, uint64_t tie);
 
 /**
  * Extracts the priority from a STUN message.

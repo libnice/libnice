@@ -82,7 +82,7 @@ int main (void)
 
   len = sizeof (resp);
   val = stun_conncheck_reply (resp, &len, req, (struct sockaddr *)&ip4,
-                              sizeof (ip4), pass, &control, tie);
+                              sizeof (ip4), name, pass, &control, tie);
   assert (val == EINVAL);
   assert (len == 0);
 
@@ -94,7 +94,7 @@ int main (void)
 
   len = sizeof (resp);
   val = stun_conncheck_reply (resp, &len, req, (struct sockaddr *)&ip4,
-                              sizeof (ip4), pass, &control, tie);
+                              sizeof (ip4), name, pass, &control, tie);
   assert (val == EPROTO);
   assert (len > 0);
 
@@ -109,7 +109,7 @@ int main (void)
 
   len = sizeof (resp);
   val = stun_conncheck_reply (resp, &len, req, (struct sockaddr *)&ip4,
-                              sizeof (ip4), pass, &control, tie);
+                              sizeof (ip4), name, pass, &control, tie);
   assert (val == EPROTO);
   assert (len > 0);
 
@@ -121,7 +121,7 @@ int main (void)
 
   len = sizeof (resp);
   val = stun_conncheck_reply (resp, &len, req, (struct sockaddr *)&ip4,
-                              sizeof (ip4), pass, &control, tie);
+                              sizeof (ip4), name, pass, &control, tie);
   assert (val == EPERM);
   assert (len > 0);
   assert (stun_match_messages (resp, req, NULL, 0, &code)
@@ -135,33 +135,13 @@ int main (void)
 
   len = sizeof (resp);
   val = stun_conncheck_reply (resp, &len, req, (struct sockaddr *)&ip4,
-                              sizeof (ip4), pass, &control, tie);
+                              sizeof (ip4), name, pass, &control, tie);
   assert (val == EPERM);
   assert (len > 0);
   assert (stun_match_messages (resp, req, NULL, 0, &code)
        && (code == STUN_BAD_REQUEST));
-  assert (stun_conncheck_username (req, NULL, 0) == NULL);
-  assert (stun_conncheck_username (req, nbuf, sizeof (nbuf)) == NULL);
   assert (stun_conncheck_priority (req) == 0);
   assert (stun_conncheck_use_candidate (req) == false);
-
-  /* Bad username */
-  stun_init_request (req, STUN_BINDING);
-  len = sizeof (req);
-  val = stun_finish_short (req, &len, "ab\xff", pass, NULL);
-  assert (val == 0);
-  assert (stun_conncheck_username (req, nbuf, sizeof (nbuf)) == NULL);
-
-  /* FIXME: use conncheck_reply */
-
-  /* Bad integrity */
-  len = sizeof (resp);
-  val = stun_conncheck_reply (resp, &len, req, (struct sockaddr *)&ip4,
-                              sizeof (ip4), "bad", &control, tie);
-  assert (val == EPERM);
-  assert (len > 0);
-  assert (stun_match_messages (resp, req, NULL, 0, &code)
-       && (code == STUN_UNAUTHORIZED));
 
   /* Good message */
   stun_init_request (req, STUN_BINDING);
@@ -175,7 +155,7 @@ int main (void)
 
   len = sizeof (resp);
   val = stun_conncheck_reply (resp, &len, req, (struct sockaddr *)&ip4,
-                              sizeof (ip4), pass, &control, tie);
+                              sizeof (ip4), name, pass, &control, tie);
   assert (val == 0);
   assert (len > 0);
   assert (stun_match_messages (resp, req, (uint8_t *)pass,
@@ -184,19 +164,30 @@ int main (void)
   assert (stun_conncheck_priority (req) == 0x12345678);
   assert (stun_conncheck_use_candidate (req) == true);
 
-  /* Error cases for username extraction */
-  assert (stun_conncheck_username (req, NULL, 0) == NULL);
-  assert (stun_conncheck_username (req, nbuf, strlen (name) - 1) == NULL);
-  /* Username extraction */
-  strcpy (nbuf, "haxor");
-  assert (stun_conncheck_username (req, nbuf, sizeof (nbuf)) == nbuf);
-  assert (strcmp (nbuf, name) == 0);
+  /* Bad username */
+  len = sizeof (resp);
+  val = stun_conncheck_reply (resp, &len, req, (struct sockaddr *)&ip4,
+                              sizeof (ip4), "bad", pass, &control, tie);
+  assert (val == EPERM);
+  assert (len > 0);
+  assert (stun_match_messages (resp, req, NULL, 0, &code)
+       && (code == STUN_UNAUTHORIZED));
+
+  /* Bad integrity (bad password) */
+  len = sizeof (resp);
+  val = stun_conncheck_reply (resp, &len, req, (struct sockaddr *)&ip4,
+                              sizeof (ip4), name, "bad", &control, tie);
+  assert (val == EPERM);
+  assert (len > 0);
+  assert (stun_match_messages (resp, req, NULL, 0, &code)
+       && (code == STUN_UNAUTHORIZED));
+
 
   /* Invalid socket address */
   ip4.sin_family = AF_UNSPEC;
   len = sizeof (resp);
   val = stun_conncheck_reply (resp, &len, req, (struct sockaddr *)&ip4,
-                              sizeof (ip4), pass, &control, tie);
+                              sizeof (ip4), name, pass, &control, tie);
   assert (val == EAFNOSUPPORT);
 
   ip4.sin_family = AF_INET;
@@ -210,7 +201,7 @@ int main (void)
 
   len = sizeof (resp);
   val = stun_conncheck_reply (resp, &len, req, (struct sockaddr *)&ip4,
-                              sizeof (ip4), pass, &control, tie);
+                              sizeof (ip4), name, pass, &control, tie);
   assert (val == EINVAL);
   assert (len == 0);
 
@@ -225,7 +216,7 @@ int main (void)
   len = sizeof (resp);
   control = true;
   val = stun_conncheck_reply (resp, &len, req, (struct sockaddr *)&ip4,
-                              sizeof (ip4), pass, &control, tie);
+                              sizeof (ip4), name, pass, &control, tie);
   assert (val == EACCES);
   assert (len > 0);
   assert (control == false);
@@ -244,7 +235,7 @@ int main (void)
   len = sizeof (resp);
   control = false;
   val = stun_conncheck_reply (resp, &len, req, (struct sockaddr *)&ip4,
-                              sizeof (ip4), pass, &control, tie);
+                              sizeof (ip4), name, pass, &control, tie);
   assert (val == 0);
   assert (len > 0);
   assert (control == false);

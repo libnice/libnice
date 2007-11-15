@@ -94,7 +94,6 @@ struct _NiceAgent
   guint keepalive_timer_id;       /**< id of keepalive timer */
   guint64 tie_breaker;            /**< tie breaker (ICE sect 5.2
 				     "Determining Role" ID-17) */
-  gchar ufragtmp[NICE_STREAM_MAX_UNAME]; /**< preallocated buffer for uname processing */ 
   /* XXX: add pointer to internal data struct for ABI-safe extensions */
 };
 

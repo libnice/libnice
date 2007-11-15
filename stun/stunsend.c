@@ -456,6 +456,9 @@ stun_finish_long (uint8_t *msg, size_t *restrict plen,
 
   if (username != NULL)
   {
+    if (strlen (username) >= 513)
+      return EINVAL;
+
     val = stun_append_string (msg, len, STUN_USERNAME, username);
     if (val)
       return val;
@@ -463,6 +466,9 @@ stun_finish_long (uint8_t *msg, size_t *restrict plen,
 
   if (nonce != NULL)
   {
+    /*if (utf32_strlen (nonce) > 127))
+      return EINVAL;*/
+
     val = stun_append_string (msg, len, STUN_NONCE, nonce);
     if (val)
       return val;
