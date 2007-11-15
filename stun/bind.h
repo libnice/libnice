@@ -160,6 +160,21 @@ int stun_bind_keepalive (int fd, const struct sockaddr *restrict srv,
                          socklen_t srvlen);
 
 
+/**
+ * <b>Provisional</b> and incomplete STUN NAT control API
+ * Subject to change.
+ */
+typedef struct stun_nested_s stun_nested_t;
+
+int stun_nested_start (stun_nested_t **restrict context, int fd,
+                       const struct sockaddr *restrict mapad,
+                       const struct sockaddr *restrict natad,
+                       socklen_t adlen, uint32_t refresh);
+
+int stun_nested_process (stun_nested_t *restrict ctx,
+                         const void *restrict buf, size_t len,
+                         struct sockaddr *restrict intad, socklen_t *adlen);
+
 
 # ifndef STUN_VALIDATE_DECLARATION
 #  define STUN_VALIDATE_DECLARATION 2

@@ -101,17 +101,8 @@ stun_bind_alloc (stun_bind_t **restrict context, int fd,
   }
 
   stun_init_request (ctx->trans.msg.buf, STUN_BINDING);
+  ctx->trans.msg.length = sizeof (ctx->trans.msg.buf);
   return 0;
-}
-
-
-static int
-stun_bind_launch (stun_bind_t *ctx)
-{
-  int val = stun_trans_start (&ctx->trans);
-  if (val)
-    stun_bind_cancel (ctx);
-  return val;
 }
 
 
@@ -126,16 +117,19 @@ int stun_bind_start (stun_bind_t **restrict context, int fd,
     return val;
 
   ctx = *context;
-
-  ctx->trans.msg.length = sizeof (ctx->trans.msg.buf);
   val = stun_finish (ctx->trans.msg.buf, &ctx->trans.msg.length);
   if (val)
-  {
-    stun_bind_cancel (ctx);
-    return val;
-  }
+    goto error;
 
-  return stun_bind_launch (ctx);
+  val = stun_trans_start (&ctx->trans);
+  if (val)
+    goto error;
+
+  return 0;
+
+error:
+  stun_bind_cancel (ctx);
+  return val;
 }
 
 
@@ -276,10 +270,11 @@ stun_conncheck_start (stun_bind_t **restrict context, int fd,
   assert (username != NULL);
   assert (password != NULL);
 
-  val = stun_bind_alloc (&ctx, fd, srv, srvlen);
+  val = stun_bind_alloc (context, fd, srv, srvlen);
   if (val)
     return val;
 
+  ctx = *context;
   ctx->trans.key.length = strlen (password);
   ctx->trans.key.value = malloc (ctx->trans.key.length);
   if (ctx->trans.key.value == NULL)
@@ -288,7 +283,6 @@ stun_conncheck_start (stun_bind_t **restrict context, int fd,
     goto error;
   }
 
-  *context = ctx;
   memcpy (ctx->trans.key.value, password, ctx->trans.key.length);
 
   if (cand_use)
@@ -311,17 +305,115 @@ stun_conncheck_start (stun_bind_t **restrict context, int fd,
   if (val)
     goto error;
 
-  ctx->trans.msg.length = sizeof (ctx->trans.msg.buf);
   val = stun_finish_short (ctx->trans.msg.buf, &ctx->trans.msg.length,
                            username, password, NULL);
   if (val)
     goto error;
 
-  return stun_bind_launch (ctx);
+  val = stun_trans_start (&ctx->trans);
+  if (val)
+    goto error;
+
+  return 0;
 
 error:
-  stun_bind_cancel (*context);
+  stun_bind_cancel (ctx);
   return val;
 }
 
 
+/** STUN NAT control */
+struct stun_nested_s
+{
+  stun_bind_t *bind;
+  struct sockaddr_storage mapped;
+  uint32_t refresh;
+  uint32_t bootnonce;
+};
+
+
+int stun_nested_start (stun_nested_t **restrict context, int fd,
+                       const struct sockaddr *restrict mapad,
+                       const struct sockaddr *restrict natad,
+                       socklen_t adlen, uint32_t refresh)
+{
+  stun_nested_t *ctx;
+  int val;
+
+  if (adlen > sizeof (ctx->mapped))
+    return ENOBUFS;
+
+  ctx = malloc (sizeof (*ctx));
+  memcpy (&ctx->mapped, mapad, adlen);
+  ctx->refresh = 0;
+  ctx->bootnonce = 0;
+
+  /* TODO: forcily set port to 3478 */
+  val = stun_bind_alloc (&ctx->bind, fd, natad, adlen);
+  if (val)
+    return val;
+
+  *context = ctx;
+
+  val = stun_append32 (ctx->bind->trans.msg.buf,
+                       sizeof (ctx->bind->trans.msg.buf),
+                       STUN_REFRESH_INTERVAL, refresh);
+  if (val)
+    goto error;
+
+  val = stun_finish (ctx->bind->trans.msg.buf,
+                     &ctx->bind->trans.msg.length);
+  if (val)
+    goto error;
+
+  val = stun_trans_start (&ctx->bind->trans);
+  if (val)
+    goto error;
+
+  return 0;
+
+error:
+  stun_bind_cancel (ctx->bind);
+  return val;
+}
+
+
+int stun_nested_process (stun_nested_t *restrict ctx,
+                         const void *restrict buf, size_t len,
+                         struct sockaddr *restrict intad, socklen_t *adlen)
+{
+  struct sockaddr_storage mapped;
+  socklen_t mappedlen = sizeof (mapped);
+  int val;
+
+  assert (ctx != NULL);
+
+  val = stun_bind_process (ctx->bind, buf, len,
+                           (struct sockaddr *)&mapped, &mappedlen);
+  if (val)
+    return val;
+
+  /* Mapped address mistmatch! (FIXME: what are we really supposed to do
+   * in this case???) */
+  if (sockaddrcmp ((struct sockaddr *)&mapped,
+                   (struct sockaddr *)&ctx->mapped))
+  {
+    DBG (" Mapped address mismatch! (Symmetric NAT?)\n");
+    return ECONNREFUSED;
+  }
+
+  val = stun_find_xor_addr (buf, STUN_XOR_INTERNAL_ADDRESS, intad, adlen);
+  if (val)
+  {
+    DBG (" No XOR-INTERNAL-ADDRESS: %s\n", strerror (val));
+    return val;
+  }
+
+  stun_find32 (buf, STUN_REFRESH_INTERVAL, &ctx->refresh);
+  /* TODO: give this to caller */
+
+  DBG (" Internal address found!\n");
+  stun_bind_cancel (ctx->bind);
+  ctx->bind = NULL;
+  return 0;
+}
