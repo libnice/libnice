@@ -449,6 +449,8 @@ stun_finish_long (uint8_t *msg, size_t *restrict plen,
 
   if (realm != NULL)
   {
+    /*if (utf32_strlen (realm) > 127))
+      return EINVAL;*/
     val = stun_append_string (msg, len, STUN_REALM, realm);
     if (val)
       return val;
