@@ -474,9 +474,29 @@ int stun_find_xor_addr (const uint8_t *restrict msg, stun_attr_type_t type,
                         struct sockaddr *restrict addr,
                         socklen_t *restrict addrlen);
 
-int stun_memcmp (const uint8_t *restrict msg, stun_attr_type_t type,
+/**
+ * Compares the length and content of an attribute.
+ *
+ * @param msg valid STUN message buffer
+ * @param type STUN attribute type (host byte order)
+ * @param data pointer to value to compare with
+ * @param len byte length of the value
+ * @return 0 in case of match, ENOENT if attribute was not found,
+ * EINVAL if it did not match (different length, or same length but
+ * different content)
+ */
+int stun_memcmp (const uint8_t *msg, stun_attr_type_t type,
                  const void *data, size_t len);
-int stun_strcmp (const uint8_t *restrict msg, stun_attr_type_t type,
+
+/**
+ * Compares the content of an attribute with a string.
+ * @param msg valid STUN message buffer
+ * @param type STUN attribute type (host byte order)
+ * @param str string to compare with
+ * @return 0 in case of match, ENOENT if attribute was not found,
+ * EINVAL if it did not match
+ */
+int stun_strcmp (const uint8_t *msg, stun_attr_type_t type,
                  const char *str);
 
 /**
