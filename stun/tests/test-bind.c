@@ -352,7 +352,6 @@ static void keepalive (void)
 {
   struct sockaddr_storage addr;
   socklen_t addrlen = sizeof (addr);
-  size_t len;
   int val, servfd, fd;
 
   /* Allocate a local UDP port for server */

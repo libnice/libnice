@@ -61,7 +61,6 @@ int main (void)
   ssize_t val;
   size_t len;
   static const char name[] = "admin", pass[] = "secret";
-  char nbuf[STUN_MAX_STR];
   int code;
   uint16_t alen;
   bool control = false;
