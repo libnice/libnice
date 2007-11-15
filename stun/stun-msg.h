@@ -101,7 +101,7 @@ typedef enum
 /* Message methods */
 typedef enum
 {
-  STUN_BINDING=0x001,    /* RFC3489bis-08 */
+  STUN_BINDING=0x001,    /* RFC3489bis-11 */
   STUN_OLD_SHARED_SECRET=0x002,  /* old RFC3489 */
   STUN_ALLOCATE=0x003,    /* TURN-04 */
   STUN_SET_ACTIVE_DST=0x004,  /* TURN-04 */
@@ -119,16 +119,16 @@ typedef enum
 {
   /* Mandatory attributes */
   /* 0x0000 */        /* reserved */
-  STUN_MAPPED_ADDRESS=0x0001,    /* RFC3489bis-08 */
+  STUN_MAPPED_ADDRESS=0x0001,    /* RFC3489bis-11 */
   STUN_OLD_RESPONSE_ADDRESS=0x0002,  /* old RFC3489 */
   STUN_OLD_CHANGE_REQUEST=0x0003,    /* old RFC3489 */
   STUN_OLD_SOURCE_ADDRESS=0x0004,    /* old RFC3489 */
   STUN_OLD_CHANGED_ADDRESS=0x0005,  /* old RFC3489 */
-  STUN_USERNAME=0x0006,      /* RFC3489bis-08 */
+  STUN_USERNAME=0x0006,      /* RFC3489bis-11 */
   STUN_OLD_PASSWORD=0x0007,    /* old RFC3489 */
-  STUN_MESSAGE_INTEGRITY=0x0008,    /* RFC3489bis-08 */
-  STUN_ERROR_CODE=0x0009,      /* RFC3489bis-08 */
-  STUN_UNKNOWN_ATTRIBUTES=0x000A,    /* RFC3489bis-08 */
+  STUN_MESSAGE_INTEGRITY=0x0008,    /* RFC3489bis-11 */
+  STUN_ERROR_CODE=0x0009,      /* RFC3489bis-11 */
+  STUN_UNKNOWN_ATTRIBUTES=0x000A,    /* RFC3489bis-11 */
   STUN_OLD_REFLECTED_FROM=0x000B,    /* old RFC3489 */
   /* 0x000C */        /* reserved */
   STUN_LIFETIME=0x000D,      /* TURN-04 */
@@ -138,8 +138,8 @@ typedef enum
   /* 0x0011 */        /* reserved */
   STUN_REMOTE_ADDRESS=0x0012,    /* TURN-04 */
   STUN_DATA=0x0013,      /* TURN-04 */
-  STUN_REALM=0x0014,      /* RFC3489bis-08 */
-  STUN_NONCE=0x0015,      /* RFC3489bis-08 */
+  STUN_REALM=0x0014,      /* RFC3489bis-11 */
+  STUN_NONCE=0x0015,      /* RFC3489bis-11 */
   STUN_RELAY_ADDRESS=0x0016,    /* TURN-04 */
   STUN_REQUESTED_ADDRESS_TYPE=0x0017,  /* TURN-IPv6-03 */
   STUN_REQUESTED_PORT_PROPS=0x0018,  /* TURN-04 */
@@ -150,25 +150,29 @@ typedef enum
   /* 0x001D */        /* reserved */
   /* 0x001E */        /* reserved */
   /* 0x001F */        /* reserved */
-  STUN_XOR_MAPPED_ADDRESS=0x0020,    /* RFC3489bis-08 */
+  STUN_XOR_MAPPED_ADDRESS=0x0020,    /* RFC3489bis-11 */
   STUN_TIMER_VAL=0x0021,      /* TURN-04 */
   STUN_REQUESTED_IP=0x0022,    /* TURN-04 */
   STUN_CONNECT_STAT=0x0023,    /* TURN-04 */
-  STUN_PRIORITY=0x0024,      /* ICE-17 */
-  STUN_USE_CANDIDATE=0x0025,    /* ICE-17 */
-  /* 0x0026-0x7fff */      /* reserved */
+  STUN_PRIORITY=0x0024,      /* ICE-18 */
+  STUN_USE_CANDIDATE=0x0025,    /* ICE-18 */
+  /* 0x0026 */        /* reserved */
+  /* 0x0027 */        /* reserved */
+  /* 0x0028 */        /* reserved */
+  STUN_XOR_INTERNAL_ADDRESS=0x0029, /* wing-nat-control-04 */
+  /* 0x002A-0x7fff */      /* reserved */
 
   /* Optional attributes */
   /* 0x8000-0x8021 */      /* reserved */
-  STUN_SERVER=0x8022,      /* RFC3489bis-08 */
-  STUN_ALTERNATE_SERVER=0x8023,    /* RFC3489bis-08 */
-  STUN_REFRESH_INTERVAL=0x8024,    /* RFC3489bis-08 */
+  STUN_SERVER=0x8022,      /* RFC3489bis-11 */
+  STUN_ALTERNATE_SERVER=0x8023,    /* RFC3489bis-11 */
+  STUN_REFRESH_INTERVAL=0x8024,    /* wing-nat-control-04 */
   /* 0x8025 */        /* reserved */
   /* 0x8026 */        /* reserved */
   /* 0x8027 */        /* reserved */
-  STUN_FINGERPRINT=0x8028,    /* RFC3489bis-08 */
-  STUN_ICE_CONTROLLED=0x8029,    /* ICE-17 */
-  STUN_ICE_CONTROLLING=0x802A,    /* ICE-17 */
+  STUN_FINGERPRINT=0x8028,    /* RFC3489bis-11 */
+  STUN_ICE_CONTROLLED=0x8029,    /* ICE-18 */
+  STUN_ICE_CONTROLLING=0x802A,    /* ICE-18 */
   /* 0x802B-0xFFFF */      /* reserved */
 } stun_attr_type_t;
 
@@ -186,12 +190,12 @@ typedef uint8_t stun_transid_t[12];
  */
 typedef enum
 {
-  STUN_TRY_ALTERNATE=300,      /* RFC3489bis-08 */
-  STUN_BAD_REQUEST=400,      /* RFC3489bis-08 */
-  STUN_UNAUTHORIZED=401,      /* RFC3489bis-08 */
-  STUN_UNKNOWN_ATTRIBUTE=420,    /* RFC3489bis-08 */
+  STUN_TRY_ALTERNATE=300,      /* RFC3489bis-11 */
+  STUN_BAD_REQUEST=400,      /* RFC3489bis-11 */
+  STUN_UNAUTHORIZED=401,      /* RFC3489bis-11 */
+  STUN_UNKNOWN_ATTRIBUTE=420,    /* RFC3489bis-11 */
   STUN_NO_BINDING=437,      /* TURN-04 */
-  STUN_STALE_NONCE=438,      /* RFC3489bis-08 */
+  STUN_STALE_NONCE=438,      /* RFC3489bis-11 */
   STUN_ACT_DST_ALREADY=439,    /* TURN-04 */
   STUN_UNSUPP_FAMILY=440,      /* TURN-IPv6-03 */
   STUN_UNSUPP_TRANSPORT=442,    /* TURN-04 */
@@ -200,8 +204,8 @@ typedef enum
   STUN_OP_TCP_ONLY=445,      /* TURN-04 */
   STUN_CONN_ALREADY=446,      /* TURN-04 */
   STUN_ALLOC_OVER_QUOTA=486,    /* TURN-04 */
-  STUN_ROLE_CONFLICT=487,      /* ICE-17 */
-  STUN_SERVER_ERROR=500,      /* RFC3489bis-08 */
+  STUN_ROLE_CONFLICT=487,      /* ICE-18 */
+  STUN_SERVER_ERROR=500,      /* RFC3489bis-11 */
   STUN_SERVER_CAPACITY=507,    /* TURN-04 */
   STUN_ERROR_MAX=699
 } stun_error_t;
