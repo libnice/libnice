@@ -21,6 +21,7 @@ dist_noinst_SCRIPTS = build-unknown.sh
 
 libstun_la_SOURCES = \
 	stun-msg.h stunsend.c stunrecv.c \
+	utils.c \
 	unknown.c \
 	crc32.c hmac.c \
 	timer.h timer.c trans.h trans.c \
