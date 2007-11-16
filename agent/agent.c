@@ -238,7 +238,7 @@ nice_agent_class_init (NiceAgentClass *klass)
 	NICE_AGENT_TIMER_TA_DEFAULT,
         G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY));
 
-  /* note: according to spec recommendation in sect 5.7.3 (ID-18) */
+  /* note: according to spec recommendation in sect 5.7.3 (ID-19) */
   g_object_class_install_property (gobject_class, PROP_MAX_CONNECTIVITY_CHECKS,
       g_param_spec_uint (
         "max-connectivity-checks",
@@ -1391,7 +1391,7 @@ nice_agent_get_remote_candidates (
  * nice_agent_restart
  *  @agent: A NiceAgent
  *
- * Restarts the session as defined in ICE spec (ID-18). This function
+ * Restarts the session as defined in ICE spec (ID-19). This function
  * needs to be called both when initiating (ICE spec section 9.1.1.1.
  * "ICE Restarts"), as well as when reacting (spec section 9.2.1.1. 
  * "Detecting ICE Restart") to a restart.

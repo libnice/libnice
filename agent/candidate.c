@@ -51,7 +51,7 @@
 /* (ICE 4.1.1 "Gathering Candidates") ""Every candidate is a transport
  * address. It also has a type and a base. Three types are defined and 
  * gathered by this specification - host candidates, server reflexive 
- * candidates, and relayed candidates."" (ID-17) */
+ * candidates, and relayed candidates."" (ID-19) */
 
 NICEAPI_EXPORT NiceCandidate *
 nice_candidate_new (NiceCandidateType type)
@@ -96,7 +96,7 @@ nice_candidate_jingle_priority (NiceCandidate *candidate)
 
 
 /**
- * ICE 4.1.2.1. "Recommended Formula" (ID-18):
+ * ICE 4.1.2.1. "Recommended Formula" (ID-19):
  * returns number between 1 and 0x7effffff 
  */
 G_GNUC_CONST
@@ -106,7 +106,7 @@ nice_candidate_ice_priority_full (
   guint type_preference,
   // must be ∈ (0, 65535) (max 2^16 - 1)
   guint local_preference,
-  // must be ∈ (1, 255) (max 2 ^ 8 - 1)
+  // must be ∈ (0, 255) (max 2 ^ 8 - 1)
   guint component_id)
 {
   return (
@@ -140,7 +140,7 @@ nice_candidate_ice_priority (const NiceCandidate *candidate)
 
 /** 
  * Calculates the pair priority as specified in ICE 
- * sect 5.7.2. "Computing Pair Priority and Ordering Pairs" (ID-18).
+ * sect 5.7.2. "Computing Pair Priority and Ordering Pairs" (ID-19).
  */
 NICEAPI_EXPORT guint64
 nice_candidate_pair_priority (guint32 o_prio, guint32 a_prio)

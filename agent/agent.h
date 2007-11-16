@@ -99,13 +99,13 @@ typedef enum
 typedef struct _NiceCandidateDesc NiceCandidateDesc;
 
 struct _NiceCandidateDesc {
-  gchar *foundation;         
-  guint component_id;
+  gchar *foundation;          /**< 1*32ice-char (NICE_CANDIDATE_MAX_FOUNDATION-1) */
+  guint component_id;         /**< value between 1 and 256, inclusive */
   NiceCandidateTransport transport;
-  guint32 priority;
+  guint32 priority;           /**< value between 1 and (2**31 - 1), inclusive */
   NiceAddress *addr;
   NiceCandidateType type;
-  NiceAddress *related_addr;  /* optional */
+  NiceAddress *related_addr;  /**< optional */
 };
 
 typedef struct _NiceAgent NiceAgent;

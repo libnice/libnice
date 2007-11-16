@@ -45,7 +45,7 @@
 G_BEGIN_DECLS
 
 /* Maximum and default sizes for ICE attributes, 
- * last updated from ICE ID-18 
+ * last updated from ICE ID-19 
  * (the below sizes include the terminating NULL): */
 
 #define NICE_STREAM_MAX_UFRAG   256 + 1  /* ufrag + NULL */
@@ -56,7 +56,7 @@ G_BEGIN_DECLS
 
 /**
  * Checklist states. These match the definition given in
- * the ICE spec sect 5.7.4. "Computing States" (ID-18).
+ * the ICE spec sect 5.7.4. "Computing States" (ID-19).
  */
 typedef enum
 {

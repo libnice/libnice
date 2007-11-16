@@ -157,7 +157,7 @@ stream_find_component_by_fd (const Stream *stream, guint fd)
 void stream_initialize_credentials (Stream *stream, NiceRNG *rng)
 {
   /* note: generate ufrag/pwd for the stream (see ICE 15.4.
-   *       '"ice-ufrag" and "ice-pwd" Attributes', ID-18) */
+   *       '"ice-ufrag" and "ice-pwd" Attributes', ID-19) */
   nice_rng_generate_bytes_print (rng, NICE_STREAM_DEF_UFRAG - 1, stream->local_ufrag);
   nice_rng_generate_bytes_print (rng, NICE_STREAM_DEF_PWD - 1, stream->local_password);
 }

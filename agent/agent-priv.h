@@ -54,8 +54,8 @@
 
 #define NICE_AGENT_TIMER_TA_DEFAULT 20      /* timer Ta, msecs (impl. defined) */
 #define NICE_AGENT_TIMER_TR_DEFAULT 25000   /* timer Tr, msecs (impl. defined) */
-#define NICE_AGENT_TIMER_TR_MIN     15000   /* timer Tr, msecs (ICE ID-18) */
-#define NICE_AGENT_MAX_CONNECTIVITY_CHECKS_DEFAULT 100 /* see spec 5.7.3 (ID-18) */
+#define NICE_AGENT_TIMER_TR_MIN     15000   /* timer Tr, msecs (ICE ID-19) */
+#define NICE_AGENT_MAX_CONNECTIVITY_CHECKS_DEFAULT 100 /* see spec 5.7.3 (ID-19) */
 
 
 /** An upper limit to size of STUN packets handled (based on Ethernet
@@ -93,7 +93,7 @@ struct _NiceAgent
   guint conncheck_timer_id;       /**< id of discovery timer */
   guint keepalive_timer_id;       /**< id of keepalive timer */
   guint64 tie_breaker;            /**< tie breaker (ICE sect 5.2
-				     "Determining Role" ID-17) */
+				     "Determining Role" ID-19) */
   /* XXX: add pointer to internal data struct for ABI-safe extensions */
 };
 
