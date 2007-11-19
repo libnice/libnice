@@ -1069,31 +1069,47 @@ static void priv_mark_pair_nominated (NiceAgent *agent, Stream *stream, Componen
  * Sends a reply to an succesfully received STUN connectivity 
  * check request. Implements parts of the ICE spec section 7.2 (STUN
  * Server Procedures).
+ *
+ * @param agent context pointer
+ * @param stream which stream (of the agent)
+ * @param component which component (of the stream)
+ * @param rcand remote candidate from which the request came, if NULL,
+ *        the response is sent immediately but no other processing is done
+ * @param toaddr address to which reply is sent
+ * @param udp_socket the socket over which the request came
+ * @param rbuf_len length of STUN message to send
+ * @param rbuf buffer containing the STUN message to send
+ * @param use_candidate whether the request had USE_CANDIDATE attribute
+ * 
+ * @pre (rcand == NULL || nice_address_equal(rcand->addr, toaddr) == TRUE)
  */
-static void priv_reply_to_conn_check (NiceAgent *agent, Stream *stream, Component *component, NiceCandidate *cand, NiceUDPSocket *udp_socket, size_t  rbuf_len, uint8_t *rbuf, gboolean use_candidate)
+static void priv_reply_to_conn_check (NiceAgent *agent, Stream *stream, Component *component, NiceCandidate *rcand, const NiceAddress *toaddr, NiceUDPSocket *udp_socket, size_t  rbuf_len, uint8_t *rbuf, gboolean use_candidate)
 {
+  g_assert (rcand == NULL || nice_address_equal(&rcand->addr, toaddr) == TRUE);
+
 #ifndef NDEBUG
   {
     gchar tmpbuf[INET6_ADDRSTRLEN];
-    nice_address_to_string (&cand->addr, tmpbuf);
+    nice_address_to_string (toaddr, tmpbuf);
     g_debug ("STUN-CC RESP to '%s:%u', socket=%u, len=%u, cand=%p (c-id:%u), use-cand=%d.",
 	     tmpbuf,
-	     nice_address_get_port (&cand->addr),
+	     nice_address_get_port (toaddr),
 	     udp_socket->fileno,
 	     (unsigned)rbuf_len,
-	     cand, component->id,
+	     rcand, component->id,
 	     (int)use_candidate);
   }
 #endif
 
-
-  nice_udp_socket_send (udp_socket, &cand->addr, rbuf_len, (const gchar*)rbuf);
+  nice_udp_socket_send (udp_socket, toaddr, rbuf_len, (const gchar*)rbuf);
   
-  if (use_candidate)
-    priv_mark_pair_nominated (agent, stream, component, cand);
+  if (rcand) {
+    if (use_candidate)
+      priv_mark_pair_nominated (agent, stream, component, rcand);
 
-  /* note: upon succesful check, make the reserve check immediately */
-  priv_schedule_triggered_check (agent, stream, component, udp_socket, cand, use_candidate);
+    /* note: upon succesful check, make the reserve check immediately */
+    priv_schedule_triggered_check (agent, stream, component, udp_socket, rcand, use_candidate);
+  }
 }
 
 /**
@@ -1167,6 +1183,62 @@ static void priv_check_for_role_conflict (NiceAgent *agent, gboolean control)
     g_debug ("Role conflict, agent role already changed to %d.", control);
 }
 
+/** 
+ * Checks whether the mapped address in connectivity check response 
+ * matches any of the known local candidates. If not, apply the
+ * mechanism for "Discovering Peer Reflexive Candidates" ICE ID-19)
+ *
+ * @param agent context pointer
+ * @param stream which stream (of the agent)
+ * @param component which component (of the stream)
+ * @param p the connectivity check pair for which we got a response
+ * @param socketptr socket used to send the reply
+ * @param mapped_sockaddr mapped address in the response
+ *
+ * @return pointer to a new pair if one was created, otherwise NULL
+ */
+static CandidateCheckPair *priv_process_response_check_for_peer_reflexive(NiceAgent *agent, Stream *stream, Component *component, CandidateCheckPair *p, NiceUDPSocket *sockptr, struct sockaddr *mapped_sockaddr)
+{
+  CandidateCheckPair *new_pair = NULL;
+  NiceAddress mapped;
+  GSList *j;
+  gboolean local_cand_matches = FALSE;
+
+  nice_address_set_from_sockaddr (&mapped, mapped_sockaddr);
+
+  for (j = component->local_candidates; j; j = j->next) {
+    NiceCandidate *cand = j->data;
+    if (nice_address_equal (&mapped, &cand->addr)) {
+      local_cand_matches = TRUE; 
+      break;
+    }
+  }
+
+  if (local_cand_matches == TRUE) {
+    /* note: this is same as "adding to VALID LIST" in the spec
+       text */
+    p->state = NICE_CHECK_SUCCEEDED;
+    g_debug ("conncheck %p SUCCEEDED.", p);
+    priv_conn_check_unfreeze_related (agent, stream, p);
+  }
+  else {
+    NiceCandidate *cand =
+      discovery_add_peer_reflexive_candidate (agent,
+					      stream->id,
+					      component->id,
+					      &mapped,
+					      sockptr);
+    p->state = NICE_CHECK_FAILED;
+	    
+    /* step: add a new discovered pair (see ICE 7.1.2.2.2
+	       "Constructing a Valid Pair" (ID-19)) */
+    new_pair = priv_add_peer_reflexive_pair (agent, stream->id, component->id, cand, p);
+    g_debug ("conncheck %p FAILED, %p DISCOVERED.", p, new_pair);
+  }
+
+  return new_pair;
+}
+
 /**
  * Tries to match STUN reply in 'buf' to an existing STUN connectivity
  * check transaction. If found, the reply is processed. Implements
@@ -1174,7 +1246,7 @@ static void priv_check_for_role_conflict (NiceAgent *agent, gboolean control)
  * 
  * @return TRUE if a matching transaction is found
  */
-static gboolean priv_map_reply_to_conn_check_request (NiceAgent *agent, Stream *stream, Component *component, NiceUDPSocket *sockptr, gchar *buf, guint len)
+static gboolean priv_map_reply_to_conn_check_request (NiceAgent *agent, Stream *stream, Component *component, NiceUDPSocket *sockptr, const NiceAddress *from, gchar *buf, guint len)
 {
   struct sockaddr sockaddr;
   socklen_t socklen = sizeof (sockaddr);
@@ -1190,58 +1262,31 @@ static gboolean priv_map_reply_to_conn_check_request (NiceAgent *agent, Stream *
       if (res == 0) {
 	/* case: found a matching connectivity check request */
 
-	CandidateCheckPair *ok_pair = p;
+	CandidateCheckPair *ok_pair = NULL;
 
-	gboolean local_cand_matches = FALSE;
 	g_debug ("conncheck %p MATCHED.", p);
 	p->stun_ctx = NULL;
+
+	/* step: verify that response came from the same IP address we
+	 *       sent the original request to (see 7.1.2.1. "Failure
+	 *       Cases") */
+	if (nice_address_equal (from, &p->remote->addr) != TRUE) {
+	  p->state = NICE_CHECK_FAILED;	
+	  g_debug ("conncheck %p FAILED (mismatch of source address).", p); 
+	  trans_found = TRUE;
+	  break;
+	}
 	
 	/* note: CONNECTED but not yet READY, see docs */
-	
+
 	/* step: handle the possible case of a peer-reflexive
 	 *       candidate where the mapped-address in response does
 	 *       not match any local candidate, see 7.1.2.2.1
-	 *       "Discovering Peer Reflexive Candidates" ICE ID-18) */
-	{
-	  NiceAddress mapped;
-	  GSList *j;
-	  nice_address_set_from_sockaddr (&mapped, &sockaddr);
+	 *       "Discovering Peer Reflexive Candidates" ICE ID-19) */
 
-	  for (j = component->local_candidates; j; j = j->next) {
-	    NiceCandidate *cand = j->data;
-	    if (nice_address_equal (&mapped, &cand->addr)) {
-	      local_cand_matches = TRUE; 
-	      break;
-	    }
-	  }
-
-	  if (local_cand_matches == TRUE) {
-	    /* note: this is same as "adding to VALID LIST" in the spec
-	       text */
-	    p->state = NICE_CHECK_SUCCEEDED;
-	    g_debug ("conncheck %p SUCCEEDED.", p);
-	    priv_conn_check_unfreeze_related (agent, stream, p);
-	  }
-	  else {
-	    NiceCandidate *cand =
-	      discovery_add_peer_reflexive_candidate (
-  		agent,
-		stream->id,
-		component->id,
-		&mapped,
-		sockptr);
-	    CandidateCheckPair *new_pair;
-
-	    p->state = NICE_CHECK_FAILED;
-
-	    /* step: add a new discovered pair (see ICE 7.1.2.2.2
-	       "Constructing a Valid Pair" (ID-18)) */
-	    new_pair = priv_add_peer_reflexive_pair (agent, stream->id, component->id, cand, p);
-	    ok_pair = new_pair;
-
-	    g_debug ("conncheck %p FAILED, %p DISCOVERED.", p, new_pair);
-	  }
-	}
+	ok_pair = priv_process_response_check_for_peer_reflexive(agent, stream, component,  p, sockptr, &sockaddr);
+	if (!ok_pair)
+	  ok_pair = p;
 
 	/* step: notify the client of a new component state (must be done
 	 *       before the possible check list state update step */
@@ -1345,23 +1390,6 @@ static gboolean priv_map_reply_to_discovery_request (NiceAgent *agent, gchar *bu
   return trans_found;
 }
 
-static gboolean priv_verify_inbound_username (Stream *stream, const char *uname)
-{
-  const char *colon;
-
-  if (uname == NULL)
-    return FALSE;
-
-  colon = strchr (uname, ':');
-  if (colon == NULL)
-    return FALSE;
-
-  if (strncmp (uname, stream->local_ufrag, colon - uname) == 0)
-    return TRUE;
-
-  return FALSE;
-}
-
 /**
  * Processing an incoming STUN message.
  *
@@ -1398,7 +1426,7 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, Stream *stream, Compo
   /* note: ICE  7.2. "STUN Server Procedures" (ID-19) */
 
   res = stun_conncheck_reply (rbuf, &rbuf_len, (const uint8_t*)buf, &sockaddr, sizeof (sockaddr), 
-                              uname, stream->local_password,
+                              stream->local_ufrag, stream->local_password,
                               &control, agent->tie_breaker);
 
   if (res == EACCES)
@@ -1414,29 +1442,44 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, Stream *stream, Compo
     if (agent->controlling_mode) 
       use_candidate = TRUE;
 
-    if (priv_verify_inbound_username (stream, uname) != TRUE) {
-      g_debug ("USERNAME does not match local streams, ignoring.");
-      return FALSE;
-    }
-
     if (stream->initial_binding_request_received != TRUE)
       agent_signal_initial_binding_request_received (agent, stream);
 
-    for (i = component->remote_candidates; i; i = i->next) {
-      NiceCandidate *cand = i->data;
-      if (nice_address_equal (from, &cand->addr)) {
-	priv_reply_to_conn_check (agent, stream, component, cand, udp_socket, rbuf_len, rbuf, use_candidate);
-	break;
-      }
-    }
+    if (component->remote_candidates == NULL) {
+      /* case: We've got a valid binding request to a local candidate
+       *       but we do not yet know remote credentials nor
+       *       candidates. As per sect 7.2 of ICE (ID-19), we send a reply
+       *       immediately but postpone all other processing until
+       *       we get information about the remote candidates */
 
-    if (i == NULL) {
-      NiceCandidate *candidate;
-      g_debug ("No matching remote candidate for incoming check -> peer-reflexive candidate.");
-      candidate = discovery_learn_remote_peer_reflexive_candidate (
-	agent, stream, component, stun_conncheck_priority ((const uint8_t*)buf), from, udp_socket);
-      if (candidate)
-	priv_reply_to_conn_check (agent, stream, component, candidate, udp_socket, rbuf_len, rbuf, use_candidate);
+
+      /* XXX: temporary workaround: ignore connchecks until we
+       *      get the answer... retransmissions will ensure that 
+       *      connectivity is establish, just somewhat slower */
+      agent_signal_initial_binding_request_received (agent, stream);
+#if 0
+      /* step: answer to our offer not yet received, so send
+       *       a reply immediately but postpone other processing */
+      priv_reply_to_conn_check (agent, stream, component, NULL, from, udp_socket, rbuf_len, rbuf, use_candidate);
+#endif
+    }
+    else {
+      for (i = component->remote_candidates; i; i = i->next) {
+	NiceCandidate *cand = i->data;
+	if (nice_address_equal (from, &cand->addr)) {
+	  priv_reply_to_conn_check (agent, stream, component, cand, &cand->addr, udp_socket, rbuf_len, rbuf, use_candidate);
+	  break;
+	}
+      }
+      
+      if (i == NULL) {
+	NiceCandidate *candidate;
+	g_debug ("No matching remote candidate for incoming check -> peer-reflexive candidate.");
+	candidate = discovery_learn_remote_peer_reflexive_candidate (
+								     agent, stream, component, stun_conncheck_priority ((const uint8_t*)buf), from, udp_socket);
+	if (candidate)
+	  priv_reply_to_conn_check (agent, stream, component, candidate, &candidate->addr, udp_socket, rbuf_len, rbuf, use_candidate);
+      }
     }
   }
   else if (res == EINVAL) {
@@ -1449,7 +1492,7 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, Stream *stream, Compo
     /* step: let's try to match the response to an existing check context */
     if (trans_found != TRUE)
       trans_found = 
-	priv_map_reply_to_conn_check_request (agent, stream, component, udp_socket, buf, len);
+	priv_map_reply_to_conn_check_request (agent, stream, component, udp_socket, from, buf, len);
 
     /* step: let's try to match the response to an existing discovery */
     if (trans_found != TRUE)
