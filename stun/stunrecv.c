@@ -498,10 +498,10 @@ int stun_verify_password (const uint8_t *msg, const char *pw)
  */
 int stun_verify_username (const uint8_t *msg, const char *local_ufrag)
 {
-  const uint8_t *username, *n;
+  const char *username, *n;
   uint16_t username_len;
   assert (msg != NULL);
-  username = stun_find (msg, STUN_USERNAME, &username_len);
+  username = (const char *)stun_find (msg, STUN_USERNAME, &username_len);
   if (username == NULL)
   {
     DBG ("STUN auth error: no USERNAME attribute!\n");
