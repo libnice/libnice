@@ -58,6 +58,7 @@ static gboolean global_ragent_ibr_received = FALSE;
 static int global_lagent_cands = 0;
 static int global_ragent_cands = 0;
 static gint global_ragent_read = 0;
+static guint global_exit_when_ibr_received = 0;
 
 static void priv_print_global_status (void)
 {
@@ -175,6 +176,9 @@ static void cb_initial_binding_request_received(NiceAgent *agent, guint stream_i
     global_lagent_ibr_received = TRUE;
   else if ((intptr_t)data == 2)
     global_ragent_ibr_received = TRUE;
+
+  if (global_exit_when_ibr_received)
+    g_main_loop_quit (global_mainloop);     
 
   /* XXX: dear compiler, these are for you: */
   (void)agent; (void)stream_id; (void)data;
@@ -307,6 +311,145 @@ static int run_full_test (NiceAgent *lagent, NiceAgent *ragent, NiceAddress *bas
 
   nice_agent_remove_stream (lagent, ls_id);
   nice_agent_remove_stream (ragent, rs_id);
+
+  return 0;
+}
+
+/**
+ * Simulate the case where answer to the offer is delayed and
+ * some STUN connectivity checks reach the offering party
+ * before it gets the remote SDP information.
+ */
+static int run_full_test_delayed_answer (NiceAgent *lagent, NiceAgent *ragent, NiceAddress *baseaddr, guint ready, guint failed)
+{
+  NiceAddress laddr, raddr, laddr_rtcp, raddr_rtcp;   
+  NiceCandidateDesc cdes = {       /* candidate description (no ports) */
+    (gchar *)"1",                  /* foundation */
+    0,                             /* component-id; filled later */
+    NICE_CANDIDATE_TRANSPORT_UDP,  /* transport */
+    100000,  /* priority */
+    NULL,    /* address */
+    NICE_CANDIDATE_TYPE_HOST, /* type */ 
+    NULL     /* base-address */
+  };
+  GSList *cands;
+  guint ls_id, rs_id;
+
+  /* XXX: dear compiler, this is for you */
+  (void)baseaddr;
+
+  /* step: initialize variables modified by the callbacks */
+  global_components_ready = 0;
+  global_components_ready_exit = ready;
+  global_components_failed = 0;
+  global_components_failed_exit = failed;
+  global_lagent_gathering_done = FALSE;
+  global_ragent_gathering_done = FALSE;
+  global_lagent_ibr_received =
+    global_ragent_ibr_received = FALSE;
+  global_exit_when_ibr_received = 1;
+  global_lagent_cands = 
+    global_ragent_cands = 0;
+
+  g_object_set (G_OBJECT (lagent), "controlling-mode", TRUE, NULL);
+  g_object_set (G_OBJECT (ragent), "controlling-mode", FALSE, NULL);
+
+  /* step: add one stream, with RTP+RTCP components, to each agent */
+  ls_id = nice_agent_add_stream (lagent, 2);
+  rs_id = nice_agent_add_stream (ragent, 2);
+  g_assert (ls_id > 0);
+  g_assert (rs_id > 0);
+
+  /* step: run mainloop until local candidates are ready 
+   *       (see timer_cb() above) */
+  if (global_lagent_gathering_done != TRUE ||
+      global_ragent_gathering_done != TRUE) {
+    g_debug ("test-fullmode: Added streams, running mainloop until 'candidate-gathering-done'...");
+    g_main_loop_run (global_mainloop);
+    g_assert (global_lagent_gathering_done == TRUE);
+    g_assert (global_ragent_gathering_done == TRUE);
+  }
+
+  /* step: find out the local candidates of each agent */
+
+  priv_get_local_addr (ragent, rs_id, NICE_COMPONENT_TYPE_RTP, &raddr);
+  g_debug ("test-fullmode: local RTP port R %u",
+           nice_address_get_port (&raddr));
+
+  priv_get_local_addr (lagent, ls_id, NICE_COMPONENT_TYPE_RTP, &laddr);
+  g_debug ("test-fullmode: local RTP port L %u",
+           nice_address_get_port (&laddr));
+
+  priv_get_local_addr (ragent, rs_id, NICE_COMPONENT_TYPE_RTCP, &raddr_rtcp);
+  g_debug ("test-fullmode: local RTCP port R %u",
+           nice_address_get_port (&raddr_rtcp));
+
+  priv_get_local_addr (lagent, ls_id, NICE_COMPONENT_TYPE_RTCP, &laddr_rtcp);
+  g_debug ("test-fullmode: local RTCP port L %u",
+           nice_address_get_port (&laddr_rtcp));
+
+  /* step: pass the remote candidates to agent R (answering party)  */
+  {
+      const gchar *ufrag = NULL, *password = NULL;
+      nice_agent_get_local_credentials(lagent, ls_id, &ufrag, &password);
+      nice_agent_set_remote_credentials (ragent,
+					 rs_id, ufrag, password);
+  }
+  /* step: set remote candidates for agent R (answering party) */
+  cands = g_slist_append (NULL, &cdes);
+  cdes.component_id = NICE_COMPONENT_TYPE_RTP;
+  cdes.addr = &laddr;  
+  nice_agent_set_remote_candidates (ragent, rs_id, NICE_COMPONENT_TYPE_RTP, cands);
+  cdes.component_id = NICE_COMPONENT_TYPE_RTCP;
+  cdes.addr = &laddr_rtcp;  
+  nice_agent_set_remote_candidates (ragent, rs_id, NICE_COMPONENT_TYPE_RTCP, cands);
+
+  g_debug ("test-fullmode: Set properties, next running mainloop until first check is received...");
+
+  /* step: run the mainloop until first connectivity check receveid */
+  g_main_loop_run (global_mainloop);
+  global_exit_when_ibr_received = 0;
+
+  /* note: verify that STUN binding requests were sent */
+  g_assert (global_lagent_ibr_received == TRUE);
+
+  g_debug ("test-fullmode: Delayed answer received, continuing processing..");
+
+  /* step: pass the remote candidates to agent L (offering party)  */
+  {
+      const gchar *ufrag = NULL, *password = NULL;
+      nice_agent_get_local_credentials(ragent, rs_id, &ufrag, &password);
+      nice_agent_set_remote_credentials (lagent,
+					 ls_id, ufrag, password);
+  }
+
+  /* step: pass remove candidates to agent L (offering party) */
+  cdes.component_id = NICE_COMPONENT_TYPE_RTP;
+  cdes.addr = &raddr;
+  nice_agent_set_remote_candidates (lagent, ls_id, NICE_COMPONENT_TYPE_RTP, cands);
+  cdes.component_id = NICE_COMPONENT_TYPE_RTCP;
+  cdes.addr = &raddr_rtcp;
+  nice_agent_set_remote_candidates (lagent, ls_id, NICE_COMPONENT_TYPE_RTCP, cands);
+
+  g_debug ("test-fullmode: Running mainloop until connectivity checks succeeed.");
+
+  g_main_loop_run (global_mainloop);
+  g_assert (global_ragent_ibr_received == TRUE);
+
+  /* note: test payload send and receive */
+  global_ragent_read = 0;
+  g_assert (nice_agent_send (lagent, ls_id, 1, 16, "1234567812345678") == 16);
+  g_main_loop_run (global_mainloop);
+  g_assert (global_ragent_read == 16);
+
+  g_debug ("test-fullmode: Ran mainloop, removing streams...");
+
+  /* step: clean up resources and exit */
+
+  nice_agent_remove_stream (lagent, ls_id);
+  nice_agent_remove_stream (ragent, rs_id);
+
+  g_slist_free (cands);
 
   return 0;
 }
@@ -637,6 +780,19 @@ int main (void)
   /* step: run test again without unref'ing agents */
   g_debug ("test-fullmode: TEST STARTS / running test for the 2nd time");
   result = run_full_test (lagent, ragent, &baseaddr, 4, 0);
+  priv_print_global_status ();
+  g_assert (result == 0);
+  g_assert (global_lagent_state[0] == NICE_COMPONENT_STATE_READY);
+  g_assert (global_lagent_state[1] == NICE_COMPONENT_STATE_READY);
+  g_assert (global_ragent_state[0] == NICE_COMPONENT_STATE_READY);
+  g_assert (global_ragent_state[1] == NICE_COMPONENT_STATE_READY);
+  /* note: verify that correct number of local candidates were reported */
+  g_assert (global_lagent_cands == 2);
+  g_assert (global_ragent_cands == 2);
+
+  /* step: run test simulating delayed SDP answer */
+  g_debug ("test-fullmode: TEST STARTS / delayed SDP answer");
+  result = run_full_test_delayed_answer (lagent, ragent, &baseaddr, 4, 0);
   priv_print_global_status ();
   g_assert (result == 0);
   g_assert (global_lagent_state[0] == NICE_COMPONENT_STATE_READY);
