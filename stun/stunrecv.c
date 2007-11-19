@@ -21,6 +21,7 @@
  *
  * Contributors:
  *   Rémi Denis-Courmont, Nokia
+ *   Kai Vehmanen, Nokia
  *
  * Alternatively, the contents of this file may be used under the terms of the
  * the GNU Lesser General Public License Version 2.1 (the "LGPL"), in which
@@ -486,6 +487,39 @@ stun_verify_key (const uint8_t *msg, const void *key, size_t keylen)
 int stun_verify_password (const uint8_t *msg, const char *pw)
 {
   return stun_verify_key (msg, pw, strlen (pw));
+}
+
+/**
+ * @param msg valid STUN message
+ * @param pw nul-terminated local username fragment
+ * @return 0 if the username in the message is valid and matches
+ * the local username fragment, EPERM if the username was incorrect,
+ * and ENOENT if there was no USERNAME attribute
+ */
+int stun_verify_username (const uint8_t *msg, const char *local_ufrag)
+{
+  const uint8_t *username, *n;
+  uint16_t username_len;
+  assert (msg != NULL);
+  username = stun_find (msg, STUN_USERNAME, &username_len);
+  if (username == NULL)
+  {
+    DBG ("STUN auth error: no USERNAME attribute!\n");
+    return ENOENT;
+  }
+  n = strchr (username, ':');
+  if (n == NULL)
+  {
+    DBG ("STUN auth error: no colon in USERNAME!\n");
+    return EPERM;
+  }
+  if (strncmp(username, local_ufrag, n - username) != 0)
+  {
+    DBG ("STUN auth error: local ufrag doesn't match (uname:%s,ufrag:%s,msg:%s)!\n", username,local_ufrag, n);
+    return EPERM;
+  }
+  
+  return 0;
 }
 
 

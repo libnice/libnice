@@ -79,7 +79,7 @@ int
 stun_conncheck_reply (uint8_t *restrict buf, size_t *restrict plen,
                       const uint8_t *msg,
                       const struct sockaddr *restrict src, socklen_t srclen,
-                      const char *username, const char *pass,
+                      const char *local_ufrag, const char *pass,
                       bool *restrict control, uint64_t tie)
 {
   size_t len = *plen;
@@ -128,7 +128,7 @@ stun_conncheck_reply (uint8_t *restrict buf, size_t *restrict plen,
     val = STUN_BAD_REQUEST;
   }
   else
-  if (stun_strcmp (msg, STUN_USERNAME, username)
+  if (stun_verify_username (msg, local_ufrag)
    || stun_verify_password (msg, pass))
   {
     DBG (" Integrity check failed.\n");

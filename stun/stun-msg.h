@@ -363,6 +363,7 @@ bool stun_match_messages (const uint8_t *restrict resp,
                           int *restrict error);
 int stun_verify_key (const uint8_t *msg, const void *key, size_t keylen);
 int stun_verify_password (const uint8_t *msg, const char *pw);
+int stun_verify_username (const uint8_t *msg, const char *local_ufrag);
 
 /**
  * Looks for an attribute in a *valid* STUN message.
