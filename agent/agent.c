@@ -996,6 +996,8 @@ nice_agent_set_remote_candidates (NiceAgent *agent, guint stream_id, guint compo
      added = -1;
  }
 
+ conn_check_remote_candidates_set(agent);
+
  if (added > 0) {
    gboolean res = conn_check_schedule_next (agent);
    if (res != TRUE)

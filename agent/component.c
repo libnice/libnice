@@ -94,13 +94,17 @@ component_free (Component *cmp)
     GSource *source = i->data;
     g_source_destroy (source);
   }
-
-  g_slist_free (cmp->gsources),
-    cmp->gsources = NULL;
+ 
+  for (i = cmp->incoming_checks; i; i = i->next) {
+    IncomingCheck *icheck = i->data;
+    g_slice_free (IncomingCheck, icheck);
+  }
 
   g_slist_free (cmp->local_candidates);
   g_slist_free (cmp->remote_candidates);
   g_slist_free (cmp->sockets);
+  g_slist_free (cmp->gsources), cmp->gsources = NULL;
+  g_slist_free (cmp->incoming_checks);
   g_slice_free (Component, cmp);
 }
 
@@ -191,6 +195,11 @@ component_restart (Component *cmp)
   }
   g_slist_free (cmp->remote_candidates),
     cmp->remote_candidates = NULL;
+
+  for (i = cmp->incoming_checks; i; i = i->next) {
+    IncomingCheck *icheck = i->data;
+    g_slice_free (IncomingCheck, icheck);
+  }
 
   /* note: component state managed by agent */
 

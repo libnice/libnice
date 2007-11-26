@@ -54,12 +54,21 @@ G_BEGIN_DECLS
 
 typedef struct _Component Component;
 typedef struct _CandidatePair CandidatePair;
+typedef struct _IncomingCheck IncomingCheck;
 
 struct _CandidatePair
 {
   NiceCandidate *local;
   NiceCandidate *remote;
   guint64 priority;           /**< candidate pair priority */  
+};
+
+struct _IncomingCheck
+{
+  NiceAddress from;
+  NiceUDPSocket *local_socket;
+  uint32_t priority;
+  gboolean use_candidate;
 };
 
 struct _Component
@@ -71,6 +80,7 @@ struct _Component
   GSList *remote_candidates;   /**< list of Candidate objs */
   GSList *sockets;             /**< list of NiceUDPSocket objs */
   GSList *gsources;            /**< list of GSource objs */
+  GSList *incoming_checks;     /**< list of IncomingCheck objs */
   CandidatePair selected_pair; /**< independent from checklists, 
 				    see ICE 11.1. "Sending Media" (ID-19) */
   gboolean media_after_tick;   /**< true if media received since last

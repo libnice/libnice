@@ -435,6 +435,7 @@ static int run_full_test_delayed_answer (NiceAgent *lagent, NiceAgent *ragent, N
 
   g_main_loop_run (global_mainloop);
   g_assert (global_ragent_ibr_received == TRUE);
+  g_assert (global_components_failed == 0);
 
   /* note: test payload send and receive */
   global_ragent_read = 0;
