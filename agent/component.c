@@ -220,3 +220,26 @@ void component_update_selected_pair (Component *component, const CandidatePair *
   component->selected_pair.remote = pair->remote;
   component->selected_pair.priority = pair->priority;
 }
+
+/**
+ * Finds a remote candidate with matching address and 
+ * transport.
+ *
+ * @return pointer to candidate or NULL if not found
+ */
+NiceCandidate *
+component_find_remote_candidate (const Component *component, const NiceAddress *addr, NiceCandidateTransport transport)
+{
+  GSList *i;
+
+  for (i = component->remote_candidates; i; i = i->next) {
+    NiceCandidate *candidate = i->data;
+
+    if (nice_address_equal(&candidate->addr, addr) &&
+	candidate->transport == transport)
+      return candidate;
+
+  }
+  
+  return NULL;
+}

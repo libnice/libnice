@@ -756,6 +756,12 @@ nice_agent_add_local_address (NiceAgent *agent, NiceAddress *addr)
   return FALSE;
 }
 
+/**
+ * Adds a new, or updates an existing, remote candidate.
+ *
+ * @return TRUE if candidate was succesfully added or 
+ *         update, otherwise FALSE
+ */
 static gboolean priv_add_remote_candidate (
   NiceAgent *agent,
   guint stream_id,
@@ -777,55 +783,70 @@ static gboolean priv_add_remote_candidate (
   if (!agent_find_component (agent, stream_id, component_id, NULL, &component))
     return FALSE;
 
-  if (username)
-    username_dup = g_strdup (username);
-  if (password) 
-    password_dup = g_strdup (password);
-
-  candidate = nice_candidate_new (type);
+  /* step: check whether the candidate already exists */
+  candidate = component_find_remote_candidate(component, addr, transport);
   if (candidate) {
-    GSList *modified_list = g_slist_append (component->remote_candidates, candidate);
-    if (modified_list) {
-      component->remote_candidates = modified_list;
-  
-      candidate->stream_id = stream_id;
-      candidate->component_id = component_id;
-
-      candidate->type = type;
-      if (addr)
-	candidate->addr = *addr;
-#ifndef NDEBUG
-      {
-	gchar tmpbuf[INET6_ADDRSTRLEN];
-	nice_address_to_string (addr, tmpbuf);
-	g_debug ("Adding remote candidate with addr [%s]:%u.", tmpbuf,
-                 nice_address_get_port (addr));
-      }
-#endif
- 
-      if (related_addr)
-	candidate->base_addr = *related_addr;
-    
-      candidate->transport = transport;
-      candidate->priority = priority;
-      candidate->username = username_dup;
-      candidate->password = password_dup;
-    
-      if (foundation)
-	g_strlcpy (candidate->foundation, foundation, NICE_CANDIDATE_MAX_FOUNDATION);
-
-      /* XXX: may be called before candidate-gathering-done is signalled,
-       *      make sure this is handled correctly! */
-
-      if (conn_check_add_for_candidate (agent, stream_id, component, candidate) < 0)
-	error_flag = TRUE;
-    }
-    else /* memory alloc error: list insert */
+    g_debug("Update existing remote candidate %p.", candidate);
+    /* case 1: an existing candidate, update the attributes */
+    candidate->type = type;
+    if (related_addr)
+      candidate->base_addr = *related_addr;
+    candidate->priority = priority;
+    if (foundation)
+      strncpy(candidate->foundation, foundation, NICE_CANDIDATE_MAX_FOUNDATION);
+    /* note: username and password must remain the same during
+     *       a session; see sect 9.1.2 in ICE ID-19 */
+    if (conn_check_add_for_candidate (agent, stream_id, component, candidate) < 0)
       error_flag = TRUE;
   }
-  else /* memory alloc error: candidate creation */
-    error_flag = TRUE;
-  
+  else {
+    /* case 2: add a new candidate */
+    if (username)
+      username_dup = g_strdup (username);
+    if (password) 
+      password_dup = g_strdup (password);
+
+    candidate = nice_candidate_new (type);
+    if (candidate) {
+      GSList *modified_list = g_slist_append (component->remote_candidates, candidate);
+      if (modified_list) {
+	component->remote_candidates = modified_list;
+	
+	candidate->stream_id = stream_id;
+	candidate->component_id = component_id;
+
+	candidate->type = type;
+	if (addr)
+	  candidate->addr = *addr;
+#ifndef NDEBUG
+	{
+	  gchar tmpbuf[INET6_ADDRSTRLEN];
+	  nice_address_to_string (addr, tmpbuf);
+	  g_debug ("Adding remote candidate with addr [%s]:%u.", tmpbuf,
+		   nice_address_get_port (addr));
+	}
+#endif
+	
+	if (related_addr)
+	  candidate->base_addr = *related_addr;
+	
+	candidate->transport = transport;
+	candidate->priority = priority;
+	candidate->username = username_dup;
+	candidate->password = password_dup;
+	
+	if (foundation)
+	  g_strlcpy (candidate->foundation, foundation, NICE_CANDIDATE_MAX_FOUNDATION);
+
+	if (conn_check_add_for_candidate (agent, stream_id, component, candidate) < 0)
+	  error_flag = TRUE;
+      }
+      else /* memory alloc error: list insert */
+	error_flag = TRUE;
+    }
+    else /* memory alloc error: candidate creation */
+      error_flag = TRUE;
+  }  
 
   if (error_flag) {
     if (candidate) 
@@ -972,6 +993,10 @@ nice_agent_set_remote_candidates (NiceAgent *agent, guint stream_id, guint compo
 {
   const GSList *i; 
   int added = 0;
+
+
+  if (agent->discovery_unsched_items > 0)
+    return -1;
 
  /* XXX: clean up existing remote candidates, and abort any 
   *      connectivity checks using these candidates */

@@ -108,6 +108,9 @@ component_restart (Component *cmp);
 void
 component_update_selected_pair (Component *component, const CandidatePair *pair);
 
+NiceCandidate *
+component_find_remote_candidate (const Component *component, const NiceAddress *addr, NiceCandidateTransport transport);
+
 G_END_DECLS
 
 #endif /* _NICE_COMPONENT_H */
