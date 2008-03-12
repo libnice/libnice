@@ -952,6 +952,8 @@ nice_agent_add_remote_candidate (
   const gchar *password)
 {
 
+  /* XXX: to be deprecated */
+
   /* XXX: should we allow use of this method without an 
    *      initial call to nice_agent_set_remote_candidates()
    *      with an empty set? */
@@ -997,9 +999,6 @@ nice_agent_set_remote_candidates (NiceAgent *agent, guint stream_id, guint compo
 
   if (agent->discovery_unsched_items > 0)
     return -1;
-
- /* XXX: clean up existing remote candidates, and abort any 
-  *      connectivity checks using these candidates */
 
  for (i = candidates; i && added >= 0; i = i->next) {
    NiceCandidateDesc *d = (NiceCandidateDesc*) i->data;
