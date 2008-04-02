@@ -459,7 +459,7 @@ NiceCandidate *discovery_learn_remote_peer_reflexive_candidate (
  *
  * @return will return FALSE when no more pending timers.
  */
-static gboolean priv_discovery_tick (gpointer pointer)
+static gboolean priv_discovery_tick_unlocked (gpointer pointer)
 {
   CandidateDiscovery *cand;
   NiceAgent *agent = pointer;
@@ -569,6 +569,18 @@ static gboolean priv_discovery_tick (gpointer pointer)
   return TRUE;
 }
 
+static gboolean priv_discovery_tick (gpointer pointer)
+{
+  NiceAgent *agent = pointer;
+  gboolean ret;
+
+  g_mutex_lock (agent->mutex);
+  ret = priv_discovery_tick_unlocked (pointer);
+  g_mutex_unlock (agent->mutex);
+
+  return ret;
+}
+
 /**
  * Initiates the candidate discovery process by starting
  * the necessary timers.
@@ -583,7 +595,7 @@ void discovery_schedule (NiceAgent *agent)
     
     if (agent->discovery_timer_id == 0) {
       /* step: run first iteration immediately */
-      gboolean res = priv_discovery_tick (agent);
+      gboolean res = priv_discovery_tick_unlocked (agent);
       if (res == TRUE) {
 	agent->discovery_timer_id = 
 	  g_timeout_add (agent->timer_ta, priv_discovery_tick, agent);

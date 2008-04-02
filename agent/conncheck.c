@@ -322,6 +322,7 @@ static gboolean priv_conn_check_tick_stream (Stream *stream, NiceAgent *agent, G
 
 }
 
+
 /**
  * Timer callback that handles initiating and managing connectivity
  * checks (paced by the Ta timer).
@@ -330,7 +331,7 @@ static gboolean priv_conn_check_tick_stream (Stream *stream, NiceAgent *agent, G
  *
  * @return will return FALSE when no more pending timers.
  */
-static gboolean priv_conn_check_tick (gpointer pointer)
+static gboolean priv_conn_check_tick_unlocked (gpointer pointer)
 {
   CandidateCheckPair *pair = NULL;
   NiceAgent *agent = pointer;
@@ -382,6 +383,18 @@ static gboolean priv_conn_check_tick (gpointer pointer)
   return keep_timer_going;
 }
 
+static gboolean priv_conn_check_tick (gpointer pointer)
+{
+  NiceAgent *agent = pointer;
+  gboolean ret;
+
+  g_mutex_lock (agent->mutex);
+  ret = priv_conn_check_tick_unlocked (pointer);
+  g_mutex_unlock (agent->mutex);
+
+  return ret;
+}
+
 /**
  * Timer callback that handles initiating and managing connectivity
  * checks (paced by the Ta timer).
@@ -395,6 +408,8 @@ static gboolean priv_conn_keepalive_tick (gpointer pointer)
   NiceAgent *agent = pointer;
   GSList *i, *j;
   int errors = 0;
+
+  g_mutex_lock (agent->mutex);
 
   /* case 1: session established and media flowing
    *         (ref ICE sect 10 "Keepalives" ID-19)  */
@@ -441,9 +456,11 @@ static gboolean priv_conn_keepalive_tick (gpointer pointer)
     
   if (errors) {
     g_debug ("%s: stopping keepalive timer", G_STRFUNC);
+    g_mutex_unlock (agent->mutex);
     return FALSE;
   }
 
+  g_mutex_unlock (agent->mutex);
   return TRUE;
 }
 
@@ -461,7 +478,7 @@ gboolean conn_check_schedule_next (NiceAgent *agent)
 
   if (res == TRUE) {
     /* step: call once imediately */
-    res = priv_conn_check_tick ((gpointer) agent);
+    res = priv_conn_check_tick_unlocked ((gpointer) agent);
 
     /* step: schedule timer if not running yet */
     if (res && agent->conncheck_timer_id == 0) 

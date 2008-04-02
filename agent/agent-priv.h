@@ -94,6 +94,7 @@ struct _NiceAgent
   guint keepalive_timer_id;       /**< id of keepalive timer */
   guint64 tie_breaker;            /**< tie breaker (ICE sect 5.2
 				     "Determining Role" ID-19) */
+  GMutex * mutex;                 /* Mutex used for thread-safe lib */
   /* XXX: add pointer to internal data struct for ABI-safe extensions */
 };
 

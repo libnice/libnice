@@ -56,6 +56,7 @@ main (void)
   nice_address_init (&addr_local);
   nice_address_init (&addr_remote);
   g_type_init ();
+  g_thread_init (NULL);
 
   nice_udp_fake_socket_factory_init (&factory);
 

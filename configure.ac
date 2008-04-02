@@ -46,6 +46,7 @@ PKG_CHECK_MODULES(OPENSSL, [openssl])
 PKG_CHECK_MODULES(GLIB, [dnl
 	glib-2.0 >= 2.10 dnl
 	gobject-2.0 >= 2.10 dnl
+	gthread-2.0 >= 2.10 dnl
 	])
 
 AC_ARG_WITH(gstreamer, 
