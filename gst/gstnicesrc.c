@@ -195,6 +195,10 @@ gst_nice_src_set_property (
     case PROP_COMPONENT:
       src->component_id = g_value_get_uint (value);
       break;
+
+    default:
+      G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
+      break;
     }
 }
 
@@ -219,6 +223,10 @@ gst_nice_src_get_property (
 
     case PROP_COMPONENT:
       g_value_set_uint (value, src->component_id);
+      break;
+
+    default:
+      G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
       break;
     }
 }
