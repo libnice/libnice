@@ -59,7 +59,10 @@ AS_IF([test "$with_gstreamer" != no], [
 		gstreamer-0.10 >= 0.10.0
 		gstreamer-base-0.10 >= 0.10.0
 		],
-		[with_gstreamer=yes],
+		[
+		with_gstreamer=yes
+		gstplugindir=`$PKG_CONFIG --variable=pluginsdir gstreamer-0.10`
+		],
 		[
 		AS_IF([test "$with_gstreamer" = yes], [
 			AC_MSG_ERROR([GStreamer support was requested but GStreamer libraries are not available])
@@ -68,6 +71,8 @@ AS_IF([test "$with_gstreamer" != no], [
 		with_gstreamer=no
 		])
 ])
+
+AC_SUBST(gstplugindir)
 
 AM_CONDITIONAL(WITH_GSTREAMER, test "$with_gstreamer" = yes)
 

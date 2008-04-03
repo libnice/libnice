@@ -21,7 +21,7 @@ COMMON_LDADD = \
 
 # libgstnice
 
-lib_LTLIBRARIES = libgstnice.la
+gstplugin_LTLIBRARIES = libgstnice.la
 
 libgstnice_la_SOURCES = \
 	gstnicesrc.h \
