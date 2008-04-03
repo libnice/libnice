@@ -153,6 +153,8 @@ static void
 gst_nice_src_init (GstNiceSrc *src, GstNiceSrcClass *g_class)
 {
   gst_base_src_set_live (GST_BASE_SRC (src), TRUE);
+  gst_base_src_set_format (GST_BASE_SRC (src), GST_FORMAT_TIME);
+  gst_base_src_set_do_timestamp (GST_BASE_SRC (src), TRUE);
 }
 
 static GstFlowReturn
