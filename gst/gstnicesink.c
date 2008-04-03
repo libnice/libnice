@@ -58,6 +58,10 @@ gst_nice_sink_get_property (
   guint prop_id,
   GValue *value,
   GParamSpec *pspec);
+static GstStateChangeReturn
+gst_nice_sink_change_state (
+    GstElement * element,
+    GstStateChange transition);
 
 static const GstElementDetails gst_nice_sink_details =
 GST_ELEMENT_DETAILS (
@@ -96,6 +100,7 @@ static void
 gst_nice_sink_class_init (GstNiceSinkClass *klass)
 {
   GstBaseSinkClass *gstbasesink_class;
+  GstElementClass *gstelement_class;
   GObjectClass *gobject_class;
 
   gstbasesink_class = (GstBaseSinkClass *) klass;
@@ -104,6 +109,9 @@ gst_nice_sink_class_init (GstNiceSinkClass *klass)
   gobject_class = (GObjectClass *) klass;
   gobject_class->set_property = gst_nice_sink_set_property;
   gobject_class->get_property = gst_nice_sink_get_property;
+
+  gstelement_class = (GstElementClass *) klass;
+  gstelement_class->change_state = gst_nice_sink_change_state;
 
   g_object_class_install_property (gobject_class, PROP_AGENT,
       g_param_spec_pointer (
@@ -212,3 +220,28 @@ gst_nice_sink_get_property (
     }
 }
 
+static GstStateChangeReturn
+gst_nice_sink_change_state (GstElement * element, GstStateChange transition)
+{
+  GstNiceSink *sink;
+  GstStateChangeReturn ret;
+
+  sink = GST_NICE_SINK (element);
+
+  switch (transition) {
+    case GST_STATE_CHANGE_NULL_TO_READY:
+      if (sink->agent == NULL)
+        {
+          GST_ERROR_OBJECT (element,
+              "Trying to start Nice sink without an agent set");
+          return GST_STATE_CHANGE_FAILURE;
+        }
+      break;
+    default:
+      break;
+  }
+
+  ret = GST_ELEMENT_CLASS (parent_class)->change_state (element, transition);
+
+  return ret;
+}

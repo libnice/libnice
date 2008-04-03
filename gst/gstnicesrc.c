@@ -66,6 +66,11 @@ gst_nice_src_get_property (
   GValue *value,
   GParamSpec *pspec);
 
+static GstStateChangeReturn
+gst_nice_src_change_state (
+    GstElement * element,
+    GstStateChange transition);
+
 static const GstElementDetails gst_nice_src_details =
 GST_ELEMENT_DETAILS (
     "ICE source",
@@ -103,6 +108,7 @@ static void
 gst_nice_src_class_init (GstNiceSrcClass *klass)
 {
   GstBaseSrcClass *gstbasesrc_class;
+  GstElementClass *gstelement_class;
   GObjectClass *gobject_class;
 
   gstbasesrc_class = (GstBaseSrcClass *) klass;
@@ -111,6 +117,9 @@ gst_nice_src_class_init (GstNiceSrcClass *klass)
   gobject_class = (GObjectClass *) klass;
   gobject_class->set_property = gst_nice_src_set_property;
   gobject_class->get_property = gst_nice_src_get_property;
+
+  gstelement_class = (GstElementClass *) klass;
+  gstelement_class->change_state = gst_nice_src_change_state;
 
   g_object_class_install_property (gobject_class, PROP_AGENT,
       g_param_spec_pointer (
@@ -230,4 +239,31 @@ gst_nice_src_get_property (
       break;
     }
 }
+
+static GstStateChangeReturn
+gst_nice_src_change_state (GstElement * element, GstStateChange transition)
+{
+  GstNiceSrc *src;
+  GstStateChangeReturn ret;
+
+  src = GST_NICE_SRC (element);
+
+  switch (transition) {
+    case GST_STATE_CHANGE_NULL_TO_READY:
+      if (src->agent == NULL)
+        {
+          GST_ERROR_OBJECT (element,
+              "Trying to start Nice source without an agent set");
+          return GST_STATE_CHANGE_FAILURE;
+        }
+      break;
+    default:
+      break;
+  }
+
+  ret = GST_ELEMENT_CLASS (parent_class)->change_state (element, transition);
+
+  return ret;
+}
+
 
