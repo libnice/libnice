@@ -58,6 +58,10 @@ gst_nice_sink_get_property (
   guint prop_id,
   GValue *value,
   GParamSpec *pspec);
+
+static void
+gst_nice_sink_dispose (GObject *object);
+
 static GstStateChangeReturn
 gst_nice_sink_change_state (
     GstElement * element,
@@ -109,15 +113,17 @@ gst_nice_sink_class_init (GstNiceSinkClass *klass)
   gobject_class = (GObjectClass *) klass;
   gobject_class->set_property = gst_nice_sink_set_property;
   gobject_class->get_property = gst_nice_sink_get_property;
+  gobject_class->dispose = gst_nice_sink_dispose;
 
   gstelement_class = (GstElementClass *) klass;
   gstelement_class->change_state = gst_nice_sink_change_state;
 
   g_object_class_install_property (gobject_class, PROP_AGENT,
-      g_param_spec_pointer (
+      g_param_spec_object (
          "agent",
          "Agent",
          "The NiceAgent this source is bound to",
+         NICE_TYPE_AGENT,
          G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY));
 
   g_object_class_install_property (gobject_class, PROP_STREAM,
@@ -162,6 +168,19 @@ gst_nice_sink_render (
   return GST_FLOW_OK;
 }
 
+
+static void
+gst_nice_sink_dispose (GObject *object)
+{
+  GstNiceSink *sink = GST_NICE_SINK (object);
+
+  if (sink->agent)
+    g_object_unref (sink->agent);
+  sink->agent = NULL;
+
+  GST_CALL_PARENT (G_OBJECT_CLASS, dispose, (object));
+}
+
 static void
 gst_nice_sink_set_property (
   GObject *object,
@@ -174,7 +193,11 @@ gst_nice_sink_set_property (
   switch (prop_id)
     {
     case PROP_AGENT:
-      sink->agent = g_value_get_pointer (value);
+      if (sink->agent)
+        GST_ERROR_OBJECT (object,
+            "Changing the agent on a nice sink not allowed");
+      else
+        sink->agent = g_value_dup_object (value);
       break;
 
     case PROP_STREAM:
@@ -203,7 +226,7 @@ gst_nice_sink_get_property (
   switch (prop_id)
     {
     case PROP_AGENT:
-      g_value_set_pointer (value, sink->agent);
+      g_value_set_object (value, sink->agent);
       break;
 
     case PROP_STREAM:

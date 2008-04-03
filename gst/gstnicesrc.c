@@ -66,6 +66,10 @@ gst_nice_src_get_property (
   GValue *value,
   GParamSpec *pspec);
 
+
+static void
+gst_nice_src_dispose (GObject *object);
+
 static GstStateChangeReturn
 gst_nice_src_change_state (
     GstElement * element,
@@ -117,15 +121,17 @@ gst_nice_src_class_init (GstNiceSrcClass *klass)
   gobject_class = (GObjectClass *) klass;
   gobject_class->set_property = gst_nice_src_set_property;
   gobject_class->get_property = gst_nice_src_get_property;
+  gobject_class->dispose = gst_nice_src_dispose;
 
   gstelement_class = (GstElementClass *) klass;
   gstelement_class->change_state = gst_nice_src_change_state;
 
   g_object_class_install_property (gobject_class, PROP_AGENT,
-      g_param_spec_pointer (
+      g_param_spec_object (
          "agent",
          "Agent",
          "The NiceAgent this source is bound to",
+         NICE_TYPE_AGENT,
          G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY));
 
   g_object_class_install_property (gobject_class, PROP_STREAM,
@@ -185,6 +191,18 @@ gst_nice_src_create (
 }
 
 static void
+gst_nice_src_dispose (GObject *object)
+{
+  GstNiceSrc *src = GST_NICE_SRC (object);
+
+  if (src->agent)
+    g_object_unref (src->agent);
+  src->agent = NULL;
+
+  GST_CALL_PARENT (G_OBJECT_CLASS, dispose, (object));
+}
+
+static void
 gst_nice_src_set_property (
   GObject *object,
   guint prop_id,
@@ -196,7 +214,11 @@ gst_nice_src_set_property (
   switch (prop_id)
     {
     case PROP_AGENT:
-      src->agent = g_value_get_pointer (value);
+      if (src->agent)
+        GST_ERROR_OBJECT (object,
+            "Changing the agent on a nice src not allowed");
+      else
+        src->agent = g_value_dup_object (value);
       break;
 
     case PROP_STREAM:
@@ -225,7 +247,7 @@ gst_nice_src_get_property (
   switch (prop_id)
     {
     case PROP_AGENT:
-      g_value_set_pointer (value, src->agent);
+      g_value_set_object (value, src->agent);
       break;
 
     case PROP_STREAM:
