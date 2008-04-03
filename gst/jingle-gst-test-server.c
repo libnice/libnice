@@ -80,7 +80,8 @@ handle_signal (
   if (!nice_address_set_from_string (&addr, bits[3]))
     g_assert_not_reached ();
 
-  addr.port = atoi (bits[4]);
+  nice_address_set_port (&addr, atoi (bits[4]));
+
   nice_agent_add_remote_candidate (agent, 1, 1, NICE_CANDIDATE_TYPE_HOST,
       &addr, bits[5], bits[6]);
   return TRUE;
@@ -93,7 +94,7 @@ main (gint argc, gchar *argv[])
   GstElement *pipeline;
   NiceUDPSocketFactory factory;
   NiceUDPSocket sock;
-  NiceAddress addr = {0,};
+  NiceAddress *addr = nice_address_new ();
   NiceAddress recv_addr;
   NiceAddress send_addr;
   guint stream_id = 1;
@@ -103,22 +104,26 @@ main (gint argc, gchar *argv[])
 
   gst_init (&argc, &argv);
 
-  if (!nice_address_set_from_string (&addr, "127.0.0.1"))
+  if (!nice_address_set_from_string (addr, "127.0.0.1"))
     return 1;
 
-  addr.port = 1234;
+  nice_address_set_port (addr, 1234);
   nice_udp_bsd_socket_factory_init (&factory);
 
-  if (!nice_udp_socket_factory_make (&factory, &sock, &addr))
+  if (!nice_udp_socket_factory_make (&factory, &sock, addr))
     return 1;
 
   // set up agent
 
   agent = nice_agent_new (&factory);
   // remove
-  addr.port = 0;
-  nice_agent_add_local_address (agent, &addr);
+  nice_address_set_port (addr, 0);
+
+  nice_agent_add_local_address (agent, addr);
   nice_agent_add_stream (agent, 1);
+
+  nice_address_free (addr);
+  addr = NULL;
 
   // accept incoming handshake
 
@@ -143,7 +148,7 @@ main (gint argc, gchar *argv[])
   // send handshake reply
 
   send_addr = recv_addr;
-  send_addr.port = 1235;
+  nice_address_set_port (&send_addr, 1235);
   nice_udp_socket_send (&sock, &send_addr, 1, buf);
 
   // send codec
@@ -163,7 +168,8 @@ main (gint argc, gchar *argv[])
       g_assert (candidates);
       candidate = candidates->data;
       len = g_snprintf (buf, 1024, "0 0 X1 127.0.0.1 %d %s %s",
-          candidate->addr.port, candidate->username, candidate->password);
+          nice_address_get_port (&candidate->addr),
+          candidate->username, candidate->password);
       nice_udp_socket_send (&sock, &send_addr, len, buf);
       g_slist_free (candidates);
     }
