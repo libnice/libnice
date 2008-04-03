@@ -42,6 +42,9 @@
 
 #include "gstnicesrc.h"
 
+
+#define BUFFER_SIZE (65536)
+
 static GstFlowReturn
 gst_nice_src_create (
   GstBaseSrc *basesrc,
@@ -156,14 +159,14 @@ gst_nice_src_create (
   guint len;
 
   nicesrc = GST_NICE_SRC (basesrc);
-  res = gst_pad_alloc_buffer (basesrc->srcpad, offset, 1024, GST_PAD_CAPS
+  res = gst_pad_alloc_buffer (basesrc->srcpad, offset, BUFFER_SIZE, GST_PAD_CAPS
       (basesrc->srcpad), &buf);
 
   if (res != GST_FLOW_OK)
     return res;
 
   len = nice_agent_recv (nicesrc->agent, nicesrc->stream_id,
-      nicesrc->component_id, 1024, (gchar *) buf->data);
+      nicesrc->component_id, BUFFER_SIZE, (gchar *) buf->data);
   g_assert (len);
   buf->size = len;
   *buffer = buf;
