@@ -37,18 +37,18 @@ libgstnice_la_LDFLAGS = -module -avoid-version
 
 # programs
 
-check_PROGRAMS = \
-	test
+#check_PROGRAMS = \
+#	test
 
-test_LDADD = \
-	$(COMMON_LDADD) \
-	../stun/libstun.la \
-	libgstnice.la
+#test_LDADD = \
+#	$(COMMON_LDADD) \
+#	../stun/libstun.la \
+#	libgstnice.la
 
-TESTS = $(check_PROGRAMS)
+# TESTS = $(check_PROGRAMS)
 
-noinst_PROGRAMS = \
-	jingle-gst-test-server
+#noinst_PROGRAMS = \
+#	jingle-gst-test-server
 
-jingle_gst_test_server_LDADD = libgstnice.la $(COMMON_LDADD)
+#jingle_gst_test_server_LDADD = $(COMMON_LDADD)
 
