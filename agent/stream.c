@@ -119,8 +119,8 @@ stream_all_components_ready (const Stream *stream)
 
   for (i = stream->components; i; i = i->next) {
     Component *component = i->data;
-    if (component && 
-	(component->state == NICE_COMPONENT_STATE_CONNECTED ||
+    if (component &&
+	!(component->state == NICE_COMPONENT_STATE_CONNECTED ||
 	 component->state == NICE_COMPONENT_STATE_READY))
       return FALSE;
   }
