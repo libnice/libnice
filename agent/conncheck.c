@@ -424,10 +424,10 @@ static gboolean priv_conn_keepalive_tick (gpointer pointer)
 	CandidatePair *p = &component->selected_pair;
 	struct sockaddr sockaddr;
 	int res;
-	
+
 	memset (&sockaddr, 0, sizeof (sockaddr));
 	nice_address_copy_to_sockaddr (&p->remote->addr, &sockaddr);
-	
+
 	res = stun_bind_keepalive (p->local->sockptr->fileno,
 				   &sockaddr, sizeof (sockaddr));
 	g_debug ("stun_bind_keepalive for pair %p res %d (%s).", p, res, strerror (res));
@@ -437,7 +437,7 @@ static gboolean priv_conn_keepalive_tick (gpointer pointer)
       component->media_after_tick = FALSE;
     }
   }
-  
+
   /* case 2: connectivity establishment ongoing
    *         (ref ICE sect 4.1.1.4 "Keeping Candidates Alive" ID-19)  */
   for (i = agent->streams; i; i = i->next) {
@@ -445,7 +445,7 @@ static gboolean priv_conn_keepalive_tick (gpointer pointer)
     if (stream->conncheck_state == NICE_CHECKLIST_RUNNING) {
       for (i = stream->conncheck_list; i ; i = i->next) {
 	CandidateCheckPair *p = i->data;
-      
+
 	if (p->traffic_after_tick != TRUE) {
 	  g_debug ("resending STUN-CC to keep the candidate alive (pair %p).", p);
 	  conn_check_send (agent, p);
@@ -454,7 +454,7 @@ static gboolean priv_conn_keepalive_tick (gpointer pointer)
       }
     }
   }
-    
+
   if (errors) {
     g_debug ("%s: stopping keepalive timer", G_STRFUNC);
     goto done;

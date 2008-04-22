@@ -1250,7 +1250,7 @@ nice_agent_recv (
 
 		socket = component_find_udp_socket_by_fd (component, j);
                 g_assert (socket);
-		
+
                 len = _nice_agent_recv (agent, stream, component, socket,
 					buf_len, buf);
 
@@ -1339,11 +1339,11 @@ nice_agent_poll_read (
       for (k = stream->components; k; k = k->next)
 	{
 	  Component *component = k->data;
-	  
+
 	  for (j = component->sockets; j; j = j->next)
 	    {
 	      NiceUDPSocket *sockptr = j->data;
-	      
+
 	      FD_SET (sockptr->fileno, &fds);
 	      max_fd = MAX (sockptr->fileno, max_fd);
 	    }
@@ -1398,7 +1398,7 @@ nice_agent_poll_read (
                   break;
 		}
               }
-	    
+
             if (socket == NULL || stream == NULL || component == NULL)
               break;
 
@@ -1420,9 +1420,9 @@ nice_agent_poll_read (
 
 /**
  * Sends a data payload over a stream component.
- * 
+ *
  * @pre component state MUST be NICE_COMPONENT_STATE_READY,
- * or as a special case, in any state if component was 
+ * or as a special case, in any state if component was
  * in READY state before and was then restarted
  *
  * @return number of bytes sent, or negative error code
