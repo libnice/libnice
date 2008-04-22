@@ -133,17 +133,23 @@ agent_find_component (
   Component **component)
 {
   Stream *s;
+  Component *c;
 
   s = agent_find_stream (agent, stream_id);
 
   if (s == NULL)
     return FALSE;
 
+  c = stream_find_component_by_id (s, component_id);
+
+  if (c == NULL)
+    return FALSE;
+
   if (stream)
     *stream = s;
 
   if (component)
-    *component = stream_find_component_by_id (s, component_id);
+    *component = c;
 
   return TRUE;
 }
@@ -1441,7 +1447,9 @@ nice_agent_send (
 
   g_mutex_lock (agent->mutex);
 
-  agent_find_component (agent, stream_id, component_id, &stream, &component);
+  if (!agent_find_component (agent, stream_id, component_id, &stream, &component)) {
+    goto done;
+  }
 
   if (component->selected_pair.local != NULL)
     {
@@ -1784,8 +1792,7 @@ nice_agent_attach_recv (
   /* attach candidates */
 
   /* step: check that params specify an existing pair */
-  if (!agent_find_component (agent, stream_id, component_id,
-          &stream, &component)) {
+  if (!agent_find_component (agent, stream_id, component_id, &stream, &component)) {
     goto done;
   }
 
