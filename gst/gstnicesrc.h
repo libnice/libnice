@@ -70,6 +70,7 @@ struct _GstNiceSrc
   GstFlowReturn flow_ret;
   GstBuffer *outbuf;
   gboolean unlocked;
+  GSource *idle_source;
 };
 
 typedef struct _GstNiceSrcClass GstNiceSrcClass;

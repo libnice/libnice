@@ -176,6 +176,7 @@ gst_nice_src_init (GstNiceSrc *src, GstNiceSrcClass *g_class)
   src->component_id = 0;
   src->mainloop = g_main_loop_new (g_main_context_new (), FALSE);
   src->unlocked = FALSE;
+  src->idle_source = NULL;
 }
 
 static void
@@ -200,6 +201,19 @@ gst_nice_src_read_callback (NiceAgent *agent,
 }
 
 static gboolean
+gst_nice_src_unlock_idler (gpointer data)
+{
+  GstNiceSrc *nicesrc = GST_NICE_SRC (data);
+
+  g_main_loop_quit (nicesrc->mainloop);
+
+  g_source_unref (nicesrc->idle_source);
+  nicesrc->idle_source = NULL;
+
+  return FALSE;
+}
+
+static gboolean
 gst_nice_src_unlock (GstBaseSrc *src)
 {
   GstNiceSrc *nicesrc = GST_NICE_SRC (src);
@@ -207,9 +221,14 @@ gst_nice_src_unlock (GstBaseSrc *src)
   GST_OBJECT_LOCK (src);
   nicesrc->unlocked = TRUE;
   nicesrc->flow_ret = GST_FLOW_WRONG_STATE;
-  GST_OBJECT_UNLOCK (src);
 
   g_main_loop_quit (nicesrc->mainloop);
+
+  nicesrc->idle_source = g_idle_source_new ();
+  g_source_set_priority (nicesrc->idle_source, G_PRIORITY_HIGH);
+  g_source_set_callback (nicesrc->idle_source, gst_nice_src_unlock_idler, src, NULL);
+  g_source_attach (nicesrc->idle_source, g_main_loop_get_context (nicesrc->mainloop));
+  GST_OBJECT_UNLOCK (src);
 
   return TRUE;
 }
@@ -222,6 +241,8 @@ gst_nice_src_unlock_stop (GstBaseSrc *src)
   GST_OBJECT_LOCK (src);
   nicesrc->unlocked = FALSE;
   nicesrc->flow_ret = GST_FLOW_OK;
+  g_source_destroy (nicesrc->idle_source);
+  nicesrc->idle_source = NULL;
   GST_OBJECT_UNLOCK (src);
 
   return TRUE;
