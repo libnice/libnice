@@ -60,7 +60,7 @@ main (void)
   if (!nice_address_set_from_string (&addr, "127.0.0.1"))
     g_assert_not_reached ();
 
-  agent = nice_agent_new (&factory);
+  agent = nice_agent_new (&factory, NULL, NICE_COMPATIBILITY_ID19);
   nice_agent_add_local_address (agent, &addr);
 
   g_assert (nice_agent_add_stream (agent, 1) == 1);

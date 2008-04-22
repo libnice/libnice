@@ -58,7 +58,7 @@ main (void)
   nice_udp_fake_socket_factory_init (&factory);
 
   /* set up agent */
-  agent = nice_agent_new (&factory);
+  agent = nice_agent_new (&factory, NULL, NICE_COMPATIBILITY_ID19);
   g_assert (nice_address_set_from_string (&addr, "192.168.0.1"));
   nice_agent_add_local_address (agent, &addr);
   nice_agent_add_stream (agent, 1);

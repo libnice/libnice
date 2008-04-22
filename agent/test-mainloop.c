@@ -69,18 +69,23 @@ main (void)
   NiceAgent *agent;
   NiceAddress addr;
   NiceUDPSocketFactory factory;
+  guint stream;
 
   nice_address_init (&addr);
   g_type_init ();
   g_thread_init (NULL);
+  loop = g_main_loop_new (NULL, FALSE);
 
   nice_udp_fake_socket_factory_init (&factory);
-  agent = nice_agent_new (&factory);
+  agent = nice_agent_new (&factory,
+      g_main_loop_get_context (loop), NICE_COMPATIBILITY_ID19);
   nice_address_set_ipv4 (&addr, 0x7f000001);
   nice_agent_add_local_address (agent, &addr);
-  nice_agent_add_stream (agent, 1);
+  stream = nice_agent_add_stream (agent, 1);
+
   // attach to default main context
-  nice_agent_main_context_attach (agent, NULL, recv_cb, GUINT_TO_POINTER (42));
+  nice_agent_attach_recv (agent, stream, NICE_COMPONENT_TYPE_RTP,
+      g_main_loop_get_context (loop), recv_cb, GUINT_TO_POINTER (42));
 
     {
       NiceUDPSocket *sock;
@@ -95,7 +100,6 @@ main (void)
       nice_udp_fake_socket_push_recv (sock, &addr, 6, "\x80hello");
     }
 
-  loop = g_main_loop_new (NULL, FALSE);
   g_main_loop_run (loop);
 
   g_object_unref (agent);

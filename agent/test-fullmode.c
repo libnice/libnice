@@ -225,7 +225,7 @@ static int run_full_test (NiceAgent *lagent, NiceAgent *ragent, NiceAddress *bas
   global_ragent_gathering_done = FALSE;
   global_lagent_ibr_received =
     global_ragent_ibr_received = FALSE;
-  global_lagent_cands = 
+  global_lagent_cands =
     global_ragent_cands = 0;
 
   g_object_set (G_OBJECT (lagent), "controlling-mode", TRUE, NULL);
@@ -237,7 +237,17 @@ static int run_full_test (NiceAgent *lagent, NiceAgent *ragent, NiceAddress *bas
   g_assert (ls_id > 0);
   g_assert (rs_id > 0);
 
-  /* step: run mainloop until local candidates are ready 
+  /* step: attach to mainloop (needed to register the fds) */
+  nice_agent_attach_recv (lagent, ls_id, NICE_COMPONENT_TYPE_RTP,
+      g_main_loop_get_context (global_mainloop), cb_nice_recv, (gpointer)1);
+  nice_agent_attach_recv (lagent, ls_id, NICE_COMPONENT_TYPE_RTCP,
+      g_main_loop_get_context (global_mainloop), cb_nice_recv, (gpointer)1);
+  nice_agent_attach_recv (ragent, rs_id, NICE_COMPONENT_TYPE_RTP,
+      g_main_loop_get_context (global_mainloop), cb_nice_recv, (gpointer)2);
+  nice_agent_attach_recv (ragent, rs_id, NICE_COMPONENT_TYPE_RTCP,
+      g_main_loop_get_context (global_mainloop), cb_nice_recv, (gpointer)2);
+
+  /* step: run mainloop until local candidates are ready
    *       (see timer_cb() above) */
   if (global_lagent_gathering_done != TRUE ||
       global_ragent_gathering_done != TRUE) {
@@ -279,19 +289,19 @@ static int run_full_test (NiceAgent *lagent, NiceAgent *ragent, NiceAddress *bas
   cdes.component_id = NICE_COMPONENT_TYPE_RTP;
   cdes.addr = &raddr;
   nice_agent_set_remote_candidates (lagent, ls_id, NICE_COMPONENT_TYPE_RTP, cands);
-  cdes.addr = &laddr;  
+  cdes.addr = &laddr;
   nice_agent_set_remote_candidates (ragent, rs_id, NICE_COMPONENT_TYPE_RTP, cands);
   cdes.component_id = NICE_COMPONENT_TYPE_RTCP;
   cdes.addr = &raddr_rtcp;
   nice_agent_set_remote_candidates (lagent, ls_id, NICE_COMPONENT_TYPE_RTCP, cands);
-  cdes.addr = &laddr_rtcp;  
+  cdes.addr = &laddr_rtcp;
   nice_agent_set_remote_candidates (ragent, rs_id, NICE_COMPONENT_TYPE_RTCP, cands);
 
   g_slist_free (cands);
 
   g_debug ("test-fullmode: Set properties, next running mainloop until connectivity checks succeed...");
 
-  /* step: run the mainloop until connectivity checks succeed 
+  /* step: run the mainloop until connectivity checks succeed
    *       (see timer_cb() above) */
   g_main_loop_run (global_mainloop);
 
@@ -359,6 +369,16 @@ static int run_full_test_delayed_answer (NiceAgent *lagent, NiceAgent *ragent, N
   rs_id = nice_agent_add_stream (ragent, 2);
   g_assert (ls_id > 0);
   g_assert (rs_id > 0);
+
+  /* step: attach to mainloop (needed to register the fds) */
+  nice_agent_attach_recv (lagent, ls_id, NICE_COMPONENT_TYPE_RTP,
+      g_main_loop_get_context (global_mainloop), cb_nice_recv, (gpointer)1);
+  nice_agent_attach_recv (lagent, ls_id, NICE_COMPONENT_TYPE_RTCP,
+      g_main_loop_get_context (global_mainloop), cb_nice_recv, (gpointer)1);
+  nice_agent_attach_recv (ragent, rs_id, NICE_COMPONENT_TYPE_RTP,
+      g_main_loop_get_context (global_mainloop), cb_nice_recv, (gpointer)2);
+  nice_agent_attach_recv (ragent, rs_id, NICE_COMPONENT_TYPE_RTCP,
+      g_main_loop_get_context (global_mainloop), cb_nice_recv, (gpointer)2);
 
   /* step: run mainloop until local candidates are ready 
    *       (see timer_cb() above) */
@@ -494,6 +514,12 @@ static int run_full_test_wrong_password (NiceAgent *lagent, NiceAgent *ragent, N
   g_assert (ls_id > 0);
   g_assert (rs_id > 0);
 
+  /* step: attach to mainloop (needed to register the fds) */
+  nice_agent_attach_recv (lagent, ls_id, NICE_COMPONENT_TYPE_RTP,
+      g_main_loop_get_context (global_mainloop), cb_nice_recv, (gpointer)1);
+  nice_agent_attach_recv (ragent, rs_id, NICE_COMPONENT_TYPE_RTP,
+      g_main_loop_get_context (global_mainloop), cb_nice_recv, (gpointer)2);
+
   /* step: run mainloop until local candidates are ready 
    *       (see timer_cb() above) */
   if (global_lagent_gathering_done != TRUE ||
@@ -603,6 +629,12 @@ static int run_full_test_control_conflict (NiceAgent *lagent, NiceAgent *ragent,
   g_assert (ls_id > 0);
   g_assert (rs_id > 0);
 
+  /* step: attach to mainloop (needed to register the fds) */
+  nice_agent_attach_recv (lagent, ls_id, NICE_COMPONENT_TYPE_RTP,
+      g_main_loop_get_context (global_mainloop), cb_nice_recv, (gpointer)1);
+  nice_agent_attach_recv (ragent, rs_id, NICE_COMPONENT_TYPE_RTP,
+      g_main_loop_get_context (global_mainloop), cb_nice_recv, (gpointer)2);
+
   /* step: run mainloop until local candidates are ready 
    *       (see timer_cb() above) */
   if (global_lagent_gathering_done != TRUE ||
@@ -695,12 +727,10 @@ int main (void)
   nice_udp_bsd_socket_factory_init (&udpfactory);
 
   /* step: create the agents L and R */
-  lagent = nice_agent_new (&udpfactory);
-  ragent = nice_agent_new (&udpfactory);
-
-  /* step: attach to mainloop (needed to register the fds) */
-  nice_agent_main_context_attach (lagent, g_main_loop_get_context (global_mainloop), cb_nice_recv, (gpointer)1);
-  nice_agent_main_context_attach (ragent, g_main_loop_get_context (global_mainloop), cb_nice_recv, (gpointer)2);
+  lagent = nice_agent_new (&udpfactory,
+      g_main_loop_get_context (global_mainloop), NICE_COMPATIBILITY_ID19);
+  ragent = nice_agent_new (&udpfactory,
+      g_main_loop_get_context (global_mainloop), NICE_COMPATIBILITY_ID19);
 
   /* step: add a timer to catch state changes triggered by signals */
   timer_id = g_timeout_add (30000, timer_cb, NULL);

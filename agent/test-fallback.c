@@ -236,6 +236,16 @@ static int run_fallback_test (NiceAgent *lagent, NiceAgent *ragent, NiceAddress 
   g_assert (ls_id > 0);
   g_assert (rs_id > 0);
 
+  /* step: attach to mainloop (needed to register the fds) */
+  nice_agent_attach_recv (lagent, ls_id, NICE_COMPONENT_TYPE_RTP,
+      g_main_loop_get_context (global_mainloop), cb_nice_recv, (gpointer)1);
+  nice_agent_attach_recv (lagent, ls_id, NICE_COMPONENT_TYPE_RTCP,
+      g_main_loop_get_context (global_mainloop), cb_nice_recv, (gpointer)1);
+  nice_agent_attach_recv (ragent, rs_id, NICE_COMPONENT_TYPE_RTP,
+      g_main_loop_get_context (global_mainloop), cb_nice_recv, (gpointer)2);
+  nice_agent_attach_recv (ragent, rs_id, NICE_COMPONENT_TYPE_RTCP,
+      g_main_loop_get_context (global_mainloop), cb_nice_recv, (gpointer)2);
+
   /* step: run mainloop until local candidates are ready 
    *       (see timer_cb() above) */
   if (global_lagent_gathering_done != TRUE ||
@@ -343,12 +353,11 @@ int main (void)
   nice_udp_bsd_socket_factory_init (&udpfactory);
 
   /* step: create the agents L and R */
-  lagent = nice_agent_new (&udpfactory);
-  ragent = nice_agent_new (&udpfactory);
+  lagent = nice_agent_new (&udpfactory,
+      g_main_loop_get_context (global_mainloop), NICE_COMPATIBILITY_ID19);
+  ragent = nice_agent_new (&udpfactory,
+      g_main_loop_get_context (global_mainloop), NICE_COMPATIBILITY_ID19);
 
-  /* step: attach to mainloop (needed to register the fds) */
-  nice_agent_main_context_attach (lagent, g_main_loop_get_context (global_mainloop), cb_nice_recv, (gpointer)1);
-  nice_agent_main_context_attach (ragent, g_main_loop_get_context (global_mainloop), cb_nice_recv, (gpointer)2);
 
   /* step: add a timer to catch state changes triggered by signals */
   timer_id = g_timeout_add (30000, timer_cb, NULL);
