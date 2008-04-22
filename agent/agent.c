@@ -74,7 +74,8 @@ G_DEFINE_TYPE (NiceAgent, nice_agent, G_TYPE_OBJECT);
 enum
 {
   PROP_SOCKET_FACTORY = 1,
-  PROP_STUN_SERVER, 
+  PROP_COMPATIBILITY,
+  PROP_STUN_SERVER,
   PROP_STUN_SERVER_PORT,
   PROP_TURN_SERVER, 
   PROP_TURN_SERVER_PORT,
@@ -99,8 +100,13 @@ enum
 
 static guint signals[N_SIGNALS];
 
-static gboolean priv_attach_new_stream (NiceAgent *agent, Stream *stream);
-static void priv_deattach_stream (Stream *stream);
+static gboolean priv_attach_stream_component (NiceAgent *agent,
+    Stream *stream,
+    Component *component,
+    GMainContext *ctx,
+    NiceAgentRecvFunc func,
+    gpointer data );
+static void priv_dettach_stream_component (Stream *stream, Component *component);
 
 Stream *agent_find_stream (NiceAgent *agent, guint stream_id)
 {
@@ -177,6 +183,15 @@ nice_agent_class_init (NiceAgentClass *klass)
          "socket-factory",
          "UDP socket factory",
          "The socket factory used to create new UDP sockets",
+         G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY));
+
+  g_object_class_install_property (gobject_class, PROP_COMPATIBILITY,
+      g_param_spec_uint (
+         "compatibility",
+         "ICE specification compatibility",
+         "The compatibility mode for the agent",
+         NICE_COMPATIBILITY_ID19, NICE_COMPATIBILITY_MSN,
+         NICE_COMPATIBILITY_ID19,
          G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY));
 
   g_object_class_install_property (gobject_class, PROP_STUN_SERVER,
@@ -366,6 +381,7 @@ nice_agent_init (NiceAgent *agent)
   agent->discovery_timer_id = 0;
   agent->conncheck_timer_id = 0;
   agent->keepalive_timer_id = 0;
+  agent->compatibility = NICE_COMPATIBILITY_ID19;
 
   agent->rng = nice_rng_new ();
   priv_generate_tie_breaker (agent);
@@ -382,11 +398,17 @@ nice_agent_init (NiceAgent *agent)
  * Returns: the new agent
  **/
 NICEAPI_EXPORT NiceAgent *
-nice_agent_new (NiceUDPSocketFactory *factory)
+nice_agent_new (NiceUDPSocketFactory *factory,
+    GMainContext *ctx, NiceCompatibility compat)
 {
-  return g_object_new (NICE_TYPE_AGENT,
+  NiceAgent *agent = g_object_new (NICE_TYPE_AGENT,
       "socket-factory", factory,
+      "compatibility", compat,
       NULL);
+
+  agent->main_context = ctx;
+
+  return agent;
 }
 
 
@@ -405,6 +427,10 @@ nice_agent_get_property (
     {
     case PROP_SOCKET_FACTORY:
       g_value_set_pointer (value, agent->socket_factory);
+      break;
+
+    case PROP_COMPATIBILITY:
+      g_value_set_uint (value, agent->compatibility);
       break;
 
     case PROP_STUN_SERVER:
@@ -463,6 +489,10 @@ nice_agent_set_property (
     {
     case PROP_SOCKET_FACTORY:
       agent->socket_factory = g_value_get_pointer (value);
+      break;
+
+    case PROP_COMPATIBILITY:
+      agent->compatibility = g_value_get_uint (value);
       break;
 
     case PROP_STUN_SERVER:
@@ -690,11 +720,6 @@ nice_agent_add_stream (
     }
 
 
-  /* step: attach the newly created sockets to the mainloop
-   *       context */
-  if (agent->main_context_set && stream->id > 0)
-    priv_attach_new_stream (agent, stream);
-
   /* note: no async discoveries pending, signal that we are ready */
   if (agent->discovery_unsched_items == 0)
     agent_signal_gathering_done (agent);
@@ -728,6 +753,7 @@ nice_agent_remove_stream (
   /* note that streams/candidates can be in use by other threads */
 
   Stream *stream;
+  GSList *i;
 
   g_mutex_lock (agent->mutex);
   stream = agent_find_stream (agent, stream_id);
@@ -742,7 +768,10 @@ nice_agent_remove_stream (
   discovery_prune_stream (agent, stream_id);
 
   /* remove the stream itself */
-  priv_deattach_stream (stream);
+  for (i = stream->components; i; i = i->next) {
+    priv_dettach_stream_component (stream, (Component *) i->data);
+  }
+
   agent->streams = g_slist_remove (agent->streams, stream);
   stream_free (stream);
 
@@ -943,9 +972,11 @@ nice_agent_get_local_credentials (
   guint stream_id,
   const gchar **ufrag, const gchar **pwd)
 {
-  Stream *stream = agent_find_stream (agent, stream_id);
+  Stream *stream;
 
   g_mutex_lock (agent->mutex);
+
+  stream = agent_find_stream (agent, stream_id);
   if (stream == NULL) {
     g_mutex_unlock (agent->mutex);
     return FALSE;
@@ -989,6 +1020,10 @@ nice_agent_add_remote_candidate (
   const gchar *username,
   const gchar *password)
 {
+
+  /* XXX: to be deprecated */
+
+  g_mutex_lock (agent->mutex);
 
   /* XXX: should we allow use of this method without an 
    *      initial call to nice_agent_set_remote_candidates()
@@ -1037,8 +1072,11 @@ nice_agent_set_remote_candidates (NiceAgent *agent, guint stream_id, guint compo
   const GSList *i; 
   int added = 0;
 
- /* XXX: clean up existing remote candidates, and abort any 
-  *      connectivity checks using these candidates */
+
+  if (agent->discovery_unsched_items > 0)
+    return -1;
+
+  g_mutex_lock (agent->mutex);
 
  for (i = candidates; i && added >= 0; i = i->next) {
    NiceCandidateDesc *d = (NiceCandidateDesc*) i->data;
@@ -1589,6 +1627,8 @@ struct _IOCtx
   Stream *stream;
   Component *component;
   NiceUDPSocket *socket;
+  NiceAgentRecvFunc recv_func;
+  gpointer recv_data;
 };
 
 
@@ -1597,7 +1637,9 @@ io_ctx_new (
   NiceAgent *agent,
   Stream *stream,
   Component *component,
-  NiceUDPSocket *socket)
+  NiceUDPSocket *socket,
+  NiceAgentRecvFunc func,
+  gpointer data)
 {
   IOCtx *ctx;
 
@@ -1607,6 +1649,8 @@ io_ctx_new (
     ctx->stream = stream;
     ctx->component = component;
     ctx->socket = socket;
+    ctx->recv_func = func;
+    ctx->recv_data = data;
   }
   return ctx;
 }
@@ -1643,8 +1687,8 @@ nice_agent_g_source_cb (
 			  MAX_STUN_DATAGRAM_PAYLOAD, buf);
 
   if (len > 0)
-    agent->read_func (agent, stream->id, component->id,
-        len, buf, agent->read_func_data);
+    ctx->recv_func (agent, stream->id, component->id,
+        len, buf, ctx->recv_data);
 
   g_mutex_unlock (agent->mutex);
   return TRUE;
@@ -1654,38 +1698,38 @@ nice_agent_g_source_cb (
  * Attaches socket handles of 'stream' to the main eventloop
  * context.
  *
- * @pre agent->main_context_set == TRUE
  */
-static gboolean priv_attach_new_stream (NiceAgent *agent, Stream *stream)
+static gboolean priv_attach_stream_component (NiceAgent *agent,
+    Stream *stream,
+    Component *component,
+    GMainContext *context,
+    NiceAgentRecvFunc func,
+    gpointer data)
 {
-  GSList *i, *j;
+  GSList *i;
 
-  for (i = stream->components; i; i = i->next) {
-    Component *component = i->data;
+  for (i = component->sockets; i; i = i->next) {
+    NiceUDPSocket *udp_socket = i->data;
+    GIOChannel *io;
+    GSource *source;
+    IOCtx *ctx;
+    GSList *modified_list;
 
-    for (j = component->sockets; j; j = j->next) {
-      NiceUDPSocket *udp_socket = j->data;
-      GIOChannel *io;
-      GSource *source;
-      IOCtx *ctx;
-      GSList *modified_list;
-    
-      io = g_io_channel_unix_new (udp_socket->fileno);
-      /* note: without G_IO_ERR the glib mainloop goes into
-       *       busyloop if errors are encountered */
-      source = g_io_create_watch (io, G_IO_IN | G_IO_ERR);
-      ctx = io_ctx_new (agent, stream, component, udp_socket);
-      g_source_set_callback (source, (GSourceFunc) nice_agent_g_source_cb,
-			     ctx, (GDestroyNotify) io_ctx_free);
-      g_debug ("Attach source %p (stream %u).", source, stream->id);
-      g_source_attach (source, NULL);
-      modified_list = g_slist_append (component->gsources, source);
-      if (!modified_list) {
-	g_source_destroy (source);
-	return FALSE;
-      }
-      component->gsources = modified_list;
+    io = g_io_channel_unix_new (udp_socket->fileno);
+    /* note: without G_IO_ERR the glib mainloop goes into
+     *       busyloop if errors are encountered */
+    source = g_io_create_watch (io, G_IO_IN | G_IO_ERR);
+    ctx = io_ctx_new (agent, stream, component, udp_socket, func, data);
+    g_source_set_callback (source, (GSourceFunc) nice_agent_g_source_cb,
+        ctx, (GDestroyNotify) io_ctx_free);
+    g_debug ("Attach source %p (stream %u).", source, stream->id);
+    g_source_attach (source, context);
+    modified_list = g_slist_append (component->gsources, source);
+    if (!modified_list) {
+      g_source_destroy (source);
+      return FALSE;
     }
+    component->gsources = modified_list;
   }
 
   return TRUE;
@@ -1695,59 +1739,51 @@ static gboolean priv_attach_new_stream (NiceAgent *agent, Stream *stream)
  * Detaches socket handles of 'stream' from the main eventloop
  * context.
  *
- * @pre agent->main_context_set == TRUE
  */
-static void priv_deattach_stream (Stream *stream)
+static void priv_dettach_stream_component (Stream *stream, Component *component)
 {
-  GSList *i, *j;
+  GSList *i;
 
-  for (i = stream->components; i; i = i->next) {
-    Component *component = i->data;
-
-    for (j = component->gsources; j; j = j->next) {
-      GSource *source = j->data;
-      g_debug ("Detach source %p (stream %u).", source, stream->id);
-      g_source_destroy (source);
-    }
-
-    g_slist_free (component->gsources),
-    component->gsources = NULL;
+  for (i = component->gsources; i; i = i->next) {
+    GSource *source = i->data;
+    g_debug ("Detach source %p (stream %u).", source, stream->id);
+    g_source_destroy (source);
   }
+
+  g_slist_free (component->gsources);
+  component->gsources = NULL;
 }
 
 NICEAPI_EXPORT gboolean
-nice_agent_main_context_attach (
+nice_agent_attach_recv (
   NiceAgent *agent,
+  guint stream_id,
+  guint component_id,
   GMainContext *ctx,
   NiceAgentRecvFunc func,
   gpointer data)
 {
-  GSList *i;
+  Component *component = NULL;
+  Stream *stream = NULL;
+  gboolean res = TRUE;
 
   g_mutex_lock (agent->mutex);
-  if (agent->main_context_set) {
+
+  /* attach candidates */
+
+  /* step: check that params specify an existing pair */
+  if (!agent_find_component (agent, stream_id, component_id,
+          &stream, &component) || component == NULL) {
     g_mutex_unlock (agent->mutex);
     return FALSE;
   }
 
-  /* attach candidates */
-
-  for (i = agent->streams; i; i = i->next) {
-    Stream *stream = i->data;
-    gboolean res = priv_attach_new_stream (agent, stream);
-    if (!res) {
-      g_mutex_unlock (agent->mutex);
-      return FALSE;
-    }
-  }
-  
-  agent->main_context = ctx;
-  agent->main_context_set = TRUE;
-  agent->read_func = func;
-  agent->read_func_data = data;
+  priv_dettach_stream_component (stream, component);
+  if (func != NULL)
+    res = priv_attach_stream_component (agent, stream, component, ctx, func, data);
 
   g_mutex_unlock (agent->mutex);
-  return TRUE;
+  return res;
 }
 
 /**

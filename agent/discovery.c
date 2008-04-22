@@ -597,8 +597,10 @@ void discovery_schedule (NiceAgent *agent)
       /* step: run first iteration immediately */
       gboolean res = priv_discovery_tick_unlocked (agent);
       if (res == TRUE) {
-	agent->discovery_timer_id = 
-	  g_timeout_add (agent->timer_ta, priv_discovery_tick, agent);
+        GSource *source = g_timeout_source_new (agent->timer_ta);
+        g_source_set_callback (source, priv_discovery_tick, agent, NULL);
+        agent->discovery_timer_id = g_source_attach (source, agent->main_context);
+        g_source_unref (source);
       }
     }
   }

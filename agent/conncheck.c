@@ -481,14 +481,20 @@ gboolean conn_check_schedule_next (NiceAgent *agent)
     res = priv_conn_check_tick_unlocked ((gpointer) agent);
 
     /* step: schedule timer if not running yet */
-    if (res && agent->conncheck_timer_id == 0) 
-      agent->conncheck_timer_id = 
-	g_timeout_add (agent->timer_ta, priv_conn_check_tick, agent);
+    if (res && agent->conncheck_timer_id == 0) {
+      GSource *source = g_timeout_source_new (agent->timer_ta);
+      g_source_set_callback (source, priv_conn_check_tick, agent, NULL);
+      agent->conncheck_timer_id = g_source_attach (source, agent->main_context);
+      g_source_unref (source);
+    }
 
     /* step: also start the keepalive timer */
-    if (agent->keepalive_timer_id == 0) 
-      agent->keepalive_timer_id = 
-	g_timeout_add (NICE_AGENT_TIMER_TR_DEFAULT, priv_conn_keepalive_tick, agent);
+    if (agent->keepalive_timer_id == 0) {
+      GSource *source = g_timeout_source_new (NICE_AGENT_TIMER_TR_DEFAULT);
+      g_source_set_callback (source, priv_conn_keepalive_tick, agent, NULL);
+      agent->keepalive_timer_id = g_source_attach (source, agent->main_context);
+      g_source_unref (source);
+    }
 
   }
 
@@ -950,13 +956,17 @@ static gboolean priv_create_check_username (NiceAgent *agent, CandidateCheckPair
   if (pair &&
       pair->remote && pair->remote->username &&
       pair->local && pair->local->username) {
-    g_snprintf (dest, dest_len, "%s:%s", pair->remote->username, pair->local->username);
+    g_snprintf (dest, dest_len, "%s%s%s", pair->remote->username,
+        agent->compatibility == NICE_COMPATIBILITY_ID19 ? ":" : "",
+        pair->local->username);
     return TRUE;
   }
 
   stream = agent_find_stream (agent, pair->stream_id);
   if (stream) {
-    g_snprintf (dest, dest_len, "%s:%s", stream->remote_ufrag, stream->local_ufrag);
+    g_snprintf (dest, dest_len, "%s%s%s", stream->remote_ufrag,
+        agent->compatibility == NICE_COMPATIBILITY_ID19 ? ":" : "",
+        stream->local_ufrag);
     return TRUE;
   }
 

@@ -96,6 +96,13 @@ typedef enum
   NICE_COMPONENT_TYPE_RTCP = 2
 } NiceComponentType;
 
+typedef enum
+{
+  NICE_COMPATIBILITY_ID19 = 1,
+  NICE_COMPATIBILITY_GOOGLE = 2,
+  NICE_COMPATIBILITY_MSN = 3
+} NiceCompatibility;
+
 typedef struct _NiceCandidateDesc NiceCandidateDesc;
 
 struct _NiceCandidateDesc {
@@ -125,7 +132,8 @@ struct _NiceAgentClass
 GType nice_agent_get_type (void);
 
 NiceAgent *
-nice_agent_new (NiceUDPSocketFactory *factory);
+nice_agent_new (NiceUDPSocketFactory *factory,
+    GMainContext *ctx, NiceCompatibility compat);
 
 gboolean
 nice_agent_add_local_address (NiceAgent *agent, NiceAddress *addr);
@@ -218,8 +226,10 @@ nice_agent_restart (
   NiceAgent *agent);
 
 gboolean
-nice_agent_main_context_attach (
+nice_agent_attach_recv (
   NiceAgent *agent,
+  guint stream_id,
+  guint component_id,
   GMainContext *ctx,
   NiceAgentRecvFunc func,
   gpointer data);

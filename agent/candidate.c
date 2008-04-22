@@ -94,6 +94,21 @@ nice_candidate_jingle_priority (NiceCandidate *candidate)
   return 0;
 }
 
+NICEAPI_EXPORT gfloat
+nice_candidate_msn_priority (NiceCandidate *candidate)
+{
+  switch (candidate->type)
+    {
+    case NICE_CANDIDATE_TYPE_HOST:             return 0.830;
+    case NICE_CANDIDATE_TYPE_SERVER_REFLEXIVE: return 0.550;
+    case NICE_CANDIDATE_TYPE_PEER_REFLEXIVE:   return 0.550;
+    case NICE_CANDIDATE_TYPE_RELAYED:          return 0.450;
+    }
+
+  /* appease GCC */
+  return 0;
+}
+
 
 /**
  * ICE 4.1.2.1. "Recommended Formula" (ID-19):

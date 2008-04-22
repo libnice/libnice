@@ -91,6 +91,9 @@ nice_candidate_free (NiceCandidate *candidate);
 gfloat
 nice_candidate_jingle_priority (NiceCandidate *candidate);
 
+gfloat
+nice_candidate_msn_priority (NiceCandidate *candidate);
+
 guint32
 nice_candidate_ice_priority_full (guint type_pref, guint local_pref, guint component_id);
 

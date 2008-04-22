@@ -14,11 +14,11 @@ nice_address_to_string
 nice_agent_add_local_address
 nice_agent_add_remote_candidate
 nice_agent_add_stream
+nice_agent_attach_recv
 nice_agent_get_local_candidates
 nice_agent_get_local_credentials
 nice_agent_get_remote_candidates
 nice_agent_get_type
-nice_agent_main_context_attach
 nice_agent_new
 nice_agent_poll_read
 nice_agent_recv

@@ -80,10 +80,7 @@ struct _NiceAgent
   GSList *local_addresses;        /**< list of NiceAddresses for local
 				     interfaces */
   GSList *streams;                /**< list of Stream objects */
-  gboolean main_context_set;      /**< is the main context set */
   GMainContext *main_context;     /**< main context pointer */
-  NiceAgentRecvFunc read_func;    /**< callback for media deliver */
-  gpointer read_func_data;        /**< media delivery callback context */
   guint next_candidate_id;        /**< id of next created candidate */
   guint next_stream_id;           /**< id of next created candidate */
   NiceRNG *rng;                   /**< random number generator */
@@ -95,6 +92,7 @@ struct _NiceAgent
   guint64 tie_breaker;            /**< tie breaker (ICE sect 5.2
 				     "Determining Role" ID-19) */
   GMutex * mutex;                 /* Mutex used for thread-safe lib */
+  NiceCompatibility compatibility; /* property: Compatibility mode */
   /* XXX: add pointer to internal data struct for ABI-safe extensions */
 };
 
