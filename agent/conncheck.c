@@ -408,6 +408,7 @@ static gboolean priv_conn_keepalive_tick (gpointer pointer)
   NiceAgent *agent = pointer;
   GSList *i, *j;
   int errors = 0;
+  gboolean ret = FALSE;
 
   g_mutex_lock (agent->mutex);
 
@@ -456,12 +457,14 @@ static gboolean priv_conn_keepalive_tick (gpointer pointer)
     
   if (errors) {
     g_debug ("%s: stopping keepalive timer", G_STRFUNC);
-    g_mutex_unlock (agent->mutex);
-    return FALSE;
+    goto done;
   }
 
+  ret = TRUE;
+
+ done:
   g_mutex_unlock (agent->mutex);
-  return TRUE;
+  return ret;
 }
 
 /**
