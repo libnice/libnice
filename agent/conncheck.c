@@ -485,18 +485,12 @@ gboolean conn_check_schedule_next (NiceAgent *agent)
 
     /* step: schedule timer if not running yet */
     if (res && agent->conncheck_timer_id == 0) {
-      GSource *source = g_timeout_source_new (agent->timer_ta);
-      g_source_set_callback (source, priv_conn_check_tick, agent, NULL);
-      agent->conncheck_timer_id = g_source_attach (source, agent->main_context);
-      g_source_unref (source);
+      agent->conncheck_timer_id = agent_timeout_add_with_context (agent, agent->timer_ta, priv_conn_check_tick, agent);
     }
 
     /* step: also start the keepalive timer */
     if (agent->keepalive_timer_id == 0) {
-      GSource *source = g_timeout_source_new (NICE_AGENT_TIMER_TR_DEFAULT);
-      g_source_set_callback (source, priv_conn_keepalive_tick, agent, NULL);
-      agent->keepalive_timer_id = g_source_attach (source, agent->main_context);
-      g_source_unref (source);
+      agent->keepalive_timer_id = agent_timeout_add_with_context (agent, NICE_AGENT_TIMER_TR_DEFAULT, priv_conn_keepalive_tick, agent);
     }
 
   }

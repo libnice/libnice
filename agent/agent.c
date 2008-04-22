@@ -1853,3 +1853,21 @@ nice_agent_set_selected_pair (
   g_mutex_unlock (agent->mutex);
   return ret;
 }
+
+
+guint agent_timeout_add_with_context (NiceAgent *agent, guint interval,
+    GSourceFunc function, gpointer data)
+{
+  GSource *source;
+  guint id;
+
+  g_return_val_if_fail (function != NULL, 0);
+
+  source = g_timeout_source_new (interval);
+
+  g_source_set_callback (source, function, data, NULL);
+  id = g_source_attach (source, agent->main_context);
+  g_source_unref (source);
+
+  return id;
+}

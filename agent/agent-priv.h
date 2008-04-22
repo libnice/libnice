@@ -131,4 +131,6 @@ void agent_signal_initial_binding_request_received (NiceAgent *agent, Stream *st
 
 guint64 agent_candidate_pair_priority (NiceAgent *agent, NiceCandidate *local, NiceCandidate *remote);
 
+guint agent_timeout_add_with_context (NiceAgent *agent, guint interval, GSourceFunc function, gpointer data);
+
 #endif /*_NICE_AGENT_PRIV_H */
