@@ -106,7 +106,7 @@ static gboolean priv_attach_stream_component (NiceAgent *agent,
     GMainContext *ctx,
     NiceAgentRecvFunc func,
     gpointer data );
-static void priv_dettach_stream_component (Stream *stream, Component *component);
+static void priv_detach_stream_component (Stream *stream, Component *component);
 
 Stream *agent_find_stream (NiceAgent *agent, guint stream_id)
 {
@@ -776,7 +776,7 @@ nice_agent_remove_stream (
 
   /* remove the stream itself */
   for (i = stream->components; i; i = i->next) {
-    priv_dettach_stream_component (stream, (Component *) i->data);
+    priv_detach_stream_component (stream, (Component *) i->data);
   }
 
   agent->streams = g_slist_remove (agent->streams, stream);
@@ -1760,7 +1760,7 @@ static gboolean priv_attach_stream_component (NiceAgent *agent,
  * context.
  *
  */
-static void priv_dettach_stream_component (Stream *stream, Component *component)
+static void priv_detach_stream_component (Stream *stream, Component *component)
 {
   GSList *i;
 
@@ -1796,7 +1796,7 @@ nice_agent_attach_recv (
     goto done;
   }
 
-  priv_dettach_stream_component (stream, component);
+  priv_detach_stream_component (stream, component);
   ret = TRUE;
   if (func != NULL)
     ret = priv_attach_stream_component (agent, stream, component, ctx, func, data);
