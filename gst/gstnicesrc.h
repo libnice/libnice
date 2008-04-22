@@ -69,6 +69,7 @@ struct _GstNiceSrc
   guint64 offset;
   GstFlowReturn flow_ret;
   GstBuffer *outbuf;
+  gboolean unlocked;
 };
 
 typedef struct _GstNiceSrcClass GstNiceSrcClass;

@@ -52,6 +52,14 @@ gst_nice_src_create (
   guint length,
   GstBuffer **buffer);
 
+static gboolean
+gst_nice_src_unlock (
+    GstBaseSrc *basesrc);
+
+static gboolean
+gst_nice_src_unlock_stop (
+    GstBaseSrc *basesrc);
+
 static void
 gst_nice_src_set_property (
   GObject *object,
@@ -117,6 +125,8 @@ gst_nice_src_class_init (GstNiceSrcClass *klass)
 
   gstbasesrc_class = (GstBaseSrcClass *) klass;
   gstbasesrc_class->create = GST_DEBUG_FUNCPTR (gst_nice_src_create);
+  gstbasesrc_class->unlock = GST_DEBUG_FUNCPTR (gst_nice_src_unlock);
+  gstbasesrc_class->unlock_stop = GST_DEBUG_FUNCPTR (gst_nice_src_unlock_stop);
 
   gobject_class = (GObjectClass *) klass;
   gobject_class->set_property = gst_nice_src_set_property;
@@ -165,6 +175,7 @@ gst_nice_src_init (GstNiceSrc *src, GstNiceSrcClass *g_class)
   src->stream_id = 0;
   src->component_id = 0;
   src->mainloop = g_main_loop_new (g_main_context_new (), FALSE);
+  src->unlocked = FALSE;
 }
 
 static void
@@ -188,6 +199,33 @@ gst_nice_src_read_callback (NiceAgent *agent,
   g_main_loop_quit (nicesrc->mainloop);
 }
 
+static gboolean
+gst_nice_src_unlock (GstBaseSrc *src)
+{
+  GstNiceSrc *nicesrc = GST_NICE_SRC (src);
+
+  GST_OBJECT_LOCK (src);
+  nicesrc->unlocked = TRUE;
+  nicesrc->flow_ret = GST_FLOW_WRONG_STATE;
+  GST_OBJECT_UNLOCK (src);
+
+  g_main_loop_quit (nicesrc->mainloop);
+
+  return TRUE;
+}
+
+static gboolean
+gst_nice_src_unlock_stop (GstBaseSrc *src)
+{
+  GstNiceSrc *nicesrc = GST_NICE_SRC (src);
+
+  GST_OBJECT_LOCK (src);
+  nicesrc->unlocked = FALSE;
+  nicesrc->flow_ret = GST_FLOW_OK;
+  GST_OBJECT_UNLOCK (src);
+
+  return TRUE;
+}
 
 static GstFlowReturn
 gst_nice_src_create (
@@ -196,12 +234,17 @@ gst_nice_src_create (
   guint length,
   GstBuffer **buffer)
 {
-  GstNiceSrc *nicesrc;
-
-  nicesrc = GST_NICE_SRC (basesrc);
+  GstNiceSrc *nicesrc = GST_NICE_SRC (basesrc);
 
   nicesrc->outbuf = NULL;
   nicesrc->offset = offset;
+
+  GST_OBJECT_LOCK (basesrc);
+  if (nicesrc->unlocked) {
+    GST_OBJECT_UNLOCK (basesrc);
+    return nicesrc->flow_ret;
+  }
+  GST_OBJECT_UNLOCK (basesrc);
 
   g_main_loop_run (nicesrc->mainloop);
 
