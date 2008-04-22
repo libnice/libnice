@@ -71,7 +71,7 @@ struct _CandidateCheckPair
   NiceCheckState state;
   gboolean nominated;
   gboolean controlling;
-  guint64 priority; 
+  guint64 priority;
   GTimeVal next_tick;       /* next tick timestamp */
   gboolean traffic_after_tick;
   stun_bind_t *stun_ctx;

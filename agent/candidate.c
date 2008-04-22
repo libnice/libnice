@@ -139,13 +139,13 @@ nice_candidate_ice_priority (const NiceCandidate *candidate)
 
   switch (candidate->type)
     {
-    case NICE_CANDIDATE_TYPE_HOST:             
+    case NICE_CANDIDATE_TYPE_HOST:
       type_preference = NICE_CANDIDATE_TYPE_PREF_HOST; break;
-    case NICE_CANDIDATE_TYPE_PEER_REFLEXIVE:   
+    case NICE_CANDIDATE_TYPE_PEER_REFLEXIVE:
       type_preference = NICE_CANDIDATE_TYPE_PREF_PEER_REFLEXIVE; break;
     case NICE_CANDIDATE_TYPE_SERVER_REFLEXIVE:
       type_preference = NICE_CANDIDATE_TYPE_PREF_SERVER_REFLEXIVE; break;
-    case NICE_CANDIDATE_TYPE_RELAYED:         
+    case NICE_CANDIDATE_TYPE_RELAYED:
       type_preference = NICE_CANDIDATE_TYPE_PREF_RELAYED; break;
     }
 
@@ -153,8 +153,8 @@ nice_candidate_ice_priority (const NiceCandidate *candidate)
   return nice_candidate_ice_priority_full (type_preference, 1, candidate->component_id);
 }
 
-/** 
- * Calculates the pair priority as specified in ICE 
+/**
+ * Calculates the pair priority as specified in ICE
  * sect 5.7.2. "Computing Pair Priority and Ordering Pairs" (ID-19).
  */
 NICEAPI_EXPORT guint64

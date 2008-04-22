@@ -66,6 +66,7 @@ typedef enum
   NICE_CHECKLIST_FAILED
 } NiceCheckListState;
 
+
 typedef struct _Stream Stream;
 
 struct _Stream

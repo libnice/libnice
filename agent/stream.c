@@ -104,7 +104,7 @@ stream_find_component_by_id (const Stream *stream, guint id)
     if (component && component->id == id)
       return component;
   }
-  
+
   return NULL;
 }
 
@@ -124,7 +124,7 @@ stream_all_components_ready (const Stream *stream)
 	 component->state == NICE_COMPONENT_STATE_READY))
       return FALSE;
   }
-  
+
   return TRUE;
 }
 
@@ -142,7 +142,7 @@ stream_find_component_by_fd (const Stream *stream, guint fd)
 
   for (i = stream->components; i; i = i->next) {
     Component *component = i->data;
-    NiceUDPSocket *socket = 
+    NiceUDPSocket *socket =
       component_find_udp_socket_by_fd (component, fd);
     if (socket)
       return component;

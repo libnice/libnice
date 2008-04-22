@@ -85,9 +85,9 @@ typedef enum
   NICE_COMPONENT_STATE_CONNECTED,    /* at least one working candidate pair */
   NICE_COMPONENT_STATE_READY,        /* ICE concluded, candidate pair
 					selection is now final */
-  NICE_COMPONENT_STATE_FAILED,       /* connectivity checks have been completed, 
+  NICE_COMPONENT_STATE_FAILED,       /* connectivity checks have been completed,
 					but connectivity was not established */
-  NICE_COMPONENT_STATE_LAST           
+  NICE_COMPONENT_STATE_LAST
 } NiceComponentState;
 
 typedef enum
@@ -128,6 +128,7 @@ struct _NiceAgentClass
 {
   GObjectClass parent_class;
 };
+
 
 GType nice_agent_get_type (void);
 

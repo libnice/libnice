@@ -77,7 +77,7 @@ enum
   PROP_COMPATIBILITY,
   PROP_STUN_SERVER,
   PROP_STUN_SERVER_PORT,
-  PROP_TURN_SERVER, 
+  PROP_TURN_SERVER,
   PROP_TURN_SERVER_PORT,
   PROP_CONTROLLING_MODE,
   PROP_FULL_MODE,
@@ -177,7 +177,7 @@ nice_agent_class_init (NiceAgentClass *klass)
   gobject_class->dispose = nice_agent_dispose;
 
   /* install properties */
-  
+
   g_object_class_install_property (gobject_class, PROP_SOCKET_FACTORY,
       g_param_spec_pointer (
          "socket-factory",
@@ -1683,7 +1683,7 @@ nice_agent_g_source_cb (
   /* note: dear compiler, these are for you: */
   (void)source;
 
-  len = _nice_agent_recv (agent, stream, component, ctx->socket, 
+  len = _nice_agent_recv (agent, stream, component, ctx->socket,
 			  MAX_STUN_DATAGRAM_PAYLOAD, buf);
 
   if (len > 0)
@@ -1790,10 +1790,10 @@ nice_agent_attach_recv (
  * Sets the selected candidate pair for media transmission
  * for given stream component. Calling this function will
  * disable all further ICE processing (connection check,
- * state machine updates, etc). Note that keepalives will 
+ * state machine updates, etc). Note that keepalives will
  * continue to be sent.
  */
-NICEAPI_EXPORT gboolean 
+NICEAPI_EXPORT gboolean
 nice_agent_set_selected_pair (
   NiceAgent *agent,
   guint stream_id,
