@@ -161,7 +161,33 @@ gst_nice_src_init (GstNiceSrc *src, GstNiceSrcClass *g_class)
   gst_base_src_set_live (GST_BASE_SRC (src), TRUE);
   gst_base_src_set_format (GST_BASE_SRC (src), GST_FORMAT_TIME);
   gst_base_src_set_do_timestamp (GST_BASE_SRC (src), TRUE);
+  src->agent = NULL;
+  src->stream_id = 0;
+  src->component_id = 0;
+  src->mainloop = g_main_loop_new (g_main_context_new (), FALSE);
 }
+
+static void
+gst_nice_src_read_callback (NiceAgent *agent,
+    guint stream_id,
+    guint component_id,
+    guint len,
+    gchar *buf,
+    gpointer data)
+{
+  GstBaseSrc *basesrc = GST_BASE_SRC (data);
+  GstNiceSrc *nicesrc = GST_NICE_SRC (basesrc);
+
+  nicesrc->flow_ret = gst_pad_alloc_buffer (basesrc->srcpad, nicesrc->offset,
+      len, GST_PAD_CAPS (basesrc->srcpad), &nicesrc->outbuf);
+  if (nicesrc->flow_ret == GST_FLOW_OK) {
+    memcpy (nicesrc->outbuf->data, buf, len);
+    nicesrc->outbuf->size = len;
+  }
+
+  g_main_loop_quit (nicesrc->mainloop);
+}
+
 
 static GstFlowReturn
 gst_nice_src_create (
@@ -170,24 +196,20 @@ gst_nice_src_create (
   guint length,
   GstBuffer **buffer)
 {
-  GstFlowReturn res;
-  GstBuffer *buf;
   GstNiceSrc *nicesrc;
-  guint len;
 
   nicesrc = GST_NICE_SRC (basesrc);
-  res = gst_pad_alloc_buffer (basesrc->srcpad, offset, BUFFER_SIZE, GST_PAD_CAPS
-      (basesrc->srcpad), &buf);
 
-  if (res != GST_FLOW_OK)
-    return res;
+  nicesrc->outbuf = NULL;
+  nicesrc->offset = offset;
 
-  len = nice_agent_recv (nicesrc->agent, nicesrc->stream_id,
-      nicesrc->component_id, BUFFER_SIZE, (gchar *) buf->data);
-  g_assert (len);
-  buf->size = len;
-  *buffer = buf;
-  return GST_FLOW_OK;
+  g_main_loop_run (nicesrc->mainloop);
+
+  if (nicesrc->outbuf) {
+    *buffer = nicesrc->outbuf;
+  }
+
+  return nicesrc->flow_ret;
 }
 
 static void
@@ -274,12 +296,22 @@ gst_nice_src_change_state (GstElement * element, GstStateChange transition)
 
   switch (transition) {
     case GST_STATE_CHANGE_NULL_TO_READY:
-      if (src->agent == NULL)
+      if (src->agent == NULL || src->stream_id == 0 || src->component_id == 0)
         {
           GST_ERROR_OBJECT (element,
               "Trying to start Nice source without an agent set");
           return GST_STATE_CHANGE_FAILURE;
         }
+      else
+        {
+          nice_agent_attach_recv (src->agent, src->stream_id, src->component_id,
+              g_main_loop_get_context (src->mainloop),
+              gst_nice_src_read_callback, (gpointer) src);
+        }
+      break;
+    case GST_STATE_CHANGE_READY_TO_NULL:
+      nice_agent_attach_recv (src->agent, src->stream_id, src->component_id,
+          g_main_loop_get_context (src->mainloop), NULL, NULL);
       break;
     default:
       break;
