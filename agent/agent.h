@@ -98,9 +98,10 @@ typedef enum
 
 typedef enum
 {
-  NICE_COMPATIBILITY_ID19 = 1,
-  NICE_COMPATIBILITY_GOOGLE = 2,
-  NICE_COMPATIBILITY_MSN = 3
+  NICE_COMPATIBILITY_ID19,
+  NICE_COMPATIBILITY_GOOGLE,
+  NICE_COMPATIBILITY_MSN,
+  NICE_COMPATIBILITY_LAST
 } NiceCompatibility;
 
 typedef struct _NiceCandidateDesc NiceCandidateDesc;

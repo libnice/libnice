@@ -196,7 +196,7 @@ nice_agent_class_init (NiceAgentClass *klass)
          "compatibility",
          "ICE specification compatibility",
          "The compatibility mode for the agent",
-         NICE_COMPATIBILITY_ID19, NICE_COMPATIBILITY_MSN,
+         NICE_COMPATIBILITY_ID19, NICE_COMPATIBILITY_LAST-1,
          NICE_COMPATIBILITY_ID19,
          G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY));
 
