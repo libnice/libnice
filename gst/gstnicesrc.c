@@ -220,7 +220,6 @@ gst_nice_src_unlock (GstBaseSrc *src)
 
   GST_OBJECT_LOCK (src);
   nicesrc->unlocked = TRUE;
-  nicesrc->flow_ret = GST_FLOW_WRONG_STATE;
 
   g_main_loop_quit (nicesrc->mainloop);
 
@@ -240,7 +239,6 @@ gst_nice_src_unlock_stop (GstBaseSrc *src)
 
   GST_OBJECT_LOCK (src);
   nicesrc->unlocked = FALSE;
-  nicesrc->flow_ret = GST_FLOW_OK;
   g_source_destroy (nicesrc->idle_source);
   nicesrc->idle_source = NULL;
   GST_OBJECT_UNLOCK (src);
@@ -263,7 +261,7 @@ gst_nice_src_create (
   GST_OBJECT_LOCK (basesrc);
   if (nicesrc->unlocked) {
     GST_OBJECT_UNLOCK (basesrc);
-    return nicesrc->flow_ret;
+    return GST_FLOW_WRONG_STATE;
   }
   GST_OBJECT_UNLOCK (basesrc);
 
@@ -271,9 +269,11 @@ gst_nice_src_create (
 
   if (nicesrc->outbuf) {
     *buffer = nicesrc->outbuf;
+    return nicesrc->flow_ret;
+  } else {
+    return GST_FLOW_WRONG_STATE;
   }
 
-  return nicesrc->flow_ret;
 }
 
 static void
