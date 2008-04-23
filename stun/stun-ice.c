@@ -80,7 +80,7 @@ stun_conncheck_reply (uint8_t *restrict buf, size_t *restrict plen,
                       const uint8_t *msg,
                       const struct sockaddr *restrict src, socklen_t srclen,
                       const char *local_ufrag, const char *pass,
-                      bool *restrict control, uint64_t tie)
+                      bool *restrict control, uint64_t tie, uint32_t compat)
 {
   size_t len = *plen;
   uint64_t q;
@@ -122,14 +122,14 @@ stun_conncheck_reply (uint8_t *restrict buf, size_t *restrict plen,
   /* Short term credentials checking */
   val = 0;
   if (!stun_present (msg, STUN_MESSAGE_INTEGRITY)
-   || !stun_present (msg, STUN_USERNAME))
+      || (compat != 1 && !stun_present (msg, STUN_USERNAME)))
   {
     DBG (" Missing USERNAME or MESSAGE-INTEGRITY.\n");
     val = STUN_BAD_REQUEST;
   }
   else
-  if (stun_verify_username (msg, local_ufrag)
-   || stun_verify_password (msg, pass))
+    if (stun_verify_username (msg, local_ufrag, compat)
+      || (compat != 1 && stun_verify_password (msg, pass)))
   {
     DBG (" Integrity check failed.\n");
     val = STUN_UNAUTHORIZED;

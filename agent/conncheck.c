@@ -1565,7 +1565,7 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, Stream *stream, Compo
 
   res = stun_conncheck_reply (rbuf, &rbuf_len, (const uint8_t*)buf, &sockaddr, sizeof (sockaddr), 
                               stream->local_ufrag, stream->local_password,
-                              &control, agent->tie_breaker);
+                              &control, agent->tie_breaker, agent->compatibility);
 
   if (res == EACCES)
     priv_check_for_role_conflict (agent, control);

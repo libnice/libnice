@@ -496,10 +496,12 @@ int stun_verify_password (const uint8_t *msg, const char *pw)
  * the local username fragment, EPERM if the username was incorrect,
  * and ENOENT if there was no USERNAME attribute
  */
-int stun_verify_username (const uint8_t *msg, const char *local_ufrag)
+int stun_verify_username (const uint8_t *msg, const char *local_ufrag, uint32_t compat)
 {
   const char *username, *n;
   uint16_t username_len;
+  uint16_t local_username_len;
+
   assert (msg != NULL);
   username = (const char *)stun_find (msg, STUN_USERNAME, &username_len);
   if (username == NULL)
@@ -507,15 +509,20 @@ int stun_verify_username (const uint8_t *msg, const char *local_ufrag)
     DBG ("STUN auth error: no USERNAME attribute!\n");
     return ENOENT;
   }
-  n = strchr (username, ':');
-  if (n == NULL)
-  {
-    DBG ("STUN auth error: no colon in USERNAME!\n");
-    return EPERM;
+  if (compat == 1) {
+    local_username_len = strlen (local_ufrag);
+  } else {
+    n = strchr (username, ':');
+    if (n == NULL)
+    {
+      DBG ("STUN auth error: no colon in USERNAME!\n");
+      return EPERM;
+    }
+    local_username_len = n - username;
   }
-  if (strncmp(username, local_ufrag, n - username) != 0)
+  if (strncmp(username, local_ufrag, local_username_len) != 0)
   {
-    DBG ("STUN auth error: local ufrag doesn't match (uname:%s,ufrag:%s,msg:%s)!\n", username,local_ufrag, n);
+    DBG ("STUN auth error: local ufrag doesn't match (uname:%s,ufrag:%s)!\n", username,local_ufrag);
     return EPERM;
   }
   

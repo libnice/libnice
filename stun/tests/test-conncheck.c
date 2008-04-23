@@ -82,7 +82,7 @@ int main (void)
 
   len = sizeof (resp);
   val = stun_conncheck_reply (resp, &len, req, (struct sockaddr *)&ip4,
-                              sizeof (ip4), ufrag, pass, &control, tie);
+                              sizeof (ip4), ufrag, pass, &control, tie, 0);
   assert (val == EINVAL);
   assert (len == 0);
 
@@ -94,7 +94,7 @@ int main (void)
 
   len = sizeof (resp);
   val = stun_conncheck_reply (resp, &len, req, (struct sockaddr *)&ip4,
-                              sizeof (ip4), ufrag, pass, &control, tie);
+                              sizeof (ip4), ufrag, pass, &control, tie, 0);
   assert (val == EPROTO);
   assert (len > 0);
 
@@ -109,7 +109,7 @@ int main (void)
 
   len = sizeof (resp);
   val = stun_conncheck_reply (resp, &len, req, (struct sockaddr *)&ip4,
-                              sizeof (ip4), username, pass, &control, tie);
+                              sizeof (ip4), username, pass, &control, tie, 0);
   assert (val == EPROTO);
   assert (len > 0);
 
@@ -121,7 +121,7 @@ int main (void)
 
   len = sizeof (resp);
   val = stun_conncheck_reply (resp, &len, req, (struct sockaddr *)&ip4,
-                              sizeof (ip4), ufrag, pass, &control, tie);
+                              sizeof (ip4), ufrag, pass, &control, tie, 0);
   assert (val == EPERM);
   assert (len > 0);
   assert (stun_match_messages (resp, req, NULL, 0, &code)
@@ -135,7 +135,7 @@ int main (void)
 
   len = sizeof (resp);
   val = stun_conncheck_reply (resp, &len, req, (struct sockaddr *)&ip4,
-                              sizeof (ip4), ufrag, pass, &control, tie);
+                              sizeof (ip4), ufrag, pass, &control, tie, 0);
   assert (val == EPERM);
   assert (len > 0);
   assert (stun_match_messages (resp, req, NULL, 0, &code)
@@ -155,7 +155,7 @@ int main (void)
 
   len = sizeof (resp);
   val = stun_conncheck_reply (resp, &len, req, (struct sockaddr *)&ip4,
-                              sizeof (ip4), ufrag, pass, &control, tie);
+                              sizeof (ip4), ufrag, pass, &control, tie, 0);
   assert (val == 0);
   assert (len > 0);
   assert (stun_match_messages (resp, req, (uint8_t *)pass,
@@ -167,7 +167,7 @@ int main (void)
   /* Bad username */
   len = sizeof (resp);
   val = stun_conncheck_reply (resp, &len, req, (struct sockaddr *)&ip4,
-                              sizeof (ip4), "bad", pass, &control, tie);
+                              sizeof (ip4), "bad", pass, &control, tie, 0);
   assert (val == EPERM);
   assert (len > 0);
   assert (stun_match_messages (resp, req, NULL, 0, &code)
@@ -176,7 +176,7 @@ int main (void)
   /* Bad integrity (bad password) */
   len = sizeof (resp);
   val = stun_conncheck_reply (resp, &len, req, (struct sockaddr *)&ip4,
-                              sizeof (ip4), ufrag, "bad", &control, tie);
+                              sizeof (ip4), ufrag, "bad", &control, tie, 0);
   assert (val == EPERM);
   assert (len > 0);
   assert (stun_match_messages (resp, req, NULL, 0, &code)
@@ -187,7 +187,7 @@ int main (void)
   ip4.sin_family = AF_UNSPEC;
   len = sizeof (resp);
   val = stun_conncheck_reply (resp, &len, req, (struct sockaddr *)&ip4,
-                              sizeof (ip4), ufrag, pass, &control, tie);
+                              sizeof (ip4), ufrag, pass, &control, tie, 0);
   assert (val == EAFNOSUPPORT);
 
   ip4.sin_family = AF_INET;
@@ -201,7 +201,7 @@ int main (void)
 
   len = sizeof (resp);
   val = stun_conncheck_reply (resp, &len, req, (struct sockaddr *)&ip4,
-                              sizeof (ip4), ufrag, pass, &control, tie);
+                              sizeof (ip4), ufrag, pass, &control, tie, 0);
   assert (val == EINVAL);
   assert (len == 0);
 
@@ -216,7 +216,7 @@ int main (void)
   len = sizeof (resp);
   control = true;
   val = stun_conncheck_reply (resp, &len, req, (struct sockaddr *)&ip4,
-                              sizeof (ip4), ufrag, pass, &control, tie);
+                              sizeof (ip4), ufrag, pass, &control, tie, 0);
   assert (val == EACCES);
   assert (len > 0);
   assert (control == false);
@@ -235,7 +235,7 @@ int main (void)
   len = sizeof (resp);
   control = false;
   val = stun_conncheck_reply (resp, &len, req, (struct sockaddr *)&ip4,
-                              sizeof (ip4), ufrag, pass, &control, tie);
+                              sizeof (ip4), ufrag, pass, &control, tie, 0);
   assert (val == 0);
   assert (len > 0);
   assert (control == false);

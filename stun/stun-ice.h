@@ -103,7 +103,7 @@ stun_conncheck_reply (uint8_t *restrict buf, size_t *restrict plen,
                       const uint8_t *msg,
                       const struct sockaddr *restrict src, socklen_t srclen,
                       const char *local_ufrag, const char *pass,
-                      bool *restrict control, uint64_t tie);
+                      bool *restrict control, uint64_t tie, uint32_t compat);
 
 /**
  * Extracts the priority from a STUN message.
