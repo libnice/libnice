@@ -190,6 +190,8 @@ gst_nice_src_read_callback (NiceAgent *agent,
   GstBaseSrc *basesrc = GST_BASE_SRC (data);
   GstNiceSrc *nicesrc = GST_NICE_SRC (basesrc);
 
+  GST_LOG_OBJECT (agent, "Got buffer, getting out of the main loop");
+
   nicesrc->flow_ret = gst_pad_alloc_buffer (basesrc->srcpad, nicesrc->offset,
       len, GST_PAD_CAPS (basesrc->srcpad), &nicesrc->outbuf);
   if (nicesrc->flow_ret == GST_FLOW_OK) {
@@ -256,6 +258,8 @@ gst_nice_src_create (
 {
   GstNiceSrc *nicesrc = GST_NICE_SRC (basesrc);
 
+  GST_LOG_OBJECT (nicesrc, "create called");
+
   nicesrc->outbuf = NULL;
   nicesrc->offset = offset;
 
@@ -269,6 +273,8 @@ gst_nice_src_create (
   g_main_loop_run (nicesrc->mainloop);
 
   if (nicesrc->outbuf) {
+    GST_LOG_OBJECT (nicesrc, "Got buffer, pushing");
+
     *buffer = nicesrc->outbuf;
     return nicesrc->flow_ret;
   } else {
