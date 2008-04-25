@@ -284,6 +284,7 @@ gst_nice_src_create (
     *buffer = nicesrc->outbuf;
     return nicesrc->flow_ret;
   } else {
+    GST_LOG_OBJECT (nicesrc, "Got interrupting, returning wrong-state");
     return GST_FLOW_WRONG_STATE;
   }
 

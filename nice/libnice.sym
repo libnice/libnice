@@ -14,6 +14,7 @@ nice_address_to_string
 nice_agent_add_local_address
 nice_agent_add_remote_candidate
 nice_agent_add_stream
+nice_agent_gather_candidates
 nice_agent_attach_recv
 nice_agent_get_local_candidates
 nice_agent_get_local_credentials

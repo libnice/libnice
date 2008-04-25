@@ -683,8 +683,7 @@ nice_agent_add_stream (
   guint n_components)
 {
   Stream *stream;
-  GSList *i, *modified_list = NULL;
-  guint n;
+  GSList *modified_list = NULL;
   guint ret = 0;
 
   g_mutex_lock (agent->mutex);
@@ -699,7 +698,7 @@ nice_agent_add_stream (
     if (modified_list) {
       stream->id = agent->next_stream_id++;
       g_debug ("allocating stream id %u (%p)", stream->id, stream);
-     
+
       stream_initialize_credentials (stream, agent->rng);
 
       agent->streams = modified_list;
@@ -708,8 +707,33 @@ nice_agent_add_stream (
       stream_free (stream);
   }
 
-  /* note: error in allocating objects */
-  if (!modified_list) {
+  ret = stream->id;
+
+ done:
+  g_mutex_unlock (agent->mutex);
+  return ret;
+}
+
+
+/**
+ * nice_agent_gather_candidates:
+ *
+ * start the candidate gathering process
+ */
+
+NICEAPI_EXPORT void
+nice_agent_gather_candidates (
+  NiceAgent *agent,
+  guint stream_id)
+{
+  guint n;
+  GSList *i;
+  Stream *stream;
+
+  g_mutex_lock (agent->mutex);
+
+  stream = agent_find_stream (agent, stream_id);
+  if (stream == NULL) {
     goto done;
   }
 
@@ -722,22 +746,22 @@ nice_agent_add_stream (
       NiceAddress *addr = i->data;
       NiceCandidate *host_candidate;
 
-      for (n = 0; n < n_components; n++) {
+      for (n = 0; n < stream->n_components; n++) {
 	host_candidate = discovery_add_local_host_candidate (agent, stream->id,
 							     n + 1, addr);
-      
+
 	if (!host_candidate) {
-	  stream->id = 0; 
+          g_error ("No host candidate??");
 	  break;
 	}
 
 	if (agent->full_mode &&
 	    agent->stun_server_ip) {
 
-	  gboolean res = 
-	    priv_add_srv_rfx_candidate_discovery (agent, 
-						  host_candidate, 
-						  agent->stun_server_ip, 
+	  gboolean res =
+	    priv_add_srv_rfx_candidate_discovery (agent,
+						  host_candidate,
+						  agent->stun_server_ip,
 						  agent->stun_server_port,
 						  stream,
 						  n + 1 /* component-id */,
@@ -745,8 +769,7 @@ nice_agent_add_stream (
 
 	  if (res != TRUE) {
 	    /* note: memory allocation failure, return error */
-	    stream->id = 0;
-	    break;
+	    g_error ("Memory allocation failure?");
 	  }
 	}
       }
@@ -761,11 +784,9 @@ nice_agent_add_stream (
     discovery_schedule (agent);
   }
 
-  ret = stream->id;
-
  done:
+
   g_mutex_unlock (agent->mutex);
-  return ret;
 }
 
 static void priv_remove_keepalive_timer (NiceAgent *agent)

@@ -150,6 +150,11 @@ nice_agent_remove_stream (
   NiceAgent *agent,
   guint stream_id);
 
+void
+nice_agent_gather_candidates (
+  NiceAgent *agent,
+  guint stream_id);
+
 gboolean
 nice_agent_set_remote_credentials (
   NiceAgent *agent,
