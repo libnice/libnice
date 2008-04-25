@@ -68,6 +68,10 @@
 
 #include "stream.h"
 
+/* This is the max size of a UDP packet
+ * will it work tcp relaying??
+ */
+#define MAX_BUFFER_SIZE 65536
 
 G_DEFINE_TYPE (NiceAgent, nice_agent, G_TYPE_OBJECT);
 
@@ -1437,7 +1441,7 @@ nice_agent_poll_read (
             NiceUDPSocket *socket = NULL;
             Stream *stream = NULL;
 	    Component *component = NULL;
-            gchar buf[MAX_STUN_DATAGRAM_PAYLOAD];
+            gchar buf[MAX_BUFFER_SIZE];
             guint len;
 
             for (i = agent->streams; i; i = i->next)
@@ -1458,7 +1462,7 @@ nice_agent_poll_read (
               break;
 
             len = _nice_agent_recv (agent, stream, component,
-				    socket, MAX_STUN_DATAGRAM_PAYLOAD, buf);
+				    socket, MAX_BUFFER_SIZE, buf);
 
             if (len && func != NULL)
               func (agent, stream->id, component->id, len, buf,
@@ -1744,7 +1748,7 @@ nice_agent_g_source_cb (
   NiceAgent *agent = ctx->agent;
   Stream *stream = ctx->stream;
   Component *component = ctx->component;
-  gchar buf[MAX_STUN_DATAGRAM_PAYLOAD];
+  gchar buf[MAX_BUFFER_SIZE];
   guint len;
 
   g_mutex_lock (agent->mutex);
@@ -1753,7 +1757,7 @@ nice_agent_g_source_cb (
   (void)source;
 
   len = _nice_agent_recv (agent, stream, component, ctx->socket,
-			  MAX_STUN_DATAGRAM_PAYLOAD, buf);
+			  MAX_BUFFER_SIZE, buf);
 
   if (len > 0)
     ctx->recv_func (agent, stream->id, component->id,
