@@ -40,6 +40,10 @@
 
 #include "gstnicesink.h"
 
+
+GST_DEBUG_CATEGORY_STATIC (nicesink_debug);
+#define GST_CAT_DEFAULT nicesink_debug
+
 static GstFlowReturn
 gst_nice_sink_render (
   GstBaseSink *basesink,
@@ -106,6 +110,9 @@ gst_nice_sink_class_init (GstNiceSinkClass *klass)
   GstBaseSinkClass *gstbasesink_class;
   GstElementClass *gstelement_class;
   GObjectClass *gobject_class;
+
+  GST_DEBUG_CATEGORY_INIT (nicesink_debug, "nicesink",
+      0, "libnice sink");
 
   gstbasesink_class = (GstBaseSinkClass *) klass;
   gstbasesink_class->render = GST_DEBUG_FUNCPTR (gst_nice_sink_render);

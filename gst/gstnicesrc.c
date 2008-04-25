@@ -42,6 +42,9 @@
 
 #include "gstnicesrc.h"
 
+GST_DEBUG_CATEGORY_STATIC (nicesrc_debug);
+#define GST_CAT_DEFAULT nicesrc_debug
+
 
 #define BUFFER_SIZE (65536)
 
@@ -122,6 +125,9 @@ gst_nice_src_class_init (GstNiceSrcClass *klass)
   GstBaseSrcClass *gstbasesrc_class;
   GstElementClass *gstelement_class;
   GObjectClass *gobject_class;
+
+  GST_DEBUG_CATEGORY_INIT (nicesrc_debug, "nicesrc",
+      0, "libnice source");
 
   gstbasesrc_class = (GstBaseSrcClass *) klass;
   gstbasesrc_class->create = GST_DEBUG_FUNCPTR (gst_nice_src_create);
