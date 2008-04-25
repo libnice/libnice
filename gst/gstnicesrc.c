@@ -142,7 +142,7 @@ gst_nice_src_class_init (GstNiceSrcClass *klass)
          "Agent",
          "The NiceAgent this source is bound to",
          NICE_TYPE_AGENT,
-         G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY));
+         G_PARAM_READWRITE));
 
   g_object_class_install_property (gobject_class, PROP_STREAM,
       g_param_spec_uint (
@@ -152,7 +152,7 @@ gst_nice_src_class_init (GstNiceSrcClass *klass)
          0,
          G_MAXUINT,
          0,
-         G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY));
+         G_PARAM_READWRITE));
 
   g_object_class_install_property (gobject_class, PROP_COMPONENT,
       g_param_spec_uint (
@@ -162,7 +162,7 @@ gst_nice_src_class_init (GstNiceSrcClass *klass)
          0,
          G_MAXUINT,
          0,
-         G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY));
+         G_PARAM_READWRITE));
 }
 
 static void
