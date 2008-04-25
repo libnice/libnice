@@ -559,8 +559,9 @@ static gboolean priv_discovery_tick_unlocked (gpointer pointer)
   if (not_done == 0) {
     g_debug ("Candidate gathering FINISHED, stopping discovery timer.");
 
-    agent_signal_gathering_done (agent);
     discovery_free (agent);
+
+    agent_signal_gathering_done (agent);
 
     /* note: no pending timers, return FALSE to stop timer */
     return FALSE;

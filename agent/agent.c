@@ -555,7 +555,9 @@ nice_agent_set_property (
 
 void agent_signal_gathering_done (NiceAgent *agent)
 {
+  g_mutex_unlock (agent->mutex);
   g_signal_emit (agent, signals[SIGNAL_CANDIDATE_GATHERING_DONE], 0);
+  g_mutex_lock (agent->mutex);
 }
 
 void agent_signal_initial_binding_request_received (NiceAgent *agent, Stream *stream)
@@ -569,20 +571,30 @@ void agent_signal_initial_binding_request_received (NiceAgent *agent, Stream *st
 void agent_signal_new_selected_pair (NiceAgent *agent, guint stream_id, guint component_id, const gchar *local_foundation, const gchar *remote_foundation)
 {
   Component *component;
+  gchar *lf_copy;
+  gchar *rf_copy;
 
   if (!agent_find_component (agent, stream_id, component_id, NULL, &component))
     return;
 
-  g_signal_emit (agent, signals[SIGNAL_NEW_SELECTED_PAIR], 0, 
-		 stream_id, component_id,
-		 local_foundation, remote_foundation);
+  lf_copy = g_strdup (local_foundation);
+  rf_copy = g_strdup (remote_foundation);
+
+  g_mutex_unlock (agent->mutex);
+
+  g_signal_emit (agent, signals[SIGNAL_NEW_SELECTED_PAIR], 0,
+      stream_id, component_id, lf_copy, rf_copy);
+  g_mutex_lock (agent->mutex);
+
+  g_free (lf_copy);
+  g_free (rf_copy);
 }
 
 void agent_signal_new_candidate (NiceAgent *agent, NiceCandidate *candidate)
 {
-  g_signal_emit (agent, signals[SIGNAL_NEW_CANDIDATE], 0, 
-		 candidate->stream_id, 
-		 candidate->component_id, 
+  g_signal_emit (agent, signals[SIGNAL_NEW_CANDIDATE], 0,
+		 candidate->stream_id,
+		 candidate->component_id,
 		 candidate->foundation);
 }
 
