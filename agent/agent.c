@@ -1845,6 +1845,8 @@ nice_agent_attach_recv (
 
   /* step: check that params specify an existing pair */
   if (!agent_find_component (agent, stream_id, component_id, &stream, &component)) {
+    g_warning ("Could not find component %u in stream %u", component_id,
+        stream_id);
     goto done;
   }
 
