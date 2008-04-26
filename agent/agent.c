@@ -108,9 +108,7 @@ static guint signals[N_SIGNALS];
 static gboolean priv_attach_stream_component (NiceAgent *agent,
     Stream *stream,
     Component *component,
-    GMainContext *ctx,
-    NiceAgentRecvFunc func,
-    gpointer data );
+    GMainContext *ctx);
 static void priv_detach_stream_component (Stream *stream, Component *component);
 
 Stream *agent_find_stream (NiceAgent *agent, guint stream_id)
@@ -1700,8 +1698,6 @@ struct _IOCtx
   Stream *stream;
   Component *component;
   NiceUDPSocket *socket;
-  NiceAgentRecvFunc recv_func;
-  gpointer recv_data;
 };
 
 
@@ -1710,9 +1706,7 @@ io_ctx_new (
   NiceAgent *agent,
   Stream *stream,
   Component *component,
-  NiceUDPSocket *socket,
-  NiceAgentRecvFunc func,
-  gpointer data)
+  NiceUDPSocket *socket)
 {
   IOCtx *ctx;
 
@@ -1722,8 +1716,6 @@ io_ctx_new (
     ctx->stream = stream;
     ctx->component = component;
     ctx->socket = socket;
-    ctx->recv_func = func;
-    ctx->recv_data = data;
   }
   return ctx;
 }
@@ -1759,9 +1751,9 @@ nice_agent_g_source_cb (
   len = _nice_agent_recv (agent, stream, component, ctx->socket,
 			  MAX_BUFFER_SIZE, buf);
 
-  if (len > 0)
-    ctx->recv_func (agent, stream->id, component->id,
-        len, buf, ctx->recv_data);
+  if (len > 0 && component->g_source_io_cb)
+    component->g_source_io_cb (agent, stream->id, component->id,
+        len, buf, component->data);
 
   g_mutex_unlock (agent->mutex);
   return TRUE;
@@ -1775,9 +1767,7 @@ nice_agent_g_source_cb (
 static gboolean priv_attach_stream_component (NiceAgent *agent,
     Stream *stream,
     Component *component,
-    GMainContext *context,
-    NiceAgentRecvFunc func,
-    gpointer data)
+    GMainContext *context)
 {
   GSList *i;
 
@@ -1792,7 +1782,7 @@ static gboolean priv_attach_stream_component (NiceAgent *agent,
     /* note: without G_IO_ERR the glib mainloop goes into
      *       busyloop if errors are encountered */
     source = g_io_create_watch (io, G_IO_IN | G_IO_ERR);
-    ctx = io_ctx_new (agent, stream, component, udp_socket, func, data);
+    ctx = io_ctx_new (agent, stream, component, udp_socket);
     g_source_set_callback (source, (GSourceFunc) nice_agent_g_source_cb,
         ctx, (GDestroyNotify) io_ctx_free);
     g_debug ("Attach source %p (stream %u).", source, stream->id);
@@ -1849,10 +1839,18 @@ nice_agent_attach_recv (
     goto done;
   }
 
-  priv_detach_stream_component (stream, component);
+  if (component->g_source_io_cb && func == NULL)
+    priv_detach_stream_component (stream, component);
+
   ret = TRUE;
+  component->g_source_io_cb = NULL;
+
   if (func != NULL)
-    ret = priv_attach_stream_component (agent, stream, component, ctx, func, data);
+    ret = priv_attach_stream_component (agent, stream, component, ctx);
+
+  if (ret)
+    component->g_source_io_cb = func;
+  component->data = data;
 
  done:
   g_mutex_unlock (agent->mutex);

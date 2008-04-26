@@ -87,6 +87,8 @@ struct _Component
   gboolean media_after_tick;   /**< true if media received since last
 				    keepalive tick */
   NiceCandidate *restart_candidate; /**< for storing active remote candidate during a restart */
+  NiceAgentRecvFunc g_source_io_cb; /**< function called on io cb */
+  gpointer data;                    /**< data passed to the io function */
 };
 
 Component *
