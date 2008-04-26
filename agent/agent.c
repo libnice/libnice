@@ -107,8 +107,7 @@ static guint signals[N_SIGNALS];
 
 static gboolean priv_attach_stream_component (NiceAgent *agent,
     Stream *stream,
-    Component *component,
-    GMainContext *ctx);
+    Component *component);
 static void priv_detach_stream_component (Stream *stream, Component *component);
 
 Stream *agent_find_stream (NiceAgent *agent, guint stream_id)
@@ -1767,12 +1766,14 @@ static void
 priv_attach_stream_component_socket (NiceAgent *agent,
     Stream *stream,
     Component *component,
-    NiceUDPSocket *udp_socket,
-    GMainContext *context)
+    NiceUDPSocket *udp_socket)
 {
   GIOChannel *io;
   GSource *source;
   IOCtx *ctx;
+
+  if (!component->ctx)
+    return;
 
   io = g_io_channel_unix_new (udp_socket->fileno);
   /* note: without G_IO_ERR the glib mainloop goes into
@@ -1782,7 +1783,7 @@ priv_attach_stream_component_socket (NiceAgent *agent,
   g_source_set_callback (source, (GSourceFunc) nice_agent_g_source_cb,
       ctx, (GDestroyNotify) io_ctx_free);
   g_debug ("Attach source %p (stream %u).", source, stream->id);
-  g_source_attach (source, context);
+  g_source_attach (source, component->ctx);
   component->gsources = g_slist_append (component->gsources, source);
 }
 
@@ -1795,14 +1796,12 @@ priv_attach_stream_component_socket (NiceAgent *agent,
 static gboolean
 priv_attach_stream_component (NiceAgent *agent,
     Stream *stream,
-    Component *component,
-    GMainContext *context)
+    Component *component)
 {
   GSList *i;
 
   for (i = component->sockets; i; i = i->next)
-    priv_attach_stream_component_socket (agent, stream, component, i->data,
-        context);
+    priv_attach_stream_component_socket (agent, stream, component, i->data);
 
   return TRUE;
 }
@@ -1854,14 +1853,18 @@ nice_agent_attach_recv (
     priv_detach_stream_component (stream, component);
 
   ret = TRUE;
-  component->g_source_io_cb = NULL;
 
-  if (func != NULL)
-    ret = priv_attach_stream_component (agent, stream, component, ctx);
-
-  if (ret)
+  if (func && ctx) {
     component->g_source_io_cb = func;
-  component->data = data;
+    component->data = data;
+    component->ctx = ctx;
+    priv_attach_stream_component (agent, stream, component);
+  } else {
+    component->g_source_io_cb = NULL;
+    component->data = NULL;
+    component->ctx = NULL;
+  }
+
 
  done:
   g_mutex_unlock (agent->mutex);
