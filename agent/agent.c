@@ -1762,7 +1762,7 @@ nice_agent_g_source_cb (
  * Attaches one socket handle to the main loop event context
  */
 
-static void
+void
 priv_attach_stream_component_socket (NiceAgent *agent,
     Stream *stream,
     Component *component,

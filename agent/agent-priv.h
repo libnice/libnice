@@ -133,4 +133,9 @@ guint64 agent_candidate_pair_priority (NiceAgent *agent, NiceCandidate *local, N
 
 guint agent_timeout_add_with_context (NiceAgent *agent, guint interval, GSourceFunc function, gpointer data);
 
+void priv_attach_stream_component_socket (NiceAgent *agent,
+    Stream *stream,
+    Component *component,
+    NiceUDPSocket *udp_socket);
+
 #endif /*_NICE_AGENT_PRIV_H */
