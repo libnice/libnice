@@ -1759,41 +1759,50 @@ nice_agent_g_source_cb (
   return TRUE;
 }
 
+/*
+ * Attaches one socket handle to the main loop event context
+ */
+
+static void
+priv_attach_stream_component_socket (NiceAgent *agent,
+    Stream *stream,
+    Component *component,
+    NiceUDPSocket *udp_socket,
+    GMainContext *context)
+{
+  GIOChannel *io;
+  GSource *source;
+  IOCtx *ctx;
+
+  io = g_io_channel_unix_new (udp_socket->fileno);
+  /* note: without G_IO_ERR the glib mainloop goes into
+   *       busyloop if errors are encountered */
+  source = g_io_create_watch (io, G_IO_IN | G_IO_ERR);
+  ctx = io_ctx_new (agent, stream, component, udp_socket);
+  g_source_set_callback (source, (GSourceFunc) nice_agent_g_source_cb,
+      ctx, (GDestroyNotify) io_ctx_free);
+  g_debug ("Attach source %p (stream %u).", source, stream->id);
+  g_source_attach (source, context);
+  component->gsources = g_slist_append (component->gsources, source);
+}
+
+
 /**
  * Attaches socket handles of 'stream' to the main eventloop
  * context.
  *
  */
-static gboolean priv_attach_stream_component (NiceAgent *agent,
+static gboolean
+priv_attach_stream_component (NiceAgent *agent,
     Stream *stream,
     Component *component,
     GMainContext *context)
 {
   GSList *i;
 
-  for (i = component->sockets; i; i = i->next) {
-    NiceUDPSocket *udp_socket = i->data;
-    GIOChannel *io;
-    GSource *source;
-    IOCtx *ctx;
-    GSList *modified_list;
-
-    io = g_io_channel_unix_new (udp_socket->fileno);
-    /* note: without G_IO_ERR the glib mainloop goes into
-     *       busyloop if errors are encountered */
-    source = g_io_create_watch (io, G_IO_IN | G_IO_ERR);
-    ctx = io_ctx_new (agent, stream, component, udp_socket);
-    g_source_set_callback (source, (GSourceFunc) nice_agent_g_source_cb,
-        ctx, (GDestroyNotify) io_ctx_free);
-    g_debug ("Attach source %p (stream %u).", source, stream->id);
-    g_source_attach (source, context);
-    modified_list = g_slist_append (component->gsources, source);
-    if (!modified_list) {
-      g_source_destroy (source);
-      return FALSE;
-    }
-    component->gsources = modified_list;
-  }
+  for (i = component->sockets; i; i = i->next)
+    priv_attach_stream_component_socket (agent, stream, component, i->data,
+        context);
 
   return TRUE;
 }
