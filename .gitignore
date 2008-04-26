@@ -1,0 +1,101 @@
+*.lo
+*.loT
+*.o
+*.la
+Makefile
+Makefile.in
+.deps
+.libs
+*~
+*#
+.#*
+*.stamp
+
+
+aclocal.m4
+autom4te.cache
+autoregen.sh
+config.guess
+config.h
+config.h.in
+config.log
+config.status
+config.sub
+configure
+compile
+depcomp
+diff
+install-sh
+libtool
+ltmain.sh
+missing
+stamp-h.in
+stamp-h1
+
+# top level stuff
+debian
+
+# address/ stuff
+address/libaddress.la
+address/test
+
+# agent/ stuff
+agent/libagent.la
+agent/test
+agent/test-add-remove-stream
+agent/test-recv
+agent/test-stun
+agent/test-priority
+agent/test-send
+agent/test-poll
+agent/test-mainloop
+agent/agent-signals-marshal.h
+agent/agent-signals-marshal.c
+
+# stun/ stuff
+stun/stunbdc
+stun/stund
+stun/unknown.c
+stun/libstun.la
+stun/stun-client
+stun/stun-server
+stun/test-attribute-dump
+stun/test-attribute-dump-unknown
+stun/test-attribute-pack
+stun/test-attribute-pack-unknown
+stun/test-attribute-unpack
+stun/test-attribute-unpack-unknown
+stun/test-attribute-unpack-wrong-length
+stun/test-message-dump
+stun/test-message-dump-unknown
+stun/test-message-pack
+stun/test-message-unpack
+
+# local/ stuff
+local/liblocal.la
+local/list-local-interfaces
+
+# udp/ stuff
+udp/libudp.la
+udp/udp-client
+udp/udp-echo-server
+udp/test-fake
+udp/test-bsd
+
+# nice/ stuff
+nice/libnice.la
+nice/libnice.pc
+nice/ice-test-client
+nice/ice-test-server
+nice/jingle-test-server
+nice/test-readline
+nice/test-util
+nice/nice.pc
+
+# random/ stuff
+random/librandom.la
+random/test
+
+# gst/ stuff
+gst/libgstnice.la
+gst/jingle-gst-test-server
