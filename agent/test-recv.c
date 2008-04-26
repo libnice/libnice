@@ -50,6 +50,7 @@ main (void)
   NiceAgent *agent;
   NiceAddress addr;
   NiceUDPSocketFactory factory;
+  guint stream_id;
 
   nice_address_init (&addr);
   g_type_init ();
@@ -61,7 +62,8 @@ main (void)
   agent = nice_agent_new (&factory, NULL, NICE_COMPATIBILITY_ID19);
   g_assert (nice_address_set_from_string (&addr, "192.168.0.1"));
   nice_agent_add_local_address (agent, &addr);
-  nice_agent_add_stream (agent, 1);
+  stream_id = nice_agent_add_stream (agent, 1);
+  nice_agent_gather_candidates (agent, stream_id);
 
   /* recieve an RTP packet */
 
@@ -72,12 +74,12 @@ main (void)
       gchar buf[1024];
       GSList *candidates;
 
-      candidates = nice_agent_get_local_candidates (agent, 1, 1);
+      candidates = nice_agent_get_local_candidates (agent, stream_id, 1);
       candidate = candidates->data;
       g_slist_free (candidates);
       sock = candidate->sockptr;
       nice_udp_fake_socket_push_recv (sock, &addr, 7, "\x80lalala");
-      len = nice_agent_recv (agent, candidate->stream_id,
+      len = nice_agent_recv (agent, stream_id,
           candidate->component_id, 1024, buf);
       g_assert (len == 7);
       g_assert (0 == strncmp (buf, "\x80lalala", 7));

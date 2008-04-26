@@ -77,6 +77,7 @@ main (void)
   GSList *fds = NULL;
   GSList *readable;
   ssize_t w;
+  guint stream_id;
 
   nice_address_init (&addr);
   g_type_init ();
@@ -90,13 +91,14 @@ main (void)
   nice_udp_fake_socket_factory_init (&factory);
   agent = nice_agent_new (&factory, NULL, NICE_COMPATIBILITY_ID19);
   nice_agent_add_local_address (agent, &addr);
-  nice_agent_add_stream (agent, 1);
+  stream_id = nice_agent_add_stream (agent, 1);
+  nice_agent_gather_candidates (agent, stream_id);
 
       {
         GSList *candidates;
         NiceCandidate *candidate;
 
-        candidates = nice_agent_get_local_candidates (agent, 1, 1);
+        candidates = nice_agent_get_local_candidates (agent, stream_id, 1);
         candidate = candidates->data;
         sock = candidate->sockptr;
         g_slist_free (candidates);

@@ -52,6 +52,7 @@ main (void)
   NiceCandidate *candidate;
   NiceUDPSocketFactory factory;
   GSList *candidates;
+  guint stream_id;
 
   nice_address_init (&addr_local);
   nice_address_init (&addr_remote);
@@ -76,10 +77,11 @@ main (void)
   g_assert (nice_address_equal (agent->local_addresses->data, &addr_local));
 
   /* add a stream */
-  nice_agent_add_stream (agent, 1);
+  stream_id = nice_agent_add_stream (agent, 1);
+  nice_agent_gather_candidates (agent, stream_id);
 
   /* adding a stream should cause host candidates to be generated */
-  candidates = nice_agent_get_local_candidates (agent, 1, 1);
+  candidates = nice_agent_get_local_candidates (agent, stream_id, 1);
   g_assert (g_slist_length (candidates) == 1);
   candidate = candidates->data;
   /* fake socket manager uses incremental port numbers starting at 1 */
@@ -89,14 +91,15 @@ main (void)
   g_slist_free (candidates);
 
   /* add remote candidate */
-  nice_agent_add_remote_candidate (agent, 1, 1, NICE_CANDIDATE_TYPE_HOST,
+  nice_agent_add_remote_candidate (agent, stream_id, 1,
+      NICE_CANDIDATE_TYPE_HOST,
       &addr_remote, "username", "password");
-  candidates = nice_agent_get_remote_candidates (agent, 1, 1);
+  candidates = nice_agent_get_remote_candidates (agent, stream_id, 1);
   g_assert (candidates != NULL);
   g_assert (g_slist_length (candidates) == 1);
   candidate = candidates->data;
   g_assert (nice_address_equal (&(candidate->addr), &addr_remote));
-  g_assert (candidate->stream_id == 1);
+  g_assert (candidate->stream_id == stream_id);
   g_assert (candidate->component_id == 1);
   g_assert (candidate->type == NICE_CANDIDATE_TYPE_HOST);
   g_assert (0 == strcmp (candidate->username, "username"));

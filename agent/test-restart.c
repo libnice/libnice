@@ -231,6 +231,8 @@ static int run_restart_test (NiceAgent *lagent, NiceAgent *ragent, NiceAddress *
   g_assert (ls_id > 0);
   g_assert (rs_id > 0);
 
+  nice_agent_gather_candidates (lagent, ls_id);
+  nice_agent_gather_candidates (ragent, rs_id);
 
   /* step: attach to mainloop (needed to register the fds) */
   nice_agent_attach_recv (lagent, ls_id, NICE_COMPONENT_TYPE_RTP,

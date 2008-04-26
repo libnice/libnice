@@ -243,6 +243,9 @@ static int run_full_test (NiceAgent *lagent, NiceAgent *ragent, NiceAddress *bas
   g_assert (ls_id > 0);
   g_assert (rs_id > 0);
 
+  nice_agent_gather_candidates (lagent, ls_id);
+  nice_agent_gather_candidates (ragent, rs_id);
+
   /* step: attach to mainloop (needed to register the fds) */
   nice_agent_attach_recv (lagent, ls_id, NICE_COMPONENT_TYPE_RTP,
       g_main_loop_get_context (global_mainloop), cb_nice_recv, (gpointer)1);
@@ -369,6 +372,9 @@ static int run_full_test_delayed_answer (NiceAgent *lagent, NiceAgent *ragent, N
   rs_id = nice_agent_add_stream (ragent, 2);
   g_assert (ls_id > 0);
   g_assert (rs_id > 0);
+
+  nice_agent_gather_candidates (lagent, ls_id);
+  nice_agent_gather_candidates (ragent, rs_id);
 
   /* step: attach to mainloop (needed to register the fds) */
   nice_agent_attach_recv (lagent, ls_id, NICE_COMPONENT_TYPE_RTP,
@@ -508,6 +514,9 @@ static int run_full_test_wrong_password (NiceAgent *lagent, NiceAgent *ragent, N
   g_assert (ls_id > 0);
   g_assert (rs_id > 0);
 
+  nice_agent_gather_candidates (lagent, ls_id);
+  nice_agent_gather_candidates (ragent, rs_id);
+
   /* step: attach to mainloop (needed to register the fds) */
   nice_agent_attach_recv (lagent, ls_id, NICE_COMPONENT_TYPE_RTP,
       g_main_loop_get_context (global_mainloop), cb_nice_recv, (gpointer)1);
@@ -616,6 +625,9 @@ static int run_full_test_control_conflict (NiceAgent *lagent, NiceAgent *ragent,
   rs_id = nice_agent_add_stream (ragent, 1);
   g_assert (ls_id > 0);
   g_assert (rs_id > 0);
+
+  nice_agent_gather_candidates (lagent, ls_id);
+  nice_agent_gather_candidates (ragent, rs_id);
 
   /* step: attach to mainloop (needed to register the fds) */
   nice_agent_attach_recv (lagent, ls_id, NICE_COMPONENT_TYPE_RTP,

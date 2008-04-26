@@ -82,6 +82,7 @@ main (void)
   nice_address_set_ipv4 (&addr, 0x7f000001);
   nice_agent_add_local_address (agent, &addr);
   stream = nice_agent_add_stream (agent, 1);
+  nice_agent_gather_candidates (agent, stream);
 
   // attach to default main context
   nice_agent_attach_recv (agent, stream, NICE_COMPONENT_TYPE_RTP,
