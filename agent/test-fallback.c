@@ -199,20 +199,16 @@ static void priv_get_local_addr (NiceAgent *agent, guint stream_id, guint compon
 static int run_fallback_test (NiceAgent *lagent, NiceAgent *ragent, NiceAddress *baseaddr)
 {
   NiceAddress laddr, raddr, laddr_rtcp, raddr_rtcp;   
-  NiceCandidateDesc cdes = {       /* candidate description (no ports) */
-    (gchar *)"1",                  /* foundation */
-    0,                             /* component-id; filled later */
-    NICE_CANDIDATE_TRANSPORT_UDP,  /* transport */
-    100000,  /* priority */
-    NULL,    /* address */
-    NICE_CANDIDATE_TYPE_HOST, /* type */ 
-    baseaddr /* base-address */
-  };
+  NiceCandidate cdes;
   GSList *cands;
   guint ls_id, rs_id;
 
-  /* XXX: dear compiler, these are for you: */
-  (void)baseaddr;
+  memset (&cdes, 0, sizeof(NiceCandidate));
+  cdes.priority = 100000;
+  strcpy (cdes.foundation, "1");
+  cdes.type = NICE_CANDIDATE_TYPE_HOST;
+  cdes.transport = NICE_CANDIDATE_TRANSPORT_UDP;
+  cdes.base_addr = *baseaddr;
 
   /* step: initialize variables modified by the callbacks */
   global_components_ready = 0;
@@ -278,14 +274,14 @@ static int run_fallback_test (NiceAgent *lagent, NiceAgent *ragent, NiceAddress 
 
   cands = g_slist_append (NULL, &cdes);
   cdes.component_id = NICE_COMPONENT_TYPE_RTP;
-  cdes.addr = &raddr;
+  cdes.addr = raddr;
   nice_agent_set_remote_candidates (lagent, ls_id, NICE_COMPONENT_TYPE_RTP, cands);
-  cdes.addr = &laddr;  
+  cdes.addr = laddr;
   nice_agent_set_remote_candidates (ragent, rs_id, NICE_COMPONENT_TYPE_RTP, cands);
   cdes.component_id = NICE_COMPONENT_TYPE_RTCP;
-  cdes.addr = &raddr_rtcp;
+  cdes.addr = raddr_rtcp;
   nice_agent_set_remote_candidates (lagent, ls_id, NICE_COMPONENT_TYPE_RTCP, cands);
-  cdes.addr = &laddr_rtcp;  
+  cdes.addr = laddr_rtcp;
   nice_agent_set_remote_candidates (ragent, rs_id, NICE_COMPONENT_TYPE_RTCP, cands);
 
   /* step: fall back to non-ICE mode on both sides */

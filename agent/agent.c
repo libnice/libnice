@@ -885,7 +885,7 @@ static gboolean priv_add_remote_candidate (
   guint component_id,
   NiceCandidateType type,
   const NiceAddress *addr,
-  const NiceAddress *related_addr,
+  const NiceAddress *base_addr,
   NiceCandidateTransport transport,
   guint32 priority,
   const gchar *username,
@@ -906,8 +906,8 @@ static gboolean priv_add_remote_candidate (
     g_debug("Update existing remote candidate %p.", candidate);
     /* case 1: an existing candidate, update the attributes */
     candidate->type = type;
-    if (related_addr)
-      candidate->base_addr = *related_addr;
+    if (base_addr)
+      candidate->base_addr = *base_addr;
     candidate->priority = priority;
     if (foundation)
       strncpy(candidate->foundation, foundation, NICE_CANDIDATE_MAX_FOUNDATION);
@@ -944,8 +944,8 @@ static gboolean priv_add_remote_candidate (
 	}
 #endif
 	
-	if (related_addr)
-	  candidate->base_addr = *related_addr;
+	if (base_addr)
+	  candidate->base_addr = *base_addr;
 	
 	candidate->transport = transport;
 	candidate->priority = priority;
@@ -1119,7 +1119,7 @@ nice_agent_add_remote_candidate (
  *  @agent: a NiceAgent
  *  @stream_id: the ID of the stream the candidate is for
  *  @component_id: the ID of the component the candidate is for
- *  @candidates: a list of NiceCandidateDesc items describing the candidates
+ *  @candidates: a list of NiceCandidate items describing the candidates
  *
  * Sets the remote candidates for a component of a stream. Replaces
  * any existing remote candidates.
@@ -1143,18 +1143,18 @@ nice_agent_set_remote_candidates (NiceAgent *agent, guint stream_id, guint compo
   g_mutex_lock (agent->mutex);
 
  for (i = candidates; i && added >= 0; i = i->next) {
-   NiceCandidateDesc *d = (NiceCandidateDesc*) i->data;
+   NiceCandidate *d = (NiceCandidate*) i->data;
    gboolean res = 
      priv_add_remote_candidate (agent,
 				stream_id,
 				component_id,
 				d->type,
-				d->addr,
-				d->related_addr,
+				&d->addr,
+				&d->base_addr,
 				d->transport,
 				d->priority,
-				NULL,
-				NULL,
+                                d->username,
+				d->password,
 				d->foundation);
    if (res)
      ++added;
@@ -1590,9 +1590,6 @@ nice_agent_get_remote_candidates (
     {
       goto done;
     }
-
-  /* XXX: should we expose NiceCandidate to the client, or should
-   *      we instead return a list of NiceCandidateDesc's? */
 
   ret = g_slist_copy (component->remote_candidates);
 

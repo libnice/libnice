@@ -198,20 +198,26 @@ static void priv_get_local_addr (NiceAgent *agent, guint stream_id, guint compon
   g_slist_free (cands);
 }
 
+
+
+static void init_candidate (NiceCandidate *cand)
+{
+  memset (cand, 0, sizeof(NiceCandidate));
+
+  cand->priority = 10000;
+  strcpy (cand->foundation, "1");
+  cand->type = NICE_CANDIDATE_TYPE_HOST;
+  cand->transport = NICE_CANDIDATE_TRANSPORT_UDP;
+}
+
 static int run_full_test (NiceAgent *lagent, NiceAgent *ragent, NiceAddress *baseaddr, guint ready, guint failed)
 {
   NiceAddress laddr, raddr, laddr_rtcp, raddr_rtcp;   
-  NiceCandidateDesc cdes = {       /* candidate description (no ports) */
-    (gchar *)"1",                  /* foundation */
-    0,                             /* component-id; filled later */
-    NICE_CANDIDATE_TRANSPORT_UDP,  /* transport */
-    100000,  /* priority */
-    NULL,    /* address */
-    NICE_CANDIDATE_TYPE_HOST, /* type */ 
-    NULL     /* base-address */
-  };
+  NiceCandidate cdes;
   GSList *cands;
   guint ls_id, rs_id;
+
+  init_candidate (&cdes);
 
   /* XXX: dear compiler, this is for you */
   (void)baseaddr;
@@ -287,14 +293,14 @@ static int run_full_test (NiceAgent *lagent, NiceAgent *ragent, NiceAddress *bas
 					 ls_id, ufrag, password);
   }
   cdes.component_id = NICE_COMPONENT_TYPE_RTP;
-  cdes.addr = &raddr;
+  cdes.addr = raddr;
   nice_agent_set_remote_candidates (lagent, ls_id, NICE_COMPONENT_TYPE_RTP, cands);
-  cdes.addr = &laddr;
+  cdes.addr = laddr;
   nice_agent_set_remote_candidates (ragent, rs_id, NICE_COMPONENT_TYPE_RTP, cands);
   cdes.component_id = NICE_COMPONENT_TYPE_RTCP;
-  cdes.addr = &raddr_rtcp;
+  cdes.addr = raddr_rtcp;
   nice_agent_set_remote_candidates (lagent, ls_id, NICE_COMPONENT_TYPE_RTCP, cands);
-  cdes.addr = &laddr_rtcp;
+  cdes.addr = laddr_rtcp;
   nice_agent_set_remote_candidates (ragent, rs_id, NICE_COMPONENT_TYPE_RTCP, cands);
 
   g_slist_free (cands);
@@ -333,17 +339,11 @@ static int run_full_test (NiceAgent *lagent, NiceAgent *ragent, NiceAddress *bas
 static int run_full_test_delayed_answer (NiceAgent *lagent, NiceAgent *ragent, NiceAddress *baseaddr, guint ready, guint failed)
 {
   NiceAddress laddr, raddr, laddr_rtcp, raddr_rtcp;   
-  NiceCandidateDesc cdes = {       /* candidate description (no ports) */
-    (gchar *)"1",                  /* foundation */
-    0,                             /* component-id; filled later */
-    NICE_CANDIDATE_TRANSPORT_UDP,  /* transport */
-    100000,  /* priority */
-    NULL,    /* address */
-    NICE_CANDIDATE_TYPE_HOST, /* type */ 
-    NULL     /* base-address */
-  };
+  NiceCandidate cdes;
   GSList *cands;
   guint ls_id, rs_id;
+
+  init_candidate (&cdes);
 
   /* XXX: dear compiler, this is for you */
   (void)baseaddr;
@@ -418,10 +418,10 @@ static int run_full_test_delayed_answer (NiceAgent *lagent, NiceAgent *ragent, N
   /* step: set remote candidates for agent R (answering party) */
   cands = g_slist_append (NULL, &cdes);
   cdes.component_id = NICE_COMPONENT_TYPE_RTP;
-  cdes.addr = &laddr;  
+  cdes.addr = laddr;
   nice_agent_set_remote_candidates (ragent, rs_id, NICE_COMPONENT_TYPE_RTP, cands);
   cdes.component_id = NICE_COMPONENT_TYPE_RTCP;
-  cdes.addr = &laddr_rtcp;  
+  cdes.addr = laddr_rtcp;
   nice_agent_set_remote_candidates (ragent, rs_id, NICE_COMPONENT_TYPE_RTCP, cands);
 
   g_debug ("test-fullmode: Set properties, next running mainloop until first check is received...");
@@ -445,10 +445,10 @@ static int run_full_test_delayed_answer (NiceAgent *lagent, NiceAgent *ragent, N
 
   /* step: pass remove candidates to agent L (offering party) */
   cdes.component_id = NICE_COMPONENT_TYPE_RTP;
-  cdes.addr = &raddr;
+  cdes.addr = raddr;
   nice_agent_set_remote_candidates (lagent, ls_id, NICE_COMPONENT_TYPE_RTP, cands);
   cdes.component_id = NICE_COMPONENT_TYPE_RTCP;
-  cdes.addr = &raddr_rtcp;
+  cdes.addr = raddr_rtcp;
   nice_agent_set_remote_candidates (lagent, ls_id, NICE_COMPONENT_TYPE_RTCP, cands);
 
   g_debug ("test-fullmode: Running mainloop until connectivity checks succeeed.");
@@ -478,17 +478,11 @@ static int run_full_test_delayed_answer (NiceAgent *lagent, NiceAgent *ragent, N
 static int run_full_test_wrong_password (NiceAgent *lagent, NiceAgent *ragent, NiceAddress *baseaddr)
 {
   NiceAddress laddr, raddr;   
-  NiceCandidateDesc cdes = {       /* candidate description (no ports) */
-    (gchar *)"1",                  /* foundation */
-    NICE_COMPONENT_TYPE_RTP,
-    NICE_CANDIDATE_TRANSPORT_UDP,  /* transport */
-    100000,  /* priority */
-    NULL,    /* address */
-    NICE_CANDIDATE_TYPE_HOST, /* type */ 
-    NULL     /* base-address */
-  };
+  NiceCandidate cdes;
   GSList *cands, *i;
   guint ls_id, rs_id;
+
+  init_candidate (&cdes);
 
   /* XXX: dear compiler, this is for you */
   (void)baseaddr;
@@ -565,9 +559,9 @@ static int run_full_test_wrong_password (NiceAgent *lagent, NiceAgent *ragent, N
       nice_agent_set_remote_credentials (lagent,
 					 ls_id, ufrag, "wrong2");
   }
-  cdes.addr = &raddr;
+  cdes.addr = raddr;
   nice_agent_set_remote_candidates (lagent, ls_id, NICE_COMPONENT_TYPE_RTP, cands);
-  cdes.addr = &laddr;  
+  cdes.addr = laddr;
   nice_agent_set_remote_candidates (ragent, rs_id, NICE_COMPONENT_TYPE_RTP, cands);
   g_slist_free (cands);
 
@@ -594,17 +588,11 @@ static int run_full_test_wrong_password (NiceAgent *lagent, NiceAgent *ragent, N
 static int run_full_test_control_conflict (NiceAgent *lagent, NiceAgent *ragent, NiceAddress *baseaddr, gboolean role)
 {
   NiceAddress laddr, raddr;   
-  NiceCandidateDesc cdes = {       /* candidate description (no ports) */
-    (gchar *)"1",                  /* foundation */
-    NICE_COMPONENT_TYPE_RTP,
-    NICE_CANDIDATE_TRANSPORT_UDP,  /* transport */
-    100000,  /* priority */
-    NULL,    /* address */
-    NICE_CANDIDATE_TYPE_HOST, /* type */ 
-    NULL     /* base-address */
-  };
+  NiceCandidate cdes;
   GSList *cands, *i;
   guint ls_id, rs_id;
+
+  init_candidate (&cdes);
 
   /* XXX: dear compiler, this is for you */
   (void)baseaddr;
@@ -680,9 +668,9 @@ static int run_full_test_control_conflict (NiceAgent *lagent, NiceAgent *ragent,
       nice_agent_set_remote_credentials (lagent,
 					 ls_id, ufrag, password);
   }
-  cdes.addr = &raddr;
+  cdes.addr = raddr;
   nice_agent_set_remote_candidates (lagent, ls_id, NICE_COMPONENT_TYPE_RTP, cands);
-  cdes.addr = &laddr;  
+  cdes.addr = laddr;
   nice_agent_set_remote_candidates (ragent, rs_id, NICE_COMPONENT_TYPE_RTP, cands);
   g_slist_free (cands);
 

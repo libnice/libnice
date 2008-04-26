@@ -104,18 +104,6 @@ typedef enum
   NICE_COMPATIBILITY_LAST = NICE_COMPATIBILITY_MSN
 } NiceCompatibility;
 
-typedef struct _NiceCandidateDesc NiceCandidateDesc;
-
-struct _NiceCandidateDesc {
-  gchar *foundation;          /**< 1*32ice-char (NICE_CANDIDATE_MAX_FOUNDATION-1) */
-  guint component_id;         /**< value between 1 and 256, inclusive */
-  NiceCandidateTransport transport;
-  guint32 priority;           /**< value between 1 and (2**31 - 1), inclusive */
-  NiceAddress *addr;
-  NiceCandidateType type;
-  NiceAddress *related_addr;  /**< optional */
-};
-
 typedef struct _NiceAgent NiceAgent;
 
 typedef void (*NiceAgentRecvFunc) (
