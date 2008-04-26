@@ -245,7 +245,8 @@ NiceCandidate *discovery_add_local_host_candidate (
       
       if (nice_udp_socket_factory_make (agent->socket_factory,
 					udp_socket, address)) {
-	
+	priv_attach_stream_component_socket (agent, stream, component,
+            udp_socket);
 
 	gboolean result = priv_add_local_candidate_pruned (component, candidate);
 	if (result == TRUE) {
