@@ -332,7 +332,6 @@ int stun_xor_address (const uint8_t *msg,
  * 0 if it the packet is incomplete or -1 in case of other error.
  */
 ssize_t stun_validate (const uint8_t *msg, size_t len);
-#endif
 
 /**
  * Checks whether a packet on a mutiplexed STUN/non-STUN channel looks like a
@@ -342,6 +341,8 @@ ssize_t stun_validate (const uint8_t *msg, size_t len);
  * @return true if STUN message with cookie and fingerprint, 0 otherwise.
  */
 bool stun_demux (const uint8_t *msg);
+
+#endif
 
 /**
  * Matches a response (or error response) to a request.

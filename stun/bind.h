@@ -178,7 +178,24 @@ int stun_nested_process (stun_nested_t *restrict ctx,
 
 # ifndef STUN_VALIDATE_DECLARATION
 #  define STUN_VALIDATE_DECLARATION 2
+
+/**
+ * Verifies that a packet is a valid STUN message.
+ *
+ * @return actual byte length of the message if valid (>0),
+ * 0 if it the packet is incomplete or -1 in case of other error.
+ */
 ssize_t stun_validate (const uint8_t *msg, size_t len);
+
+/**
+ * Checks whether a packet on a mutiplexed STUN/non-STUN channel looks like a
+ * STUN message. It is assumed that stun_validate succeeded first (i.e.
+ * returned a stricly positive value).
+ *
+ * @return true if STUN message with cookie and fingerprint, 0 otherwise.
+ */
+bool stun_demux (const uint8_t *msg);
+
 # endif
 
 # ifdef __cplusplus
