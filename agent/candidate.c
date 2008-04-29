@@ -45,6 +45,8 @@
 # include <config.h>
 #endif
 
+#include <string.h>
+
 #include "agent.h"
 #include "component.h"
 
@@ -164,4 +166,20 @@ nice_candidate_pair_priority (guint32 o_prio, guint32 a_prio)
   guint32 min = o_prio < a_prio ? o_prio : a_prio;
 
   return ((guint64)1 << 32) * min + 2 * max + (o_prio > a_prio ? 1 : 0);
+}
+
+/**
+ * Copies a candidate
+ */
+NICEAPI_EXPORT NiceCandidate *
+nice_candidate_copy (const NiceCandidate *candidate)
+{
+  NiceCandidate *copy = nice_candidate_new (candidate->type);
+
+  memcpy (copy, candidate, sizeof(NiceCandidate));
+
+  copy->username = g_strdup (copy->username);
+  copy->password = g_strdup (copy->password);
+
+  return copy;
 }

@@ -103,6 +103,9 @@ nice_candidate_ice_priority (const NiceCandidate *candidate);
 guint64
 nice_candidate_pair_priority (guint32 o_prio, guint32 a_prio);
 
+NiceCandidate *
+nice_candidate_copy (const NiceCandidate *candidate);
+
 G_END_DECLS
 
 #endif /* _CANDIDATE_H */
