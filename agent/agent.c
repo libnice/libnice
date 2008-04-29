@@ -1551,6 +1551,7 @@ nice_agent_get_local_candidates (
 {
   Component *component;
   GSList * ret = NULL;
+  GSList * item = NULL;
 
   g_mutex_lock (agent->mutex);
   if (!agent_find_component (agent, stream_id, component_id, NULL, &component))
@@ -1558,7 +1559,8 @@ nice_agent_get_local_candidates (
       goto done;
     }
 
-  ret = g_slist_copy (component->local_candidates);
+  for (item = component->local_candidates; item; item = item->next)
+    ret = g_slist_append (ret, nice_candidate_copy (item->data));
 
  done:
   g_mutex_unlock (agent->mutex);
@@ -1586,7 +1588,7 @@ nice_agent_get_remote_candidates (
   guint component_id)
 {
   Component *component;
-  GSList *ret = NULL;
+  GSList *ret = NULL, *item = NULL;
 
   g_mutex_lock (agent->mutex);
   if (!agent_find_component (agent, stream_id, component_id, NULL, &component))
@@ -1594,7 +1596,8 @@ nice_agent_get_remote_candidates (
       goto done;
     }
 
-  ret = g_slist_copy (component->remote_candidates);
+  for (item = component->local_candidates; item; item = item->next)
+    ret = g_slist_append (ret, nice_candidate_copy (item->data));
 
  done:
   g_mutex_unlock (agent->mutex);
