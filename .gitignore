@@ -49,8 +49,14 @@ agent/test-priority
 agent/test-send
 agent/test-poll
 agent/test-mainloop
+agent/stund.pid
+agent/test-fallback
+agent/test-fullmode
+agent/test-restart
+agent/test-thread
 agent/agent-signals-marshal.h
 agent/agent-signals-marshal.c
+
 
 # stun/ stuff
 stun/stunbdc
