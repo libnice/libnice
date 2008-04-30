@@ -72,7 +72,8 @@ check_PROGRAMS = \
 	test-mainloop \
 	test-fullmode \
 	test-restart \
-	test-fallback
+	test-fallback \
+	test-thread
 
 dist_check_SCRIPTS = \
 	check-test-fullmode-with-stun.sh
@@ -96,6 +97,8 @@ test_fullmode_LDADD = $(COMMON_LDADD)
 test_restart_LDADD = $(COMMON_LDADD)
 
 test_fallback_LDADD = $(COMMON_LDADD)
+
+test_thread_LDADD = $(COMMON_LDADD)
 
 pkginclude_HEADERS = agent.h candidate.h
 
