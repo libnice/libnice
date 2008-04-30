@@ -203,6 +203,9 @@ int main (void)
   g_object_set_data (G_OBJECT (lagent), "other-agent", ragent);
   g_object_set_data (G_OBJECT (ragent), "other-agent", lagent);
 
+  g_object_set (G_OBJECT (lagent), "controlling-mode", TRUE, NULL);
+  g_object_set (G_OBJECT (ragent), "controlling-mode", FALSE, NULL);
+
   /* step: add a timer to catch state changes triggered by signals */
   timer_id = g_timeout_add (30000, timer_cb, NULL);
 
