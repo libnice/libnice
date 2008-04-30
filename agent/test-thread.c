@@ -121,7 +121,7 @@ static void cb_nice_recv (NiceAgent *agent, guint stream_id, guint component_id,
 {
   g_warning ("test-thread:%s: %p %d", G_STRFUNC, user_data, len);
   gchar data[10];
-  gint *count;
+  gint *count = NULL;
 
   if (GPOINTER_TO_UINT (user_data) == 1)
     count = &global_lagent_cands;
