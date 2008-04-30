@@ -619,8 +619,10 @@ void agent_signal_component_state_change (NiceAgent *agent, guint stream_id, gui
 	     stream_id, component_id, component->state, state);
     component->state = state;
 
+    g_mutex_unlock (agent->mutex);
     g_signal_emit (agent, signals[SIGNAL_COMPONENT_STATE_CHANGED], 0,
-		   stream_id, component_id, component->state);
+		   stream_id, component_id, state);
+    g_mutex_lock (agent->mutex);
   }
 }
 
