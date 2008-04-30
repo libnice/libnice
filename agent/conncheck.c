@@ -149,7 +149,7 @@ static gboolean priv_conn_check_unfreeze_next (NiceAgent *agent)
   }
   
   if (pair) {
-    g_debug ("Pair %p with s/c-id %u/%u (%s) unfrozen.", pair, pair->stream_id, pair->component_id, pair->foundation);
+    g_debug ("Agent %p : Pair %p with s/c-id %u/%u (%s) unfrozen.", agent, pair, pair->stream_id, pair->component_id, pair->foundation);
     pair->state = NICE_CHECK_WAITING;
     return TRUE;
   }
@@ -185,7 +185,7 @@ static void priv_conn_check_unfreeze_related (NiceAgent *agent, Stream *stream, 
     if (p->stream_id == ok_check->stream_id) {
       if (p->state == NICE_CHECK_FROZEN &&
 	  strcmp (p->foundation, ok_check->foundation) == 0) {
-	g_debug ("Unfreezing check %p (after succesful check %p).", p, ok_check);
+	g_debug ("Agent %p : Unfreezing check %p (after succesful check %p).", agent, p, ok_check);
 	p->state = NICE_CHECK_WAITING;
 	++unfrozen;
       }
@@ -205,7 +205,7 @@ static void priv_conn_check_unfreeze_related (NiceAgent *agent, Stream *stream, 
 	    p->stream_id != ok_check->stream_id) {
 	  if (p->state == NICE_CHECK_FROZEN &&
 	      strcmp (p->foundation, ok_check->foundation) == 0) {
-	    g_debug ("Unfreezing check %p from stream %u (after succesful check %p).", p, s->id, ok_check);
+	    g_debug ("Agent %p : Unfreezing check %p from stream %u (after succesful check %p).", agent, p, s->id, ok_check);
 	    p->state = NICE_CHECK_WAITING;
 	    ++unfrozen;
 					    
@@ -242,7 +242,7 @@ static gboolean priv_conn_check_tick_stream (Stream *stream, NiceAgent *agent, G
       
     if (p->state == NICE_CHECK_IN_PROGRESS) {
       if (p->stun_ctx == NULL) {
-	g_debug ("STUN connectivity check was cancelled, marking as done.");
+	g_debug ("Agent %p : STUN connectivity check was cancelled, marking as done.", agent);
 	p->state = NICE_CHECK_FAILED;
       }
       else if (priv_timer_expired (&p->next_tick, now)) {
@@ -260,7 +260,7 @@ static gboolean priv_conn_check_tick_stream (Stream *stream, NiceAgent *agent, G
 	}
 	else {
 	  /* case: error, abort processing */
-	  g_debug ("Retransmissions failed, giving up on connectivity check %p", p);
+	  g_debug ("Agent %p : Retransmissions failed, giving up on connectivity check %p", agent, p);
 	  p->state = NICE_CHECK_FAILED;
 	  p->stun_ctx = NULL;
 	}
@@ -299,7 +299,7 @@ static gboolean priv_conn_check_tick_stream (Stream *stream, NiceAgent *agent, G
 	  /* note: highest priority item selected (list always sorted) */
 	  if (p->state == NICE_CHECK_SUCCEEDED ||
 	      p->state == NICE_CHECK_DISCOVERED) {
-	    g_debug ("restarting check %p as the nominated pair.", p);
+	    g_debug ("Agent %p : restarting check %p as the nominated pair.", agent, p);
 	    p->nominated = TRUE;
 	    priv_conn_check_initiate (agent, p);	
 	    break; /* move to the next component */
@@ -313,7 +313,7 @@ static gboolean priv_conn_check_tick_stream (Stream *stream, NiceAgent *agent, G
   {
     static int tick_counter = 0;
     if (tick_counter++ % 50 == 0 || keep_timer_going != TRUE)
-      g_debug ("timer(%p) tick #%u: %u frozen, %u in-progress, %u waiting, %u succeeded, %u nominated, %u waiting-for-nom.", 
+      g_debug ("Agent %p : timer(%p) tick #%u: %u frozen, %u in-progress, %u waiting, %u succeeded, %u nominated, %u waiting-for-nom.", agent, 
 	       agent, tick_counter, frozen, s_inprogress, waiting, s_succeeded, s_nominated, s_waiting_for_nomination);
   }
 #endif
@@ -369,7 +369,7 @@ static gboolean priv_conn_check_tick_unlocked (gpointer pointer)
   
   /* step: stop timer if no work left */
   if (keep_timer_going != TRUE) {
-    g_debug ("%s: stopping conncheck timer", G_STRFUNC);
+    g_debug ("Agent %p : %s: stopping conncheck timer", agent, G_STRFUNC);
     for (i = agent->streams; i; i = i->next) {
       Stream *stream = i->data;
       priv_update_check_list_failed_components (agent, stream);
@@ -377,7 +377,7 @@ static gboolean priv_conn_check_tick_unlocked (gpointer pointer)
     }
     conn_check_free (agent);
     /* XXX: what to signal, is all processing now really done? */
-    g_debug ("changing conncheck state to COMPLETED.");
+    g_debug ("Agent %p : changing conncheck state to COMPLETED.", agent);
   }
 
   return keep_timer_going;
@@ -430,7 +430,7 @@ static gboolean priv_conn_keepalive_tick (gpointer pointer)
 
 	res = stun_bind_keepalive (p->local->sockptr->fileno,
 				   &sockaddr, sizeof (sockaddr));
-	g_debug ("stun_bind_keepalive for pair %p res %d (%s).", p, res, strerror (res));
+	g_debug ("Agent %p : stun_bind_keepalive for pair %p res %d (%s).", agent, p, res, strerror (res));
 	if (res < 0)
 	  ++errors;
       }
@@ -447,7 +447,7 @@ static gboolean priv_conn_keepalive_tick (gpointer pointer)
 	CandidateCheckPair *p = i->data;
 
 	if (p->traffic_after_tick != TRUE) {
-	  g_debug ("resending STUN-CC to keep the candidate alive (pair %p).", p);
+	  g_debug ("Agent %p : resending STUN-CC to keep the candidate alive (pair %p).", agent, p);
 	  conn_check_send (agent, p);
 	}
 	p->traffic_after_tick = FALSE;
@@ -456,7 +456,7 @@ static gboolean priv_conn_keepalive_tick (gpointer pointer)
   }
 
   if (errors) {
-    g_debug ("%s: stopping keepalive timer", G_STRFUNC);
+    g_debug ("Agent %p : %s: stopping keepalive timer", agent, G_STRFUNC);
     goto done;
   }
 
@@ -477,7 +477,7 @@ gboolean conn_check_schedule_next (NiceAgent *agent)
   gboolean res = priv_conn_check_unfreeze_next (agent);
 
   if (agent->discovery_unsched_items > 0)
-    g_debug ("WARN: starting conn checks before local candidate gathering is finished.");
+    g_debug ("Agent %p : WARN: starting conn checks before local candidate gathering is finished.", agent);
 
   if (res == TRUE) {
     /* step: call once imediately */
@@ -530,7 +530,7 @@ static void priv_preprocess_conn_check_pending_data (NiceAgent *agent, Stream *s
     IncomingCheck *icheck = i->data;
     if (nice_address_equal (&icheck->from, &pair->remote->addr) &&
 	icheck->local_socket == pair->local->sockptr) {
-      g_debug ("Updating check %p with stored early-icheck %p, %p/%u/%u (agent/stream/component).", pair, icheck, agent, stream->id, component->id);
+      g_debug ("Agent %p : Updating check %p with stored early-icheck %p, %p/%u/%u (agent/stream/component).", agent, pair, icheck, agent, stream->id, component->id);
       if (icheck->use_candidate)
 	priv_mark_pair_nominated (agent, stream, component, pair->remote);
       priv_schedule_triggered_check (agent, stream, component, icheck->local_socket, pair->remote, icheck->use_candidate);
@@ -640,7 +640,7 @@ static gboolean priv_update_selected_pair (NiceAgent *agent, Component *componen
   g_assert (component);
   g_assert (pair);
   if (pair->priority > component->selected_pair.priority) {
-    g_debug ("changing SELECTED PAIR for component %u: %s:%s (prio:%lu).", 
+    g_debug ("Agent %p : changing SELECTED PAIR for component %u: %s:%s (prio:%lu).", agent, 
 	     component->id, pair->local->foundation, pair->remote->foundation, (long unsigned)pair->priority);
     component->selected_pair.local = pair->local;
     component->selected_pair.remote = pair->remote;
@@ -728,7 +728,7 @@ static void priv_update_check_list_state_for_ready (NiceAgent *agent, Stream *st
     }
   }
   
-  g_debug ("conn.check list status: %u nominated, %u succeeded, c-id %u.", nominated, succeeded, component->id);
+  g_debug ("Agent %p : conn.check list status: %u nominated, %u succeeded, c-id %u.", agent, nominated, succeeded, component->id);
 }
 
 /**
@@ -749,7 +749,7 @@ static void priv_mark_pair_nominated (NiceAgent *agent, Stream *stream, Componen
      *      check was sent to? let's mark all matching pairs
      *      as nominated instead */
     if (pair->remote == remotecand) {
-      g_debug ("marking pair %p (%s) as nominated", pair, pair->foundation);
+      g_debug ("Agent %p : marking pair %p (%s) as nominated", agent, pair, pair->foundation);
       pair->nominated = TRUE;
       if (pair->state == NICE_CHECK_SUCCEEDED ||
 	  pair->state == NICE_CHECK_DISCOVERED)
@@ -792,7 +792,7 @@ static gboolean priv_add_new_check_pair (NiceAgent *agent, guint stream_id, Comp
       stream->conncheck_list = modified_list;
 
       result = TRUE;
-      g_debug ("added a new conncheck %p with foundation of '%s' to list %u.", pair, pair->foundation, stream_id);
+      g_debug ("Agent %p : added a new conncheck %p with foundation of '%s' to list %u.", agent, pair, pair->foundation, stream_id);
 
       /* implement the hard upper limit for number of 
 	 checks (see sect 5.7.3 ICE ID-19): */
@@ -1031,7 +1031,7 @@ int conn_check_send (NiceAgent *agent, CandidateCheckPair *pair)
   {
     gchar tmpbuf[INET6_ADDRSTRLEN];
     nice_address_to_string (&pair->remote->addr, tmpbuf);
-    g_debug ("STUN-CC REQ to '%s:%u', socket=%u, pair=%s (c-id:%u), tie=%llu, username='%s', password='%s', priority=%u.", 
+    g_debug ("Agent %p : STUN-CC REQ to '%s:%u', socket=%u, pair=%s (c-id:%u), tie=%llu, username='%s', password='%s', priority=%u.", agent, 
 	     tmpbuf,
 	     ntohs(((struct sockaddr_in*)(&sockaddr))->sin_port), 
 	     pair->local->sockptr->fileno,
@@ -1116,7 +1116,7 @@ static gboolean priv_schedule_triggered_check (NiceAgent *agent, Stream *stream,
 	  p->remote == remote_cand &&
 	  p->local->sockptr == local_socket) {
 
-	g_debug ("Found a matching pair %p for triggered check.", p);
+	g_debug ("Agent %p : Found a matching pair %p for triggered check.", agent, p);
 	
 	if (p->state == NICE_CHECK_WAITING ||
 	    p->state == NICE_CHECK_FROZEN)
@@ -1125,11 +1125,11 @@ static gboolean priv_schedule_triggered_check (NiceAgent *agent, Stream *stream,
 	if (p->state == NICE_CHECK_IN_PROGRESS) {
 	  /* XXX: according to ICE 7.2.1.4 "Triggered Checks" (ID-19),
 	   * we should cancel the existing one, and send a new one...? :P */
-	  g_debug ("Skipping triggered check, already in progress..");
+	  g_debug ("Agent %p : Skipping triggered check, already in progress..", agent);
 	}
 	else if (p->state == NICE_CHECK_SUCCEEDED ||
 		 p->state == NICE_CHECK_DISCOVERED) {
-	  g_debug ("Skipping triggered check, already completed.."); 
+	  g_debug ("Agent %p : Skipping triggered check, already completed..", agent); 
 	  /* note: this is a bit unsure corner-case -- let's do the
 	     same state update as for processing responses to our own checks */
 	  priv_update_check_list_state_for_ready (agent, stream, component);
@@ -1157,11 +1157,11 @@ static gboolean priv_schedule_triggered_check (NiceAgent *agent, Stream *stream,
 	break;
     }    
     if (i) {
-      g_debug ("Adding a triggered check to conn.check list (local=%p).", local);
+      g_debug ("Agent %p : Adding a triggered check to conn.check list (local=%p).", agent, local);
       result = priv_add_new_check_pair (agent, stream->id, component, local, remote_cand, NICE_CHECK_WAITING, use_candidate);
     }
     else
-      g_debug ("Didn't find a matching pair for triggered check (remote-cand=%p).", remote_cand);
+      g_debug ("Agent %p : Didn't find a matching pair for triggered check (remote-cand=%p).", agent, remote_cand);
   }
 
   return result;
@@ -1194,7 +1194,7 @@ static void priv_reply_to_conn_check (NiceAgent *agent, Stream *stream, Componen
   {
     gchar tmpbuf[INET6_ADDRSTRLEN];
     nice_address_to_string (toaddr, tmpbuf);
-    g_debug ("STUN-CC RESP to '%s:%u', socket=%u, len=%u, cand=%p (c-id:%u), use-cand=%d.",
+    g_debug ("Agent %p : STUN-CC RESP to '%s:%u', socket=%u, len=%u, cand=%p (c-id:%u), use-cand=%d.", agent,
 	     tmpbuf,
 	     nice_address_get_port (toaddr),
 	     udp_socket->fileno,
@@ -1226,12 +1226,12 @@ static void priv_reply_to_conn_check (NiceAgent *agent, Stream *stream, Componen
 static int priv_store_pending_check (NiceAgent *agent, Component *component, const NiceAddress *from, NiceUDPSocket *udp_socket, uint32_t priority, gboolean use_candidate)
 {
   IncomingCheck *icheck;
-  g_debug ("Storing pending check.");
+  g_debug ("Agent %p : Storing pending check.", agent);
 
   if (component->incoming_checks &&
       g_slist_length (component->incoming_checks) >= 
       NICE_AGENT_MAX_REMOTE_CANDIDATES) {
-    g_debug ("WARN: unable to store information for early incoming check.");
+    g_debug ("Agent %p : WARN: unable to store information for early incoming check.", agent);
     return -1;
   }
 
@@ -1278,7 +1278,7 @@ static CandidateCheckPair *priv_add_peer_reflexive_pair (NiceAgent *agent, guint
 	pair->priority = nice_candidate_pair_priority (parent_pair->priority, local_cand->priority);
       pair->nominated = FALSE;
       pair->controlling = agent->controlling_mode;
-      g_debug ("added a new peer-discovered pair with foundation of '%s'.", pair->foundation);
+      g_debug ("Agent %p : added a new peer-discovered pair with foundation of '%s'.", agent, pair->foundation);
       return pair;
     }
   }
@@ -1312,14 +1312,14 @@ static void priv_check_for_role_conflict (NiceAgent *agent, gboolean control)
 {
   /* role conflict, change mode; wait for a new conn. check */
   if (control != agent->controlling_mode) {
-    g_debug ("Role conflict, changing agent role to %d.", control);
+    g_debug ("Agent %p : Role conflict, changing agent role to %d.", agent, control);
     agent->controlling_mode = control;
     /* the pair priorities depend on the roles, so recalculation
      * is needed */
     priv_recalculate_pair_priorities (agent);
   }
   else 
-    g_debug ("Role conflict, agent role already changed to %d.", control);
+    g_debug ("Agent %p : Role conflict, agent role already changed to %d.", agent, control);
 }
 
 /** 
@@ -1357,7 +1357,7 @@ static CandidateCheckPair *priv_process_response_check_for_peer_reflexive(NiceAg
     /* note: this is same as "adding to VALID LIST" in the spec
        text */
     p->state = NICE_CHECK_SUCCEEDED;
-    g_debug ("conncheck %p SUCCEEDED.", p);
+    g_debug ("Agent %p : conncheck %p SUCCEEDED.", agent, p);
     priv_conn_check_unfreeze_related (agent, stream, p);
   }
   else {
@@ -1372,7 +1372,7 @@ static CandidateCheckPair *priv_process_response_check_for_peer_reflexive(NiceAg
     /* step: add a new discovered pair (see ICE 7.1.2.2.2
 	       "Constructing a Valid Pair" (ID-19)) */
     new_pair = priv_add_peer_reflexive_pair (agent, stream->id, component->id, cand, p);
-    g_debug ("conncheck %p FAILED, %p DISCOVERED.", p, new_pair);
+    g_debug ("Agent %p : conncheck %p FAILED, %p DISCOVERED.", agent, p, new_pair);
   }
 
   return new_pair;
@@ -1397,13 +1397,13 @@ static gboolean priv_map_reply_to_conn_check_request (NiceAgent *agent, Stream *
     CandidateCheckPair *p = i->data;
     if (p->stun_ctx) {
       res = stun_bind_process (p->stun_ctx, buf, len, &sockaddr, &socklen); 
-      g_debug ("stun_bind_process/conncheck for %p res %d (%s) (controlling=%d).", p, (int)res, strerror (res), agent->controlling_mode);
+      g_debug ("Agent %p : stun_bind_process/conncheck for %p res %d (%s) (controlling=%d).", agent, p, (int)res, strerror (res), agent->controlling_mode);
       if (res == 0) {
 	/* case: found a matching connectivity check request */
 
 	CandidateCheckPair *ok_pair = NULL;
 
-	g_debug ("conncheck %p MATCHED.", p);
+	g_debug ("Agent %p : conncheck %p MATCHED.", agent, p);
 	p->stun_ctx = NULL;
 
 	/* step: verify that response came from the same IP address we
@@ -1411,7 +1411,7 @@ static gboolean priv_map_reply_to_conn_check_request (NiceAgent *agent, Stream *
 	 *       Cases") */
 	if (nice_address_equal (from, &p->remote->addr) != TRUE) {
 	  p->state = NICE_CHECK_FAILED;	
-	  g_debug ("conncheck %p FAILED (mismatch of source address).", p); 
+	  g_debug ("Agent %p : conncheck %p FAILED (mismatch of source address).", agent, p); 
 	  trans_found = TRUE;
 	  break;
 	}
@@ -1448,7 +1448,7 @@ static gboolean priv_map_reply_to_conn_check_request (NiceAgent *agent, Stream *
       }
       else if (res == ECONNRESET) {
 	/* case: role conflict error, need to restart with new role */
-	g_debug ("conncheck %p ROLE CONFLICT, restarting", p);
+	g_debug ("Agent %p : conncheck %p ROLE CONFLICT, restarting", agent, p);
 	
 	/* note: our role might already have changed due to an
 	 * incoming request, but if not, change role now;
@@ -1461,7 +1461,7 @@ static gboolean priv_map_reply_to_conn_check_request (NiceAgent *agent, Stream *
       }
       else if (res != EAGAIN) {
 	/* case: STUN error, the check STUN context was freed */
-	g_debug ("conncheck %p FAILED.", p);
+	g_debug ("Agent %p : conncheck %p FAILED.", agent, p);
 	p->stun_ctx = NULL;
 	trans_found = TRUE;
       }
@@ -1469,7 +1469,7 @@ static gboolean priv_map_reply_to_conn_check_request (NiceAgent *agent, Stream *
 	/* case: STUN could not parse, skip */
 	g_assert (res == EAGAIN);
 	
-	g_debug ("conncheck %p SKIPPED", p);
+	g_debug ("Agent %p : conncheck %p SKIPPED", agent, p);
       }
     }
   }
@@ -1495,7 +1495,7 @@ static gboolean priv_map_reply_to_discovery_request (NiceAgent *agent, gchar *bu
     CandidateDiscovery *d = i->data;
     if (d->stun_ctx) {
       res = stun_bind_process (d->stun_ctx, buf, len, &sockaddr, &socklen); 
-      g_debug ("stun_bind_process/disc for %p res %d (%s).", d, (int)res,
+      g_debug ("Agent %p : stun_bind_process/disc for %p res %d (%s).", agent, d, (int)res,
                strerror (res));
       if (res == 0) {
 	/* case: succesful binding discovery, create a new local candidate */
@@ -1559,7 +1559,7 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, Stream *stream, Compo
   /* note: contents of 'buf' already validated, so it is 
    *       a valid and fully received STUN message */
 
-  g_debug ("inbound STUN packet for %p/%u/%u (agent/stream/component):", agent, stream->id, component->id);
+  g_debug ("Agent %p : inbound STUN packet for %u/%u (stream/component):", agent, stream->id, component->id);
 
   /* note: ICE  7.2. "STUN Server Procedures" (ID-19) */
 
@@ -1606,7 +1606,7 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, Stream *stream, Compo
       
       if (i == NULL) {
 	NiceCandidate *candidate;
-	g_debug ("No matching remote candidate for incoming check -> peer-reflexive candidate.");
+	g_debug ("Agent %p : No matching remote candidate for incoming check -> peer-reflexive candidate.", agent);
 	candidate = discovery_learn_remote_peer_reflexive_candidate (
 								     agent, stream, component, priority, from, udp_socket);
 	if (candidate)
@@ -1632,10 +1632,10 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, Stream *stream, Compo
 	priv_map_reply_to_discovery_request (agent, buf, len);
 
     if (trans_found != TRUE)
-      g_debug ("Unable to match to an existing transaction, probably a keepalive.");
+      g_debug ("Agent %p : Unable to match to an existing transaction, probably a keepalive.", agent);
   }
   else {
-    g_debug ("Invalid STUN packet, ignoring... %s", strerror(errno));
+    g_debug ("Agent %p : Invalid STUN packet, ignoring... %s", agent, strerror(errno));
     return FALSE;
   }
 
