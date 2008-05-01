@@ -389,9 +389,9 @@ static gboolean priv_conn_check_tick (gpointer pointer)
   NiceAgent *agent = pointer;
   gboolean ret;
 
-  g_mutex_lock (agent->mutex);
+  g_static_rec_mutex_lock (&agent->mutex);
   ret = priv_conn_check_tick_unlocked (pointer);
-  g_mutex_unlock (agent->mutex);
+  g_static_rec_mutex_unlock (&agent->mutex);
 
   return ret;
 }
@@ -411,7 +411,7 @@ static gboolean priv_conn_keepalive_tick (gpointer pointer)
   int errors = 0;
   gboolean ret = FALSE;
 
-  g_mutex_lock (agent->mutex);
+  g_static_rec_mutex_lock (&agent->mutex);
 
   /* case 1: session established and media flowing
    *         (ref ICE sect 10 "Keepalives" ID-19)  */
@@ -464,7 +464,7 @@ static gboolean priv_conn_keepalive_tick (gpointer pointer)
   ret = TRUE;
 
  done:
-  g_mutex_unlock (agent->mutex);
+  g_static_rec_mutex_unlock (&agent->mutex);
   return ret;
 }
 

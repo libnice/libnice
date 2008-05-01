@@ -401,7 +401,8 @@ nice_agent_init (NiceAgent *agent)
 
   agent->rng = nice_rng_new ();
   priv_generate_tie_breaker (agent);
-  agent->mutex = g_mutex_new ();
+
+  g_static_rec_mutex_init (&agent->mutex);
 }
 
 
@@ -436,7 +437,7 @@ nice_agent_get_property (
 {
   NiceAgent *agent = NICE_AGENT (object);
 
-  g_mutex_lock (agent->mutex);
+  g_static_rec_mutex_lock (&agent->mutex);
 
   switch (property_id)
     {
@@ -489,7 +490,7 @@ nice_agent_get_property (
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
     }
 
-  g_mutex_unlock (agent->mutex);
+  g_static_rec_mutex_unlock (&agent->mutex);
 }
 
 
@@ -502,7 +503,7 @@ nice_agent_set_property (
 {
   NiceAgent *agent = NICE_AGENT (object);
 
-  g_mutex_lock (agent->mutex);
+  g_static_rec_mutex_lock (&agent->mutex);
 
   switch (property_id)
     {
@@ -550,7 +551,7 @@ nice_agent_set_property (
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
     }
 
-  g_mutex_unlock (agent->mutex);
+  g_static_rec_mutex_unlock (&agent->mutex);
 
 }
 
@@ -589,9 +590,7 @@ void agent_gathering_done (NiceAgent *agent)
 
 void agent_signal_gathering_done (NiceAgent *agent)
 {
-  g_mutex_unlock (agent->mutex);
   g_signal_emit (agent, signals[SIGNAL_CANDIDATE_GATHERING_DONE], 0);
-  g_mutex_lock (agent->mutex);
 }
 
 void agent_signal_initial_binding_request_received (NiceAgent *agent, Stream *stream)
@@ -614,11 +613,9 @@ void agent_signal_new_selected_pair (NiceAgent *agent, guint stream_id, guint co
   lf_copy = g_strdup (local_foundation);
   rf_copy = g_strdup (remote_foundation);
 
-  g_mutex_unlock (agent->mutex);
 
   g_signal_emit (agent, signals[SIGNAL_NEW_SELECTED_PAIR], 0,
       stream_id, component_id, lf_copy, rf_copy);
-  g_mutex_lock (agent->mutex);
 
   g_free (lf_copy);
   g_free (rf_copy);
@@ -653,10 +650,8 @@ void agent_signal_component_state_change (NiceAgent *agent, guint stream_id, gui
 
     component->state = state;
 
-    g_mutex_unlock (agent->mutex);
     g_signal_emit (agent, signals[SIGNAL_COMPONENT_STATE_CHANGED], 0,
 		   stream_id, component_id, state);
-    g_mutex_lock (agent->mutex);
   }
 }
 
@@ -723,7 +718,7 @@ nice_agent_add_stream (
   GSList *modified_list = NULL;
   guint ret = 0;
 
-  g_mutex_lock (agent->mutex);
+  g_static_rec_mutex_lock (&agent->mutex);
 
   if (!agent->local_addresses) {
     goto done;
@@ -747,7 +742,7 @@ nice_agent_add_stream (
   ret = stream->id;
 
  done:
-  g_mutex_unlock (agent->mutex);
+  g_static_rec_mutex_unlock (&agent->mutex);
   return ret;
 }
 
@@ -767,7 +762,7 @@ nice_agent_gather_candidates (
   GSList *i;
   Stream *stream;
 
-  g_mutex_lock (agent->mutex);
+  g_static_rec_mutex_lock (&agent->mutex);
 
   stream = agent_find_stream (agent, stream_id);
   if (stream == NULL) {
@@ -823,7 +818,7 @@ nice_agent_gather_candidates (
 
  done:
 
-  g_mutex_unlock (agent->mutex);
+  g_static_rec_mutex_unlock (&agent->mutex);
 }
 
 static void priv_remove_keepalive_timer (NiceAgent *agent)
@@ -849,7 +844,7 @@ nice_agent_remove_stream (
   Stream *stream;
   GSList *i;
 
-  g_mutex_lock (agent->mutex);
+  g_static_rec_mutex_lock (&agent->mutex);
   stream = agent_find_stream (agent, stream_id);
 
   if (!stream) {
@@ -872,7 +867,7 @@ nice_agent_remove_stream (
     priv_remove_keepalive_timer (agent);
 
  done:
-  g_mutex_unlock (agent->mutex);
+  g_static_rec_mutex_unlock (&agent->mutex);
 }
 
 /**
@@ -892,7 +887,7 @@ nice_agent_add_local_address (NiceAgent *agent, NiceAddress *addr)
   GSList *modified_list;
   gboolean ret = FALSE;
 
-  g_mutex_lock (agent->mutex);
+  g_static_rec_mutex_lock (&agent->mutex);
 
   dup = nice_address_dup (addr);
   nice_address_set_port (dup, 0);
@@ -905,7 +900,7 @@ nice_agent_add_local_address (NiceAgent *agent, NiceAddress *addr)
   }
 
  done:
-  g_mutex_unlock (agent->mutex);
+  g_static_rec_mutex_unlock (&agent->mutex);
   return ret;
 }
 
@@ -1034,7 +1029,7 @@ nice_agent_set_remote_credentials (
   Stream *stream;
   gboolean ret = FALSE;
 
-  g_mutex_lock (agent->mutex);
+  g_static_rec_mutex_lock (&agent->mutex);
 
   stream = agent_find_stream (agent, stream_id);
   /* note: oddly enough, ufrag and pwd can be empty strings */
@@ -1048,7 +1043,7 @@ nice_agent_set_remote_credentials (
   }
 
  done:
-  g_mutex_unlock (agent->mutex);
+  g_static_rec_mutex_unlock (&agent->mutex);
   return ret;
 }
 
@@ -1073,7 +1068,7 @@ nice_agent_get_local_credentials (
   Stream *stream;
   gboolean ret = TRUE;
 
-  g_mutex_lock (agent->mutex);
+  g_static_rec_mutex_lock (&agent->mutex);
 
   stream = agent_find_stream (agent, stream_id);
   if (stream == NULL) {
@@ -1090,7 +1085,7 @@ nice_agent_get_local_credentials (
 
  done:
 
-  g_mutex_unlock (agent->mutex);
+  g_static_rec_mutex_unlock (&agent->mutex);
   return ret;
 }
 
@@ -1123,7 +1118,7 @@ nice_agent_add_remote_candidate (
 
   /* XXX: to be deprecated */
 
-  g_mutex_lock (agent->mutex);
+  g_static_rec_mutex_lock (&agent->mutex);
 
   /* XXX: should we allow use of this method without an 
    *      initial call to nice_agent_set_remote_candidates()
@@ -1146,7 +1141,7 @@ nice_agent_add_remote_candidate (
      candidate, see below set_remote_candidates() */
 
 
-  g_mutex_unlock (agent->mutex);
+  g_static_rec_mutex_unlock (&agent->mutex);
   return ret;
 }
 
@@ -1176,7 +1171,7 @@ nice_agent_set_remote_candidates (NiceAgent *agent, guint stream_id, guint compo
   if (agent->discovery_unsched_items > 0)
     return -1;
 
-  g_mutex_lock (agent->mutex);
+  g_static_rec_mutex_lock (&agent->mutex);
 
  for (i = candidates; i && added >= 0; i = i->next) {
    NiceCandidate *d = (NiceCandidate*) i->data;
@@ -1206,7 +1201,7 @@ nice_agent_set_remote_candidates (NiceAgent *agent, guint stream_id, guint compo
      g_debug ("Agent %p : Warning: unable to schedule any conn checks!", agent);
  }
 
- g_mutex_unlock (agent->mutex);
+ g_static_rec_mutex_unlock (&agent->mutex);
  return added;
 }
 
@@ -1310,7 +1305,7 @@ nice_agent_recv (
   Component *component;
   guint ret = 0;
 
-  g_mutex_lock (agent->mutex);
+  g_static_rec_mutex_lock (&agent->mutex);
   if (!agent_find_component (agent, stream_id, component_id, &stream, &component)) {
     goto done;
   }
@@ -1361,7 +1356,7 @@ nice_agent_recv (
    *
    * g_assert_not_reached (); */
  done:
-  g_mutex_unlock (agent->mutex);
+  g_static_rec_mutex_unlock (&agent->mutex);
   return ret;
 }
 
@@ -1379,7 +1374,7 @@ nice_agent_recv_sock (
   Component *component;
   guint ret = 0;
 
-  g_mutex_lock (agent->mutex);
+  g_static_rec_mutex_lock (&agent->mutex);
   if (!agent_find_component (agent, stream_id, component_id, &stream, &component)) {
     goto done;
   }
@@ -1391,7 +1386,7 @@ nice_agent_recv_sock (
 			   socket, buf_len, buf);
 
  done:
-  g_mutex_unlock (agent->mutex);
+  g_static_rec_mutex_unlock (&agent->mutex);
   return ret;
 }
 
@@ -1422,7 +1417,7 @@ nice_agent_poll_read (
   GSList *i;
   guint j;
 
-  g_mutex_lock (agent->mutex);
+  g_static_rec_mutex_lock (&agent->mutex);
 
   FD_ZERO (&fds);
 
@@ -1507,7 +1502,7 @@ nice_agent_poll_read (
       }
 
  done:
-  g_mutex_unlock (agent->mutex);
+  g_static_rec_mutex_unlock (&agent->mutex);
   return ret;
 }
 
@@ -1534,7 +1529,7 @@ nice_agent_send (
   Component *component;
   guint ret = -1;
 
-  g_mutex_lock (agent->mutex);
+  g_static_rec_mutex_lock (&agent->mutex);
 
   if (!agent_find_component (agent, stream_id, component_id, &stream, &component)) {
     goto done;
@@ -1564,7 +1559,7 @@ nice_agent_send (
     }
 
  done:
-  g_mutex_unlock (agent->mutex);
+  g_static_rec_mutex_unlock (&agent->mutex);
   return ret;
 }
 
@@ -1589,7 +1584,7 @@ nice_agent_get_local_candidates (
   GSList * ret = NULL;
   GSList * item = NULL;
 
-  g_mutex_lock (agent->mutex);
+  g_static_rec_mutex_lock (&agent->mutex);
   if (!agent_find_component (agent, stream_id, component_id, NULL, &component))
     {
       goto done;
@@ -1599,7 +1594,7 @@ nice_agent_get_local_candidates (
     ret = g_slist_append (ret, nice_candidate_copy (item->data));
 
  done:
-  g_mutex_unlock (agent->mutex);
+  g_static_rec_mutex_unlock (&agent->mutex);
   return ret;
 }
 
@@ -1626,7 +1621,7 @@ nice_agent_get_remote_candidates (
   Component *component;
   GSList *ret = NULL, *item = NULL;
 
-  g_mutex_lock (agent->mutex);
+  g_static_rec_mutex_lock (&agent->mutex);
   if (!agent_find_component (agent, stream_id, component_id, NULL, &component))
     {
       goto done;
@@ -1636,7 +1631,7 @@ nice_agent_get_remote_candidates (
     ret = g_slist_append (ret, nice_candidate_copy (item->data));
 
  done:
-  g_mutex_unlock (agent->mutex);
+  g_static_rec_mutex_unlock (&agent->mutex);
   return ret;
 }
 
@@ -1658,7 +1653,7 @@ nice_agent_restart (
   GSList *i;
   gboolean res = TRUE;
 
-  g_mutex_lock (agent->mutex);
+  g_static_rec_mutex_lock (&agent->mutex);
 
   /* step: clean up all connectivity checks */
   conn_check_free (agent);
@@ -1674,7 +1669,7 @@ nice_agent_restart (
     res = stream_restart (stream, agent->rng);
   }
 
-  g_mutex_unlock (agent->mutex);
+  g_static_rec_mutex_unlock (&agent->mutex);
   return res;
 }
 
@@ -1724,7 +1719,7 @@ nice_agent_dispose (GObject *object)
   if (G_OBJECT_CLASS (nice_agent_parent_class)->dispose)
     G_OBJECT_CLASS (nice_agent_parent_class)->dispose (object);
 
-  g_mutex_free (agent->mutex);
+  g_static_rec_mutex_free (&agent->mutex);
 }
 
 
@@ -1781,7 +1776,7 @@ nice_agent_g_source_cb (
   gchar buf[MAX_BUFFER_SIZE];
   guint len;
 
-  g_mutex_lock (agent->mutex);
+  g_static_rec_mutex_lock (&agent->mutex);
 
   /* note: dear compiler, these are for you: */
   (void)source;
@@ -1793,7 +1788,7 @@ nice_agent_g_source_cb (
     component->g_source_io_cb (agent, stream->id, component->id,
         len, buf, component->data);
 
-  g_mutex_unlock (agent->mutex);
+  g_static_rec_mutex_unlock (&agent->mutex);
   return TRUE;
 }
 
@@ -1877,7 +1872,7 @@ nice_agent_attach_recv (
   Stream *stream = NULL;
   gboolean ret = FALSE;
 
-  g_mutex_lock (agent->mutex);
+  g_static_rec_mutex_lock (&agent->mutex);
 
   /* attach candidates */
 
@@ -1906,7 +1901,7 @@ nice_agent_attach_recv (
 
 
  done:
-  g_mutex_unlock (agent->mutex);
+  g_static_rec_mutex_unlock (&agent->mutex);
   return ret;
 }
 
@@ -1930,7 +1925,7 @@ nice_agent_set_selected_pair (
   CandidatePair pair;
   gboolean ret = FALSE;
 
-  g_mutex_lock (agent->mutex);
+  g_static_rec_mutex_lock (&agent->mutex);
 
   /* step: check that params specify an existing pair */
   if (!agent_find_component (agent, stream_id, component_id, &stream, &component)) {
@@ -1954,7 +1949,7 @@ nice_agent_set_selected_pair (
   ret = TRUE;
 
  done:
-  g_mutex_unlock (agent->mutex);
+  g_static_rec_mutex_unlock (&agent->mutex);
   return ret;
 }
 

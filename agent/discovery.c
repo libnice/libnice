@@ -576,9 +576,9 @@ static gboolean priv_discovery_tick (gpointer pointer)
   NiceAgent *agent = pointer;
   gboolean ret;
 
-  g_mutex_lock (agent->mutex);
+  g_static_rec_mutex_lock (&agent->mutex);
   ret = priv_discovery_tick_unlocked (pointer);
-  g_mutex_unlock (agent->mutex);
+  g_static_rec_mutex_unlock (&agent->mutex);
 
   return ret;
 }
