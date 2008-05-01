@@ -299,6 +299,10 @@ gst_nice_src_dispose (GObject *object)
     g_object_unref (src->agent);
   src->agent = NULL;
 
+  if (src->mainloop)
+    g_main_loop_unref (src->mainloop);
+  src->mainloop = NULL;
+
   GST_CALL_PARENT (G_OBJECT_CLASS, dispose, (object));
 }
 
