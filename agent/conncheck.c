@@ -475,6 +475,7 @@ static gboolean priv_conn_keepalive_tick (gpointer pointer)
 gboolean conn_check_schedule_next (NiceAgent *agent)
 {
   gboolean res = priv_conn_check_unfreeze_next (agent);
+  g_debug ("Agent %p : priv_conn_check_unfreeze_next returned %d", agent, res);
 
   if (agent->discovery_unsched_items > 0)
     g_debug ("Agent %p : WARN: starting conn checks before local candidate gathering is finished.", agent);
@@ -482,6 +483,7 @@ gboolean conn_check_schedule_next (NiceAgent *agent)
   if (res == TRUE) {
     /* step: call once imediately */
     res = priv_conn_check_tick_unlocked ((gpointer) agent);
+    g_debug ("Agent %p : priv_conn_check_tick_unlocked returned %d", agent, res);
 
     /* step: schedule timer if not running yet */
     if (res && agent->conncheck_timer_id == 0) {
@@ -495,6 +497,7 @@ gboolean conn_check_schedule_next (NiceAgent *agent)
 
   }
 
+  g_debug ("Agent %p : conn_check_schedule_next returning %d", agent, res);
   return res;
 }
 

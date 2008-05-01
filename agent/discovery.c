@@ -471,7 +471,7 @@ static gboolean priv_discovery_tick_unlocked (gpointer pointer)
   {
     static int tick_counter = 0;
     if (tick_counter++ % 50 == 0)
-      g_debug ("discovery tick #%d with list %p (1)", tick_counter, agent->discovery_list);
+      g_debug ("Agent %p : discovery tick #%d with list %p (1)", agent, tick_counter, agent->discovery_list);
   }
 #endif
 
@@ -484,7 +484,7 @@ static gboolean priv_discovery_tick_unlocked (gpointer pointer)
       if (agent->discovery_unsched_items)
 	--agent->discovery_unsched_items;
       
-      g_debug ("discovery - scheduling cand type %u addr %s and socket %d.\n",
+      g_debug ("Agent %p : discovery - scheduling cand type %u addr %s and socket %d.\n", agent,
                cand->type, cand->server_addr, cand->socket);
       
       if (cand->type == NICE_CANDIDATE_TYPE_SERVER_REFLEXIVE &&
@@ -529,7 +529,7 @@ static gboolean priv_discovery_tick_unlocked (gpointer pointer)
       g_get_current_time (&now);
 
       if (cand->stun_ctx == NULL) {
-	g_debug ("STUN discovery was cancelled, marking discovery done.");
+	g_debug ("Agent %p : STUN discovery was cancelled, marking discovery done.", agent);
 	cand->done = TRUE;
       }
       else if (priv_timer_expired (&cand->next_tick, &now)) {
@@ -548,7 +548,7 @@ static gboolean priv_discovery_tick_unlocked (gpointer pointer)
 	  /* case: error, abort processing */
 	  cand->done = TRUE;
 	  cand->stun_ctx = NULL;
-	  g_debug ("Error with stun_bind_elapse(), aborting discovery item.");
+	  g_debug ("Agent %p : Error with stun_bind_elapse(), aborting discovery item.", agent);
 	}
        
       }
@@ -558,7 +558,7 @@ static gboolean priv_discovery_tick_unlocked (gpointer pointer)
   }
 
   if (not_done == 0) {
-    g_debug ("Candidate gathering FINISHED, stopping discovery timer.");
+    g_debug ("Agent %p : Candidate gathering FINISHED, stopping discovery timer.", agent);
 
     discovery_free (agent);
 

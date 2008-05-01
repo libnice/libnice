@@ -615,8 +615,9 @@ void agent_signal_component_state_change (NiceAgent *agent, guint stream_id, gui
     return;
 
   if (component->state != state && state < NICE_COMPONENT_STATE_LAST) {
-    g_debug ("stream %u component %u STATE-CHANGE %u -> %u.",
+    g_debug ("Agent %p : stream %u component %u STATE-CHANGE %u -> %u.", agent,
 	     stream_id, component_id, component->state, state);
+
     component->state = state;
 
     g_mutex_unlock (agent->mutex);
@@ -658,7 +659,7 @@ priv_add_srv_rfx_candidate_discovery (NiceAgent *agent, NiceCandidate *host_cand
       cdisco->stream = stream;
       cdisco->component = stream_find_component_by_id (stream, component_id);
       cdisco->agent = agent;
-      g_debug ("Adding new srv-rflx candidate discovery %p\n", cdisco);
+      g_debug ("Agent %p : Adding new srv-rflx candidate discovery %p\n", agent, cdisco);
       agent->discovery_list = modified_list;
       ++agent->discovery_unsched_items;
     }
@@ -700,7 +701,7 @@ nice_agent_add_stream (
     modified_list = g_slist_append (agent->streams, stream);
     if (modified_list) {
       stream->id = agent->next_stream_id++;
-      g_debug ("allocating stream id %u (%p)", stream->id, stream);
+      g_debug ("Agent %p : allocating stream id %u (%p)", agent, stream->id, stream);
 
       stream_initialize_credentials (stream, agent->rng);
 
@@ -740,7 +741,7 @@ nice_agent_gather_candidates (
     goto done;
   }
 
-  g_debug ("In %s mode, starting candidate gathering.", agent->full_mode ? "ICE-FULL" : "ICE-LITE");
+  g_debug ("Agent %p : In %s mode, starting candidate gathering.", agent, agent->full_mode ? "ICE-FULL" : "ICE-LITE");
 
   /* generate a local host candidate for each local address */
 
@@ -905,7 +906,7 @@ static gboolean priv_add_remote_candidate (
   /* step: check whether the candidate already exists */
   candidate = component_find_remote_candidate(component, addr, transport);
   if (candidate) {
-    g_debug("Update existing remote candidate %p.", candidate);
+    g_debug ("Agent %p : Update existing remote candidate %p.", agent, candidate);
     /* case 1: an existing candidate, update the attributes */
     candidate->type = type;
     if (base_addr)
@@ -941,7 +942,7 @@ static gboolean priv_add_remote_candidate (
 	{
 	  gchar tmpbuf[INET6_ADDRSTRLEN];
 	  nice_address_to_string (addr, tmpbuf);
-	  g_debug ("Adding remote candidate with addr [%s]:%u.", tmpbuf,
+	  g_debug ("Agent %p : Adding remote candidate with addr [%s]:%u.", agent, tmpbuf,
 		   nice_address_get_port (addr));
 	}
 #endif
@@ -1169,7 +1170,7 @@ nice_agent_set_remote_candidates (NiceAgent *agent, guint stream_id, guint compo
  if (added > 0) {
    gboolean res = conn_check_schedule_next (agent);
    if (res != TRUE)
-     g_debug ("Warning: unable to schedule any conn checks!");
+     g_debug ("Agent %p : Warning: unable to schedule any conn checks!", agent);
  }
 
  g_mutex_unlock (agent->mutex);
@@ -1202,7 +1203,7 @@ _nice_agent_recv (
   if (len >= 0) {
     gchar tmpbuf[INET6_ADDRSTRLEN];
     nice_address_to_string (&from, tmpbuf);
-    g_debug ("Packet received on local socket %u from [%s]:%u (%u octets).",
+    g_debug ("Agent %p : Packet received on local socket %u from [%s]:%u (%u octets).", agent,
              udp_socket->fileno, tmpbuf, nice_address_get_port (&from), len);
   }
 #endif
@@ -1515,7 +1516,7 @@ nice_agent_send (
       gchar tmpbuf[INET6_ADDRSTRLEN];
       nice_address_to_string (&component->selected_pair.remote->addr, tmpbuf);
 
-      g_debug ("s%d:%d: sending %d bytes to [%s]:%d", stream_id, component_id,
+      g_debug ("Agent %p : s%d:%d: sending %d bytes to [%s]:%d", agent, stream_id, component_id,
           len, tmpbuf,
           nice_address_get_port (&component->selected_pair.remote->addr));
 #endif
@@ -1787,7 +1788,7 @@ priv_attach_stream_component_socket (NiceAgent *agent,
   ctx = io_ctx_new (agent, stream, component, udp_socket);
   g_source_set_callback (source, (GSourceFunc) nice_agent_g_source_cb,
       ctx, (GDestroyNotify) io_ctx_free);
-  g_debug ("Attach source %p (stream %u).", source, stream->id);
+  g_debug ("Agent %p : Attach source %p (stream %u).", agent, source, stream->id);
   g_source_attach (source, component->ctx);
   component->gsources = g_slist_append (component->gsources, source);
 }
