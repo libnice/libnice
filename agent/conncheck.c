@@ -443,8 +443,8 @@ static gboolean priv_conn_keepalive_tick (gpointer pointer)
   for (i = agent->streams; i; i = i->next) {
     Stream *stream = i->data;
     if (stream->conncheck_state == NICE_CHECKLIST_RUNNING) {
-      for (i = stream->conncheck_list; i ; i = i->next) {
-	CandidateCheckPair *p = i->data;
+      for (j = stream->conncheck_list; j ; j = j->next) {
+	CandidateCheckPair *p = j->data;
 
 	if (p->traffic_after_tick != TRUE) {
 	  g_debug ("Agent %p : resending STUN-CC to keep the candidate alive (pair %p).", agent, p);
