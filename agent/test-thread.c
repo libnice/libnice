@@ -124,9 +124,9 @@ static void cb_nice_recv (NiceAgent *agent, guint stream_id, guint component_id,
   gint *count = NULL;
 
   if (GPOINTER_TO_UINT (user_data) == 1)
-    count = &global_lagent_cands;
+    count = &global_lagent_buffers;
   else if (GPOINTER_TO_UINT (user_data) == 2)
-    count = &global_ragent_cands;
+    count = &global_ragent_buffers;
   else
     g_error ("Invalid agent ?");
 
