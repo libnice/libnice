@@ -119,7 +119,6 @@ static void cb_candidate_gathering_done(NiceAgent *agent, gpointer data)
 
 static void cb_nice_recv (NiceAgent *agent, guint stream_id, guint component_id, guint len, gchar *buf, gpointer user_data)
 {
-  g_warning ("test-thread:%s: %p %d", G_STRFUNC, user_data, len);
   gchar data[10];
   gint *count = NULL;
 
@@ -274,7 +273,7 @@ int main (void)
   rthread = g_thread_create (mainloop_thread, rmainloop, TRUE, NULL);
   g_assert (rthread);
 
-  ls_id = nice_agent_add_stream (lagent, 1);
+  ls_id = nice_agent_add_stream (lagent, 2);
   rs_id = nice_agent_add_stream (ragent, 2);
   g_assert (ls_id > 0);
   g_assert (rs_id > 0);
@@ -298,10 +297,18 @@ int main (void)
   /* Run loop for error timer */
   g_main_loop_run (error_loop);
 
-  g_main_loop_quit (ldmainloop);
-  g_main_loop_quit (rdmainloop);
-  g_main_loop_quit (lmainloop);
-  g_main_loop_quit (rmainloop);
+  while (!g_main_loop_is_running (ldmainloop));
+  while (g_main_loop_is_running (ldmainloop))
+    g_main_loop_quit (ldmainloop);
+  while (!g_main_loop_is_running (rdmainloop));
+  while (g_main_loop_is_running (rdmainloop))
+    g_main_loop_quit (rdmainloop);
+  while (!g_main_loop_is_running (lmainloop));
+  while (g_main_loop_is_running (lmainloop))
+    g_main_loop_quit (lmainloop);
+  while (!g_main_loop_is_running (rmainloop));
+  while (g_main_loop_is_running (rmainloop))
+    g_main_loop_quit (rmainloop);
 
   g_thread_join (ldthread);
   g_thread_join (rdthread);
