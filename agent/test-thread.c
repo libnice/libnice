@@ -130,6 +130,9 @@ static void cb_nice_recv (NiceAgent *agent, guint stream_id, guint component_id,
   else
     g_error ("Invalid agent ?");
 
+  if (*count == -1)
+    return;
+
   g_assert (len == 10);
 
   memset (data, *count+'1', 10);
@@ -138,8 +141,10 @@ static void cb_nice_recv (NiceAgent *agent, guint stream_id, guint component_id,
 
   (*count)++;
 
+  if (*count == 10)
+    *count = -1;
 
-  if (global_ragent_buffers == 9 && global_lagent_buffers == 9)
+  if (global_ragent_buffers == -1 && global_lagent_buffers == -1)
     g_main_loop_quit (error_loop);
 }
 
