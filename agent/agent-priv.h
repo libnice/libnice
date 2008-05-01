@@ -106,6 +106,7 @@ agent_find_component (
 
 Stream *agent_find_stream (NiceAgent *agent, guint stream_id);
 
+void agent_gathering_done (NiceAgent *agent);
 void agent_signal_gathering_done (NiceAgent *agent);
 
 void agent_signal_new_selected_pair (

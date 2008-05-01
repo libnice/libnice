@@ -130,6 +130,7 @@ static gboolean priv_conn_check_unfreeze_next (NiceAgent *agent)
     Stream *stream = i->data;
     guint64 max_frozen_priority = 0;
 
+
     for (j = stream->conncheck_list; j ; j = j->next) {
       CandidateCheckPair *p = j->data;
 

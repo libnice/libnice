@@ -562,7 +562,7 @@ static gboolean priv_discovery_tick_unlocked (gpointer pointer)
 
     discovery_free (agent);
 
-    agent_signal_gathering_done (agent);
+    agent_gathering_done (agent);
 
     /* note: no pending timers, return FALSE to stop timer */
     return FALSE;

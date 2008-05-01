@@ -554,6 +554,39 @@ nice_agent_set_property (
 
 }
 
+void agent_gathering_done (NiceAgent *agent)
+{
+
+  GSList *i, *j, *k, *l, *m;
+
+  for (i = agent->streams; i; i = i->next) {
+    Stream *stream = i->data;
+    for (j = stream->components; j; j = j->next) {
+      Component *component = j->data;
+
+      for (k = component->local_candidates; k; k = k->next) {
+        NiceCandidate *local_candidate = k->data;
+
+        for (l = component->remote_candidates; l; l = l->next) {
+          NiceCandidate *remote_candidate = l->data;
+
+          for (m = stream->conncheck_list; m; m = m->next) {
+            CandidateCheckPair *p = m->data;
+
+            if (p->local == local_candidate && p->remote == remote_candidate)
+              break;
+          }
+          if (m == NULL) {
+            conn_check_add_for_candidate (agent, stream->id, component, remote_candidate);
+          }
+        }
+      }
+    }
+  }
+
+  agent_signal_gathering_done (agent);
+}
+
 void agent_signal_gathering_done (NiceAgent *agent)
 {
   g_mutex_unlock (agent->mutex);
@@ -781,9 +814,9 @@ nice_agent_gather_candidates (
 
 
   /* note: no async discoveries pending, signal that we are ready */
-  if (agent->discovery_unsched_items == 0)
-    agent_signal_gathering_done (agent);
-  else {
+  if (agent->discovery_unsched_items == 0) {
+    agent_gathering_done (agent);
+  } else {
     g_assert (agent->discovery_list);
     discovery_schedule (agent);
   }
