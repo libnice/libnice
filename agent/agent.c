@@ -1627,7 +1627,7 @@ nice_agent_get_remote_candidates (
       goto done;
     }
 
-  for (item = component->local_candidates; item; item = item->next)
+  for (item = component->remote_candidates; item; item = item->next)
     ret = g_slist_append (ret, nice_candidate_copy (item->data));
 
  done:
