@@ -954,16 +954,24 @@ static gboolean priv_create_check_username (NiceAgent *agent, CandidateCheckPair
 {
   Stream *stream;
 
+  stream = agent_find_stream (agent, pair->stream_id);
+
   if (pair &&
-      pair->remote && pair->remote->username &&
-      pair->local && pair->local->username) {
-    g_snprintf (dest, dest_len, "%s%s%s", pair->remote->username,
-        agent->compatibility == NICE_COMPATIBILITY_ID19 ? ":" : "",
-        pair->local->username);
-    return TRUE;
+      pair->remote && pair->remote->username) {
+    if (pair->local && pair->local->username) {
+      g_snprintf (dest, dest_len, "%s%s%s", pair->remote->username,
+          agent->compatibility == NICE_COMPATIBILITY_ID19 ? ":" : "",
+          pair->local->username);
+      return TRUE;
+    } else if (stream) {
+      g_snprintf (dest, dest_len, "%s%s%s", pair->remote->username,
+          agent->compatibility == NICE_COMPATIBILITY_ID19 ? ":" : "",
+          stream->local_ufrag);
+      return TRUE;
+
+    }
   }
 
-  stream = agent_find_stream (agent, pair->stream_id);
   if (stream) {
     g_snprintf (dest, dest_len, "%s%s%s", stream->remote_ufrag,
         agent->compatibility == NICE_COMPATIBILITY_ID19 ? ":" : "",
