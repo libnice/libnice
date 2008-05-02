@@ -218,7 +218,8 @@ static int stun_append_server (uint8_t *restrict msg, size_t msize)
   static const char server[] = PACKAGE_STRING;
   assert (strlen (server) < 128);
 
-  return stun_append_string (msg, msize, STUN_SERVER, server);
+  //  return stun_append_string (msg, msize, STUN_SERVER, server);
+  return 0;
 }
 
 
