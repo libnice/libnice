@@ -1260,9 +1260,7 @@ _nice_agent_recv (
     }
   /* step: validate using the new STUN API */
   /*    - note: old check '((buf[0] & 0xc0) == 0)' */
-  else if (stun_validate ((uint8_t*)buf, len) > 0 &&
-      stun_demux ((uint8_t*)buf))
-    {
+  else if (stun_validate ((uint8_t*)buf, len) > 0) {
       /* If the retval is no 0, its not a valid stun packet, probably data */
       conn_check_handle_inbound_stun (agent, stream, component, udp_socket,
           &from, buf, len);
