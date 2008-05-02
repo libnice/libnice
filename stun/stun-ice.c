@@ -100,7 +100,7 @@ stun_conncheck_reply (uint8_t *restrict buf, size_t *restrict plen,
     return EINVAL;
   }
 
-  if (!stun_demux (msg))
+  if (compat != 1 && !stun_demux (msg))
   {
     DBG (" Incorrectly multiplexed STUN message ignored.\n");
     return EINVAL;
