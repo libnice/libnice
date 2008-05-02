@@ -4,6 +4,7 @@ nice_address_equal
 nice_address_free
 nice_address_get_port
 nice_address_is_private
+nice_address_is_valid
 nice_address_new
 nice_address_set_from_sockaddr
 nice_address_set_from_string
