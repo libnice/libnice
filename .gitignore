@@ -76,6 +76,11 @@ stun/test-message-dump
 stun/test-message-dump-unknown
 stun/test-message-pack
 stun/test-message-unpack
+stun/tests/test-bind
+stun/tests/test-conncheck
+stun/tests/test-format
+stun/tests/test-parse
+
 
 # local/ stuff
 local/liblocal.la
@@ -97,6 +102,7 @@ nice/jingle-test-server
 nice/test-readline
 nice/test-util
 nice/nice.pc
+nice/libnice.symbols
 
 # random/ stuff
 random/librandom.la
