@@ -287,28 +287,30 @@ stun_conncheck_start (stun_bind_t **restrict context, int fd,
     memcpy (ctx->trans.key.value, password, ctx->trans.key.length);
   }
 
-  if (cand_use)
-  {
-    val = stun_append_flag (ctx->trans.msg.buf,
-                            sizeof (ctx->trans.msg.buf),
-                            STUN_USE_CANDIDATE);
+  if (compat != 1) {
+    if (cand_use)
+    {
+      val = stun_append_flag (ctx->trans.msg.buf,
+          sizeof (ctx->trans.msg.buf),
+          STUN_USE_CANDIDATE);
+      if (val)
+        goto error;
+    }
+
+    val = stun_append32 (ctx->trans.msg.buf, sizeof (ctx->trans.msg.buf),
+        STUN_PRIORITY, priority);
+    if (val)
+      goto error;
+
+    val = stun_append64 (ctx->trans.msg.buf, sizeof (ctx->trans.msg.buf),
+        controlling ? STUN_ICE_CONTROLLING
+        : STUN_ICE_CONTROLLED, tie);
     if (val)
       goto error;
   }
 
-  val = stun_append32 (ctx->trans.msg.buf, sizeof (ctx->trans.msg.buf),
-                       STUN_PRIORITY, priority);
-  if (val)
-    goto error;
-
-  val = stun_append64 (ctx->trans.msg.buf, sizeof (ctx->trans.msg.buf),
-                       controlling ? STUN_ICE_CONTROLLING
-                                   : STUN_ICE_CONTROLLED, tie);
-  if (val)
-    goto error;
-
   val = stun_finish_short (ctx->trans.msg.buf, &ctx->trans.msg.length,
-                           username, password, NULL);
+      username, compat == 1 ? NULL : password, NULL);
   if (val)
     goto error;
 

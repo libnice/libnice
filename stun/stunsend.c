@@ -490,22 +490,24 @@ stun_finish_long (uint8_t *msg, size_t *restrict plen,
     DBG ("\n  sent    : ");
     DBG_bytes (ptr, 20);
     DBG ("\n");
+
   }
 
-  /*
-   * NOTE: we always add a FINGERPRINT, even when it's not needed.
-   * This is OK, as it is an optional attribute. It also makes my
-   * software engineer's life easier.
-   */
-  ptr = stun_append (msg, len, STUN_FINGERPRINT, 4);
-  if (ptr == NULL)
-    return ENOBUFS;
+  if (0) {
+    /*
+     * NOTE: we always add a FINGERPRINT, even when it's not needed.
+     * This is OK, as it is an optional attribute. It also makes my
+     * software engineer's life easier.
+     */
+    ptr = stun_append (msg, len, STUN_FINGERPRINT, 4);
+    if (ptr == NULL)
+      return ENOBUFS;
 
-  *plen = ptr + 4 -msg;
+    fpr = htonl (stun_fingerprint (msg, *plen));
+    memcpy (ptr, &fpr, sizeof (fpr));
+  }
 
-  fpr = htonl (stun_fingerprint (msg, *plen));
-  memcpy (ptr, &fpr, sizeof (fpr));
-
+  *plen = stun_length (msg) + 20;
   return 0;
 }
 

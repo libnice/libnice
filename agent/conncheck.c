@@ -1590,7 +1590,8 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, Stream *stream, Compo
       stun_conncheck_use_candidate ((const uint8_t*)buf);
     uint32_t priority = stun_conncheck_priority ((const uint8_t*)buf);
 
-    if (agent->controlling_mode) 
+    if (agent->controlling_mode ||
+        agent->compatibility == NICE_COMPATIBILITY_GOOGLE) 
       use_candidate = TRUE;
 
     if (stream->initial_binding_request_received != TRUE)
