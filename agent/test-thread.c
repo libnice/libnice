@@ -201,8 +201,8 @@ int main (void)
   nice_udp_bsd_socket_factory_init (&udpfactory);
 
   /* step: create the agents L and R */
-  lagent = nice_agent_new (&udpfactory, lmainctx, NICE_COMPATIBILITY_ID19);
-  ragent = nice_agent_new (&udpfactory, rmainctx, NICE_COMPATIBILITY_ID19);
+  lagent = nice_agent_new (&udpfactory, lmainctx, NICE_COMPATIBILITY_GOOGLE);
+  ragent = nice_agent_new (&udpfactory, rmainctx, NICE_COMPATIBILITY_GOOGLE);
 
   g_object_set_data (G_OBJECT (lagent), "other-agent", ragent);
   g_object_set_data (G_OBJECT (ragent), "other-agent", lagent);
