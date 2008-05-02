@@ -82,6 +82,8 @@ stun_conncheck_reply (uint8_t *restrict buf, size_t *restrict plen,
                       const char *local_ufrag, const char *pass,
                       bool *restrict control, uint64_t tie, uint32_t compat)
 {
+  const char *username = NULL;
+  uint16_t username_len;
   size_t len = *plen;
   uint64_t q;
   int val, ret = 0;
@@ -137,6 +139,8 @@ stun_conncheck_reply (uint8_t *restrict buf, size_t *restrict plen,
     val = STUN_UNAUTHORIZED;
   }
 
+  username = (const char *)stun_find (msg, STUN_USERNAME, &username_len);
+
   if (val)
   {
     stun_bind_error (buf, &len, msg, val, NULL);
@@ -191,7 +195,8 @@ stun_conncheck_reply (uint8_t *restrict buf, size_t *restrict plen,
     goto failure;
   }
 
-  val = stun_finish_short (buf, &len, NULL, pass, NULL);
+  val = stun_finish_short (buf, &len, compat == 1 ? username : NULL,
+      compat == 1 ? NULL : pass, NULL);
   if (val)
     goto failure;
 
