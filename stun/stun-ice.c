@@ -187,8 +187,13 @@ stun_conncheck_reply (uint8_t *restrict buf, size_t *restrict plen,
 #endif
 
   stun_init_response (buf, len, msg);
-  val = stun_append_xor_addr (buf, len, STUN_XOR_MAPPED_ADDRESS,
-                              src, srclen);
+  if (compat == 1) {
+    val = stun_append_addr (buf, len, STUN_MAPPED_ADDRESS, src, srclen);
+  } else {
+    val = stun_append_xor_addr (buf, len, STUN_XOR_MAPPED_ADDRESS,
+        src, srclen);
+  }
+
   if (val)
   {
     DBG (" Mapped address problem: %s\n", strerror (val));
