@@ -107,6 +107,10 @@ nice_address_to_string (const NiceAddress *addr, gchar *dst);
 gboolean
 nice_address_is_private (const NiceAddress *a);
 
+G_GNUC_WARN_UNUSED_RESULT
+gboolean
+nice_address_is_valid (const NiceAddress *a);
+
 G_END_DECLS
 
 #endif /* _ADDRESS_H */

@@ -299,3 +299,16 @@ nice_address_is_private (const NiceAddress *a)
   g_assert_not_reached ();
 }
 
+
+NICEAPI_EXPORT gboolean
+nice_address_is_valid (const NiceAddress *a)
+{
+ switch (a->s.addr.sa_family)
+    {
+    case AF_INET:
+    case AF_INET6:
+      return TRUE;
+    default:
+      return FALSE;
+    }
+}
