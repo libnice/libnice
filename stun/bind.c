@@ -262,7 +262,7 @@ stun_conncheck_start (stun_bind_t **restrict context, int fd,
                       const struct sockaddr *restrict srv, socklen_t srvlen,
                       const char *username, const char *password,
                       bool cand_use, bool controlling, uint32_t priority,
-                      uint64_t tie)
+                      uint64_t tie, uint32_t compat)
 {
   int val;
   stun_bind_t *ctx;
@@ -275,15 +275,17 @@ stun_conncheck_start (stun_bind_t **restrict context, int fd,
     return val;
 
   ctx = *context;
-  ctx->trans.key.length = strlen (password);
-  ctx->trans.key.value = malloc (ctx->trans.key.length);
-  if (ctx->trans.key.value == NULL)
-  {
-    val = ENOMEM;
-    goto error;
-  }
+  if (compat != 1) {
+    ctx->trans.key.length = strlen (password);
+    ctx->trans.key.value = malloc (ctx->trans.key.length);
+    if (ctx->trans.key.value == NULL)
+    {
+      val = ENOMEM;
+      goto error;
+    }
 
-  memcpy (ctx->trans.key.value, password, ctx->trans.key.length);
+    memcpy (ctx->trans.key.value, password, ctx->trans.key.length);
+  }
 
   if (cand_use)
   {

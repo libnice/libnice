@@ -601,12 +601,12 @@ stun_match_answer (const uint8_t *msg, stun_method_t method,
      * currently ignore them. */
     if (stun_verify_key (msg, key, keylen) != 0)
       return false;
-  }
+  }/*
   else
   {
     if (stun_present (msg, STUN_MESSAGE_INTEGRITY))
       return false;
-  }
+      }*/
 
   return true;
 }

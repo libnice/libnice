@@ -1058,7 +1058,7 @@ int conn_check_send (NiceAgent *agent, CandidateCheckPair *pair)
 			  &sockaddr, sizeof (sockaddr),
 			  uname, password,
 			  cand_use, controlling, priority,
-			  agent->tie_breaker);
+			  agent->tie_breaker, agent->compatibility);
 
     timeout = stun_bind_timeout (pair->stun_ctx);
     /* note: convert from milli to microseconds for g_time_val_add() */

@@ -71,7 +71,7 @@ int stun_conncheck_start (stun_bind_t **restrict context, int fd,
                         const struct sockaddr *restrict srv, socklen_t srvlen,
                           const char *username, const char *password,
                           bool cand_use, bool controlling, uint32_t priority,
-                          uint64_t tie);
+                          uint64_t tie, uint32_t compat);
 
 /**
  * Tries to parse a STUN connectivity check (Binding request) and format a

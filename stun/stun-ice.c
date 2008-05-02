@@ -119,10 +119,12 @@ stun_conncheck_reply (uint8_t *restrict buf, size_t *restrict plen,
     return EPROTO;
   }
 
+  DBG ("compat = %d - username %d - pass %d\n", compat, stun_present (msg, STUN_USERNAME), stun_present (msg, STUN_MESSAGE_INTEGRITY));
+
   /* Short term credentials checking */
   val = 0;
-  if (!stun_present (msg, STUN_MESSAGE_INTEGRITY)
-      || (compat != 1 && !stun_present (msg, STUN_USERNAME)))
+  if (!stun_present (msg, STUN_USERNAME)
+      || (compat != 1 && !stun_present (msg, STUN_MESSAGE_INTEGRITY)))
   {
     DBG (" Missing USERNAME or MESSAGE-INTEGRITY.\n");
     val = STUN_BAD_REQUEST;
