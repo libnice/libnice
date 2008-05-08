@@ -213,14 +213,14 @@ static int dgram_process (int sock)
   /* Unknown attributes */
   if (stun_has_unknown (buf))
   {
-    stun_init_error_unknown (buf, sizeof (buf), buf);
+    stun_init_error_unknown (buf, sizeof (buf), buf, 0);
     goto finish;
   }
 
   switch (stun_get_method (buf))
   {
     case STUN_BINDING:
-      stun_init_response (buf, sizeof (buf), buf);
+      stun_init_response (buf, sizeof (buf), buf, 0);
       if (stun_has_cookie (buf))
         stun_append_xor_addr (buf, sizeof (buf),
                               STUN_XOR_MAPPED_ADDRESS,
@@ -231,7 +231,7 @@ static int dgram_process (int sock)
       break;
 
     default:
-      stun_init_error (buf, sizeof (buf), buf, STUN_BAD_REQUEST);
+      stun_init_error (buf, sizeof (buf), buf, STUN_BAD_REQUEST, 0);
   }
 
 finish:

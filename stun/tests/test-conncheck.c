@@ -75,7 +75,7 @@ int main (void)
 
   /* Incorrect message class */
   stun_init_request (req, STUN_BINDING);
-  stun_init_response (req, sizeof (req), req);
+  stun_init_response (req, sizeof (req), req, 0);
   len = sizeof (req);
   val = stun_finish (req, &len, 0);
   assert (val == 0);

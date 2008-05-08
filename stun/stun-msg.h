@@ -546,7 +546,7 @@ void stun_init_indication (uint8_t *msg, stun_method_t m);
  *
  * ans == req is allowed.
  */
-void stun_init_response (uint8_t *ans, size_t msize, const uint8_t *req);
+void stun_init_response (uint8_t *ans, size_t msize, const uint8_t *req, int compat);
 
 /**
  * Initializes a STUN error response message buffer with an ERROR-CODE
@@ -564,7 +564,7 @@ void stun_init_response (uint8_t *ans, size_t msize, const uint8_t *req);
  * ans == req is allowed.
  */
 int stun_init_error (uint8_t *ans,  size_t msize, const uint8_t *req,
-                     stun_error_t err);
+                     stun_error_t err, int compat);
 
 /**
  * Initializes a STUN error response message buffer, in response to a valid
@@ -578,7 +578,8 @@ int stun_init_error (uint8_t *ans,  size_t msize, const uint8_t *req,
  *
  * ans == req is allowed.
  */
-int stun_init_error_unknown (uint8_t *ans, size_t msize, const uint8_t *req);
+int stun_init_error_unknown (uint8_t *ans, size_t msize, const uint8_t *req,
+                             int compat);
 
 size_t
 stun_finish_long (uint8_t *msg, size_t *restrict plen,

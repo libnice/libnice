@@ -266,7 +266,7 @@ static void responses (void)
   val = recv (servfd, buf, 1000, MSG_DONTWAIT);
   assert (val >= 0);
 
-  stun_init_error (buf, sizeof (buf), buf, STUN_SERVER_ERROR);
+  stun_init_error (buf, sizeof (buf), buf, STUN_SERVER_ERROR, 0);
   len = sizeof (buf);
   val = stun_finish (buf, &len, 0);
   assert (val == 0);
@@ -284,7 +284,7 @@ static void responses (void)
   val = recv (servfd, buf, 1000, MSG_DONTWAIT);
   assert (val >= 0);
 
-  stun_init_response (buf, sizeof (buf), buf);
+  stun_init_response (buf, sizeof (buf), buf, 0);
   val = stun_append_string (buf, sizeof (buf), 0x6000,
                             "This is an unknown attribute!");
   assert (val == 0);
@@ -306,7 +306,7 @@ static void responses (void)
   val = recv (servfd, buf, 1000, MSG_DONTWAIT);
   assert (val >= 0);
 
-  stun_init_response (buf, sizeof (buf), buf);
+  stun_init_response (buf, sizeof (buf), buf, 0);
   len = sizeof (buf);
   val = stun_finish (buf, &len, 0);
   assert (val == 0);
@@ -325,7 +325,7 @@ static void responses (void)
   val = recv (servfd, buf, 1000, MSG_DONTWAIT);
   assert (val >= 0);
 
-  stun_init_response (buf, sizeof (buf), buf);
+  stun_init_response (buf, sizeof (buf), buf, 0);
   val = stun_append_addr (buf, sizeof (buf), STUN_MAPPED_ADDRESS,
                           (struct sockaddr *)&addr, addrlen);
   assert (val == 0);

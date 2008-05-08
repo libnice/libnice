@@ -149,14 +149,14 @@ int main (void)
     fatal ("Request formatting test failed");
 
   /* Response formatting test */
-  stun_init_response (msg, sizeof (msg), msg);
+  stun_init_response (msg, sizeof (msg), msg, 0);
   finish_check (msg);
   if (memcmp (msg, "\x01\x01", 2))
     fatal ("Response formatting test failed");
 
   /* Error formatting test */
   stun_init_request (msg, STUN_BINDING);
-  if (stun_init_error (msg, sizeof (msg), msg, 400))
+  if (stun_init_error (msg, sizeof (msg), msg, 400, 0))
     fatal ("Error initialization test failed");
   finish_check (msg);
   if (memcmp (msg, "\x01\x11", 2))
@@ -164,7 +164,7 @@ int main (void)
 
   /* Unknown error formatting test */
   stun_init_request (msg, STUN_BINDING);
-  if (stun_init_error (msg, sizeof (msg), msg, 666))
+  if (stun_init_error (msg, sizeof (msg), msg, 666, 0))
     fatal ("Unknown error initialization test failed");
   finish_check (msg);
   if (memcmp (msg, "\x01\x11", 2))

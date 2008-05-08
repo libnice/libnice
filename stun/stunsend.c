@@ -213,17 +213,19 @@ stun_append_string (uint8_t *restrict msg, size_t msize,
 }
 
 
-static int stun_append_server (uint8_t *restrict msg, size_t msize)
+static int stun_append_server (uint8_t *restrict msg, size_t msize, int compat)
 {
   static const char server[] = PACKAGE_STRING;
   assert (strlen (server) < 128);
 
-  //  return stun_append_string (msg, msize, STUN_SERVER, server);
-  return 0;
+  if (compat == 1)
+    return 0;
+  else
+    return stun_append_string (msg, msize, STUN_SERVER, server);
 }
 
 
-void stun_init_response (uint8_t *ans, size_t msize, const uint8_t *req)
+void stun_init_response (uint8_t *ans, size_t msize, const uint8_t *req, int compat)
 {
   assert (stun_valid (req));
   assert (stun_get_class (req) == STUN_REQUEST);
@@ -232,7 +234,7 @@ void stun_init_response (uint8_t *ans, size_t msize, const uint8_t *req)
   stun_init (ans, STUN_RESPONSE, stun_get_method (req), stun_id (req));
   /* For RFC3489 compatibility, we cannot assume the cookie */
   memcpy (ans + 4, req + 4, 4);
-  (void)stun_append_server (ans, msize);
+  (void)stun_append_server (ans, msize, compat);
 }
 
 
@@ -320,7 +322,7 @@ stun_append_error (uint8_t *restrict msg, size_t msize, stun_error_t code)
 
 
 int stun_init_error (uint8_t *ans, size_t msize, const uint8_t *req,
-                     stun_error_t err)
+                     stun_error_t err, int compat)
 {
   assert (stun_valid (req));
   assert (msize >= 20u);
@@ -329,12 +331,13 @@ int stun_init_error (uint8_t *ans, size_t msize, const uint8_t *req,
   stun_init (ans, STUN_ERROR, stun_get_method (req), stun_id (req));
   /* For RFC3489 compatibility, we cannot assume the cookie */
   memcpy (ans + 4, req + 4, 4);
-  (void)stun_append_server (ans, msize);
+  (void)stun_append_server (ans, msize, compat);
   return stun_append_error (ans, msize, err);
 }
 
 
-int stun_init_error_unknown (uint8_t *ans, size_t msize, const uint8_t *req)
+int stun_init_error_unknown (uint8_t *ans, size_t msize, const uint8_t *req,
+                             int compat)
 {
   unsigned counter, i;
 #ifdef HAVE_C_VARARRAYS
@@ -346,7 +349,7 @@ int stun_init_error_unknown (uint8_t *ans, size_t msize, const uint8_t *req)
   counter = stun_find_unknown (req, ids, sizeof (ids) / sizeof (ids[0]));
   assert (counter > 0);
 
-  if (stun_init_error (ans, msize, req, STUN_UNKNOWN_ATTRIBUTE))
+  if (stun_init_error (ans, msize, req, STUN_UNKNOWN_ATTRIBUTE, compat))
     return ENOBUFS;
 
   for (i = 0; i < counter; i++)

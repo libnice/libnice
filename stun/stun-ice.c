@@ -60,7 +60,7 @@ stun_bind_error (uint8_t *buf, size_t *plen, const uint8_t *req,
   *plen = 0;
   DBG ("STUN Error Reply (buffer size: %u)...\n", (unsigned)len);
 
-  val = stun_init_error (buf, len, req, code);
+  val = stun_init_error (buf, len, req, code, compat);
   if (val)
     return val;
 
@@ -111,7 +111,7 @@ stun_conncheck_reply (uint8_t *restrict buf, size_t *restrict plen,
   if (stun_has_unknown (msg))
   {
     DBG (" Unknown mandatory attributes in message.\n");
-    val = stun_init_error_unknown (buf, len, msg);
+    val = stun_init_error_unknown (buf, len, msg, compat);
     if (!val)
       val = stun_finish_short (buf, &len, NULL, pass, NULL, compat);
     if (val)
@@ -186,7 +186,7 @@ stun_conncheck_reply (uint8_t *restrict buf, size_t *restrict plen,
     DBG ("STUN Role not specified by peer!\n");
 #endif
 
-  stun_init_response (buf, len, msg);
+  stun_init_response (buf, len, msg, compat);
   if (compat == 1) {
     val = stun_append_addr (buf, len, STUN_MAPPED_ADDRESS, src, srclen);
   } else {
