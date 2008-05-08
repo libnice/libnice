@@ -108,7 +108,7 @@ stun_bind_alloc (stun_bind_t **restrict context, int fd,
 
 int stun_bind_start (stun_bind_t **restrict context, int fd,
                      const struct sockaddr *restrict srv,
-                     socklen_t srvlen)
+                     socklen_t srvlen, int compat)
 {
   stun_bind_t *ctx;
 
@@ -117,7 +117,7 @@ int stun_bind_start (stun_bind_t **restrict context, int fd,
     return val;
 
   ctx = *context;
-  val = stun_finish (ctx->trans.msg.buf, &ctx->trans.msg.length);
+  val = stun_finish (ctx->trans.msg.buf, &ctx->trans.msg.length, compat);
   if (val)
     goto error;
 
@@ -205,13 +205,13 @@ int stun_bind_process (stun_bind_t *restrict ctx,
 
 int stun_bind_run (int fd,
                    const struct sockaddr *restrict srv, socklen_t srvlen,
-                   struct sockaddr *restrict addr, socklen_t *addrlen)
+                   struct sockaddr *restrict addr, socklen_t *addrlen, int compat)
 {
   stun_bind_t *ctx;
   uint8_t buf[STUN_MAXMSG];
   ssize_t val;
 
-  val = stun_bind_start (&ctx, fd, srv, srvlen);
+  val = stun_bind_start (&ctx, fd, srv, srvlen, compat);
   if (val)
     return val;
 
@@ -236,14 +236,14 @@ int stun_bind_run (int fd,
 
 int
 stun_bind_keepalive (int fd, const struct sockaddr *restrict srv,
-                     socklen_t srvlen)
+                     socklen_t srvlen, int compat)
 {
   uint8_t buf[28];
   size_t len = sizeof (buf);
   int val;
 
   stun_init_indication (buf, STUN_BINDING);
-  val = stun_finish (buf, &len);
+  val = stun_finish (buf, &len, compat);
   assert (val == 0);
   (void)val;
 
@@ -310,7 +310,7 @@ stun_conncheck_start (stun_bind_t **restrict context, int fd,
   }
 
   val = stun_finish_short (ctx->trans.msg.buf, &ctx->trans.msg.length,
-      username, compat == 1 ? NULL : password, NULL);
+      username, compat == 1 ? NULL : password, NULL, compat);
   if (val)
     goto error;
 
@@ -339,7 +339,7 @@ struct stun_nested_s
 int stun_nested_start (stun_nested_t **restrict context, int fd,
                        const struct sockaddr *restrict mapad,
                        const struct sockaddr *restrict natad,
-                       socklen_t adlen, uint32_t refresh)
+                       socklen_t adlen, uint32_t refresh, int compat)
 {
   stun_nested_t *ctx;
   int val;
@@ -366,7 +366,8 @@ int stun_nested_start (stun_nested_t **restrict context, int fd,
     goto error;
 
   val = stun_finish (ctx->bind->trans.msg.buf,
-                     &ctx->bind->trans.msg.length);
+                     &ctx->bind->trans.msg.length,
+                     compat);
   if (val)
     goto error;
 

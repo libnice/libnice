@@ -77,7 +77,7 @@ int main (void)
   stun_init_request (req, STUN_BINDING);
   stun_init_response (req, sizeof (req), req);
   len = sizeof (req);
-  val = stun_finish (req, &len);
+  val = stun_finish (req, &len, 0);
   assert (val == 0);
 
   len = sizeof (resp);
@@ -89,7 +89,7 @@ int main (void)
   /* Incorrect message method */
   stun_init_request (req, 0x666);
   len = sizeof (req);
-  val = stun_finish_short (req, &len, username, pass, NULL);
+  val = stun_finish_short (req, &len, username, pass, NULL, 0);
   assert (val == 0);
 
   len = sizeof (resp);
@@ -104,7 +104,7 @@ int main (void)
                             "The evil unknown attribute!");
   assert (val == 0);
   len = sizeof (req);
-  val = stun_finish (req, &len);
+  val = stun_finish (req, &len, 0);
   assert (val == 0);
 
   len = sizeof (resp);
@@ -116,7 +116,7 @@ int main (void)
   /* Unauthenticated message */
   stun_init_request (req, STUN_BINDING);
   len = sizeof (req);
-  val = stun_finish (req, &len);
+  val = stun_finish (req, &len, 0);
   assert (val == 0);
 
   len = sizeof (resp);
@@ -130,7 +130,7 @@ int main (void)
   /* No username */
   stun_init_request (req, STUN_BINDING);
   len = sizeof (req);
-  val = stun_finish_short (req, &len, NULL, pass, NULL);
+  val = stun_finish_short (req, &len, NULL, pass, NULL, 0);
   assert (val == 0);
 
   len = sizeof (resp);
@@ -150,7 +150,7 @@ int main (void)
   val = stun_append_flag (req, sizeof (req), STUN_USE_CANDIDATE);
   assert (val == 0);
   len = sizeof (req);
-  val = stun_finish_short (req, &len, username, pass, NULL);
+  val = stun_finish_short (req, &len, username, pass, NULL, 0);
   assert (val == 0);
 
   len = sizeof (resp);
@@ -195,7 +195,7 @@ int main (void)
   /* Bad CRC32 */
   stun_init_request (req, STUN_BINDING);
   len = sizeof (req);
-  val = stun_finish_short (req, &len, ufrag, pass, NULL);
+  val = stun_finish_short (req, &len, ufrag, pass, NULL, 0);
   assert (val == 0);
   ((uint8_t *)stun_find (req, STUN_FINGERPRINT, &alen))[0] ^= 1;
 
@@ -210,7 +210,7 @@ int main (void)
   val = stun_append64 (req, sizeof (req), STUN_ICE_CONTROLLING, tie + 1);
   assert (val == 0);
   len = sizeof (req);
-  val = stun_finish_short (req, &len, username, pass, NULL);
+  val = stun_finish_short (req, &len, username, pass, NULL, 0);
   assert (val == 0);
 
   len = sizeof (resp);
@@ -229,7 +229,7 @@ int main (void)
   val = stun_append64 (req, sizeof (req), STUN_ICE_CONTROLLED, tie - 1);
   assert (val == 0);
   len = sizeof (req);
-  val = stun_finish_short (req, &len, username, pass, NULL);
+  val = stun_finish_short (req, &len, username, pass, NULL, 0);
   assert (val == 0);
 
   len = sizeof (resp);

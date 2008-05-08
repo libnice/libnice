@@ -430,7 +430,8 @@ static gboolean priv_conn_keepalive_tick (gpointer pointer)
 	nice_address_copy_to_sockaddr (&p->remote->addr, &sockaddr);
 
 	res = stun_bind_keepalive (p->local->sockptr->fileno,
-				   &sockaddr, sizeof (sockaddr));
+				   &sockaddr, sizeof (sockaddr),
+                                   agent->compatibility);
 	g_debug ("Agent %p : stun_bind_keepalive for pair %p res %d (%s).", agent, p, res, strerror (res));
 	if (res < 0)
 	  ++errors;

@@ -502,8 +502,9 @@ static gboolean priv_discovery_tick_unlocked (gpointer pointer)
 					     cand->component->id,
 					     NICE_COMPONENT_STATE_GATHERING);
 
-	res = stun_bind_start (&cand->stun_ctx, cand->socket, 
-			       &stun_server.s.addr, sizeof(stun_server.s));
+	res = stun_bind_start (&cand->stun_ctx, cand->socket,
+                               &stun_server.s.addr, sizeof(stun_server.s),
+                               agent->compatibility);
 	if (res == 0) {
 	  /* case: success, start waiting for the result */
 	  g_get_current_time (&cand->next_tick);

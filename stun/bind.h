@@ -71,7 +71,7 @@ extern "C" {
  */
 int stun_bind_run (int fd,
                    const struct sockaddr *restrict srv, socklen_t srvlen,
-                   struct sockaddr *restrict addr, socklen_t *addrlen);
+                   struct sockaddr *restrict addr, socklen_t *addrlen, int compat);
 
 /**
  * Starts STUN Binding discovery in non-blocking mode.
@@ -85,7 +85,8 @@ int stun_bind_run (int fd,
  * @return 0 on success, a standard error value otherwise.
  */
 int stun_bind_start (stun_bind_t **restrict context, int fd,
-                     const struct sockaddr *restrict srv, socklen_t srvlen);
+                     const struct sockaddr *restrict srv, socklen_t srvlen,
+                     int compat);
 
 /**
  * Aborts a running STUN Binding discovery.
@@ -157,7 +158,7 @@ int stun_bind_process (stun_bind_t *restrict context,
  * @return 0 on success, an error code from sendto() otherwise.
  */
 int stun_bind_keepalive (int fd, const struct sockaddr *restrict srv,
-                         socklen_t srvlen);
+                         socklen_t srvlen, int compat);
 
 
 /**
@@ -169,7 +170,7 @@ typedef struct stun_nested_s stun_nested_t;
 int stun_nested_start (stun_nested_t **restrict context, int fd,
                        const struct sockaddr *restrict mapad,
                        const struct sockaddr *restrict natad,
-                       socklen_t adlen, uint32_t refresh);
+                       socklen_t adlen, uint32_t refresh, int compat);
 
 int stun_nested_process (stun_nested_t *restrict ctx,
                          const void *restrict buf, size_t len,

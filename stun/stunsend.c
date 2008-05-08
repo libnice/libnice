@@ -441,7 +441,7 @@ int stun_append_xor_addr (uint8_t *restrict msg, size_t msize,
 size_t
 stun_finish_long (uint8_t *msg, size_t *restrict plen,
                   const char *realm, const char *username, const char *nonce,
-                  const void *restrict key, size_t keylen)
+                  const void *restrict key, size_t keylen, int compat)
 {
   size_t len = *plen;
   uint8_t *ptr;
@@ -494,7 +494,7 @@ stun_finish_long (uint8_t *msg, size_t *restrict plen,
 
   }
 
-  if (0) {
+  if (compat != 1) {
     /*
      * NOTE: we always add a FINGERPRINT, even when it's not needed.
      * This is OK, as it is an optional attribute. It also makes my
@@ -515,14 +515,14 @@ stun_finish_long (uint8_t *msg, size_t *restrict plen,
 
 size_t stun_finish_short (uint8_t *msg, size_t *restrict plen,
                           const char *username, const char *restrict password,
-                          const char *nonce)
+                          const char *nonce, int compat)
 {
   return stun_finish_long (msg, plen, NULL, username, nonce,
-                           password, password ? strlen (password) : 0);
+                           password, password ? strlen (password) : 0, compat);
 }
 
 
-size_t stun_finish (uint8_t *msg, size_t *restrict plen)
+size_t stun_finish (uint8_t *msg, size_t *restrict plen, int compat)
 {
-  return stun_finish_short (msg, plen, NULL, NULL, NULL);
+  return stun_finish_short (msg, plen, NULL, NULL, NULL, compat);
 }

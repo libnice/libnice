@@ -98,7 +98,7 @@ static void bad_family (void)
 #endif
 
   val = stun_bind_run (-1, &addr, sizeof (addr),
-                       &dummy, &(socklen_t){ sizeof (dummy) });
+                       &dummy, &(socklen_t){ sizeof (dummy) }, 0);
   assert (val != 0);
 }
 
@@ -116,7 +116,7 @@ static void small_srv_addr (void)
 #endif
 
   val = stun_bind_run (-1, &addr, 1,
-                       &dummy, &(socklen_t){ sizeof (dummy) });
+                       &dummy, &(socklen_t){ sizeof (dummy) }, 0);
   assert (val == EINVAL);
 }
 
@@ -133,7 +133,7 @@ static void big_srv_addr (void)
 
   memset (buf, 0, sizeof (buf));
   val = stun_bind_run (fd, (struct sockaddr *)buf, sizeof (buf),
-                       &dummy, &(socklen_t){ sizeof (dummy) });
+                       &dummy, &(socklen_t){ sizeof (dummy) }, 0);
   assert (val == ENOBUFS);
   close (fd);
 }
@@ -155,7 +155,7 @@ static void timeout (void)
   assert (val == 0);
 
   val = stun_bind_run (-1, (struct sockaddr *)&srv, srvlen,
-                       &dummy, &(socklen_t){ sizeof (dummy) });
+                       &dummy, &(socklen_t){ sizeof (dummy) }, 0);
   assert (val == ETIMEDOUT);
 
   close (servfd);
@@ -181,7 +181,7 @@ static void bad_responses (void)
   fd = socket (addr.ss_family, SOCK_DGRAM, 0);
   assert (fd != -1);
 
-  val = stun_bind_start (&ctx, fd, (struct sockaddr *)&addr, addrlen);
+  val = stun_bind_start (&ctx, fd, (struct sockaddr *)&addr, addrlen, 0);
   assert (val == 0);
 
   /* Send to/receive from our client instance only */
@@ -260,7 +260,7 @@ static void responses (void)
   assert (val == 0);
 
   /* Send error response */
-  val = stun_bind_start (&ctx, fd, NULL, 0);
+  val = stun_bind_start (&ctx, fd, NULL, 0, 0);
   assert (val == 0);
 
   val = recv (servfd, buf, 1000, MSG_DONTWAIT);
@@ -268,7 +268,7 @@ static void responses (void)
 
   stun_init_error (buf, sizeof (buf), buf, STUN_SERVER_ERROR);
   len = sizeof (buf);
-  val = stun_finish (buf, &len);
+  val = stun_finish (buf, &len, 0);
   assert (val == 0);
 
   val = getsockname (servfd, (struct sockaddr *)&addr, &addrlen);
@@ -278,7 +278,7 @@ static void responses (void)
   assert (val == ECONNREFUSED);
 
   /* Send response with an unknown attribute */
-  val = stun_bind_start (&ctx, fd, NULL, 0);
+  val = stun_bind_start (&ctx, fd, NULL, 0, 0);
   assert (val == 0);
 
   val = recv (servfd, buf, 1000, MSG_DONTWAIT);
@@ -289,7 +289,7 @@ static void responses (void)
                             "This is an unknown attribute!");
   assert (val == 0);
   len = sizeof (buf);
-  val = stun_finish (buf, &len);
+  val = stun_finish (buf, &len, 0);
   assert (val == 0);
 
   val = getsockname (servfd, (struct sockaddr *)&addr, &addrlen);
@@ -300,7 +300,7 @@ static void responses (void)
   assert (val == EPROTO);
 
   /* Send response with a no mapped address at all */
-  val = stun_bind_start (&ctx, fd, NULL, 0);
+  val = stun_bind_start (&ctx, fd, NULL, 0, 0);
   assert (val == 0);
 
   val = recv (servfd, buf, 1000, MSG_DONTWAIT);
@@ -308,7 +308,7 @@ static void responses (void)
 
   stun_init_response (buf, sizeof (buf), buf);
   len = sizeof (buf);
-  val = stun_finish (buf, &len);
+  val = stun_finish (buf, &len, 0);
   assert (val == 0);
 
   val = getsockname (servfd, (struct sockaddr *)&addr, &addrlen);
@@ -319,7 +319,7 @@ static void responses (void)
   assert (val == ENOENT);
 
   /* Send old-style response */
-  val = stun_bind_start (&ctx, fd, NULL, 0);
+  val = stun_bind_start (&ctx, fd, NULL, 0, 0);
   assert (val == 0);
 
   val = recv (servfd, buf, 1000, MSG_DONTWAIT);
@@ -330,7 +330,7 @@ static void responses (void)
                           (struct sockaddr *)&addr, addrlen);
   assert (val == 0);
   len = sizeof (buf);
-  val = stun_finish (buf, &len);
+  val = stun_finish (buf, &len, 0);
   assert (val == 0);
 
   val = getsockname (servfd, (struct sockaddr *)&addr, &addrlen);
@@ -366,12 +366,12 @@ static void keepalive (void)
   assert (fd != -1);
 
   /* Keep alive sending smoke test */
-  val = stun_bind_keepalive (fd, (struct sockaddr *)&addr, addrlen);
+  val = stun_bind_keepalive (fd, (struct sockaddr *)&addr, addrlen, 0);
   assert (val == 0);
 
   /* Wrong address family test */
   addr.ss_family = addr.ss_family == AF_INET ? AF_INET6 : AF_INET;
-  val = stun_bind_keepalive (fd, (struct sockaddr *)&addr, addrlen);
+  val = stun_bind_keepalive (fd, (struct sockaddr *)&addr, addrlen, 0);
   assert (val != 0);
 
   /* End */

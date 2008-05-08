@@ -98,7 +98,7 @@ static int run (int family, const char *hostname, const char *service)
     printaddr ("Server address", ptr->ai_addr, ptr->ai_addrlen);
 
     val = stun_bind_run (-1, ptr->ai_addr, ptr->ai_addrlen,
-                         (struct sockaddr *)&addr, &addrlen);
+                         (struct sockaddr *)&addr, &addrlen, 0);
     if (val)
       fprintf (stderr, "%s\n", strerror (val));
     else

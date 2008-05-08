@@ -583,7 +583,7 @@ int stun_init_error_unknown (uint8_t *ans, size_t msize, const uint8_t *req);
 size_t
 stun_finish_long (uint8_t *msg, size_t *restrict plen,
                   const char *realm, const char *username, const char *nonce,
-                  const void *restrict key, size_t keylen);
+                  const void *restrict key, size_t keylen, int compat);
 
 /**
  * Completes a STUN message structure before sending it, and
@@ -600,7 +600,7 @@ stun_finish_long (uint8_t *msg, size_t *restrict plen,
  */
 size_t stun_finish_short (uint8_t *msg, size_t *restrict plen,
                           const char *username, const char *password,
-                          const char *nonce);
+                          const char *nonce, int compat);
 
 /**
  * Completes a STUN message structure before sending it.
@@ -611,7 +611,7 @@ size_t stun_finish_short (uint8_t *msg, size_t *restrict plen,
  *
  * @return 0 on success, ENOBUFS on error.
  */
-size_t stun_finish (uint8_t *restrict msg, size_t *restrict plen);
+size_t stun_finish (uint8_t *restrict msg, size_t *restrict plen, int compat);
 
 
 void *stun_append (uint8_t *msg, size_t msize, stun_attr_type_t type,

@@ -82,14 +82,14 @@ finish_check (uint8_t *msg)
   size_t len = sizeof (stun_msg_t);
   memcpy (mshort, msg, sizeof (mshort));
 
-  if (stun_finish (msg, &len))
+  if (stun_finish (msg, &len, 0))
     fatal ("Cannot finish message");
   dynamic_check (msg, len);
 
   len = sizeof (mshort);
   if (stun_verify_password (mshort, "toto") != ENOENT)
     fatal ("Missing HMAC test failed");
-  if (stun_finish_short (mshort, &len, "ABCDE", "admin", "ABC"))
+  if (stun_finish_short (mshort, &len, "ABCDE", "admin", "ABC", 0))
     fatal ("Cannot finish message with short-term creds");
   dynamic_check (mshort, len);
   if (stun_verify_password (mshort, "admin") != 0)
@@ -197,16 +197,16 @@ int main (void)
                             sizeof (addr)) != ENOBUFS)
     fatal ("Address overflow test failed");
   len = sizeof (msg);
-  if (stun_finish (msg, &len) != ENOBUFS)
+  if (stun_finish (msg, &len, 0) != ENOBUFS)
     fatal ("Fingerprint overflow test failed");
   len = sizeof (msg);
-  if (stun_finish_short (msg, &len, NULL, "secret", NULL) != ENOBUFS)
+  if (stun_finish_short (msg, &len, NULL, "secret", NULL, 0) != ENOBUFS)
     fatal ("Message integrity overflow test failed");
   len = sizeof (msg);
-  if (stun_finish_short (msg, &len, "login", "secret", NULL) != ENOBUFS)
+  if (stun_finish_short (msg, &len, "login", "secret", NULL, 0) != ENOBUFS)
     fatal ("Username overflow test failed");
   len = sizeof (msg);
-  if (stun_finish_short (msg, &len, NULL, "secret", "foobar") != ENOBUFS)
+  if (stun_finish_short (msg, &len, NULL, "secret", "foobar", 0) != ENOBUFS)
     fatal ("Nonce overflow test failed");
 
   /* Address attributes tests */

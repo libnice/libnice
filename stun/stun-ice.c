@@ -52,7 +52,7 @@
 
 static int
 stun_bind_error (uint8_t *buf, size_t *plen, const uint8_t *req,
-                 stun_error_t code, const char *pass)
+    stun_error_t code, const char *pass, int compat)
 {
   size_t len = *plen;
   int val;
@@ -64,7 +64,7 @@ stun_bind_error (uint8_t *buf, size_t *plen, const uint8_t *req,
   if (val)
     return val;
 
-  val = stun_finish_short (buf, &len, NULL, pass, NULL);
+  val = stun_finish_short (buf, &len, NULL, pass, NULL, compat);
   if (val)
     return val;
 
@@ -89,7 +89,7 @@ stun_conncheck_reply (uint8_t *restrict buf, size_t *restrict plen,
   int val, ret = 0;
 
 #define err( code ) \
-  stun_bind_error (buf, &len, msg, code, pass); \
+  stun_bind_error (buf, &len, msg, code, pass, compat);        \
   *plen = len
 
   *plen = 0;
@@ -113,7 +113,7 @@ stun_conncheck_reply (uint8_t *restrict buf, size_t *restrict plen,
     DBG (" Unknown mandatory attributes in message.\n");
     val = stun_init_error_unknown (buf, len, msg);
     if (!val)
-      val = stun_finish_short (buf, &len, NULL, pass, NULL);
+      val = stun_finish_short (buf, &len, NULL, pass, NULL, compat);
     if (val)
       goto failure;
 
@@ -143,7 +143,7 @@ stun_conncheck_reply (uint8_t *restrict buf, size_t *restrict plen,
 
   if (val)
   {
-    stun_bind_error (buf, &len, msg, val, NULL);
+    stun_bind_error (buf, &len, msg, val, NULL, compat);
     *plen = len;
     return EPERM;
   }
@@ -201,7 +201,7 @@ stun_conncheck_reply (uint8_t *restrict buf, size_t *restrict plen,
   }
 
   val = stun_finish_short (buf, &len, compat == 1 ? username : NULL,
-      compat == 1 ? NULL : pass, NULL);
+      compat == 1 ? NULL : pass, NULL, compat);
   if (val)
     goto failure;
 

@@ -235,7 +235,7 @@ static int dgram_process (int sock)
   }
 
 finish:
-  stun_finish (buf, &iov.iov_len);
+  stun_finish (buf, &iov.iov_len, 0);
 
   len = send_safe (sock, &mh);
   return (len < iov.iov_len) ? -1 : 0;
