@@ -507,6 +507,8 @@ stun_finish_long (uint8_t *msg, size_t *restrict plen,
     if (ptr == NULL)
       return ENOBUFS;
 
+    *plen = ptr + 4 -msg;
+
     fpr = htonl (stun_fingerprint (msg, *plen));
     memcpy (ptr, &fpr, sizeof (fpr));
   }
