@@ -6,7 +6,7 @@
 #
 # Licensed under MPL 1.1/LGPL 2.1. See file COPYING.
 
-SUBDIRS = . tests
+SUBDIRS = . utils tests
 
 include $(top_srcdir)/common.mk
 
@@ -25,17 +25,10 @@ libstun_la_SOURCES = \
 	unknown.c \
 	crc32.c hmac.c \
 	timer.h timer.c trans.h trans.c \
-	bind.h bind.c \
-	stun-ice.h stun-ice.c
+	usages/stun-ice.c usages/stun-ice.h \
+	usages/bind.c usages/bind.h
+
 libstun_la_LIBADD = $(OPENSSL_LIBS) $(LIBRT)
-
-bin_PROGRAMS = stund stunbdc
-check_PROGRAMS = stund
-
-stund_SOURCES = stund.c stund.h
-
-stund_LDADD = libstun.la -lpthread
-stunbdc_LDADD = libstun.la
 
 unknown.c: stun-msg.h build-unknown.sh
 	rm -f unknown.c

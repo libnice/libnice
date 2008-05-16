@@ -41,7 +41,7 @@
  * @brief STUN/ICE connectivity checks
  */
 
-# include "stun/bind.h"
+# include "stun/usages/bind.h"
 
 # ifdef __cplusplus
 extern "C" {

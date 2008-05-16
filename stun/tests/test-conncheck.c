@@ -39,7 +39,7 @@
 
 #include <sys/types.h>
 #include <sys/socket.h>
-#include "stun/stun-ice.h"
+#include "stun/usages/stun-ice.h"
 #include "stun/stun-msg.h"
 
 #include <stdlib.h>

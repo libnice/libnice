@@ -62,7 +62,7 @@
 /** Default port for STUN binding discovery */
 #define IPPORT_STUN  3478
 
-#include "stun-msg.h"
+#include "stun/stun-msg.h"
 #include "stund.h"
 
 /**
