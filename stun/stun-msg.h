@@ -44,33 +44,11 @@
  */
 
 
-# ifndef NDEBUG
-#  include <stdio.h>
-#  include <stdarg.h>
-static inline void DBG (const char *fmt, ...)
-{
-  va_list ap;
-  va_start (ap, fmt);
-  vfprintf (stderr, fmt, ap);
-  va_end (ap);
-}
-
-static inline void DBG_bytes (const void *data, size_t len)
-{
-  size_t i;
-
-  DBG ("0x");
-  for (i = 0; i < len; i++)
-    DBG ("%02x", ((const unsigned char *)data)[i]);
-}
-# else
-#  define DBG( ... ) (void)0
-#  define DBG_bytes( data, len ) (void)0
-# endif
 
 # include <stdint.h>
 # include <sys/types.h>
 # include <stdbool.h>
+
 
 # define STUN_MAXMSG 65552 /* bytes */
 # define STUN_MAXCHR 127u
@@ -177,11 +155,6 @@ typedef enum
 } stun_attr_type_t;
 
 
-static inline bool stun_optional (uint16_t t)
-{
-  return (t >> 15) == 1;
-}
-
 typedef uint8_t stun_transid_t[12];
 
 /**
@@ -211,84 +184,25 @@ typedef enum
 } stun_error_t;
 
 
-/**
- * @return complement to the next multiple of 4.
- */
-static inline size_t stun_padding (size_t l)
-{
-  return (4 - (l & 3)) & 3;
-}
+#include "utils.h"
+#include "stun3489bis.h"
 
+# ifndef NDEBUG
+#  include <stdio.h>
+#  include <stdarg.h>
+#  define DBG stun_debug
+#  define DBG_bytes stun_debug_bytes
+# else
+#  define DBG( ... ) (void)0
+#  define DBG_bytes( data, len ) (void)0
+# endif
 
-/**
- * Rounds up an integer to the next multiple of 4.
- */
-static inline size_t stun_align (size_t l)
-{
-  return (l + 3) & ~3;
-}
-
-
-/**
- * Reads a word from a non-aligned buffer.
- * @return host byte order word value.
- */
-static inline uint16_t stun_getw (const uint8_t *ptr)
-{
-  return ((ptr)[0] << 8) | ptr[1];
-}
-
-static inline uint16_t stun_length (const uint8_t *ptr)
-{
-  return stun_getw (ptr + 2);
-}
-
-
-/**
- * @return STUN message class in host byte order (value from 0 to 3)
- */
-static inline stun_class_t stun_get_class (const uint8_t *msg)
-{
-  uint16_t t = stun_getw (msg);
-  return (stun_class_t)(((t & 0x0100) >> 7) | ((t & 0x0010) >> 4));
-}
-
-/**
- * @return STUN message method (value from 0 to 0xfff)
- */
-static inline stun_method_t stun_get_method (const uint8_t *msg)
-{
-  uint16_t t = stun_getw (msg);
-  return (stun_method_t)(((t & 0x3e00) >> 2) | ((t & 0x00e0) >> 1) |
-                          (t & 0x000f));
-}
-
-bool stun_has_cookie (const uint8_t *msg);
-
-
-/**
- * @return STUN message transaction ID
- */
-static inline const uint8_t *stun_id (const uint8_t *msg)
-{
-  //assert (stun_valid (req));
-  return msg + 8;
-}
 
 
 # ifdef __cplusplus
 extern "C" {
 # endif
 
-/**
- * Computes the FINGERPRINT checksum of a STUN message.
- * @param msg pointer to the STUN message
- * @param len size of the message from header (inclusive) and up to
- *            FINGERPRINT attribute (inclusive)
- *
- * @return fingerprint value in <b>host</b> byte order.
- */
-uint32_t stun_fingerprint (const uint8_t *msg, size_t len);
 
 /**
  * Computes the MESSAGE-INTEGRITY hash of a STUN message.
@@ -377,20 +291,6 @@ int stun_verify_password (const uint8_t *msg, const char *pw);
 const void *
 stun_find (const uint8_t *restrict msg, stun_attr_type_t type,
            uint16_t *restrict palen);
-
-/**
- * Checks if an attribute is present within a STUN message.
- *
- * @param msg valid STUN message
- * @param type STUN attribute type (host byte order)
- *
- * @return whether there is a MESSAGE-INTEGRITY attribute
- */
-static inline bool stun_present (const uint8_t *msg, stun_attr_type_t type)
-{
-  uint16_t dummy;
-  return stun_find (msg, type, &dummy) != NULL;
-}
 
 
 /**
@@ -698,33 +598,5 @@ int stun_append_xor_addr (uint8_t *restrict msg, size_t msize,
 }
 # endif
 
-
-/**
- * @param msg valid STUN message
- * @return true if there is at least one unknown mandatory attribute.
- */
-static inline bool stun_has_unknown (const void *msg)
-{
-  uint16_t dummy;
-  return stun_find_unknown (msg, &dummy, 1);
-}
-
-
-# ifndef NDEBUG
-/**
- * This function is for debugging only, which is why it is only defined under
- * !NDEBUG. It should really only be used in run-time assertions, as it cannot
- * detect all possible errors. stun_validate() should be used instead in real
- * code.
- *
- * @param msg pointer to a potential STUN message
- * @return whether the pointer refers to a valid STUN message
- */
-static inline bool stun_valid (const uint8_t *msg)
-{
-  size_t length = 20u + stun_length (msg);
-  return stun_validate (msg, length) == (ssize_t)length;
-}
-# endif
 
 #endif

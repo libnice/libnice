@@ -6,7 +6,7 @@
 #
 # Licensed under MPL 1.1/LGPL 2.1. See file COPYING.
 
-SUBDIRS = . utils tests
+SUBDIRS = . tools tests
 
 include $(top_srcdir)/common.mk
 
@@ -21,6 +21,7 @@ dist_noinst_SCRIPTS = build-unknown.sh
 
 libstun_la_SOURCES = \
 	stun-msg.h stunsend.c stunrecv.c \
+	stun3489bis.c \
 	utils.c \
 	unknown.c \
 	crc32.c hmac.c \

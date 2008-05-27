@@ -35,39 +35,6 @@
  * file under either the MPL or the LGPL.
  */
 
-#ifdef HAVE_CONFIG_H
-# include <config.h>
-#endif
-
-#include <stddef.h>
-#include <stdint.h>
-#include <assert.h>
-
-#include <sys/uio.h>
-#include <sys/socket.h>
-#include <netinet/in.h> /* htons() */
-#include "stun-msg.h"
-
-static inline uint32_t crc32 (const struct iovec *iov, size_t size);
-
-uint32_t stun_fingerprint (const uint8_t *msg, size_t len)
-{
-  struct iovec iov[3];
-  uint16_t fakelen = htons (len - 20u);
-
-  assert (len >= 28u);
-
-  iov[0].iov_base = (void *)msg;
-  iov[0].iov_len = 2;
-  iov[1].iov_base = &fakelen;
-  iov[1].iov_len = 2;
-  iov[2].iov_base = (void *)(msg + 4);
-  /* first 4 bytes done, last 8 bytes not summed */
-  iov[2].iov_len = len - 12u;
-
-  return crc32 (iov, sizeof (iov) / sizeof (iov[0])) ^ 0x5354554e;
-}
-
 /*-
  *  COPYRIGHT (C) 1986 Gary S. Brown.  You may use this program, or
  *  code or tables extracted from it, as desired without restriction.
@@ -114,6 +81,14 @@ uint32_t stun_fingerprint (const uint8_t *msg, size_t len)
  *
  * CRC32 code derived from work by Gary S. Brown.
  */
+
+
+#ifdef HAVE_CONFIG_H
+# include <config.h>
+#endif
+
+#include "crc32.h"
+
 
 static const uint32_t crc32_tab[] = {
         0x00000000, 0x77073096, 0xee0e612c, 0x990951ba, 0x076dc419, 0x706af48f,
@@ -162,7 +137,6 @@ static const uint32_t crc32_tab[] = {
 };
 
 
-static inline
 uint32_t crc32 (const struct iovec *iov, size_t n)
 {
   size_t i;

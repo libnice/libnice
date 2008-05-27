@@ -179,8 +179,6 @@ static inline ssize_t stun_recv (int fd, uint8_t *buf, size_t maxlen)
   return stun_recvfrom (fd, buf, maxlen, NULL, NULL);
 }
 
-int sockaddrcmp (const struct sockaddr *a, const struct sockaddr *b);
-
 # ifdef __cplusplus
 }
 # endif
