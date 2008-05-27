@@ -55,7 +55,7 @@
 
 #include <glib.h>
 
-#include "stun/bind.h"
+#include "stun/usages/bind.h"
 
 #include "udp.h"
 #include "candidate.h"

@@ -38,7 +38,7 @@
 
 /* note: this is a private header to libnice */
 
-#include "stun/bind.h"
+#include "stun/usages/bind.h"
 #include "stream.h"
 #include "agent.h"
 
