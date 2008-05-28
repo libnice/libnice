@@ -25,7 +25,8 @@ libstun_la_SOURCES = \
 	utils.c \
 	unknown.c \
 	crc32.c hmac.c \
-	timer.h timer.c trans.h trans.c \
+	usages/timer.h usages/timer.c \
+	usages/trans.h usages/trans.c \
 	usages/stun-ice.c usages/stun-ice.h \
 	usages/bind.c usages/bind.h
 
