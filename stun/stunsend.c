@@ -50,7 +50,7 @@
 #include <netinet/in.h>
 
 
-static inline
+static
 void *stun_setw (uint8_t *ptr, uint16_t value)
 {
   *ptr++ = value >> 8;
@@ -59,7 +59,7 @@ void *stun_setw (uint8_t *ptr, uint16_t value)
 }
 
 
-static inline
+static
 void stun_set_type (uint8_t *h, stun_class_t c, stun_method_t m)
 {
   assert (c < 4);
