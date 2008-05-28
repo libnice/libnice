@@ -169,15 +169,9 @@ ssize_t stun_recvfrom (int fd, uint8_t *buf, size_t maxlen,
                        struct sockaddr *restrict src,
                        socklen_t *restrict srclen);
 
-static inline ssize_t stun_send (int fd, const uint8_t *buf, size_t len)
-{
-  return stun_sendto (fd, buf, len, NULL, 0);
-}
+ssize_t stun_send (int fd, const uint8_t *buf, size_t len);
 
-static inline ssize_t stun_recv (int fd, uint8_t *buf, size_t maxlen)
-{
-  return stun_recvfrom (fd, buf, maxlen, NULL, NULL);
-}
+ssize_t stun_recv (int fd, uint8_t *buf, size_t maxlen);
 
 # ifdef __cplusplus
 }

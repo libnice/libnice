@@ -210,7 +210,7 @@ int stun_trans_start (stun_trans_t *tr)
 }
 
 
-static inline int stun_err_dequeue (int fd)
+static int stun_err_dequeue (int fd)
 {
 #ifdef MSG_ERRQUEUE
   struct msghdr hdr;
@@ -472,4 +472,15 @@ int stun_trans_preprocess (stun_trans_t *restrict tr, int *pcode,
     return EPROTO;
 
   return 0;
+}
+
+
+ssize_t stun_send (int fd, const uint8_t *buf, size_t len)
+{
+  return stun_sendto (fd, buf, len, NULL, 0);
+}
+
+ssize_t stun_recv (int fd, uint8_t *buf, size_t maxlen)
+{
+  return stun_recvfrom (fd, buf, maxlen, NULL, NULL);
 }
