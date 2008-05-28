@@ -74,7 +74,7 @@ static void stun_gettime (struct timespec *restrict now)
 }
 
 
-static inline void add_delay (struct timespec *ts, unsigned delay)
+static void add_delay (struct timespec *ts, unsigned delay)
 {
   div_t d = div (delay, 1000);
   ts->tv_sec += d.quot;
