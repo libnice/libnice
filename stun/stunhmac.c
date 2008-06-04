@@ -46,6 +46,7 @@
 #include <netinet/in.h>
 #include <pthread.h>
 #include "stun-msg.h"
+#include "stunhmac.h"
 
 #include <string.h>
 #include <assert.h>
