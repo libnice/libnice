@@ -61,12 +61,8 @@ bool stun_message_init (StunMessage *msg, stun_class_t c, stun_method_t m,
   memset (msg->buffer, 0, 4);
   stun_set_type (msg->buffer, c, m);
 
-  if (msg->buffer != id)
-  {
-    uint32_t cookie = htonl (STUN_COOKIE);
-    memcpy (msg->buffer + 4, &cookie, sizeof (cookie));
-    memcpy (msg->buffer + 8, id, 12);
-  }
+  memcpy (msg->buffer + STUN_MESSAGE_TRANS_ID_POS,
+      id, sizeof (STUN_MESSAGE_TRANS_ID_LEN));
 
   return TRUE;
 }
@@ -107,12 +103,12 @@ stun_message_find (const StunMessage *msg, stun_attr_type_t type,
     /* Look for and ignore misordered attributes */
     switch (atype)
     {
-      case STUN_MESSAGE_INTEGRITY:
+      case STUN_ATTRIBUTE_MESSAGE_INTEGRITY:
         /* Only fingerprint may come after M-I */
-        if (type == STUN_FINGERPRINT)
+        if (type == STUN_ATTRIBUTE_FINGERPRINT)
           break;
 
-      case STUN_FINGERPRINT:
+      case STUN_ATTRIBUTE_FINGERPRINT:
         /* Nothing may come after FPR */
         return NULL;
     }
@@ -273,10 +269,10 @@ stun_message_find_xor_addr (const StunMessage *msg, stun_attr_type_t type,
   return stun_xor_address (msg, addr, *addrlen);
 }
 
-int stun_message_find_errno (const StunMessage *msg, int *restrict code)
+int stun_message_find_error (const StunMessage *msg, int *restrict code)
 {
   uint16_t alen;
-  const uint8_t *ptr = stun_message_find (msg, STUN_ERROR_CODE, &alen);
+  const uint8_t *ptr = stun_message_find (msg, STUN_ATTRIBUTE_ERROR_CODE, &alen);
   uint8_t class, number;
 
   if (ptr == NULL)
@@ -319,7 +315,7 @@ stun_message_append (StunMessage *msg, stun_attr_type_t type, size_t length)
   a = stun_setw (a, type);
   /* NOTE: If cookie is not present, we need to force the attribute length
    * to a multiple of 4 for compatibility with old RFC3489 */
-  a = stun_setw (a, stun_has_cookie (msg->buffer) ? length : stun_align (length));
+  a = stun_setw (a, stun_has_cookie (msg) ? length : stun_align (length));
 
   mlen += 4 + length;
   /* Add padding if needed */
@@ -473,7 +469,7 @@ stun_message_append_error (StunMessage *msg, stun_error_t code)
   size_t len = strlen (str);
   div_t d = div (code, 100);
 
-  uint8_t *ptr = stun_message_append (msg, STUN_ERROR_CODE, 4 + len);
+  uint8_t *ptr = stun_message_append (msg, STUN_ATTRIBUTE_ERROR_CODE, 4 + len);
   if (ptr == NULL)
     return ENOBUFS;
 
@@ -484,7 +480,7 @@ stun_message_append_error (StunMessage *msg, stun_error_t code)
   return 0;
 }
 
-bool stun_message_is_valid (const uint8_t *msg, size_t length)
+int stun_message_validate_buffer_length (const uint8_t *msg, size_t length)
 {
   size_t mlen;
   size_t len;
@@ -492,19 +488,19 @@ bool stun_message_is_valid (const uint8_t *msg, size_t length)
   if (length < 1)
   {
     stun_debug ("STUN error: No data!\n");
-    return FALSE;
+    return STUN_MESSAGE_BUFFER_INVALID;
   }
 
   if (msg[0] >> 6)
   {
     stun_debug ("STUN error: RTP or other non-protocol packet!\n");
-    return FALSE; // RTP or other non-STUN packet
+    return STUN_MESSAGE_BUFFER_INVALID; // RTP or other non-STUN packet
   }
 
   if (length < 4)
   {
     stun_debug ("STUN error: Incomplete STUN message header!\n");
-    return FALSE;
+    return STUN_MESSAGE_BUFFER_INCOMPLETE;
   }
 
   mlen = stun_getw (msg + STUN_MESSAGE_LENGTH_POS) +
@@ -513,14 +509,14 @@ bool stun_message_is_valid (const uint8_t *msg, size_t length)
   if (stun_padding (mlen))
   {
     stun_debug ("STUN error: Invalid message length: %u!\n", (unsigned)mlen);
-    return FALSE; // wrong padding
+    return STUN_MESSAGE_BUFFER_INVALID; // wrong padding
   }
 
   if (length < mlen)
   {
     stun_debug ("STUN error: Incomplete message: %u of %u bytes!\n",
         (unsigned)length, (unsigned)mlen);
-    return FALSE; // partial message
+    return STUN_MESSAGE_BUFFER_INCOMPLETE; // partial message
   }
 
   msg += 20;
@@ -539,12 +535,54 @@ bool stun_message_is_valid (const uint8_t *msg, size_t length)
     {
       stun_debug ("STUN error: %u instead of %u bytes for attribute!\n",
           (unsigned)len, (unsigned)alen);
-      return -1; // no room for attribute value + padding
+      return STUN_MESSAGE_BUFFER_INVALID; // no room for attribute value + padding
     }
 
     len -= alen;
     msg += 4 + alen;
   }
 
-  return mlen == length;
+  return mlen;
+}
+
+/**
+ * copies STUN message transaction ID
+ */
+void stun_message_id (const StunMessage *msg, stun_transid_t id)
+{
+  memcpy (id, msg->buffer + STUN_MESSAGE_TRANS_ID_POS, STUN_MESSAGE_TRANS_ID_LEN);
+}
+
+/**
+ * @return STUN message method (value from 0 to 0xfff)
+ */
+stun_method_t stun_message_get_method (const StunMessage *msg)
+{
+  uint16_t t = stun_getw (msg->buffer);
+  return (stun_method_t)(((t & 0x3e00) >> 2) | ((t & 0x00e0) >> 1) |
+                          (t & 0x000f));
+}
+
+
+/**
+ * @return STUN message class in host byte order (value from 0 to 3)
+ */
+stun_class_t stun_message_get_class (const StunMessage *msg)
+{
+  uint16_t t = stun_getw (msg->buffer);
+  return (stun_class_t)(((t & 0x0100) >> 7) | ((t & 0x0010) >> 4));
+}
+
+/**
+ * Checks if an attribute is present within a STUN message.
+ *
+ * @param msg valid STUN message
+ * @param type STUN attribute type (host byte order)
+ *
+ * @return whether there is a MESSAGE-INTEGRITY attribute
+ */
+bool stun_message_has_attribute (const StunMessage *msg, stun_attr_type_t type)
+{
+  uint16_t dummy;
+  return stun_message_find (msg, type, &dummy) != NULL;
 }

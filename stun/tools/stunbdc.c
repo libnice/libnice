@@ -39,7 +39,7 @@
 
 #include <sys/types.h>
 #include <sys/socket.h>
-#include "stun/usages/bind.h"
+#include "stunagent.h"
 
 #include <unistd.h>
 #include <getopt.h>

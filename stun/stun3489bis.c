@@ -35,19 +35,24 @@
  * file under either the MPL or the LGPL.
  */
 
+#ifdef HAVE_CONFIG_H
+# include <config.h>
+#endif
+
 #include <sys/socket.h>
 #include <netinet/in.h> /* htons() */
-#include <assert.h>
+#include <string.h>
+#include <stdlib.h>
 
-#include "crc32.h"
-#include "stun-msg.h"
+#include "stuncrc32.h"
+#include "stunmessage.h"
 
 uint32_t stun_fingerprint (const uint8_t *msg, size_t len)
 {
   struct iovec iov[3];
   uint16_t fakelen = htons (len - 20u);
 
-  assert (len >= 28u);
+  // assert (len >= 28u);
 
   iov[0].iov_base = (void *)msg;
   iov[0].iov_len = 2;
@@ -57,5 +62,22 @@ uint32_t stun_fingerprint (const uint8_t *msg, size_t len)
   /* first 4 bytes done, last 8 bytes not summed */
   iov[2].iov_len = len - 12u;
 
-  return crc32 (iov, sizeof (iov) / sizeof (iov[0])) ^ 0x5354554e;
+  return htonl (crc32 (iov, sizeof (iov) / sizeof (iov[0])) ^ 0x5354554e);
+}
+
+bool stun_has_cookie (const StunMessage *msg)
+{
+  stun_transid_t id;
+  stun_message_id (msg, id);
+  uint32_t cookie = htonl (STUN_MAGIC_COOKIE);
+  return memcmp (id, &cookie, sizeof (cookie)) == 0;
+}
+
+
+int stun_message_append_server (StunMessage *msg)
+{
+  static const char server[] = PACKAGE_STRING;
+  // assert (strlen (server) < 128);
+
+  return stun_message_append_string (msg, STUN_ATTRIBUTE_SERVER, server);
 }

@@ -45,7 +45,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <pthread.h>
-#include "stun-msg.h"
+#include "stunmessage.h"
 #include "stunhmac.h"
 
 #include <string.h>

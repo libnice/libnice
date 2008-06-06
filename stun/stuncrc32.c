@@ -87,7 +87,7 @@
 # include <config.h>
 #endif
 
-#include "crc32.h"
+#include "stuncrc32.h"
 
 
 static const uint32_t crc32_tab[] = {

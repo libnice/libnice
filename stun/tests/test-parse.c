@@ -50,6 +50,9 @@
 #include <errno.h>
 
 
+# define STUN_MAX_STR (763u)
+# define STUN_MAX_CP  (127u)
+
 static void fatal (const char *msg, ...)
 {
   va_list ap;

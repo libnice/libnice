@@ -19,16 +19,18 @@ CLEANFILES += $(BUILT_SOURCES)
 noinst_LTLIBRARIES = libstun.la
 dist_noinst_SCRIPTS = build-unknown.sh
 
-libstun_la_SOURCES = \
-	stun-msg.h stunsend.c stunrecv.c \
-	stun3489bis.c \
-	utils.c \
-	unknown.c \
-	crc32.c hmac.c \
-	usages/timer.h usages/timer.c \
-	usages/trans.h usages/trans.c \
-	usages/stun-ice.c usages/stun-ice.h \
-	usages/bind.c usages/bind.h
+libstun_la_SOURCES = stun.h constants.h \
+	stunagent.c stunagent.h \
+	stunmessage.c stunmessage.h \
+	stun3489bis.c stun3489bis.h \
+	stuncrc32.c stuncrc32.h \
+	stunhmac.c stunhmac.h \
+	utils.c  utils.h 
+
+#	usages/timer.h usages/timer.c \
+#	usages/trans.h usages/trans.c \
+#	usages/stun-ice.c usages/stun-ice.h \
+#	usages/bind.c usages/bind.h
 
 libstun_la_LIBADD = $(OPENSSL_LIBS) $(LIBRT)
 

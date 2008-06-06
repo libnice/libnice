@@ -35,6 +35,8 @@
 #ifndef _STUN_HMAC_H
 #define _STUN_HMAC_H
 
+#include "stunmessage.h"
+
 /**
  * Computes the MESSAGE-INTEGRITY hash of a STUN message.
  * @param msg pointer to the STUN message
@@ -61,4 +63,4 @@ void stun_hash_creds (const char *realm, const char *login, const char *pw,
 void stun_make_transid (stun_transid_t id);
 
 
-/* _STUN_HMAC_H */
+#endif /* _STUN_HMAC_H */
