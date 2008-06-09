@@ -172,7 +172,8 @@ StunValidationStatus stun_agent_validate (StunAgent *agent, StunMessage *msg,
         &username_len);
     if (username) {
       if (key == NULL) {
-        if (validater (agent, msg, username, username_len,
+        if (validater == NULL ||
+            validater (agent, msg, username, username_len,
                 &key, &key_len, validater_data) == FALSE) {
           return STUN_VALIDATION_UNAUTHORIZED;
         }
