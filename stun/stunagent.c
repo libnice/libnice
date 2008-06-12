@@ -404,7 +404,7 @@ size_t stun_agent_finish_message (StunAgent *agent, StunMessage *msg,
         agent->sent_ids[i].key = key;
         agent->sent_ids[i].key_len = key_len;
         agent->sent_ids[i].valid = TRUE;
-        return TRUE;
+        break;
       }
     }
   }
