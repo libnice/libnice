@@ -99,13 +99,14 @@ bool stun_agent_init_request (StunAgent *agent, StunMessage *msg,
 bool stun_agent_init_indication (StunAgent *agent, StunMessage *msg,
     uint8_t *buffer, size_t buffer_len, stun_method_t m);
 bool stun_agent_init_response (StunAgent *agent, StunMessage *msg,
-    uint8_t *buffer, size_t buffer_len, stun_method_t m, StunMessage *request);
+    uint8_t *buffer, size_t buffer_len, const StunMessage *request);
 bool stun_agent_init_error (StunAgent *agent, StunMessage *msg,
-    uint8_t *buffer, size_t buffer_len, StunMessage *request,
+    uint8_t *buffer, size_t buffer_len, const StunMessage *request,
     stun_error_t err);
 size_t stun_agent_build_unknown_attributes_error (StunAgent *agent,
-    StunMessage *msg, uint8_t *buffer, size_t buffer_len, StunMessage *request);
+    StunMessage *msg, uint8_t *buffer, size_t buffer_len,
+    const StunMessage *request);
 size_t stun_agent_finish_message (StunAgent *agent, StunMessage *msg,
-    uint8_t *key, size_t key_len);
+   const uint8_t *key, size_t key_len);
 
 #endif /* _STUN_AGENT_H */

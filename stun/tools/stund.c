@@ -62,8 +62,12 @@
 /** Default port for STUN binding discovery */
 #define IPPORT_STUN  3478
 
-#include "stun/stun-msg.h"
+#include "stun/stunagent.h"
 #include "stund.h"
+
+static const uint16_t known_attributes[] =  {
+  0
+};
 
 /**
  * Creates a listening socket
@@ -185,12 +189,16 @@ ssize_t send_safe (int fd, const struct msghdr *msg)
 }
 
 
-static int dgram_process (int sock)
+static int dgram_process (int sock, StunAgent *agent)
 {
   struct sockaddr_storage addr;
-  uint8_t buf[STUN_MAXMSG];
+  uint8_t buf[STUN_MAX_MESSAGE_SIZE];
   char ctlbuf[CMSG_SPACE (sizeof (struct in6_pktinfo))];
   struct iovec iov = { buf, sizeof (buf) };
+  StunMessage request;
+  StunMessage response;
+  StunValidationStatus validation;
+
   struct msghdr mh =
   {
     .msg_name = (struct sockaddr *)&addr,
@@ -205,37 +213,42 @@ static int dgram_process (int sock)
   if (len == (size_t)-1)
     return -1;
 
-  /* Mal-formatted packets */
-  if ((stun_validate (buf, len) <= 0)
-   || (stun_get_class (buf) != STUN_REQUEST))
-    return -1;
+  validation = stun_agent_validate (agent, &request, buf, len, NULL, 0);
 
   /* Unknown attributes */
-  if (stun_has_unknown (buf))
+  if (validation == STUN_VALIDATION_UNKNOWN_REQUEST_ATTRIBUTE)
   {
-    stun_init_error_unknown (buf, sizeof (buf), buf, 0);
-    goto finish;
+    stun_agent_build_unknown_attributes_error (agent, &response, buf,
+        sizeof (buf), &request);
+    goto send_buf;
   }
 
-  switch (stun_get_method (buf))
+  /* Mal-formatted packets */
+  if (validation != STUN_VALIDATION_SUCCESS ||
+      stun_message_get_class (&request) != STUN_REQUEST) {
+    return -1;
+  }
+
+  switch (stun_message_get_method (&request))
   {
     case STUN_BINDING:
-      stun_init_response (buf, sizeof (buf), buf, 0);
-      if (stun_has_cookie (buf))
-        stun_append_xor_addr (buf, sizeof (buf),
-                              STUN_XOR_MAPPED_ADDRESS,
+      stun_agent_init_response (agent, &response, buf, sizeof (buf), &request);
+      if (stun_has_cookie (&request))
+        stun_message_append_xor_addr (&response,
+                              STUN_ATTRIBUTE_XOR_MAPPED_ADDRESS,
                               mh.msg_name, mh.msg_namelen);
       else
-         stun_append_addr (buf, sizeof (buf), STUN_MAPPED_ADDRESS,
+         stun_message_append_addr (&response, STUN_ATTRIBUTE_MAPPED_ADDRESS,
                           mh.msg_name, mh.msg_namelen);
       break;
 
     default:
-      stun_init_error (buf, sizeof (buf), buf, STUN_BAD_REQUEST, 0);
+      stun_agent_init_error (agent, &response, buf, sizeof (buf),
+          &request, STUN_ERROR_BAD_REQUEST);
   }
 
-finish:
-  stun_finish (buf, &iov.iov_len, 0);
+  iov.iov_len = stun_agent_finish_message (agent, &response, NULL, 0);
+send_buf:
 
   len = send_safe (sock, &mh);
   return (len < iov.iov_len) ? -1 : 0;
@@ -244,12 +257,17 @@ finish:
 
 static int run (int family, int protocol, unsigned port)
 {
+  StunAgent agent;
   int sock = listen_socket (family, SOCK_DGRAM, protocol, htons (port));
   if (sock == -1)
     return -1;
 
+
+  stun_agent_init (&agent, known_attributes,
+      STUN_COMPATIBILITY_3489BIS, STUN_AGENT_USAGE_ADD_SERVER);
+
   for (;;)
-    dgram_process (sock);
+    dgram_process (sock, &agent);
 }
 
 

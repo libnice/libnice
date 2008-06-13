@@ -13,11 +13,7 @@ include $(top_srcdir)/common.mk
 AM_CFLAGS = -std=gnu99 $(ERROR_CFLAGS) $(OPENSSL_CFLAGS)
 AM_CPPFLAGS = -I$(top_srcdir)
 
-BUILT_SOURCES = unknown.c
-CLEANFILES += $(BUILT_SOURCES)
-
 noinst_LTLIBRARIES = libstun.la
-dist_noinst_SCRIPTS = build-unknown.sh
 
 libstun_la_SOURCES = stun.h constants.h \
 	stunagent.c stunagent.h \
@@ -25,16 +21,8 @@ libstun_la_SOURCES = stun.h constants.h \
 	stun3489bis.c stun3489bis.h \
 	stuncrc32.c stuncrc32.h \
 	stunhmac.c stunhmac.h \
-	utils.c  utils.h 
-
-#	usages/timer.h usages/timer.c \
-#	usages/trans.h usages/trans.c \
-#	usages/stun-ice.c usages/stun-ice.h \
-#	usages/bind.c usages/bind.h
+	utils.c  utils.h
+#	usages/stun-ice.c usages/stun-ice.h
 
 libstun_la_LIBADD = $(OPENSSL_LIBS) $(LIBRT)
-
-unknown.c: stun-msg.h build-unknown.sh
-	rm -f unknown.c
-	$(SHELL) "$(srcdir)/build-unknown.sh" < "$(srcdir)/stun-msg.h" > unknown.c
 

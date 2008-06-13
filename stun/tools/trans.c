@@ -50,7 +50,7 @@
 # include <poll.h>
 #endif
 
-#include "stun-msg.h"
+#include "stun/stunagent.h"
 #include "trans.h"
 
 #define TRANS_OWN_FD   0x1 /* descriptor belongs to us */
@@ -199,7 +199,7 @@ int stun_trans_start (stun_trans_t *tr)
   else
     stun_timer_start (&tr->timer);
 
-  DBG ("STUN transaction @%p started (timeout: %ums)\n", tr,
+  stun_debug ("STUN transaction @%p started (timeout: %ums)\n", tr,
        stun_trans_timeout (tr));
 
   val = stun_trans_send (tr);
@@ -324,7 +324,7 @@ int stun_trans_tick (stun_trans_t *tr)
   switch (stun_timer_refresh (&tr->timer))
   {
     case -1:
-      DBG ("STUN transaction @%p failed: time out.\n", tr);
+      stun_debug ("STUN transaction @%p failed: time out.\n", tr);
       return ETIMEDOUT; // fatal error!
 
     case 0:
@@ -333,7 +333,7 @@ int stun_trans_tick (stun_trans_t *tr)
       tr->msg.offset = 0;
 
       stun_trans_send (tr);
-      DBG ("STUN transaction @%p retransmitted (timeout: %ums).\n", tr,
+      stun_debug ("STUN transaction @%p retransmitted (timeout: %ums).\n", tr,
            stun_trans_timeout (tr));
   }
   return EAGAIN;
@@ -401,27 +401,32 @@ int stun_trans_recv (stun_trans_t *tr, uint8_t *buf, size_t buflen)
 
 
 
-int stun_trans_preprocess (stun_trans_t *restrict tr, int *pcode,
-                           const void *restrict buf, size_t len)
+int stun_trans_preprocess (StunAgent *agent,
+    stun_trans_t *restrict tr, int *pcode,
+    const void *restrict buf, size_t len)
 {
+  StunValidationStatus valid;
+
   assert (pcode != NULL);
 
-  /* FIXME: possible infinite loop */
-  if (stun_validate (buf, len) <= 0)
+  *pcode = -1;
+
+  valid = stun_agent_validate (agent, &tr->message, buf, len, NULL, NULL);
+  if (valid == STUN_VALIDATION_UNKNOWN_ATTRIBUTE)
+    return EPROTO;
+
+  if (valid != STUN_VALIDATION_SUCCESS)
     return EAGAIN;
 
-  DBG ("Received %u-bytes STUN message\n",
-       (unsigned)stun_validate (buf, len));
+  stun_debug ("Received %u-bytes STUN message\n", (unsigned)len);
   /* NOTE: currently we ignore unauthenticated messages if the context
    * is authenticated, for security reasons. */
-
-  if (!stun_match_messages (buf, tr->msg.buf, tr->key.value, tr->key.length,
-                            pcode))
-    return EAGAIN;
-
+  if (stun_message_get_class (&tr->message) == STUN_ERROR) {
+    stun_message_find_error (&tr->message, pcode);
+  }
   if (*pcode >= 0)
   {
-    DBG (" STUN error message received (code: %d)\n", *pcode);
+    stun_debug (" STUN error message received (code: %d)\n", *pcode);
 
     /* ALTERNATE-SERVER mechanism */
     if ((tr->key.value != NULL) && ((*pcode / 100) == 3))
@@ -429,10 +434,10 @@ int stun_trans_preprocess (stun_trans_t *restrict tr, int *pcode,
       struct sockaddr_storage srv;
       socklen_t slen = sizeof (srv);
 
-      if (stun_find_addr (buf, STUN_ALTERNATE_SERVER,
+      if (stun_message_find_addr (&tr->message, STUN_ATTRIBUTE_ALTERNATE_SERVER,
                           (struct sockaddr *)&srv, &slen))
       {
-        DBG (" Unexpectedly missing ALTERNATE-SERVER attribute\n");
+        stun_debug (" Unexpectedly missing ALTERNATE-SERVER attribute\n");
         return ECONNREFUSED;
       }
 
@@ -441,7 +446,7 @@ int stun_trans_preprocess (stun_trans_t *restrict tr, int *pcode,
         if (connect (tr->sock.fd, (struct sockaddr *)&srv, slen))
         {
           /* This error case includes address family mismatch */
-          DBG (" Error switching to alternate server: %s\n",
+          stun_debug (" Error switching to alternate server: %s\n",
                strerror (errno));
           return ECONNREFUSED;
         }
@@ -451,25 +456,22 @@ int stun_trans_preprocess (stun_trans_t *restrict tr, int *pcode,
         if ((tr->sock.dst.ss_family != srv.ss_family)
          || (slen > sizeof (tr->sock.dst)))
         {
-          DBG (" Unsupported alternate server\n");
+          stun_debug (" Unsupported alternate server\n");
           return ECONNREFUSED;
         }
 
         memcpy (&tr->sock.dst, &srv, tr->sock.dstlen = slen);
       }
 
-      DBG (" Restarting with alternate server\n");
+      stun_debug (" Restarting with alternate server\n");
       if (stun_trans_start (tr) == 0)
         return EAGAIN;
 
-      DBG (" Restart failed!\n");
+      stun_debug (" Restart failed!\n");
     }
 
     return ECONNREFUSED;
   }
-
-  if (stun_has_unknown (buf))
-    return EPROTO;
 
   return 0;
 }

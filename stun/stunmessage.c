@@ -62,7 +62,7 @@ bool stun_message_init (StunMessage *msg, stun_class_t c, stun_method_t m,
   stun_set_type (msg->buffer, c, m);
 
   memcpy (msg->buffer + STUN_MESSAGE_TRANS_ID_POS,
-      id, sizeof (STUN_MESSAGE_TRANS_ID_LEN));
+      id, STUN_MESSAGE_TRANS_ID_LEN);
 
   return TRUE;
 }
@@ -304,8 +304,7 @@ void *
 stun_message_append (StunMessage *msg, stun_attr_type_t type, size_t length)
 {
   uint8_t *a;
-  uint16_t mlen = stun_message_length (msg);
-
+  uint16_t mlen = stun_message_length (msg) - STUN_MESSAGE_HEADER_LENGTH;
 
   if ((((size_t)mlen) + STUN_ATTRIBUTE_HEADER_LENGTH + length) > msg->buffer_len)
     return NULL;

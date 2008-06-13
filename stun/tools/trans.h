@@ -45,6 +45,7 @@
 # include <sys/socket.h>
 
 # include "timer.h"
+#include "stun/stunagent.h"
 
 typedef struct stun_trans_s
 {
@@ -54,8 +55,9 @@ typedef struct stun_trans_s
   struct
   {
     size_t  length, offset;
-    uint8_t buf[STUN_MAXMSG];
+    uint8_t buf[STUN_MAX_MESSAGE_SIZE];
   } msg;
+  StunMessage message;
 
   struct
   {
@@ -149,8 +151,9 @@ int stun_trans_tick (stun_trans_t *tr);
 
 int stun_trans_recv (stun_trans_t *tr, uint8_t *buf, size_t buflen);
 
-int stun_trans_preprocess (stun_trans_t *restrict tr, int *code,
-                           const void *restrict buf, size_t len);
+int stun_trans_preprocess (StunAgent *agent,
+    stun_trans_t *restrict tr, int *code,
+    const void *restrict buf, size_t len);
 
 /**
  * Safe wrapper around sendto()

@@ -8,16 +8,21 @@
 #
 
 include $(top_srcdir)/common.mk
-
 AM_CFLAGS = -std=gnu99
-AM_CPPFLAGS = -I$(top_srcdir)
+AM_CPPFLAGS = -I$(top_srcdir) 
 
 bin_PROGRAMS = stunbdc stund
 
 check_PROGRAMS = stund
 
 stund_SOURCES = stund.c stund.h
-
 stund_LDADD = ../libstun.la -lpthread
+
+stunbdc_SOURCES = stunbdc.c \
+		bind.c bind.h \
+		trans.c trans.h \
+		timer.c timer.h
+
 stunbdc_LDADD = ../libstun.la
+
 

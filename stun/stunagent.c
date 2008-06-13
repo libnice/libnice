@@ -85,6 +85,7 @@ StunValidationStatus stun_agent_validate (StunAgent *agent, StunMessage *msg,
   uint8_t sha[20];
   uint16_t hlen;
   int sent_id_idx = -1;
+  uint16_t unknown;
 
   len = stun_message_validate_buffer_length (buffer, buffer_len);
   if (len == STUN_MESSAGE_BUFFER_INVALID) {
@@ -182,8 +183,8 @@ StunValidationStatus stun_agent_validate (StunAgent *agent, StunMessage *msg,
   }
 
   if (key != NULL && key_len > 0) {
-    hash = (uint8_t *) stun_message_find (msg, STUN_ATTRIBUTE_MESSAGE_INTEGRITY,
-        &hlen);
+    hash = (uint8_t *) stun_message_find (msg,
+        STUN_ATTRIBUTE_MESSAGE_INTEGRITY, &hlen);
 
     stun_sha1 (msg->buffer, stun_message_length (msg), sha, key, key_len);
     stun_debug (" Message HMAC-SHA1 fingerprint:");
@@ -205,6 +206,13 @@ StunValidationStatus stun_agent_validate (StunAgent *agent, StunMessage *msg,
 
   if (sent_id_idx != -1 && sent_id_idx < STUN_AGENT_MAX_SAVED_IDS) {
     agent->sent_ids[sent_id_idx].valid = FALSE;
+  }
+
+  if (stun_agent_find_unknowns (agent, msg, &unknown, 1) > 0) {
+    if (stun_message_get_class (msg) == STUN_REQUEST)
+      return STUN_VALIDATION_UNKNOWN_REQUEST_ATTRIBUTE;
+    else
+      return STUN_VALIDATION_UNKNOWN_ATTRIBUTE;
   }
   return STUN_VALIDATION_SUCCESS;
 
@@ -265,7 +273,7 @@ bool stun_agent_init_indication (StunAgent *agent, StunMessage *msg,
 
 
 bool stun_agent_init_response (StunAgent *agent, StunMessage *msg,
-    uint8_t *buffer, size_t buffer_len, stun_method_t m, StunMessage *request)
+    uint8_t *buffer, size_t buffer_len, const StunMessage *request)
 {
 
   stun_transid_t id;
@@ -296,7 +304,7 @@ bool stun_agent_init_response (StunAgent *agent, StunMessage *msg,
 
 
 bool stun_agent_init_error (StunAgent *agent, StunMessage *msg,
-    uint8_t *buffer, size_t buffer_len, StunMessage *request,
+    uint8_t *buffer, size_t buffer_len, const StunMessage *request,
     stun_error_t err)
 {
   stun_transid_t id;
@@ -330,7 +338,8 @@ bool stun_agent_init_error (StunAgent *agent, StunMessage *msg,
 
 
 size_t stun_agent_build_unknown_attributes_error (StunAgent *agent,
-    StunMessage *msg, uint8_t *buffer, size_t buffer_len, StunMessage *request)
+    StunMessage *msg, uint8_t *buffer, size_t buffer_len,
+    const StunMessage *request)
 {
 
   unsigned counter;
@@ -359,7 +368,7 @@ size_t stun_agent_build_unknown_attributes_error (StunAgent *agent,
 
 
 size_t stun_agent_finish_message (StunAgent *agent, StunMessage *msg,
-    uint8_t *key, size_t key_len)
+    const uint8_t *key, size_t key_len)
 {
   uint8_t *ptr;
   uint32_t fpr;
@@ -374,7 +383,7 @@ size_t stun_agent_finish_message (StunAgent *agent, StunMessage *msg,
 
     stun_sha1 (msg->buffer, stun_message_length (msg), ptr, key, key_len);
 
-    stun_debug (" Message HMAC-SHA1 fingerprint:"
+    stun_debug (" Message HMAC-SHA1 message integrity:"
          "\n  key     : ");
     stun_debug_bytes (key, key_len);
     stun_debug ("\n  sent    : ");
@@ -390,8 +399,13 @@ size_t stun_agent_finish_message (StunAgent *agent, StunMessage *msg,
       return 0;
     }
 
+
     fpr = stun_fingerprint (msg->buffer, stun_message_length (msg));
     memcpy (ptr, &fpr, sizeof (fpr));
+
+    stun_debug (" Message HMAC-SHA1 fingerprint: ");
+    stun_debug_bytes (ptr, 4);
+    stun_debug ("\n");
   }
 
 
@@ -401,7 +415,7 @@ size_t stun_agent_finish_message (StunAgent *agent, StunMessage *msg,
         stun_message_id (msg, id);
         memcpy (agent->sent_ids[i].id, id, sizeof(stun_transid_t));
         agent->sent_ids[i].method = stun_message_get_method (msg);
-        agent->sent_ids[i].key = key;
+        agent->sent_ids[i].key = (uint8_t *) key;
         agent->sent_ids[i].key_len = key_len;
         agent->sent_ids[i].valid = TRUE;
         break;
@@ -409,7 +423,7 @@ size_t stun_agent_finish_message (StunAgent *agent, StunMessage *msg,
     }
   }
 
-  msg->key = key;
+  msg->key = (uint8_t *) key;
   msg->key_len = key_len;
   return stun_message_length (msg);
 

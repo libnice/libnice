@@ -39,7 +39,8 @@
 
 #include <sys/types.h>
 #include <sys/socket.h>
-#include "stunagent.h"
+#include "stun/stunagent.h"
+#include "bind.h"
 
 #include <unistd.h>
 #include <getopt.h>

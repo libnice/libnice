@@ -120,5 +120,5 @@ void stun_make_transid (stun_transid_t id)
   /* Computes hash out of contentious area */
   HMAC (EVP_sha1 (), key, sizeof (key), counter.bytes, sizeof (counter),
         sha, NULL);
-  memcpy (id, sha, 12);
+  memcpy (id, sha, 16);
 }

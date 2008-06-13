@@ -41,7 +41,7 @@
 #include <sys/socket.h>
 
 #include "bind.h"
-#include "stun-msg.h"
+#include "stun/stunagent.h"
 
 #include <assert.h>
 #include <string.h>
@@ -60,8 +60,23 @@
 struct stun_bind_s
 {
   stun_trans_t trans;
+  StunAgent agent;
 };
 
+static const uint16_t known_attributes[] =  {
+  STUN_ATTRIBUTE_MAPPED_ADDRESS,
+  STUN_ATTRIBUTE_XOR_MAPPED_ADDRESS,
+  STUN_ATTRIBUTE_XOR_INTERNAL_ADDRESS,
+  STUN_ATTRIBUTE_FINGERPRINT,
+  STUN_ATTRIBUTE_ALTERNATE_SERVER,
+  STUN_ATTRIBUTE_PRIORITY,
+  STUN_ATTRIBUTE_USE_CANDIDATE,
+  STUN_ATTRIBUTE_ICE_CONTROLLING,
+  STUN_ATTRIBUTE_ICE_CONTROLLED,
+  STUN_ATTRIBUTE_USERNAME,
+  STUN_ATTRIBUTE_REFRESH_INTERVAL,
+  0
+};
 
 /** Initialization/deinitization */
 
@@ -100,8 +115,14 @@ stun_bind_alloc (stun_bind_t **restrict context, int fd,
     return val;
   }
 
-  stun_init_request (ctx->trans.msg.buf, STUN_BINDING);
-  ctx->trans.msg.length = sizeof (ctx->trans.msg.buf);
+  stun_agent_init (&ctx->agent, known_attributes,
+      STUN_COMPATIBILITY_3489BIS,
+      STUN_AGENT_USAGE_ADD_SERVER);
+
+  stun_agent_init_request (&ctx->agent, &ctx->trans.message,
+      ctx->trans.msg.buf, sizeof (ctx->trans.msg.buf), STUN_BINDING);
+
+  ctx->trans.msg.length = ctx->trans.message.buffer_len;
   return 0;
 }
 
@@ -117,9 +138,12 @@ int stun_bind_start (stun_bind_t **restrict context, int fd,
     return val;
 
   ctx = *context;
-  val = stun_finish (ctx->trans.msg.buf, &ctx->trans.msg.length, compat);
-  if (val)
+
+  val = stun_agent_finish_message (&ctx->agent, &ctx->trans.message, NULL, 0);
+
+  if (val == 0)
     goto error;
+  ctx->trans.msg.length = val;
 
   val = stun_trans_start (&ctx->trans);
   if (val)
@@ -168,7 +192,7 @@ int stun_bind_process (stun_bind_t *restrict ctx,
 
   assert (ctx != NULL);
 
-  val = stun_trans_preprocess (&ctx->trans, &code, buf, len);
+  val = stun_trans_preprocess (&ctx->agent, &ctx->trans, &code, buf, len);
   switch (val)
   {
     case EAGAIN:
@@ -176,26 +200,28 @@ int stun_bind_process (stun_bind_t *restrict ctx,
     case 0:
       break;
     default:
-      if (code == STUN_ROLE_CONFLICT)
+      if (code == STUN_ERROR_ROLE_CONFLICT)
         val = ECONNRESET;
       stun_bind_cancel (ctx);
       return val;
   }
 
-  val = stun_find_xor_addr (buf, STUN_XOR_MAPPED_ADDRESS, addr, addrlen);
+  val = stun_message_find_xor_addr (&ctx->trans.message,
+      STUN_ATTRIBUTE_XOR_MAPPED_ADDRESS, addr, addrlen);
   if (val)
   {
-    DBG (" No XOR-MAPPED-ADDRESS: %s\n", strerror (val));
-    val = stun_find_addr (buf, STUN_MAPPED_ADDRESS, addr, addrlen);
+    stun_debug (" No XOR-MAPPED-ADDRESS: %s\n", strerror (val));
+    val = stun_message_find_addr (&ctx->trans.message,
+        STUN_ATTRIBUTE_MAPPED_ADDRESS, addr, addrlen);
     if (val)
     {
-      DBG (" No MAPPED-ADDRESS: %s\n", strerror (val));
+      stun_debug (" No MAPPED-ADDRESS: %s\n", strerror (val));
       stun_bind_cancel (ctx);
       return val;
     }
   }
 
-  DBG (" Mapped address found!\n");
+  stun_debug (" Mapped address found!\n");
   stun_bind_cancel (ctx);
   return 0;
 }
@@ -208,7 +234,7 @@ int stun_bind_run (int fd,
                    struct sockaddr *restrict addr, socklen_t *addrlen, int compat)
 {
   stun_bind_t *ctx;
-  uint8_t buf[STUN_MAXMSG];
+  uint8_t buf[STUN_MAX_MESSAGE_SIZE];
   ssize_t val;
 
   val = stun_bind_start (&ctx, fd, srv, srvlen, compat);
@@ -231,7 +257,7 @@ int stun_bind_run (int fd,
   return val;
 }
 
-
+#if 0
 /** ICE keep-alives (Binding discovery indication!) */
 
 int
@@ -240,22 +266,25 @@ stun_bind_keepalive (int fd, const struct sockaddr *restrict srv,
 {
   uint8_t buf[28];
   size_t len = sizeof (buf);
-  int val;
+  StunAgent agent;
+  StunMessage msg;
 
-  stun_init_indication (buf, STUN_BINDING);
-  val = stun_finish (buf, &len, compat);
-  assert (val == 0);
-  (void)val;
+  stun_agent_init (&agent, known_attributes,
+      STUN_COMPATIBILITY_3489BIS,
+      STUN_AGENT_USAGE_USE_FINGERPRINT);
+  stun_agent_init_indication (&agent, &msg,
+      buf, sizeof (buf), STUN_BINDING);
+  len = stun_agent_finish_message (&agent, &msg, NULL, 0);
+
+  assert (len == sizeof(buf));
 
   /* NOTE: hopefully, this is only needed for non-stream sockets */
   if (stun_sendto (fd, buf, len, srv, srvlen) == -1)
     return errno;
   return 0;
 }
+#endif
 
-
-/** Connectivity checks */
-#include "stun-ice.h"
 
 int
 stun_conncheck_start (stun_bind_t **restrict context, int fd,
@@ -290,29 +319,38 @@ stun_conncheck_start (stun_bind_t **restrict context, int fd,
   if (compat != 1) {
     if (cand_use)
     {
-      val = stun_append_flag (ctx->trans.msg.buf,
-          sizeof (ctx->trans.msg.buf),
-          STUN_USE_CANDIDATE);
+      val = stun_message_append_flag (&ctx->trans.message,
+          STUN_ATTRIBUTE_USE_CANDIDATE);
       if (val)
         goto error;
     }
 
-    val = stun_append32 (ctx->trans.msg.buf, sizeof (ctx->trans.msg.buf),
-        STUN_PRIORITY, priority);
+    val = stun_message_append32 (&ctx->trans.message,
+        STUN_ATTRIBUTE_PRIORITY, priority);
     if (val)
       goto error;
 
-    val = stun_append64 (ctx->trans.msg.buf, sizeof (ctx->trans.msg.buf),
-        controlling ? STUN_ICE_CONTROLLING
-        : STUN_ICE_CONTROLLED, tie);
+    val = stun_message_append64 (&ctx->trans.message,
+        controlling ? STUN_ATTRIBUTE_ICE_CONTROLLING
+        : STUN_ATTRIBUTE_ICE_CONTROLLED, tie);
     if (val)
       goto error;
   }
 
-  val = stun_finish_short (ctx->trans.msg.buf, &ctx->trans.msg.length,
-      username, compat == 1 ? NULL : password, NULL, compat);
-  if (val)
+  if (username) {
+    val = stun_message_append_string (&ctx->trans.message,
+       STUN_ATTRIBUTE_USERNAME, username);
+    if (val)
+      goto error;
+  }
+
+  val = stun_agent_finish_message (&ctx->agent, &ctx->trans.message,
+      compat == 1 ? NULL : (const uint8_t *) password,
+      compat == 1 ? 0 : strlen (password));
+
+  if (val == 0)
     goto error;
+  ctx->trans.msg.length = val;
 
   val = stun_trans_start (&ctx->trans);
   if (val)
@@ -359,15 +397,13 @@ int stun_nested_start (stun_nested_t **restrict context, int fd,
 
   *context = ctx;
 
-  val = stun_append32 (ctx->bind->trans.msg.buf,
-                       sizeof (ctx->bind->trans.msg.buf),
-                       STUN_REFRESH_INTERVAL, refresh);
+  val = stun_message_append32 (&ctx->bind->trans.message,
+                       STUN_ATTRIBUTE_REFRESH_INTERVAL, refresh);
   if (val)
     goto error;
 
-  val = stun_finish (ctx->bind->trans.msg.buf,
-                     &ctx->bind->trans.msg.length,
-                     compat);
+  val = stun_agent_finish_message (&ctx->bind->agent,
+      &ctx->bind->trans.message, NULL, 0);
   if (val)
     goto error;
 
@@ -403,21 +439,24 @@ int stun_nested_process (stun_nested_t *restrict ctx,
   if (sockaddrcmp ((struct sockaddr *)&mapped,
                    (struct sockaddr *)&ctx->mapped))
   {
-    DBG (" Mapped address mismatch! (Symmetric NAT?)\n");
+    stun_debug (" Mapped address mismatch! (Symmetric NAT?)\n");
     return ECONNREFUSED;
   }
 
-  val = stun_find_xor_addr (buf, STUN_XOR_INTERNAL_ADDRESS, intad, adlen);
+  val = stun_message_find_xor_addr (&ctx->bind->trans.message,
+      STUN_ATTRIBUTE_XOR_INTERNAL_ADDRESS,
+      intad, adlen);
   if (val)
   {
-    DBG (" No XOR-INTERNAL-ADDRESS: %s\n", strerror (val));
+    stun_debug (" No XOR-INTERNAL-ADDRESS: %s\n", strerror (val));
     return val;
   }
 
-  stun_find32 (buf, STUN_REFRESH_INTERVAL, &ctx->refresh);
+  stun_message_find32 (&ctx->bind->trans.message,
+      STUN_ATTRIBUTE_REFRESH_INTERVAL, &ctx->refresh);
   /* TODO: give this to caller */
 
-  DBG (" Internal address found!\n");
+  stun_debug (" Internal address found!\n");
   stun_bind_cancel (ctx->bind);
   ctx->bind = NULL;
   return 0;
