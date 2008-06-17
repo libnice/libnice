@@ -41,7 +41,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 
-#include "stun/stun-msg.h"
+#include "stun/stunagent.h"
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -66,11 +66,11 @@ static void fatal (const char *msg, ...)
 
 static void validate (const uint8_t *msg, unsigned len)
 {
-  unsigned i = 0;
+  unsigned i = 1;
 
   do
   {
-    size_t vlen = stun_validate (msg, i);
+    size_t vlen = stun_message_validate_buffer_length (msg, i);
     if ((vlen & 3) || (vlen != ((i >= len) * len)))
       fatal ("%u/%u short message test failed", i, len);
   }
@@ -81,154 +81,193 @@ static void validate (const uint8_t *msg, unsigned len)
 /* Tests for generic message validation routines */
 static void test_message (void)
 {
+  static const uint8_t extra_garbage[] =
+      {0x15, 0x55, 0x00, 0x00,
+       0x21, 0x12, 0xA4, 0x42, // cookie
+       0x76, 0x54, 0x32, 0x10,
+       0xfe, 0xdc, 0xba, 0x98,
+       0x76, 0x54, 0x32, 0x10,
+       0xaa, 0xbb, 0xcc, 0xdd}; //extra garbage
   static const uint8_t simple_resp[] =
-    "\x15\x55\x00\x00"
-    "\x21\x12\xA4\x42" // cookie
-    "\x76\x54\x32\x10"
-    "\xfe\xdc\xba\x98"
-    "\x76\x54\x32\x10"
-    "\xaa\xbb\xcc\xdd"; //extra garbage
+      {0x15, 0x55, 0x00, 0x00,
+       0x21, 0x12, 0xA4, 0x42, // cookie
+       0x76, 0x54, 0x32, 0x10,
+       0xfe, 0xdc, 0xba, 0x98,
+       0x76, 0x54, 0x32, 0x10};
   static const uint8_t old_ind[] =
-    "\x14\x55\x00\x00"
-    "\xfe\xdc\xba\x98" // NO cookie
-    "\x76\x54\x32\x10"
-    "\xfe\xdc\xba\x98"
-    "\x76\x54\x32\x10"; //extra garbage
+      {0x14, 0x55, 0x00, 0x00,
+       0xfe, 0xdc, 0xba, 0x98, // NO cookie
+       0x76, 0x54, 0x32, 0x10,
+       0xfe, 0xdc, 0xba, 0x98,
+       0x76, 0x54, 0x32, 0x10};
   static const uint8_t fpr_resp[] =
-    "\x15\x55\x00\x10"
-    "\x21\x12\xA4\x42" // cookie
-    "\x76\x54\x32\x10"
-    "\xfe\xdc\xba\x98"
-    "\x76\x54\x32\x10"
-    "\x00\x06\x00\x04" // dummy USERNAME header
-    "\x41\x42\x43\x44"
-    "\x80\x28\x00\x04" // FINGERPRINT header
-    "\xdc\x8d\xa7\x74" // CRC32
-    "\xcc\xdd\xee\xff"; // extra garbage
+      {0x15, 0x55, 0x00, 0x10,
+       0x21, 0x12, 0xA4, 0x42, // cookie
+       0x76, 0x54, 0x32, 0x10,
+       0xfe, 0xdc, 0xba, 0x98,
+       0x76, 0x54, 0x32, 0x10,
+       0x00, 0x06, 0x00, 0x04, // dummy USERNAME header
+       0x41, 0x42, 0x43, 0x44,
+       0x80, 0x28, 0x00, 0x04, // FINGERPRINT header
+       0xdc, 0x8d, 0xa7, 0x74}; // CRC32;
   static const uint8_t bad1[32] =
-    "\x15\x55\x00\x08"
-    "\x21\x12\xA4\x42" // cookie
-    "\x76\x54\x32\x10"
-    "\xfe\xdc\xba\x98"
-    "\x76\x54\x32\x10"
-    "\x00\x06\x00\x05" // too big attribute for message
-    "\x11\x22\x33\x44"
-    "\x55\x66\x77\x88";
+      {0x15, 0x55, 0x00, 0x08,
+       0x21, 0x12, 0xA4, 0x42, // cookie
+       0x76, 0x54, 0x32, 0x10,
+       0xfe, 0xdc, 0xba, 0x98,
+       0x76, 0x54, 0x32, 0x10,
+       0x00, 0x06, 0x00, 0x05, // too big attribute for message
+       0x11, 0x22, 0x33, 0x44,
+       0x55, 0x66, 0x77, 0x88};
   static const uint8_t bad2[24] =
-    "\x15\x55\x00\x05" // invalid message length
-    "\x21\x12\xA4\x42"
-    "\x76\x54\x32\x10"
-    "\xfe\xdc\xba\x98"
-    "\x76\x54\x32\x10"
-    "\x00\x06\x00\x01";
+      {0x15, 0x55, 0x00, 0x05, // invalid message length
+       0x21, 0x12, 0xA4, 0x42,
+       0x76, 0x54, 0x32, 0x10,
+       0xfe, 0xdc, 0xba, 0x98,
+       0x76, 0x54, 0x32, 0x10,
+       0x00, 0x06, 0x00, 0x01};
   static const uint8_t bad3[27] =
-    "\x15\x55\x00\x08"
-    "\x21\x12\xA4\x42"
-    "\x76\x54\x32\x10"
-    "\xfe\xdc\xba\x98"
-    "\x76\x54\x32\x10"
-    "\x00\x06\x00\x03"
-    "\x11\x22\x33"; // missing padding
+      {0x15, 0x55, 0x00, 0x08,
+       0x21, 0x12, 0xA4, 0x42,
+       0x76, 0x54, 0x32, 0x10,
+       0xfe, 0xdc, 0xba, 0x98,
+       0x76, 0x54, 0x32, 0x10,
+       0x00, 0x06, 0x00, 0x03,
+       0x11, 0x22, 0x33}; // missing padding
   static const uint8_t bad_crc[] =
-    "\x15\x55\x00\x08"
-    "\x21\x12\xA4\x42"
-    "\x76\x54\x32\x10"
-    "\xfe\xdc\xba\x98"
-    "\x76\x54\x32\x10"
-    "\x80\x28\x00\x04" // FINGERPRINT header
-    "\x04\x91\xcd\x78"; // CRC32
+      {0x15, 0x55, 0x00, 0x08,
+       0x21, 0x12, 0xA4, 0x42,
+       0x76, 0x54, 0x32, 0x10,
+       0xfe, 0xdc, 0xba, 0x98,
+       0x76, 0x54, 0x32, 0x10,
+       0x80, 0x28, 0x00, 0x04, // FINGERPRINT header
+       0x04, 0x91, 0xcd, 0x78}; // CRC32
   static uint8_t bad_crc_offset[] =
-    "\x15\x55\x00\x10"
-    "\x21\x12\xA4\x42"
-    "\x76\x54\x32\x10"
-    "\xfe\xdc\xba\x98"
-    "\x20\x67\xc4\x09"
-    "\x80\x28\x00\x04" // FINGERPRINT header
-    "\x00\x00\x00\x00"
-    "\x00\x06\x00\x04"
-    "\x41\x42\x43\x44";
+      {0x15, 0x55, 0x00, 0x10,
+       0x21, 0x12, 0xA4, 0x42,
+       0x76, 0x54, 0x32, 0x10,
+       0xfe, 0xdc, 0xba, 0x98,
+       0x20, 0x67, 0xc4, 0x09,
+       0x80, 0x28, 0x00, 0x04, // FINGERPRINT header
+       0x00, 0x00, 0x00, 0x00,
+       0x00, 0x06, 0x00, 0x04,
+       0x41, 0x42, 0x43, 0x44};
+  StunAgent agent;
+  StunMessage msg;
+  uint16_t known_attributes[] = {STUN_ATTRIBUTE_USERNAME, 0};
 
-  if (stun_validate (NULL, 0) != 0)
+  if (stun_message_validate_buffer_length (NULL, 0) != STUN_MESSAGE_BUFFER_INVALID)
     fatal ("0 bytes test failed");
-  if (stun_validate ((uint8_t *)"\xf0", 1) >= 0)
+  if (stun_message_validate_buffer_length ((uint8_t *)"\xf0", 1) >= 0)
     fatal ("1 byte test failed");
+  if (stun_message_validate_buffer_length (bad1, sizeof (bad1)) >= 0)
+    fatal ("Badness 1 test failed");
+  if (stun_message_validate_buffer_length (bad2, sizeof (bad2)) >= 0)
+    fatal ("Badness 2 test failed");
+  if (stun_message_validate_buffer_length (bad3, sizeof (bad3)) != 0)
+    fatal ("Badness 3 test failed");
   validate (simple_resp, 20);
   validate (old_ind, 20);
   validate (fpr_resp, 36);
-  if (stun_demux (simple_resp))
+
+  stun_agent_init (&agent, known_attributes,
+      STUN_COMPATIBILITY_3489BIS, STUN_AGENT_USAGE_USE_FINGERPRINT);
+
+  if (stun_agent_validate (&agent, &msg, extra_garbage, sizeof(extra_garbage),
+          NULL, NULL) != STUN_VALIDATION_NOT_STUN)
+    fatal ("Extra garbage test failed");
+  if (stun_agent_validate (&agent, &msg, simple_resp, sizeof(simple_resp),
+          NULL, NULL) != STUN_VALIDATION_BAD_REQUEST)
     fatal ("Missing CRC test failed");
-  if (stun_demux (old_ind))
+  if (stun_agent_validate (&agent, &msg, old_ind, sizeof(old_ind),
+          NULL, NULL) != STUN_VALIDATION_BAD_REQUEST)
     fatal ("Missing cookie test failed");
-  if (!stun_demux (fpr_resp))
-    fatal ("Good CRC test failed");
-  if (stun_demux (bad_crc))
+  if (stun_agent_validate (&agent, &msg, bad_crc, sizeof(bad_crc),
+          NULL, NULL) != STUN_VALIDATION_BAD_REQUEST)
     fatal ("Bad CRC test failed");
-  if (stun_demux (bad_crc_offset))
+  if (stun_agent_validate (&agent, &msg, bad_crc_offset, sizeof(bad_crc_offset),
+          NULL, NULL) != STUN_VALIDATION_BAD_REQUEST)
     fatal ("Bad CRC offset test failed");
 
-  if (stun_validate (bad1, sizeof (bad1)) >= 0)
-    fatal ("Badness 1 test failed");
-  if (stun_validate (bad2, sizeof (bad2)) >= 0)
-    fatal ("Badness 2 test failed");
-  if (stun_validate (bad3, sizeof (bad3)) != 0)
-    fatal ("Badness 3 test failed");
+  if (stun_agent_validate (&agent, &msg, fpr_resp, sizeof(fpr_resp),
+          NULL, NULL) != STUN_VALIDATION_UNMATCHED_RESPONSE)
+    fatal ("Good CRC test failed");
 
-  if (stun_get_class (simple_resp) != 3)
+  if (stun_message_get_class (&msg) != 3)
     fatal ("Class test failed");
-  if (stun_get_method (simple_resp) != 0x525)
+  if (stun_message_get_method (&msg) != 0x525)
     fatal ("Method test failed");
 }
 
+
+bool test_attribute_validater (StunAgent *agent,
+    StunMessage *message, uint8_t *username, uint16_t username_len,
+    uint8_t **password, size_t *password_len, void *user_data)
+{
+  char *pwd = (char *) user_data;
+
+  if (username_len != 4 ||
+      memcmp (username, "ABCD", 4) != 0)
+    return false;
+
+  *password = pwd;
+  *password_len = strlen (pwd);
+
+  return true;
+}
 
 /* Tests for message attribute parsing */
 static void test_attribute (void)
 {
   static const uint8_t acme[] =
-    "\x15\x55\x00\x64" // <-- update message length if needed!!
-    "\x21\x12\xA4\x42" // cookie
-    "\x76\x54\x32\x10"
-    "\xfe\xdc\xba\x98"
-    "\x76\x54\x32\x10"
+      {0x04, 0x55, 0x00, 0x6C, // <-- update message length if needed!!
+       0x21, 0x12, 0xA4, 0x42, // cookie
+       0x76, 0x54, 0x32, 0x10,
+       0xfe, 0xdc, 0xba, 0x98,
+       0x76, 0x54, 0x32, 0x10,
 
-    /* FF01: empty */
-    "\xff\x01\x00\x00"
+       /* FF01: empty */
+       0xff, 0x01, 0x00, 0x00,
 
-    /* FF02: address of unknown family, 32-bits */
-    "\xff\x02\x00\x04"
-    "\x41\x42\x43\x44"
+       /* FF02: address of unknown family, 32-bits */
+       0xff, 0x02, 0x00, 0x04,
+       0x41, 0x42, 0x43, 0x44,
 
-    /* FF03: too short IPv6 address */
-    "\xff\x03\x00\x06"
-    "\x00\x02\x12\x34"
-    "\x20\x01\x0d\xb8"
+       /* FF03: too short IPv6 address */
+       0xff, 0x03, 0x00, 0x06,
+       0x00, 0x02, 0x12, 0x34,
+       0x20, 0x01, 0x0d, 0xb8,
 
-    /* FF04: valid IPv4 address, 64-bits */
-    "\xff\x04\x00\x08"
-    "\x00\x01\x12\x34"
-    "\xc0\x00\x02\x01"
+       /* FF04: valid IPv4 address, 64-bits */
+       0xff, 0x04, 0x00, 0x08,
+       0x00, 0x01, 0x12, 0x34,
+       0xc0, 0x00, 0x02, 0x01,
 
-    /* FF05: too long IPv4 address */
-    "\xff\x05\x00\x0A"
-    "\x00\x01\x12\x34"
-    "\xc0\x00\x02\x01"
-    "\x66\x60\x00\x00"
+       /* FF05: too long IPv4 address */
+       0xff, 0x05, 0x00, 0x0A,
+       0x00, 0x01, 0x12, 0x34,
+       0xc0, 0x00, 0x02, 0x01,
+       0x66, 0x60, 0x00, 0x00,
 
-    /* FF06: valid xor'd IPv6 address, 160-bits */
-    "\xff\x06\x00\x14"
-    "\x00\x02\x12\x34"
-    "\x01\x13\xa9\xfa"
-    "\xa8\xf9\x8c\xff"
-    "\x20\x26\x74\x48"
-    "\x8c\x9a\xec\xfd"
+       /* FF06: valid xor'd IPv6 address, 160-bits */
+       0xff, 0x06, 0x00, 0x14,
+       0x00, 0x02, 0x12, 0x34,
+       0x01, 0x13, 0xa9, 0xfa,
+       0xa8, 0xf9, 0x8c, 0xff,
+       0x20, 0x26, 0x74, 0x48,
+       0x8c, 0x9a, 0xec, 0xfd,
 
-    /* MESSAGE-INTEGRITY attribute */
-    "\x00\x08\x00\x14"
-    "\x42\x95\x4b\x54"
-    "\x73\x3c\x73\xef"
-    "\xa9\x75\xad\x6f"
-    "\xbe\xd5\x6b\x13"
-    "\x9d\x53\x5f\x57"
-    ;
+       /* dummy USERNAME header */
+       0x00, 0x06, 0x00, 0x04,
+       0x41, 0x42, 0x43, 0x44,
+
+       /* MESSAGE-INTEGRITY attribute */
+       0x00, 0x08, 0x00, 0x14,
+       0x0b, 0xc4, 0xb2, 0x0c,
+       0x94, 0x58, 0xbb, 0x25,
+       0xa3, 0x22, 0x1a, 0xc8,
+       0xe1, 0x87, 0x32, 0x36,
+       0x3a, 0xfc, 0xe2, 0xc3};
 
   union
   {
@@ -240,137 +279,279 @@ static void test_attribute (void)
   uint64_t qword;
   char str[STUN_MAX_STR];
 
+  StunAgent agent;
+  StunMessage msg;
+  uint16_t known_attributes[] = {STUN_ATTRIBUTE_MESSAGE_INTEGRITY, STUN_ATTRIBUTE_USERNAME, 0};
+
   printf ("Attribute test message length: %u\n", sizeof (acme));
 
-  if (stun_validate (acme, sizeof (acme)) <= 0)
-    fatal ("Attributes tests message broken");
+  stun_agent_init (&agent, known_attributes,
+      STUN_COMPATIBILITY_3489BIS, STUN_AGENT_USAGE_SHORT_TERM_CREDENTIALS);
 
-  if (stun_present (acme, 0xff00))
+  if (stun_agent_validate (&agent, &msg, acme, sizeof(acme),
+          NULL, NULL) != STUN_VALIDATION_UNAUTHORIZED)
+    fatal ("Unauthorized validation failed");
+
+  if (stun_agent_validate (&agent, &msg, acme, sizeof(acme),
+          test_attribute_validater, "bad__guy") != STUN_VALIDATION_UNAUTHORIZED)
+    fatal ("invalid password validation failed");
+
+  if (stun_agent_validate (&agent, &msg, acme, sizeof(acme),
+          test_attribute_validater, "good_guy") != STUN_VALIDATION_SUCCESS)
+    fatal ("good password validation failed");
+
+  if (stun_message_has_attribute (&msg, 0xff00))
     fatal ("Absent attribute test failed");
-  if (!stun_present (acme, 0xff01))
+  if (!stun_message_has_attribute (&msg, 0xff01))
     fatal ("Present attribute test failed");
 
-  if (stun_find_flag (acme, 0xff00) != ENOENT)
+  if (stun_message_find_flag (&msg, 0xff00) != ENOENT)
     fatal ("Absent flag test failed");
-  if (stun_find_flag (acme, 0xff01) != 0)
+  if (stun_message_find_flag (&msg, 0xff01) != 0)
     fatal ("Flag test failed");
-  if (stun_find_flag (acme, 0xff02) != EINVAL)
+  if (stun_message_find_flag (&msg, 0xff02) != EINVAL)
     fatal ("Too big flag test failed");
 
-  if (stun_find32 (acme, 0xff00, &dword) != ENOENT)
+  if (stun_message_find32 (&msg, 0xff00, &dword) != ENOENT)
     fatal ("Absent dword test failed");
-  if (stun_find32 (acme, 0xff01, &dword) != EINVAL)
+  if (stun_message_find32 (&msg, 0xff01, &dword) != EINVAL)
     fatal ("Bad dword test failed");
-  if (stun_find32 (acme, 0xff02, &dword) != 0)
+  if (stun_message_find32 (&msg, 0xff02, &dword) != 0)
     fatal ("Double-word test failed");
 
-  if (stun_find64 (acme, 0xff00, &qword) != ENOENT)
+  if (stun_message_find64 (&msg, 0xff00, &qword) != ENOENT)
     fatal ("Absent qword test failed");
-  if (stun_find64 (acme, 0xff01, &qword) != EINVAL)
+  if (stun_message_find64 (&msg, 0xff01, &qword) != EINVAL)
     fatal ("Bad qword test failed");
-  if (stun_find64 (acme, 0xff04, &qword) !=0)
+  if (stun_message_find64 (&msg, 0xff04, &qword) !=0)
     fatal ("Quad-word test failed");
 
-  if (stun_find_string (acme, 0xff00, str, STUN_MAX_CP) != ENOENT)
+  if (stun_message_find_string (&msg, 0xff00, str, STUN_MAX_CP) != ENOENT)
     fatal ("Absent string test failed");
-  if ((stun_find_string (acme, 0xff02, str, STUN_MAX_CP) != 0)
+  if ((stun_message_find_string (&msg, 0xff02, str, STUN_MAX_CP) != 0)
    || strcmp (str, "ABCD"))
     fatal ("String test failed");
 
   addrlen = sizeof (addr);
-  if (stun_find_addr (acme, 0xff01, &addr.sa, &addrlen) != EINVAL)
+  if (stun_message_find_addr (&msg, 0xff01, &addr.sa, &addrlen) != EINVAL)
     fatal ("Too short addres test failed");
   addrlen = sizeof (addr);
-  if (stun_find_addr (acme, 0xff02, &addr.sa, &addrlen) != EAFNOSUPPORT)
+  if (stun_message_find_addr (&msg, 0xff02, &addr.sa, &addrlen) != EAFNOSUPPORT)
     fatal ("Unknown address family test failed");
   addrlen = sizeof (addr);
-  if (stun_find_addr (acme, 0xff03, &addr.sa, &addrlen) != EINVAL)
+  if (stun_message_find_addr (&msg, 0xff03, &addr.sa, &addrlen) != EINVAL)
     fatal ("Too short IPv6 address test failed");
   addrlen = sizeof (addr);
-  if (stun_find_addr (acme, 0xff04, &addr.sa, &addrlen) != 0)
+  if (stun_message_find_addr (&msg, 0xff04, &addr.sa, &addrlen) != 0)
     fatal ("IPv4 address test failed");
   addrlen = sizeof (addr);
-  if (stun_find_addr (acme, 0xff05, &addr.sa, &addrlen) != EINVAL)
+  if (stun_message_find_addr (&msg, 0xff05, &addr.sa, &addrlen) != EINVAL)
     fatal ("Too big IPv4 address test failed");
   addrlen = sizeof (addr);
-  if (stun_find_xor_addr (acme, 0xff06, &addr.sa, &addrlen)
+  if (stun_message_find_xor_addr (&msg, 0xff06, &addr.sa, &addrlen)
    || memcmp (&addr.s6.sin6_addr, "\x20\x01\x0d\xb8""\xde\xad\xbe\xef"
                                   "\xde\xfa\xce\xd0""\xfa\xce\xde\xed", 16))
     fatal ("IPv6 address test failed");
 
-  if (stun_verify_key (acme, "good_guy", 8) != 0)
-    fatal ("Good secret HMAC test failed");
-  if (stun_verify_key (acme, "bad__guy", 8) != EPERM)
-    fatal ("Bad secret HMAC test failed");
 }
 
+static const char vector_username[] = "evtj:h6vY";
+static const char vector_password[] = "VOkJxbRl1RmTxUk/WvJxBt";
+
+bool test_vector_validater (StunAgent *agent,
+    StunMessage *message, uint8_t *username, uint16_t username_len,
+    uint8_t **password, size_t *password_len, void *user_data)
+{
+  int callable = (int) user_data;
+
+  if (!callable)
+    fatal ("vector test : Validater should not be called!");
+
+  if (username_len != strlen (vector_username) ||
+      memcmp (username, vector_username, strlen (vector_username)) != 0)
+    fatal ("vector test : Validater received wrong username!");
+
+  *password = (uint8_t *) vector_password;
+  *password_len = strlen (vector_password);
+
+
+  return true;
+}
 
 static void test_vectors (void)
 {
-  /*static const char username[] = "evtj:h6vY";*/
-  static const char password[] = "VOkJxbRl1RmTxUk/WvJxBt";
   /* Request message */
-  static const unsigned char req[] =
-  "\x00\x01\x00\x44"
-  "\x21\x12\xa4\x42"
-  "\xb7\xe7\xa7\x01\xbc\x34\xd6\x86\xfa\x87\xdf\xae"
-  "\x00\x24\x00\x04"
-    "\x6e\x00\x01\xff"
-  "\x80\x29\x00\x08"
-    "\x93\x2f\xf9\xb1\x51\x26\x3b\x36"
-  "\x00\x06\x00\x09"
-    "\x65\x76\x74\x6a\x3a\x68\x36\x76\x59\x20\x20\x20"
-  "\x00\x08\x00\x14"
-    "\x62\x4e\xeb\xdc\x3c\xc9\x2d\xd8\x4b\x74\xbf\x85"
-    "\xd1\xc0\xf5\xde\x36\x87\xbd\x33"
-  "\x80\x28\x00\x04"
-    "\xad\x8a\x85\xff";
+  static unsigned char req[] =
+      {0x00, 0x01, 0x00, 0x44,
+       0x21, 0x12, 0xa4, 0x42,
+       0xb7, 0xe7, 0xa7, 0x01,
+       0xbc, 0x34, 0xd6, 0x86,
+       0xfa, 0x87, 0xdf, 0xae,
+
+       0x00, 0x24, 0x00, 0x04, // PRIORITY
+       0x6e, 0x00, 0x01, 0xff,
+
+       0x80, 0x29, 0x00, 0x08, // ICE_CONTROLLED
+       0x93, 0x2f, 0xf9, 0xb1,
+       0x51, 0x26, 0x3b, 0x36,
+
+       0x00, 0x06, 0x00, 0x09, // USERNAME
+       0x65, 0x76, 0x74, 0x6a,
+       0x3a, 0x68, 0x36, 0x76,
+       0x59, 0x20, 0x20, 0x20,
+
+       0x00, 0x08, 0x00, 0x14, // MESSAGE_INTEGRITY
+       0x62, 0x4e, 0xeb, 0xdc,
+       0x3c, 0xc9, 0x2d, 0xd8,
+       0x4b, 0x74, 0xbf, 0x85,
+       0xd1, 0xc0, 0xf5, 0xde,
+       0x36, 0x87, 0xbd, 0x33,
+
+       0x80, 0x28, 0x00, 0x04, // FINGERPRINT
+       0xad, 0x8a, 0x85, 0xff};
+
+  static const unsigned char req2[] =
+      {0x00, 0x01, 0x00, 0x44,
+       0x21, 0x12, 0xa4, 0x42,
+       0xb7, 0xe7, 0xa7, 0x01,
+       0xbc, 0x34, 0xd6, 0x86,
+       0xfa, 0x87, 0xdf, 0xae,
+
+       0x00, 0x24, 0x00, 0x04, // PRIORITY
+       0x6e, 0x00, 0x01, 0xff,
+
+       0x80, 0x29, 0x00, 0x08, // ICE_CONTROLLED
+       0x93, 0x2f, 0xf9, 0xb1,
+       0x51, 0x26, 0x3b, 0x36,
+
+       0x00, 0x06, 0x00, 0x09, // USERNAME
+       0x65, 0x76, 0x74, 0x6a,
+       0x3a, 0x68, 0x36, 0x76,
+       0x59, 0x20, 0x20, 0x20,
+
+       0x00, 0x08, 0x00, 0x14, // MESSAGE_INTEGRITY
+       0x62, 0x4e, 0xeb, 0xdc,
+       0x3c, 0xc9, 0x2d, 0xd8,
+       0x4b, 0x74, 0xbf, 0x85,
+       0xd1, 0xc0, 0xf5, 0xde,
+       0x36, 0x87, 0xbd, 0x33,
+
+       0x80, 0x28, 0x00, 0x04, // FINGERPRINT
+       0xad, 0x8a, 0x85, 0xff};
 
   /* Response message */
   static const unsigned char respv4[] =
-  "\x01\x01\x00\x3c"
-  "\x21\x12\xa4\x42"
-  "\xb7\xe7\xa7\x01\xbc\x34\xd6\x86\xfa\x87\xdf\xae"
-  "\x80\x22\x00\x0b"
-    "\x74\x65\x73\x74\x20\x76\x65\x63\x74\x6f\x72\x20"
-  "\x00\x20\x00\x08"
-    "\x00\x01\xa1\x47\xe1\x12\xa6\x43"
-  "\x00\x08\x00\x14"
-    "\x2b\x91\xf5\x99\xfd\x9e\x90\xc3\x8c\x74\x89\xf9"
-    "\x2a\xf9\xba\x53\xf0\x6b\xe7\xd7"
-  "\x80\x28\x00\x04"
-    "\xc0\x7d\x4c\x96";
+      {0x01, 0x01, 0x00, 0x4c,
+       0x21, 0x12, 0xa4, 0x42,
+       0xb7, 0xe7, 0xa7, 0x01,
+       0xbc, 0x34, 0xd6, 0x86,
+       0xfa, 0x87, 0xdf, 0xae,
+
+       0x80, 0x22, 0x00, 0x0b, // SERVER
+       0x74, 0x65, 0x73, 0x74,
+       0x20, 0x76, 0x65, 0x63,
+       0x74, 0x6f, 0x72, 0x20,
+
+       0x00, 0x20, 0x00, 0x08, // XOR_MAPPED_ADDRESS
+       0x00, 0x01, 0xa1, 0x47,
+       0xe1, 0x12, 0xa6, 0x43,
+
+       0x00, 0x06, 0x00, 0x09, // USERNAME
+       0x65, 0x76, 0x74, 0x6a,
+       0x3a, 0x68, 0x36, 0x76,
+       0x59, 0x20, 0x20, 0x20,
+
+       0x00, 0x08, 0x00, 0x14, // MESSAGE_INTEGRITY
+       0x7d, 0xb7, 0xfc, 0x52,
+       0x70, 0xc6, 0xdb, 0x1f,
+       0xc3, 0x26, 0x34, 0xbb,
+       0x4c, 0x64, 0x6e, 0xe7,
+       0x1d, 0xb3, 0x78, 0x4a,
+
+       0x80, 0x28, 0x00, 0x04, // FINGERPRINT
+       0xf0, 0x60, 0x66, 0xa9};
   static const unsigned char respv6[] =
-  "\x01\x01\x00\x48"
-  "\x21\x12\xa4\x42"
-  "\xb7\xe7\xa7\x01\xbc\x34\xd6\x86\xfa\x87\xdf\xae"
-  "\x80\x22\x00\x0b"
-    "\x74\x65\x73\x74\x20\x76\x65\x63\x74\x6f\x72\x20"
-  "\x00\x20\x00\x14"
-    "\x00\x02\xa1\x47"
-    "\x01\x13\xa9\xfa\xa5\xd3\xf1\x79"
-    "\xbc\x25\xf4\xb5\xbe\xd2\xb9\xd9"
-  "\x00\x08\x00\x14"
-    "\xa3\x82\x95\x4e\x4b\xe6\x7b\xf1\x17\x84\xc9\x7c"
-    "\x82\x92\xc2\x75\xbf\xe3\xed\x41"
-  "\x80\x28\x00\x04"
-    "\xc8\xfb\x0b\x4c";
+      {0x01, 0x01, 0x00, 0x58,
+       0x21, 0x12, 0xa4, 0x42,
+       0xb7, 0xe7, 0xa7, 0x01,
+       0xbc, 0x34, 0xd6, 0x86,
+       0xfa, 0x87, 0xdf, 0xae,
+
+       0x80, 0x22, 0x00, 0x0b, // SERVER
+       0x74, 0x65, 0x73, 0x74,
+       0x20, 0x76, 0x65, 0x63,
+       0x74, 0x6f, 0x72, 0x20,
+
+       0x00, 0x20, 0x00, 0x14, // XOR_MAPPED_ADDRESS
+       0x00, 0x02, 0xa1, 0x47,
+       0x01, 0x13, 0xa9, 0xfa,
+       0xa5, 0xd3, 0xf1, 0x79,
+       0xbc, 0x25, 0xf4, 0xb5,
+       0xbe, 0xd2, 0xb9, 0xd9,
+
+       0x00, 0x06, 0x00, 0x09, // USERNAME
+       0x65, 0x76, 0x74, 0x6a,
+       0x3a, 0x68, 0x36, 0x76,
+       0x59, 0x20, 0x20, 0x20,
+
+       0x00, 0x08, 0x00, 0x14, // MESSAGE_INTEGRITY
+       0x21, 0xcb, 0xbd, 0x25,
+       0x1a, 0x8c, 0x4c, 0x38,
+       0x8c, 0xc5, 0xcd, 0xb3,
+       0x27, 0x6a, 0xf5, 0x61,
+       0xb2, 0x21, 0xc8, 0x2b,
+
+       0x80, 0x28, 0x00, 0x04, // FINGERPRINT
+       0xec, 0x27, 0xae, 0xb7};
   struct sockaddr_in ip4;
   struct sockaddr_in6 ip6;
   socklen_t addrlen;
+
+  StunAgent agent;
+  StunMessage msg;
+  StunMessage msg2;
+  uint16_t known_attributes[] = {
+    STUN_ATTRIBUTE_MESSAGE_INTEGRITY,
+    STUN_ATTRIBUTE_USERNAME,
+    STUN_ATTRIBUTE_XOR_MAPPED_ADDRESS,
+    STUN_ATTRIBUTE_PRIORITY, 0};
+
+  stun_agent_init (&agent, known_attributes,
+      STUN_COMPATIBILITY_3489BIS,
+      STUN_AGENT_USAGE_SHORT_TERM_CREDENTIALS |
+      STUN_AGENT_USAGE_USE_FINGERPRINT);
 
   memset (&ip4, 0, sizeof (ip4));
   memset (&ip6, 0, sizeof (ip6));
 
   puts ("Checking test vectors...");
 
-  if (stun_verify_password (req, password) != 0)
+  if (stun_agent_validate (&agent, &msg2, req2, sizeof(req2),
+          test_vector_validater, (void *) 1) != STUN_VALIDATION_SUCCESS)
     fatal ("Request test vector authentication failed");
-  if (stun_demux (req) != true)
-    fatal ("Request test vector checksum failed");
+
+  if (stun_agent_validate (&agent, &msg, req, sizeof(req),
+          test_vector_validater, (void *) 1) != STUN_VALIDATION_SUCCESS)
+    fatal ("Request test vector authentication failed");
+
+  /* Remove the message-integrity and fingerprint attributes */
+  req[3] = 0x24;
+
+  if (stun_message_length (&msg) != sizeof(req) - 32)
+    fatal ("vector test: removing attributes failed");
+
+  stun_agent_finish_message (&agent, &msg, vector_password, strlen (vector_password));
+
+  if (stun_message_length (&msg) != stun_message_length (&msg2) ||
+      memcmp (req, req2, sizeof(req)) != 0)
+    fatal ("vector test : req and req2 are different");
+
+  if (stun_agent_validate (&agent, &msg, respv4, sizeof(respv4),
+          test_vector_validater, (void *) 0) != STUN_VALIDATION_SUCCESS)
+    fatal ("Response ipv4 test vector authentication failed");
 
   addrlen = sizeof (ip4);
-  if (stun_find_xor_addr (respv4, STUN_XOR_MAPPED_ADDRESS,
+  if (stun_message_find_xor_addr (&msg, STUN_ATTRIBUTE_XOR_MAPPED_ADDRESS,
                           (struct sockaddr *)&ip4, &addrlen) != 0)
     fatal ("Response test vector IPv4 extraction failed");
   if (ip4.sin_family != AF_INET)
@@ -380,13 +561,28 @@ static void test_vectors (void)
   if (ntohs (ip4.sin_port) != 32853)
     fatal ("Response test vector IPv6 port failed");
 
-  if (stun_verify_password (respv4, password) != 0)
-    fatal ("Response test vector authentication failed");
-  if (stun_demux (respv4) != true)
-    fatal ("Response test vector checksum failed");
+  if (stun_agent_validate (&agent, &msg, req, sizeof(req),
+          test_vector_validater, (void *) 1) != STUN_VALIDATION_SUCCESS)
+    fatal ("Request test vector second authentication failed");
+
+  /* Remove the fingerprint attributes */
+  req[3] = 0x3C;
+
+  if (stun_message_length (&msg) != sizeof(req) - 8)
+    fatal ("vector test: removing attributes failed");
+
+  stun_agent_finish_message (&agent, &msg, NULL, 0);
+
+  if (stun_message_length (&msg) != stun_message_length (&msg2) ||
+      memcmp (req, req2, sizeof(req)) != 0)
+    fatal ("vector test : req and req2 are different");
+
+  if (stun_agent_validate (&agent, &msg, respv6, sizeof(respv6),
+          test_vector_validater, (void *) 1) != STUN_VALIDATION_SUCCESS)
+    fatal ("Response ipv6 test vector authentication failed");
 
   addrlen = sizeof (ip6);
-  if (stun_find_xor_addr (respv6, STUN_XOR_MAPPED_ADDRESS,
+  if (stun_message_find_xor_addr (&msg, STUN_ATTRIBUTE_XOR_MAPPED_ADDRESS,
                           (struct sockaddr *)&ip6, &addrlen) != 0)
     fatal ("Response test vector IPv6 extraction failed");
   if (ip6.sin6_family != AF_INET6)
@@ -397,14 +593,9 @@ static void test_vectors (void)
   if (ntohs (ip6.sin6_port) != 32853)
     fatal ("Response test vector IPv6 port failed");
 
-  if (stun_verify_password (respv6, password) != 0)
-    fatal ("Response test vector authentication failed");
-  if (stun_demux (respv6) != true)
-    fatal ("Response test vector checksum failed");
 
   puts ("Done.");
 }
-
 
 
 int main (void)
