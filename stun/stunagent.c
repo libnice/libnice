@@ -76,7 +76,6 @@ StunValidationStatus stun_agent_validate (StunAgent *agent, StunMessage *msg,
   uint32_t fpr;
   uint32_t crc32;
   int len;
-  int error_code;
   uint8_t *username = NULL;
   uint16_t username_len;
   uint8_t *key = NULL;
@@ -137,11 +136,6 @@ StunValidationStatus stun_agent_validate (StunAgent *agent, StunMessage *msg,
           memcmp (msg_id, agent->sent_ids[sent_id_idx].id,
               sizeof(stun_transid_t)) == 0) {
 
-        if (stun_message_get_class (msg) == STUN_ERROR &&
-            stun_message_find_error (msg, &error_code) != 0) {
-          stun_debug ("STUN demux error: STUN_ERROR with no ERROR_CODE");
-          return STUN_VALIDATION_BAD_REQUEST;
-        }
         key = agent->sent_ids[sent_id_idx].key;
         key_len = agent->sent_ids[sent_id_idx].key_len;
         break;
