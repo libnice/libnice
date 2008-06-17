@@ -176,10 +176,7 @@ StunValidationStatus stun_agent_validate (StunAgent *agent, StunMessage *msg,
     }
   }
 
-  if (key != NULL && key_len == -1) {
-    key_len = strlen (key);
-  }
-  if (key != NULL) {
+  if (key != NULL && key_len > 0) {
     hash = (uint8_t *) stun_message_find (msg,
         STUN_ATTRIBUTE_MESSAGE_INTEGRITY, &hlen);
 
@@ -373,10 +370,6 @@ size_t stun_agent_finish_message (StunAgent *agent, StunMessage *msg,
   uint32_t fpr;
   int i;
   stun_transid_t id;
-
-  if (key != NULL && key_len == -1) {
-    key_len = strlen (key);
-  }
 
   if (key != NULL) {
     ptr = stun_message_append (msg, STUN_ATTRIBUTE_MESSAGE_INTEGRITY, 20);
