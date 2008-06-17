@@ -40,7 +40,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 
-#include "stun/stun-msg.h"
+#include "stun/stunagent.h"
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -60,132 +60,169 @@ static void fatal (const char *msg, ...)
   exit (1);
 }
 
+static const char usr[] = "admin";
+static const char pwd[] = "s3kr3t";
 
-static void
-dynamic_check (const uint8_t *msg, size_t len)
+bool dynamic_check_validater (StunAgent *agent,
+    StunMessage *message, uint8_t *username, uint16_t username_len,
+    uint8_t **password, size_t *password_len, void *user_data)
 {
-  size_t len2 = stun_validate (msg, len);
-  if ((len != len2) || (len2 & 3))
-    fatal ("Invalid message (%u, %u)\n",
-           (unsigned)len, (unsigned)len2);
-  if (!stun_demux (msg))
-    fatal ("Invalid message multiplexing");
+
+  if (username_len != strlen (usr) ||
+      memcmp (username, usr, strlen (usr)) != 0)
+    fatal ("vector test : Validater received wrong username!");
+
+  *password = (uint8_t *) pwd;
+  *password_len = strlen (pwd);
+
+
+  return true;
+}
+static void
+dynamic_check (StunAgent *agent, StunMessage *msg, size_t len)
+{
+  StunMessage msg2;
+
+  if (stun_agent_validate (agent, &msg2, msg->buffer, len, dynamic_check_validater, NULL) != STUN_VALIDATION_SUCCESS)
+    fatal ("Could not validate message");
 
   printf ("Built message of %u bytes\n", (unsigned)len);
 }
 
 
 static size_t
-finish_check (uint8_t *msg)
+finish_check (StunAgent *agent, StunMessage *msg)
 {
-  stun_msg_t mshort;
-  size_t len = sizeof (stun_msg_t);
-  memcpy (mshort, msg, sizeof (mshort));
+  uint8_t buf[STUN_MAX_MESSAGE_SIZE + 8];
+  size_t len;
+  uint16_t plen;
+  StunMessage msg2;
+  msg2.agent = msg->agent;
+  msg2.buffer = buf;
+  msg2.buffer_len = sizeof(buf);
+  memcpy (msg2.buffer, msg->buffer, sizeof(buf) > msg->buffer_len ? msg->buffer_len : sizeof(buf));
 
-  if (stun_finish (msg, &len, 0))
+  len = stun_agent_finish_message (agent, msg, NULL, 0);
+
+  if (len <= 0)
     fatal ("Cannot finish message");
-  dynamic_check (msg, len);
+  dynamic_check (agent, msg, len);
 
-  len = sizeof (mshort);
-  if (stun_verify_password (mshort, "toto") != ENOENT)
+  if (stun_message_find (&msg2, STUN_ATTRIBUTE_MESSAGE_INTEGRITY, &plen) != NULL)
     fatal ("Missing HMAC test failed");
-  if (stun_finish_short (mshort, &len, "ABCDE", "admin", "ABC", 0))
+
+  stun_message_append_string (&msg2, STUN_ATTRIBUTE_USERNAME, usr);
+
+  len = stun_agent_finish_message (agent, &msg2, pwd, strlen (pwd));
+
+  if (len <= 0)
     fatal ("Cannot finish message with short-term creds");
-  dynamic_check (mshort, len);
-  if (stun_verify_password (mshort, "admin") != 0)
-    fatal ("Valid HMAC test failed");
+  dynamic_check (agent, &msg2, len);
 
   return len;
 }
-
 
 static void
 check_af (const char *name, int family, socklen_t addrlen)
 {
   struct sockaddr_storage addr;
-  stun_msg_t msg;
+  uint8_t buf[100];
+  StunAgent agent;
+  StunMessage msg;
+  uint16_t known_attributes[] = {STUN_ATTRIBUTE_USERNAME, STUN_ATTRIBUTE_MESSAGE_INTEGRITY, STUN_ATTRIBUTE_ERROR_CODE, 0};
+
+  stun_agent_init (&agent, known_attributes,
+      STUN_COMPATIBILITY_3489BIS, STUN_AGENT_USAGE_USE_FINGERPRINT);
 
   assert (addrlen <= sizeof (addr));
 
   memset (&addr, 0, sizeof (addr));
-  stun_init_request (msg, STUN_BINDING);
+  stun_agent_init_request (&agent, &msg, buf, sizeof(buf), STUN_BINDING);
 
-  if (stun_append_addr (msg, sizeof (msg), STUN_MAPPED_ADDRESS,
+  if (stun_message_append_addr (&msg, STUN_ATTRIBUTE_MAPPED_ADDRESS,
                         (struct sockaddr *)&addr, addrlen) != EAFNOSUPPORT)
     fatal ("Unknown address family test failed");
-  if (stun_append_xor_addr (msg, sizeof (msg), STUN_XOR_MAPPED_ADDRESS,
+  if (stun_message_append_xor_addr (&msg, STUN_ATTRIBUTE_XOR_MAPPED_ADDRESS,
                         (struct sockaddr *)&addr, addrlen) != EAFNOSUPPORT)
     fatal ("Unknown address family xor test failed");
 
   addr.ss_family = family;
-  if (stun_append_addr (msg, sizeof (msg), STUN_MAPPED_ADDRESS,
+  if (stun_message_append_addr (&msg, STUN_ATTRIBUTE_MAPPED_ADDRESS,
                         (struct sockaddr *)&addr, addrlen - 1) != EINVAL)
     fatal ("Too small %s sockaddr test failed", name);
 
-  if (stun_append_xor_addr (msg, sizeof (msg), STUN_XOR_MAPPED_ADDRESS,
+  if (stun_message_append_xor_addr (&msg, STUN_ATTRIBUTE_XOR_MAPPED_ADDRESS,
                         (struct sockaddr *)&addr, addrlen - 1) != EINVAL)
     fatal ("Too small %s sockaddr xor test failed", name);
 
-  if (stun_append_addr (msg, sizeof (msg), STUN_MAPPED_ADDRESS,
+  if (stun_message_append_addr (&msg, STUN_ATTRIBUTE_MAPPED_ADDRESS,
                         (struct sockaddr *)&addr, addrlen))
     fatal ("%s sockaddr test failed", name);
 
-  if (stun_append_xor_addr (msg, sizeof (msg), STUN_XOR_MAPPED_ADDRESS,
+  if (stun_message_append_xor_addr (&msg, STUN_ATTRIBUTE_XOR_MAPPED_ADDRESS,
                             (struct sockaddr *)&addr, addrlen))
     fatal ("%s sockaddr xor test failed", name);
 }
 
-
 int main (void)
 {
-  uint8_t msg[STUN_MAXMSG + 8];
+  uint8_t buf[100];
   size_t len;
   struct sockaddr addr;
 
+  StunAgent agent;
+  StunMessage msg;
+  uint16_t known_attributes[] = {STUN_ATTRIBUTE_USERNAME, STUN_ATTRIBUTE_MESSAGE_INTEGRITY, STUN_ATTRIBUTE_ERROR_CODE, 0};
+
+  stun_agent_init (&agent, known_attributes,
+      STUN_COMPATIBILITY_3489BIS, STUN_AGENT_USAGE_USE_FINGERPRINT);
+
   /* Request formatting test */
-  stun_init_request (msg, STUN_BINDING);
-  finish_check (msg);
-  if (memcmp (msg, "\x00\x01", 2))
+  stun_agent_init_request (&agent, &msg, buf, sizeof(buf), STUN_BINDING);
+  finish_check (&agent, &msg);
+  if (memcmp (buf, "\x00\x01", 2))
     fatal ("Request formatting test failed");
 
   /* Response formatting test */
-  stun_init_response (msg, sizeof (msg), msg, 0);
-  finish_check (msg);
-  if (memcmp (msg, "\x01\x01", 2))
+  stun_agent_init_response (&agent, &msg, buf, sizeof (buf), &msg);
+  finish_check (&agent, &msg);
+  if (memcmp (buf, "\x01\x01", 2))
     fatal ("Response formatting test failed");
 
   /* Error formatting test */
-  stun_init_request (msg, STUN_BINDING);
-  if (stun_init_error (msg, sizeof (msg), msg, 400, 0))
+  stun_agent_init_request (&agent, &msg, buf, sizeof(buf), STUN_BINDING);
+  finish_check (&agent, &msg);
+  if (!stun_agent_init_error (&agent, &msg, buf, sizeof (buf), &msg, 400))
     fatal ("Error initialization test failed");
-  finish_check (msg);
-  if (memcmp (msg, "\x01\x11", 2))
+  finish_check (&agent, &msg);
+  if (memcmp (buf, "\x01\x11", 2))
     fatal ("Error formatting test failed");
-
   /* Unknown error formatting test */
-  stun_init_request (msg, STUN_BINDING);
-  if (stun_init_error (msg, sizeof (msg), msg, 666, 0))
+  stun_agent_init_request (&agent, &msg, buf, sizeof(buf), STUN_BINDING);
+  finish_check (&agent, &msg);
+  if (!stun_agent_init_error (&agent, &msg, buf, sizeof (buf), &msg, 666))
     fatal ("Unknown error initialization test failed");
-  finish_check (msg);
-  if (memcmp (msg, "\x01\x11", 2))
+  finish_check (&agent, &msg);
+  if (memcmp (buf, "\x01\x11", 2))
     fatal ("Unknown error formatting test failed");
 
   /* Overflow tests */
-  stun_init_request (msg, STUN_BINDING);
+  stun_agent_init_request (&agent, &msg, buf, sizeof(buf), STUN_BINDING);
+
   for (len = 0;
-       stun_append_flag (msg, sizeof (msg), 0xffff) != ENOBUFS;
+       stun_message_append_flag (&msg, 0xffff) != ENOBUFS;
        len += 4)
   {
     if (len > 0xffff)
       fatal ("Overflow protection test failed");
   }
 
-  if (stun_append32 (msg, sizeof (msg), 0xffff, 0x12345678) != ENOBUFS)
+  if (stun_message_append32 (&msg, 0xffff, 0x12345678) != ENOBUFS)
     fatal ("Double-word overflow test failed");
-  if (stun_append64 (msg, sizeof (msg), 0xffff,
+  if (stun_message_append64 (&msg, 0xffff,
                      0x123456789abcdef0) != ENOBUFS)
     fatal ("Quad-word overflow test failed");
-  if (stun_append_string (msg, sizeof (msg), 0xffff, "foobar") != ENOBUFS)
+  if (stun_message_append_string (&msg, 0xffff, "foobar") != ENOBUFS)
     fatal ("String overflow test failed");
 
   memset (&addr, 0, sizeof (addr));
@@ -193,21 +230,14 @@ int main (void)
 #ifdef HAVE_SA_LEN
   addr.sa_len = sizeof (addr);
 #endif
-  if (stun_append_xor_addr (msg, sizeof (msg), 0xffff, &addr,
+  if (stun_message_append_xor_addr (&msg, 0xffff, &addr,
                             sizeof (addr)) != ENOBUFS)
     fatal ("Address overflow test failed");
   len = sizeof (msg);
-  if (stun_finish (msg, &len, 0) != ENOBUFS)
+  if (stun_agent_finish_message (&agent, &msg, NULL, 0) != 0)
     fatal ("Fingerprint overflow test failed");
-  len = sizeof (msg);
-  if (stun_finish_short (msg, &len, NULL, "secret", NULL, 0) != ENOBUFS)
+  if (stun_agent_finish_message (&agent, &msg, pwd, strlen (pwd)) != 0)
     fatal ("Message integrity overflow test failed");
-  len = sizeof (msg);
-  if (stun_finish_short (msg, &len, "login", "secret", NULL, 0) != ENOBUFS)
-    fatal ("Username overflow test failed");
-  len = sizeof (msg);
-  if (stun_finish_short (msg, &len, NULL, "secret", "foobar", 0) != ENOBUFS)
-    fatal ("Nonce overflow test failed");
 
   /* Address attributes tests */
   check_af ("IPv4", AF_INET, sizeof (struct sockaddr_in));
