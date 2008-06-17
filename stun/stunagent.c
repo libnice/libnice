@@ -117,7 +117,8 @@ StunValidationStatus stun_agent_validate (StunAgent *agent, StunMessage *msg,
     }
 
     /* Checks FINGERPRINT */
-    crc32 = stun_fingerprint (msg->buffer, stun_message_length (msg) - 8);
+    crc32 = stun_fingerprint (msg->buffer, stun_message_length (msg));
+    fpr = ntohl (fpr);
     if (fpr != crc32) {
       stun_debug ("STUN demux error: bad fingerprint: 0x%08x,"
           " expected: 0x%08x!\n", fpr, crc32);
