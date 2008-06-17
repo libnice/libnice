@@ -418,12 +418,22 @@ int stun_trans_preprocess (StunAgent *agent,
   if (valid != STUN_VALIDATION_SUCCESS)
     return EAGAIN;
 
+  switch (stun_message_get_class (&tr->message))
+  {
+    case STUN_REQUEST:
+    case STUN_INDICATION:
+      return EAGAIN;
+      break;
+
+    case STUN_ERROR:
+      if (stun_message_find_error (&tr->message, pcode) != 0)
+        return EAGAIN; // missing ERROR-CODE: ignore message
+      break;
+  }
+
   stun_debug ("Received %u-bytes STUN message\n", (unsigned)len);
   /* NOTE: currently we ignore unauthenticated messages if the context
    * is authenticated, for security reasons. */
-  if (stun_message_get_class (&tr->message) == STUN_ERROR) {
-    stun_message_find_error (&tr->message, pcode);
-  }
   if (*pcode >= 0)
   {
     stun_debug (" STUN error message received (code: %d)\n", *pcode);
