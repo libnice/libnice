@@ -13,8 +13,7 @@ LDADD = ../libstun.la
 check_PROGRAMS = \
 	test-parse \
 	test-format \
-	test-bind \
-	test-conncheck
+	test-bind
 
 test_bind_SOURCES = test-bind.c \
 		    ../tools/bind.c \

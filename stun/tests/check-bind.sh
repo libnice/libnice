@@ -1,7 +1,7 @@
 #! /bin/sh
 
-STUNC=../stunbdc
-STUND=../utils/stund
+STUNC=../tools/stunbdc
+STUND=../tools/stund
 
 set -xe
 
