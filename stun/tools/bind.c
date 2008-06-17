@@ -254,7 +254,6 @@ int stun_bind_run (int fd,
   return val;
 }
 
-#if 0
 /** ICE keep-alives (Binding discovery indication!) */
 
 int
@@ -280,7 +279,6 @@ stun_bind_keepalive (int fd, const struct sockaddr *restrict srv,
     return errno;
   return 0;
 }
-#endif
 
 
 int
