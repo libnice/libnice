@@ -63,17 +63,6 @@ struct stun_bind_s
   StunAgent agent;
 };
 
-static const uint16_t known_attributes[] =  {
-  STUN_ATTRIBUTE_MAPPED_ADDRESS,
-  STUN_ATTRIBUTE_XOR_MAPPED_ADDRESS,
-  STUN_ATTRIBUTE_XOR_INTERNAL_ADDRESS,
-  STUN_ATTRIBUTE_PRIORITY,
-  STUN_ATTRIBUTE_USE_CANDIDATE,
-  STUN_ATTRIBUTE_USERNAME,
-  STUN_ATTRIBUTE_MESSAGE_INTEGRITY,
-  STUN_ATTRIBUTE_ERROR_CODE,
-  0
-};
 
 /** Initialization/deinitization */
 
@@ -112,7 +101,7 @@ stun_bind_alloc (stun_bind_t **restrict context, int fd,
     return val;
   }
 
-  stun_agent_init (&ctx->agent, known_attributes,
+  stun_agent_init (&ctx->agent, STUN_ALL_KNOWN_ATTRIBUTES,
       STUN_COMPATIBILITY_3489BIS,
       STUN_AGENT_USAGE_ADD_SERVER);
 
@@ -265,7 +254,7 @@ stun_bind_keepalive (int fd, const struct sockaddr *restrict srv,
   StunAgent agent;
   StunMessage msg;
 
-  stun_agent_init (&agent, known_attributes,
+  stun_agent_init (&agent, STUN_ALL_KNOWN_ATTRIBUTES,
       STUN_COMPATIBILITY_3489BIS,
       STUN_AGENT_USAGE_USE_FINGERPRINT);
   stun_agent_init_indication (&agent, &msg,
