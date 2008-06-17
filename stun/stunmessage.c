@@ -304,24 +304,24 @@ void *
 stun_message_append (StunMessage *msg, stun_attr_type_t type, size_t length)
 {
   uint8_t *a;
-  uint16_t mlen = stun_message_length (msg) - STUN_MESSAGE_HEADER_LENGTH;
+  uint16_t mlen = stun_message_length (msg);
 
-  if ((((size_t)mlen) + STUN_ATTRIBUTE_HEADER_LENGTH + length) > msg->buffer_len)
+  if ((size_t)mlen + STUN_ATTRIBUTE_HEADER_LENGTH + length > msg->buffer_len)
     return NULL;
 
 
-  a = msg->buffer + STUN_MESSAGE_HEADER_LENGTH + mlen;
+  a = msg->buffer + mlen;
   a = stun_setw (a, type);
   /* NOTE: If cookie is not present, we need to force the attribute length
    * to a multiple of 4 for compatibility with old RFC3489 */
   a = stun_setw (a, stun_has_cookie (msg) ? length : stun_align (length));
 
-  mlen += 4 + length;
+  mlen +=  4 + length;
   /* Add padding if needed */
   memset (a + length, ' ', stun_padding (length));
   mlen += stun_padding (length);
 
-  stun_setw (msg->buffer + STUN_MESSAGE_LENGTH_POS, mlen);
+  stun_setw (msg->buffer + STUN_MESSAGE_LENGTH_POS, mlen - STUN_MESSAGE_HEADER_LENGTH);
   return a;
 }
 
