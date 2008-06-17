@@ -39,8 +39,8 @@
 
 #include <sys/types.h>
 #include <sys/socket.h>
-#include "stun/usages/bind.h"
-#include "stun/stun-msg.h"
+#include "stun/stunagent.h"
+#include "stun/tools/bind.h"
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -236,7 +236,21 @@ static void responses (void)
   ssize_t val;
   size_t len;
   int servfd, fd;
-  stun_msg_t buf;
+  uint8_t buf[STUN_MAX_MESSAGE_SIZE];
+  StunAgent agent;
+  StunMessage msg;
+
+  uint16_t known_attributes[] = {
+    STUN_ATTRIBUTE_MAPPED_ADDRESS,
+    STUN_ATTRIBUTE_XOR_MAPPED_ADDRESS,
+    STUN_ATTRIBUTE_XOR_INTERNAL_ADDRESS,
+    STUN_ATTRIBUTE_PRIORITY,
+    STUN_ATTRIBUTE_USERNAME,
+    STUN_ATTRIBUTE_MESSAGE_INTEGRITY,
+    STUN_ATTRIBUTE_ERROR_CODE, 0};
+
+  stun_agent_init (&agent, known_attributes,
+      STUN_COMPATIBILITY_3489BIS, 0);
 
   /* Allocate a local UDP port for server */
   servfd = listen_dgram ();
@@ -251,7 +265,7 @@ static void responses (void)
 
   val = connect (fd, (struct sockaddr *)&addr, addrlen);
   assert (val == 0);
-  
+
   /* Send to/receive from our client instance only */
   val = getsockname (fd, (struct sockaddr *)&addr, &addrlen);
   assert (val == 0);
@@ -266,10 +280,12 @@ static void responses (void)
   val = recv (servfd, buf, 1000, MSG_DONTWAIT);
   assert (val >= 0);
 
-  stun_init_error (buf, sizeof (buf), buf, STUN_SERVER_ERROR, 0);
-  len = sizeof (buf);
-  val = stun_finish (buf, &len, 0);
-  assert (val == 0);
+  assert (stun_agent_validate (&agent, &msg, buf, val, NULL, NULL)
+      == STUN_VALIDATION_SUCCESS);
+
+  stun_agent_init_error (&agent, &msg, buf, sizeof (buf), &msg, STUN_ERROR_SERVER_ERROR);
+  len = stun_agent_finish_message (&agent, &msg, NULL, 0);
+  assert (len > 0);
 
   val = getsockname (servfd, (struct sockaddr *)&addr, &addrlen);
   assert (val == 0);
@@ -284,13 +300,16 @@ static void responses (void)
   val = recv (servfd, buf, 1000, MSG_DONTWAIT);
   assert (val >= 0);
 
-  stun_init_response (buf, sizeof (buf), buf, 0);
-  val = stun_append_string (buf, sizeof (buf), 0x6000,
+  assert (stun_agent_validate (&agent, &msg, buf, val, NULL, NULL)
+      == STUN_VALIDATION_SUCCESS);
+
+  stun_agent_init_response (&agent, &msg, buf, sizeof (buf), &msg);
+  val = stun_message_append_string (&msg, 0x6000,
                             "This is an unknown attribute!");
   assert (val == 0);
-  len = sizeof (buf);
-  val = stun_finish (buf, &len, 0);
-  assert (val == 0);
+  len = stun_agent_finish_message (&agent, &msg, NULL, 0);
+  assert (len > 0);
+
 
   val = getsockname (servfd, (struct sockaddr *)&addr, &addrlen);
   assert (val == 0);
@@ -306,10 +325,12 @@ static void responses (void)
   val = recv (servfd, buf, 1000, MSG_DONTWAIT);
   assert (val >= 0);
 
-  stun_init_response (buf, sizeof (buf), buf, 0);
-  len = sizeof (buf);
-  val = stun_finish (buf, &len, 0);
-  assert (val == 0);
+  assert (stun_agent_validate (&agent, &msg, buf, val, NULL, NULL)
+      == STUN_VALIDATION_SUCCESS);
+
+  stun_agent_init_response (&agent, &msg, buf, sizeof (buf), &msg);
+  len = stun_agent_finish_message (&agent, &msg, NULL, 0);
+  assert (len > 0);
 
   val = getsockname (servfd, (struct sockaddr *)&addr, &addrlen);
   assert (val == 0);
@@ -325,13 +346,15 @@ static void responses (void)
   val = recv (servfd, buf, 1000, MSG_DONTWAIT);
   assert (val >= 0);
 
-  stun_init_response (buf, sizeof (buf), buf, 0);
-  val = stun_append_addr (buf, sizeof (buf), STUN_MAPPED_ADDRESS,
+  assert (stun_agent_validate (&agent, &msg, buf, val, NULL, NULL)
+      == STUN_VALIDATION_SUCCESS);
+
+  stun_agent_init_response (&agent, &msg, buf, sizeof (buf), &msg);
+  val = stun_message_append_addr (&msg, STUN_ATTRIBUTE_MAPPED_ADDRESS,
                           (struct sockaddr *)&addr, addrlen);
   assert (val == 0);
-  len = sizeof (buf);
-  val = stun_finish (buf, &len, 0);
-  assert (val == 0);
+  len = stun_agent_finish_message (&agent, &msg, NULL, 0);
+  assert (len > 0);
 
   val = getsockname (servfd, (struct sockaddr *)&addr, &addrlen);
   assert (val == 0);
@@ -384,7 +407,7 @@ static void keepalive (void)
 
 static void test (void (*func) (void), const char *name)
 {
-  alarm (10);
+  //alarm (10);
 
   printf ("%s test... ", name);
   func ();
