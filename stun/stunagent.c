@@ -181,7 +181,9 @@ StunValidationStatus stun_agent_validate (StunAgent *agent, StunMessage *msg,
     hash = (uint8_t *) stun_message_find (msg,
         STUN_ATTRIBUTE_MESSAGE_INTEGRITY, &hlen);
 
-    stun_sha1 (msg->buffer, stun_message_length (msg), sha, key, key_len);
+    /* We must give the size from start to the end of the attribute
+       because you might have a FINGERPRINT attribute after it... */
+    stun_sha1 (msg->buffer, hash + 20 - msg->buffer, sha, key, key_len);
     stun_debug (" Message HMAC-SHA1 fingerprint:");
     stun_debug ("\nkey     : ");
     stun_debug_bytes (key, key_len);
