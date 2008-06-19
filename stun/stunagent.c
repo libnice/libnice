@@ -68,6 +68,27 @@ void stun_agent_init (StunAgent *agent, const uint16_t *known_attributes,
 }
 
 
+bool stun_agent_default_validater (StunAgent *agent,
+    StunMessage *message, uint8_t *username, uint16_t username_len,
+    uint8_t **password, size_t *password_len, void *user_data)
+{
+  stun_validater_data* val = (stun_validater_data*) user_data;
+  int i;
+
+  for (i = 0; val && val[i].username ; i++) {
+    if (username_len == val[i].username_len ||
+        memcmp (username, val[i].username, username_len) == 0) {
+      *password = (uint8_t *) val[i].password;
+      *password_len = val[i].password_len;
+
+      return true;
+    }
+  }
+
+  return false;
+
+}
+
 StunValidationStatus stun_agent_validate (StunAgent *agent, StunMessage *msg,
     const uint8_t *buffer, size_t buffer_len,
     StunMessageIntegrityValidate validater, void * validater_data)

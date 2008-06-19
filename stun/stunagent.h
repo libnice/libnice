@@ -84,10 +84,21 @@ struct stun_agent_t {
   uint32_t usage_flags;
 };
 
+typedef struct {
+  const uint8_t *username;
+  const size_t username_len;
+  const uint8_t *password;
+  const size_t password_len;
+} stun_validater_data;
+
+
 typedef bool (*StunMessageIntegrityValidate) (StunAgent *agent,
     StunMessage *message, uint8_t *username, uint16_t username_len,
     uint8_t **password, size_t *password_len, void *user_data);
 
+bool stun_agent_default_validater (StunAgent *agent,
+    StunMessage *message, uint8_t *username, uint16_t username_len,
+    uint8_t **password, size_t *password_len, void *user_data);
 
 void stun_agent_init (StunAgent *agent, const uint16_t *known_attributes,
     StunCompatibility compatibility, uint32_t usage_flags);
