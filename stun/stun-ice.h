@@ -42,6 +42,7 @@
  */
 
 # include "stun/tools/bind.h"
+# include "stun/stunagent.h"
 
 # ifdef __cplusplus
 extern "C" {

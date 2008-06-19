@@ -50,6 +50,8 @@ typedef struct stun_bind_s stun_bind_t;
 # include <stdbool.h>
 # include <stdint.h>
 
+# include "stun/stunagent.h"
+
 # ifdef __cplusplus
 extern "C" {
 # endif
