@@ -219,7 +219,10 @@ StunValidationStatus stun_agent_validate (StunAgent *agent, StunMessage *msg,
     }
 
     stun_debug ("STUN auth: OK!\n");
+    msg->key = key;
+    msg->key_len = key_len;
   }
+
 
   if (sent_id_idx != -1 && sent_id_idx < STUN_AGENT_MAX_SAVED_IDS) {
     agent->sent_ids[sent_id_idx].valid = FALSE;
@@ -302,8 +305,8 @@ bool stun_agent_init_response (StunAgent *agent, StunMessage *msg,
   msg->buffer = buffer;
   msg->buffer_len = buffer_len;
   msg->agent = agent;
-  msg->key = NULL;
-  msg->key_len = 0;
+  msg->key = request->key;
+  msg->key_len = request->key_len;
 
   stun_message_id (request, id);
 
@@ -333,8 +336,8 @@ bool stun_agent_init_error (StunAgent *agent, StunMessage *msg,
   msg->buffer = buffer;
   msg->buffer_len = buffer_len;
   msg->agent = agent;
-  msg->key = NULL;
-  msg->key_len = 0;
+  msg->key = request->key;
+  msg->key_len = request->key_len;
 
   stun_message_id (request, id);
 
@@ -391,6 +394,11 @@ size_t stun_agent_finish_message (StunAgent *agent, StunMessage *msg,
   uint32_t fpr;
   int i;
   stun_transid_t id;
+
+  if (msg->key != NULL) {
+    key = msg->key;
+    key_len = msg->key_len;
+  }
 
   if (key != NULL) {
     ptr = stun_message_append (msg, STUN_ATTRIBUTE_MESSAGE_INTEGRITY, 20);
