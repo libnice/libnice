@@ -550,6 +550,10 @@ static void test_vectors (void)
           test_vector_validater, (void *) 0) != STUN_VALIDATION_SUCCESS)
     fatal ("Response ipv4 test vector authentication failed");
 
+  if (stun_agent_validate (&agent, &msg, respv4, sizeof(respv4),
+          test_vector_validater, (void *) 0) != STUN_VALIDATION_UNMATCHED_RESPONSE)
+    fatal ("Response ipv4 test vector authentication failed");
+
   addrlen = sizeof (ip4);
   if (stun_message_find_xor_addr (&msg, STUN_ATTRIBUTE_XOR_MAPPED_ADDRESS,
                           (struct sockaddr *)&ip4, &addrlen) != 0)
@@ -566,6 +570,8 @@ static void test_vectors (void)
     fatal ("Request test vector second authentication failed");
 
   /* Remove the fingerprint attributes */
+  msg.key = NULL;
+  msg.key_len = 0;
   req[3] = 0x3C;
 
   if (stun_message_length (&msg) != sizeof(req) - 8)
