@@ -189,17 +189,16 @@ StunValidationStatus stun_agent_validate (StunAgent *agent, StunMessage *msg,
         return STUN_VALIDATION_UNAUTHORIZED_BAD_REQUEST;
   }
 
-  if ((agent->usage_flags & STUN_AGENT_USAGE_IGNORE_CREDENTIALS) == 0 &&
+  if (key == NULL &&
+      (agent->usage_flags & STUN_AGENT_USAGE_IGNORE_CREDENTIALS) == 0 &&
       stun_message_has_attribute (msg, STUN_ATTRIBUTE_MESSAGE_INTEGRITY)) {
     username_len = 0;
     username = (uint8_t *) stun_message_find (msg, STUN_ATTRIBUTE_USERNAME,
         &username_len);
-    if (key == NULL) {
-      if (validater == NULL ||
-          validater (agent, msg, username, username_len,
-              &key, &key_len, validater_data) == FALSE) {
-        return STUN_VALIDATION_UNAUTHORIZED;
-      }
+    if (validater == NULL ||
+        validater (agent, msg, username, username_len,
+            &key, &key_len, validater_data) == FALSE) {
+      return STUN_VALIDATION_UNAUTHORIZED;
     }
   }
 
