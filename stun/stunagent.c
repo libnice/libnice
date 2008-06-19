@@ -171,6 +171,8 @@ StunValidationStatus stun_agent_validate (StunAgent *agent, StunMessage *msg,
 
 
   if (key == NULL &&
+      (stun_message_get_class (msg) == STUN_REQUEST ||
+       stun_message_get_class (msg) == STUN_INDICATION) &&
       !(stun_message_get_class (msg) == STUN_ERROR &&
         stun_message_find_error (msg, &error_code) == 0 &&
         (error_code == 400 || error_code == 401)) &&
