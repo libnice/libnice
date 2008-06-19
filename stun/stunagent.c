@@ -106,6 +106,7 @@ StunValidationStatus stun_agent_validate (StunAgent *agent, StunMessage *msg,
   uint16_t hlen;
   int sent_id_idx = -1;
   uint16_t unknown;
+  int error_code;
 
   len = stun_message_validate_buffer_length (buffer, buffer_len);
   if (len == STUN_MESSAGE_BUFFER_INVALID) {
@@ -168,19 +169,24 @@ StunValidationStatus stun_agent_validate (StunAgent *agent, StunMessage *msg,
     }
   }
 
-  if ((agent->usage_flags & STUN_AGENT_USAGE_SHORT_TERM_CREDENTIALS &&
-      (!stun_message_has_attribute (msg, STUN_ATTRIBUTE_USERNAME) ||
-       !stun_message_has_attribute (msg, STUN_ATTRIBUTE_MESSAGE_INTEGRITY))) ||
-      (agent->usage_flags & STUN_AGENT_USAGE_LONG_TERM_CREDENTIALS &&
-       stun_message_get_class (msg) != STUN_INDICATION &&
+
+  if (key == NULL &&
+      !(stun_message_get_class (msg) == STUN_ERROR &&
+        stun_message_find_error (msg, &error_code) == 0 &&
+        (error_code == 400 || error_code == 401)) &&
+      ((agent->usage_flags & STUN_AGENT_USAGE_SHORT_TERM_CREDENTIALS &&
        (!stun_message_has_attribute (msg, STUN_ATTRIBUTE_USERNAME) ||
-        !stun_message_has_attribute (msg, STUN_ATTRIBUTE_MESSAGE_INTEGRITY) ||
-        !stun_message_has_attribute (msg, STUN_ATTRIBUTE_NONCE) ||
-        !stun_message_has_attribute (msg, STUN_ATTRIBUTE_REALM))) ||
-      ((agent->usage_flags & STUN_AGENT_USAGE_IGNORE_CREDENTIALS) == 0 &&
-        stun_message_has_attribute (msg, STUN_ATTRIBUTE_USERNAME) &&
-        !stun_message_has_attribute (msg, STUN_ATTRIBUTE_MESSAGE_INTEGRITY))) {
-        return STUN_VALIDATION_UNAUTHORIZED;
+        !stun_message_has_attribute (msg, STUN_ATTRIBUTE_MESSAGE_INTEGRITY))) ||
+       (agent->usage_flags & STUN_AGENT_USAGE_LONG_TERM_CREDENTIALS &&
+        stun_message_get_class (msg) != STUN_INDICATION &&
+        (!stun_message_has_attribute (msg, STUN_ATTRIBUTE_USERNAME) ||
+         !stun_message_has_attribute (msg, STUN_ATTRIBUTE_MESSAGE_INTEGRITY) ||
+         !stun_message_has_attribute (msg, STUN_ATTRIBUTE_NONCE) ||
+         !stun_message_has_attribute (msg, STUN_ATTRIBUTE_REALM))) ||
+       ((agent->usage_flags & STUN_AGENT_USAGE_IGNORE_CREDENTIALS) == 0 &&
+         stun_message_has_attribute (msg, STUN_ATTRIBUTE_USERNAME) &&
+         !stun_message_has_attribute (msg, STUN_ATTRIBUTE_MESSAGE_INTEGRITY)))) {
+        return STUN_VALIDATION_UNAUTHORIZED_BAD_REQUEST;
   }
 
   if ((agent->usage_flags & STUN_AGENT_USAGE_IGNORE_CREDENTIALS) == 0 &&

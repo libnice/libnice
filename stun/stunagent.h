@@ -51,14 +51,31 @@ typedef enum {
 
 
 typedef enum {
+  /* The message is validated */
   STUN_VALIDATION_SUCCESS,
+  /* This is not a valid STUN message */
   STUN_VALIDATION_NOT_STUN,
+  /* The message seems to be valid but incomplete */
   STUN_VALIDATION_INCOMPLETE_STUN,
+  /* The message does not have the cookie or the fingerprint
+   * while the agent needs it with its usage */
   STUN_VALIDATION_BAD_REQUEST,
+  /* The message is valid but unauthorized with no username and message-integrity
+     attributes. A BAD_REQUEST error must be generated */
+  STUN_VALIDATION_UNAUTHORIZED_BAD_REQUEST,
+  /* The message is valid but unauthorized as the username/password do not match.
+     An UNAUTHORIZED error must be generated */
   STUN_VALIDATION_UNAUTHORIZED,
+  /* The message is valid but this is a response/error that doesn't match
+   * a previously sent request */
   STUN_VALIDATION_UNMATCHED_RESPONSE,
+  /* The message is valid but contains one or more unknown comprehension
+   * attributes. stun_agent_build_unknown_attributes_error should be called */
+  STUN_VALIDATION_UNKNOWN_REQUEST_ATTRIBUTE,
+  /* The message is valid but contains one or more unknown comprehension
+   * attributes. This is a response, or error, or indication message
+   * and no error response should be sent */
   STUN_VALIDATION_UNKNOWN_ATTRIBUTE,
-  STUN_VALIDATION_UNKNOWN_REQUEST_ATTRIBUTE
 } StunValidationStatus;
 
 
