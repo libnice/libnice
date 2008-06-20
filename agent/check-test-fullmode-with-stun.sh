@@ -1,6 +1,6 @@
 #! /bin/sh
 
-STUND=../stun/stund
+STUND=../stun/tools/stund
 
 echo "Starting ICE full-mode with STUN unit test."
 
