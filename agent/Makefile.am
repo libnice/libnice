@@ -72,8 +72,8 @@ check_PROGRAMS = \
 	test-mainloop \
 	test-fullmode \
 	test-restart \
-	test-fallback \
-	test-thread
+	test-fallback
+#	test-thread
 
 dist_check_SCRIPTS = \
 	check-test-fullmode-with-stun.sh

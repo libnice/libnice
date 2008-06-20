@@ -399,6 +399,11 @@ nice_agent_init (NiceAgent *agent)
   agent->keepalive_timer_id = 0;
   agent->compatibility = NICE_COMPATIBILITY_ID19;
 
+  stun_agent_init (&agent->stun_agent, STUN_ALL_KNOWN_ATTRIBUTES,
+      STUN_COMPATIBILITY_3489BIS,
+      STUN_AGENT_USAGE_SHORT_TERM_CREDENTIALS |
+      STUN_AGENT_USAGE_USE_FINGERPRINT);
+
   agent->rng = nice_rng_new ();
   priv_generate_tie_breaker (agent);
 
@@ -517,6 +522,18 @@ nice_agent_set_property (
 
     case PROP_COMPATIBILITY:
       agent->compatibility = g_value_get_uint (value);
+      if (agent->compatibility == NICE_COMPATIBILITY_ID19) {
+        stun_agent_init (&agent->stun_agent, STUN_ALL_KNOWN_ATTRIBUTES,
+            STUN_COMPATIBILITY_3489BIS,
+            STUN_AGENT_USAGE_SHORT_TERM_CREDENTIALS |
+            STUN_AGENT_USAGE_USE_FINGERPRINT);
+      } else if (agent->compatibility == NICE_COMPATIBILITY_GOOGLE) {
+        stun_agent_init (&agent->stun_agent, STUN_ALL_KNOWN_ATTRIBUTES,
+            STUN_COMPATIBILITY_RFC3489,
+            STUN_AGENT_USAGE_SHORT_TERM_CREDENTIALS |
+            STUN_AGENT_USAGE_IGNORE_CREDENTIALS);
+      }
+
       break;
 
     case PROP_STUN_SERVER:
@@ -1260,7 +1277,7 @@ _nice_agent_recv (
     }
   /* step: validate using the new STUN API */
   /*    - note: old check '((buf[0] & 0xc0) == 0)' */
-  else if (stun_validate ((uint8_t*)buf, len) > 0) {
+  else if (stun_message_validate_buffer_length ((uint8_t *) buf, (size_t) len) == len) {
       /* If the retval is no 0, its not a valid stun packet, probably data */
       conn_check_handle_inbound_stun (agent, stream, component, udp_socket,
           &from, buf, len);

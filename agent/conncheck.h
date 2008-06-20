@@ -43,7 +43,8 @@
 
 #include "agent.h"
 #include "stream.h"
-#include "usages/stun-ice.h"    /* note: the new STUN API */
+#include "stun/usages/stun-ice.h"
+#include "stun/usages/bind.h"
 
 #define NICE_CANDIDATE_PAIR_MAX_FOUNDATION        NICE_CANDIDATE_MAX_FOUNDATION*2
 

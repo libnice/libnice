@@ -46,6 +46,7 @@
 #include "candidate.h"
 #include "random.h"
 
+
 G_BEGIN_DECLS
 
 #define NICE_TYPE_AGENT nice_agent_get_type()

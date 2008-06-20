@@ -1564,6 +1564,8 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, Stream *stream, Compo
   size_t rbuf_len = sizeof (rbuf);
   bool control = agent->controlling_mode;
   gchar uname[NICE_STREAM_MAX_UNAME];
+  StunMessage req;
+  StunMessage msg;
 
   nice_address_copy_to_sockaddr (from, &sockaddr);
   g_snprintf (uname, sizeof (uname), "%s:%s", stream->local_ufrag,
@@ -1576,9 +1578,10 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, Stream *stream, Compo
 
   /* note: ICE  7.2. "STUN Server Procedures" (ID-19) */
 
-  res = stun_conncheck_reply (rbuf, &rbuf_len, (const uint8_t*)buf, &sockaddr, sizeof (sockaddr), 
-                              stream->local_ufrag, stream->local_password,
-                              &control, agent->tie_breaker, agent->compatibility);
+  res = stun_conncheck_reply (&agent->stun_agent, &req, (uint8_t *)buf, (size_t) len, &msg, rbuf, &rbuf_len,
+      &sockaddr, sizeof (sockaddr), (uint8_t *) stream->local_ufrag, strlen (stream->local_ufrag),
+      (uint8_t *)stream->local_password, strlen (stream->local_password),
+      &control, agent->tie_breaker, agent->compatibility);
 
   if (res == EACCES)
     priv_check_for_role_conflict (agent, control);
@@ -1588,8 +1591,8 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, Stream *stream, Compo
     
     GSList *i;
     bool use_candidate = 
-      stun_conncheck_use_candidate ((const uint8_t*)buf);
-    uint32_t priority = stun_conncheck_priority ((const uint8_t*)buf);
+      stun_conncheck_use_candidate (&req);
+    uint32_t priority = stun_conncheck_priority (&req);
 
     if (agent->controlling_mode ||
         agent->compatibility == NICE_COMPATIBILITY_GOOGLE) 

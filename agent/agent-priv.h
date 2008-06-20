@@ -48,6 +48,7 @@
 #include "stream.h"
 #include "conncheck.h"
 #include "component.h"
+#include "stun/stunagent.h"
 
 /* XXX: starting from ICE ID-18, Ta SHOULD now be set according
  *      to session bandwidth -> this is not yet implemented in NICE */
@@ -93,6 +94,7 @@ struct _NiceAgent
 				     "Determining Role" ID-19) */
   GStaticRecMutex mutex;                 /* Mutex used for thread-safe lib */
   NiceCompatibility compatibility; /* property: Compatibility mode */
+  StunAgent stun_agent;            /* STUN agent */
   /* XXX: add pointer to internal data struct for ABI-safe extensions */
 };
 
