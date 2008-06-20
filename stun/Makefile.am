@@ -22,7 +22,10 @@ libstun_la_SOURCES = stun.h constants.h \
 	stuncrc32.c stuncrc32.h \
 	stunhmac.c stunhmac.h \
 	utils.c  utils.h \
-	stun-ice.c stun-ice.h
+	usages/stun-ice.c usages/stun-ice.h \
+	usages/bind.c usages/bind.h \
+	usages/timer.c usages/timer.h \
+	usages/trans.c usages/trans.h
 
 libstun_la_LIBADD = $(OPENSSL_LIBS) $(LIBRT)
 

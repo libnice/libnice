@@ -425,6 +425,9 @@ int stun_trans_preprocess (StunAgent *agent,
       return EAGAIN;
       break;
 
+    case STUN_RESPONSE:
+      break;
+
     case STUN_ERROR:
       if (stun_message_find_error (&tr->message, pcode) != 0)
         return EAGAIN; // missing ERROR-CODE: ignore message

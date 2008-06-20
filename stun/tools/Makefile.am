@@ -18,10 +18,7 @@ check_PROGRAMS = stund
 stund_SOURCES = stund.c stund.h
 stund_LDADD = ../libstun.la -lpthread
 
-stunbdc_SOURCES = stunbdc.c \
-		bind.c bind.h \
-		trans.c trans.h \
-		timer.c timer.h
+stunbdc_SOURCES = stunbdc.c 
 
 stunbdc_LDADD = ../libstun.la
 

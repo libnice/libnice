@@ -16,11 +16,6 @@ check_PROGRAMS = \
 	test-bind \
 	test-conncheck
 
-test_bind_SOURCES = test-bind.c \
-		    ../tools/bind.c \
-		    ../tools/trans.c \
-                    ../tools/timer.c
-
 dist_check_SCRIPTS = check-bind.sh
 
 TESTS = $(check_PROGRAMS)

@@ -42,7 +42,7 @@
 
 #include <sys/types.h>
 #include <sys/socket.h>
-#include "tools/bind.h"
+#include "stun/usages/bind.h"
 #include "stunagent.h"
 #include <errno.h>
 

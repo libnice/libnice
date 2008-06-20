@@ -41,38 +41,11 @@
  * @brief STUN/ICE connectivity checks
  */
 
-# include "stun/tools/bind.h"
 # include "stun/stunagent.h"
 
 # ifdef __cplusplus
 extern "C" {
 # endif
-
-/**
- * Starts a connectivity check using STUN Binding discovery.
- *
- * @param context pointer to an opaque pointer that will be passed to
- * stun_bind_resume() afterward
- * @param fd socket to use for discovery, or -1 to create one
- * @param srv STUN server socket address
- * @param srvlen STUN server socket address length
- * @param username nul-terminated username for authentication
- * (need not be kept valid after return)
- * @param password nul-terminated shared secret (ICE password)
- * (need not be kept valid after return)
- * @param cand_use whether to include a USE-CANDIDATE flag
- * @param priority host-byte order PRIORITY value
- * @param controlling whether we are in controlling (true) or
- * controlled (false) state
- * @param tie control tie breaker value (host-byte order)
- *
- * @return 0 on success, a standard error value otherwise.
- */
-int stun_conncheck_start (stun_bind_t **restrict context, int fd,
-    const struct sockaddr *restrict srv, socklen_t srvlen,
-    const char *username, const char *password,
-    bool cand_use, bool controlling, uint32_t priority,
-    uint64_t tie, uint32_t compat);
 
 /**
  * Tries to parse a STUN connectivity check (Binding request) and format a

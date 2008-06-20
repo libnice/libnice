@@ -161,6 +161,32 @@ int stun_bind_process (stun_bind_t *restrict context,
  */
 int stun_bind_keepalive (int fd, const struct sockaddr *restrict srv,
                          socklen_t srvlen, int compat);
+/**
+ * Starts a connectivity check using STUN Binding discovery.
+ *
+ * @param context pointer to an opaque pointer that will be passed to
+ * stun_bind_resume() afterward
+ * @param fd socket to use for discovery, or -1 to create one
+ * @param srv STUN server socket address
+ * @param srvlen STUN server socket address length
+ * @param username nul-terminated username for authentication
+ * (need not be kept valid after return)
+ * @param password nul-terminated shared secret (ICE password)
+ * (need not be kept valid after return)
+ * @param cand_use whether to include a USE-CANDIDATE flag
+ * @param priority host-byte order PRIORITY value
+ * @param controlling whether we are in controlling (true) or
+ * controlled (false) state
+ * @param tie control tie breaker value (host-byte order)
+ *
+ * @return 0 on success, a standard error value otherwise.
+ */
+int stun_conncheck_start (stun_bind_t **restrict context, int fd,
+    const struct sockaddr *restrict srv, socklen_t srvlen,
+    const char *username, const char *password,
+    bool cand_use, bool controlling, uint32_t priority,
+    uint64_t tie, uint32_t compat);
+
 
 
 /**
@@ -179,27 +205,7 @@ int stun_nested_process (stun_nested_t *restrict ctx,
                          struct sockaddr *restrict intad, socklen_t *adlen);
 
 
-# ifndef STUN_VALIDATE_DECLARATION
-#  define STUN_VALIDATE_DECLARATION 2
 
-/**
- * Verifies that a packet is a valid STUN message.
- *
- * @return actual byte length of the message if valid (>0),
- * 0 if it the packet is incomplete or -1 in case of other error.
- */
-ssize_t stun_validate (const uint8_t *msg, size_t len);
-
-/**
- * Checks whether a packet on a mutiplexed STUN/non-STUN channel looks like a
- * STUN message. It is assumed that stun_validate succeeded first (i.e.
- * returned a stricly positive value).
- *
- * @return true if STUN message with cookie and fingerprint, 0 otherwise.
- */
-bool stun_demux (const uint8_t *msg);
-
-# endif
 
 # ifdef __cplusplus
 }

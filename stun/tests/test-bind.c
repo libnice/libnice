@@ -40,7 +40,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include "stun/stunagent.h"
-#include "stun/tools/bind.h"
+#include "stun/usages/bind.h"
 
 #include <stdlib.h>
 #include <stdio.h>
