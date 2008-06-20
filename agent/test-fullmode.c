@@ -420,6 +420,9 @@ static int run_full_test_delayed_answer (NiceAgent *lagent, NiceAgent *ragent, N
       nice_agent_get_local_credentials(lagent, ls_id, &ufrag, &password);
       nice_agent_set_remote_credentials (ragent,
 					 rs_id, ufrag, password);
+      nice_agent_get_local_credentials(ragent, rs_id, &ufrag, &password);
+      nice_agent_set_remote_credentials (lagent,
+					 ls_id, ufrag, password);
   }
   /* step: set remote candidates for agent R (answering party) */
   cands = g_slist_append (NULL, &cdes);
@@ -444,6 +447,9 @@ static int run_full_test_delayed_answer (NiceAgent *lagent, NiceAgent *ragent, N
   /* step: pass the remote candidates to agent L (offering party)  */
   {
       const gchar *ufrag = NULL, *password = NULL;
+      nice_agent_get_local_credentials(ragent, rs_id, &ufrag, &password);
+      nice_agent_set_remote_credentials (lagent,
+					 ls_id, ufrag, password);
       nice_agent_get_local_credentials(ragent, rs_id, &ufrag, &password);
       nice_agent_set_remote_credentials (lagent,
 					 ls_id, ufrag, password);
