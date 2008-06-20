@@ -171,6 +171,7 @@ StunValidationStatus stun_agent_validate (StunAgent *agent, StunMessage *msg,
 
 
   if (key == NULL &&
+      (agent->usage_flags & STUN_AGENT_USAGE_IGNORE_CREDENTIALS) == 0 &&
       (stun_message_get_class (msg) == STUN_REQUEST ||
        stun_message_get_class (msg) == STUN_INDICATION) &&
       !(stun_message_get_class (msg) == STUN_ERROR &&
@@ -204,7 +205,8 @@ StunValidationStatus stun_agent_validate (StunAgent *agent, StunMessage *msg,
     }
   }
 
-  if (key != NULL && key_len > 0) {
+  if ((agent->usage_flags & STUN_AGENT_USAGE_IGNORE_CREDENTIALS) == 0 &&
+      key != NULL && key_len > 0) {
     hash = (uint8_t *) stun_message_find (msg,
         STUN_ATTRIBUTE_MESSAGE_INTEGRITY, &hlen);
 
@@ -424,8 +426,7 @@ size_t stun_agent_finish_message (StunAgent *agent, StunMessage *msg,
 
   }
 
-  if (agent->compatibility == STUN_COMPATIBILITY_3489BIS &&
-      agent->usage_flags & STUN_AGENT_USAGE_USE_FINGERPRINT) {
+  if (agent->compatibility == STUN_COMPATIBILITY_3489BIS) {
     ptr = stun_message_append (msg, STUN_ATTRIBUTE_FINGERPRINT, 4);
     if (ptr == NULL) {
       return 0;
