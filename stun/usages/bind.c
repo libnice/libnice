@@ -80,7 +80,7 @@ struct stun_bind_s
  */
 static int
 stun_bind_alloc (stun_bind_t **restrict context, int fd,
-                 const struct sockaddr *restrict srv, socklen_t srvlen)
+    const struct sockaddr *restrict srv, socklen_t srvlen, int compat)
 {
   int val;
 
@@ -101,9 +101,17 @@ stun_bind_alloc (stun_bind_t **restrict context, int fd,
     return val;
   }
 
-  stun_agent_init (&ctx->agent, STUN_ALL_KNOWN_ATTRIBUTES,
-      STUN_COMPATIBILITY_3489BIS,
-      STUN_AGENT_USAGE_ADD_SERVER);
+  if (compat == 1) {
+    stun_agent_init (&ctx->agent, STUN_ALL_KNOWN_ATTRIBUTES,
+        STUN_COMPATIBILITY_RFC3489,
+        STUN_AGENT_USAGE_SHORT_TERM_CREDENTIALS |
+        STUN_AGENT_USAGE_IGNORE_CREDENTIALS);
+  } else {
+    stun_agent_init (&ctx->agent, STUN_ALL_KNOWN_ATTRIBUTES,
+        STUN_COMPATIBILITY_3489BIS,
+        STUN_AGENT_USAGE_ADD_SERVER |
+        STUN_AGENT_USAGE_USE_FINGERPRINT);
+  }
 
   stun_agent_init_request (&ctx->agent, &ctx->trans.message,
       ctx->trans.msg.buf, sizeof (ctx->trans.msg.buf), STUN_BINDING);
@@ -119,7 +127,7 @@ int stun_bind_start (stun_bind_t **restrict context, int fd,
 {
   stun_bind_t *ctx;
 
-  int val = stun_bind_alloc (context, fd, srv, srvlen);
+  int val = stun_bind_alloc (context, fd, srv, srvlen, compat);
   if (val)
     return val;
 
@@ -254,9 +262,17 @@ stun_bind_keepalive (int fd, const struct sockaddr *restrict srv,
   StunAgent agent;
   StunMessage msg;
 
-  stun_agent_init (&agent, STUN_ALL_KNOWN_ATTRIBUTES,
-      STUN_COMPATIBILITY_3489BIS,
-      STUN_AGENT_USAGE_USE_FINGERPRINT);
+  if (compat == 1) {
+    stun_agent_init (&agent, STUN_ALL_KNOWN_ATTRIBUTES,
+        STUN_COMPATIBILITY_RFC3489,
+        STUN_AGENT_USAGE_SHORT_TERM_CREDENTIALS |
+        STUN_AGENT_USAGE_IGNORE_CREDENTIALS);
+  } else {
+    stun_agent_init (&agent, STUN_ALL_KNOWN_ATTRIBUTES,
+        STUN_COMPATIBILITY_3489BIS,
+        STUN_AGENT_USAGE_ADD_SERVER |
+        STUN_AGENT_USAGE_USE_FINGERPRINT);
+  }
   stun_agent_init_indication (&agent, &msg,
       buf, sizeof (buf), STUN_BINDING);
   len = stun_agent_finish_message (&agent, &msg, NULL, 0);
@@ -283,7 +299,7 @@ stun_conncheck_start (stun_bind_t **restrict context, int fd,
   assert (username != NULL);
   assert (password != NULL);
 
-  val = stun_bind_alloc (context, fd, srv, srvlen);
+  val = stun_bind_alloc (context, fd, srv, srvlen, compat);
   if (val)
     return val;
 
@@ -375,7 +391,7 @@ int stun_nested_start (stun_nested_t **restrict context, int fd,
   ctx->bootnonce = 0;
 
   /* TODO: forcily set port to 3478 */
-  val = stun_bind_alloc (&ctx->bind, fd, natad, adlen);
+  val = stun_bind_alloc (&ctx->bind, fd, natad, adlen, compat);
   if (val)
     return val;
 
