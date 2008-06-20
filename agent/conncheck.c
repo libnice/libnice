@@ -1579,7 +1579,7 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, Stream *stream, Compo
   /* note: ICE  7.2. "STUN Server Procedures" (ID-19) */
 
   res = stun_conncheck_reply (&agent->stun_agent, &req, (uint8_t *)buf, (size_t) len, &msg, rbuf, &rbuf_len,
-      &sockaddr, sizeof (sockaddr), (uint8_t *) stream->local_ufrag, strlen (stream->local_ufrag),
+      &sockaddr, sizeof (sockaddr), (uint8_t *) uname, strlen (uname),
       (uint8_t *)stream->local_password, strlen (stream->local_password),
       &control, agent->tie_breaker, agent->compatibility);
 
