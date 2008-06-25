@@ -1568,8 +1568,9 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, Stream *stream, Compo
   StunMessage msg;
 
   nice_address_copy_to_sockaddr (from, &sockaddr);
-  g_snprintf (uname, sizeof (uname), "%s:%s", stream->local_ufrag,
-              stream->remote_ufrag);
+  g_snprintf (uname, sizeof (uname), "%s%s%s", stream->local_ufrag,
+      agent->compatibility == NICE_COMPATIBILITY_ID19 ? ":" : "",
+      stream->remote_ufrag);
 
   /* note: contents of 'buf' already validated, so it is 
    *       a valid and fully received STUN message */
@@ -1580,7 +1581,8 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, Stream *stream, Compo
 
   res = stun_conncheck_reply (&agent->stun_agent, &req, (uint8_t *)buf, (size_t) len, &msg, rbuf, &rbuf_len,
       &sockaddr, sizeof (sockaddr), (uint8_t *) uname, strlen (uname),
-      (uint8_t *)stream->local_password, strlen (stream->local_password),
+      agent->compatibility == NICE_COMPATIBILITY_GOOGLE ? NULL : (uint8_t *)stream->local_password,
+      agent->compatibility == NICE_COMPATIBILITY_GOOGLE ? 0 : strlen (stream->local_password),
       &control, agent->tie_breaker, agent->compatibility);
 
   if (res == EACCES)
