@@ -222,7 +222,7 @@ int main (void)
   assert (val == EPERM);
   assert (len > 0);
   assert (stun_agent_validate (&agent, &resp, resp_buf, len,
-          stun_agent_default_validater, validater_data) == STUN_VALIDATION_UNAUTHORIZED);
+          stun_agent_default_validater, validater_data) == STUN_VALIDATION_SUCCESS);
   assert (stun_message_get_class (&resp) == STUN_ERROR);
   stun_message_find_error (&resp, &code);
   assert (code == STUN_ERROR_UNAUTHORIZED);
