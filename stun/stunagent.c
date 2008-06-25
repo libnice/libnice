@@ -210,26 +210,33 @@ StunValidationStatus stun_agent_validate (StunAgent *agent, StunMessage *msg,
     hash = (uint8_t *) stun_message_find (msg,
         STUN_ATTRIBUTE_MESSAGE_INTEGRITY, &hlen);
 
-    /* We must give the size from start to the end of the attribute
-       because you might have a FINGERPRINT attribute after it... */
-    stun_sha1 (msg->buffer, hash + 20 - msg->buffer, sha, key, key_len);
-    stun_debug (" Message HMAC-SHA1 fingerprint:");
-    stun_debug ("\nkey     : ");
-    stun_debug_bytes (key, key_len);
-    stun_debug ("\n  expected: ");
-    stun_debug_bytes (sha, sizeof (sha));
-    stun_debug ("\n  received: ");
-    stun_debug_bytes (hash, sizeof (sha));
-    stun_debug ("\n");
+    if (hash) {
+      /* We must give the size from start to the end of the attribute
+         because you might have a FINGERPRINT attribute after it... */
+      stun_sha1 (msg->buffer, hash + 20 - msg->buffer, sha, key, key_len);
+      stun_debug (" Message HMAC-SHA1 fingerprint:");
+      stun_debug ("\nkey     : ");
+      stun_debug_bytes (key, key_len);
+      stun_debug ("\n  expected: ");
+      stun_debug_bytes (sha, sizeof (sha));
+      stun_debug ("\n  received: ");
+      stun_debug_bytes (hash, sizeof (sha));
+      stun_debug ("\n");
 
-    if (memcmp (sha, hash, sizeof (sha)))  {
-      stun_debug ("STUN auth error: SHA1 fingerprint mismatch!\n");
+      if (memcmp (sha, hash, sizeof (sha)))  {
+        stun_debug ("STUN auth error: SHA1 fingerprint mismatch!\n");
+        return STUN_VALIDATION_UNAUTHORIZED;
+      }
+
+      stun_debug ("STUN auth: OK!\n");
+      msg->key = key;
+      msg->key_len = key_len;
+    } else if (!(stun_message_get_class (msg) == STUN_ERROR &&
+        stun_message_find_error (msg, &error_code) == 0 &&
+        (error_code == 400 || error_code == 401))) {
+      stun_debug ("STUN auth error: No message integrity attribute!\n");
       return STUN_VALIDATION_UNAUTHORIZED;
     }
-
-    stun_debug ("STUN auth: OK!\n");
-    msg->key = key;
-    msg->key_len = key_len;
   }
 
 
