@@ -53,7 +53,7 @@
 static int
 stun_bind_error (StunAgent *agent, StunMessage *msg,
     uint8_t *buf, size_t *plen, const StunMessage *req,
-    stun_error_t code, const uint8_t *key, size_t key_len)
+    stun_error_t code)
 {
   size_t len = *plen;
   int val;
@@ -65,7 +65,7 @@ stun_bind_error (StunAgent *agent, StunMessage *msg,
   if (!val)
     return val;
 
-  len = stun_agent_finish_message (agent, msg, key, key_len);
+  len = stun_agent_finish_message (agent, msg, NULL, 0);
   if (len == 0)
     return 0;
 
@@ -97,7 +97,7 @@ stun_conncheck_reply (StunAgent *agent, StunMessage *req,
 
 
 #define err( code ) \
-  stun_bind_error (agent, msg, buf, &len, req, code, password, password_len); \
+  stun_bind_error (agent, msg, buf, &len, req, code); \
   *plen = len
 
   *plen = 0;
