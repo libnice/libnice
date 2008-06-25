@@ -156,6 +156,15 @@ stun_conncheck_reply (StunAgent *agent, StunMessage *req,
   username = (const char *)stun_message_find (req,
       STUN_ATTRIBUTE_USERNAME, &username_len);
 
+  /* Check again the username in case the agent has IGNORE_CREDENTIALS flag.
+     We only need to check the username and not care about the password */
+  if (ufrag_len != username_len ||
+      memcmp (local_ufrag, username, username_len) != 0) {
+    stun_debug (" Username check failed.\n");
+    err (STUN_ERROR_UNAUTHORIZED);
+    return EPERM;
+  }
+
   /* Role conflict handling */
   assert (control != NULL);
   if (!stun_message_find64 (req, *control ? STUN_ATTRIBUTE_ICE_CONTROLLING
