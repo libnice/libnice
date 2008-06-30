@@ -96,7 +96,7 @@ finish_check (StunAgent *agent, StunMessage *msg)
   uint8_t buf[STUN_MAX_MESSAGE_SIZE + 8];
   size_t len;
   uint16_t plen;
-  StunMessage msg2;
+  StunMessage msg2 = {0};
   msg2.agent = msg->agent;
   msg2.buffer = buf;
   msg2.buffer_len = sizeof(buf);
