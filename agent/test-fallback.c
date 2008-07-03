@@ -61,6 +61,7 @@ static int global_lagent_cands = 0;
 static int global_ragent_cands = 0;
 static gint global_ragent_read = 0;
 static gint global_ragent_read_exit = 0;
+static gboolean global_accept_non_data = TRUE;
 
 static void priv_print_global_status (void)
 {
@@ -89,10 +90,12 @@ static void cb_nice_recv (NiceAgent *agent, guint stream_id, guint component_id,
   /*
    * Lets ignore stun packets that got through
    */
-  if (len != 16)
-    return;
-  if (strncmp ("1234567812345678", buf, 16))
-    return;
+  if (len != 16 || strncmp ("1234567812345678", buf, 16)) {
+    if (global_accept_non_data)
+      return;
+    else
+      g_error ("Got non-data packet of lenght %u", len);
+  }
 
   if ((intptr_t)user_data == 2) {
     global_ragent_read += len;
@@ -363,6 +366,7 @@ static int run_safe_fallback_test (NiceAgent *lagent, NiceAgent *ragent, NiceAdd
   global_lagent_cands =
     global_ragent_cands = 0;
   global_ragent_read_exit = -1;
+  global_accept_non_data = FALSE;
 
   g_object_set (G_OBJECT (lagent), "controlling-mode", TRUE, NULL);
   g_object_set (G_OBJECT (ragent), "controlling-mode", FALSE, NULL);
