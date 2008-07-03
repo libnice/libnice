@@ -86,6 +86,14 @@ static void cb_nice_recv (NiceAgent *agent, guint stream_id, guint component_id,
   /* XXX: dear compiler, these are for you: */
   (void)agent; (void)stream_id; (void)component_id; (void)buf;
 
+  /*
+   * Lets ignore stun packets that got through
+   */
+  if (len != 16)
+    return;
+  if (strncmp ("1234567812345678", buf, 16))
+    return;
+
   if ((intptr_t)user_data == 2) {
     global_ragent_read += len;
 

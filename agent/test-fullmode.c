@@ -84,6 +84,14 @@ static void cb_nice_recv (NiceAgent *agent, guint stream_id, guint component_id,
   /* XXX: dear compiler, these are for you: */
   (void)agent; (void)stream_id; (void)component_id; (void)buf;
 
+  /*
+   * Lets ignore stun packets that got through
+   */
+  if (len < 8)
+    return;
+  if (strncmp ("12345678", buf, 8))
+    return;
+
   if ((intptr_t)user_data == 2) {
     global_ragent_read = len;
     g_main_loop_quit (global_mainloop);
