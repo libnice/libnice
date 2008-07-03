@@ -243,3 +243,66 @@ component_find_remote_candidate (const Component *component, const NiceAddress *
   
   return NULL;
 }
+
+/*
+ * Sets the desired remote candidate as the selected pair
+ *
+ * It will start sending on the highest priority pair available with
+ * this candidate.
+ */
+
+NiceCandidate *
+component_set_selected_remote_candidate (NiceAgent *agent, Component *component,
+    NiceCandidate *candidate)
+{
+  NiceCandidate *local = NULL;
+  NiceCandidate *remote = NULL;
+  guint32 priority = 0;
+  GSList *item = NULL;
+
+  for (item = component->local_candidates; item; item = g_slist_next (item)) {
+    NiceCandidate *tmp = item->data;
+    guint32 tmp_prio = 0;
+
+    if (tmp->transport != candidate->transport ||
+	tmp->addr.s.addr.sa_family != candidate->addr.s.addr.sa_family ||
+        tmp->type != NICE_CANDIDATE_TYPE_HOST)
+      continue;
+
+    tmp_prio = agent_candidate_pair_priority (agent, tmp, candidate);
+
+    if (tmp_prio > priority) {
+      priority = tmp_prio;
+      local = tmp;
+    }
+  }
+
+  if (local == NULL)
+    return NULL;
+
+  remote = component_find_remote_candidate (component, &candidate->addr,
+      candidate->transport);
+
+  if (!remote) {
+    GSList *modified_list = NULL;
+
+    remote = nice_candidate_copy (candidate);
+
+    modified_list = g_slist_append (component->remote_candidates,
+				    remote);
+    if (modified_list) {
+      component->remote_candidates = modified_list;
+      agent_signal_new_remote_candidate (agent, remote);
+    }
+    else { /* error: memory alloc / list */
+      nice_candidate_free (remote), remote = NULL;
+      return NULL;
+    }
+  }
+
+  component->selected_pair.local = local;
+  component->selected_pair.remote = remote;
+  component->selected_pair.priority = priority;
+
+  return local;
+}
