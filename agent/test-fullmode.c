@@ -74,9 +74,7 @@ static gboolean timer_cb (gpointer pointer)
   /* signal status via a global variable */
 
   /* note: should not be reached, abort */
-  g_debug ("ERROR: test has got stuck, aborting...");
-  exit (-1);
-
+  g_error ("ERROR: test has got stuck, aborting...");
 }
 
 static void cb_nice_recv (NiceAgent *agent, guint stream_id, guint component_id, guint len, gchar *buf, gpointer user_data)
