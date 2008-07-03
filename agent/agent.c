@@ -1973,3 +1973,62 @@ guint agent_timeout_add_with_context (NiceAgent *agent, guint interval,
 
   return id;
 }
+
+
+/**
+ * nice_agent_set_selected_remote_candidate:
+ * @agent: a #NiceAgent
+ * @stream_id: the stream id
+ * @component_id: the component id
+ * @candidate: the #NiceCandidate to force
+ *
+ * Sets the selected remote candidate for media transmission
+ * for given stream component. Calling this function will
+ * disable all further ICE processing (connection check,
+ * state machine updates, etc). Note that keepalives will
+ * continue to be sent.
+ *
+ * Returns: %TRUE on success, %FALSE on failure
+ */
+NICEAPI_EXPORT gboolean
+nice_agent_set_selected_remote_candidate (
+  NiceAgent *agent,
+  guint stream_id,
+  guint component_id,
+  NiceCandidate *candidate)
+{
+  Component *component;
+  Stream *stream;
+  NiceCandidate *lcandidate = NULL;
+  gboolean ret = FALSE;
+
+  g_static_rec_mutex_lock (&agent->mutex);
+
+  /* step: check if the component exists*/
+  if (!agent_find_component (agent, stream_id, component_id, &stream, &component)) {
+    goto done;
+  }
+
+  /* step: stop connectivity checks (note: for the whole stream) */
+  conn_check_prune_stream (agent, stream);
+
+
+  /* step: set the selected pair */
+  lcandidate = component_set_selected_remote_candidate (agent, component,
+      candidate);
+  if (!lcandidate)
+    goto done;
+
+  /* step: change component state */
+  agent_signal_component_state_change (agent, stream_id, component_id, NICE_COMPONENT_STATE_READY);
+
+  agent_signal_new_selected_pair (agent, stream_id, component_id,
+      lcandidate->foundation,
+      candidate->foundation);
+
+  ret = TRUE;
+
+ done:
+  g_static_rec_mutex_unlock (&agent->mutex);
+  return ret;
+}
