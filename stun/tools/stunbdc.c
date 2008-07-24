@@ -94,14 +94,14 @@ static int run (int family, const char *hostname, const char *service)
   {
     struct sockaddr_storage addr;
     socklen_t addrlen = sizeof (addr);
-    int val;
+    StunUsageBindReturn val;
 
     printaddr ("Server address", ptr->ai_addr, ptr->ai_addrlen);
 
-    val = stun_bind_run (-1, ptr->ai_addr, ptr->ai_addrlen,
-                         (struct sockaddr *)&addr, &addrlen, 0);
+    val = stun_usage_bind_run (ptr->ai_addr, ptr->ai_addrlen,
+                         (struct sockaddr *)&addr, &addrlen);
     if (val)
-      fprintf (stderr, "%s\n", strerror (val));
+      fprintf (stderr, "%d\n", val);
     else
     {
       printaddr ("Mapped address", (struct sockaddr *)&addr, addrlen);
