@@ -97,8 +97,8 @@ static void bad_family (void)
   addr.sa_len = sizeof (addr);
 #endif
 
-  val = stun_bind_run (-1, &addr, sizeof (addr),
-                       &dummy, &(socklen_t){ sizeof (dummy) }, 0);
+  val = stun_usage_bind_run (&addr, sizeof (addr),
+                       &dummy, &(socklen_t){ sizeof (dummy) });
   assert (val != 0);
 }
 
@@ -115,9 +115,9 @@ static void small_srv_addr (void)
   addr.sa_len = sizeof (addr);
 #endif
 
-  val = stun_bind_run (-1, &addr, 1,
-                       &dummy, &(socklen_t){ sizeof (dummy) }, 0);
-  assert (val == EINVAL);
+  val = stun_usage_bind_run (&addr, 1,
+                       &dummy, &(socklen_t){ sizeof (dummy) });
+  assert (val == STUN_USAGE_BIND_RETURN_ERROR);
 }
 
 
@@ -128,14 +128,11 @@ static void big_srv_addr (void)
   struct sockaddr dummy;
   int fd, val;
 
-  fd = socket (AF_INET, SOCK_DGRAM, 0);
-  assert (fd != -1);
 
   memset (buf, 0, sizeof (buf));
-  val = stun_bind_run (fd, (struct sockaddr *)buf, sizeof (buf),
-                       &dummy, &(socklen_t){ sizeof (dummy) }, 0);
-  assert (val == ENOBUFS);
-  close (fd);
+  val = stun_usage_bind_run ((struct sockaddr *)buf, sizeof (buf),
+                       &dummy, &(socklen_t){ sizeof (dummy) });
+  assert (val == STUN_USAGE_BIND_RETURN_ERROR);
 }
 
 
@@ -154,22 +151,37 @@ static void timeout (void)
   val = getsockname (servfd, (struct sockaddr *)&srv, &srvlen);
   assert (val == 0);
 
-  val = stun_bind_run (-1, (struct sockaddr *)&srv, srvlen,
-                       &dummy, &(socklen_t){ sizeof (dummy) }, 0);
-  assert (val == ETIMEDOUT);
+  val = stun_usage_bind_run ((struct sockaddr *)&srv, srvlen,
+                       &dummy, &(socklen_t){ sizeof (dummy) });
+  assert (val == STUN_USAGE_BIND_RETURN_TIMEOUT);
 
   close (servfd);
 }
 
-
 /** Malformed responses test */
 static void bad_responses (void)
 {
-  stun_bind_t *ctx;
   struct sockaddr_storage addr;
   socklen_t addrlen = sizeof (addr);
   ssize_t val, len;
-  uint8_t buf[1000];
+  uint8_t buf[STUN_MAX_MESSAGE_SIZE];
+  uint8_t req[STUN_MAX_MESSAGE_SIZE];
+  size_t req_len;
+  StunAgent agent;
+  StunMessage msg;
+  StunMessage req_msg;
+
+  uint16_t known_attributes[] = {
+    STUN_ATTRIBUTE_MAPPED_ADDRESS,
+    STUN_ATTRIBUTE_XOR_MAPPED_ADDRESS,
+    STUN_ATTRIBUTE_XOR_INTERNAL_ADDRESS,
+    STUN_ATTRIBUTE_PRIORITY,
+    STUN_ATTRIBUTE_USERNAME,
+    STUN_ATTRIBUTE_MESSAGE_INTEGRITY,
+    STUN_ATTRIBUTE_ERROR_CODE, 0};
+
+  stun_agent_init (&agent, known_attributes,
+      STUN_COMPATIBILITY_3489BIS, 0);
 
   /* Allocate a local UDP port */
   int servfd = listen_dgram (), fd;
@@ -181,8 +193,12 @@ static void bad_responses (void)
   fd = socket (addr.ss_family, SOCK_DGRAM, 0);
   assert (fd != -1);
 
-  val = stun_bind_start (&ctx, fd, (struct sockaddr *)&addr, addrlen, 0);
-  assert (val == 0);
+  req_len = stun_usage_bind_create (&agent, &req_msg, req, sizeof(req));
+  assert (req_len > 0);
+
+  val = sendto (fd, req, req_len, MSG_DONTWAIT | MSG_NOSIGNAL,
+      (struct sockaddr *)&addr, addrlen);
+  assert (val >= 0);
 
   /* Send to/receive from our client instance only */
   val = getsockname (fd, (struct sockaddr *)&addr, &addrlen);
@@ -191,54 +207,47 @@ static void bad_responses (void)
   val = connect (servfd, (struct sockaddr *)&addr, addrlen);
   assert (val == 0);
 
-  /* Send crap response */
-  val = getsockname (servfd, (struct sockaddr *)&addr, &addrlen);
-  assert (val == 0);
-  val = stun_bind_process (ctx, "foobar", 6,
-                           (struct sockaddr *)&addr, &addrlen);
-  assert (val == EAGAIN);
-
   /* Send request instead of response */
   val = getsockname (servfd, (struct sockaddr *)&addr, &addrlen);
   assert (val == 0);
   len = recv (servfd, buf, 1000, MSG_DONTWAIT);
   assert (len >= 20);
 
-  val = stun_bind_process (ctx, buf, len,
-                           (struct sockaddr *)&addr, &addrlen);
-  assert (val == EAGAIN);
+  assert (stun_agent_validate (&agent, &msg, buf, len, NULL, NULL)
+      == STUN_VALIDATION_SUCCESS);
+
+  val = stun_usage_bind_process (&msg,
+      (struct sockaddr *)&addr, &addrlen, (struct sockaddr *)&addr, &addrlen);
+  assert (val == STUN_USAGE_BIND_RETURN_RETRY);
 
   /* Send response with wrong request type */
   buf[0] |= 0x03;
-  val = stun_bind_process (ctx, buf, len,
-                           (struct sockaddr *)&addr, &addrlen);
-  assert (val == EAGAIN);
   buf[0] ^= 0x02;
 
   /* Send error response without ERROR-CODE */
   buf[1] |= 0x10;
-  val = stun_bind_process (ctx, buf, len,
-                           (struct sockaddr *)&addr, &addrlen);
-  assert (val == EAGAIN);
+  val = stun_usage_bind_process (&msg,
+      (struct sockaddr *)&addr, &addrlen, (struct sockaddr *)&addr, &addrlen);
+  assert (val == STUN_USAGE_BIND_RETURN_RETRY);
 
-  stun_bind_cancel (ctx);
   close (fd);
   close (servfd);
 }
 
-
 /** Various responses test */
 static void responses (void)
 {
-  stun_bind_t *ctx;
   struct sockaddr_storage addr;
   socklen_t addrlen = sizeof (addr);
   ssize_t val;
   size_t len;
   int servfd, fd;
   uint8_t buf[STUN_MAX_MESSAGE_SIZE];
+  uint8_t req[STUN_MAX_MESSAGE_SIZE];
+  size_t req_len;
   StunAgent agent;
   StunMessage msg;
+  StunMessage req_msg;
 
   uint16_t known_attributes[] = {
     STUN_ATTRIBUTE_MAPPED_ADDRESS,
@@ -274,8 +283,11 @@ static void responses (void)
   assert (val == 0);
 
   /* Send error response */
-  val = stun_bind_start (&ctx, fd, NULL, 0, 0);
-  assert (val == 0);
+  req_len = stun_usage_bind_create (&agent, &req_msg, req, sizeof(req));
+  assert (req_len > 0);
+
+  val = send (fd, req, req_len, MSG_DONTWAIT | MSG_NOSIGNAL);
+  assert (val >= 0);
 
   val = recv (servfd, buf, 1000, MSG_DONTWAIT);
   assert (val >= 0);
@@ -289,38 +301,17 @@ static void responses (void)
 
   val = getsockname (servfd, (struct sockaddr *)&addr, &addrlen);
   assert (val == 0);
-  val = stun_bind_process (ctx, buf, len,
-                           (struct sockaddr *)&addr, &addrlen);
-  assert (val == ECONNREFUSED);
 
-  /* Send response with an unknown attribute */
-  val = stun_bind_start (&ctx, fd, NULL, 0, 0);
-  assert (val == 0);
-
-  val = recv (servfd, buf, 1000, MSG_DONTWAIT);
-  assert (val >= 0);
-
-  assert (stun_agent_validate (&agent, &msg, buf, val, NULL, NULL)
-      == STUN_VALIDATION_SUCCESS);
-
-  stun_agent_init_response (&agent, &msg, buf, sizeof (buf), &msg);
-  val = stun_message_append_string (&msg, 0x6000,
-                            "This is an unknown attribute!");
-  assert (val == 0);
-  len = stun_agent_finish_message (&agent, &msg, NULL, 0);
-  assert (len > 0);
-
-
-  val = getsockname (servfd, (struct sockaddr *)&addr, &addrlen);
-  assert (val == 0);
-
-  val = stun_bind_process (ctx, buf, len,
-                           (struct sockaddr *)&addr, &addrlen);
-  assert (val == EPROTO);
+  val = stun_usage_bind_process (&msg,
+      (struct sockaddr *)&addr, &addrlen, (struct sockaddr *)&addr, &addrlen);
+  assert (val == STUN_USAGE_BIND_RETURN_ERROR);
 
   /* Send response with a no mapped address at all */
-  val = stun_bind_start (&ctx, fd, NULL, 0, 0);
-  assert (val == 0);
+  req_len = stun_usage_bind_create (&agent, &req_msg, req, sizeof(req));
+  assert (req_len > 0);
+
+  val = send (fd, req, req_len, MSG_DONTWAIT | MSG_NOSIGNAL);
+  assert (val >= 0);
 
   val = recv (servfd, buf, 1000, MSG_DONTWAIT);
   assert (val >= 0);
@@ -332,16 +323,22 @@ static void responses (void)
   len = stun_agent_finish_message (&agent, &msg, NULL, 0);
   assert (len > 0);
 
+  assert (stun_agent_validate (&agent, &msg, buf, len, NULL, NULL)
+      == STUN_VALIDATION_SUCCESS);
+
   val = getsockname (servfd, (struct sockaddr *)&addr, &addrlen);
   assert (val == 0);
 
-  val = stun_bind_process (ctx, buf, len,
-                           (struct sockaddr *)&addr, &addrlen);
-  assert (val == ENOENT);
+  val = stun_usage_bind_process (&msg,
+      (struct sockaddr *)&addr, &addrlen, (struct sockaddr *)&addr, &addrlen);
+  assert (val == STUN_USAGE_BIND_RETURN_ERROR);
 
   /* Send old-style response */
-  val = stun_bind_start (&ctx, fd, NULL, 0, 0);
-  assert (val == 0);
+  req_len = stun_usage_bind_create (&agent, &req_msg, req, sizeof(req));
+  assert (req_len > 0);
+
+  val = send (fd, req, req_len, MSG_DONTWAIT | MSG_NOSIGNAL);
+  assert (val >= 0);
 
   val = recv (servfd, buf, 1000, MSG_DONTWAIT);
   assert (val >= 0);
@@ -356,12 +353,15 @@ static void responses (void)
   len = stun_agent_finish_message (&agent, &msg, NULL, 0);
   assert (len > 0);
 
+  assert (stun_agent_validate (&agent, &msg, buf, len, NULL, NULL)
+      == STUN_VALIDATION_SUCCESS);
+
   val = getsockname (servfd, (struct sockaddr *)&addr, &addrlen);
   assert (val == 0);
 
-  val = stun_bind_process (ctx, buf, len,
-                           (struct sockaddr *)&addr, &addrlen);
-  assert (val == 0);
+  val = stun_usage_bind_process (&msg,
+      (struct sockaddr *)&addr, &addrlen, (struct sockaddr *)&addr, &addrlen);
+  assert (val == STUN_USAGE_BIND_RETURN_SUCCESS);
 
   /* End */
   close (servfd);
@@ -370,12 +370,28 @@ static void responses (void)
   assert (val == 0);
 }
 
-
 static void keepalive (void)
 {
   struct sockaddr_storage addr;
   socklen_t addrlen = sizeof (addr);
   int val, servfd, fd;
+
+  uint8_t buf[STUN_MAX_MESSAGE_SIZE];
+  size_t len;
+  StunAgent agent;
+  StunMessage msg;
+
+  uint16_t known_attributes[] = {
+    STUN_ATTRIBUTE_MAPPED_ADDRESS,
+    STUN_ATTRIBUTE_XOR_MAPPED_ADDRESS,
+    STUN_ATTRIBUTE_XOR_INTERNAL_ADDRESS,
+    STUN_ATTRIBUTE_PRIORITY,
+    STUN_ATTRIBUTE_USERNAME,
+    STUN_ATTRIBUTE_MESSAGE_INTEGRITY,
+    STUN_ATTRIBUTE_ERROR_CODE, 0};
+
+  stun_agent_init (&agent, known_attributes,
+      STUN_COMPATIBILITY_3489BIS, 0);
 
   /* Allocate a local UDP port for server */
   servfd = listen_dgram ();
@@ -389,13 +405,19 @@ static void keepalive (void)
   assert (fd != -1);
 
   /* Keep alive sending smoke test */
-  val = stun_bind_keepalive (fd, (struct sockaddr *)&addr, addrlen, 0);
-  assert (val == 0);
+  len = stun_usage_bind_keepalive (&agent, &msg, buf, sizeof(buf));
+  assert (len == 28);
+
+  val = sendto (fd, buf, len, MSG_DONTWAIT | MSG_NOSIGNAL,
+      (struct sockaddr *)&addr, addrlen);
+  assert (val >= 0);
+
 
   /* Wrong address family test */
   addr.ss_family = addr.ss_family == AF_INET ? AF_INET6 : AF_INET;
-  val = stun_bind_keepalive (fd, (struct sockaddr *)&addr, addrlen, 0);
-  assert (val != 0);
+  val = sendto (fd, buf, len, MSG_DONTWAIT | MSG_NOSIGNAL,
+      (struct sockaddr *)&addr, addrlen);
+  assert (val < 0);
 
   /* End */
   close (servfd);
@@ -407,7 +429,7 @@ static void keepalive (void)
 
 static void test (void (*func) (void), const char *name)
 {
-  //alarm (10);
+  alarm (10);
 
   printf ("%s test... ", name);
   func ();
