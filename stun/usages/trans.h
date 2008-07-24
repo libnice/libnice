@@ -44,33 +44,14 @@
 # include <sys/types.h>
 # include <sys/socket.h>
 
-# include "timer.h"
-#include "stun/stunagent.h"
 
 typedef struct stun_trans_s
 {
-  stun_timer_t timer;
-  unsigned  flags;
 
-  struct
-  {
-    size_t  length, offset;
-    uint8_t buf[STUN_MAX_MESSAGE_SIZE];
-  } msg;
-  StunMessage message;
-
-  struct
-  {
-    int                     fd;
-    socklen_t               dstlen;
-    struct sockaddr_storage dst;
-  } sock;
-
-  struct
-  {
-    size_t  length;
-    uint8_t *value;
-  } key;
+  int fd;
+  int own_fd;
+  socklen_t dstlen;
+  struct sockaddr_storage dst;
 } stun_trans_t;
 
 
@@ -86,8 +67,8 @@ extern "C" {
  * @param srv STUN server socket address (ignored if @a srvlen is 0)
  * @param srvlen STUN server socket address length (or 0 @a fd is connected)
  */
-int stun_trans_init (stun_trans_t *restrict tr, int fd,
-                     const struct sockaddr *restrict srv, socklen_t srvlen);
+int stun_trans_init (stun_trans_t *tr, int fd,
+                     const struct sockaddr *srv, socklen_t srvlen);
 
 /**
  * Initializes a new STUN request transaction with its dedicated socket
@@ -98,24 +79,14 @@ int stun_trans_init (stun_trans_t *restrict tr, int fd,
  * @param srv STUN server socket address (ignored if @a srvlen is 0)
  * @param srvlen STUN server socket address length (or 0 @a fd is connected)
  */
-int stun_trans_create (stun_trans_t *restrict tr, int sotype, int proto,
-                       const struct sockaddr *restrict srv, socklen_t srvlen);
+int stun_trans_create (stun_trans_t *tr, int sotype, int proto,
+                       const struct sockaddr *srv, socklen_t srvlen);
 
 /**
  * Releases resources allocated by stun_trans_init() or stun_trans_create(),
  * and cancel the transaction if still pending.
  */
-void stun_trans_deinit (stun_trans_t *restrict tr);
-
-int stun_trans_start (stun_trans_t *restrict tr);
-
-/**
- * This is meant to integrate with I/O pooling loops and event frameworks.
- *
- * @return recommended maximum delay (in milliseconds) to wait for a
- * response.
- */
-unsigned stun_trans_timeout (const stun_trans_t *tr);
+void stun_trans_deinit (stun_trans_t *tr);
 
 /**
  * This is meant to integrate with I/O polling loops and event frameworks.
@@ -124,36 +95,7 @@ unsigned stun_trans_timeout (const stun_trans_t *tr);
  * Always succeeds.
  */
 int stun_trans_fd (const stun_trans_t *tr);
-
-/**
- * This is meant to integrate with I/O polling loops and event frameworks.
- *
- * @return whether the transaction waits for input (from the network).
- */
-bool stun_trans_reading (const stun_trans_t *tr);
-
-/**
- * This is meant to integrate with I/O polling loops and event frameworks.
- *
- * @return whether the transaction waits for output (to the network).
- */
-bool stun_trans_writing (const stun_trans_t *tr);
-
-/**
- * Refreshes a STUN request transaction state according to current time,
- * retransmits request if needed. This function should be called when
- * stun_trans_timeout() reaches zero
- *
- * @return ETIMEDOUT if the transaction has timed out, or EAGAIN if it is
- * still pending.
- */
-int stun_trans_tick (stun_trans_t *tr);
-
-int stun_trans_recv (stun_trans_t *tr, uint8_t *buf, size_t buflen);
-
-int stun_trans_preprocess (StunAgent *agent,
-    stun_trans_t *restrict tr, int *code,
-    const void *restrict buf, size_t len);
+int stun_trans_poll (stun_trans_t *tr, unsigned int delay);
 
 /**
  * Safe wrapper around sendto()
@@ -165,16 +107,16 @@ int stun_trans_preprocess (StunAgent *agent,
  * This can be used to send non-requests message, i.e. whenever the
  * transaction is not used.
  */
-ssize_t stun_sendto (int fd, const uint8_t *buf, size_t len,
+ssize_t stun_trans_sendto (stun_trans_t *tr, const uint8_t *buf, size_t len,
                      const struct sockaddr *dst, socklen_t dstlen);
 
-ssize_t stun_recvfrom (int fd, uint8_t *buf, size_t maxlen,
+ssize_t stun_trans_recvfrom (stun_trans_t *tr, uint8_t *buf, size_t maxlen,
                        struct sockaddr *restrict src,
                        socklen_t *restrict srclen);
 
-ssize_t stun_send (int fd, const uint8_t *buf, size_t len);
+ssize_t stun_trans_send (stun_trans_t *tr, const uint8_t *buf, size_t len);
 
-ssize_t stun_recv (int fd, uint8_t *buf, size_t maxlen);
+ssize_t stun_trans_recv (stun_trans_t *tr, uint8_t *buf, size_t maxlen);
 
 # ifdef __cplusplus
 }
