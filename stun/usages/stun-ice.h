@@ -47,6 +47,21 @@
 extern "C" {
 # endif
 
+typedef enum {
+  STUN_USAGE_ICE_COMPATIBILITY_ID19,
+  STUN_USAGE_ICE_COMPATIBILITY_GOOGLE,
+  STUN_USAGE_ICE_COMPATIBILITY_MSN,
+} StunUsageIceCompatibility;
+
+size_t
+stun_usage_ice_conncheck_create (StunAgent *agent, StunMessage *msg,
+    uint8_t *buffer, size_t buffer_len,
+    const uint8_t *username, const size_t username_len,
+    const uint8_t *password, const size_t password_len,
+    bool cand_use, bool controlling, uint32_t priority,
+    uint64_t tie, StunUsageIceCompatibility compatibility);
+
+
 /**
  * Tries to parse a STUN connectivity check (Binding request) and format a
  * response accordingly.
@@ -73,27 +88,24 @@ extern "C" {
  * response, or 0 if no error response should be sent.
  */
 int
-stun_conncheck_reply (StunAgent *agent, StunMessage *req,
-    const uint8_t *rbuf, size_t rlen,
+stun_usage_ice_conncheck_create_reply (StunAgent *agent, StunMessage *req,
     StunMessage *msg, uint8_t *buf, size_t *plen,
     const struct sockaddr *restrict src, socklen_t srclen,
-    const uint8_t *local_ufrag, const size_t ufrag_len,
-    const uint8_t *password, const size_t password_len,
-    bool *restrict control, uint64_t tie, uint32_t compat);
+    bool *restrict control, uint64_t tie);
 
 /**
  * Extracts the priority from a STUN message.
  * @param msg valid STUN message.
  * @return host byte order priority, or 0 if not specified.
  */
-uint32_t stun_conncheck_priority (const StunMessage *msg);
+uint32_t stun_usage_ice_conncheck_priority (const StunMessage *msg);
 
 /**
  * Extracts the "use candidate" flag from a STUN message.
  * @param msg valid STUN message.
  * @return true if the flag is set, false if not.
  */
-bool stun_conncheck_use_candidate (const StunMessage *msg);
+bool stun_usage_ice_conncheck_use_candidate (const StunMessage *msg);
 
 # ifdef __cplusplus
 }

@@ -50,6 +50,49 @@
 #include "stun-ice.h"
 
 
+size_t
+stun_usage_ice_conncheck_create (StunAgent *agent, StunMessage *msg,
+    uint8_t *buffer, size_t buffer_len,
+    const uint8_t *username, const size_t username_len,
+    const uint8_t *password, const size_t password_len,
+    bool cand_use, bool controlling, uint32_t priority,
+    uint64_t tie, StunUsageIceCompatibility compatibility)
+{
+  int val;
+
+  stun_agent_init_request (agent, msg, buffer, buffer_len, STUN_BINDING);
+
+  if (compatibility == STUN_USAGE_ICE_COMPATIBILITY_ID19) {
+    if (cand_use)
+    {
+      val = stun_message_append_flag (msg, STUN_ATTRIBUTE_USE_CANDIDATE);
+      if (val)
+        return 0;
+    }
+
+    val = stun_message_append32 (msg, STUN_ATTRIBUTE_PRIORITY, priority);
+    if (val)
+      return 0;
+
+    if (controlling)
+      val = stun_message_append64 (msg, STUN_ATTRIBUTE_ICE_CONTROLLING, tie);
+    else
+      val = stun_message_append64 (msg, STUN_ATTRIBUTE_ICE_CONTROLLED, tie);
+    if (val)
+      return 0;
+  }
+
+  if (username) {
+    val = stun_message_append_bytes (msg, STUN_ATTRIBUTE_USERNAME,
+        username, username_len);
+    if (val)
+      return 0;
+  }
+
+  return stun_agent_finish_message (agent, msg, password, password_len);
+
+}
+
 static int
 stun_bind_error (StunAgent *agent, StunMessage *msg,
     uint8_t *buf, size_t *plen, const StunMessage *req,
@@ -75,25 +118,17 @@ stun_bind_error (StunAgent *agent, StunMessage *msg,
   return 1;
 }
 
-
 int
-stun_conncheck_reply (StunAgent *agent, StunMessage *req,
-    const uint8_t *rbuf, size_t rlen,
+stun_usage_ice_conncheck_create_reply (StunAgent *agent, StunMessage *req,
     StunMessage *msg, uint8_t *buf, size_t *plen,
-    const struct sockaddr *restrict src, socklen_t srclen,
-    const uint8_t *local_ufrag, const size_t ufrag_len,
-    const uint8_t *password, const size_t password_len,
-    bool *restrict control, uint64_t tie, uint32_t compat)
+    const struct sockaddr *src, socklen_t srclen,
+    bool *restrict control, uint64_t tie)
 {
   const char *username = NULL;
   uint16_t username_len;
   size_t len = *plen;
   uint64_t q;
   int val = 0, ret = 0;
-  stun_validater_data validater_data[] = {
-    {local_ufrag, ufrag_len, password, password_len},
-    {NULL, 0, NULL, 0}};
-  StunValidationStatus valid;
 
 
 #define err( code ) \
@@ -102,30 +137,6 @@ stun_conncheck_reply (StunAgent *agent, StunMessage *req,
 
   *plen = 0;
   stun_debug ("STUN Reply (buffer size = %u)...\n", (unsigned)len);
-
-  valid = stun_agent_validate (agent, req, rbuf, rlen,
-      stun_agent_default_validater, validater_data);
-
-  stun_debug ("validated : %d\n", valid);
-
-  if (valid == STUN_VALIDATION_UNKNOWN_REQUEST_ATTRIBUTE)
-  {
-    stun_debug (" Unknown mandatory attributes in message.\n");
-    len = stun_agent_build_unknown_attributes_error (agent, msg, buf, len, req);
-    if (len == 0)
-      goto failure;
-
-    *plen = len;
-    return EPROTO;
-  }
-
-  if (valid == STUN_VALIDATION_NOT_STUN ||
-      valid == STUN_VALIDATION_INCOMPLETE_STUN ||
-      valid == STUN_VALIDATION_BAD_REQUEST)
-  {
-    stun_debug (" Incorrectly multiplexed STUN message ignored.\n");
-    return EINVAL;
-  }
 
   if (stun_message_get_class (req) != STUN_REQUEST)
   {
@@ -140,29 +151,6 @@ stun_conncheck_reply (StunAgent *agent, StunMessage *req,
          stun_message_get_method (req));
     err (STUN_ERROR_BAD_REQUEST);
     return EPROTO;
-  }
-
-  if (valid == STUN_VALIDATION_UNAUTHORIZED) {
-    stun_debug (" Integrity check failed.\n");
-    err (STUN_ERROR_UNAUTHORIZED);
-    return EPERM;
-  }
-  if (valid == STUN_VALIDATION_UNAUTHORIZED_BAD_REQUEST) {
-    stun_debug (" Integrity check failed.\n");
-    err (STUN_ERROR_BAD_REQUEST);
-    return EPERM;
-  }
-
-  username = (const char *)stun_message_find (req,
-      STUN_ATTRIBUTE_USERNAME, &username_len);
-
-  /* Check again the username in case the agent has IGNORE_CREDENTIALS flag.
-     We only need to check the username and not care about the password */
-  if (ufrag_len != username_len ||
-      memcmp (local_ufrag, username, username_len) != 0) {
-    stun_debug (" Username check failed.\n");
-    err (STUN_ERROR_UNAUTHORIZED);
-    return EPERM;
   }
 
   /* Role conflict handling */
@@ -195,7 +183,10 @@ stun_conncheck_reply (StunAgent *agent, StunMessage *req,
     stun_debug ("STUN Role not specified by peer!\n");
 #endif
 
-  stun_agent_init_response (agent, msg, buf, len, req);
+  if (stun_agent_init_response (agent, msg, buf, len, req) == FALSE) {
+    stun_debug ("Unable to create response\n");
+    goto failure;
+  }
   if (!stun_has_cookie (msg)) {
     val = stun_message_append_addr (msg, STUN_ATTRIBUTE_MAPPED_ADDRESS, src, srclen);
   } else {
@@ -203,18 +194,20 @@ stun_conncheck_reply (StunAgent *agent, StunMessage *req,
         src, srclen);
   }
 
-  if (val)
-  {
+  if (val) {
     stun_debug (" Mapped address problem: %s\n", strerror (val));
     goto failure;
   }
 
+  username = (const char *)stun_message_find (req,
+      STUN_ATTRIBUTE_USERNAME, &username_len);
   if (username) {
     stun_message_append_bytes (msg, STUN_ATTRIBUTE_USERNAME,
         username, username_len);
   }
 
-  len = stun_agent_finish_message (agent, msg, password, password_len);
+  /* the stun agent will automatically use the password of the request */
+  len = stun_agent_finish_message (agent, msg, NULL, 0);
   if (len == 0)
     goto failure;
 
@@ -230,7 +223,7 @@ failure:
 #undef err
 
 
-uint32_t stun_conncheck_priority (const StunMessage *msg)
+uint32_t stun_usage_ice_conncheck_priority (const StunMessage *msg)
 {
   uint32_t value;
 
@@ -240,7 +233,110 @@ uint32_t stun_conncheck_priority (const StunMessage *msg)
 }
 
 
-bool stun_conncheck_use_candidate (const StunMessage *msg)
+bool stun_usage_ice_conncheck_use_candidate (const StunMessage *msg)
 {
   return !stun_message_find_flag (msg, STUN_ATTRIBUTE_USE_CANDIDATE);
 }
+
+
+
+#if 0
+
+/** STUN NAT control */
+struct stun_nested_s
+{
+  stun_bind_t *bind;
+  struct sockaddr_storage mapped;
+  uint32_t refresh;
+  uint32_t bootnonce;
+};
+
+
+int stun_nested_start (stun_nested_t **restrict context, int fd,
+                       const struct sockaddr *restrict mapad,
+                       const struct sockaddr *restrict natad,
+                       socklen_t adlen, uint32_t refresh, int compat)
+{
+  stun_nested_t *ctx;
+  int val;
+
+  if (adlen > sizeof (ctx->mapped))
+    return ENOBUFS;
+
+  ctx = malloc (sizeof (*ctx));
+  memcpy (&ctx->mapped, mapad, adlen);
+  ctx->refresh = 0;
+  ctx->bootnonce = 0;
+
+  /* TODO: forcily set port to 3478 */
+  val = stun_bind_alloc (&ctx->bind, fd, natad, adlen, compat);
+  if (val)
+    return val;
+
+  *context = ctx;
+
+  val = stun_message_append32 (&ctx->bind->trans.message,
+                       STUN_ATTRIBUTE_REFRESH_INTERVAL, refresh);
+  if (val)
+    goto error;
+
+  val = stun_agent_finish_message (&ctx->bind->agent,
+      &ctx->bind->trans.message, NULL, 0);
+  if (val)
+    goto error;
+
+  val = stun_trans_start (&ctx->bind->trans);
+  if (val)
+    goto error;
+
+  return 0;
+
+error:
+  stun_bind_cancel (ctx->bind);
+  return val;
+}
+
+
+int stun_nested_process (stun_nested_t *restrict ctx,
+                         const void *restrict buf, size_t len,
+                         struct sockaddr *restrict intad, socklen_t *adlen)
+{
+  struct sockaddr_storage mapped;
+  socklen_t mappedlen = sizeof (mapped);
+  int val;
+
+  assert (ctx != NULL);
+
+  val = stun_bind_process (ctx->bind, buf, len,
+                           (struct sockaddr *)&mapped, &mappedlen);
+  if (val)
+    return val;
+
+  /* Mapped address mistmatch! (FIXME: what are we really supposed to do
+   * in this case???) */
+  if (sockaddrcmp ((struct sockaddr *)&mapped,
+                   (struct sockaddr *)&ctx->mapped))
+  {
+    stun_debug (" Mapped address mismatch! (Symmetric NAT?)\n");
+    return ECONNREFUSED;
+  }
+
+  val = stun_message_find_xor_addr (&ctx->bind->trans.message,
+      STUN_ATTRIBUTE_XOR_INTERNAL_ADDRESS,
+      intad, adlen);
+  if (val)
+  {
+    stun_debug (" No XOR-INTERNAL-ADDRESS: %s\n", strerror (val));
+    return val;
+  }
+
+  stun_message_find32 (&ctx->bind->trans.message,
+      STUN_ATTRIBUTE_REFRESH_INTERVAL, &ctx->refresh);
+  /* TODO: give this to caller */
+
+  stun_debug (" Internal address found!\n");
+  stun_bind_cancel (ctx->bind);
+  ctx->bind = NULL;
+  return 0;
+}
+#endif
