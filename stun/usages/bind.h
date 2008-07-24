@@ -41,12 +41,6 @@
  * @brief STUN binding discovery
  */
 
-# ifndef IPPORT_STUN
-/** Default port for STUN binding discovery */
-#  define IPPORT_STUN  3478
-# endif
-
-typedef struct stun_bind_s stun_bind_t;
 # include <stdbool.h>
 # include <stdint.h>
 
@@ -56,156 +50,28 @@ typedef struct stun_bind_s stun_bind_t;
 extern "C" {
 # endif
 
-/**
- * Performs STUN Binding discovery in blocking mode.
- *
- * @param fd socket to use for binding discovery, or -1 to create one
- * @param srv STUN server socket address
- * @param srvlen STUN server socket address byte length
- * @param addr [OUT] pointer to a socket address structure to hold 
- * discovered binding (Remember that it can be an IPv6 even if the socket
- * local family is IPv4, so you should use a sockaddr_storage buffer)
- * @param addrlen [IN/OUT] pointer to the byte length of addr, set to the byte
- * length of the binding socket address on return.
- *
- * @return 0 on success, a standard error value in case of error.
- * In case of error, addr and addrlen are undefined.
- */
-int stun_bind_run (int fd,
-                   const struct sockaddr *restrict srv, socklen_t srvlen,
-                   struct sockaddr *restrict addr, socklen_t *addrlen, int compat);
-
-/**
- * Starts STUN Binding discovery in non-blocking mode.
- *
- * @param context pointer to an opaque pointer that will be passed to
- * other stun_bind_*() functions afterward
- * @param fd socket to use for discovery, or -1 to create one
- * @param srv STUN server socket address
- * @param srvlen STUN server socket address length
- *
- * @return 0 on success, a standard error value otherwise.
- */
-int stun_bind_start (stun_bind_t **restrict context, int fd,
-                     const struct sockaddr *restrict srv, socklen_t srvlen,
-                     int compat);
-
-/**
- * Aborts a running STUN Binding discovery.
- * @param context binding discovery (or conncheck) context pointer
- * to be released.
- */
-void stun_bind_cancel (stun_bind_t *context);
-
-/**
- * This is meant to integrate with I/O pooling loops and event frameworks.
- *
- * @param context binding discovery (or conncheck) context pointer
- * @return recommended maximum delay (in milliseconds) to wait for a
- * response.
- */
-unsigned stun_bind_timeout (const stun_bind_t *context);
-
-/**
- * Handles retransmission timeout, and sends request retransmit if needed.
- * This should be called whenever event polling indicates that
- * stun_bind_timeout() has elapsed. It is however safe to call this earlier
- * (in which case retransmission will not occur) or later (in which case
- * late retransmission will be done).
- *
- * @param context binding discovery (or conncheck) context pointer
- *
- * @return ETIMEDOUT if the transaction has timed out, or EAGAIN if it is
- * still pending.
- *
- * If anything except EAGAIN (but including zero) is returned, the context
- * is free'd and must no longer be used.
- */
-int stun_bind_elapse (stun_bind_t *context);
-
-/**
- * Gives data to be processed within the context of a STUN Binding discovery
- * or ICE connectivity check.
- *
- * @param context context (from stun_bind_start() or stun_conncheck_start())
- * @param buf pointer to received data to be processed
- * @param len byte length of data at @a buf
- * @param addr socket address pointer to receive mapped address in case of
- * successful processing
- * @param addrlen [IN/OUT] pointer to the size of the socket address buffer
- * at @a addr upon entry, set to the useful size on success
- *
- * @return 0 on success, an error code otherwise:
- * - EAGAIN: ignored invalid message (non-fatal error)
- * - ECONNRESET: role conflict error from server
- * - ECONNREFUSED: any other fatal error message from server
- * - EPROTO: unsupported message from server
- * - ENOENT: no mapped address in message from server
- * - EAFNOSUPPORT: unsupported mapped address family from server
- * - EINVAL: invalid mapped address from server
- *
- * If anything except EAGAIN (but including zero) is returned, the context
- * is free'd and must no longer be used.
- */
-int stun_bind_process (stun_bind_t *restrict context,
-                       const void *restrict buf, size_t len,
-                       struct sockaddr *restrict addr, socklen_t *addrlen);
-
-/**
- * Sends a STUN Binding indication, aka ICE keep-alive packet.
- *
- * @param fd socket descriptor to send packet through
- * @param srv destination socket address (possibly NULL if connected)
- * @param srvlen destination socket address length (possibly 0)
- * @return 0 on success, an error code from sendto() otherwise.
- */
-int stun_bind_keepalive (int fd, const struct sockaddr *restrict srv,
-                         socklen_t srvlen, int compat);
-/**
- * Starts a connectivity check using STUN Binding discovery.
- *
- * @param context pointer to an opaque pointer that will be passed to
- * stun_bind_resume() afterward
- * @param fd socket to use for discovery, or -1 to create one
- * @param srv STUN server socket address
- * @param srvlen STUN server socket address length
- * @param username nul-terminated username for authentication
- * (need not be kept valid after return)
- * @param password nul-terminated shared secret (ICE password)
- * (need not be kept valid after return)
- * @param cand_use whether to include a USE-CANDIDATE flag
- * @param priority host-byte order PRIORITY value
- * @param controlling whether we are in controlling (true) or
- * controlled (false) state
- * @param tie control tie breaker value (host-byte order)
- *
- * @return 0 on success, a standard error value otherwise.
- */
-int stun_conncheck_start (stun_bind_t **restrict context, int fd,
-    const struct sockaddr *restrict srv, socklen_t srvlen,
-    const char *username, const char *password,
-    bool cand_use, bool controlling, uint32_t priority,
-    uint64_t tie, uint32_t compat);
+typedef enum {
+  STUN_USAGE_BIND_RETURN_SUCCESS,
+  STUN_USAGE_BIND_RETURN_ERROR,
+  STUN_USAGE_BIND_RETURN_RETRY,
+  STUN_USAGE_BIND_RETURN_ALTERNATE_SERVER,
+  STUN_USAGE_BIND_RETURN_TIMEOUT,
+} StunUsageBindReturn;
 
 
+size_t stun_usage_bind_create (StunAgent *agent, StunMessage *msg,
+    uint8_t *buffer, size_t buffer_len);
 
-/**
- * <b>Provisional</b> and incomplete STUN NAT control API
- * Subject to change.
- */
-typedef struct stun_nested_s stun_nested_t;
+StunUsageBindReturn stun_usage_bind_process (StunMessage *msg,
+    struct sockaddr *addr, socklen_t *addrlen,
+    struct sockaddr *alternate_server, socklen_t *alternate_server_len);
 
-int stun_nested_start (stun_nested_t **restrict context, int fd,
-                       const struct sockaddr *restrict mapad,
-                       const struct sockaddr *restrict natad,
-                       socklen_t adlen, uint32_t refresh, int compat);
-
-int stun_nested_process (stun_nested_t *restrict ctx,
-                         const void *restrict buf, size_t len,
-                         struct sockaddr *restrict intad, socklen_t *adlen);
+size_t stun_usage_bind_keepalive (StunAgent *agent, StunMessage *msg,
+    uint8_t *buf, size_t len);
 
 
-
+StunUsageBindReturn stun_usage_bind_run (const struct sockaddr *srv,
+    socklen_t srvlen, struct sockaddr *addr, socklen_t *addrlen);
 
 # ifdef __cplusplus
 }
