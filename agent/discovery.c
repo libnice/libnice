@@ -207,6 +207,30 @@ static void priv_assign_foundation (NiceAgent *agent, NiceCandidate *candidate)
   g_snprintf (candidate->foundation, NICE_CANDIDATE_MAX_FOUNDATION, "%u", agent->next_candidate_id++);
 }
 
+static
+void priv_generate_msn_credentials (NiceAgent *agent, NiceCandidate *candidate)
+{
+
+  if (agent->compatibility == NICE_COMPATIBILITY_MSN) {
+    guchar username[32];
+    guchar password[16];
+
+    if (candidate->username)
+      g_free (candidate->username);
+    if (candidate->password)
+      g_free (candidate->password);
+
+    nice_rng_generate_bytes (agent->rng, 32, (gchar *)username);
+    nice_rng_generate_bytes (agent->rng, 16, (gchar *)password);
+
+    candidate->username = g_base64_encode (username, 32);
+    candidate->password = g_base64_encode (password, 16);
+
+  }
+
+
+}
+
 /**
  * Creates a local host candidate for 'component_id' of stream
  * 'stream_id'.
@@ -238,6 +262,7 @@ NiceCandidate *discovery_add_local_host_candidate (
       candidate->base_addr = *address;
       candidate->priority = nice_candidate_ice_priority (candidate);
 
+      priv_generate_msn_credentials (agent, candidate);
       priv_assign_foundation (agent, candidate);
 
       /* note: candidate username and password are left NULL as stream 
@@ -319,6 +344,7 @@ discovery_add_server_reflexive_candidate (
     candidate->sockptr = base_socket;
     candidate->base_addr = base_socket->addr;
 
+    priv_generate_msn_credentials (agent, candidate);
     priv_assign_foundation (agent, candidate);
 
     result = priv_add_local_candidate_pruned (component, candidate);
@@ -367,6 +393,8 @@ discovery_add_peer_reflexive_candidate (
     candidate->component_id = component_id;
     candidate->addr = *address;
     candidate->base_addr = base_socket->addr;
+
+    priv_generate_msn_credentials (agent, candidate);
     priv_assign_foundation (agent, candidate);
 
     /* step: link to the base candidate+socket */
@@ -432,6 +460,8 @@ NiceCandidate *discovery_learn_remote_peer_reflexive_candidate (
     candidate->priority = priority;;
     candidate->stream_id = stream->id;
     candidate->component_id = component->id;
+
+    priv_generate_msn_credentials (agent, candidate);
     g_snprintf (candidate->foundation, NICE_CANDIDATE_MAX_FOUNDATION, "%u", next_remote_id);
     candidate->sockptr = NULL; /* not stored for remote candidates */
     /* note: candidate username and password are left NULL as stream 
