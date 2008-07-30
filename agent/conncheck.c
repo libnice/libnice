@@ -967,10 +967,11 @@ gboolean conn_check_prune_stream (NiceAgent *agent, Stream *stream)
  */
 static
 size_t priv_gen_username (NiceAgent *agent, guint component_id,
-    uint8_t *remote, size_t remote_len, uint8_t *local, size_t local_len,
-    uint8_t *dest, guint dest_len)
+    gchar *remote, gchar *local, uint8_t *dest, guint dest_len)
 {
   guint len = 0;
+  gsize remote_len = strlen (remote);
+  gsize local_len = strlen (local);
 
   if (agent->compatibility == NICE_COMPATIBILITY_ID19 &&
       dest_len >= remote_len + local_len + 1) {
@@ -989,10 +990,18 @@ size_t priv_gen_username (NiceAgent *agent, guint component_id,
   } else if (agent->compatibility == NICE_COMPATIBILITY_MSN) {
     gchar component_str[10];
     g_snprintf (component_str, sizeof(component_str), "%d", component_id);
+    guchar *local_decoded = NULL;
+    guchar *remote_decoded = NULL;
+    gsize local_decoded_len;
+    gsize remote_decoded_len;
 
-    if (dest_len >= remote_len + local_len + 3 + 2*strlen (component_str)) {
-      memcpy (dest, remote, remote_len);
-      len += remote_len;
+    local_decoded = g_base64_decode (local, &local_decoded_len);
+    remote_decoded = g_base64_decode (remote, &remote_decoded_len);
+
+    if (dest_len >= remote_decoded_len + local_decoded_len +
+        3 + 2*strlen (component_str)) {
+      memcpy (dest, remote_decoded, remote_decoded_len);
+      len += remote_decoded_len;
       memcpy (dest + len, ":", 1);
       len++;
       memcpy (dest + len, component_str, strlen (component_str));
@@ -1001,13 +1010,16 @@ size_t priv_gen_username (NiceAgent *agent, guint component_id,
       memcpy (dest + len, ":", 1);
       len++;
 
-      memcpy (dest + len, local, local_len);
-      len += local_len;
+      memcpy (dest + len, local_decoded, local_decoded_len);
+      len += local_decoded_len;
       memcpy (dest + len, ":", 1);
       len++;
       memcpy (dest + len, component_str, strlen (component_str));;
       len += strlen (component_str);
     }
+
+    g_free (local_decoded);
+    g_free (remote_decoded);
   }
 
   return len;
@@ -1023,42 +1035,34 @@ size_t priv_create_username (NiceAgent *agent, Stream *stream,
     guint component_id, NiceCandidate *remote, NiceCandidate *local,
     uint8_t *dest, guint dest_len, gboolean inbound)
 {
-  uint8_t *local_username = NULL;
-  size_t local_username_len = 0;
-  uint8_t *remote_username = NULL;
-  size_t remote_username_len = 0;
+  gchar *local_username = NULL;
+  gchar *remote_username = NULL;
 
 
   if (remote && remote->username) {
-    remote_username = (uint8_t *) remote->username;
-    remote_username_len = (size_t) strlen (remote->username);
+    remote_username = remote->username;
   }
 
   if (local && local->username) {
-    local_username = (uint8_t *) remote->username;
-    local_username_len = (size_t) strlen (remote->username);
+    local_username = local->username;
   }
 
   if (stream) {
     if (remote_username == NULL) {
-      remote_username = (uint8_t *) stream->remote_ufrag;
-      remote_username_len = (size_t) strlen (stream->remote_ufrag);
+      remote_username = stream->remote_ufrag;
     }
     if (local_username == NULL) {
-      local_username = (uint8_t *) stream->local_ufrag;
-      local_username_len = (size_t) strlen (stream->local_ufrag);
+      local_username = stream->local_ufrag;
     }
   }
 
   if (local_username && remote_username) {
     if (inbound) {
       return priv_gen_username (agent, component_id,
-          local_username, local_username_len,
-          remote_username, remote_username_len, dest, dest_len);
+          local_username, remote_username, dest, dest_len);
     } else {
       return priv_gen_username (agent, component_id,
-          remote_username, remote_username_len,
-          local_username, local_username_len, dest, dest_len);
+          remote_username, local_username, dest, dest_len);
     }
   }
 
