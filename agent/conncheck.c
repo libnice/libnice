@@ -1856,7 +1856,8 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, Stream *stream,
       uint32_t priority = stun_usage_ice_conncheck_priority (&req);
 
       if (agent->controlling_mode ||
-          agent->compatibility == NICE_COMPATIBILITY_GOOGLE)
+          agent->compatibility == NICE_COMPATIBILITY_GOOGLE ||
+          agent->compatibility == NICE_COMPATIBILITY_MSN)
         use_candidate = TRUE;
 
       if (stream->initial_binding_request_received != TRUE)
