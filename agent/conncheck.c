@@ -984,66 +984,68 @@ size_t priv_gen_username (NiceAgent *agent, guint component_id,
   gsize remote_len = strlen (remote);
   gsize local_len = strlen (local);
 
-  if (agent->compatibility == NICE_COMPATIBILITY_ID19 &&
-      dest_len >= remote_len + local_len + 1) {
-    memcpy (dest, remote, remote_len);
-    len += remote_len;
-    memcpy (dest + len, ":", 1);
-    len++;
-    memcpy (dest + len, local, local_len);
-    len += local_len;
-  } else if (agent->compatibility == NICE_COMPATIBILITY_GOOGLE &&
-      dest_len >= remote_len + local_len) {
-    memcpy (dest, remote, remote_len);
-    len += remote_len;
-    memcpy (dest + len, local, local_len);
-    len += local_len;
-  } else if (agent->compatibility == NICE_COMPATIBILITY_MSN) {
-    gchar component_str[10];
-    g_snprintf (component_str, sizeof(component_str), "%d", component_id);
-    guchar *local_decoded = NULL;
-    guchar *remote_decoded = NULL;
-    gsize local_decoded_len;
-    gsize remote_decoded_len;
-    gsize total_len;
-    int padding;
-
-    local_decoded = g_base64_decode (local, &local_decoded_len);
-    remote_decoded = g_base64_decode (remote, &remote_decoded_len);
-
-    total_len = remote_decoded_len + local_decoded_len + 3 + 2*strlen (component_str);
-    padding = 4 - (total_len % 4);
-
-    if (dest_len >= total_len + padding) {
-      guchar pad_char[1] = {0};
-      int i;
-
-      memcpy (dest, remote_decoded, remote_decoded_len);
-      len += remote_decoded_len;
+  if (remote_len > 0 && local_len > 0) {
+    if (agent->compatibility == NICE_COMPATIBILITY_ID19 &&
+        dest_len >= remote_len + local_len + 1) {
+      memcpy (dest, remote, remote_len);
+      len += remote_len;
       memcpy (dest + len, ":", 1);
       len++;
-      memcpy (dest + len, component_str, strlen (component_str));
-      len += strlen (component_str);
+      memcpy (dest + len, local, local_len);
+      len += local_len;
+    } else if (agent->compatibility == NICE_COMPATIBILITY_GOOGLE &&
+        dest_len >= remote_len + local_len) {
+      memcpy (dest, remote, remote_len);
+      len += remote_len;
+      memcpy (dest + len, local, local_len);
+      len += local_len;
+    } else if (agent->compatibility == NICE_COMPATIBILITY_MSN) {
+      gchar component_str[10];
+      g_snprintf (component_str, sizeof(component_str), "%d", component_id);
+      guchar *local_decoded = NULL;
+      guchar *remote_decoded = NULL;
+      gsize local_decoded_len;
+      gsize remote_decoded_len;
+      gsize total_len;
+      int padding;
 
-      memcpy (dest + len, ":", 1);
-      len++;
+      local_decoded = g_base64_decode (local, &local_decoded_len);
+      remote_decoded = g_base64_decode (remote, &remote_decoded_len);
 
-      memcpy (dest + len, local_decoded, local_decoded_len);
-      len += local_decoded_len;
-      memcpy (dest + len, ":", 1);
-      len++;
-      memcpy (dest + len, component_str, strlen (component_str));;
-      len += strlen (component_str);
+      total_len = remote_decoded_len + local_decoded_len + 3 + 2*strlen (component_str);
+      padding = 4 - (total_len % 4);
 
-      for (i = 0; i < padding; i++) {
-        memcpy (dest + len, pad_char, 1);
+      if (dest_len >= total_len + padding) {
+        guchar pad_char[1] = {0};
+        int i;
+
+        memcpy (dest, remote_decoded, remote_decoded_len);
+        len += remote_decoded_len;
+        memcpy (dest + len, ":", 1);
         len++;
+        memcpy (dest + len, component_str, strlen (component_str));
+        len += strlen (component_str);
+
+        memcpy (dest + len, ":", 1);
+        len++;
+
+        memcpy (dest + len, local_decoded, local_decoded_len);
+        len += local_decoded_len;
+        memcpy (dest + len, ":", 1);
+        len++;
+        memcpy (dest + len, component_str, strlen (component_str));;
+        len += strlen (component_str);
+
+        for (i = 0; i < padding; i++) {
+          memcpy (dest + len, pad_char, 1);
+          len++;
+        }
+
       }
 
+      g_free (local_decoded);
+      g_free (remote_decoded);
     }
-
-    g_free (local_decoded);
-    g_free (remote_decoded);
   }
 
   return len;
