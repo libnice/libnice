@@ -247,7 +247,8 @@ static gboolean priv_conn_check_tick_stream (Stream *stream, NiceAgent *agent, G
 	g_debug ("Agent %p : STUN connectivity check was cancelled, marking as done.", agent);
 	p->state = NICE_CHECK_FAILED;
       } else if (priv_timer_expired (&p->next_tick, now)) {
-        switch (stun_timer_refresh (&p->timer)) {
+        int timeout = stun_timer_refresh (&p->timer);
+        switch (timeout) {
           case -1:
             /* case: error, abort processing */
             g_debug ("Agent %p : Retransmissions failed, giving up on connectivity check %p", agent, p);
@@ -267,6 +268,16 @@ static gboolean priv_conn_check_tick_stream (Stream *stream, NiceAgent *agent, G
                   (gchar *)p->stun_buffer);
 
 
+              /* note: convert from milli to microseconds for g_time_val_add() */
+              p->next_tick = *now;
+              g_time_val_add (&p->next_tick, timeout * 1000);
+
+              keep_timer_going = TRUE;
+              p->traffic_after_tick = TRUE; /* for keepalive timer */
+              break;
+            }
+          default:
+            {
               /* note: convert from milli to microseconds for g_time_val_add() */
               p->next_tick = *now;
               g_time_val_add (&p->next_tick, timeout * 1000);
