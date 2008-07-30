@@ -1263,31 +1263,19 @@ _nice_agent_recv (
       return 0;
     }
 
-  /* step: check for a RTP fingerprint 
-   *
-   * The top two bits of an RTP message are the version number; the current
-   * version number is 2. The top two bits of a STUN message are always 0.
-   *
-   *   - XXX: should use a two-phase check, first a lightweight check,
-   *     and then full validation */
-  if ((buf[0] & 0xc0) == 0x80)
-    {
-      /* looks like RTP */
+  if (stun_message_validate_buffer_length ((uint8_t *) buf, (size_t) len) == len) {
+    /* If the retval is no 0, its not a valid stun packet, probably data */
+    if (conn_check_handle_inbound_stun (agent, stream, component, udp_socket,
+            &from, buf, len) == FALSE) {
+      /* unhandled STUN, pass to client */
       return len;
     }
-  /* step: validate using the new STUN API */
-  /*    - note: old check '((buf[0] & 0xc0) == 0)' */
-  else if (stun_message_validate_buffer_length ((uint8_t *) buf, (size_t) len) == len) {
-      /* If the retval is no 0, its not a valid stun packet, probably data */
-      conn_check_handle_inbound_stun (agent, stream, component, udp_socket,
-          &from, buf, len);
-    }
-  else 
-    {
-      /* not RTP nor STUN, pass to client */
-      return len;
-    }
+  } else {
+    /* not STUN, pass to client */
+    return len;
+  }
 
+  /* handled STUN message*/
   return 0;
 }
 
