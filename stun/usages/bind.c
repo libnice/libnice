@@ -93,10 +93,17 @@ StunUsageBindReturn stun_usage_bind_process (StunMessage *msg,
 
       /* ALTERNATE-SERVER mechanism */
       if ((code / 100) == 3) {
-        if (stun_message_find_addr (msg, STUN_ATTRIBUTE_ALTERNATE_SERVER,
-                alternate_server, alternate_server_len)) {
-          stun_debug (" Unexpectedly missing ALTERNATE-SERVER attribute\n");
-          return STUN_USAGE_BIND_RETURN_ERROR;
+        if (alternate_server && alternate_server_len) {
+          if (stun_message_find_addr (msg, STUN_ATTRIBUTE_ALTERNATE_SERVER,
+                  alternate_server, alternate_server_len)) {
+            stun_debug (" Unexpectedly missing ALTERNATE-SERVER attribute\n");
+            return STUN_USAGE_BIND_RETURN_ERROR;
+          }
+        } else {
+          if (!stun_message_has_attribute (msg, STUN_ATTRIBUTE_ALTERNATE_SERVER)) {
+            stun_debug (" Unexpectedly missing ALTERNATE-SERVER attribute\n");
+            return STUN_USAGE_BIND_RETURN_ERROR;
+          }
         }
 
         stun_debug ("Found alternate server\n");
