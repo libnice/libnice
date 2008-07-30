@@ -945,61 +945,130 @@ gboolean conn_check_prune_stream (NiceAgent *agent, Stream *stream)
   return TRUE;
 }
 
+/**
+ * Fills 'dest' with a username string for use in an outbound connectivity
+ * checks. No more than 'dest_len' characters (including terminating
+ * NULL) is ever written to the 'dest'.
+ */
+static
+size_t priv_gen_username (NiceAgent *agent, guint component_id,
+    uint8_t *remote, size_t remote_len, uint8_t *local, size_t local_len,
+    uint8_t *dest, guint dest_len)
+{
+  guint len = 0;
+
+  if (agent->compatibility == NICE_COMPATIBILITY_ID19 &&
+      dest_len >= remote_len + local_len + 1) {
+    memcpy (dest, remote, remote_len);
+    len += remote_len;
+    memcpy (dest + len, ":", 1);
+    len++;
+    memcpy (dest + len, local, local_len);
+    len += local_len;
+  } else if (agent->compatibility == NICE_COMPATIBILITY_GOOGLE &&
+      dest_len >= remote_len + local_len) {
+    memcpy (dest, remote, remote_len);
+    len += remote_len;
+    memcpy (dest + len, local, local_len);
+    len += local_len;
+  } else if (agent->compatibility == NICE_COMPATIBILITY_MSN) {
+    gchar component_str[10];
+    g_snprintf (component_str, sizeof(component_str), "%d", component_id);
+
+    if (dest_len >= remote_len + local_len + 3 + 2*strlen (component_str)) {
+      memcpy (dest, remote, remote_len);
+      len += remote_len;
+      memcpy (dest + len, ":", 1);
+      len++;
+      memcpy (dest + len, component_str, strlen (component_str));
+      len += strlen (component_str);
+
+      memcpy (dest + len, ":", 1);
+      len++;
+
+      memcpy (dest + len, local, local_len);
+      len += local_len;
+      memcpy (dest + len, ":", 1);
+      len++;
+      memcpy (dest + len, component_str, strlen (component_str));;
+      len += strlen (component_str);
+    }
+  }
+
+  return len;
+}
 
 /**
  * Fills 'dest' with a username string for use in an outbound connectivity
  * checks. No more than 'dest_len' characters (including terminating
  * NULL) is ever written to the 'dest'.
  */
-static gboolean priv_create_check_username (NiceAgent *agent, CandidateCheckPair *pair, gchar *dest, guint dest_len)
+static
+size_t priv_create_username (NiceAgent *agent, Stream *stream,
+    guint component_id, NiceCandidate *remote, NiceCandidate *local,
+    uint8_t *dest, guint dest_len, gboolean inbound)
 {
-  Stream *stream;
+  uint8_t *local_username = NULL;
+  size_t local_username_len = 0;
+  uint8_t *remote_username = NULL;
+  size_t remote_username_len = 0;
 
-  stream = agent_find_stream (agent, pair->stream_id);
 
-  if (pair &&
-      pair->remote && pair->remote->username) {
-    if (pair->local && pair->local->username) {
-      g_snprintf (dest, dest_len, "%s%s%s", pair->remote->username,
-          agent->compatibility == NICE_COMPATIBILITY_ID19 ? ":" : "",
-          pair->local->username);
-      return TRUE;
-    } else if (stream) {
-      g_snprintf (dest, dest_len, "%s%s%s", pair->remote->username,
-          agent->compatibility == NICE_COMPATIBILITY_ID19 ? ":" : "",
-          stream->local_ufrag);
-      return TRUE;
+  if (remote && remote->username) {
+    remote_username = (uint8_t *) remote->username;
+    remote_username_len = (size_t) strlen (remote->username);
+  }
 
-    }
+  if (local && local->username) {
+    local_username = (uint8_t *) remote->username;
+    local_username_len = (size_t) strlen (remote->username);
   }
 
   if (stream) {
-    g_snprintf (dest, dest_len, "%s%s%s", stream->remote_ufrag,
-        agent->compatibility == NICE_COMPATIBILITY_ID19 ? ":" : "",
-        stream->local_ufrag);
-    return TRUE;
+    if (remote_username == NULL) {
+      remote_username = (uint8_t *) stream->remote_ufrag;
+      remote_username_len = (size_t) strlen (stream->remote_ufrag);
+    }
+    if (local_username == NULL) {
+      local_username = (uint8_t *) stream->local_ufrag;
+      local_username_len = (size_t) strlen (stream->local_ufrag);
+    }
   }
 
-  return FALSE;
+  if (local_username && remote_username) {
+    if (inbound) {
+      return priv_gen_username (agent, component_id,
+          local_username, local_username_len,
+          remote_username, remote_username_len, dest, dest_len);
+    } else {
+      return priv_gen_username (agent, component_id,
+          remote_username, remote_username_len,
+          local_username, local_username_len, dest, dest_len);
+    }
+  }
+
+  return 0;
 }
 
 /**
  * Returns a password string for use in an outbound connectivity
  * check.
  */
-static const gchar *priv_create_check_password (NiceAgent *agent, CandidateCheckPair *pair)
+static
+size_t priv_get_password (NiceAgent *agent, Stream *stream,
+    NiceCandidate *remote, uint8_t **password)
 {
-  Stream *stream;
+  if (remote && remote->password) {
+    *password = (uint8_t *)remote->password;
+    return strlen (remote->password);
+  }
 
-  if (pair &&
-      pair->remote && pair->remote->password)
-    return pair->remote->password;
+  if (stream) {
+    *password = (uint8_t *)stream->remote_password;
+    return strlen (stream->remote_password);
+  }
 
-  stream = agent_find_stream (agent, pair->stream_id);
-  if (stream)
-    return stream->remote_password;
-
-  return NULL;
+  return 0;
 }
 
 /**
@@ -1024,14 +1093,18 @@ int conn_check_send (NiceAgent *agent, CandidateCheckPair *pair)
       1,
       pair->local->component_id);
 
-  gchar uname[NICE_STREAM_MAX_UNAME];
-  gboolean username_filled = 
-     priv_create_check_username (agent, pair, uname, sizeof (uname));
-  const gchar *password = priv_create_check_password (agent, pair);
+  uint8_t uname[NICE_STREAM_MAX_UNAME];
+  size_t uname_len =
+      priv_create_username (agent, agent_find_stream (agent, pair->stream_id),
+          pair->component_id, pair->remote, pair->local, uname, sizeof (uname), FALSE);
+  uint8_t *password = NULL;
+  size_t password_len = priv_get_password (agent,
+      agent_find_stream (agent, pair->stream_id), pair->remote, &password);
 
   bool controlling = agent->controlling_mode;
  /* XXX: add API to support different nomination modes: */
   bool cand_use = controlling;
+  size_t buffer_len;
 
   struct sockaddr sockaddr;
   unsigned int timeout;
