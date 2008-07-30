@@ -49,7 +49,7 @@
  * @return fingerprint value in <b>host</b> byte order.
  */
 void stun_sha1 (const uint8_t *msg, size_t len,
-                uint8_t *sha, const void *key, size_t keylen);
+    uint8_t *sha, const void *key, size_t keylen, int padding);
 
 /**
  * SIP H(A1) computation

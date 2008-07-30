@@ -213,7 +213,8 @@ StunValidationStatus stun_agent_validate (StunAgent *agent, StunMessage *msg,
     if (hash) {
       /* We must give the size from start to the end of the attribute
          because you might have a FINGERPRINT attribute after it... */
-      stun_sha1 (msg->buffer, hash + 20 - msg->buffer, sha, key, key_len);
+      stun_sha1 (msg->buffer, hash + 20 - msg->buffer, sha, key, key_len,
+        agent->compatibility == STUN_COMPATIBILITY_RFC3489 ? TRUE : FALSE);
       stun_debug (" Message HMAC-SHA1 fingerprint:");
       stun_debug ("\nkey     : ");
       stun_debug_bytes (key, key_len);
@@ -422,7 +423,8 @@ size_t stun_agent_finish_message (StunAgent *agent, StunMessage *msg,
       return 0;
     }
 
-    stun_sha1 (msg->buffer, stun_message_length (msg), ptr, key, key_len);
+    stun_sha1 (msg->buffer, stun_message_length (msg), ptr, key, key_len,
+        agent->compatibility == STUN_COMPATIBILITY_RFC3489 ? TRUE : FALSE);
 
     stun_debug (" Message HMAC-SHA1 message integrity:"
          "\n  key     : ");
