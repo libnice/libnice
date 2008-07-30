@@ -994,12 +994,19 @@ size_t priv_gen_username (NiceAgent *agent, guint component_id,
     guchar *remote_decoded = NULL;
     gsize local_decoded_len;
     gsize remote_decoded_len;
+    gsize total_len;
+    int padding;
 
     local_decoded = g_base64_decode (local, &local_decoded_len);
     remote_decoded = g_base64_decode (remote, &remote_decoded_len);
 
-    if (dest_len >= remote_decoded_len + local_decoded_len +
-        3 + 2*strlen (component_str)) {
+    total_len = remote_decoded_len + local_decoded_len + 3 + 2*strlen (component_str);
+    padding = 4 - (total_len % 4);
+
+    if (dest_len >= total_len + padding) {
+      guchar pad_char[1] = {0};
+      int i;
+
       memcpy (dest, remote_decoded, remote_decoded_len);
       len += remote_decoded_len;
       memcpy (dest + len, ":", 1);
@@ -1016,6 +1023,12 @@ size_t priv_gen_username (NiceAgent *agent, guint component_id,
       len++;
       memcpy (dest + len, component_str, strlen (component_str));;
       len += strlen (component_str);
+
+      for (i = 0; i < padding; i++) {
+        memcpy (dest + len, pad_char, 1);
+        len++;
+      }
+
     }
 
     g_free (local_decoded);
