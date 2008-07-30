@@ -238,6 +238,14 @@ nice_agent_set_selected_pair (
   const gchar *lfoundation,
   const gchar *rfoundation);
 
+
+gboolean
+nice_agent_set_selected_remote_candidate (
+  NiceAgent *agent,
+  guint stream_id,
+  guint component_id,
+  NiceCandidate *candidate);
+
 G_END_DECLS
 
 #endif /* _AGENT_H */

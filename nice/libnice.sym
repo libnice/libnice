@@ -31,6 +31,7 @@ nice_agent_send
 nice_agent_set_remote_candidates
 nice_agent_set_remote_credentials
 nice_agent_set_selected_pair
+nice_agent_set_selected_remote_candidate
 nice_candidate_free
 nice_candidate_ice_priority
 nice_candidate_ice_priority_full

@@ -61,6 +61,7 @@ static int global_lagent_cands = 0;
 static int global_ragent_cands = 0;
 static gint global_ragent_read = 0;
 static gint global_ragent_read_exit = 0;
+static gboolean global_accept_non_data = TRUE;
 
 static void priv_print_global_status (void)
 {
@@ -76,9 +77,7 @@ static gboolean timer_cb (gpointer pointer)
   /* signal status via a global variable */
 
   /* note: should not be reached, abort */
-  g_debug ("ERROR: test has got stuck, aborting...");
-  exit (-1);
-
+  g_error ("ERROR: test has got stuck, aborting...");
 }
 
 static void cb_nice_recv (NiceAgent *agent, guint stream_id, guint component_id, guint len, gchar *buf, gpointer user_data)
@@ -87,6 +86,16 @@ static void cb_nice_recv (NiceAgent *agent, guint stream_id, guint component_id,
 
   /* XXX: dear compiler, these are for you: */
   (void)agent; (void)stream_id; (void)component_id; (void)buf;
+
+  /*
+   * Lets ignore stun packets that got through
+   */
+  if (len != 16 || strncmp ("1234567812345678", buf, 16)) {
+    if (global_accept_non_data)
+      return;
+    else
+      g_error ("Got non-data packet of lenght %u", len);
+  }
 
   if ((intptr_t)user_data == 2) {
     global_ragent_read += len;
@@ -331,6 +340,137 @@ static int run_fallback_test (NiceAgent *lagent, NiceAgent *ragent, NiceAddress 
   return 0;
 }
 
+
+static int run_safe_fallback_test (NiceAgent *lagent, NiceAgent *ragent, NiceAddress *baseaddr)
+{
+  NiceAddress laddr, raddr, laddr_rtcp, raddr_rtcp;
+  NiceCandidate cdes;
+  guint ls_id, rs_id;
+
+  memset (&cdes, 0, sizeof(NiceCandidate));
+  cdes.priority = 100000;
+  strcpy (cdes.foundation, "1");
+  cdes.type = NICE_CANDIDATE_TYPE_HOST;
+  cdes.transport = NICE_CANDIDATE_TRANSPORT_UDP;
+  cdes.base_addr = *baseaddr;
+
+  /* step: initialize variables modified by the callbacks */
+  global_components_ready = 0;
+  global_components_ready_exit = 4;
+  global_components_failed = 0;
+  global_components_failed_exit = 4;
+  global_lagent_gathering_done = FALSE;
+  global_ragent_gathering_done = FALSE;
+  global_lagent_ibr_received =
+    global_ragent_ibr_received = FALSE;
+  global_lagent_cands =
+    global_ragent_cands = 0;
+  global_ragent_read_exit = -1;
+  global_accept_non_data = FALSE;
+
+  g_object_set (G_OBJECT (lagent), "controlling-mode", TRUE, NULL);
+  g_object_set (G_OBJECT (ragent), "controlling-mode", FALSE, NULL);
+
+  /* step: add one stream, with RTP+RTCP components, to each agent */
+  ls_id = nice_agent_add_stream (lagent, 2);
+  rs_id = nice_agent_add_stream (ragent, 2);
+  g_assert (ls_id > 0);
+  g_assert (rs_id > 0);
+
+  nice_agent_gather_candidates (lagent, ls_id);
+  nice_agent_gather_candidates (ragent, rs_id);
+
+  /* step: attach to mainloop (needed to register the fds) */
+  nice_agent_attach_recv (lagent, ls_id, NICE_COMPONENT_TYPE_RTP,
+      g_main_loop_get_context (global_mainloop), cb_nice_recv, (gpointer)1);
+  nice_agent_attach_recv (lagent, ls_id, NICE_COMPONENT_TYPE_RTCP,
+      g_main_loop_get_context (global_mainloop), cb_nice_recv, (gpointer)1);
+  nice_agent_attach_recv (ragent, rs_id, NICE_COMPONENT_TYPE_RTP,
+      g_main_loop_get_context (global_mainloop), cb_nice_recv, (gpointer)2);
+  nice_agent_attach_recv (ragent, rs_id, NICE_COMPONENT_TYPE_RTCP,
+      g_main_loop_get_context (global_mainloop), cb_nice_recv, (gpointer)2);
+
+  /* step: run mainloop until local candidates are ready
+   *       (see timer_cb() above) */
+  if (global_lagent_gathering_done != TRUE ||
+      global_ragent_gathering_done != TRUE) {
+    g_debug ("test-fallback: Added streams, running mainloop until 'candidate-gathering-done'...");
+    g_main_loop_run (global_mainloop);
+    g_assert (global_lagent_gathering_done == TRUE);
+    g_assert (global_ragent_gathering_done == TRUE);
+  }
+
+  /* step: find out the local candidates of each agent */
+
+  priv_get_local_addr (ragent, rs_id, NICE_COMPONENT_TYPE_RTP, &raddr);
+  g_debug ("test-fallback: local RTP port R %u",
+           nice_address_get_port (&raddr));
+
+  priv_get_local_addr (lagent, ls_id, NICE_COMPONENT_TYPE_RTP, &laddr);
+  g_debug ("test-fallback: local RTP port L %u",
+           nice_address_get_port (&laddr));
+
+  priv_get_local_addr (ragent, rs_id, NICE_COMPONENT_TYPE_RTCP, &raddr_rtcp);
+  g_debug ("test-fallback: local RTCP port R %u",
+           nice_address_get_port (&raddr_rtcp));
+
+  priv_get_local_addr (lagent, ls_id, NICE_COMPONENT_TYPE_RTCP, &laddr_rtcp);
+  g_debug ("test-fallback: local RTCP port L %u",
+           nice_address_get_port (&laddr_rtcp));
+
+  /* step: exchange candidate information but not the credentials */
+
+  cdes.component_id = NICE_COMPONENT_TYPE_RTP;
+  cdes.addr = raddr;
+  g_assert (nice_agent_set_selected_remote_candidate (lagent, ls_id, NICE_COMPONENT_TYPE_RTP, &cdes));
+
+  cdes.addr = laddr;
+  g_assert (nice_agent_set_selected_remote_candidate (ragent, rs_id, NICE_COMPONENT_TYPE_RTP, &cdes));
+
+  cdes.component_id = NICE_COMPONENT_TYPE_RTCP;
+  cdes.addr = raddr_rtcp;
+  g_assert (nice_agent_set_selected_remote_candidate (lagent, ls_id, NICE_COMPONENT_TYPE_RTCP, &cdes));
+
+  cdes.addr = laddr_rtcp;
+  g_assert (nice_agent_set_selected_remote_candidate (ragent, rs_id, NICE_COMPONENT_TYPE_RTCP, &cdes));
+
+  g_debug ("test-fallback: Requested for fallback, running mainloop until component state change is completed...");
+
+  /* step: run the mainloop until connectivity checks succeed
+   *       (see timer_cb() above) */
+  if (global_components_ready < global_components_ready_exit)
+    g_main_loop_run (global_mainloop);
+
+  /* note: verify that agents are in correct state */
+  g_assert (global_lagent_state == NICE_COMPONENT_STATE_READY);
+  g_assert (global_ragent_state == NICE_COMPONENT_STATE_READY);
+
+  /* step: next send a packet -> should work even if no ICE processing
+   *       has been done */
+
+  g_debug ("test-fallback: Sent a payload packet, run mainloop until packet received.");
+
+  /* step: send a new test packet from L ot R */
+  global_ragent_read = 0;
+  g_assert (nice_agent_send (lagent, ls_id, 1, 16, "1234567812345678") == 16);
+  global_ragent_read_exit = 16;
+  g_main_loop_run (global_mainloop);
+
+  /* note: verify that payload was succesfully received */
+  g_assert (global_ragent_read == 16);
+
+  g_debug ("test-fallback: Ran mainloop, removing streams...");
+
+  /* step: clean up resources and exit */
+
+  nice_agent_remove_stream (lagent, ls_id);
+  nice_agent_remove_stream (ragent, rs_id);
+
+  g_debug ("test-fallback: test COMPLETED");
+
+  return 0;
+}
+
 int main (void)
 {
   NiceAgent *lagent, *ragent;      /* agent's L and R */
@@ -401,6 +541,14 @@ int main (void)
   /* step: run test the first time */
   g_debug ("test-fallback: TEST STARTS / fallback test");
   result = run_fallback_test (lagent, ragent, &baseaddr);
+  priv_print_global_status ();
+  g_assert (result == 0);
+  g_assert (global_lagent_state == NICE_COMPONENT_STATE_READY);
+  g_assert (global_ragent_state == NICE_COMPONENT_STATE_READY);
+
+  /* step: run the safe test without sending any stnu */
+  g_debug ("test-fallback: TEST STARTS / safe fallback test");
+  result = run_safe_fallback_test (lagent, ragent, &baseaddr);
   priv_print_global_status ();
   g_assert (result == 0);
   g_assert (global_lagent_state == NICE_COMPONENT_STATE_READY);

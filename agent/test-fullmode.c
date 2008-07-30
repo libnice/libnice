@@ -74,9 +74,7 @@ static gboolean timer_cb (gpointer pointer)
   /* signal status via a global variable */
 
   /* note: should not be reached, abort */
-  g_debug ("ERROR: test has got stuck, aborting...");
-  exit (-1);
-
+  g_error ("ERROR: test has got stuck, aborting...");
 }
 
 static void cb_nice_recv (NiceAgent *agent, guint stream_id, guint component_id, guint len, gchar *buf, gpointer user_data)
@@ -85,6 +83,14 @@ static void cb_nice_recv (NiceAgent *agent, guint stream_id, guint component_id,
 
   /* XXX: dear compiler, these are for you: */
   (void)agent; (void)stream_id; (void)component_id; (void)buf;
+
+  /*
+   * Lets ignore stun packets that got through
+   */
+  if (len < 8)
+    return;
+  if (strncmp ("12345678", buf, 8))
+    return;
 
   if ((intptr_t)user_data == 2) {
     global_ragent_read = len;
