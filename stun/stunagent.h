@@ -102,10 +102,10 @@ struct stun_agent_t {
 };
 
 typedef struct {
-  const uint8_t *username;
-  const size_t username_len;
-  const uint8_t *password;
-  const size_t password_len;
+  uint8_t *username;
+  size_t username_len;
+  uint8_t *password;
+  size_t password_len;
 } stun_validater_data;
 
 
