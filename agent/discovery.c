@@ -156,11 +156,6 @@ static gboolean priv_add_local_candidate_pruned (Component *component, NiceCandi
 				 candidate);
   if (modified_list) {
     component->local_candidates = modified_list;
-    
-    /* note: candidate username and password are left NULL as stream 
-       level ufrag/password are used */
-    g_assert (candidate->username == NULL);
-    g_assert (candidate->password == NULL);
   }
 
   return TRUE;
