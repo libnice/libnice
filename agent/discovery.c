@@ -530,7 +530,6 @@ static gboolean priv_discovery_tick_unlocked (gpointer pointer)
         buffer_len = stun_usage_bind_create (&agent->stun_agent,
             &cand->stun_message, cand->stun_buffer, sizeof(cand->stun_buffer));
 
-
 	if (buffer_len > 0) {
           stun_timer_start (&cand->timer);
 
@@ -555,7 +554,7 @@ static gboolean priv_discovery_tick_unlocked (gpointer pointer)
       
       ++not_done; /* note: new discovery scheduled */
     }
-    
+
     if (cand->done != TRUE) {
       GTimeVal now;
 
@@ -566,13 +565,14 @@ static gboolean priv_discovery_tick_unlocked (gpointer pointer)
 	cand->done = TRUE;
       }
       else if (priv_timer_expired (&cand->next_tick, &now)) {
-        switch (stun_timer_refresh (&cand->timer)) {
+        int timeout = stun_timer_refresh (&cand->timer);
+        switch (timeout) {
           case -1:
             /* case: error, abort processing */
             cand->done = TRUE;
             cand->stun_message.buffer = NULL;
             cand->stun_message.buffer_len = 0;
-            g_debug ("Agent %p : Error with stun_bind_elapse(), aborting discovery item.", agent);
+            g_debug ("Agent %p : bind discovery timed out, aborting discovery item.", agent);
             break;
           case 0:
             {
@@ -599,11 +599,19 @@ static gboolean priv_discovery_tick_unlocked (gpointer pointer)
               ++not_done; /* note: retry later */
               break;
             }
+          default:
+            {
+              cand->next_tick = now;
+              g_time_val_add (&cand->next_tick, timeout * 1000);
+
+              ++not_done; /* note: retry later */
+              break;
+            }
 	}
 
-      }
-      else
+      } else {
 	++not_done; /* note: discovery not expired yet */
+      }
     }
   }
 
