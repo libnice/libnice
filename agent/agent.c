@@ -72,6 +72,8 @@
  * will it work tcp relaying??
  */
 #define MAX_BUFFER_SIZE 65536
+#define DEFAULT_STUN_PORT  3478
+
 
 G_DEFINE_TYPE (NiceAgent, nice_agent, G_TYPE_OBJECT);
 
@@ -385,10 +387,8 @@ nice_agent_init (NiceAgent *agent)
   agent->next_stream_id = 1;
 
   /* set defaults; not construct params, so set here */
-  g_assert (agent->stun_server_port != IPPORT_STUN);
-  g_assert (agent->turn_server_port != IPPORT_STUN);
-  agent->stun_server_port = IPPORT_STUN;
-  agent->turn_server_port = IPPORT_STUN;
+  agent->stun_server_port = DEFAULT_STUN_PORT;
+  agent->turn_server_port = DEFAULT_STUN_PORT;
   agent->controlling_mode = TRUE;
   agent->max_conn_checks = NICE_AGENT_MAX_CONNECTIVITY_CHECKS_DEFAULT;
 
