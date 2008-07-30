@@ -53,12 +53,14 @@ struct _CandidateDiscovery
   const gchar *server_addr; /**< STUN/TURN server address, not owned */ 
   guint server_port;        /**< STUN/TURN server port */ 
   NiceAddress *interface;   /**< Address of local interface */
-  stun_bind_t *stun_ctx;
   GTimeVal next_tick;       /**< next tick timestamp */
   gboolean pending;         /**< is discovery in progress? */
   gboolean done;            /**< is discovery complete? */
   Stream *stream;
   Component *component;
+  stun_timer_t timer;
+  uint8_t stun_buffer[STUN_MAX_MESSAGE_SIZE];
+  StunMessage stun_message;
 }; 
 
 void discovery_free_item (gpointer data, gpointer user_data);

@@ -43,8 +43,8 @@
 
 #include "agent.h"
 #include "stream.h"
-#include "stun/usages/stun-ice.h"
-#include "stun/usages/bind.h"
+#include "stun/stunagent.h"
+#include "stun/usages/timer.h"
 
 #define NICE_CANDIDATE_PAIR_MAX_FOUNDATION        NICE_CANDIDATE_MAX_FOUNDATION*2
 
@@ -75,7 +75,9 @@ struct _CandidateCheckPair
   guint64 priority;
   GTimeVal next_tick;       /* next tick timestamp */
   gboolean traffic_after_tick;
-  stun_bind_t *stun_ctx;
+  stun_timer_t timer;
+  uint8_t stun_buffer[STUN_MAX_MESSAGE_SIZE];
+  StunMessage stun_message;
 };
 
 int conn_check_add_for_candidate (NiceAgent *agent, guint stream_id, Component *component, NiceCandidate *remote);

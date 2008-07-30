@@ -54,6 +54,7 @@
 #include "agent-priv.h"
 #include "conncheck.h"
 #include "discovery.h"
+#include "stun/usages/ice.h"
 
 static void priv_update_check_list_failed_components (NiceAgent *agent, Stream *stream);
 static void priv_prune_pending_checks (Stream *stream, guint component_id);
@@ -242,32 +243,42 @@ static gboolean priv_conn_check_tick_stream (Stream *stream, NiceAgent *agent, G
     CandidateCheckPair *p = i->data;
       
     if (p->state == NICE_CHECK_IN_PROGRESS) {
-      if (p->stun_ctx == NULL) {
+      if (p->stun_message.buffer == NULL) {
 	g_debug ("Agent %p : STUN connectivity check was cancelled, marking as done.", agent);
 	p->state = NICE_CHECK_FAILED;
-      }
-      else if (priv_timer_expired (&p->next_tick, now)) {
-	int res = stun_bind_elapse (p->stun_ctx);
-	if (res == EAGAIN) {
-	  /* case: not ready, so schedule a new timeout */
-	  unsigned int timeout = stun_bind_timeout (p->stun_ctx);
-	  
-	  /* note: convert from milli to microseconds for g_time_val_add() */
-	  p->next_tick = *now;
-	  g_time_val_add (&p->next_tick, timeout * 1000);
-	  
-	  keep_timer_going = TRUE;
-	  p->traffic_after_tick = TRUE; /* for keepalive timer */
-	}
-	else {
-	  /* case: error, abort processing */
-	  g_debug ("Agent %p : Retransmissions failed, giving up on connectivity check %p", agent, p);
-	  p->state = NICE_CHECK_FAILED;
-	  p->stun_ctx = NULL;
-	}
+      } else if (priv_timer_expired (&p->next_tick, now)) {
+        switch (stun_timer_refresh (&p->timer)) {
+          case -1:
+            /* case: error, abort processing */
+            g_debug ("Agent %p : Retransmissions failed, giving up on connectivity check %p", agent, p);
+            p->state = NICE_CHECK_FAILED;
+            p->stun_message.buffer = NULL;
+            p->stun_message.buffer_len = 0;
+            break;
+          case 0:
+            {
+              /* case: not ready, so schedule a new timeout */
+              unsigned int timeout = stun_timer_remainder (&p->timer);
+              g_debug ("Agent %p :STUN transaction retransmitted (timeout %dms).",
+                  agent, timeout);
+
+              nice_udp_socket_send (p->local->sockptr, &p->remote->addr,
+                  stun_message_length (&p->stun_message),
+                  (gchar *)p->stun_buffer);
+
+
+              /* note: convert from milli to microseconds for g_time_val_add() */
+              p->next_tick = *now;
+              g_time_val_add (&p->next_tick, timeout * 1000);
+
+              keep_timer_going = TRUE;
+              p->traffic_after_tick = TRUE; /* for keepalive timer */
+              break;
+            }
+        }
       }
     }
-    
+
     if (p->state == NICE_CHECK_FROZEN)
       ++frozen;
     else if (p->state == NICE_CHECK_IN_PROGRESS)
@@ -276,13 +287,13 @@ static gboolean priv_conn_check_tick_stream (Stream *stream, NiceAgent *agent, G
       ++waiting;
     else if (p->state == NICE_CHECK_SUCCEEDED)
       ++s_succeeded;
-    
+
     if (p->state == NICE_CHECK_SUCCEEDED && p->nominated)
       ++s_nominated;
     else if (p->state == NICE_CHECK_SUCCEEDED && !p->nominated)
       ++s_waiting_for_nomination;
     }
-    
+
     /* note: keep the timer going as long as there is work to be done */
   if (s_inprogress)
     keep_timer_going = TRUE;
@@ -410,6 +421,9 @@ static gboolean priv_conn_keepalive_tick (gpointer pointer)
   GSList *i, *j;
   int errors = 0;
   gboolean ret = FALSE;
+  StunMessage msg;
+  uint8_t buf[STUN_MAX_MESSAGE_SIZE];
+  size_t buf_len;
 
   g_static_rec_mutex_lock (&agent->mutex);
 
@@ -424,16 +438,18 @@ static gboolean priv_conn_keepalive_tick (gpointer pointer)
 	  component->media_after_tick != TRUE) {
 	CandidatePair *p = &component->selected_pair;
 	struct sockaddr sockaddr;
-	int res;
 
 	memset (&sockaddr, 0, sizeof (sockaddr));
 	nice_address_copy_to_sockaddr (&p->remote->addr, &sockaddr);
 
-	res = stun_bind_keepalive (p->local->sockptr->fileno,
-				   &sockaddr, sizeof (sockaddr),
-                                   agent->compatibility);
-	g_debug ("Agent %p : stun_bind_keepalive for pair %p res %d (%s).", agent, p, res, strerror (res));
-	if (res < 0)
+        buf_len = stun_usage_bind_keepalive (&agent->stun_agent, &msg,
+            buf, sizeof(buf));
+
+        nice_udp_socket_send (p->local->sockptr, &p->remote->addr, buf_len, (gchar *)buf);
+
+	g_debug ("Agent %p : stun_bind_keepalive for pair %p res %d.",
+            agent, p, buf_len);
+	if (buf_len == 0)
 	  ++errors;
       }
       component->media_after_tick = FALSE;
@@ -879,9 +895,8 @@ void conn_check_free_item (gpointer data, gpointer user_data)
 {
   CandidateCheckPair *pair = data;
   g_assert (user_data == NULL);
-  if (pair->stun_ctx)
-    stun_bind_cancel (pair->stun_ctx), 
-      pair->stun_ctx = NULL;
+  pair->stun_message.buffer = NULL;
+  pair->stun_message.buffer_len = 0;
   g_slice_free (CandidateCheckPair, pair);
 }
 
@@ -1131,18 +1146,27 @@ int conn_check_send (NiceAgent *agent, CandidateCheckPair *pair)
   if (cand_use) 
     pair->nominated = controlling;
 
-  if (username_filled) {
+  if (uname_len > 0) {
 
-    if (pair->stun_ctx)
-      stun_bind_cancel (pair->stun_ctx);
+    buffer_len = stun_usage_ice_conncheck_create (&agent->stun_agent,
+        &pair->stun_message, pair->stun_buffer, sizeof(pair->stun_buffer),
+        uname, uname_len, password, password_len,
+        cand_use, controlling, priority,
+        agent->tie_breaker,
+        agent->compatibility == NICE_COMPATIBILITY_ID19 ?
+        STUN_USAGE_ICE_COMPATIBILITY_ID19 :
+        agent->compatibility == NICE_COMPATIBILITY_GOOGLE ?
+        STUN_USAGE_ICE_COMPATIBILITY_GOOGLE :
+        agent->compatibility == NICE_COMPATIBILITY_MSN ?
+        STUN_USAGE_ICE_COMPATIBILITY_MSN : NICE_COMPATIBILITY_ID19);
 
-    stun_conncheck_start (&pair->stun_ctx, pair->local->sockptr->fileno,
-			  &sockaddr, sizeof (sockaddr),
-			  uname, password,
-			  cand_use, controlling, priority,
-			  agent->tie_breaker, agent->compatibility);
+    stun_timer_start (&pair->timer);
 
-    timeout = stun_bind_timeout (pair->stun_ctx);
+    /* send the conncheck */
+    nice_udp_socket_send (pair->local->sockptr, &pair->remote->addr,
+        buffer_len, (gchar *)pair->stun_buffer);
+
+    timeout = stun_timer_remainder (&pair->timer);
     /* note: convert from milli to microseconds for g_time_val_add() */
     g_get_current_time (&pair->next_tick);
     g_time_val_add (&pair->next_tick, timeout * 1000);
@@ -1172,9 +1196,8 @@ static void priv_prune_pending_checks (Stream *stream, guint component_id)
       
       /* note: a SHOULD level req. in ICE 8.1.2. "Updating States" (ID-19) */
       if (p->state == NICE_CHECK_IN_PROGRESS) {
-	if (p->stun_ctx)
-	  stun_bind_cancel (p->stun_ctx),
-	    p->stun_ctx = NULL;
+        p->stun_message.buffer = NULL;
+        p->stun_message.buffer_len = 0;
 	p->state = NICE_CHECK_CANCELLED;
       }
     }
@@ -1471,95 +1494,106 @@ static CandidateCheckPair *priv_process_response_check_for_peer_reflexive(NiceAg
  * 
  * @return TRUE if a matching transaction is found
  */
-static gboolean priv_map_reply_to_conn_check_request (NiceAgent *agent, Stream *stream, Component *component, NiceUDPSocket *sockptr, const NiceAddress *from, gchar *buf, guint len)
+static gboolean priv_map_reply_to_conn_check_request (NiceAgent *agent, Stream *stream, Component *component, NiceUDPSocket *sockptr, const NiceAddress *from, StunMessage *resp)
 {
   struct sockaddr sockaddr;
   socklen_t socklen = sizeof (sockaddr);
+  struct sockaddr alternate;
+  socklen_t alternatelen = sizeof (sockaddr);
   GSList *i;
-  ssize_t res;
+  StunUsageIceReturn res;
   gboolean trans_found = FALSE;
+  stun_transid_t discovery_id;
+  stun_transid_t response_id;
+  stun_message_id (resp, response_id);
 
   for (i = stream->conncheck_list; i && trans_found != TRUE; i = i->next) {
     CandidateCheckPair *p = i->data;
-    if (p->stun_ctx) {
-      res = stun_bind_process (p->stun_ctx, buf, len, &sockaddr, &socklen); 
-      g_debug ("Agent %p : stun_bind_process/conncheck for %p res %d (%s) (controlling=%d).", agent, p, (int)res, strerror (res), agent->controlling_mode);
-      if (res == 0) {
-	/* case: found a matching connectivity check request */
 
-	CandidateCheckPair *ok_pair = NULL;
+    if (p->stun_message.buffer) {
+      stun_message_id (&p->stun_message, discovery_id);
 
-	g_debug ("Agent %p : conncheck %p MATCHED.", agent, p);
-	p->stun_ctx = NULL;
+      if (memcmp (discovery_id, response_id, sizeof(stun_transid_t)) == 0) {
+        res = stun_usage_ice_conncheck_process (resp, &sockaddr, &socklen,
+            &alternate, &alternatelen);
+        g_debug ("Agent %p : stun_bind_process/conncheck for %p res %d "
+            "(controlling=%d).", agent, p, (int)res, agent->controlling_mode);
 
-	/* step: verify that response came from the same IP address we
-	 *       sent the original request to (see 7.1.2.1. "Failure
-	 *       Cases") */
-	if (nice_address_equal (from, &p->remote->addr) != TRUE) {
-	  p->state = NICE_CHECK_FAILED;	
-	  g_debug ("Agent %p : conncheck %p FAILED (mismatch of source address).", agent, p); 
-	  trans_found = TRUE;
-	  break;
-	}
-	
-	/* note: CONNECTED but not yet READY, see docs */
 
-	/* step: handle the possible case of a peer-reflexive
-	 *       candidate where the mapped-address in response does
-	 *       not match any local candidate, see 7.1.2.2.1
-	 *       "Discovering Peer Reflexive Candidates" ICE ID-19) */
+        if (res == STUN_USAGE_ICE_RETURN_ALTERNATE_SERVER) {
+          /* TODO : handle alternate server */
+        } else if (res == STUN_USAGE_ICE_RETURN_SUCCESS) {
+          /* case: found a matching connectivity check request */
 
-	ok_pair = priv_process_response_check_for_peer_reflexive(agent, stream, component,  p, sockptr, &sockaddr);
-	if (!ok_pair)
-	  ok_pair = p;
+          CandidateCheckPair *ok_pair = NULL;
 
-	/* step: notify the client of a new component state (must be done
-	 *       before the possible check list state update step */
-	agent_signal_component_state_change (agent, 
+          g_debug ("Agent %p : conncheck %p MATCHED.", agent, p);
+          p->stun_message.buffer = NULL;
+          p->stun_message.buffer_len = 0;
+
+          /* step: verify that response came from the same IP address we
+           *       sent the original request to (see 7.1.2.1. "Failure
+           *       Cases") */
+          if (nice_address_equal (from, &p->remote->addr) != TRUE) {
+            p->state = NICE_CHECK_FAILED;
+            g_debug ("Agent %p : conncheck %p FAILED"
+                " (mismatch of source address).", agent, p);
+            trans_found = TRUE;
+            break;
+          }
+
+          /* note: CONNECTED but not yet READY, see docs */
+
+          /* step: handle the possible case of a peer-reflexive
+           *       candidate where the mapped-address in response does
+           *       not match any local candidate, see 7.1.2.2.1
+           *       "Discovering Peer Reflexive Candidates" ICE ID-19) */
+
+          ok_pair = priv_process_response_check_for_peer_reflexive(agent, stream, component,  p, sockptr, &sockaddr);
+          if (!ok_pair)
+            ok_pair = p;
+
+          /* step: notify the client of a new component state (must be done
+           *       before the possible check list state update step */
+          agent_signal_component_state_change (agent,
 					     stream->id,
 					     component->id,
 					     NICE_COMPONENT_STATE_CONNECTED);
 
 
-	/* step: updating nominated flag (ICE 7.1.2.2.4 "Updating the
-	   Nominated Flag" (ID-19) */
-	if (ok_pair->nominated == TRUE) 
-	  priv_update_selected_pair (agent, component, ok_pair);
+          /* step: updating nominated flag (ICE 7.1.2.2.4 "Updating the
+             Nominated Flag" (ID-19) */
+          if (ok_pair->nominated == TRUE) 
+            priv_update_selected_pair (agent, component, ok_pair);
 
-	/* step: update pair states (ICE 7.1.2.2.3 "Updating pair
-	   states" and 8.1.2 "Updating States", ID-19) */
-	priv_update_check_list_state_for_ready (agent, stream, component);
+          /* step: update pair states (ICE 7.1.2.2.3 "Updating pair
+             states" and 8.1.2 "Updating States", ID-19) */
+          priv_update_check_list_state_for_ready (agent, stream, component);
 
-	trans_found = TRUE;
-      }
-      else if (res == ECONNRESET) {
-	/* case: role conflict error, need to restart with new role */
-	g_debug ("Agent %p : conncheck %p ROLE CONFLICT, restarting", agent, p);
-	
-	/* note: our role might already have changed due to an
-	 * incoming request, but if not, change role now;
-	 * follows ICE 7.1.2.1 "Failure Cases" (ID-19) */
-	priv_check_for_role_conflict (agent, !p->controlling);
+          trans_found = TRUE;
+        } else if (res == STUN_USAGE_ICE_RETURN_ROLE_CONFLICT) {
+          /* case: role conflict error, need to restart with new role */
+          g_debug ("Agent %p : conncheck %p ROLE CONFLICT, restarting", agent, p);
+          /* note: our role might already have changed due to an
+           * incoming request, but if not, change role now;
+           * follows ICE 7.1.2.1 "Failure Cases" (ID-19) */
+          priv_check_for_role_conflict (agent, !p->controlling);
 
-	p->stun_ctx = NULL;
-	p->state = NICE_CHECK_WAITING;
-	trans_found = TRUE;
-      }
-      else if (res != EAGAIN) {
-	/* case: STUN error, the check STUN context was freed */
-	g_debug ("Agent %p : conncheck %p FAILED.", agent, p);
-	p->stun_ctx = NULL;
-	trans_found = TRUE;
-      }
-      else {
-	/* case: STUN could not parse, skip */
-	g_assert (res == EAGAIN);
-	
-	g_debug ("Agent %p : conncheck %p SKIPPED", agent, p);
+          p->stun_message.buffer = NULL;
+          p->stun_message.buffer_len = 0;
+          p->state = NICE_CHECK_WAITING;
+          trans_found = TRUE;
+        } else if (res == STUN_USAGE_ICE_RETURN_ERROR) {
+          /* case: STUN error, the check STUN context was freed */
+          g_debug ("Agent %p : conncheck %p FAILED.", agent, p);
+          p->stun_message.buffer = NULL;
+          p->stun_message.buffer_len = 0;
+          trans_found = TRUE;
+        }
       }
     }
   }
-  
+
   return trans_found;
 }
 
@@ -1569,50 +1603,63 @@ static gboolean priv_map_reply_to_conn_check_request (NiceAgent *agent, Stream *
  * 
  * @return TRUE if a matching transaction is found
  */
-static gboolean priv_map_reply_to_discovery_request (NiceAgent *agent, gchar *buf, guint len)
+static gboolean priv_map_reply_to_discovery_request (NiceAgent *agent, StunMessage *resp)
 {
   struct sockaddr sockaddr;
   socklen_t socklen = sizeof (sockaddr);
+  struct sockaddr alternate;
+  socklen_t alternatelen = sizeof (sockaddr);
   GSList *i;
-  ssize_t res;
+  StunUsageBindReturn res;
   gboolean trans_found = FALSE;
+  stun_transid_t discovery_id;
+  stun_transid_t response_id;
+  stun_message_id (resp, response_id);
 
   for (i = agent->discovery_list; i && trans_found != TRUE; i = i->next) {
     CandidateDiscovery *d = i->data;
-    if (d->stun_ctx) {
-      res = stun_bind_process (d->stun_ctx, buf, len, &sockaddr, &socklen); 
-      g_debug ("Agent %p : stun_bind_process/disc for %p res %d (%s).", agent, d, (int)res,
-               strerror (res));
-      if (res == 0) {
-	/* case: succesful binding discovery, create a new local candidate */
-	NiceAddress niceaddr;
-        nice_address_set_from_sockaddr (&niceaddr, &sockaddr);
 
-	discovery_add_server_reflexive_candidate (
-	  d->agent,
-	  d->stream->id,
-	  d->component->id,
-	  &niceaddr,
-	  d->nicesock);
-	
-	d->stun_ctx = NULL;
-	d->done = TRUE;
-	trans_found = TRUE;
-      }
-      else if (res != EAGAIN) {
-	/* case: STUN error, the check STUN context was freed */
-	d->stun_ctx = NULL;
-	d->done = TRUE;
-	trans_found = TRUE;
-      }
-      else {
-	g_assert (res == EAGAIN);
+    if (d->stun_message.buffer) {
+      stun_message_id (&d->stun_message, discovery_id);
+
+      if (memcmp (discovery_id, response_id, sizeof(stun_transid_t)) == 0) {
+        res = stun_usage_bind_process (resp, &sockaddr, &socklen,
+            &alternate, &alternatelen);
+        g_debug ("Agent %p : stun_bind_process/disc for %p res %d.",
+            agent, d, (int)res);
+
+        if (res == STUN_USAGE_BIND_RETURN_ALTERNATE_SERVER) {
+          /* TODO : handle alternate server */
+        } else if (res == STUN_USAGE_BIND_RETURN_SUCCESS) {
+          /* case: succesful binding discovery, create a new local candidate */
+          NiceAddress niceaddr;
+          nice_address_set_from_sockaddr (&niceaddr, &sockaddr);
+
+          discovery_add_server_reflexive_candidate (
+              d->agent,
+              d->stream->id,
+              d->component->id,
+              &niceaddr,
+              d->nicesock);
+
+          d->stun_message.buffer = NULL;
+          d->stun_message.buffer_len = 0;
+          d->done = TRUE;
+          trans_found = TRUE;
+        } else if (res == STUN_USAGE_BIND_RETURN_ERROR) {
+          /* case: STUN error, the check STUN context was freed */
+          d->stun_message.buffer = NULL;
+          d->stun_message.buffer_len = 0;
+          d->done = TRUE;
+          trans_found = TRUE;
+        }
       }
     }
   }
 
   return trans_found;
 }
+
 
 /**
  * Processing an incoming STUN message.
@@ -1626,109 +1673,221 @@ static gboolean priv_map_reply_to_discovery_request (NiceAgent *agent, gchar *bu
  * @param buf message length
  *
  * @pre contents of 'buf' is a STUN message
- * 
+ *
  * @return XXX (what FALSE means exactly?)
  */
-gboolean conn_check_handle_inbound_stun (NiceAgent *agent, Stream *stream, Component *component, NiceUDPSocket *udp_socket, const NiceAddress *from, gchar *buf, guint len)
+gboolean conn_check_handle_inbound_stun (NiceAgent *agent, Stream *stream,
+    Component *component, NiceUDPSocket *udp_socket, const NiceAddress *from,
+    gchar *buf, guint len)
 {
   struct sockaddr sockaddr;
   uint8_t rbuf[MAX_STUN_DATAGRAM_PAYLOAD];
   ssize_t res;
   size_t rbuf_len = sizeof (rbuf);
   bool control = agent->controlling_mode;
-  gchar uname[NICE_STREAM_MAX_UNAME];
+  uint8_t uname[NICE_STREAM_MAX_UNAME];
+  guint uname_len;
+  uint8_t *username;
+  uint16_t username_len;
   StunMessage req;
   StunMessage msg;
+  StunValidationStatus valid;
+  stun_validater_data validater_data[2] = {
+    {NULL, 0, NULL, 0},
+    {NULL, 0, NULL, 0}};
+  GSList *i;
+  NiceCandidate *remote_candidate = NULL;
+  NiceCandidate *local_candidate = NULL;
 
   nice_address_copy_to_sockaddr (from, &sockaddr);
-  g_snprintf (uname, sizeof (uname), "%s%s%s", stream->local_ufrag,
-      agent->compatibility == NICE_COMPATIBILITY_ID19 ? ":" : "",
-      stream->remote_ufrag);
 
-  /* note: contents of 'buf' already validated, so it is 
+  for (i = component->remote_candidates; i; i = i->next) {
+    NiceCandidate *cand = i->data;
+    if (nice_address_equal (from, &cand->addr)) {
+      remote_candidate = cand;
+      break;
+    }
+  }
+  for (i = component->local_candidates; i; i = i->next) {
+    NiceCandidate *cand = i->data;
+    if (cand->sockptr == udp_socket) {
+      local_candidate = cand;
+      break;
+    }
+  }
+
+  uname_len = priv_create_username (agent, stream,
+      component->id,  remote_candidate, local_candidate,
+      uname, sizeof (uname), TRUE);
+
+  validater_data[0].username = uname;
+  validater_data[0].username_len = uname_len;
+  if (local_candidate->password) {
+    validater_data[0].password = (uint8_t *) local_candidate->password;
+    validater_data[0].password_len = strlen (local_candidate->password);
+  } else {
+    validater_data[0].password = (uint8_t *) stream->local_password;
+    validater_data[0].password_len = strlen (stream->local_password);
+  }
+
+  /* note: contents of 'buf' already validated, so it is
    *       a valid and fully received STUN message */
 
-  g_debug ("Agent %p : inbound STUN packet for %u/%u (stream/component):", agent, stream->id, component->id);
+  g_debug ("Agent %p : inbound STUN packet for %u/%u (stream/component):",
+      agent, stream->id, component->id);
 
   /* note: ICE  7.2. "STUN Server Procedures" (ID-19) */
 
-  res = stun_conncheck_reply (&agent->stun_agent, &req, (uint8_t *)buf, (size_t) len, &msg, rbuf, &rbuf_len,
-      &sockaddr, sizeof (sockaddr), (uint8_t *) uname, strlen (uname),
-      agent->compatibility == NICE_COMPATIBILITY_GOOGLE ? NULL : (uint8_t *)stream->local_password,
-      agent->compatibility == NICE_COMPATIBILITY_GOOGLE ? 0 : strlen (stream->local_password),
-      &control, agent->tie_breaker, agent->compatibility);
+  valid = stun_agent_validate (&agent->stun_agent, &req, (uint8_t *) buf, len,
+      stun_agent_default_validater, validater_data);
 
-  if (res == EACCES)
-    priv_check_for_role_conflict (agent, control);
 
-  if (res == 0 || res == EACCES) {
-    /* case 1: valid incoming request, send a reply/error */
-    
-    GSList *i;
-    bool use_candidate = 
-      stun_conncheck_use_candidate (&req);
-    uint32_t priority = stun_conncheck_priority (&req);
-
-    if (agent->controlling_mode ||
-        agent->compatibility == NICE_COMPATIBILITY_GOOGLE) 
-      use_candidate = TRUE;
-
-    if (stream->initial_binding_request_received != TRUE)
-      agent_signal_initial_binding_request_received (agent, stream);
-
-    if (component->remote_candidates == NULL) {
-      /* case: We've got a valid binding request to a local candidate
-       *       but we do not yet know remote credentials nor
-       *       candidates. As per sect 7.2 of ICE (ID-19), we send a reply
-       *       immediately but postpone all other processing until
-       *       we get information about the remote candidates */
-
-      /* step: send a reply immediately but postpone other processing */
-      priv_reply_to_conn_check (agent, stream, component, NULL, from, udp_socket, rbuf_len, rbuf, use_candidate);
-      priv_store_pending_check (agent, component, from, udp_socket, priority, use_candidate);
-    }
-    else {
-      for (i = component->remote_candidates; i; i = i->next) {
-	NiceCandidate *cand = i->data;
-	if (nice_address_equal (from, &cand->addr)) {
-	  priv_reply_to_conn_check (agent, stream, component, cand, &cand->addr, udp_socket, rbuf_len, rbuf, use_candidate);
-	  break;
-	}
-      }
-      
-      if (i == NULL) {
-	NiceCandidate *candidate;
-	g_debug ("Agent %p : No matching remote candidate for incoming check -> peer-reflexive candidate.", agent);
-	candidate = discovery_learn_remote_peer_reflexive_candidate (
-								     agent, stream, component, priority, from, udp_socket);
-	if (candidate)
-	  priv_reply_to_conn_check (agent, stream, component, candidate, &candidate->addr, udp_socket, rbuf_len, rbuf, use_candidate);
-      }
-    }
-  }
-  else if (res == EINVAL) {
-    /* case 2: not a new request, might be a reply...  */
-
-    gboolean trans_found = FALSE;
-
-    /* note: ICE sect 7.1.2. "Processing the Response" (ID-19) */
-
-    /* step: let's try to match the response to an existing check context */
-    if (trans_found != TRUE)
-      trans_found = 
-	priv_map_reply_to_conn_check_request (agent, stream, component, udp_socket, from, buf, len);
-
-    /* step: let's try to match the response to an existing discovery */
-    if (trans_found != TRUE)
-      trans_found = 
-	priv_map_reply_to_discovery_request (agent, buf, len);
-
-    if (trans_found != TRUE)
-      g_debug ("Agent %p : Unable to match to an existing transaction, probably a keepalive.", agent);
-  }
-  else {
-    g_debug ("Agent %p : Invalid STUN packet, ignoring... %s", agent, strerror(errno));
+  if (valid == STUN_VALIDATION_NOT_STUN ||
+      valid == STUN_VALIDATION_INCOMPLETE_STUN ||
+      valid == STUN_VALIDATION_BAD_REQUEST)
+  {
+    g_debug ("Agent %p : Incorrectly multiplexed STUN message ignored.", agent);
     return FALSE;
+  }
+
+  if (valid == STUN_VALIDATION_UNKNOWN_REQUEST_ATTRIBUTE) {
+    g_debug ("Agent %p : Unknown mandatory attributes in message.", agent);
+    rbuf_len = stun_agent_build_unknown_attributes_error (&agent->stun_agent,
+        &msg, rbuf, rbuf_len, &req);
+    if (len == 0)
+      return FALSE;
+
+    nice_udp_socket_send (udp_socket, from, rbuf_len, (const gchar*)rbuf);
+    return TRUE;
+  }
+
+  if (valid == STUN_VALIDATION_UNAUTHORIZED) {
+    g_debug ("Agent %p : Integrity check failed.", agent);
+
+    if (stun_agent_init_error (&agent->stun_agent, &msg, rbuf, rbuf_len,
+            &req, STUN_ERROR_UNAUTHORIZED)) {
+      rbuf_len = stun_agent_finish_message (&agent->stun_agent, &msg, NULL, 0);
+      if (rbuf_len > 0)
+        nice_udp_socket_send (udp_socket, from, rbuf_len, (const gchar*)rbuf);
+    }
+    return TRUE;
+  }
+  if (valid == STUN_VALIDATION_UNAUTHORIZED_BAD_REQUEST) {
+    g_debug ("Agent %p : Integrity check failed.", agent);
+    if (stun_agent_init_error (&agent->stun_agent, &msg, rbuf, rbuf_len,
+            &req, STUN_ERROR_BAD_REQUEST)) {
+      rbuf_len = stun_agent_finish_message (&agent->stun_agent, &msg, NULL, 0);
+      if (rbuf_len > 0)
+        nice_udp_socket_send (udp_socket, from, rbuf_len, (const gchar*)rbuf);
+    }
+    return TRUE;
+  }
+
+
+  /* If we receive a response, then the username is local:remote */
+  if (stun_message_get_class (&req) == STUN_REQUEST ||
+      stun_message_get_class (&req) == STUN_INDICATION) {
+    uname_len = priv_create_username (agent, stream,
+        component->id,  remote_candidate, local_candidate,
+        uname, sizeof (uname), TRUE);
+  } else {
+    uname_len = priv_create_username (agent, stream,
+        component->id,  remote_candidate, local_candidate,
+        uname, sizeof (uname), FALSE);
+  }
+
+
+  username = (uint8_t *) stun_message_find (&req, STUN_ATTRIBUTE_USERNAME,
+      &username_len);
+
+  g_debug ("Comparing usernames : '%s' (%d) to '%s' (%d)", username, username_len, uname, uname_len);
+
+  /* Check again the username in case the stun agent has IGNORE_CREDENTIALS flag.
+     We only need to check the username and not care about the password */
+  if (username &&
+      (uname_len != username_len ||
+          memcmp (uname, username, username_len) != 0)) {
+    g_debug ("Agent %p : Username check failed.", agent);
+    if (stun_agent_init_error (&agent->stun_agent, &msg, rbuf, rbuf_len,
+            &req, STUN_ERROR_UNAUTHORIZED)) {
+      rbuf_len = stun_agent_finish_message (&agent->stun_agent, &msg, NULL, 0);
+      if (rbuf_len > 0)
+        nice_udp_socket_send (udp_socket, from, rbuf_len, (const gchar*)rbuf);
+    }
+    return TRUE;
+  }
+
+  if (valid != STUN_VALIDATION_SUCCESS) {
+    g_debug ("Agent %p : STUN message is unsuccessfull, ignoring", agent);
+    return FALSE;
+  }
+
+
+  if (stun_message_get_class (&req) == STUN_REQUEST) {
+    rbuf_len = sizeof (rbuf);
+    res = stun_usage_ice_conncheck_create_reply (&agent->stun_agent, &req,
+        &msg, rbuf, &rbuf_len, &sockaddr, sizeof (sockaddr),
+        &control, agent->tie_breaker);
+
+    if (res == EACCES)
+      priv_check_for_role_conflict (agent, control);
+
+    if (res == 0 || res == EACCES) {
+      /* case 1: valid incoming request, send a reply/error */
+      bool use_candidate =
+          stun_usage_ice_conncheck_use_candidate (&req);
+      uint32_t priority = stun_usage_ice_conncheck_priority (&req);
+
+      if (agent->controlling_mode ||
+          agent->compatibility == NICE_COMPATIBILITY_GOOGLE)
+        use_candidate = TRUE;
+
+      if (stream->initial_binding_request_received != TRUE)
+        agent_signal_initial_binding_request_received (agent, stream);
+
+      if (component->remote_candidates && remote_candidate == NULL) {
+	g_debug ("Agent %p : No matching remote candidate for incoming check ->"
+            "peer-reflexive candidate.", agent);
+	remote_candidate = discovery_learn_remote_peer_reflexive_candidate (
+            agent, stream, component, priority, from, udp_socket);
+      }
+
+      priv_reply_to_conn_check (agent, stream, component, remote_candidate,
+          from, udp_socket, rbuf_len, rbuf, use_candidate);
+
+      if (component->remote_candidates == NULL) {
+        /* case: We've got a valid binding request to a local candidate
+         *       but we do not yet know remote credentials nor
+         *       candidates. As per sect 7.2 of ICE (ID-19), we send a reply
+         *       immediately but postpone all other processing until
+         *       we get information about the remote candidates */
+
+        /* step: send a reply immediately but postpone other processing */
+        priv_store_pending_check (agent, component, from, udp_socket,
+            priority, use_candidate);
+      }
+    } else {
+      g_debug ("Agent %p : Invalid STUN packet, ignoring... %s",
+          agent, strerror(errno));
+      return FALSE;
+    }
+  } else {
+      /* case 2: not a new request, might be a reply...  */
+      gboolean trans_found = FALSE;
+
+      /* note: ICE sect 7.1.2. "Processing the Response" (ID-19) */
+
+      /* step: let's try to match the response to an existing check context */
+      if (trans_found != TRUE)
+        trans_found = priv_map_reply_to_conn_check_request (agent, stream,
+            component, udp_socket, from, &req);
+
+      /* step: let's try to match the response to an existing discovery */
+      if (trans_found != TRUE)
+        trans_found = priv_map_reply_to_discovery_request (agent, &req);
+
+      if (trans_found != TRUE)
+        g_debug ("Agent %p : Unable to match to an existing transaction, probably a keepalive.", agent);
   }
 
   return TRUE;

@@ -466,6 +466,7 @@ static gboolean priv_discovery_tick_unlocked (gpointer pointer)
   NiceAgent *agent = pointer;
   GSList *i;
   int not_done = 0; /* note: track whether to continue timer */
+  size_t buffer_len;
 
 #ifndef NDEBUG
   {
@@ -490,7 +491,6 @@ static gboolean priv_discovery_tick_unlocked (gpointer pointer)
       if (cand->type == NICE_CANDIDATE_TYPE_SERVER_REFLEXIVE &&
 	  cand->server_addr) {
         NiceAddress stun_server;
-	int res;
 
         /* XXX FIXME TODO: handle error here?! Kai, help me! */
         if (!nice_address_set_from_string (&stun_server, cand->server_addr))
@@ -502,18 +502,25 @@ static gboolean priv_discovery_tick_unlocked (gpointer pointer)
 					     cand->component->id,
 					     NICE_COMPONENT_STATE_GATHERING);
 
-	res = stun_bind_start (&cand->stun_ctx, cand->socket,
-                               &stun_server.s.addr, sizeof(stun_server.s),
-                               agent->compatibility);
-	if (res == 0) {
+        buffer_len = stun_usage_bind_create (&agent->stun_agent,
+            &cand->stun_message, cand->stun_buffer, sizeof(cand->stun_buffer));
+
+
+	if (buffer_len > 0) {
+          stun_timer_start (&cand->timer);
+
+          /* send the conncheck */
+          nice_udp_socket_send (cand->nicesock, &stun_server,
+              buffer_len, (gchar *)cand->stun_buffer);
+
 	  /* case: success, start waiting for the result */
 	  g_get_current_time (&cand->next_tick);
 
-	}
-	else {
+	} else {
 	  /* case: error in starting discovery, start the next discovery */
 	  cand->done = TRUE;
-	  cand->stun_ctx = NULL;
+	  cand->stun_message.buffer = NULL;
+	  cand->stun_message.buffer_len = 0;
 	  continue; 
 	}
       }
@@ -529,29 +536,46 @@ static gboolean priv_discovery_tick_unlocked (gpointer pointer)
 
       g_get_current_time (&now);
 
-      if (cand->stun_ctx == NULL) {
+      if (cand->stun_message.buffer == NULL) {
 	g_debug ("Agent %p : STUN discovery was cancelled, marking discovery done.", agent);
 	cand->done = TRUE;
       }
       else if (priv_timer_expired (&cand->next_tick, &now)) {
-	int res = stun_bind_elapse (cand->stun_ctx);
-	if (res == EAGAIN) {
-	  /* case: not ready complete, so schedule next timeout */
-	  unsigned int timeout = stun_bind_timeout (cand->stun_ctx);
-	  
-	  /* note: convert from milli to microseconds for g_time_val_add() */
-	  cand->next_tick = now;
-	  g_time_val_add (&cand->next_tick, timeout * 1000);
-	  
-	  ++not_done; /* note: retry later */
+        switch (stun_timer_refresh (&cand->timer)) {
+          case -1:
+            /* case: error, abort processing */
+            cand->done = TRUE;
+            cand->stun_message.buffer = NULL;
+            cand->stun_message.buffer_len = 0;
+            g_debug ("Agent %p : Error with stun_bind_elapse(), aborting discovery item.", agent);
+            break;
+          case 0:
+            {
+              /* case: not ready complete, so schedule next timeout */
+              unsigned int timeout = stun_timer_remainder (&cand->timer);
+              NiceAddress stun_server;
+
+              if (!nice_address_set_from_string (&stun_server, cand->server_addr))
+                g_assert_not_reached();
+              nice_address_set_port (&stun_server, cand->server_port);
+
+              stun_debug ("STUN transaction retransmitted (timeout %dms).\n",
+                  timeout);
+
+              /* TODO retransmit */
+              nice_udp_socket_send (cand->nicesock, &stun_server,
+                  stun_message_length (&cand->stun_message),
+                  (gchar *)cand->stun_buffer);
+
+              /* note: convert from milli to microseconds for g_time_val_add() */
+              cand->next_tick = now;
+              g_time_val_add (&cand->next_tick, timeout * 1000);
+
+              ++not_done; /* note: retry later */
+              break;
+            }
 	}
-	else {
-	  /* case: error, abort processing */
-	  cand->done = TRUE;
-	  cand->stun_ctx = NULL;
-	  g_debug ("Agent %p : Error with stun_bind_elapse(), aborting discovery item.", agent);
-	}
-       
+
       }
       else
 	++not_done; /* note: discovery not expired yet */
