@@ -47,7 +47,7 @@
 #include <errno.h>
 
 /** ICE connectivity checks **/
-#include "stun-ice.h"
+#include "ice.h"
 
 
 size_t
@@ -90,6 +90,35 @@ stun_usage_ice_conncheck_create (StunAgent *agent, StunMessage *msg,
   }
 
   return stun_agent_finish_message (agent, msg, password, password_len);
+
+}
+
+
+StunUsageIceReturn stun_usage_ice_conncheck_process (StunMessage *msg,
+    struct sockaddr *addr, socklen_t *addrlen,
+    struct sockaddr *alternate_server, socklen_t *alternate_server_len)
+{
+  int code = -1;
+  StunUsageBindReturn res;
+
+  res = stun_usage_bind_process (msg, addr, addrlen,
+      alternate_server, alternate_server_len);
+  switch (res) {
+    case STUN_USAGE_BIND_RETURN_ERROR:
+      if (stun_message_get_class (msg) == STUN_ERROR) {
+        if (stun_message_find_error (msg, &code) == 0 &&
+            code  == STUN_ERROR_ROLE_CONFLICT)
+          return STUN_USAGE_ICE_RETURN_ROLE_CONFLICT;
+      }
+      return STUN_USAGE_ICE_RETURN_ERROR;
+    case STUN_USAGE_BIND_RETURN_RETRY:
+      return STUN_USAGE_ICE_RETURN_RETRY;
+    case STUN_USAGE_BIND_RETURN_ALTERNATE_SERVER:
+      return STUN_USAGE_ICE_RETURN_ALTERNATE_SERVER;
+    default:
+      return STUN_USAGE_ICE_RETURN_SUCCESS;
+
+  }
 
 }
 

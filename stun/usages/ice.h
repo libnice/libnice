@@ -37,7 +37,7 @@
 # define STUN_CONNCHECK_H 1
 
 /**
- * @file stun-ice.h
+ * @file ice.h
  * @brief STUN/ICE connectivity checks
  */
 
@@ -53,6 +53,16 @@ typedef enum {
   STUN_USAGE_ICE_COMPATIBILITY_MSN,
 } StunUsageIceCompatibility;
 
+typedef enum {
+  STUN_USAGE_ICE_RETURN_SUCCESS,
+  STUN_USAGE_ICE_RETURN_ERROR,
+  STUN_USAGE_ICE_RETURN_RETRY,
+  STUN_USAGE_ICE_RETURN_ALTERNATE_SERVER,
+  STUN_USAGE_ICE_RETURN_ROLE_CONFLICT,
+} StunUsageIceReturn;
+
+
+
 size_t
 stun_usage_ice_conncheck_create (StunAgent *agent, StunMessage *msg,
     uint8_t *buffer, size_t buffer_len,
@@ -61,6 +71,10 @@ stun_usage_ice_conncheck_create (StunAgent *agent, StunMessage *msg,
     bool cand_use, bool controlling, uint32_t priority,
     uint64_t tie, StunUsageIceCompatibility compatibility);
 
+
+StunUsageIceReturn stun_usage_ice_conncheck_process (StunMessage *msg,
+    struct sockaddr *addr, socklen_t *addrlen,
+    struct sockaddr *alternate_server, socklen_t *alternate_server_len);
 
 /**
  * Tries to parse a STUN connectivity check (Binding request) and format a

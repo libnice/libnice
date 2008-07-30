@@ -40,7 +40,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include "stun/stunagent.h"
-#include "stun/usages/stun-ice.h"
+#include "stun/usages/ice.h"
 
 #include <stdlib.h>
 #include <stdio.h>
