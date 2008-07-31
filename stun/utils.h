@@ -63,7 +63,8 @@ void stun_debug (const char *fmt, ...);
 void stun_debug_bytes (const void *data, size_t len);
 
 int stun_xor_address (const StunMessage *msg,
-    struct sockaddr *restrict addr, socklen_t addrlen);
+    struct sockaddr *restrict addr, socklen_t addrlen,
+    uint32_t magic_cookie);
 
 int stun_memcmp (const StunMessage *msg, stun_attr_type_t type,
     const void *data, size_t len);

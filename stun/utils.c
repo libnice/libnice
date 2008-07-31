@@ -149,7 +149,8 @@ void stun_debug_bytes (const void *data, size_t len)
 }
 
 int stun_xor_address (const StunMessage *msg,
-                      struct sockaddr *restrict addr, socklen_t addrlen)
+    struct sockaddr *restrict addr, socklen_t addrlen,
+    uint32_t magic_cookie)
 {
   switch (addr->sa_family)
   {
@@ -159,8 +160,8 @@ int stun_xor_address (const StunMessage *msg,
       if (addrlen < sizeof (*ip4))
         return EINVAL;
 
-      ip4->sin_port ^= htons (STUN_MAGIC_COOKIE >> 16);
-      ip4->sin_addr.s_addr ^= htonl (STUN_MAGIC_COOKIE);
+      ip4->sin_port ^= htons (magic_cookie >> 16);
+      ip4->sin_addr.s_addr ^= htonl (magic_cookie);
       return 0;
     }
 
@@ -172,7 +173,7 @@ int stun_xor_address (const StunMessage *msg,
       if (addrlen < sizeof (*ip6))
         return EINVAL;
 
-      ip6->sin6_port ^= htons (STUN_MAGIC_COOKIE >> 16);
+      ip6->sin6_port ^= htons (magic_cookie >> 16);
       for (i = 0; i < 16; i++)
         ip6->sin6_addr.s6_addr[i] ^= msg->buffer[4 + i];
       return 0;

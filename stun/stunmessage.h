@@ -317,6 +317,10 @@ int stun_message_find_addr (const StunMessage *msg, stun_attr_type_t type,
 int stun_message_find_xor_addr (const StunMessage *msg, stun_attr_type_t type,
     struct sockaddr *restrict addr, socklen_t *restrict addrlen);
 
+int stun_message_find_xor_addr_full (const StunMessage *msg,
+    stun_attr_type_t type, struct sockaddr *restrict addr,
+    socklen_t *restrict addrlen, uint32_t magic_cookie);
+
 
 int stun_message_find_error (const StunMessage *msg, int *restrict code);
 
@@ -395,6 +399,10 @@ int stun_message_append_addr (StunMessage * msg, stun_attr_type_t type,
  */
 int stun_message_append_xor_addr (StunMessage * msg, stun_attr_type_t type,
     const struct sockaddr *restrict addr, socklen_t addrlen);
+
+int stun_message_append_xor_addr_full (StunMessage * msg, stun_attr_type_t type,
+    const struct sockaddr *restrict addr, socklen_t addrlen,
+    uint32_t magic_cookie);
 
 /**
  * Appends an ERROR-CODE attribute.
