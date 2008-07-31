@@ -1869,6 +1869,16 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, Stream *stream,
 
 
   if (stun_message_get_class (&req) == STUN_REQUEST) {
+    if (agent->compatibility == NICE_COMPATIBILITY_MSN) {
+      username = (uint8_t *) stun_message_find (&req, STUN_ATTRIBUTE_USERNAME,
+          &username_len);
+      uname_len = priv_create_username (agent, stream,
+          component->id,  remote_candidate, local_candidate,
+          uname, sizeof (uname), FALSE);
+      memcpy (username, uname, username_len);
+      req.key = g_base64_decode ((gchar *) remote_candidate->password,  &req.key_len);
+    }
+
     rbuf_len = sizeof (rbuf);
     res = stun_usage_ice_conncheck_create_reply (&agent->stun_agent, &req,
         &msg, rbuf, &rbuf_len, &sockaddr, sizeof (sockaddr),
