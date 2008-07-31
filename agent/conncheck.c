@@ -1831,38 +1831,35 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, Stream *stream,
     return TRUE;
   }
 
-
-  /* If we receive a response, then the username is local:remote */
-  if (stun_message_get_class (&req) == STUN_REQUEST ||
-      stun_message_get_class (&req) == STUN_INDICATION) {
-    uname_len = priv_create_username (agent, stream,
-        component->id,  remote_candidate, local_candidate,
-        uname, sizeof (uname), TRUE);
-  } else {
-    uname_len = priv_create_username (agent, stream,
-        component->id,  remote_candidate, local_candidate,
-        uname, sizeof (uname), FALSE);
-  }
-
-
-  username = (uint8_t *) stun_message_find (&req, STUN_ATTRIBUTE_USERNAME,
-      &username_len);
-
-  g_debug ("Comparing usernames : '%s' (%d) to '%s' (%d)", username, username_len, uname, uname_len);
-
-  /* Check again the username in case the stun agent has IGNORE_CREDENTIALS flag.
-     We only need to check the username and not care about the password */
-  if (username &&
-      (uname_len != username_len ||
-          memcmp (uname, username, username_len) != 0)) {
-    g_debug ("Agent %p : Username check failed.", agent);
-    if (stun_agent_init_error (&agent->stun_agent, &msg, rbuf, rbuf_len,
-            &req, STUN_ERROR_UNAUTHORIZED)) {
-      rbuf_len = stun_agent_finish_message (&agent->stun_agent, &msg, NULL, 0);
-      if (rbuf_len > 0)
-        nice_udp_socket_send (udp_socket, from, rbuf_len, (const gchar*)rbuf);
+  if (agent->compatibility == NICE_COMPATIBILITY_GOOGLE) {
+    /* If we receive a response, then the username is local:remote */
+    if (stun_message_get_class (&req) == STUN_REQUEST ||
+        stun_message_get_class (&req) == STUN_INDICATION) {
+      uname_len = priv_create_username (agent, stream,
+          component->id,  remote_candidate, local_candidate,
+          uname, sizeof (uname), TRUE);
+    } else {
+      uname_len = priv_create_username (agent, stream,
+          component->id,  remote_candidate, local_candidate,
+          uname, sizeof (uname), FALSE);
     }
-    return TRUE;
+    username = (uint8_t *) stun_message_find (&req, STUN_ATTRIBUTE_USERNAME,
+        &username_len);
+
+    /* Check the username in case the stun agent has IGNORE_CREDENTIALS flag.
+       We only need to check the username and not care about the password */
+    if (username &&
+        (uname_len != username_len ||
+            memcmp (uname, username, username_len) != 0)) {
+      g_debug ("Agent %p : Username check failed.", agent);
+      if (stun_agent_init_error (&agent->stun_agent, &msg, rbuf, rbuf_len,
+              &req, STUN_ERROR_UNAUTHORIZED)) {
+        rbuf_len = stun_agent_finish_message (&agent->stun_agent, &msg, NULL, 0);
+        if (rbuf_len > 0&& agent->compatibility != NICE_COMPATIBILITY_MSN)
+          nice_udp_socket_send (udp_socket, from, rbuf_len, (const gchar*)rbuf);
+      }
+      return TRUE;
+    }
   }
 
   if (valid != STUN_VALIDATION_SUCCESS) {
