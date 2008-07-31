@@ -61,12 +61,22 @@ static void priv_prune_pending_checks (Stream *stream, guint component_id);
 static gboolean priv_schedule_triggered_check (NiceAgent *agent, Stream *stream, Component *component, NiceUDPSocket *local_socket, NiceCandidate *remote_cand, gboolean use_candidate);
 static void priv_mark_pair_nominated (NiceAgent *agent, Stream *stream, Component *component, NiceCandidate *remotecand);
 
-static inline int priv_timer_expired (GTimeVal *restrict timer, GTimeVal *restrict now)
+static int priv_timer_expired (GTimeVal *restrict timer, GTimeVal *restrict now)
 {
   return (now->tv_sec == timer->tv_sec) ?
     now->tv_usec >= timer->tv_usec :
     now->tv_sec >= timer->tv_sec;
 }
+
+static  int priv_agent_to_usage_compatibility (NiceAgent *agent) {
+  return agent->compatibility == NICE_COMPATIBILITY_ID19 ?
+      STUN_USAGE_ICE_COMPATIBILITY_ID19 :
+      agent->compatibility == NICE_COMPATIBILITY_GOOGLE ?
+      STUN_USAGE_ICE_COMPATIBILITY_GOOGLE :
+      agent->compatibility == NICE_COMPATIBILITY_MSN ?
+      STUN_USAGE_ICE_COMPATIBILITY_MSN : NICE_COMPATIBILITY_ID19;
+}
+
 
 /**
  * Finds the next connectivity check in WAITING state.
@@ -1183,12 +1193,7 @@ int conn_check_send (NiceAgent *agent, CandidateCheckPair *pair)
         uname, uname_len, password, password_len,
         cand_use, controlling, priority,
         agent->tie_breaker,
-        agent->compatibility == NICE_COMPATIBILITY_ID19 ?
-        STUN_USAGE_ICE_COMPATIBILITY_ID19 :
-        agent->compatibility == NICE_COMPATIBILITY_GOOGLE ?
-        STUN_USAGE_ICE_COMPATIBILITY_GOOGLE :
-        agent->compatibility == NICE_COMPATIBILITY_MSN ?
-        STUN_USAGE_ICE_COMPATIBILITY_MSN : NICE_COMPATIBILITY_ID19);
+        priv_agent_to_usage_compatibility (agent));
 
     stun_timer_start (&pair->timer);
 
@@ -1545,7 +1550,8 @@ static gboolean priv_map_reply_to_conn_check_request (NiceAgent *agent, Stream *
 
       if (memcmp (discovery_id, response_id, sizeof(stun_transid_t)) == 0) {
         res = stun_usage_ice_conncheck_process (resp, &sockaddr, &socklen,
-            &alternate, &alternatelen);
+            &alternate, &alternatelen,
+            priv_agent_to_usage_compatibility (agent));
         g_debug ("Agent %p : stun_bind_process/conncheck for %p res %d "
             "(controlling=%d).", agent, p, (int)res, agent->controlling_mode);
 
@@ -1857,7 +1863,8 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, Stream *stream,
     rbuf_len = sizeof (rbuf);
     res = stun_usage_ice_conncheck_create_reply (&agent->stun_agent, &req,
         &msg, rbuf, &rbuf_len, &sockaddr, sizeof (sockaddr),
-        &control, agent->tie_breaker);
+        &control, agent->tie_breaker,
+        priv_agent_to_usage_compatibility (agent));
 
     if (res == EACCES)
       priv_check_for_role_conflict (agent, control);
