@@ -193,6 +193,14 @@ static void priv_assign_foundation (NiceAgent *agent, NiceCandidate *candidate)
 	   *       for candidates that would otherwise share the
 	   *       foundation, but have different STUN/TURN servers */
 	  memcpy (candidate->foundation, n->foundation, NICE_CANDIDATE_MAX_FOUNDATION);
+          if (n->username) {
+            g_free (candidate->username);
+            candidate->username = g_strdup (n->username);
+          }
+          if (n->password) {
+            g_free (candidate->password);
+            candidate->password = g_strdup (n->password);
+          }
 	  return;
 	}
       }
