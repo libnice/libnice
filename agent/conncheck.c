@@ -1762,6 +1762,7 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, Stream *stream,
 
   validater_data[0].username = uname;
   validater_data[0].username_len = uname_len;
+
   if (local_candidate->password) {
     validater_data[0].password = (uint8_t *) local_candidate->password;
     validater_data[0].password_len = strlen (local_candidate->password);
@@ -1802,7 +1803,9 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, Stream *stream,
     if (len == 0)
       return FALSE;
 
-    nice_udp_socket_send (udp_socket, from, rbuf_len, (const gchar*)rbuf);
+    if (agent->compatibility != NICE_COMPATIBILITY_MSN) {
+      nice_udp_socket_send (udp_socket, from, rbuf_len, (const gchar*)rbuf);
+    }
     return TRUE;
   }
 
@@ -1812,7 +1815,7 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, Stream *stream,
     if (stun_agent_init_error (&agent->stun_agent, &msg, rbuf, rbuf_len,
             &req, STUN_ERROR_UNAUTHORIZED)) {
       rbuf_len = stun_agent_finish_message (&agent->stun_agent, &msg, NULL, 0);
-      if (rbuf_len > 0)
+      if (rbuf_len > 0 && agent->compatibility != NICE_COMPATIBILITY_MSN)
         nice_udp_socket_send (udp_socket, from, rbuf_len, (const gchar*)rbuf);
     }
     return TRUE;
@@ -1822,7 +1825,7 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, Stream *stream,
     if (stun_agent_init_error (&agent->stun_agent, &msg, rbuf, rbuf_len,
             &req, STUN_ERROR_BAD_REQUEST)) {
       rbuf_len = stun_agent_finish_message (&agent->stun_agent, &msg, NULL, 0);
-      if (rbuf_len > 0)
+      if (rbuf_len > 0 && agent->compatibility != NICE_COMPATIBILITY_MSN)
         nice_udp_socket_send (udp_socket, from, rbuf_len, (const gchar*)rbuf);
     }
     return TRUE;
