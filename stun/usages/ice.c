@@ -44,6 +44,7 @@
 #include <sys/socket.h>
 #include "stunagent.h"
 #include <errno.h>
+#include <arpa/inet.h>
 
 /** ICE connectivity checks **/
 #include "ice.h"
