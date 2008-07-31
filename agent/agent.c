@@ -535,7 +535,8 @@ nice_agent_set_property (
       } else if (agent->compatibility == NICE_COMPATIBILITY_MSN) {
         stun_agent_init (&agent->stun_agent, STUN_ALL_KNOWN_ATTRIBUTES,
             STUN_COMPATIBILITY_RFC3489,
-            STUN_AGENT_USAGE_SHORT_TERM_CREDENTIALS);
+            STUN_AGENT_USAGE_SHORT_TERM_CREDENTIALS |
+            STUN_AGENT_USAGE_FORCE_VALIDATER);
       }
 
       break;
