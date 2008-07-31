@@ -263,7 +263,13 @@ NiceCandidate *discovery_add_local_host_candidate (
       candidate->component_id = component_id;
       candidate->addr = *address;
       candidate->base_addr = *address;
-      candidate->priority = nice_candidate_ice_priority (candidate);
+      if (agent->compatibility == NICE_COMPATIBILITY_GOOGLE) {
+        candidate->priority = nice_candidate_jingle_priority (candidate) * 1000;
+      } else if (agent->compatibility == NICE_COMPATIBILITY_MSN)  {
+        candidate->priority = nice_candidate_msn_priority (candidate) * 1000;
+      } else {
+        candidate->priority = nice_candidate_ice_priority (candidate);
+      }
 
       priv_generate_msn_credentials (agent, candidate);
       priv_assign_foundation (agent, candidate);
@@ -336,9 +342,14 @@ discovery_add_server_reflexive_candidate (
 
   candidate = nice_candidate_new (NICE_CANDIDATE_TYPE_SERVER_REFLEXIVE);
   if (candidate) {
-    candidate->priority = 
-      nice_candidate_ice_priority_full 
+    if (agent->compatibility == NICE_COMPATIBILITY_GOOGLE) {
+      candidate->priority = nice_candidate_jingle_priority (candidate) * 1000;
+    } else if (agent->compatibility == NICE_COMPATIBILITY_MSN)  {
+      candidate->priority = nice_candidate_msn_priority (candidate) * 1000;
+    } else {
+      candidate->priority =  nice_candidate_ice_priority_full
         (NICE_CANDIDATE_TYPE_PREF_SERVER_REFLEXIVE, 0, component_id);
+    }
     candidate->stream_id = stream_id;
     candidate->component_id = component_id;
     candidate->addr = *address;
@@ -389,9 +400,14 @@ discovery_add_peer_reflexive_candidate (
     gboolean result;
 
     candidate->transport = NICE_CANDIDATE_TRANSPORT_UDP;
-    candidate->priority = 
-      nice_candidate_ice_priority_full 
+    if (agent->compatibility == NICE_COMPATIBILITY_GOOGLE) {
+      candidate->priority = nice_candidate_jingle_priority (candidate) * 1000;
+    } else if (agent->compatibility == NICE_COMPATIBILITY_MSN)  {
+      candidate->priority = nice_candidate_msn_priority (candidate) * 1000;
+    } else {
+      candidate->priority = nice_candidate_ice_priority_full
         (NICE_CANDIDATE_TYPE_PREF_PEER_REFLEXIVE, 0, component_id);
+    }
     candidate->stream_id = stream_id;
     candidate->component_id = component_id;
     candidate->addr = *address;
