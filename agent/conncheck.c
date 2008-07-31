@@ -1164,6 +1164,10 @@ int conn_check_send (NiceAgent *agent, CandidateCheckPair *pair)
   struct sockaddr sockaddr;
   unsigned int timeout;
 
+  if (agent->compatibility == NICE_COMPATIBILITY_MSN) {
+    password = g_base64_decode ((gchar *) password, &password_len);
+  }
+
   memset (&sockaddr, 0, sizeof (sockaddr)); 
 
   nice_address_copy_to_sockaddr (&pair->remote->addr, &sockaddr);
@@ -1764,6 +1768,11 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, Stream *stream,
   } else {
     validater_data[0].password = (uint8_t *) stream->local_password;
     validater_data[0].password_len = strlen (stream->local_password);
+  }
+
+  if (agent->compatibility == NICE_COMPATIBILITY_MSN) {
+    validater_data[0].password = g_base64_decode ((gchar *) validater_data[0].password,
+        &validater_data[0].password_len);
   }
 
   /* note: contents of 'buf' already validated, so it is
