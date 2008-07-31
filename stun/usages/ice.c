@@ -42,7 +42,6 @@
 
 #include <sys/types.h>
 #include <sys/socket.h>
-#include "stun/usages/bind.h"
 #include "stunagent.h"
 #include <errno.h>
 
@@ -96,30 +95,83 @@ stun_usage_ice_conncheck_create (StunAgent *agent, StunMessage *msg,
 
 StunUsageIceReturn stun_usage_ice_conncheck_process (StunMessage *msg,
     struct sockaddr *addr, socklen_t *addrlen,
-    struct sockaddr *alternate_server, socklen_t *alternate_server_len)
+    struct sockaddr *alternate_server, socklen_t *alternate_server_len,
+    StunUsageIceCompatibility compatibility)
 {
-  int code = -1;
-  StunUsageBindReturn res;
+  int val, code = -1;
 
-  res = stun_usage_bind_process (msg, addr, addrlen,
-      alternate_server, alternate_server_len);
-  switch (res) {
-    case STUN_USAGE_BIND_RETURN_ERROR:
-      if (stun_message_get_class (msg) == STUN_ERROR) {
-        if (stun_message_find_error (msg, &code) == 0 &&
-            code  == STUN_ERROR_ROLE_CONFLICT)
-          return STUN_USAGE_ICE_RETURN_ROLE_CONFLICT;
+  switch (stun_message_get_class (msg))
+  {
+    case STUN_REQUEST:
+    case STUN_INDICATION:
+      return STUN_USAGE_ICE_RETURN_RETRY;
+
+    case STUN_RESPONSE:
+      break;
+
+    case STUN_ERROR:
+      if (stun_message_find_error (msg, &code) != 0) {
+        /* missing ERROR-CODE: ignore message */
+        return STUN_USAGE_ICE_RETURN_RETRY;
+      }
+
+      if (code  == STUN_ERROR_ROLE_CONFLICT)
+        return STUN_USAGE_ICE_RETURN_ROLE_CONFLICT;
+
+      /* NOTE: currently we ignore unauthenticated messages if the context
+       * is authenticated, for security reasons. */
+      stun_debug (" STUN error message received (code: %d)\n", code);
+
+      /* ALTERNATE-SERVER mechanism */
+      if ((code / 100) == 3) {
+        if (alternate_server && alternate_server_len) {
+          if (stun_message_find_addr (msg, STUN_ATTRIBUTE_ALTERNATE_SERVER,
+                  alternate_server, alternate_server_len)) {
+            stun_debug (" Unexpectedly missing ALTERNATE-SERVER attribute\n");
+            return STUN_USAGE_ICE_RETURN_ERROR;
+          }
+        } else {
+          if (!stun_message_has_attribute (msg, STUN_ATTRIBUTE_ALTERNATE_SERVER)) {
+            stun_debug (" Unexpectedly missing ALTERNATE-SERVER attribute\n");
+            return STUN_USAGE_ICE_RETURN_ERROR;
+          }
+        }
+
+        stun_debug ("Found alternate server\n");
+        return STUN_USAGE_ICE_RETURN_ALTERNATE_SERVER;
+
       }
       return STUN_USAGE_ICE_RETURN_ERROR;
-    case STUN_USAGE_BIND_RETURN_RETRY:
-      return STUN_USAGE_ICE_RETURN_RETRY;
-    case STUN_USAGE_BIND_RETURN_ALTERNATE_SERVER:
-      return STUN_USAGE_ICE_RETURN_ALTERNATE_SERVER;
-    default:
-      return STUN_USAGE_ICE_RETURN_SUCCESS;
-
   }
 
+  stun_debug ("Received %u-bytes STUN message\n", stun_message_length (msg));
+
+  if (compatibility == STUN_USAGE_ICE_COMPATIBILITY_MSN) {
+    stun_transid_t transid;
+    uint32_t magic_cookie;
+    stun_message_id (msg, transid);
+    magic_cookie = *((uint32_t *) transid);
+
+    val = stun_message_find_xor_addr_full (msg,
+        STUN_ATTRIBUTE_XOR_MAPPED_ADDRESS, addr, addrlen, htonl (magic_cookie));
+  } else {
+    val = stun_message_find_xor_addr (msg,
+        STUN_ATTRIBUTE_XOR_MAPPED_ADDRESS, addr, addrlen);
+  }
+  if (val)
+  {
+    stun_debug (" No XOR-MAPPED-ADDRESS: %s\n", strerror (val));
+    val = stun_message_find_addr (msg,
+        STUN_ATTRIBUTE_MAPPED_ADDRESS, addr, addrlen);
+    if (val)
+    {
+      stun_debug (" No MAPPED-ADDRESS: %s\n", strerror (val));
+      return STUN_USAGE_ICE_RETURN_ERROR;
+    }
+  }
+
+  stun_debug ("Mapped address found!\n");
+  return STUN_USAGE_ICE_RETURN_SUCCESS;
 }
 
 static int
@@ -151,7 +203,8 @@ int
 stun_usage_ice_conncheck_create_reply (StunAgent *agent, StunMessage *req,
     StunMessage *msg, uint8_t *buf, size_t *plen,
     const struct sockaddr *src, socklen_t srclen,
-    bool *restrict control, uint64_t tie)
+    bool *restrict control, uint64_t tie,
+    StunUsageIceCompatibility compatibility)
 {
   const char *username = NULL;
   uint16_t username_len;
@@ -216,10 +269,19 @@ stun_usage_ice_conncheck_create_reply (StunAgent *agent, StunMessage *req,
     stun_debug ("Unable to create response\n");
     goto failure;
   }
-  if (!stun_has_cookie (msg)) {
-    val = stun_message_append_addr (msg, STUN_ATTRIBUTE_MAPPED_ADDRESS, src, srclen);
-  } else {
+  if (compatibility == STUN_USAGE_ICE_COMPATIBILITY_MSN) {
+    stun_transid_t transid;
+    uint32_t magic_cookie;
+    stun_message_id (msg, transid);
+    magic_cookie = *((uint32_t *) transid);
+
+    val = stun_message_append_xor_addr_full (msg, STUN_ATTRIBUTE_XOR_MAPPED_ADDRESS,
+        src, srclen, htonl (magic_cookie));
+  } else if (stun_has_cookie (msg)) {
     val = stun_message_append_xor_addr (msg, STUN_ATTRIBUTE_XOR_MAPPED_ADDRESS,
+        src, srclen);
+  } else {
+    val = stun_message_append_addr (msg, STUN_ATTRIBUTE_MAPPED_ADDRESS,
         src, srclen);
   }
 

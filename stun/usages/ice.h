@@ -74,7 +74,8 @@ stun_usage_ice_conncheck_create (StunAgent *agent, StunMessage *msg,
 
 StunUsageIceReturn stun_usage_ice_conncheck_process (StunMessage *msg,
     struct sockaddr *addr, socklen_t *addrlen,
-    struct sockaddr *alternate_server, socklen_t *alternate_server_len);
+    struct sockaddr *alternate_server, socklen_t *alternate_server_len,
+    StunUsageIceCompatibility compatibility);
 
 /**
  * Tries to parse a STUN connectivity check (Binding request) and format a
@@ -105,7 +106,8 @@ int
 stun_usage_ice_conncheck_create_reply (StunAgent *agent, StunMessage *req,
     StunMessage *msg, uint8_t *buf, size_t *plen,
     const struct sockaddr *restrict src, socklen_t srclen,
-    bool *restrict control, uint64_t tie);
+    bool *restrict control, uint64_t tie,
+    StunUsageIceCompatibility compatibility);
 
 /**
  * Extracts the priority from a STUN message.
