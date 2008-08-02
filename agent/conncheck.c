@@ -469,7 +469,7 @@ static gboolean priv_conn_keepalive_tick (gpointer pointer)
         nice_udp_socket_send (p->local->sockptr, &p->remote->addr, buf_len, (gchar *)buf);
 
 	g_debug ("Agent %p : stun_bind_keepalive for pair %p res %d.",
-            agent, p, buf_len);
+            agent, p, (int) buf_len);
 	if (buf_len == 0)
 	  ++errors;
       }
