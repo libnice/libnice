@@ -49,6 +49,7 @@
 #include <netinet/in.h>
 #include <unistd.h>
 #include <errno.h>
+#include <limits.h>
 
 #ifndef SOL_IP
 # define SOL_IP IPPROTO_IP
