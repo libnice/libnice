@@ -1739,10 +1739,9 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, Stream *stream,
   StunMessage req;
   StunMessage msg;
   StunValidationStatus valid;
-  stun_validater_data validater_data[2] = {
-    {NULL, 0, NULL, 0},
-    {NULL, 0, NULL, 0}};
+  stun_validater_data *validater_data = NULL;
   GSList *i;
+  int j, k;
   NiceCandidate *remote_candidate = NULL;
   NiceCandidate *local_candidate = NULL;
 
@@ -1755,33 +1754,38 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, Stream *stream,
       break;
     }
   }
+
+  validater_data = g_new0(stun_validater_data, g_slist_length(component->local_candidates) + 1);
+
+  /* We have to check all the local candidates into our validater_data because a
+     server reflexive candidate shares the same socket as the host candidate, so we
+     have no idea the user/pass is coming from which candidate */
+  j = 0;
   for (i = component->local_candidates; i; i = i->next) {
     NiceCandidate *cand = i->data;
-    if (cand->sockptr == udp_socket) {
-      local_candidate = cand;
-      break;
+
+    uname_len = priv_create_username (agent, stream,
+				      component->id,  remote_candidate, cand,
+				      uname, sizeof (uname), TRUE);
+
+    validater_data[j].username = g_memdup(uname, uname_len);
+    validater_data[j].username_len = uname_len;
+
+    if (cand->password) {
+      validater_data[j].password = (uint8_t *) cand->password;
+      validater_data[j].password_len = strlen (cand->password);
+    } else {
+      validater_data[j].password = (uint8_t *) stream->local_password;
+      validater_data[j].password_len = strlen (stream->local_password);
     }
+
+    if (agent->compatibility == NICE_COMPATIBILITY_MSN) {
+      validater_data[j].password = g_base64_decode ((gchar *) validater_data[j].password,
+						    &validater_data[j].password_len);
+    }
+    j++;
   }
 
-  uname_len = priv_create_username (agent, stream,
-      component->id,  remote_candidate, local_candidate,
-      uname, sizeof (uname), TRUE);
-
-  validater_data[0].username = uname;
-  validater_data[0].username_len = uname_len;
-
-  if (local_candidate->password) {
-    validater_data[0].password = (uint8_t *) local_candidate->password;
-    validater_data[0].password_len = strlen (local_candidate->password);
-  } else {
-    validater_data[0].password = (uint8_t *) stream->local_password;
-    validater_data[0].password_len = strlen (stream->local_password);
-  }
-
-  if (agent->compatibility == NICE_COMPATIBILITY_MSN) {
-    validater_data[0].password = g_base64_decode ((gchar *) validater_data[0].password,
-        &validater_data[0].password_len);
-  }
 
   /* note: contents of 'buf' already validated, so it is
    *       a valid and fully received STUN message */
@@ -1841,35 +1845,46 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, Stream *stream,
     return TRUE;
   }
 
-  if (agent->compatibility == NICE_COMPATIBILITY_GOOGLE) {
-    /* If we receive a response, then the username is local:remote */
-    if (stun_message_get_class (&req) == STUN_REQUEST ||
-        stun_message_get_class (&req) == STUN_INDICATION) {
-      uname_len = priv_create_username (agent, stream,
-          component->id,  remote_candidate, local_candidate,
-          uname, sizeof (uname), TRUE);
-    } else {
-      uname_len = priv_create_username (agent, stream,
-          component->id,  remote_candidate, local_candidate,
-          uname, sizeof (uname), FALSE);
-    }
-    username = (uint8_t *) stun_message_find (&req, STUN_ATTRIBUTE_USERNAME,
-        &username_len);
+  username = (uint8_t *) stun_message_find (&req, STUN_ATTRIBUTE_USERNAME,
+					    &username_len);
 
-    /* Check the username in case the stun agent has IGNORE_CREDENTIALS flag.
-       We only need to check the username and not care about the password */
-    if (username &&
-        (uname_len != username_len ||
-            memcmp (uname, username, username_len) != 0)) {
-      g_debug ("Agent %p : Username check failed.", agent);
-      if (stun_agent_init_error (&agent->stun_agent, &msg, rbuf, rbuf_len,
-              &req, STUN_ERROR_UNAUTHORIZED)) {
-        rbuf_len = stun_agent_finish_message (&agent->stun_agent, &msg, NULL, 0);
-        if (rbuf_len > 0&& agent->compatibility != NICE_COMPATIBILITY_MSN)
-          nice_udp_socket_send (udp_socket, from, rbuf_len, (const gchar*)rbuf);
+  /* We need to find which local candidate was used */
+  for (i = component->local_candidates; i; i = i->next) {
+    gboolean inbound = TRUE;
+    NiceCandidate *cand = i->data;
+    
+      /* If we receive a response, then the username is local:remote */
+    if (agent->compatibility != NICE_COMPATIBILITY_MSN) {
+      if (stun_message_get_class (&req) == STUN_REQUEST ||
+	  stun_message_get_class (&req) == STUN_INDICATION) {
+	inbound = TRUE;
+      } else {
+	inbound = FALSE;
       }
-      return TRUE;
+    }   
+    uname_len = priv_create_username (agent, stream,
+				      component->id,  remote_candidate, cand,
+				      uname, sizeof (uname), inbound);
+    if (username &&
+	uname_len == username_len &&
+	memcmp (uname, username, username_len) == 0) {
+      local_candidate = cand;
+      break;
     }
+  }
+
+  if (agent->compatibility == NICE_COMPATIBILITY_GOOGLE &&
+      local_candidate == NULL) {
+    /* if we couldn't match the username and the stun agent has IGNORE_CREDENTIALS,
+       then we have an integrity check failing */
+    g_debug ("Agent %p : Username check failed.", agent);
+    if (stun_agent_init_error (&agent->stun_agent, &msg, rbuf, rbuf_len,
+			       &req, STUN_ERROR_UNAUTHORIZED)) {
+      rbuf_len = stun_agent_finish_message (&agent->stun_agent, &msg, NULL, 0);
+      if (rbuf_len > 0&& agent->compatibility != NICE_COMPATIBILITY_MSN)
+	nice_udp_socket_send (udp_socket, from, rbuf_len, (const gchar*)rbuf);
+    }
+    return TRUE;
   }
 
   if (valid != STUN_VALIDATION_SUCCESS) {
