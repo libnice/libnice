@@ -1488,7 +1488,7 @@ static void priv_check_for_role_conflict (NiceAgent *agent, gboolean control)
  *
  * @return pointer to a new pair if one was created, otherwise NULL
  */
-static CandidateCheckPair *priv_process_response_check_for_peer_reflexive(NiceAgent *agent, Stream *stream, Component *component, CandidateCheckPair *p, NiceUDPSocket *sockptr, struct sockaddr *mapped_sockaddr)
+static CandidateCheckPair *priv_process_response_check_for_peer_reflexive(NiceAgent *agent, Stream *stream, Component *component, CandidateCheckPair *p, NiceUDPSocket *sockptr, struct sockaddr *mapped_sockaddr, NiceCandidate *base_candidate)
 {
   CandidateCheckPair *new_pair = NULL;
   NiceAddress mapped;
@@ -1518,7 +1518,8 @@ static CandidateCheckPair *priv_process_response_check_for_peer_reflexive(NiceAg
 					      stream->id,
 					      component->id,
 					      &mapped,
-					      sockptr);
+					      sockptr,
+					      base_candidate);
     p->state = NICE_CHECK_FAILED;
 	    
     /* step: add a new discovered pair (see ICE 7.1.2.2.2
@@ -1537,7 +1538,7 @@ static CandidateCheckPair *priv_process_response_check_for_peer_reflexive(NiceAg
  * 
  * @return TRUE if a matching transaction is found
  */
-static gboolean priv_map_reply_to_conn_check_request (NiceAgent *agent, Stream *stream, Component *component, NiceUDPSocket *sockptr, const NiceAddress *from, StunMessage *resp)
+static gboolean priv_map_reply_to_conn_check_request (NiceAgent *agent, Stream *stream, Component *component, NiceUDPSocket *sockptr, const NiceAddress *from, NiceCandidate *base_candidate, StunMessage *resp)
 {
   struct sockaddr sockaddr;
   socklen_t socklen = sizeof (sockaddr);
@@ -1593,7 +1594,8 @@ static gboolean priv_map_reply_to_conn_check_request (NiceAgent *agent, Stream *
            *       not match any local candidate, see 7.1.2.2.1
            *       "Discovering Peer Reflexive Candidates" ICE ID-19) */
 
-          ok_pair = priv_process_response_check_for_peer_reflexive(agent, stream, component,  p, sockptr, &sockaddr);
+          ok_pair = priv_process_response_check_for_peer_reflexive(agent, stream, component,
+								   p, sockptr, &sockaddr, base_candidate);
           if (!ok_pair)
             ok_pair = p;
 
@@ -1948,7 +1950,7 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, Stream *stream,
       /* step: let's try to match the response to an existing check context */
       if (trans_found != TRUE)
         trans_found = priv_map_reply_to_conn_check_request (agent, stream,
-            component, udp_socket, from, &req);
+							    component, udp_socket, from, local_candidate, &req);
 
       /* step: let's try to match the response to an existing discovery */
       if (trans_found != TRUE)

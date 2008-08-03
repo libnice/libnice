@@ -386,7 +386,8 @@ discovery_add_peer_reflexive_candidate (
   guint stream_id,
   guint component_id,
   NiceAddress *address,
-  NiceUDPSocket *base_socket)
+  NiceUDPSocket *base_socket,
+  NiceCandidate *base_candidate)
 {
   NiceCandidate *candidate;
   Component *component;
@@ -413,7 +414,11 @@ discovery_add_peer_reflexive_candidate (
     candidate->addr = *address;
     candidate->base_addr = base_socket->addr;
 
-    priv_generate_msn_credentials (agent, candidate);
+    if (base_candidate->username)
+      candidate->username = g_strdup(base_candidate->username);
+    if (base_candidate->password)
+      candidate->password = g_strdup(base_candidate->password);
+
     priv_assign_foundation (agent, candidate);
 
     /* step: link to the base candidate+socket */

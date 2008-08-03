@@ -89,7 +89,8 @@ discovery_add_peer_reflexive_candidate (
   guint stream_id,
   guint component_id,
   NiceAddress *address,
-  NiceUDPSocket *base_socket);
+  NiceUDPSocket *base_socket,
+  NiceCandidate *base_candidate);
 
 NiceCandidate *
 discovery_learn_remote_peer_reflexive_candidate (
