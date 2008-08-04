@@ -24,6 +24,7 @@ libstun_la_SOURCES = stun.h constants.h \
 	utils.c  utils.h \
 	usages/ice.c usages/ice.h \
 	usages/bind.c usages/bind.h \
+	usages/turn.c usages/turn.h \
 	usages/timer.c usages/timer.h \
 	usages/trans.c usages/trans.h
 
