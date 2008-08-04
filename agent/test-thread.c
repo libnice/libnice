@@ -42,7 +42,6 @@
 #include <string.h>
 
 #include "agent.h"
-#include "udp-bsd.h"
 
 GMainLoop *error_loop;
 
@@ -171,7 +170,6 @@ static void cb_component_state_changed (NiceAgent *agent,
 int main (void)
 {
   NiceAgent *lagent, *ragent;      /* agent's L and R */
-  NiceUDPSocketFactory udpfactory;
   NiceAddress baseaddr;
   guint timer_id;
   const char *stun_server = NULL, *stun_server_port = NULL;
@@ -198,11 +196,10 @@ int main (void)
 
   error_loop = g_main_loop_new (NULL, FALSE);
 
-  nice_udp_bsd_socket_factory_init (&udpfactory);
 
   /* step: create the agents L and R */
-  lagent = nice_agent_new (&udpfactory, lmainctx, NICE_COMPATIBILITY_GOOGLE);
-  ragent = nice_agent_new (&udpfactory, rmainctx, NICE_COMPATIBILITY_GOOGLE);
+  lagent = nice_agent_new (lmainctx, NICE_COMPATIBILITY_MSN);
+  ragent = nice_agent_new (rmainctx, NICE_COMPATIBILITY_MSN);
 
   g_object_set_data (G_OBJECT (lagent), "other-agent", ragent);
   g_object_set_data (G_OBJECT (ragent), "other-agent", lagent);
@@ -243,13 +240,10 @@ int main (void)
 
   /* step: test setter/getter functions for properties */
   {
-    gpointer pointer;
     guint max_checks = 0;
     gchar *string = NULL;
     guint port = 0;
     gboolean mode = FALSE;
-    g_object_get (G_OBJECT (lagent), "socket-factory", &pointer, NULL);
-    g_assert (pointer == (gpointer)&udpfactory);
     g_object_get (G_OBJECT (lagent), "stun-server", &string, NULL);
     g_assert (stun_server == NULL || strcmp (string, stun_server) == 0);
     g_free (string);
@@ -321,8 +315,6 @@ int main (void)
 
   g_object_unref (lagent);
   g_object_unref (ragent);
-
-  nice_udp_socket_factory_close (&udpfactory);
 
   g_main_loop_unref (lmainloop);
   g_main_loop_unref (rmainloop);

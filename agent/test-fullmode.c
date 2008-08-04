@@ -42,7 +42,6 @@
 #include <string.h>
 
 #include "agent.h"
-#include "udp-bsd.h"
 
 static NiceComponentState global_lagent_state[2] = { NICE_COMPONENT_STATE_LAST, NICE_COMPONENT_STATE_LAST };
 static NiceComponentState global_ragent_state[2] = { NICE_COMPONENT_STATE_LAST, NICE_COMPONENT_STATE_LAST };
@@ -721,7 +720,6 @@ static int run_full_test_control_conflict (NiceAgent *lagent, NiceAgent *ragent,
 int main (void)
 {
   NiceAgent *lagent, *ragent;      /* agent's L and R */
-  NiceUDPSocketFactory udpfactory;
   NiceAddress baseaddr;
   int result;
   guint timer_id;
@@ -736,13 +734,9 @@ int main (void)
    * - no IPv6 support
    */
 
-  nice_udp_bsd_socket_factory_init (&udpfactory);
-
   /* step: create the agents L and R */
-  lagent = nice_agent_new (&udpfactory,
-      g_main_loop_get_context (global_mainloop), NICE_COMPATIBILITY_ID19);
-  ragent = nice_agent_new (&udpfactory,
-      g_main_loop_get_context (global_mainloop), NICE_COMPATIBILITY_ID19);
+  lagent = nice_agent_new (g_main_loop_get_context (global_mainloop), NICE_COMPATIBILITY_ID19);
+  ragent = nice_agent_new (g_main_loop_get_context (global_mainloop), NICE_COMPATIBILITY_ID19);
 
   /* step: add a timer to catch state changes triggered by signals */
   timer_id = g_timeout_add (30000, timer_cb, NULL);
@@ -785,13 +779,10 @@ int main (void)
 
   /* step: test setter/getter functions for properties */
   {
-    gpointer pointer;
     guint max_checks = 0;
     gchar *string = NULL;
     guint port = 0;
     gboolean mode = FALSE;
-    g_object_get (G_OBJECT (lagent), "socket-factory", &pointer, NULL);
-    g_assert (pointer == (gpointer)&udpfactory);
     g_object_get (G_OBJECT (lagent), "stun-server", &string, NULL);
     g_assert (stun_server == NULL || strcmp (string, stun_server) == 0);
     g_free (string);
@@ -905,10 +896,8 @@ int main (void)
   g_object_unref (lagent);
   g_object_unref (ragent);
 
-  nice_udp_socket_factory_close (&udpfactory);
-
-  g_main_loop_unref (global_mainloop),
-    global_mainloop = NULL;
+  g_main_loop_unref (global_mainloop);
+  global_mainloop = NULL;
 
   g_source_remove (timer_id);
 

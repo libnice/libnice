@@ -41,7 +41,7 @@
 
 #include <string.h>
 
-#include "udp-fake.h"
+#include "udp.h"
 #include "agent.h"
 
 int
@@ -49,17 +49,14 @@ main (void)
 {
   NiceAgent *agent;
   NiceAddress addr;
-  NiceUDPSocketFactory factory;
   guint stream_id;
 
   nice_address_init (&addr);
   g_type_init ();
   g_thread_init (NULL);
 
-  nice_udp_fake_socket_factory_init (&factory);
-
   /* set up agent */
-  agent = nice_agent_new (&factory, NULL, NICE_COMPATIBILITY_ID19);
+  agent = nice_agent_new (NULL, NICE_COMPATIBILITY_ID19);
   g_assert (nice_address_set_from_string (&addr, "192.168.0.1"));
   nice_agent_add_local_address (agent, &addr);
   stream_id = nice_agent_add_stream (agent, 1);
@@ -78,7 +75,7 @@ main (void)
       candidate = candidates->data;
       g_slist_free (candidates);
       sock = candidate->sockptr;
-      nice_udp_fake_socket_push_recv (sock, &addr, 7, "\x80lalala");
+      nice_udp_socket_send (sock, &candidate->addr, 7, "\x80lalala");
       len = nice_agent_recv (agent, stream_id,
           candidate->component_id, 1024, buf);
       g_assert (len == 7);
@@ -87,7 +84,6 @@ main (void)
 
   /* clean up */
   g_object_unref (agent);
-  nice_udp_socket_factory_close (&factory);
 
   return 0;
 }

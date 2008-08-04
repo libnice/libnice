@@ -68,7 +68,6 @@ main (void)
 {
   NiceAgent *agent;
   NiceAddress addr;
-  NiceUDPSocketFactory factory;
   guint stream;
 
   nice_address_init (&addr);
@@ -76,9 +75,7 @@ main (void)
   g_thread_init (NULL);
   loop = g_main_loop_new (NULL, FALSE);
 
-  nice_udp_fake_socket_factory_init (&factory);
-  agent = nice_agent_new (&factory,
-      g_main_loop_get_context (loop), NICE_COMPATIBILITY_ID19);
+  agent = nice_agent_new (g_main_loop_get_context (loop), NICE_COMPATIBILITY_ID19);
   nice_address_set_ipv4 (&addr, 0x7f000001);
   nice_agent_add_local_address (agent, &addr);
   stream = nice_agent_add_stream (agent, 1);
@@ -96,15 +93,14 @@ main (void)
       candidates = nice_agent_get_local_candidates (agent, 1, 1);
       candidate = candidates->data;
       sock = candidate->sockptr;
-      g_slist_free (candidates);
 
-      nice_udp_fake_socket_push_recv (sock, &addr, 6, "\x80hello");
+      nice_udp_socket_send (sock, &(candidate->addr), 6, "\x80hello");
+      g_slist_free (candidates);
     }
 
   g_main_loop_run (loop);
 
   g_object_unref (agent);
-  nice_udp_socket_factory_close (&factory);
   return 0;
 }
 

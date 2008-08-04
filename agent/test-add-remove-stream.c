@@ -41,7 +41,6 @@
 
 #include "agent.h"
 #include "agent-priv.h"
-#include "udp-fake.h"
 #include <string.h>
 
 int
@@ -49,18 +48,16 @@ main (void)
 {
   NiceAgent *agent;
   NiceAddress addr;
-  NiceUDPSocketFactory factory;
 
   nice_address_init (&addr);
   g_type_init ();
   g_thread_init (NULL);
 
-  nice_udp_fake_socket_factory_init (&factory);
 
   if (!nice_address_set_from_string (&addr, "127.0.0.1"))
     g_assert_not_reached ();
 
-  agent = nice_agent_new (&factory, NULL, NICE_COMPATIBILITY_ID19);
+  agent = nice_agent_new (NULL, NICE_COMPATIBILITY_ID19);
   nice_agent_add_local_address (agent, &addr);
 
   g_assert (nice_agent_add_stream (agent, 1) == 1);
@@ -76,7 +73,6 @@ main (void)
   g_assert (NULL == agent->streams);
 
   g_object_unref (agent);
-  nice_udp_socket_factory_close (&factory);
 
   return 0;
 }

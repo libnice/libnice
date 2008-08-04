@@ -44,6 +44,8 @@
 #include <unistd.h>
 
 #include <nice/nice.h>
+#include "udp.h"
+
 
 static gboolean cb_called = FALSE;
 
@@ -71,7 +73,6 @@ main (void)
 {
   NiceAgent *agent;
   NiceAddress addr;
-  NiceUDPSocketFactory factory;
   NiceUDPSocket *sock;
   gint pipe_fds[2];
   GSList *fds = NULL;
@@ -88,8 +89,7 @@ main (void)
   if (!nice_address_set_from_string (&addr, "127.0.0.1"))
     g_assert_not_reached ();
 
-  nice_udp_fake_socket_factory_init (&factory);
-  agent = nice_agent_new (&factory, NULL, NICE_COMPATIBILITY_ID19);
+  agent = nice_agent_new (NULL, NICE_COMPATIBILITY_ID19);
   nice_agent_add_local_address (agent, &addr);
   stream_id = nice_agent_add_stream (agent, 1);
   nice_agent_gather_candidates (agent, stream_id);
@@ -101,6 +101,7 @@ main (void)
         candidates = nice_agent_get_local_candidates (agent, stream_id, 1);
         candidate = candidates->data;
         sock = candidate->sockptr;
+        addr = candidate->addr;
         g_slist_free (candidates);
       }
 
@@ -131,7 +132,7 @@ main (void)
 
   /* send fake data */
 
-  nice_udp_fake_socket_push_recv (sock, &addr, 7, "\x80lalala");
+  nice_udp_socket_send (sock, &addr, 7, "\x80lalala");
 
   /* poll again */
 

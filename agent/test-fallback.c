@@ -44,7 +44,6 @@
 
 #include "agent.h"
 #include "agent-priv.h" /* for testing purposes */
-#include "udp-bsd.h"
 
 static NiceComponentState global_lagent_state = NICE_COMPONENT_STATE_LAST;
 static NiceComponentState global_ragent_state = NICE_COMPONENT_STATE_LAST;
@@ -474,7 +473,6 @@ static int run_safe_fallback_test (NiceAgent *lagent, NiceAgent *ragent, NiceAdd
 int main (void)
 {
   NiceAgent *lagent, *ragent;      /* agent's L and R */
-  NiceUDPSocketFactory udpfactory;
   NiceAddress baseaddr;
   int result;
   guint timer_id;
@@ -489,13 +487,9 @@ int main (void)
    * - no IPv6 support
    */
 
-  nice_udp_bsd_socket_factory_init (&udpfactory);
-
   /* step: create the agents L and R */
-  lagent = nice_agent_new (&udpfactory,
-      g_main_loop_get_context (global_mainloop), NICE_COMPATIBILITY_ID19);
-  ragent = nice_agent_new (&udpfactory,
-      g_main_loop_get_context (global_mainloop), NICE_COMPATIBILITY_ID19);
+  lagent = nice_agent_new (g_main_loop_get_context (global_mainloop), NICE_COMPATIBILITY_ID19);
+  ragent = nice_agent_new (g_main_loop_get_context (global_mainloop), NICE_COMPATIBILITY_ID19);
 
 
 
@@ -557,10 +551,8 @@ int main (void)
   g_object_unref (lagent);
   g_object_unref (ragent);
 
-  nice_udp_socket_factory_close (&udpfactory);
-
-  g_main_loop_unref (global_mainloop),
-    global_mainloop = NULL;
+  g_main_loop_unref (global_mainloop);
+  global_mainloop = NULL;
 
   g_source_remove (timer_id);
 
