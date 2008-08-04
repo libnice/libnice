@@ -22,6 +22,8 @@ libudp_la_SOURCES = \
 	udp-generic.c \
 	udp-bsd.h \
 	udp-bsd.c \
+	udp-turn.h \
+	udp-turn.c \
 	udp-fake.h \
 	udp-fake.c
 
