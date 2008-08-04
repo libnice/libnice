@@ -195,15 +195,18 @@ gst_nice_src_read_callback (NiceAgent *agent,
 {
   GstBaseSrc *basesrc = GST_BASE_SRC (data);
   GstNiceSrc *nicesrc = GST_NICE_SRC (basesrc);
+  GstNetBuffer *mybuf;
 
   GST_LOG_OBJECT (agent, "Got buffer, getting out of the main loop");
 
-  nicesrc->flow_ret = gst_pad_alloc_buffer (basesrc->srcpad, nicesrc->offset,
-      len, GST_PAD_CAPS (basesrc->srcpad), &nicesrc->outbuf);
-  if (nicesrc->flow_ret == GST_FLOW_OK) {
-    memcpy (nicesrc->outbuf->data, buf, len);
-    nicesrc->outbuf->size = len;
-  }
+  mybuf = gst_netbuffer_new ();
+  GST_BUFFER_MALLOCDATA (mybuf) = g_memdup (buf, len);
+  GST_BUFFER_SIZE (mybuf) = len;
+  GST_BUFFER_DATA (mybuf) = GST_BUFFER_MALLOCDATA (mybuf);
+  if (GST_PAD_CAPS (basesrc->srcpad))
+    GST_BUFFER_CAPS (mybuf) = gst_caps_ref (GST_PAD_CAPS (basesrc->srcpad));
+
+  nicesrc->outbuf = GST_BUFFER_CAST (mybuf);
 
   g_main_loop_quit (nicesrc->mainloop);
 }
@@ -267,7 +270,6 @@ gst_nice_src_create (
   GST_LOG_OBJECT (nicesrc, "create called");
 
   nicesrc->outbuf = NULL;
-  nicesrc->offset = offset;
 
   GST_OBJECT_LOCK (basesrc);
   if (nicesrc->unlocked) {
@@ -282,12 +284,13 @@ gst_nice_src_create (
     GST_LOG_OBJECT (nicesrc, "Got buffer, pushing");
 
     *buffer = nicesrc->outbuf;
-    return nicesrc->flow_ret;
+    GST_BUFFER_OFFSET (*buffer) = offset;
+
+    return GST_FLOW_OK;
   } else {
     GST_LOG_OBJECT (nicesrc, "Got interrupting, returning wrong-state");
     return GST_FLOW_WRONG_STATE;
   }
-
 }
 
 static void

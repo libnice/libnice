@@ -40,6 +40,7 @@
 
 #include <gst/gst.h>
 #include <gst/base/gstbasesrc.h>
+#include <gst/netbuffer/gstnetbuffer.h>
 
 #include <nice/nice.h>
 
@@ -66,8 +67,6 @@ struct _GstNiceSrc
   guint stream_id;
   guint component_id;
   GMainLoop *mainloop;
-  guint64 offset;
-  GstFlowReturn flow_ret;
   GstBuffer *outbuf;
   gboolean unlocked;
   GSource *idle_source;
