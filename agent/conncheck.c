@@ -1199,6 +1199,10 @@ int conn_check_send (NiceAgent *agent, CandidateCheckPair *pair)
         agent->tie_breaker,
         priv_agent_to_usage_compatibility (agent));
 
+    if (agent->compatibility == NICE_COMPATIBILITY_MSN) {
+      g_free (password);
+    }
+
     stun_timer_start (&pair->timer);
 
     /* send the conncheck */
@@ -1787,6 +1791,9 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, Stream *stream,
   valid = stun_agent_validate (&agent->stun_agent, &req, (uint8_t *) buf, len,
       stun_agent_default_validater, validater_data);
 
+  if (agent->compatibility == NICE_COMPATIBILITY_MSN) {
+    g_free (validater_data[0].password);
+  }
 
   if (valid == STUN_VALIDATION_NOT_STUN ||
       valid == STUN_VALIDATION_INCOMPLETE_STUN ||
@@ -1884,6 +1891,10 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, Stream *stream,
         &msg, rbuf, &rbuf_len, &sockaddr, sizeof (sockaddr),
         &control, agent->tie_breaker,
         priv_agent_to_usage_compatibility (agent));
+
+    if (agent->compatibility == NICE_COMPATIBILITY_MSN) {
+      g_free (req.key);
+    }
 
     if (res == EACCES)
       priv_check_for_role_conflict (agent, control);

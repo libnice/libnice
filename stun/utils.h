@@ -58,8 +58,9 @@ size_t stun_align (size_t l);
 
 uint16_t stun_getw (const uint8_t *ptr);
 
+void stun_debug_enable (void);
+void stun_debug_disable (void);
 void stun_debug (const char *fmt, ...);
-
 void stun_debug_bytes (const void *data, size_t len);
 
 int stun_xor_address (const StunMessage *msg,

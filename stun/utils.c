@@ -131,12 +131,23 @@ uint16_t stun_getw (const uint8_t *ptr)
 /*   return stun_find_unknown (msg, &dummy, 1); */
 /* } */
 
+static int debug_enabled = 0;
+
+void stun_debug_enable (void) {
+  debug_enabled = 1;
+}
+void stun_debug_disable (void) {
+  debug_enabled = 0;
+}
+
 void stun_debug (const char *fmt, ...)
 {
   va_list ap;
-  va_start (ap, fmt);
-  vfprintf (stderr, fmt, ap);
-  va_end (ap);
+  if (debug_enabled) {
+    va_start (ap, fmt);
+    vfprintf (stderr, fmt, ap);
+    va_end (ap);
+  }
 }
 
 void stun_debug_bytes (const void *data, size_t len)
