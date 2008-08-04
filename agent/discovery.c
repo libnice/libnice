@@ -387,7 +387,8 @@ discovery_add_peer_reflexive_candidate (
   guint component_id,
   NiceAddress *address,
   NiceUDPSocket *base_socket,
-  NiceCandidate *base_candidate)
+  NiceCandidate *local_candidate,
+  NiceCandidate *remote_candidate)
 {
   NiceCandidate *candidate;
   Component *component;
@@ -414,12 +415,33 @@ discovery_add_peer_reflexive_candidate (
     candidate->addr = *address;
     candidate->base_addr = base_socket->addr;
 
-    if (base_candidate->username)
-      candidate->username = g_strdup(base_candidate->username);
-    if (base_candidate->password)
-      candidate->password = g_strdup(base_candidate->password);
 
     priv_assign_foundation (agent, candidate);
+
+    if (agent->compatibility == NICE_COMPATIBILITY_MSN &&
+	remote_candidate && local_candidate) {
+      guchar *new_username = NULL;
+      guchar *decoded_local = NULL;
+      guchar *decoded_remote = NULL;
+      gsize local_size;
+      gsize remote_size;
+      g_free(candidate->username);
+      g_free(candidate->password);
+      
+      decoded_local = g_base64_decode (local_candidate->username, &local_size);
+      decoded_remote = g_base64_decode (remote_candidate->username, &remote_size);
+
+      new_username = g_new0(guchar, local_size + remote_size);
+      memcpy(new_username, decoded_local, local_size);
+      memcpy(new_username + local_size, decoded_remote, remote_size);
+      
+      candidate->username = g_base64_encode (new_username, local_size + remote_size);
+      g_free(new_username);
+      g_free(decoded_local);
+      g_free(decoded_remote);
+      
+      candidate->password = g_strdup(local_candidate->password);
+    }
 
     /* step: link to the base candidate+socket */
     candidate->sockptr = base_socket;
@@ -485,8 +507,31 @@ NiceCandidate *discovery_learn_remote_peer_reflexive_candidate (
     candidate->stream_id = stream->id;
     candidate->component_id = component->id;
 
-    priv_generate_msn_credentials (agent, candidate);
     g_snprintf (candidate->foundation, NICE_CANDIDATE_MAX_FOUNDATION, "%u", next_remote_id);
+
+#if 0
+    if (agent->compatibility == NICE_COMPATIBILITY_MSN &&
+	remote && local) {
+      gchar *new_username = NULL;
+      gchar *decoded_local = NULL;
+      gchar *decoded_remote = NULL;
+      gsize local_size;
+      gsize remote_size;
+      g_free(candidate->username);
+      
+      decoded_local = g_base64_decode (local->username, &local_size);
+      decoded_remote = g_base64_decode (remote->username, &remote_size);
+
+      new_username = g_new0(gchar, local_size + remote_size);
+      memcpy(new_username, decoded_remote, remote_size);
+      memcpy(new_username + remote_size, decoded_local, local_size);
+      
+      candidate->username = g_base64_encode (new_username, local_size + remote_size);
+      g_free(new_username);
+      g_free(decoded_local);
+      g_free(decoded_remote);
+    }
+#endif
     candidate->sockptr = NULL; /* not stored for remote candidates */
     /* note: candidate username and password are left NULL as stream 
              level ufrag/password are used */
