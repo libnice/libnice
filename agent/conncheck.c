@@ -1798,8 +1798,10 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, Stream *stream,
   valid = stun_agent_validate (&agent->stun_agent, &req, (uint8_t *) buf, len,
       stun_agent_default_validater, validater_data);
 
-  if (agent->compatibility == NICE_COMPATIBILITY_MSN) {
-    g_free (validater_data[0].password);
+  for (k = 0; k < j; k++) {
+    g_free(validater_data[k].username);
+    if (agent->compatibility == NICE_COMPATIBILITY_MSN)
+      g_free(validater_data[k].password);
   }
 
   if (valid == STUN_VALIDATION_NOT_STUN ||
@@ -1852,7 +1854,7 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, Stream *stream,
   for (i = component->local_candidates; i; i = i->next) {
     gboolean inbound = TRUE;
     NiceCandidate *cand = i->data;
-    
+
       /* If we receive a response, then the username is local:remote */
     if (agent->compatibility != NICE_COMPATIBILITY_MSN) {
       if (stun_message_get_class (&req) == STUN_REQUEST ||
@@ -1861,7 +1863,7 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, Stream *stream,
       } else {
 	inbound = FALSE;
       }
-    }   
+    }
     uname_len = priv_create_username (agent, stream,
 				      component->id,  remote_candidate, cand,
 				      uname, sizeof (uname), inbound);
