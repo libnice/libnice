@@ -123,8 +123,7 @@ struct _NiceAgentClass
 GType nice_agent_get_type (void);
 
 NiceAgent *
-nice_agent_new (NiceUDPSocketFactory *factory,
-    GMainContext *ctx, NiceCompatibility compat);
+nice_agent_new (GMainContext *ctx, NiceCompatibility compat);
 
 gboolean
 nice_agent_add_local_address (NiceAgent *agent, NiceAddress *addr);

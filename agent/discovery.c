@@ -276,8 +276,7 @@ NiceCandidate *discovery_add_local_host_candidate (
 
       /* note: candidate username and password are left NULL as stream 
 	 level ufrag/password are used */
-      
-      if (nice_udp_socket_factory_make (agent->socket_factory,
+      if (nice_udp_socket_factory_make (&agent->udp_socket_factory,
 					udp_socket, address)) {
 	priv_attach_stream_component_socket (agent, stream, component,
             udp_socket);

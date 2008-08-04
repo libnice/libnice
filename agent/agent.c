@@ -55,9 +55,9 @@
 
 #include <glib.h>
 
-#include "stun/usages/bind.h"
-
 #include "udp.h"
+#include "udp-bsd.h"
+#include "udp-turn.h"
 #include "candidate.h"
 #include "component.h"
 #include "conncheck.h"
@@ -79,8 +79,7 @@ G_DEFINE_TYPE (NiceAgent, nice_agent, G_TYPE_OBJECT);
 
 enum
 {
-  PROP_SOCKET_FACTORY = 1,
-  PROP_COMPATIBILITY,
+  PROP_COMPATIBILITY = 1,
   PROP_MAIN_CONTEXT,
   PROP_STUN_SERVER,
   PROP_STUN_SERVER_PORT,
@@ -187,14 +186,6 @@ nice_agent_class_init (NiceAgentClass *klass)
   gobject_class->dispose = nice_agent_dispose;
 
   /* install properties */
-
-  g_object_class_install_property (gobject_class, PROP_SOCKET_FACTORY,
-      g_param_spec_pointer (
-         "socket-factory",
-         "UDP socket factory",
-         "The socket factory used to create new UDP sockets",
-         G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY));
-
 
   g_object_class_install_property (gobject_class, PROP_MAIN_CONTEXT,
       g_param_spec_pointer (
@@ -404,6 +395,9 @@ nice_agent_init (NiceAgent *agent)
       STUN_AGENT_USAGE_SHORT_TERM_CREDENTIALS |
       STUN_AGENT_USAGE_USE_FINGERPRINT);
 
+  nice_udp_bsd_socket_factory_init (&agent->udp_socket_factory);
+  nice_udp_turn_socket_factory_init (&agent->relay_socket_factory);
+
   agent->rng = nice_rng_new ();
   priv_generate_tie_breaker (agent);
 
@@ -413,18 +407,15 @@ nice_agent_init (NiceAgent *agent)
 
 /**
  * nice_agent_new:
- * @factory: a NiceUDPSocketFactory used for allocating sockets
  *
  * Create a new NiceAgent.
  *
  * Returns: the new agent
  **/
 NICEAPI_EXPORT NiceAgent *
-nice_agent_new (NiceUDPSocketFactory *factory,
-    GMainContext *ctx, NiceCompatibility compat)
+nice_agent_new (GMainContext *ctx, NiceCompatibility compat)
 {
   NiceAgent *agent = g_object_new (NICE_TYPE_AGENT,
-      "socket-factory", factory,
       "compatibility", compat,
       "main-context", ctx,
       NULL);
@@ -446,10 +437,6 @@ nice_agent_get_property (
 
   switch (property_id)
     {
-    case PROP_SOCKET_FACTORY:
-      g_value_set_pointer (value, agent->socket_factory);
-      break;
-
     case PROP_MAIN_CONTEXT:
       g_value_set_pointer (value, agent->main_context);
       break;
@@ -512,10 +499,6 @@ nice_agent_set_property (
 
   switch (property_id)
     {
-    case PROP_SOCKET_FACTORY:
-      agent->socket_factory = g_value_get_pointer (value);
-      break;
-
     case PROP_MAIN_CONTEXT:
       agent->main_context = g_value_get_pointer (value);
       break;
