@@ -1757,12 +1757,21 @@ nice_agent_dispose (GObject *object)
   agent->stun_server_ip = NULL;
   g_free (agent->turn_server_ip);
   agent->turn_server_ip = NULL;
+  g_free (agent->turn_username);
+  agent->turn_username = NULL;
+  g_free (agent->turn_password);
+  agent->turn_password = NULL;
 
   nice_rng_free (agent->rng);
   agent->rng = NULL;
 
   if (G_OBJECT_CLASS (nice_agent_parent_class)->dispose)
     G_OBJECT_CLASS (nice_agent_parent_class)->dispose (object);
+
+  nice_udp_socket_factory_close (&agent->udp_socket_factory);
+
+  nice_udp_socket_factory_close (&agent->relay_socket_factory);
+
 
   g_static_rec_mutex_free (&agent->mutex);
 }
