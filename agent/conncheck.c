@@ -1755,11 +1755,12 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, Stream *stream,
     }
   }
 
-  validater_data = g_new0(stun_validater_data, g_slist_length(component->local_candidates) + 1);
+  validater_data = g_new0(stun_validater_data,
+      g_slist_length(component->local_candidates) + 1);
 
   /* We have to check all the local candidates into our validater_data because a
-     server reflexive candidate shares the same socket as the host candidate, so we
-     have no idea the user/pass is coming from which candidate */
+     server reflexive candidate shares the same socket as the host candidate,
+     so we have no idea the user/pass is coming from which candidate */
   j = 0;
   for (i = component->local_candidates; i; i = i->next) {
     NiceCandidate *cand = i->data;
@@ -1780,8 +1781,9 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, Stream *stream,
     }
 
     if (agent->compatibility == NICE_COMPATIBILITY_MSN) {
-      validater_data[j].password = g_base64_decode ((gchar *) validater_data[j].password,
-						    &validater_data[j].password_len);
+      validater_data[j].password =
+          g_base64_decode ((gchar *) validater_data[j].password,
+              &validater_data[j].password_len);
     }
     j++;
   }
@@ -1877,8 +1879,8 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, Stream *stream,
 
   if (agent->compatibility == NICE_COMPATIBILITY_GOOGLE &&
       local_candidate == NULL) {
-    /* if we couldn't match the username and the stun agent has IGNORE_CREDENTIALS,
-       then we have an integrity check failing */
+    /* if we couldn't match the username and the stun agent has
+       IGNORE_CREDENTIALS then we have an integrity check failing */
     g_debug ("Agent %p : Username check failed.", agent);
     if (stun_agent_init_error (&agent->stun_agent, &msg, rbuf, rbuf_len,
 			       &req, STUN_ERROR_UNAUTHORIZED)) {
@@ -1903,7 +1905,8 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, Stream *stream,
           component->id,  remote_candidate, local_candidate,
           uname, sizeof (uname), FALSE);
       memcpy (username, uname, username_len);
-      req.key = g_base64_decode ((gchar *) remote_candidate->password,  &req.key_len);
+      req.key = g_base64_decode ((gchar *) remote_candidate->password,
+          &req.key_len);
     }
 
     rbuf_len = sizeof (rbuf);
@@ -1975,7 +1978,8 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, Stream *stream,
         trans_found = priv_map_reply_to_discovery_request (agent, &req);
 
       if (trans_found != TRUE)
-        g_debug ("Agent %p : Unable to match to an existing transaction, probably a keepalive.", agent);
+        g_debug ("Agent %p : Unable to match to an existing transaction, "
+            "probably a keepalive.", agent);
   }
 
   return TRUE;

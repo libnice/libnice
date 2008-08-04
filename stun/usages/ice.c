@@ -82,7 +82,7 @@ stun_usage_ice_conncheck_create (StunAgent *agent, StunMessage *msg,
       return 0;
   }
 
-  if (username) {
+  if (username && username_len > 0) {
     val = stun_message_append_bytes (msg, STUN_ATTRIBUTE_USERNAME,
         username, username_len);
     if (val)
