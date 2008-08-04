@@ -85,6 +85,8 @@ enum
   PROP_STUN_SERVER_PORT,
   PROP_TURN_SERVER,
   PROP_TURN_SERVER_PORT,
+  PROP_TURN_USERNAME,
+  PROP_TURN_PASSWORD,
   PROP_CONTROLLING_MODE,
   PROP_FULL_MODE,
   PROP_STUN_PACING_TIMER,
@@ -235,6 +237,22 @@ nice_agent_class_init (NiceAgentClass *klass)
         "The TURN server used to obtain relay candidates",
         1, 65536, 
 	1, /* not a construct property, ignored */
+        G_PARAM_READWRITE));
+
+  g_object_class_install_property (gobject_class, PROP_TURN_USERNAME,
+      g_param_spec_string (
+        "turn-username",
+        "TURN server",
+        "The username to authenticate with the TURN relay server",
+        NULL,
+        G_PARAM_READWRITE));
+
+  g_object_class_install_property (gobject_class, PROP_TURN_PASSWORD,
+      g_param_spec_string (
+        "turn-password",
+        "TURN server",
+        "The password to authenticate with the TURN relay server",
+        NULL,
         G_PARAM_READWRITE));
 
   g_object_class_install_property (gobject_class, PROP_CONTROLLING_MODE,
@@ -461,6 +479,14 @@ nice_agent_get_property (
       g_value_set_uint (value, agent->turn_server_port);
       break;
 
+    case PROP_TURN_USERNAME:
+      g_value_set_string (value, agent->turn_username);
+      break;
+
+    case PROP_TURN_PASSWORD:
+      g_value_set_string (value, agent->turn_password);
+      break;
+
     case PROP_CONTROLLING_MODE:
       g_value_set_boolean (value, agent->controlling_mode);
       break;
@@ -534,6 +560,14 @@ nice_agent_set_property (
 
     case PROP_TURN_SERVER:
       agent->turn_server_ip = g_value_dup_string (value);
+      break;
+
+    case PROP_TURN_USERNAME:
+      agent->turn_username = g_value_dup_string (value);
+      break;
+
+    case PROP_TURN_PASSWORD:
+      agent->turn_password = g_value_dup_string (value);
       break;
 
     case PROP_CONTROLLING_MODE:
@@ -670,7 +704,7 @@ agent_candidate_pair_priority (NiceAgent *agent, NiceCandidate *local, NiceCandi
 }
 
 static gboolean 
-priv_add_srv_rfx_candidate_discovery (NiceAgent *agent, NiceCandidate *host_candidate, const gchar *stun_server_ip, const guint stun_server_port, Stream *stream, guint component_id, NiceAddress *addr)
+priv_add_srv_rfx_candidate_discovery (NiceAgent *agent, NiceCandidate *host_candidate, const gchar *stun_server_ip, const guint stun_server_port, Stream *stream, guint component_id, NiceAddress *addr, NiceCandidateType type)
 {
   CandidateDiscovery *cdisco;
   GSList *modified_list;
@@ -683,7 +717,7 @@ priv_add_srv_rfx_candidate_discovery (NiceAgent *agent, NiceCandidate *host_cand
     modified_list = g_slist_append (agent->discovery_list, cdisco);
 	  
     if (modified_list) {
-      cdisco->type = NICE_CANDIDATE_TYPE_SERVER_REFLEXIVE;
+      cdisco->type = type;
       cdisco->socket = host_candidate->sockptr->fileno;
       cdisco->nicesock = host_candidate->sockptr;
       cdisco->server_addr = stun_server_ip;
@@ -702,6 +736,7 @@ priv_add_srv_rfx_candidate_discovery (NiceAgent *agent, NiceCandidate *host_cand
 
   return FALSE;
 }
+
 
 /**
  * nice_agent_add_stream:
@@ -797,12 +832,31 @@ nice_agent_gather_candidates (
 
 	  gboolean res =
 	    priv_add_srv_rfx_candidate_discovery (agent,
-						  host_candidate,
-						  agent->stun_server_ip,
-						  agent->stun_server_port,
-						  stream,
-						  n + 1 /* component-id */,
-						  addr);
+                host_candidate,
+                agent->stun_server_ip,
+                agent->stun_server_port,
+                stream,
+                n + 1 /* component-id */,
+                addr,
+                NICE_CANDIDATE_TYPE_SERVER_REFLEXIVE);
+
+	  if (res != TRUE) {
+	    /* note: memory allocation failure, return error */
+	    g_error ("Memory allocation failure?");
+	  }
+	}
+	if (agent->full_mode &&
+	    agent->turn_server_ip) {
+
+	  gboolean res =
+	    priv_add_srv_rfx_candidate_discovery (agent,
+                host_candidate,
+                agent->turn_server_ip,
+                agent->turn_server_port,
+                stream,
+                n + 1 /* component-id */,
+                addr,
+                NICE_CANDIDATE_TYPE_RELAYED);
 
 	  if (res != TRUE) {
 	    /* note: memory allocation failure, return error */
