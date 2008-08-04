@@ -63,13 +63,22 @@ struct _GstNiceSrc
 {
   GstBaseSrc parent;
   GstPad *srcpad;
+  GMainLoop *mainloop;
+
+  /* Protected by the object lock */
+  gboolean unlocked;
+  GSource *idle_source;
   NiceAgent *agent;
   guint stream_id;
   guint component_id;
-  GMainLoop *mainloop;
+
+  /* Protected by the stream lock */
   GstBuffer *outbuf;
-  gboolean unlocked;
-  GSource *idle_source;
+
+  /* Protected by the object lock  */
+  gulong new_selected_pair_id;
+  GstNetAddress from;
+  GstNetAddress to;
 };
 
 typedef struct _GstNiceSrcClass GstNiceSrcClass;
