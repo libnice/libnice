@@ -586,8 +586,9 @@ static gboolean priv_discovery_tick_unlocked (gpointer pointer)
       g_debug ("Agent %p : discovery - scheduling cand type %u addr %s and socket %d.\n", agent,
                cand->type, cand->server_addr, cand->socket);
       
-      if (cand->type == NICE_CANDIDATE_TYPE_SERVER_REFLEXIVE &&
-	  cand->server_addr) {
+      if (cand->server_addr &&
+          (cand->type == NICE_CANDIDATE_TYPE_SERVER_REFLEXIVE ||
+              cand->type == NICE_CANDIDATE_TYPE_RELAYED)) {
         NiceAddress stun_server;
 
         /* XXX FIXME TODO: handle error here?! Kai, help me! */
@@ -600,8 +601,15 @@ static gboolean priv_discovery_tick_unlocked (gpointer pointer)
 					     cand->component->id,
 					     NICE_COMPONENT_STATE_GATHERING);
 
-        buffer_len = stun_usage_bind_create (&agent->stun_agent,
-            &cand->stun_message, cand->stun_buffer, sizeof(cand->stun_buffer));
+        if (cand->type == NICE_CANDIDATE_TYPE_SERVER_REFLEXIVE) {
+          buffer_len = stun_usage_bind_create (&agent->stun_agent,
+              &cand->stun_message, cand->stun_buffer, sizeof(cand->stun_buffer));
+        } else if (cand->type == NICE_CANDIDATE_TYPE_RELAYED) {
+          buffer_len = stun_usage_turn_create (&agent->stun_agent,
+              agent->turn_username, strlen (agent->turn_username),
+              agent->turn_password, strlen (agent->turn_password),
+              &cand->stun_message, cand->stun_buffer, sizeof(cand->stun_buffer));
+        }
 
 	if (buffer_len > 0) {
           stun_timer_start (&cand->timer);
@@ -618,13 +626,13 @@ static gboolean priv_discovery_tick_unlocked (gpointer pointer)
 	  cand->done = TRUE;
 	  cand->stun_message.buffer = NULL;
 	  cand->stun_message.buffer_len = 0;
-	  continue; 
+	  continue;
 	}
       }
-      else 
+      else
 	/* allocate relayed candidates */
 	g_assert_not_reached ();
-      
+
       ++not_done; /* note: new discovery scheduled */
     }
 
