@@ -14,6 +14,7 @@ check_PROGRAMS = \
 	test-parse \
 	test-format \
 	test-bind \
+	test-turn \
 	test-conncheck
 
 dist_check_SCRIPTS = check-bind.sh
