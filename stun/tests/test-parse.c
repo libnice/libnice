@@ -603,11 +603,42 @@ static void test_vectors (void)
   puts ("Done.");
 }
 
+static void test_hash_creds (void)
+{
+  uint8_t md5[16];
+  uint8_t real_md5[] = {
+    0x84, 0x93, 0xfb, 0xc5,
+    0x3b, 0xa5, 0x82, 0xfb,
+    0x4c, 0x04, 0x4c, 0x45,
+    0x6b, 0xdc, 0x40, 0xeb};
+
+  puts ("Testing long term credentials hash algorithm...");
+
+
+  stun_hash_creds ("realm", strlen ("realm"),
+      "user",  strlen ("user"),
+      "pass", strlen ("pass"), md5);
+
+  stun_debug ("key for user:realm:pass is : ");
+  stun_debug_bytes (md5, 16);
+  stun_debug ("\n\n");
+
+  stun_debug ("RFC key for user:realm:pass is : ");
+  stun_debug_bytes (real_md5, 16);
+  stun_debug ("\n\n");
+
+  if(memcmp (md5, real_md5, sizeof(md5)) != 0)
+    fatal ("MD5 hashes are different!");
+
+  puts ("Done!");
+
+}
 
 int main (void)
 {
   test_message ();
   test_attribute ();
   test_vectors ();
+  test_hash_creds ();
   return 0;
 }
