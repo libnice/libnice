@@ -406,7 +406,7 @@ static void keepalive (void)
 
   /* Keep alive sending smoke test */
   len = stun_usage_bind_keepalive (&agent, &msg, buf, sizeof(buf));
-  assert (len == 28);
+  assert (len == 20);
 
   val = sendto (fd, buf, len, MSG_DONTWAIT | MSG_NOSIGNAL,
       (struct sockaddr *)&addr, addrlen);
