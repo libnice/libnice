@@ -214,8 +214,30 @@ StunValidationStatus stun_agent_validate (StunAgent *agent, StunMessage *msg,
     if (hash) {
       /* We must give the size from start to the end of the attribute
          because you might have a FINGERPRINT attribute after it... */
-      stun_sha1 (msg->buffer, hash + 20 - msg->buffer, sha, key, key_len,
-        agent->compatibility == STUN_COMPATIBILITY_RFC3489 ? TRUE : FALSE);
+      if (agent->usage_flags & STUN_AGENT_USAGE_LONG_TERM_CREDENTIALS) {
+        uint8_t *realm = NULL;
+        uint8_t *username = NULL;
+        uint16_t realm_len;
+        uint16_t username_len;
+        uint8_t md5[16];
+
+        realm = (uint8_t *) stun_message_find (msg,  STUN_ATTRIBUTE_REALM, &realm_len);
+        username = (uint8_t *) stun_message_find (msg,
+            STUN_ATTRIBUTE_USERNAME, &username_len);
+        if (username == NULL || realm == NULL) {
+          return STUN_VALIDATION_UNAUTHORIZED;
+        }
+        stun_hash_creds (realm, realm_len,
+            username,  username_len,
+            key, key_len, md5);
+
+        stun_sha1 (msg->buffer, hash + 20 - msg->buffer, sha, md5, sizeof(md5),
+            agent->compatibility == STUN_COMPATIBILITY_RFC3489 ? TRUE : FALSE);
+      } else {
+        stun_sha1 (msg->buffer, hash + 20 - msg->buffer, sha, key, key_len,
+            agent->compatibility == STUN_COMPATIBILITY_RFC3489 ? TRUE : FALSE);
+      }
+
       stun_debug (" Message HMAC-SHA1 fingerprint:");
       stun_debug ("\nkey     : ");
       stun_debug_bytes (key, key_len);
@@ -424,8 +446,29 @@ size_t stun_agent_finish_message (StunAgent *agent, StunMessage *msg,
       return 0;
     }
 
-    stun_sha1 (msg->buffer, stun_message_length (msg), ptr, key, key_len,
-        agent->compatibility == STUN_COMPATIBILITY_RFC3489 ? TRUE : FALSE);
+    if (agent->usage_flags & STUN_AGENT_USAGE_LONG_TERM_CREDENTIALS) {
+      uint8_t *realm = NULL;
+      uint8_t *username = NULL;
+      uint16_t realm_len;
+      uint16_t username_len;
+      uint8_t md5[16];
+
+      realm = (uint8_t *) stun_message_find (msg,  STUN_ATTRIBUTE_REALM, &realm_len);
+      username = (uint8_t *) stun_message_find (msg,
+          STUN_ATTRIBUTE_USERNAME, &username_len);
+      if (username == NULL || realm == NULL) {
+        return 0;
+      }
+      stun_hash_creds (realm, realm_len,
+          username,  username_len,
+          key, key_len, md5);
+
+      stun_sha1 (msg->buffer, stun_message_length (msg), ptr, md5, sizeof(md5),
+          agent->compatibility == STUN_COMPATIBILITY_RFC3489 ? TRUE : FALSE);
+    } else {
+      stun_sha1 (msg->buffer, stun_message_length (msg), ptr, key, key_len,
+          agent->compatibility == STUN_COMPATIBILITY_RFC3489 ? TRUE : FALSE);
+    }
 
     stun_debug (" Message HMAC-SHA1 message integrity:"
          "\n  key     : ");
@@ -436,7 +479,8 @@ size_t stun_agent_finish_message (StunAgent *agent, StunMessage *msg,
 
   }
 
-  if (agent->compatibility == STUN_COMPATIBILITY_3489BIS) {
+  if (agent->compatibility == STUN_COMPATIBILITY_3489BIS &&
+      agent->usage_flags & STUN_AGENT_USAGE_USE_FINGERPRINT) {
     ptr = stun_message_append (msg, STUN_ATTRIBUTE_FINGERPRINT, 4);
     if (ptr == NULL) {
       return 0;

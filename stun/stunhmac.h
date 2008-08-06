@@ -54,9 +54,11 @@ void stun_sha1 (const uint8_t *msg, size_t len,
 /**
  * SIP H(A1) computation
  */
-void stun_hash_creds (const char *realm, const char *login, const char *pw,
-                      unsigned char md5[16]);
 
+void stun_hash_creds (const uint8_t *realm, size_t realm_len,
+    const uint8_t *username, size_t username_len,
+    const uint8_t *password, size_t password_len,
+    unsigned char md5[16]);
 /**
  * Generates a pseudo-random secure STUN transaction ID.
  */

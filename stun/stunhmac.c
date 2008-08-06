@@ -81,21 +81,40 @@ void stun_sha1 (const uint8_t *msg, size_t len, uint8_t *sha,
   HMAC_CTX_cleanup (&ctx);
 }
 
+static const uint8_t *priv_trim_var (const uint8_t *var, size_t *var_len)
+{
+  const uint8_t *ptr = var;
 
-void stun_hash_creds (const char *realm, const char *login, const char *pw,
-                      unsigned char md5[16])
+  while (*ptr == '"') {
+    ptr++;
+    (*var_len)--;
+  }
+  while(ptr[*var_len] == '"' ||
+      ptr[*var_len] == 0) {
+    (*var_len)--;
+  }
+
+  return ptr;
+}
+
+
+void stun_hash_creds (const uint8_t *realm, size_t realm_len,
+    const uint8_t *username, size_t username_len,
+    const uint8_t *password, size_t password_len,
+    unsigned char md5[16])
 {
   EVP_MD_CTX ctx;
-
-  assert (realm && login && pw && md5);
+  const uint8_t *username_trimmed = priv_trim_var (username, &username_len);
+  const uint8_t *password_trimmed = priv_trim_var (password, &password_len);;
+  const uint8_t *realm_trimmed = priv_trim_var (realm, &realm_len);;
 
   EVP_MD_CTX_init (&ctx);
   EVP_DigestInit_ex (&ctx, EVP_md5 (), NULL);
-  EVP_DigestUpdate (&ctx, realm, strlen (realm));
+  EVP_DigestUpdate (&ctx, username_trimmed, username_len);
   EVP_DigestUpdate (&ctx, ":", 1);
-  EVP_DigestUpdate (&ctx, login, strlen (login));
+  EVP_DigestUpdate (&ctx, realm_trimmed, realm_len);
   EVP_DigestUpdate (&ctx, ":", 1);
-  EVP_DigestUpdate (&ctx, pw, strlen (pw));
+  EVP_DigestUpdate (&ctx, password_trimmed, password_len);
   EVP_DigestFinal (&ctx, md5, NULL);
 }
 
