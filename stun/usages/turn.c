@@ -50,15 +50,69 @@
 #include <sys/time.h>
 #include <fcntl.h>
 
-
 /** Non-blocking mode STUN TURN usage */
 
 size_t stun_usage_turn_create (StunAgent *agent, StunMessage *msg,
+    uint8_t *buffer, size_t buffer_len,
+    StunMessage *previous_request,
+    uint32_t request_ports,
+    uint32_t bandwidth, uint32_t lifetime,
     uint8_t *username, size_t username_len,
     uint8_t *password, size_t password_len,
-    uint8_t *buffer, size_t buffer_len)
+    StunUsageTurnCompatibility compatibility)
 {
   stun_agent_init_request (agent, msg, buffer, buffer_len, STUN_ALLOCATE);
+
+  if (compatibility == STUN_USAGE_TURN_COMPATIBILITY_TD9) {
+    if (bandwidth > 0) {
+      if (stun_message_append32 (msg, STUN_ATTRIBUTE_BANDWIDTH, bandwidth) != 0)
+        return 0;
+    }
+    if (lifetime > 0) {
+      if (stun_message_append32 (msg, STUN_ATTRIBUTE_LIFETIME, lifetime) != 0)
+        return 0;
+    }
+  } else {
+    if (stun_message_append32 (msg, STUN_ATTRIBUTE_MAGIC_COOKIE,
+            TURN_MAGIC_COOKIE) != 0)
+      return 0;
+  }
+
+#if 0
+  if (request_ports != STUN_USAGE_TURN_REQUEST_PORT_NORMAL) {
+    uint32_t req = 0;
+
+    if (compatibility == STUN_USAGE_TURN_COMPATIBILITY_TD9) {
+
+    }
+    if (stun_message_append32 (msg, STUN_ATTRIBUTE_REQUESTED_PORT_PROPS,
+            req) != 0)
+      return 0;
+  }
+#endif
+
+  if (previous_request) {
+    char realm[100];
+    char nonce[100];
+    uint64_t reservation;
+
+    if (stun_message_find_string (previous_request, STUN_ATTRIBUTE_REALM,
+            realm, sizeof(realm)) == 0) {
+      if (stun_message_append_string (msg, STUN_ATTRIBUTE_REALM, realm) != 0)
+        return 0;
+    }
+    if (stun_message_find_string (previous_request, STUN_ATTRIBUTE_NONCE,
+            nonce, sizeof(nonce)) == 0) {
+      if (stun_message_append_string (msg, STUN_ATTRIBUTE_NONCE, nonce) != 0)
+        return 0;
+    }
+    if (stun_message_find64 (previous_request, STUN_ATTRIBUTE_RESERVATION_TOKEN,
+            &reservation) == 0) {
+      if (stun_message_append64 (msg, STUN_ATTRIBUTE_RESERVATION_TOKEN,
+              reservation) != 0)
+        return 0;
+    }
+  }
 
   if (username != NULL && username_len > 0) {
     if (stun_message_append_bytes (msg, STUN_ATTRIBUTE_USERNAME,

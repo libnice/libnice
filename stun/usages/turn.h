@@ -33,8 +33,8 @@
  * file under either the MPL or the LGPL.
  */
 
-#ifndef STUN_BIND_H
-# define STUN_BIND_H 1
+#ifndef STUN_TURN_H
+# define STUN_TURN_H 1
 
 /**
  * @file bind.h
@@ -50,6 +50,19 @@
 extern "C" {
 # endif
 
+
+#define STUN_USAGE_TURN_REQUEST_PORT_NORMAL       0
+#define STUN_USAGE_TURN_REQUEST_PORT_ODD          1
+#define STUN_USAGE_TURN_REQUEST_PORT_EVEN         2
+#define STUN_USAGE_TURN_REQUEST_PORT_BOTH         4
+#define STUN_USAGE_TURN_REQUEST_PORT_PRESERVING   8
+
+typedef enum {
+  STUN_USAGE_TURN_COMPATIBILITY_TD9,
+  STUN_USAGE_TURN_COMPATIBILITY_GOOGLE,
+  STUN_USAGE_TURN_COMPATIBILITY_MSN,
+} StunUsageTurnCompatibility;
+
 typedef enum {
   STUN_USAGE_TURN_RETURN_SUCCESS,
   STUN_USAGE_TURN_RETURN_ERROR,
@@ -59,9 +72,13 @@ typedef enum {
 
 
 size_t stun_usage_turn_create (StunAgent *agent, StunMessage *msg,
+    uint8_t *buffer, size_t buffer_len,
+    StunMessage *previous_request,
+    uint32_t request_ports,
+    uint32_t bandwidth, uint32_t lifetime,
     uint8_t *username, size_t username_len,
     uint8_t *password, size_t password_len,
-    uint8_t *buffer, size_t buffer_len);
+    StunUsageTurnCompatibility compatibility);
 
 StunUsageTurnReturn stun_usage_turn_process (StunMessage *msg,
     struct sockaddr *addr, socklen_t *addrlen,
