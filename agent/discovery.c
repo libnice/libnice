@@ -56,6 +56,8 @@
 #include "agent-signals-marshal.h"
 #include "component.h"
 #include "discovery.h"
+#include "stun/usages/bind.h"
+#include "stun/usages/turn.h"
 
 static inline int priv_timer_expired (GTimeVal *restrict timer, GTimeVal *restrict now)
 {
@@ -274,7 +276,7 @@ NiceCandidate *discovery_add_local_host_candidate (
       priv_generate_msn_credentials (agent, candidate);
       priv_assign_foundation (agent, candidate);
 
-      /* note: candidate username and password are left NULL as stream 
+      /* note: candidate username and password are left NULL as stream
 	 level ufrag/password are used */
       if (nice_udp_socket_factory_make (&agent->udp_socket_factory,
 					udp_socket, address)) {
@@ -564,7 +566,7 @@ static gboolean priv_discovery_tick_unlocked (gpointer pointer)
   NiceAgent *agent = pointer;
   GSList *i;
   int not_done = 0; /* note: track whether to continue timer */
-  size_t buffer_len;
+  size_t buffer_len = 0;
 
 #ifndef NDEBUG
   {
@@ -606,9 +608,13 @@ static gboolean priv_discovery_tick_unlocked (gpointer pointer)
               &cand->stun_message, cand->stun_buffer, sizeof(cand->stun_buffer));
         } else if (cand->type == NICE_CANDIDATE_TYPE_RELAYED) {
           buffer_len = stun_usage_turn_create (&agent->stun_agent,
-              agent->turn_username, strlen (agent->turn_username),
-              agent->turn_password, strlen (agent->turn_password),
-              &cand->stun_message, cand->stun_buffer, sizeof(cand->stun_buffer));
+              &cand->stun_message,  cand->stun_buffer, sizeof(cand->stun_buffer),
+              NULL,
+              STUN_USAGE_TURN_REQUEST_PORT_NORMAL,
+              0, 0,
+              (uint8_t *)agent->turn_username, (size_t) strlen (agent->turn_username),
+              (uint8_t *)agent->turn_password, (size_t) strlen (agent->turn_password),
+              STUN_USAGE_TURN_COMPATIBILITY_GOOGLE);
         }
 
 	if (buffer_len > 0) {

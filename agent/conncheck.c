@@ -55,6 +55,8 @@
 #include "conncheck.h"
 #include "discovery.h"
 #include "stun/usages/ice.h"
+#include "stun/usages/bind.h"
+#include "stun/usages/turn.h"
 
 static void priv_update_check_list_failed_components (NiceAgent *agent, Stream *stream);
 static void priv_prune_pending_checks (Stream *stream, guint component_id);
