@@ -434,6 +434,7 @@ size_t stun_agent_finish_message (StunAgent *agent, StunMessage *msg,
   uint32_t fpr;
   int i;
   stun_transid_t id;
+  uint8_t md5[16];
 
   if (msg->key != NULL) {
     key = msg->key;
@@ -441,42 +442,48 @@ size_t stun_agent_finish_message (StunAgent *agent, StunMessage *msg,
   }
 
   if (key != NULL) {
-    ptr = stun_message_append (msg, STUN_ATTRIBUTE_MESSAGE_INTEGRITY, 20);
-    if (ptr == NULL) {
-      return 0;
-    }
+    bool skip = FALSE;
 
     if (agent->usage_flags & STUN_AGENT_USAGE_LONG_TERM_CREDENTIALS) {
       uint8_t *realm = NULL;
       uint8_t *username = NULL;
       uint16_t realm_len;
       uint16_t username_len;
-      uint8_t md5[16];
 
       realm = (uint8_t *) stun_message_find (msg,  STUN_ATTRIBUTE_REALM, &realm_len);
       username = (uint8_t *) stun_message_find (msg,
           STUN_ATTRIBUTE_USERNAME, &username_len);
       if (username == NULL || realm == NULL) {
-        return 0;
+        skip = TRUE;
+      } else {
+        stun_hash_creds (realm, realm_len,
+            username,  username_len,
+            key, key_len, md5);
       }
-      stun_hash_creds (realm, realm_len,
-          username,  username_len,
-          key, key_len, md5);
-
-      stun_sha1 (msg->buffer, stun_message_length (msg), ptr, md5, sizeof(md5),
-          agent->compatibility == STUN_COMPATIBILITY_RFC3489 ? TRUE : FALSE);
-    } else {
-      stun_sha1 (msg->buffer, stun_message_length (msg), ptr, key, key_len,
-          agent->compatibility == STUN_COMPATIBILITY_RFC3489 ? TRUE : FALSE);
     }
 
-    stun_debug (" Message HMAC-SHA1 message integrity:"
-         "\n  key     : ");
-    stun_debug_bytes (key, key_len);
-    stun_debug ("\n  sent    : ");
-    stun_debug_bytes (ptr, 20);
-    stun_debug ("\n");
+    /* If no realm/username and long term credentials,
+       then don't send the message integrity */
+    if (skip == FALSE) {
+      ptr = stun_message_append (msg, STUN_ATTRIBUTE_MESSAGE_INTEGRITY, 20);
+      if (ptr == NULL) {
+        return 0;
+      }
+      if (agent->usage_flags & STUN_AGENT_USAGE_LONG_TERM_CREDENTIALS) {
+        stun_sha1 (msg->buffer, stun_message_length (msg), ptr, md5, sizeof(md5),
+            agent->compatibility == STUN_COMPATIBILITY_RFC3489 ? TRUE : FALSE);
+      } else {
+        stun_sha1 (msg->buffer, stun_message_length (msg), ptr, key, key_len,
+            agent->compatibility == STUN_COMPATIBILITY_RFC3489 ? TRUE : FALSE);
+      }
 
+      stun_debug (" Message HMAC-SHA1 message integrity:"
+          "\n  key     : ");
+      stun_debug_bytes (key, key_len);
+      stun_debug ("\n  sent    : ");
+      stun_debug_bytes (ptr, 20);
+      stun_debug ("\n");
+    }
   }
 
   if (agent->compatibility == STUN_COMPATIBILITY_3489BIS &&
