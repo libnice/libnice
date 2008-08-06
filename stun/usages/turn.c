@@ -59,6 +59,9 @@
 
 #define STUN_ATTRIBUTE_MSN_MAPPED_ADDRESS 0x8000
 
+
+#define TURN_REQUESTED_TRANSPORT_UDP 0x11000000
+
 /** Non-blocking mode STUN TURN usage */
 
 size_t stun_usage_turn_create (StunAgent *agent, StunMessage *msg,
@@ -73,6 +76,9 @@ size_t stun_usage_turn_create (StunAgent *agent, StunMessage *msg,
   stun_agent_init_request (agent, msg, buffer, buffer_len, STUN_ALLOCATE);
 
   if (compatibility == STUN_USAGE_TURN_COMPATIBILITY_TD9) {
+    if (stun_message_append32 (msg, STUN_ATTRIBUTE_REQUESTED_TRANSPORT,
+            TURN_REQUESTED_TRANSPORT_UDP) != 0)
+      return 0;
     if (bandwidth > 0) {
       if (stun_message_append32 (msg, STUN_ATTRIBUTE_BANDWIDTH, bandwidth) != 0)
         return 0;
@@ -247,7 +253,7 @@ StunUsageTurnReturn stun_usage_turn_process (StunMessage *msg,
   if (compatibility == STUN_USAGE_TURN_COMPATIBILITY_TD9) {
     stun_message_find_xor_addr (msg,
         STUN_ATTRIBUTE_XOR_MAPPED_ADDRESS, addr, addrlen);
-    val = stun_message_find_addr (msg,
+    val = stun_message_find_xor_addr (msg,
         STUN_ATTRIBUTE_RELAY_ADDRESS, relay_addr, relay_addrlen);
     if (val) {
       stun_debug (" No RELAYED-ADDRESS: %s\n", strerror (val));
