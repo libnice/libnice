@@ -101,7 +101,7 @@ printaddr (const char *str, const struct sockaddr *addr, socklen_t addrlen)
 
 
 /** Various responses test */
-static void responses (void)
+static void numb (void)
 {
   struct sockaddr_storage addr;
   socklen_t addrlen = sizeof (addr);
@@ -114,10 +114,12 @@ static void responses (void)
   int fd;
   uint8_t buf[STUN_MAX_MESSAGE_SIZE];
   uint8_t req[STUN_MAX_MESSAGE_SIZE];
+  uint8_t refresh[STUN_MAX_MESSAGE_SIZE];
   size_t req_len;
   StunAgent agent;
   StunMessage msg;
   StunMessage req_msg;
+  StunMessage refresh_msg;
   uint32_t bandwidth, lifetime;
   char username[] = "youness.alaoui@collabora.co.uk";
   char password[] = "badger";
@@ -133,7 +135,8 @@ static void responses (void)
   assert (ret == 0);
 
   stun_agent_init (&agent, STUN_ALL_KNOWN_ATTRIBUTES,
-      STUN_COMPATIBILITY_3489BIS, 0);
+      STUN_COMPATIBILITY_3489BIS, STUN_AGENT_USAGE_LONG_TERM_CREDENTIALS |
+      STUN_AGENT_USAGE_IGNORE_CREDENTIALS);
 
   /* Allocate a client socket and connect to server */
   fd = socket (AF_INET, SOCK_DGRAM, 0);
@@ -173,7 +176,49 @@ static void responses (void)
       (struct sockaddr *)&alternate_addr, &alternate_addrlen,
       &bandwidth, &lifetime,
       STUN_USAGE_TURN_COMPATIBILITY_TD9);
+  assert (val == STUN_USAGE_TURN_RETURN_ERROR);
+
+  req_len = stun_usage_turn_create (&agent, &req_msg, req, sizeof(req),
+      &msg,
+      STUN_USAGE_TURN_REQUEST_PORT_NORMAL,
+      0, 0,
+      username, strlen (username), password, strlen(password),
+      STUN_USAGE_TURN_COMPATIBILITY_TD9);
+  assert (req_len > 0);
+
+  val = send (fd, req, req_len, MSG_NOSIGNAL);
+  assert (val >= 0);
+
+  val = recv (fd, buf, 1000, 0);
+  assert (val >= 0);
+
+  assert (stun_agent_validate (&agent, &msg, buf, val, NULL, NULL)
+      == STUN_VALIDATION_SUCCESS);
+
+  val = stun_usage_turn_process (&msg,
+      (struct sockaddr *)&relay_addr, &relay_addrlen,
+      (struct sockaddr *)&addr, &addrlen,
+      (struct sockaddr *)&alternate_addr, &alternate_addrlen,
+      &bandwidth, &lifetime,
+      STUN_USAGE_TURN_COMPATIBILITY_TD9);
   assert (val == STUN_USAGE_TURN_RETURN_SUCCESS);
+
+  printaddr ("Relay address found : ", (struct sockaddr *)&relay_addr, relay_addrlen);
+  printaddr ("Mapped address found : ",(struct sockaddr *) &addr, addrlen);
+
+
+  req_len = stun_usage_turn_create_refresh (&agent, &refresh_msg, refresh,
+      sizeof(refresh),  &req_msg, 0, STUN_USAGE_TURN_COMPATIBILITY_TD9);
+  assert (req_len > 0);
+
+  val = send (fd, refresh, req_len, MSG_NOSIGNAL);
+  assert (val >= 0);
+
+  val = recv (fd, buf, 1000, 0);
+  assert (val >= 0);
+
+  assert (stun_agent_validate (&agent, &msg, buf, val, NULL, NULL)
+      == STUN_VALIDATION_SUCCESS);
 
   val = close (fd);
   assert (val == 0);
@@ -191,6 +236,6 @@ static void test (void (*func) (void), const char *name)
 
 int main (void)
 {
-  test (responses, "Error responses");
+  test (numb, "numb.viagenie.ca TURN server");
   return 0;
 }
