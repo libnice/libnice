@@ -54,7 +54,7 @@ extern "C" {
 #define STUN_USAGE_TURN_REQUEST_PORT_NORMAL       0
 #define STUN_USAGE_TURN_REQUEST_PORT_ODD          1
 #define STUN_USAGE_TURN_REQUEST_PORT_EVEN         2
-#define STUN_USAGE_TURN_REQUEST_PORT_BOTH         4
+#define STUN_USAGE_TURN_REQUEST_PORT_BOTH         3
 #define STUN_USAGE_TURN_REQUEST_PORT_PRESERVING   8
 
 typedef enum {
@@ -80,10 +80,17 @@ size_t stun_usage_turn_create (StunAgent *agent, StunMessage *msg,
     uint8_t *password, size_t password_len,
     StunUsageTurnCompatibility compatibility);
 
+size_t stun_usage_turn_create_refresh (StunAgent *agent, StunMessage *msg,
+    uint8_t *buffer, size_t buffer_len,
+    StunMessage *previous_request, int lifetime,
+    StunUsageTurnCompatibility compatibility);
+
 StunUsageTurnReturn stun_usage_turn_process (StunMessage *msg,
+    struct sockaddr *relay_addr, socklen_t *relay_addrlen,
     struct sockaddr *addr, socklen_t *addrlen,
     struct sockaddr *alternate_server, socklen_t *alternate_server_len,
-    uint32_t *bandwidth, uint32_t *lifetime);
+    uint32_t *bandwidth, uint32_t *lifetime,
+    StunUsageTurnCompatibility compatibility);
 
 # ifdef __cplusplus
 }

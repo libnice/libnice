@@ -50,12 +50,21 @@
 #include <sys/time.h>
 #include <fcntl.h>
 
+
+
+#define REQUESTED_PROPS_E 0x80000000
+#define REQUESTED_PROPS_R 0x40000000
+#define REQUESTED_PROPS_P 0x20000000
+
+
+#define STUN_ATTRIBUTE_MSN_MAPPED_ADDRESS 0x8000
+
 /** Non-blocking mode STUN TURN usage */
 
 size_t stun_usage_turn_create (StunAgent *agent, StunMessage *msg,
     uint8_t *buffer, size_t buffer_len,
-    StunMessage *previous_request,
-    uint32_t request_ports,
+    StunMessage *previous_response,
+    uint32_t request_props,
     uint32_t bandwidth, uint32_t lifetime,
     uint8_t *username, size_t username_len,
     uint8_t *password, size_t password_len,
@@ -78,35 +87,46 @@ size_t stun_usage_turn_create (StunAgent *agent, StunMessage *msg,
       return 0;
   }
 
-#if 0
-  if (request_ports != STUN_USAGE_TURN_REQUEST_PORT_NORMAL) {
+  if (compatibility == STUN_USAGE_TURN_COMPATIBILITY_TD9 &&
+      request_props != STUN_USAGE_TURN_REQUEST_PORT_NORMAL) {
     uint32_t req = 0;
 
-    if (compatibility == STUN_USAGE_TURN_COMPATIBILITY_TD9) {
 
+    if ((request_props & STUN_USAGE_TURN_REQUEST_PORT_BOTH) ==
+        STUN_USAGE_TURN_REQUEST_PORT_BOTH){
+      req |= REQUESTED_PROPS_R;
+      req |= REQUESTED_PROPS_E;
+    } else if (request_props & STUN_USAGE_TURN_REQUEST_PORT_EVEN) {
+      req |= REQUESTED_PROPS_E;
     }
+    if (request_props & STUN_USAGE_TURN_REQUEST_PORT_PRESERVING) {
+      req |= REQUESTED_PROPS_P;
+    }
+
     if (stun_message_append32 (msg, STUN_ATTRIBUTE_REQUESTED_PORT_PROPS,
             req) != 0)
       return 0;
   }
-#endif
 
-  if (previous_request) {
-    char realm[100];
-    char nonce[100];
+  if (previous_response) {
+    uint8_t *realm;
+    uint8_t *nonce;
     uint64_t reservation;
+    uint16_t len;
 
-    if (stun_message_find_string (previous_request, STUN_ATTRIBUTE_REALM,
-            realm, sizeof(realm)) == 0) {
-      if (stun_message_append_string (msg, STUN_ATTRIBUTE_REALM, realm) != 0)
+    realm = (uint8_t *) stun_message_find (previous_response,
+        STUN_ATTRIBUTE_REALM, &len);
+    if (realm != NULL) {
+      if (stun_message_append_bytes (msg, STUN_ATTRIBUTE_REALM, realm, len) != 0)
         return 0;
     }
-    if (stun_message_find_string (previous_request, STUN_ATTRIBUTE_NONCE,
-            nonce, sizeof(nonce)) == 0) {
-      if (stun_message_append_string (msg, STUN_ATTRIBUTE_NONCE, nonce) != 0)
+    nonce = (uint8_t *) stun_message_find (previous_response,
+        STUN_ATTRIBUTE_NONCE, &len);
+    if (nonce != NULL) {
+      if (stun_message_append_bytes (msg, STUN_ATTRIBUTE_NONCE, nonce, len) != 0)
         return 0;
     }
-    if (stun_message_find64 (previous_request, STUN_ATTRIBUTE_RESERVATION_TOKEN,
+    if (stun_message_find64 (previous_response, STUN_ATTRIBUTE_RESERVATION_TOKEN,
             &reservation) == 0) {
       if (stun_message_append64 (msg, STUN_ATTRIBUTE_RESERVATION_TOKEN,
               reservation) != 0)
@@ -123,10 +143,61 @@ size_t stun_usage_turn_create (StunAgent *agent, StunMessage *msg,
   return stun_agent_finish_message (agent, msg, password, password_len);
 }
 
+size_t stun_usage_turn_create_refresh (StunAgent *agent, StunMessage *msg,
+    uint8_t *buffer, size_t buffer_len,
+    StunMessage *previous_request, int lifetime,
+    StunUsageTurnCompatibility compatibility)
+{
+  uint8_t *realm = NULL;
+  uint8_t *nonce = NULL;
+  uint8_t *username = NULL;
+  uint16_t len;
+
+  if (compatibility == STUN_USAGE_TURN_COMPATIBILITY_TD9) {
+    stun_agent_init_request (agent, msg, buffer, buffer_len, STUN_REFRESH);
+    if (lifetime >= 0) {
+      if (stun_message_append32 (msg, STUN_ATTRIBUTE_LIFETIME, lifetime) != 0)
+        return 0;
+    }
+  } else {
+    stun_agent_init_request (agent, msg, buffer, buffer_len, STUN_ALLOCATE);
+    if (stun_message_append32 (msg, STUN_ATTRIBUTE_MAGIC_COOKIE,
+            TURN_MAGIC_COOKIE) != 0)
+      return 0;
+  }
+
+
+  realm = (uint8_t *) stun_message_find (previous_request,
+      STUN_ATTRIBUTE_REALM, &len);
+  if (realm != NULL) {
+    if (stun_message_append_bytes (msg, STUN_ATTRIBUTE_REALM, realm, len) != 0)
+      return 0;
+  }
+  nonce = (uint8_t *) stun_message_find (previous_request,
+      STUN_ATTRIBUTE_NONCE, &len);
+  if (nonce != NULL) {
+    if (stun_message_append_bytes (msg, STUN_ATTRIBUTE_NONCE, nonce, len) != 0)
+      return 0;
+  }
+  username = (uint8_t *) stun_message_find (previous_request,
+      STUN_ATTRIBUTE_USERNAME, &len);
+  if (username != NULL) {
+    if (stun_message_append_bytes (msg, STUN_ATTRIBUTE_USERNAME,
+            username, len) != 0)
+      return 0;
+  }
+
+
+  return stun_agent_finish_message (agent, msg,
+      previous_request->key, previous_request->key_len);
+}
+
 StunUsageTurnReturn stun_usage_turn_process (StunMessage *msg,
+    struct sockaddr *relay_addr, socklen_t *relay_addrlen,
     struct sockaddr *addr, socklen_t *addrlen,
     struct sockaddr *alternate_server, socklen_t *alternate_server_len,
-    uint32_t *bandwidth, uint32_t *lifetime)
+    uint32_t *bandwidth, uint32_t *lifetime,
+    StunUsageTurnCompatibility compatibility)
 {
   int val, code = -1;
 
@@ -173,15 +244,28 @@ StunUsageTurnReturn stun_usage_turn_process (StunMessage *msg,
 
   stun_debug ("Received %u-bytes STUN message\n", stun_message_length (msg));
 
-  val = stun_message_find_xor_addr (msg,
-      STUN_ATTRIBUTE_XOR_MAPPED_ADDRESS, addr, addrlen);
-  if (val)
-  {
-    stun_debug (" No XOR-MAPPED-ADDRESS: %s\n", strerror (val));
+  if (compatibility == STUN_USAGE_TURN_COMPATIBILITY_TD9) {
+    stun_message_find_xor_addr (msg,
+        STUN_ATTRIBUTE_XOR_MAPPED_ADDRESS, addr, addrlen);
     val = stun_message_find_addr (msg,
-        STUN_ATTRIBUTE_MAPPED_ADDRESS, addr, addrlen);
-    if (val)
-    {
+        STUN_ATTRIBUTE_RELAY_ADDRESS, relay_addr, relay_addrlen);
+    if (val) {
+      stun_debug (" No RELAYED-ADDRESS: %s\n", strerror (val));
+      return STUN_USAGE_TURN_RETURN_ERROR;
+    }
+  } else if (compatibility == STUN_USAGE_TURN_COMPATIBILITY_TD9) {
+    val = stun_message_find_addr (msg,
+        STUN_ATTRIBUTE_MAPPED_ADDRESS, relay_addr, relay_addrlen);
+    if (val) {
+      stun_debug (" No MAPPED-ADDRESS: %s\n", strerror (val));
+      return STUN_USAGE_TURN_RETURN_ERROR;
+    }
+  }else if (compatibility == STUN_USAGE_TURN_COMPATIBILITY_MSN) {
+    stun_message_find_xor_addr (msg,
+        STUN_ATTRIBUTE_MSN_MAPPED_ADDRESS, addr, addrlen);
+    val = stun_message_find_addr (msg,
+        STUN_ATTRIBUTE_MAPPED_ADDRESS, relay_addr, relay_addrlen);
+    if (val) {
       stun_debug (" No MAPPED-ADDRESS: %s\n", strerror (val));
       return STUN_USAGE_TURN_RETURN_ERROR;
     }

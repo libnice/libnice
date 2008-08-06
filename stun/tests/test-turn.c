@@ -41,7 +41,6 @@
 #include <sys/socket.h>
 #include "stun/stunagent.h"
 #include "stun/usages/turn.h"
-#include "stun/usages/bind.h"
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -106,10 +105,13 @@ static void responses (void)
 {
   struct sockaddr_storage addr;
   socklen_t addrlen = sizeof (addr);
+  struct sockaddr_storage alternate_addr;
+  socklen_t alternate_addrlen = sizeof (alternate_addr);
+  struct sockaddr_storage relay_addr;
+  socklen_t relay_addrlen = sizeof (relay_addr);
   ssize_t val;
   size_t len;
   int fd;
-  int bind_fd;
   uint8_t buf[STUN_MAX_MESSAGE_SIZE];
   uint8_t req[STUN_MAX_MESSAGE_SIZE];
   size_t req_len;
@@ -117,17 +119,8 @@ static void responses (void)
   StunMessage msg;
   StunMessage req_msg;
   uint32_t bandwidth, lifetime;
-  uint8_t username[] = {0x72, 0x63, 0x77, 0x45,
-0x4f, 0x37, 0x39, 0x50,
-0x75, 0x49, 0x59, 0x36,
-0x32, 0x7a, 0x68, 0x7a};
-#if 0
-  uint8_t password[] = {0x1e, 0xbc, 0x9f, 0xa3,
-0xf9, 0x61, 0x03, 0xa3,
-0xfd, 0xdc, 0xee, 0xd7,
-0xa6, 0xcf, 0x87, 0x4b};
-#endif 
-  uint8_t *password = NULL;
+  char username[] = "youness.alaoui@collabora.co.uk";
+  char password[] = "badger";
   struct addrinfo hints, *res;
   int ret = -1;
 
@@ -136,17 +129,15 @@ static void responses (void)
   hints.ai_socktype = SOCK_DGRAM;
   hints.ai_flags = 0;
 
-  ret = getaddrinfo ("216.239.51.126", "19295", &hints, &res);
+  ret = getaddrinfo ("numb.viagenie.ca", "3478", &hints, &res);
   assert (ret == 0);
 
   stun_agent_init (&agent, STUN_ALL_KNOWN_ATTRIBUTES,
-      STUN_COMPATIBILITY_RFC3489, 0);
+      STUN_COMPATIBILITY_3489BIS, 0);
 
   /* Allocate a client socket and connect to server */
   fd = socket (AF_INET, SOCK_DGRAM, 0);
   assert (fd != -1);
-  bind_fd = socket (AF_INET, SOCK_DGRAM, 0);
-  assert (bind_fd != -1);
 
   val = connect (fd,res->ai_addr, res->ai_addrlen);
   assert (val == 0 || (errno == EINPROGRESS));
@@ -157,36 +148,14 @@ static void responses (void)
   hints.ai_socktype = SOCK_DGRAM;
   hints.ai_flags = 0;
 
-  ret = getaddrinfo ("216.239.51.126", "19302", &hints, &res);
-  assert (ret == 0);
-
-  val = connect (bind_fd, res->ai_addr, res->ai_addrlen);
-  assert (val == 0 || (errno == EINPROGRESS));
-
-#if 0
-  /* Send old-style response */
-  req_len = stun_usage_bind_create (&agent, &req_msg, req, sizeof(req));
-  assert (req_len > 0);
-
-  val = send (bind_fd, req, req_len, MSG_NOSIGNAL);
-  assert (val >= 0);
-
-  val = recv (bind_fd, buf, 1000, 0);
-  assert (val >= 0);
-
-  assert (stun_agent_validate (&agent, &msg, buf, val, NULL, NULL)
-      == STUN_VALIDATION_SUCCESS);
-
-  sleep (3);
-#endif
 
   /* Send old-style response */
   req_len = stun_usage_turn_create (&agent, &req_msg, req, sizeof(req),
       NULL,
       STUN_USAGE_TURN_REQUEST_PORT_NORMAL,
       0, 0,
-      username, sizeof (username), password, sizeof(password),
-      STUN_USAGE_TURN_COMPATIBILITY_GOOGLE);
+      username, strlen (username), password, strlen(password),
+      STUN_USAGE_TURN_COMPATIBILITY_TD9);
   assert (req_len > 0);
 
   val = send (fd, req, req_len, MSG_NOSIGNAL);
@@ -195,13 +164,16 @@ static void responses (void)
   val = recv (fd, buf, 1000, 0);
   assert (val >= 0);
 
-  /* assert (stun_agent_validate (&agent, &msg, buf, val, NULL, NULL)
+  assert (stun_agent_validate (&agent, &msg, buf, val, NULL, NULL)
       == STUN_VALIDATION_SUCCESS);
 
   val = stun_usage_turn_process (&msg,
-      (struct sockaddr *)&addr, &addrlen, (struct sockaddr *)&addr, &addrlen,
-      &bandwidth, &lifetime);
-      assert (val == STUN_USAGE_TURN_RETURN_SUCCESS);*/
+      (struct sockaddr *)&relay_addr, &relay_addrlen,
+      (struct sockaddr *)&addr, &addrlen,
+      (struct sockaddr *)&alternate_addr, &alternate_addrlen,
+      &bandwidth, &lifetime,
+      STUN_USAGE_TURN_COMPATIBILITY_TD9);
+  assert (val == STUN_USAGE_TURN_RETURN_SUCCESS);
 
   val = close (fd);
   assert (val == 0);
