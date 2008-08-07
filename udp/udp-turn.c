@@ -57,13 +57,73 @@
 typedef struct {
   StunAgent agent;
   int locked;
-  NiceUDPSocket udp_socket;
+  NiceUDPSocket *udp_socket;
+  NiceAddress server_addr;
   uint8_t *username;
   size_t username_len;
   uint8_t *password;
   size_t password_len;
 } turn_priv;
 
+
+gint
+nice_udp_turn_socket_parse_recv (
+  NiceUDPSocket *sock,
+  NiceAddress *from,
+  guint len,
+  gchar *buf,
+  NiceAddress *recv_from,
+  gchar *recv_buf,
+  guint recv_len)
+{
+
+  turn_priv *priv = (turn_priv *) sock->priv;
+  StunValidationStatus valid;
+  StunMessage msg;
+  struct sockaddr_storage sa;
+  guint from_len = sizeof (sa);
+
+  if (nice_address_equal (&priv->server_addr, recv_from)) {
+    valid = stun_agent_validate (&priv->agent, &msg,
+        (uint8_t *) recv_buf, (size_t) recv_len, NULL, NULL);
+
+    if (valid == STUN_VALIDATION_SUCCESS) {
+      uint32_t cookie;
+      if (stun_message_find32 (&msg, STUN_ATTRIBUTE_MAGIC_COOKIE, &cookie) != 0)
+        goto recv;
+      if (cookie != TURN_MAGIC_COOKIE)
+        goto recv;
+
+      if (stun_message_get_class (&msg) == STUN_RESPONSE &&
+          stun_message_get_method (&msg) == STUN_SEND) {
+        return 0;
+      } else if (stun_message_get_class (&msg) == STUN_INDICATION &&
+          stun_message_get_method (&msg) == STUN_IND_DATA) {
+        uint16_t data_len;
+        uint8_t *data;
+        if (stun_message_find_addr (&msg, STUN_ATTRIBUTE_REMOTE_ADDRESS,
+                (struct sockaddr *)&sa, &from_len) != 0)
+          goto recv;
+
+        data = (uint8_t *) stun_message_find (&msg, STUN_ATTRIBUTE_DATA, &data_len);
+        if (data == NULL)
+          goto recv;
+
+        nice_address_set_from_sockaddr (from, (struct sockaddr *)&sa);
+
+        memmove (buf, data, len > data_len ? data_len : len);
+        return len > data_len ? data_len : len;
+      } else {
+        goto recv;
+      }
+    }
+  }
+
+ recv:
+  *from = *recv_from;
+  memmove (buf, recv_buf, len > recv_len ? recv_len : len);
+  return len > recv_len ? recv_len : len;
+}
 
 static gint
 socket_recv (
@@ -73,52 +133,15 @@ socket_recv (
   gchar *buf)
 {
   turn_priv *priv = (turn_priv *) sock->priv;
-  StunValidationStatus valid;
-  StunMessage msg;
-  uint8_t buffer[STUN_MAX_MESSAGE_SIZE];
-  size_t stun_len;
-  struct sockaddr_storage sa;
-  guint from_len = sizeof (sa);
+  uint8_t recv_buf[STUN_MAX_MESSAGE_SIZE];
+  gint recv_len;
+  NiceAddress recv_from;
 
-  stun_len = nice_udp_socket_recv (&priv->udp_socket, from,
-      sizeof(buffer), (gchar *)buffer);
+  recv_len = nice_udp_socket_recv (priv->udp_socket, &recv_from,
+      sizeof(recv_buf), (gchar *) recv_buf);
 
-  valid = stun_agent_validate (&priv->agent, &msg, buffer, stun_len, NULL, NULL);
-
-  if (valid == STUN_VALIDATION_SUCCESS) {
-    uint32_t cookie;
-    if (stun_message_find32 (&msg, STUN_ATTRIBUTE_MAGIC_COOKIE, &cookie) != 0)
-      goto recv;
-    if (cookie != TURN_MAGIC_COOKIE)
-      goto recv;
-
-    if (stun_message_get_class (&msg) == STUN_RESPONSE &&
-        stun_message_get_method (&msg) == STUN_SEND) {
-      return 0;
-    } else if (stun_message_get_class (&msg) == STUN_INDICATION &&
-        stun_message_get_method (&msg) == STUN_IND_DATA) {
-      uint16_t data_len;
-      uint8_t *data;
-      if (stun_message_find_addr (&msg, STUN_ATTRIBUTE_REMOTE_ADDRESS,
-              (struct sockaddr *)&sa, &from_len) != 0)
-        goto recv;
-
-      data = (uint8_t *) stun_message_find (&msg, STUN_ATTRIBUTE_DATA, &data_len);
-      if (data == NULL)
-        goto recv;
-
-      nice_address_set_from_sockaddr (from, (struct sockaddr *)&sa);
-
-      memcpy (buf, data, len > data_len ? data_len : len);
-      return len > data_len ? data_len : len;
-    } else {
-      goto recv;
-    }
-  }
-
- recv:
-  memcpy (buf, buffer, len > stun_len ? stun_len : len);
-  return len > stun_len ? stun_len : len;
+  return nice_udp_turn_socket_parse_recv (sock, from, len, buf, &recv_from,
+      (gchar *) recv_buf, (guint) recv_len);
 }
 
 static gboolean
@@ -160,11 +183,11 @@ socket_send (
       priv->password, priv->password_len);
 
   if (stun_len > 0) {
-    nice_udp_socket_send (&priv->udp_socket, to, stun_len, (gchar *)buffer);
+    nice_udp_socket_send (priv->udp_socket, &priv->server_addr, stun_len, (gchar *)buffer);
     return TRUE;
   }
  send:
-  nice_udp_socket_send (&priv->udp_socket, to, len, buf);
+  nice_udp_socket_send (priv->udp_socket, to, len, buf);
 
   return TRUE;
 }
@@ -173,7 +196,6 @@ static void
 socket_close (NiceUDPSocket *sock)
 {
   turn_priv *priv = (turn_priv *) sock->priv;
-  nice_udp_socket_close (&priv->udp_socket);
   g_free (priv);
 }
 
@@ -181,27 +203,40 @@ socket_close (NiceUDPSocket *sock)
 
 static gboolean
 socket_factory_init_socket (
-  G_GNUC_UNUSED
   NiceUDPSocketFactory *man,
   NiceUDPSocket *sock,
   NiceAddress *addr)
 {
-  NiceUDPSocketFactory *udp_socket_factory = man->priv;
-  turn_priv *priv = g_new0 (turn_priv, 1);
+  return FALSE;
+}
 
-  if (nice_udp_socket_factory_make (udp_socket_factory, &(priv->udp_socket), addr)
-      == FALSE) {
-    g_free (priv);
-    return FALSE;
-  }
+NICEAPI_EXPORT gboolean
+nice_udp_turn_create_socket_full (
+  NiceUDPSocketFactory *man,
+  NiceUDPSocket *sock,
+  NiceAddress *addr,
+  NiceUDPSocket *udp_socket,
+  NiceAddress *server_addr,
+  gchar *username,
+  gchar *password,
+  NiceUdpTurnSocketCompatibility compatibility)
+{
+  turn_priv *priv = g_new0 (turn_priv, 1);
 
   stun_agent_init (&priv->agent, STUN_ALL_KNOWN_ATTRIBUTES,
             STUN_COMPATIBILITY_RFC3489,
             STUN_AGENT_USAGE_SHORT_TERM_CREDENTIALS |
             STUN_AGENT_USAGE_IGNORE_CREDENTIALS);
 
-  sock->addr = priv->udp_socket.addr;
-  sock->fileno = priv->udp_socket.fileno;
+  priv->locked = FALSE;
+  priv->udp_socket = udp_socket;
+  priv->username = (uint8_t *)username;
+  priv->username_len = (size_t) strlen (username);
+  priv->password = (uint8_t *)password;
+  priv->password_len = (size_t) strlen (password);
+  priv->server_addr = *server_addr;
+  sock->addr = *addr;
+  sock->fileno = udp_socket->fileno;
   sock->send = socket_send;
   sock->recv = socket_recv;
   sock->close = socket_close;
@@ -214,9 +249,6 @@ socket_factory_close (
   G_GNUC_UNUSED
   NiceUDPSocketFactory *man)
 {
-  NiceUDPSocketFactory *udp_socket_factory = man->priv;
-  nice_udp_socket_factory_close (udp_socket_factory);
-  g_free (udp_socket_factory);
 }
 
 NICEAPI_EXPORT void
@@ -224,12 +256,9 @@ nice_udp_turn_socket_factory_init (
   G_GNUC_UNUSED
   NiceUDPSocketFactory *man)
 {
-  NiceUDPSocketFactory *udp_socket_factory = g_new0 (NiceUDPSocketFactory, 1);
 
   man->init = socket_factory_init_socket;
   man->close = socket_factory_close;
-  nice_udp_bsd_socket_factory_init (udp_socket_factory);
-  man->priv = (void *) udp_socket_factory;
 
 }
 

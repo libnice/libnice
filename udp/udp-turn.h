@@ -40,6 +40,34 @@
 
 G_BEGIN_DECLS
 
+typedef enum {
+  NICE_UDP_TURN_SOCKET_COMPATIBILITY_TD9,
+  NICE_UDP_TURN_SOCKET_COMPATIBILITY_GOOGLE,
+  NICE_UDP_TURN_SOCKET_COMPATIBILITY_MSN,
+} NiceUdpTurnSocketCompatibility;
+
+gint
+nice_udp_turn_socket_parse_recv (
+  NiceUDPSocket *sock,
+  NiceAddress *from,
+  guint len,
+  gchar *buf,
+  NiceAddress *recv_from,
+  gchar *recv_buf,
+  guint recv_len);
+
+gboolean
+nice_udp_turn_create_socket_full (
+  NiceUDPSocketFactory *man,
+  NiceUDPSocket *sock,
+  NiceAddress *addr,
+  NiceUDPSocket *udp_socket,
+  NiceAddress *server_addr,
+  gchar *username,
+  gchar *password,
+  NiceUdpTurnSocketCompatibility compatibility);
+
+
 void
 nice_udp_turn_socket_factory_init (NiceUDPSocketFactory *man);
 
