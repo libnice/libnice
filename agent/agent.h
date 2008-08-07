@@ -138,6 +138,16 @@ nice_agent_remove_stream (
   NiceAgent *agent,
   guint stream_id);
 
+
+void nice_agent_set_relay_info(
+    NiceAgent *agent,
+    guint stream_id,
+    guint component_id,
+    const gchar *server_ip,
+    guint server_port,
+    const gchar *username,
+    const gchar *password);
+
 void
 nice_agent_gather_candidates (
   NiceAgent *agent,

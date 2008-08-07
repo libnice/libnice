@@ -637,25 +637,27 @@ agent_candidate_pair_priority (NiceAgent *agent, NiceCandidate *local, NiceCandi
   return nice_candidate_pair_priority (remote->priority, local->priority);
 }
 
-static gboolean 
-priv_add_srv_rfx_candidate_discovery (NiceAgent *agent, NiceCandidate *host_candidate, const gchar *stun_server_ip, const guint stun_server_port, Stream *stream, guint component_id, NiceAddress *addr, NiceCandidateType type)
+static gboolean
+priv_add_new_candidate_discovery (NiceAgent *agent,
+    NiceCandidate *host_candidate, NiceAddress server,
+    Stream *stream, guint component_id,
+    NiceAddress *addr, NiceCandidateType type)
 {
   CandidateDiscovery *cdisco;
   GSList *modified_list;
 
   /* note: no need to check for redundant candidates, as this is
    *       done later on in the process */
-  
+
   cdisco = g_slice_new0 (CandidateDiscovery);
   if (cdisco) {
     modified_list = g_slist_append (agent->discovery_list, cdisco);
-	  
+
     if (modified_list) {
       cdisco->type = type;
       cdisco->socket = host_candidate->sockptr->fileno;
       cdisco->nicesock = host_candidate->sockptr;
-      cdisco->server_addr = stun_server_ip;
-      cdisco->server_port = stun_server_port;
+      cdisco->server = server;
       cdisco->interface = addr;
       cdisco->stream = stream;
       cdisco->component = stream_find_component_by_id (stream, component_id);
@@ -721,6 +723,33 @@ nice_agent_add_stream (
 }
 
 
+NICEAPI_EXPORT void nice_agent_set_relay_info(NiceAgent *agent,
+    guint stream_id, guint component_id,
+    const gchar *server_ip, guint server_port,
+    const gchar *username, const gchar *password)
+{
+
+  Component *component = NULL;
+
+  g_static_rec_mutex_lock (&agent->mutex);
+
+  if (agent_find_component (agent, stream_id, component_id, NULL, &component)) {
+    nice_address_init (&component->turn_server);
+
+    if (nice_address_set_from_string (&component->turn_server, server_ip)) {
+      nice_address_set_port (&component->turn_server, server_port);
+    }
+
+    g_free (component->turn_username);
+    component->turn_username = g_strdup (username);
+
+    g_free (component->turn_password);
+    component->turn_password = g_strdup (password);
+  }
+  g_static_rec_mutex_unlock (&agent->mutex);
+}
+
+
 /**
  * nice_agent_gather_candidates:
  *
@@ -753,6 +782,7 @@ nice_agent_gather_candidates (
       NiceCandidate *host_candidate;
 
       for (n = 0; n < stream->n_components; n++) {
+        Component *component = stream_find_component_by_id (stream, n + 1);
 	host_candidate = discovery_add_local_host_candidate (agent, stream->id,
 							     n + 1, addr);
 
@@ -763,30 +793,32 @@ nice_agent_gather_candidates (
 
 	if (agent->full_mode &&
 	    agent->stun_server_ip) {
+          NiceAddress stun_server;
+          if (nice_address_set_from_string (&stun_server,  agent->stun_server_ip)) {
+            nice_address_set_port (&stun_server, agent->stun_server_port);
 
-	  gboolean res =
-	    priv_add_srv_rfx_candidate_discovery (agent,
-                host_candidate,
-                agent->stun_server_ip,
-                agent->stun_server_port,
-                stream,
-                n + 1 /* component-id */,
-                addr,
-                NICE_CANDIDATE_TYPE_SERVER_REFLEXIVE);
+            gboolean res =
+                priv_add_new_candidate_discovery (agent,
+                    host_candidate,
+                    stun_server,
+                    stream,
+                    n + 1 /* component-id */,
+                    addr,
+                    NICE_CANDIDATE_TYPE_SERVER_REFLEXIVE);
 
-	  if (res != TRUE) {
-	    /* note: memory allocation failure, return error */
-	    g_error ("Memory allocation failure?");
-	  }
+            if (res != TRUE) {
+              /* note: memory allocation failure, return error */
+              g_error ("Memory allocation failure?");
+            }
+          }
 	}
 	if (agent->full_mode &&
-	    agent->turn_server_ip) {
+            component && nice_address_is_valid (&component->turn_server)) {
 
 	  gboolean res =
-	    priv_add_srv_rfx_candidate_discovery (agent,
+	    priv_add_new_candidate_discovery (agent,
                 host_candidate,
-                agent->turn_server_ip,
-                agent->turn_server_port,
+                component->turn_server,
                 stream,
                 n + 1 /* component-id */,
                 addr,
@@ -1238,6 +1270,17 @@ _nice_agent_recv (
       /* XXX: test this case */
       return 0;
     }
+
+  if (nice_address_equal (&from, &component->turn_server)) {
+    GSList * i = NULL;
+    g_debug ("Agent %p : Packet received from TURN server candidate.", agent);
+    for (i = component->local_candidates; i; i = i->next) {
+      NiceCandidate *cand = i->data;
+      if (cand->type == NICE_CANDIDATE_TYPE_RELAYED) {
+        len = nice_udp_turn_socket_parse_recv (cand->sockptr, &from, len, buf, &from, buf, len);
+      }
+    }
+  }
 
   if (stun_message_validate_buffer_length ((uint8_t *) buf, (size_t) len) == len) {
     /* If the retval is no 0, its not a valid stun packet, probably data */
