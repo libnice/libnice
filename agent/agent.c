@@ -83,10 +83,6 @@ enum
   PROP_MAIN_CONTEXT,
   PROP_STUN_SERVER,
   PROP_STUN_SERVER_PORT,
-  PROP_TURN_SERVER,
-  PROP_TURN_SERVER_PORT,
-  PROP_TURN_USERNAME,
-  PROP_TURN_PASSWORD,
   PROP_CONTROLLING_MODE,
   PROP_FULL_MODE,
   PROP_STUN_PACING_TIMER,
@@ -220,39 +216,6 @@ nice_agent_class_init (NiceAgentClass *klass)
         "The STUN server used to obtain server-reflexive candidates",
         1, 65536, 
 	1, /* not a construct property, ignored */
-        G_PARAM_READWRITE));
-
-  g_object_class_install_property (gobject_class, PROP_TURN_SERVER,
-      g_param_spec_string (
-        "turn-server",
-        "TURN server",
-        "The TURN server used to obtain relay candidates",
-        NULL,
-        G_PARAM_READWRITE));
-
-  g_object_class_install_property (gobject_class, PROP_TURN_SERVER_PORT,
-      g_param_spec_uint (
-        "turn-server-port",
-        "TURN server port",
-        "The TURN server used to obtain relay candidates",
-        1, 65536, 
-	1, /* not a construct property, ignored */
-        G_PARAM_READWRITE));
-
-  g_object_class_install_property (gobject_class, PROP_TURN_USERNAME,
-      g_param_spec_string (
-        "turn-username",
-        "TURN server",
-        "The username to authenticate with the TURN relay server",
-        NULL,
-        G_PARAM_READWRITE));
-
-  g_object_class_install_property (gobject_class, PROP_TURN_PASSWORD,
-      g_param_spec_string (
-        "turn-password",
-        "TURN server",
-        "The password to authenticate with the TURN relay server",
-        NULL,
         G_PARAM_READWRITE));
 
   g_object_class_install_property (gobject_class, PROP_CONTROLLING_MODE,
@@ -397,7 +360,6 @@ nice_agent_init (NiceAgent *agent)
 
   /* set defaults; not construct params, so set here */
   agent->stun_server_port = DEFAULT_STUN_PORT;
-  agent->turn_server_port = DEFAULT_STUN_PORT;
   agent->controlling_mode = TRUE;
   agent->max_conn_checks = NICE_AGENT_MAX_CONNECTIVITY_CHECKS_DEFAULT;
 
@@ -471,22 +433,6 @@ nice_agent_get_property (
       g_value_set_uint (value, agent->stun_server_port);
       break;
 
-    case PROP_TURN_SERVER:
-      g_value_set_string (value, agent->turn_server_ip);
-      break;
-
-    case PROP_TURN_SERVER_PORT:
-      g_value_set_uint (value, agent->turn_server_port);
-      break;
-
-    case PROP_TURN_USERNAME:
-      g_value_set_string (value, agent->turn_username);
-      break;
-
-    case PROP_TURN_PASSWORD:
-      g_value_set_string (value, agent->turn_password);
-      break;
-
     case PROP_CONTROLLING_MODE:
       g_value_set_boolean (value, agent->controlling_mode);
       break;
@@ -556,18 +502,6 @@ nice_agent_set_property (
 
     case PROP_STUN_SERVER_PORT:
       agent->stun_server_port = g_value_get_uint (value);
-      break;
-
-    case PROP_TURN_SERVER:
-      agent->turn_server_ip = g_value_dup_string (value);
-      break;
-
-    case PROP_TURN_USERNAME:
-      agent->turn_username = g_value_dup_string (value);
-      break;
-
-    case PROP_TURN_PASSWORD:
-      agent->turn_password = g_value_dup_string (value);
       break;
 
     case PROP_CONTROLLING_MODE:
@@ -1755,12 +1689,6 @@ nice_agent_dispose (GObject *object)
 
   g_free (agent->stun_server_ip);
   agent->stun_server_ip = NULL;
-  g_free (agent->turn_server_ip);
-  agent->turn_server_ip = NULL;
-  g_free (agent->turn_username);
-  agent->turn_username = NULL;
-  g_free (agent->turn_password);
-  agent->turn_password = NULL;
 
   nice_rng_free (agent->rng);
   agent->rng = NULL;

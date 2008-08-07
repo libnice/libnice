@@ -73,10 +73,6 @@ struct _NiceAgent
   GTimeVal next_check_tv;         /**< property: next conncheck timestamp */
   gchar *stun_server_ip;          /**< property: STUN server IP */
   guint stun_server_port;         /**< property: STUN server port */
-  gchar *turn_server_ip;          /**< property: TURN server IP */
-  guint turn_server_port;         /**< property: TURN server port */
-  gchar *turn_username;           /**< property: TURN username */
-  gchar *turn_password;           /**< property: TURN password */
   gboolean controlling_mode;      /**< property: controlling-mode */
   guint timer_ta;                 /**< property: timer Ta */
   guint max_conn_checks;          /**< property: max connectivity checks */
