@@ -58,6 +58,7 @@
 #include "discovery.h"
 #include "stun/usages/bind.h"
 #include "stun/usages/turn.h"
+#include "udp-turn.h"
 
 static inline int priv_timer_expired (GTimeVal *restrict timer, GTimeVal *restrict now)
 {
@@ -74,7 +75,6 @@ void discovery_free_item (gpointer data, gpointer user_data)
 {
   CandidateDiscovery *cand = data;
   g_assert (user_data == NULL);
-  cand->server_addr = NULL;
   g_slice_free (CandidateDiscovery, cand);
 }
 
@@ -283,15 +283,16 @@ NiceCandidate *discovery_add_local_host_candidate (
 	priv_attach_stream_component_socket (agent, stream, component,
             udp_socket);
 
+        candidate->sockptr = udp_socket;
+        candidate->addr = udp_socket->addr;
+        candidate->base_addr = udp_socket->addr;
+
 	gboolean result = priv_add_local_candidate_pruned (component, candidate);
 	if (result == TRUE) {
 	  GSList *modified_list = g_slist_append (component->sockets, udp_socket);
 	  if (modified_list) {
 	    /* success: store a pointer to the sockaddr */
 	    component->sockets = modified_list;
-	    candidate->sockptr = udp_socket;
-	    candidate->addr = udp_socket->addr;
-	    candidate->base_addr = udp_socket->addr;
 	    agent_signal_new_candidate (agent, candidate);
 	  }
 	  else { /* error: list memory allocation */
@@ -375,6 +376,79 @@ discovery_add_server_reflexive_candidate (
   return candidate;
 }
 
+
+/**
+ * Creates a server reflexive candidate for 'component_id' of stream
+ * 'stream_id'.
+ *
+ * @return pointer to the created candidate, or NULL on error
+ */
+NiceCandidate* 
+discovery_add_relay_candidate (
+  NiceAgent *agent,
+  guint stream_id,
+  guint component_id,
+  NiceAddress *address,
+  NiceUDPSocket *base_socket)
+{
+  NiceCandidate *candidate;
+  Component *component;
+  Stream *stream;
+  gboolean result = FALSE;
+  gboolean errors = FALSE;
+  NiceUDPSocket *relay_socket = NULL;
+
+  if (!agent_find_component (agent, stream_id, component_id, &stream, &component))
+    return NULL;
+
+  candidate = nice_candidate_new (NICE_CANDIDATE_TYPE_RELAYED);
+  if (candidate) {
+    relay_socket = g_slice_new0 (NiceUDPSocket);
+    if (relay_socket) {
+      if (agent->compatibility == NICE_COMPATIBILITY_GOOGLE) {
+        candidate->priority = nice_candidate_jingle_priority (candidate) * 1000;
+      } else if (agent->compatibility == NICE_COMPATIBILITY_MSN)  {
+        candidate->priority = nice_candidate_msn_priority (candidate) * 1000;
+      } else {
+        candidate->priority =  nice_candidate_ice_priority_full
+            (NICE_CANDIDATE_TYPE_PREF_RELAYED, 0, component_id);
+      }
+      candidate->stream_id = stream_id;
+      candidate->component_id = component_id;
+      candidate->addr = *address;
+
+      /* step: link to the base candidate+socket */
+      if (nice_udp_turn_create_socket_full (&agent->relay_socket_factory,
+              relay_socket, address, base_socket, &component->turn_server,
+              component->turn_username, component->turn_password,
+              NICE_UDP_TURN_SOCKET_COMPATIBILITY_GOOGLE)) {
+        candidate->sockptr = relay_socket;
+        candidate->base_addr = base_socket->addr;
+
+        priv_generate_msn_credentials (agent, candidate);
+        priv_assign_foundation (agent, candidate);
+
+        result = priv_add_local_candidate_pruned (component, candidate);
+        if (result) {
+          agent_signal_new_candidate (agent, candidate);
+        } else /* error: memory allocation, or duplicate candidate */
+          errors = TRUE;
+      } else /* error: socket factory make */
+        errors = TRUE;
+    } else /* error: udp socket memory allocation */
+      errors = TRUE;
+  }
+
+  /* clean up after errors */
+  if (errors) {
+    if (candidate)
+      nice_candidate_free (candidate), candidate = NULL;
+    if (relay_socket)
+      g_slice_free (NiceUDPSocket, relay_socket);
+  }
+  return candidate;
+}
+
 /**
  * Creates a peer reflexive candidate for 'component_id' of stream
  * 'stream_id'.
@@ -428,19 +502,19 @@ discovery_add_peer_reflexive_candidate (
       gsize remote_size;
       g_free(candidate->username);
       g_free(candidate->password);
-      
+
       decoded_local = g_base64_decode (local_candidate->username, &local_size);
       decoded_remote = g_base64_decode (remote_candidate->username, &remote_size);
 
       new_username = g_new0(guchar, local_size + remote_size);
       memcpy(new_username, decoded_local, local_size);
       memcpy(new_username + local_size, decoded_remote, remote_size);
-      
+
       candidate->username = g_base64_encode (new_username, local_size + remote_size);
       g_free(new_username);
       g_free(decoded_local);
       g_free(decoded_remote);
-      
+
       candidate->password = g_strdup(local_candidate->password);
     }
 
@@ -584,19 +658,18 @@ static gboolean priv_discovery_tick_unlocked (gpointer pointer)
 
       if (agent->discovery_unsched_items)
 	--agent->discovery_unsched_items;
-      
-      g_debug ("Agent %p : discovery - scheduling cand type %u addr %s and socket %d.\n", agent,
-               cand->type, cand->server_addr, cand->socket);
-      
-      if (cand->server_addr &&
+
+#ifndef NDEBUG
+      {
+        gchar tmpbuf[INET6_ADDRSTRLEN];
+        nice_address_to_string (&cand->server, tmpbuf);
+        g_debug ("Agent %p : discovery - scheduling cand type %u addr %s and socket %d.\n", agent,
+            cand->type, tmpbuf, cand->socket);
+      }
+#endif
+      if (nice_address_is_valid (&cand->server) &&
           (cand->type == NICE_CANDIDATE_TYPE_SERVER_REFLEXIVE ||
               cand->type == NICE_CANDIDATE_TYPE_RELAYED)) {
-        NiceAddress stun_server;
-
-        /* XXX FIXME TODO: handle error here?! Kai, help me! */
-        if (!nice_address_set_from_string (&stun_server, cand->server_addr))
-          g_assert_not_reached();
-        nice_address_set_port (&stun_server, cand->server_port);
 
 	agent_signal_component_state_change (agent,
 					     cand->stream->id,
@@ -612,8 +685,10 @@ static gboolean priv_discovery_tick_unlocked (gpointer pointer)
               NULL,
               STUN_USAGE_TURN_REQUEST_PORT_NORMAL,
               0, 0,
-              (uint8_t *)agent->turn_username, (size_t) strlen (agent->turn_username),
-              (uint8_t *)agent->turn_password, (size_t) strlen (agent->turn_password),
+              (uint8_t *)cand->component->turn_username,
+              (size_t) strlen (cand->component->turn_username),
+              (uint8_t *)cand->component->turn_password,
+              (size_t) strlen (cand->component->turn_password),
               STUN_USAGE_TURN_COMPATIBILITY_GOOGLE);
         }
 
@@ -621,7 +696,7 @@ static gboolean priv_discovery_tick_unlocked (gpointer pointer)
           stun_timer_start (&cand->timer);
 
           /* send the conncheck */
-          nice_udp_socket_send (cand->nicesock, &stun_server,
+          nice_udp_socket_send (cand->nicesock, &cand->server,
               buffer_len, (gchar *)cand->stun_buffer);
 
 	  /* case: success, start waiting for the result */
@@ -665,17 +740,12 @@ static gboolean priv_discovery_tick_unlocked (gpointer pointer)
             {
               /* case: not ready complete, so schedule next timeout */
               unsigned int timeout = stun_timer_remainder (&cand->timer);
-              NiceAddress stun_server;
-
-              if (!nice_address_set_from_string (&stun_server, cand->server_addr))
-                g_assert_not_reached();
-              nice_address_set_port (&stun_server, cand->server_port);
 
               stun_debug ("STUN transaction retransmitted (timeout %dms).\n",
                   timeout);
 
               /* TODO retransmit */
-              nice_udp_socket_send (cand->nicesock, &stun_server,
+              nice_udp_socket_send (cand->nicesock, &cand->server,
                   stun_message_length (&cand->stun_message),
                   (gchar *)cand->stun_buffer);
 

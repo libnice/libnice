@@ -49,8 +49,7 @@ struct _CandidateDiscovery
   NiceCandidateType type;   /**< candidate type STUN or TURN */
   guint socket;             /**< XXX: should be taken from local cand: existing socket to use */
   NiceUDPSocket *nicesock;  /**< XXX: should be taken from local cand: existing socket to use */
-  const gchar *server_addr; /**< STUN/TURN server address, not owned */ 
-  guint server_port;        /**< STUN/TURN server port */ 
+  NiceAddress server;       /**< STUN/TURN server address */
   NiceAddress *interface;   /**< Address of local interface */
   GTimeVal next_tick;       /**< next tick timestamp */
   gboolean pending;         /**< is discovery in progress? */
@@ -73,6 +72,14 @@ discovery_add_local_host_candidate (
   guint stream_id,
   guint component_id,
   NiceAddress *address);
+
+NiceCandidate*
+discovery_add_relay_candidate (
+  NiceAgent *agent,
+  guint stream_id,
+  guint component_id,
+  NiceAddress *address,
+  NiceUDPSocket *base_socket);
 
 NiceCandidate* 
 discovery_add_server_reflexive_candidate (
