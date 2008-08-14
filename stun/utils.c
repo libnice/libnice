@@ -47,7 +47,9 @@
 #include <errno.h>
 #include "utils.h"
 
-/** Compares two socket addresses */
+/** Compares two socket addresses
+ * @return 0 if the addresses are equal, non-zero otherwise
+ */
 int sockaddrcmp (const struct sockaddr *a, const struct sockaddr *b)
 {
   int res;
