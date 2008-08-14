@@ -239,8 +239,7 @@ uint16_t stun_message_length (const StunMessage *msg);
  * @return a pointer to the start of the attribute payload if found,
  * otherwise NULL.
  */
-const void *
-stun_message_find (const StunMessage * msg, stun_attr_type_t type,
+const void * stun_message_find (const StunMessage * msg, stun_attr_type_t type,
     uint16_t *restrict palen);
 
 
