@@ -122,7 +122,7 @@ typedef enum
 
   /* Optional attributes */
   /* 0x8000-0x8021 */      /* reserved */
-  STUN_ATTRIBUTE_SERVER=0x8022,      /* RFC3489bis-11 */
+  STUN_ATTRIBUTE_SOFTWARE=0x8022,      /* RFC3489bis-17 */
   STUN_ATTRIBUTE_ALTERNATE_SERVER=0x8023,    /* RFC3489bis-11 */
   STUN_ATTRIBUTE_REFRESH_INTERVAL=0x8024,    /* wing-nat-control-04 */
   /* 0x8025 */        /* reserved */

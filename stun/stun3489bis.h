@@ -56,7 +56,7 @@ uint32_t stun_fingerprint (const uint8_t *msg, size_t len);
 
 bool stun_has_cookie (const StunMessage *msg);
 
-int stun_message_append_server (StunMessage *msg);
+int stun_message_append_software (StunMessage *msg);
 
 
 #endif /* _STUN_3489BIS_H */

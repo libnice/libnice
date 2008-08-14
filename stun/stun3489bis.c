@@ -74,10 +74,10 @@ bool stun_has_cookie (const StunMessage *msg)
 }
 
 
-int stun_message_append_server (StunMessage *msg)
+int stun_message_append_software (StunMessage *msg)
 {
-  static const char server[] = PACKAGE_STRING;
-  // assert (strlen (server) < 128);
+  static const char software[] = PACKAGE_STRING;
+  // assert (strlen (software) < 128);
 
-  return stun_message_append_string (msg, STUN_ATTRIBUTE_SERVER, server);
+  return stun_message_append_string (msg, STUN_ATTRIBUTE_SOFTWARE, software);
 }

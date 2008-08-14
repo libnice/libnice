@@ -354,8 +354,8 @@ bool stun_agent_init_response (StunAgent *agent, StunMessage *msg,
           stun_message_get_method (request), id)) {
 
     if (agent->compatibility == STUN_COMPATIBILITY_3489BIS &&
-      agent->usage_flags & STUN_AGENT_USAGE_ADD_SERVER) {
-      stun_message_append_server (msg);
+      agent->usage_flags & STUN_AGENT_USAGE_ADD_SOFTWARE) {
+      stun_message_append_software (msg);
     }
     return TRUE;
   }
@@ -386,8 +386,8 @@ bool stun_agent_init_error (StunAgent *agent, StunMessage *msg,
           stun_message_get_method (request), id)) {
 
     if (agent->compatibility == STUN_COMPATIBILITY_3489BIS &&
-      agent->usage_flags & STUN_AGENT_USAGE_ADD_SERVER) {
-      stun_message_append_server (msg);
+      agent->usage_flags & STUN_AGENT_USAGE_ADD_SOFTWARE) {
+      stun_message_append_software (msg);
     }
     if (stun_message_append_error (msg, err) == 0) {
       return TRUE;

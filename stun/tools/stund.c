@@ -265,7 +265,7 @@ static int run (int family, int protocol, unsigned port)
 
 
   stun_agent_init (&agent, known_attributes,
-      STUN_COMPATIBILITY_3489BIS, STUN_AGENT_USAGE_ADD_SERVER |
+      STUN_COMPATIBILITY_3489BIS, STUN_AGENT_USAGE_ADD_SOFTWARE |
       STUN_AGENT_USAGE_USE_FINGERPRINT);
 
   for (;;)

@@ -168,7 +168,7 @@ StunUsageBindReturn stun_usage_bind_run (const struct sockaddr *srv,
 
   stun_agent_init (&agent, STUN_ALL_KNOWN_ATTRIBUTES,
       STUN_COMPATIBILITY_3489BIS,
-      STUN_AGENT_USAGE_ADD_SERVER |
+      STUN_AGENT_USAGE_ADD_SOFTWARE |
       STUN_AGENT_USAGE_USE_FINGERPRINT);
 
   len = stun_usage_bind_create (&agent, &req, req_buf, sizeof(req_buf));
