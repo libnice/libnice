@@ -22,6 +22,7 @@
  *
  * Contributors:
  *   Dafydd Harries, Collabora Ltd.
+ *   Youness Alaoui, Collabora Ltd.
  *   Rémi Denis-Courmont, Nokia
  *   Kai Vehmanen
  *
