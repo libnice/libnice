@@ -2,6 +2,7 @@
  * This file is part of the Nice GLib ICE library.
  *
  * (C) 2008 Collabora Ltd.
+ * (C) 2008 Nokia Corporation
  *  Contact: Youness Alaoui
  *
  * The contents of this file are subject to the Mozilla Public License Version
