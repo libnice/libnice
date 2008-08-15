@@ -254,7 +254,6 @@ stun_usage_ice_conncheck_create_reply (StunAgent *agent, StunMessage *req,
     {
       stun_debug (" staying \"controll%s\" (sending error)\n",
            *control ? "ing" : "ed");
-      *plen = len;
       err (STUN_ERROR_ROLE_CONFLICT);
       return 0;
     }
