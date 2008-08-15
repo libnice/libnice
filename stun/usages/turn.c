@@ -98,8 +98,7 @@ size_t stun_usage_turn_create (StunAgent *agent, StunMessage *msg,
     uint32_t req = 0;
 
 
-    if ((request_props & STUN_USAGE_TURN_REQUEST_PORT_BOTH) ==
-        STUN_USAGE_TURN_REQUEST_PORT_BOTH){
+    if (request_props & STUN_USAGE_TURN_REQUEST_PORT_EVEN_AND_RESERVE) {
       req |= REQUESTED_PROPS_R;
       req |= REQUESTED_PROPS_E;
     } else if (request_props & STUN_USAGE_TURN_REQUEST_PORT_EVEN) {
