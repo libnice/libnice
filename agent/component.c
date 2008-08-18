@@ -103,7 +103,7 @@ component_free (Component *cmp)
   g_slist_free (cmp->local_candidates);
   g_slist_free (cmp->remote_candidates);
   g_slist_free (cmp->sockets);
-  g_slist_free (cmp->gsources), cmp->gsources = NULL;
+  g_slist_free (cmp->gsources);
   g_slist_free (cmp->incoming_checks);
 
   g_free (cmp->turn_username);
