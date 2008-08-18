@@ -105,29 +105,20 @@ void discovery_free (NiceAgent *agent)
  */
 gboolean discovery_prune_stream (NiceAgent *agent, guint stream_id)
 {
-  CandidateDiscovery *cand;
   GSList *i;
 
   for (i = agent->discovery_list; i ; ) {
-    cand = i->data;
+    CandidateDiscovery *cand = i->data;
+    GSList *next = i->next;
 
     if (cand->stream->id == stream_id) {
-      GSList *next = i->next;
-      agent->discovery_list = 
-	g_slist_remove (agent->discovery_list, cand);
+      agent->discovery_list = g_slist_remove (agent->discovery_list, cand);
       discovery_free_item (cand, NULL);
-      i = next;
-      if (!agent->discovery_list)
-	break;
     }
-    else
-      i = i->next;
+    i = next;
   }
 
   if (agent->discovery_list == NULL) {
-    /* return FALSE if there was a memory allocation failure */
-    if (i != NULL)
-      return FALSE;
     /* noone using the timer anymore, clean it up */
     discovery_free (agent);
   }
