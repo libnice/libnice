@@ -63,7 +63,7 @@ struct _CandidateDiscovery
 
 void discovery_free_item (gpointer data, gpointer user_data);
 void discovery_free (NiceAgent *agent);
-gboolean discovery_prune_stream (NiceAgent *agent, guint stream_id);
+void discovery_prune_stream (NiceAgent *agent, guint stream_id);
 void discovery_schedule (NiceAgent *agent);
 
 NiceCandidate *

@@ -103,7 +103,7 @@ void discovery_free (NiceAgent *agent)
  *
  * @return TRUE on success, FALSE on a fatal error
  */
-gboolean discovery_prune_stream (NiceAgent *agent, guint stream_id)
+void discovery_prune_stream (NiceAgent *agent, guint stream_id)
 {
   GSList *i;
 
@@ -122,8 +122,6 @@ gboolean discovery_prune_stream (NiceAgent *agent, guint stream_id)
     /* noone using the timer anymore, clean it up */
     discovery_free (agent);
   }
-
-  return TRUE;
 }
 
 /**
