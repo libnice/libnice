@@ -143,7 +143,7 @@ static gboolean priv_add_local_candidate_pruned (Component *component, NiceCandi
     }
   }
 
-  modified_list= g_slist_append (component->local_candidates,
+  modified_list = g_slist_append (component->local_candidates,
 				 candidate);
   if (modified_list) {
     component->local_candidates = modified_list;
