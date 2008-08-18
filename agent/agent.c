@@ -697,6 +697,7 @@ nice_agent_add_stream (
   g_static_rec_mutex_lock (&agent->mutex);
 
   if (!agent->local_addresses) {
+    g_warn_if_fail(agent->local_addresses);
     goto done;
   }
 
