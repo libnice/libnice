@@ -631,10 +631,10 @@ void agent_signal_component_state_change (NiceAgent *agent, guint stream_id, gui
 guint64
 agent_candidate_pair_priority (NiceAgent *agent, NiceCandidate *local, NiceCandidate *remote)
 {
-  if (agent->controlling_mode == TRUE)
+  if (agent->controlling_mode)
     return nice_candidate_pair_priority (local->priority, remote->priority);
-
-  return nice_candidate_pair_priority (remote->priority, local->priority);
+  else
+    return nice_candidate_pair_priority (remote->priority, local->priority);
 }
 
 static gboolean
