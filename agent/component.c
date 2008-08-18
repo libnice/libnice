@@ -106,7 +106,6 @@ component_free (Component *cmp)
   g_slist_free (cmp->gsources), cmp->gsources = NULL;
   g_slist_free (cmp->incoming_checks);
 
-  nice_address_init (&cmp->turn_server);
   g_free (cmp->turn_username);
   g_free (cmp->turn_password);
 
