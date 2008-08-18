@@ -269,6 +269,8 @@ NiceCandidate *discovery_add_local_host_candidate (
 	 level ufrag/password are used */
       if (nice_udp_socket_factory_make (&agent->udp_socket_factory,
 					udp_socket, address)) {
+	gboolean result;
+
 	priv_attach_stream_component_socket (agent, stream, component,
             udp_socket);
 
@@ -276,7 +278,8 @@ NiceCandidate *discovery_add_local_host_candidate (
         candidate->addr = udp_socket->addr;
         candidate->base_addr = udp_socket->addr;
 
-	gboolean result = priv_add_local_candidate_pruned (component, candidate);
+	result = priv_add_local_candidate_pruned (component, candidate);
+
 	if (result == TRUE) {
 	  GSList *modified_list = g_slist_append (component->sockets, udp_socket);
 	  if (modified_list) {
