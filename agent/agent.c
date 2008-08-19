@@ -1285,20 +1285,19 @@ _nice_agent_recv (
     }
   }
 
-  if (stun_message_validate_buffer_length ((uint8_t *) buf, (size_t) len) == len) {
+  if (!stun_message_validate_buffer_length ((uint8_t *) buf, (size_t) len) ==
+      len)
     /* If the retval is no 0, its not a valid stun packet, probably data */
-    if (conn_check_handle_inbound_stun (agent, stream, component, udp_socket,
-            &from, buf, len) == FALSE) {
-      /* unhandled STUN, pass to client */
-      return len;
-    }
-  } else {
-    /* not STUN, pass to client */
     return len;
-  }
 
-  /* handled STUN message*/
-  return 0;
+
+  if (conn_check_handle_inbound_stun (agent, stream, component, udp_socket,
+          &from, buf, len))
+    /* handled STUN message*/
+    return 0;
+
+  /* unhandled STUN, pass to client */
+  return len;
 }
 
 /**
