@@ -1042,7 +1042,9 @@ static gboolean priv_add_remote_candidate (
  * @agent: a NiceAgent
  * @stream_id: identifier returnedby nice_agent_add_stream()
  * @ufrag: NULL-terminated string containing an ICE username fragment
+ *    (length must be between 22 and 256 chars)
  * @pwd: NULL-terminated string containing an ICE password
+ *    (length must be between 4 and 256 chars)
  *
  * @return TRUE on success
  */
