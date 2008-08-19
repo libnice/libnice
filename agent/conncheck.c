@@ -315,7 +315,7 @@ static gboolean priv_conn_check_tick_stream (Stream *stream, NiceAgent *agent, G
       ++s_nominated;
     else if (p->state == NICE_CHECK_SUCCEEDED && !p->nominated)
       ++s_waiting_for_nomination;
-    }
+  }
 
     /* note: keep the timer going as long as there is work to be done */
   if (s_inprogress)
