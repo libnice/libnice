@@ -1592,8 +1592,8 @@ nice_agent_send (
  * nice_agent_get_local_candidates:
  *  @agent: A NiceAgent
  *
- * The caller owns the returned GSList but not the candidates contained within
- * it. To get full results, the client should wait for the
+ * The caller owns the returned GSList as well as the candidates contained
+ * within it. To get full results, the client should wait for the
  * 'candidates-gathering-done' signal.
  *
  * Returns: a GSList of local candidates (NiceCandidate) belonging to @agent
