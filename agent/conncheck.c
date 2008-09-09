@@ -1585,9 +1585,18 @@ static gboolean priv_map_reply_to_conn_check_request (NiceAgent *agent, Stream *
            *       sent the original request to (see 7.1.2.1. "Failure
            *       Cases") */
           if (nice_address_equal (from, &p->remote->addr) != TRUE) {
+            gchar tmpbuf[INET6_ADDRSTRLEN];
+            gchar tmpbuf2[INET6_ADDRSTRLEN];
+
             p->state = NICE_CHECK_FAILED;
             nice_debug ("Agent %p : conncheck %p FAILED"
                 " (mismatch of source address).", agent, p);
+            nice_address_to_string (&p->remote->addr, tmpbuf);
+            nice_address_to_string (from, tmpbuf2);
+            nice_debug ("Agent %p : '%s:%u' != '%s:%u'", agent,
+                tmpbuf, nice_address_get_port (&p->remote->addr),
+                tmpbuf2, nice_address_get_port (from));
+
             trans_found = TRUE;
             break;
           }
