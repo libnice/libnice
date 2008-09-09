@@ -121,5 +121,5 @@ void stun_hash_creds (const uint8_t *realm, size_t realm_len,
 
 void stun_make_transid (stun_transid_t id)
 {
-  RAND_bytes (id, sizeof (id));
+  RAND_bytes (id, 16);
 }
