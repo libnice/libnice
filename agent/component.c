@@ -47,6 +47,8 @@
 
 #include <string.h>
 
+#include "debug.h"
+
 #include "component.h"
 #include "agent-priv.h"
 
@@ -218,7 +220,7 @@ void component_update_selected_pair (Component *component, const CandidatePair *
 {
   g_assert (component);
   g_assert (pair);
-  g_debug ("setting SELECTED PAIR for component %u: %s:%s (prio:%lu).", 
+  nice_debug ("setting SELECTED PAIR for component %u: %s:%s (prio:%lu).", 
 	   component->id, pair->local->foundation, pair->remote->foundation, (long unsigned)pair->priority);
   component->selected_pair.local = pair->local;
   component->selected_pair.remote = pair->remote;

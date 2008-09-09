@@ -51,6 +51,8 @@
 
 #include <glib.h>
 
+#include "debug.h"
+
 #include "agent.h"
 #include "agent-priv.h"
 #include "agent-signals-marshal.h"
@@ -138,7 +140,7 @@ static gboolean priv_add_local_candidate_pruned (Component *component, NiceCandi
     
     if (nice_address_equal (&c->base_addr, &candidate->base_addr) &&
 	nice_address_equal (&c->addr, &candidate->addr)) {
-      g_debug ("Candidate %p (component-id %u) redundant, ignoring.", candidate, component->id);
+      nice_debug ("Candidate %p (component-id %u) redundant, ignoring.", candidate, component->id);
       return FALSE;
     }
   }
@@ -638,7 +640,7 @@ static gboolean priv_discovery_tick_unlocked (gpointer pointer)
   {
     static int tick_counter = 0;
     if (tick_counter++ % 50 == 0)
-      g_debug ("Agent %p : discovery tick #%d with list %p (1)", agent, tick_counter, agent->discovery_list);
+      nice_debug ("Agent %p : discovery tick #%d with list %p (1)", agent, tick_counter, agent->discovery_list);
   }
 #endif
 
@@ -655,7 +657,7 @@ static gboolean priv_discovery_tick_unlocked (gpointer pointer)
       {
         gchar tmpbuf[INET6_ADDRSTRLEN];
         nice_address_to_string (&cand->server, tmpbuf);
-        g_debug ("Agent %p : discovery - scheduling cand type %u addr %s and socket %d.\n", agent,
+        nice_debug ("Agent %p : discovery - scheduling cand type %u addr %s and socket %d.\n", agent,
             cand->type, tmpbuf, cand->socket);
       }
 #endif
@@ -715,7 +717,7 @@ static gboolean priv_discovery_tick_unlocked (gpointer pointer)
       g_get_current_time (&now);
 
       if (cand->stun_message.buffer == NULL) {
-	g_debug ("Agent %p : STUN discovery was cancelled, marking discovery done.", agent);
+	nice_debug ("Agent %p : STUN discovery was cancelled, marking discovery done.", agent);
 	cand->done = TRUE;
       }
       else if (priv_timer_expired (&cand->next_tick, &now)) {
@@ -726,7 +728,7 @@ static gboolean priv_discovery_tick_unlocked (gpointer pointer)
             cand->done = TRUE;
             cand->stun_message.buffer = NULL;
             cand->stun_message.buffer_len = 0;
-            g_debug ("Agent %p : bind discovery timed out, aborting discovery item.", agent);
+            nice_debug ("Agent %p : bind discovery timed out, aborting discovery item.", agent);
             break;
           case 0:
             {
@@ -765,7 +767,7 @@ static gboolean priv_discovery_tick_unlocked (gpointer pointer)
   }
 
   if (not_done == 0) {
-    g_debug ("Agent %p : Candidate gathering FINISHED, stopping discovery timer.", agent);
+    nice_debug ("Agent %p : Candidate gathering FINISHED, stopping discovery timer.", agent);
 
     discovery_free (agent);
 

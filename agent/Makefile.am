@@ -37,6 +37,8 @@ BUILT_SOURCES = \
 CLEANFILES += $(BUILT_SOURCES)
 
 libagent_la_SOURCES = \
+	debug.h \
+	debug.c \
 	candidate.h \
 	candidate.c \
 	component.h \
