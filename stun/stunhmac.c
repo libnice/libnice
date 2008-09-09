@@ -121,35 +121,5 @@ void stun_hash_creds (const uint8_t *realm, size_t realm_len,
 
 void stun_make_transid (stun_transid_t id)
 {
-  /*
-   * transid = (HMAC_SHA1 (secret, counter) >> 64)
-   * This consumes sizeof (secret) bytes of entropy every 2^64 messages.
-   */
-  static struct
-  {
-    pthread_mutex_t lock;
-    uint64_t counter;
-    uint8_t secret[16];
-  } store = { PTHREAD_MUTEX_INITIALIZER, 0, "" };
-
-  union
-  {
-    uint64_t value;
-    uint8_t  bytes[1];
-  } counter;
-  uint8_t  key[16], sha[20];
-
-  pthread_mutex_lock (&store.lock);
-
-  counter.value = store.counter++;
-  if (counter.value == 0)
-    RAND_pseudo_bytes (store.secret, sizeof (store.secret));
-  memcpy (key, store.secret, sizeof (key));
-
-  pthread_mutex_unlock (&store.lock);
-
-  /* Computes hash out of contentious area */
-  HMAC (EVP_sha1 (), key, sizeof (key), counter.bytes, sizeof (counter),
-        sha, NULL);
-  memcpy (id, sha, 16);
+  RAND_bytes (id, sizeof (id));
 }
