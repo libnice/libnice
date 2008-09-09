@@ -133,7 +133,7 @@ uint16_t stun_getw (const uint8_t *ptr)
 /*   return stun_find_unknown (msg, &dummy, 1); */
 /* } */
 
-static int debug_enabled = 0;
+static int debug_enabled = 1;
 
 void stun_debug_enable (void) {
   debug_enabled = 1;
