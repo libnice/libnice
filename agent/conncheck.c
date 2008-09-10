@@ -900,7 +900,8 @@ int conn_check_add_for_candidate (NiceAgent *agent, guint stream_id, Component *
 
       /* note: do not create pairs where local candidate is 
        *       a srv-reflexive (ICE 5.7.3. "Pruning the Pairs" ID-19) */
-      if (local->type == NICE_CANDIDATE_TYPE_SERVER_REFLEXIVE)
+      if (agent->compatibility == NICE_COMPATIBILITY_ID19 &&
+          local->type == NICE_CANDIDATE_TYPE_SERVER_REFLEXIVE)
 	continue;
 
       result = priv_add_new_check_pair (agent, stream_id, component, local, remote, NICE_CHECK_FROZEN, FALSE);
