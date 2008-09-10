@@ -205,6 +205,7 @@ StunUsageTurnReturn stun_usage_turn_process (StunMessage *msg,
     StunUsageTurnCompatibility compatibility)
 {
   int val, code = -1;
+  StunUsageTurnReturn ret = STUN_USAGE_TURN_RETURN_RELAY_SUCCESS;
 
   switch (stun_message_get_class (msg))
   {
@@ -250,15 +251,18 @@ StunUsageTurnReturn stun_usage_turn_process (StunMessage *msg,
   stun_debug ("Received %u-bytes STUN message\n", stun_message_length (msg));
 
   if (compatibility == STUN_USAGE_TURN_COMPATIBILITY_TD9) {
-    stun_message_find_xor_addr (msg,
+    val = stun_message_find_xor_addr (msg,
         STUN_ATTRIBUTE_XOR_MAPPED_ADDRESS, addr, addrlen);
+
+    if (val == 0)
+      ret = STUN_USAGE_TURN_RETURN_MAPPED_SUCCESS;
     val = stun_message_find_xor_addr (msg,
         STUN_ATTRIBUTE_RELAY_ADDRESS, relay_addr, relay_addrlen);
     if (val) {
       stun_debug (" No RELAYED-ADDRESS: %s\n", strerror (val));
       return STUN_USAGE_TURN_RETURN_ERROR;
     }
-  } else if (compatibility == STUN_USAGE_TURN_COMPATIBILITY_TD9) {
+  } else if (compatibility == STUN_USAGE_TURN_COMPATIBILITY_GOOGLE) {
     val = stun_message_find_addr (msg,
         STUN_ATTRIBUTE_MAPPED_ADDRESS, relay_addr, relay_addrlen);
     if (val) {
@@ -266,8 +270,12 @@ StunUsageTurnReturn stun_usage_turn_process (StunMessage *msg,
       return STUN_USAGE_TURN_RETURN_ERROR;
     }
   }else if (compatibility == STUN_USAGE_TURN_COMPATIBILITY_MSN) {
-    stun_message_find_xor_addr (msg,
+    val = stun_message_find_xor_addr (msg,
         STUN_ATTRIBUTE_MSN_MAPPED_ADDRESS, addr, addrlen);
+
+    if (val == 0)
+      ret = STUN_USAGE_TURN_RETURN_MAPPED_SUCCESS;
+
     val = stun_message_find_addr (msg,
         STUN_ATTRIBUTE_MAPPED_ADDRESS, relay_addr, relay_addrlen);
     if (val) {
@@ -277,6 +285,6 @@ StunUsageTurnReturn stun_usage_turn_process (StunMessage *msg,
   }
 
   stun_debug (" Mapped address found!\n");
-  return STUN_USAGE_TURN_RETURN_SUCCESS;
+  return ret;
 
 }
