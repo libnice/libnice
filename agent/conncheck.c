@@ -1727,6 +1727,88 @@ static gboolean priv_map_reply_to_discovery_request (NiceAgent *agent, StunMessa
 
 
 /**
+ * Tries to match STUN reply in 'buf' to an existing STUN discovery
+ * transaction. If found, a reply is sent.
+ * 
+ * @return TRUE if a matching transaction is found
+ */
+static gboolean priv_map_reply_to_relay_request (NiceAgent *agent, StunMessage *resp)
+{
+  struct sockaddr sockaddr;
+  socklen_t socklen = sizeof (sockaddr);
+  struct sockaddr alternate;
+  socklen_t alternatelen = sizeof (alternate);
+  struct sockaddr relayaddr;
+  socklen_t relayaddrlen = sizeof (relayaddr);
+  uint32_t lifetime;
+  uint32_t bandwidth;
+  GSList *i;
+  StunUsageTurnReturn res;
+  gboolean trans_found = FALSE;
+  stun_transid_t discovery_id;
+  stun_transid_t response_id;
+  stun_message_id (resp, response_id);
+
+  for (i = agent->discovery_list; i && trans_found != TRUE; i = i->next) {
+    CandidateDiscovery *d = i->data;
+
+    if (d->type == NICE_CANDIDATE_TYPE_RELAYED &&
+        d->stun_message.buffer) {
+      stun_message_id (&d->stun_message, discovery_id);
+
+      if (memcmp (discovery_id, response_id, sizeof(stun_transid_t)) == 0) {
+        res = stun_usage_turn_process (resp,
+            &relayaddr, &relayaddrlen, &sockaddr, &socklen, &alternate, &alternatelen,
+            &bandwidth, &lifetime, priv_agent_to_turn_compatibility (agent));
+        nice_debug ("Agent %p : stun_bind_process/disc for %p res %d.",
+            agent, d, (int)res);
+
+        if (res == STUN_USAGE_TURN_RETURN_ALTERNATE_SERVER) {
+          /* TODO : handle alternate server */
+        } else if (res == STUN_USAGE_TURN_RETURN_RELAY_SUCCESS ||
+                   res == STUN_USAGE_TURN_RETURN_MAPPED_SUCCESS) {
+          /* case: succesful allocate, create a new local candidate */
+          NiceAddress niceaddr;
+
+          /* We also received our mapped address */
+          if (res == STUN_USAGE_TURN_RETURN_MAPPED_SUCCESS) {
+            nice_address_set_from_sockaddr (&niceaddr, &sockaddr);
+
+            discovery_add_server_reflexive_candidate (
+                d->agent,
+                d->stream->id,
+                d->component->id,
+                &niceaddr,
+                d->nicesock);
+          }
+
+          nice_address_set_from_sockaddr (&niceaddr, &relayaddr);
+          discovery_add_relay_candidate (
+             d->agent,
+             d->stream->id,
+             d->component->id,
+             &niceaddr,
+             d->nicesock);
+
+          d->stun_message.buffer = NULL;
+          d->stun_message.buffer_len = 0;
+          d->done = TRUE;
+          trans_found = TRUE;
+        } else if (res == STUN_USAGE_BIND_RETURN_ERROR) {
+          /* case: STUN error, the check STUN context was freed */
+          d->stun_message.buffer = NULL;
+          d->stun_message.buffer_len = 0;
+          d->done = TRUE;
+          trans_found = TRUE;
+        }
+      }
+    }
+  }
+
+  return trans_found;
+}
+
+/**
  * Processing an incoming STUN message.
  *
  * @param agent self pointer
@@ -1773,8 +1855,10 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, Stream *stream,
     }
   }
 
+  /* TODO : if we get a peer reflexive, we should check all local:remote possibilities */
   validater_data = g_new0(stun_validater_data,
       g_slist_length(component->local_candidates) + 1);
+
 
   /* We have to check all the local candidates into our validater_data because a
      server reflexive candidate shares the same socket as the host candidate,
@@ -1797,6 +1881,7 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, Stream *stream,
       validater_data[j].password = (uint8_t *) stream->local_password;
       validater_data[j].password_len = strlen (stream->local_password);
     }
+
 
     if (agent->compatibility == NICE_COMPATIBILITY_MSN) {
       validater_data[j].password =
@@ -1994,6 +2079,10 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, Stream *stream,
       /* step: let's try to match the response to an existing discovery */
       if (trans_found != TRUE)
         trans_found = priv_map_reply_to_discovery_request (agent, &req);
+
+      /* step: let's try to match the response to an existing discovery */
+      if (trans_found != TRUE)
+        trans_found = priv_map_reply_to_relay_request (agent, &req);
 
       if (trans_found != TRUE)
         nice_debug ("Agent %p : Unable to match to an existing transaction, "

@@ -43,6 +43,8 @@
 
 #include "agent.h"
 
+#define USE_TURN 0
+
 static NiceComponentState global_lagent_state[2] = { NICE_COMPONENT_STATE_LAST, NICE_COMPONENT_STATE_LAST };
 static NiceComponentState global_ragent_state[2] = { NICE_COMPONENT_STATE_LAST, NICE_COMPONENT_STATE_LAST };
 static guint global_components_ready = 0;
@@ -244,9 +246,21 @@ static int run_full_test (NiceAgent *lagent, NiceAgent *ragent, NiceAddress *bas
 
   /* step: add one stream, with RTP+RTCP components, to each agent */
   ls_id = nice_agent_add_stream (lagent, 2);
+
   rs_id = nice_agent_add_stream (ragent, 2);
   g_assert (ls_id > 0);
   g_assert (rs_id > 0);
+#if USE_TURN
+  nice_agent_set_relay_info(lagent, ls_id, 1,
+      "64.251.22.149", 3478, "youness.alaoui@collabora.co.uk", "badger", TRUE);
+  nice_agent_set_relay_info(lagent, ls_id, 2,
+      "64.251.22.149", 3478, "youness.alaoui@collabora.co.uk", "badger", TRUE);
+  nice_agent_set_relay_info(ragent, rs_id, 1,
+      "64.251.22.149", 3478, "youness.alaoui@collabora.co.uk", "badger", TRUE);
+  nice_agent_set_relay_info(ragent, rs_id, 2,
+      "64.251.22.149", 3478, "youness.alaoui@collabora.co.uk", "badger", TRUE);
+#endif
+
 
   nice_agent_gather_candidates (lagent, ls_id);
   nice_agent_gather_candidates (ragent, rs_id);
@@ -374,9 +388,21 @@ static int run_full_test_delayed_answer (NiceAgent *lagent, NiceAgent *ragent, N
 
   /* step: add one stream, with RTP+RTCP components, to each agent */
   ls_id = nice_agent_add_stream (lagent, 2);
+
   rs_id = nice_agent_add_stream (ragent, 2);
   g_assert (ls_id > 0);
   g_assert (rs_id > 0);
+#if USE_TURN
+  nice_agent_set_relay_info(lagent, ls_id, 1,
+      "64.251.22.149", 3478, "youness.alaoui@collabora.co.uk", "badger", TRUE);
+  nice_agent_set_relay_info(lagent, ls_id, 2,
+      "64.251.22.149", 3478, "youness.alaoui@collabora.co.uk", "badger", TRUE);
+  nice_agent_set_relay_info(ragent, rs_id, 1,
+      "64.251.22.149", 3478, "youness.alaoui@collabora.co.uk", "badger", TRUE);
+  nice_agent_set_relay_info(ragent, rs_id, 2,
+      "64.251.22.149", 3478, "youness.alaoui@collabora.co.uk", "badger", TRUE);
+#endif
+
 
   nice_agent_gather_candidates (lagent, ls_id);
   nice_agent_gather_candidates (ragent, rs_id);
@@ -521,9 +547,16 @@ static int run_full_test_wrong_password (NiceAgent *lagent, NiceAgent *ragent, N
 
   /* step: add one stream, with one component, to each agent */
   ls_id = nice_agent_add_stream (lagent, 1);
+
   rs_id = nice_agent_add_stream (ragent, 1);
   g_assert (ls_id > 0);
   g_assert (rs_id > 0);
+#if USE_TURN
+  nice_agent_set_relay_info(lagent, ls_id, 1,
+      "64.251.22.149", 3478, "youness.alaoui@collabora.co.uk", "badger", TRUE);
+  nice_agent_set_relay_info(ragent, rs_id, 1,
+      "64.251.22.149", 3478, "youness.alaoui@collabora.co.uk", "badger", TRUE);
+#endif
 
   nice_agent_gather_candidates (lagent, ls_id);
   nice_agent_gather_candidates (ragent, rs_id);
@@ -633,9 +666,16 @@ static int run_full_test_control_conflict (NiceAgent *lagent, NiceAgent *ragent,
 
   /* step: add one stream, with one component, to each agent */
   ls_id = nice_agent_add_stream (lagent, 1);
+
   rs_id = nice_agent_add_stream (ragent, 1);
   g_assert (ls_id > 0);
   g_assert (rs_id > 0);
+#if USE_TURN
+  nice_agent_set_relay_info(lagent, ls_id, 1,
+      "64.251.22.149", 3478, "youness.alaoui@collabora.co.uk", "badger", TRUE);
+  nice_agent_set_relay_info(ragent, rs_id, 1,
+      "64.251.22.149", 3478, "youness.alaoui@collabora.co.uk", "badger", TRUE);
+#endif
 
   nice_agent_gather_candidates (lagent, ls_id);
   nice_agent_gather_candidates (ragent, rs_id);
@@ -739,13 +779,17 @@ int main (void)
   ragent = nice_agent_new (g_main_loop_get_context (global_mainloop), NICE_COMPATIBILITY_ID19);
 
   /* step: add a timer to catch state changes triggered by signals */
-  timer_id = g_timeout_add (30000, timer_cb, NULL);
+  timer_id = g_timeout_add (60000, timer_cb, NULL);
 
   /* step: specify which local interface to use */
   if (!nice_address_set_from_string (&baseaddr, "127.0.0.1"))
     g_assert_not_reached ();
   nice_agent_add_local_address (lagent, &baseaddr);
   nice_agent_add_local_address (ragent, &baseaddr);
+  /*  if (!nice_address_set_from_string (&baseaddr, "192.168.1.106"))
+    g_assert_not_reached ();
+  nice_agent_add_local_address (lagent, &baseaddr);
+  nice_agent_add_local_address (ragent, &baseaddr);*/
 
   g_signal_connect (G_OBJECT (lagent), "candidate-gathering-done", 
 		    G_CALLBACK (cb_candidate_gathering_done), (gpointer)1);

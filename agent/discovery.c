@@ -69,6 +69,15 @@ static inline int priv_timer_expired (GTimeVal *restrict timer, GTimeVal *restri
     now->tv_sec >= timer->tv_sec;
 }
 
+static StunUsageTurnCompatibility priv_agent_to_turn_compatibility (NiceAgent *agent) {
+  return agent->compatibility == NICE_COMPATIBILITY_ID19 ?
+      STUN_USAGE_TURN_COMPATIBILITY_TD9 :
+      agent->compatibility == NICE_COMPATIBILITY_GOOGLE ?
+      STUN_USAGE_TURN_COMPATIBILITY_GOOGLE :
+      agent->compatibility == NICE_COMPATIBILITY_MSN ?
+      STUN_USAGE_TURN_COMPATIBILITY_MSN : STUN_USAGE_TURN_COMPATIBILITY_TD9;
+}
+
 /**
  * Frees the CandidateDiscovery structure pointed to 
  * by 'user data'. Compatible with g_slist_foreach().
@@ -587,14 +596,14 @@ NiceCandidate *discovery_learn_remote_peer_reflexive_candidate (
       gsize local_size;
       gsize remote_size;
       g_free(candidate->username);
-      
+
       decoded_local = g_base64_decode (local->username, &local_size);
       decoded_remote = g_base64_decode (remote->username, &remote_size);
 
       new_username = g_new0(gchar, local_size + remote_size);
       memcpy(new_username, decoded_remote, remote_size);
       memcpy(new_username + remote_size, decoded_local, local_size);
-      
+
       candidate->username = g_base64_encode (new_username, local_size + remote_size);
       g_free(new_username);
       g_free(decoded_local);
@@ -604,7 +613,7 @@ NiceCandidate *discovery_learn_remote_peer_reflexive_candidate (
     candidate->sockptr = NULL; /* not stored for remote candidates */
     /* note: candidate username and password are left NULL as stream 
              level ufrag/password are used */
-      
+
     modified_list = g_slist_append (component->remote_candidates,
 				    candidate);
     if (modified_list) {
@@ -653,14 +662,12 @@ static gboolean priv_discovery_tick_unlocked (gpointer pointer)
       if (agent->discovery_unsched_items)
 	--agent->discovery_unsched_items;
 
-#ifndef NDEBUG
       {
         gchar tmpbuf[INET6_ADDRSTRLEN];
         nice_address_to_string (&cand->server, tmpbuf);
         nice_debug ("Agent %p : discovery - scheduling cand type %u addr %s and socket %d.\n", agent,
             cand->type, tmpbuf, cand->socket);
       }
-#endif
       if (nice_address_is_valid (&cand->server) &&
           (cand->type == NICE_CANDIDATE_TYPE_SERVER_REFLEXIVE ||
               cand->type == NICE_CANDIDATE_TYPE_RELAYED)) {
@@ -683,7 +690,7 @@ static gboolean priv_discovery_tick_unlocked (gpointer pointer)
               (size_t) strlen (cand->component->turn_username),
               (uint8_t *)cand->component->turn_password,
               (size_t) strlen (cand->component->turn_password),
-              STUN_USAGE_TURN_COMPATIBILITY_GOOGLE);
+              priv_agent_to_turn_compatibility (agent));
         }
 
 	if (buffer_len > 0) {

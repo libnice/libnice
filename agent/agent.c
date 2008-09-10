@@ -640,10 +640,10 @@ agent_candidate_pair_priority (NiceAgent *agent, NiceCandidate *local, NiceCandi
 }
 
 static gboolean
-priv_add_new_candidate_discovery (NiceAgent *agent,
+priv_add_new_candidate_discovery_stun (NiceAgent *agent,
     NiceCandidate *host_candidate, NiceAddress server,
     Stream *stream, guint component_id,
-    NiceAddress *addr, NiceCandidateType type)
+    NiceAddress *addr)
 {
   CandidateDiscovery *cdisco;
   GSList *modified_list;
@@ -656,7 +656,7 @@ priv_add_new_candidate_discovery (NiceAgent *agent,
     modified_list = g_slist_append (agent->discovery_list, cdisco);
 
     if (modified_list) {
-      cdisco->type = type;
+      cdisco->type = NICE_CANDIDATE_TYPE_SERVER_REFLEXIVE;
       cdisco->socket = host_candidate->sockptr->fileno;
       cdisco->nicesock = host_candidate->sockptr;
       cdisco->server = server;
@@ -664,6 +664,55 @@ priv_add_new_candidate_discovery (NiceAgent *agent,
       cdisco->stream = stream;
       cdisco->component = stream_find_component_by_id (stream, component_id);
       cdisco->agent = agent;
+      nice_debug ("Agent %p : Adding new srv-rflx candidate discovery %p\n", agent, cdisco);
+      agent->discovery_list = modified_list;
+      ++agent->discovery_unsched_items;
+    }
+
+    return TRUE;
+  }
+
+  return FALSE;
+}
+
+static gboolean
+priv_add_new_candidate_discovery_turn (NiceAgent *agent,
+    NiceCandidate *host_candidate, NiceAddress server,
+    Stream *stream, guint component_id,
+    NiceAddress *addr, gboolean long_term)
+{
+  CandidateDiscovery *cdisco;
+  GSList *modified_list;
+
+  /* note: no need to check for redundant candidates, as this is
+   *       done later on in the process */
+
+  cdisco = g_slice_new0 (CandidateDiscovery);
+  if (cdisco) {
+    modified_list = g_slist_append (agent->discovery_list, cdisco);
+
+    if (modified_list) {
+      cdisco->type = NICE_CANDIDATE_TYPE_RELAYED;
+      cdisco->socket = host_candidate->sockptr->fileno;
+      cdisco->nicesock = host_candidate->sockptr;
+      cdisco->server = server;
+      cdisco->interface = addr;
+      cdisco->stream = stream;
+      cdisco->component = stream_find_component_by_id (stream, component_id);
+      cdisco->agent = agent;
+
+      if (agent->compatibility == NICE_COMPATIBILITY_ID19) {
+        stun_agent_init (&cdisco->turn_agent, STUN_ALL_KNOWN_ATTRIBUTES,
+            STUN_COMPATIBILITY_3489BIS,
+            long_term ? STUN_AGENT_USAGE_LONG_TERM_CREDENTIALS :
+            STUN_AGENT_USAGE_SHORT_TERM_CREDENTIALS);
+      } else {
+        stun_agent_init (&cdisco->turn_agent, STUN_ALL_KNOWN_ATTRIBUTES,
+            STUN_COMPATIBILITY_RFC3489,
+            long_term ? STUN_AGENT_USAGE_LONG_TERM_CREDENTIALS :
+            STUN_AGENT_USAGE_SHORT_TERM_CREDENTIALS);
+      }
+
       nice_debug ("Agent %p : Adding new srv-rflx candidate discovery %p\n", agent, cdisco);
       agent->discovery_list = modified_list;
       ++agent->discovery_unsched_items;
@@ -802,17 +851,16 @@ nice_agent_gather_candidates (
 	if (agent->full_mode &&
 	    agent->stun_server_ip) {
           NiceAddress stun_server;
-          if (nice_address_set_from_string (&stun_server,  agent->stun_server_ip)) {
+          if (nice_address_set_from_string (&stun_server, agent->stun_server_ip)) {
             nice_address_set_port (&stun_server, agent->stun_server_port);
 
             gboolean res =
-                priv_add_new_candidate_discovery (agent,
+                priv_add_new_candidate_discovery_stun (agent,
                     host_candidate,
                     stun_server,
                     stream,
                     n + 1 /* component-id */,
-                    addr,
-                    NICE_CANDIDATE_TYPE_SERVER_REFLEXIVE);
+                    addr);
 
             if (res != TRUE) {
               /* note: memory allocation failure, return error */
@@ -820,17 +868,18 @@ nice_agent_gather_candidates (
             }
           }
 	}
+
 	if (agent->full_mode &&
             component && nice_address_is_valid (&component->turn_server)) {
 
 	  gboolean res =
-	    priv_add_new_candidate_discovery (agent,
+	    priv_add_new_candidate_discovery_turn (agent,
                 host_candidate,
                 component->turn_server,
                 stream,
                 n + 1 /* component-id */,
                 addr,
-                NICE_CANDIDATE_TYPE_RELAYED);
+                component->turn_long_term);
 
 	  if (res != TRUE) {
 	    /* note: memory allocation failure, return error */
