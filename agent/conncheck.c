@@ -1840,7 +1840,7 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, Stream *stream,
   StunMessage msg;
   StunValidationStatus valid;
   stun_validater_data *validater_data = NULL;
-  GSList *i;
+  GSList *i, *ri;
   int j, k;
   NiceCandidate *remote_candidate = NULL;
   NiceCandidate *local_candidate = NULL;
@@ -1855,40 +1855,50 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, Stream *stream,
     }
   }
 
-  /* TODO : if we get a peer reflexive, we should check all local:remote possibilities */
+  /* if we get a peer reflexive, we should check all local:remote possibilities
+     also, we could receive from the external interface the username used
+     with the internal interface, so the remote_candidate is not the
+     same remote candidate used by the peer */
+
   validater_data = g_new0(stun_validater_data,
-      g_slist_length(component->local_candidates) + 1);
+      g_slist_length(component->local_candidates) *
+      g_slist_length (component->remote_candidates));
 
 
   /* We have to check all the local candidates into our validater_data because a
      server reflexive candidate shares the same socket as the host candidate,
      so we have no idea the user/pass is coming from which candidate */
   j = 0;
-  for (i = component->local_candidates; i; i = i->next) {
-    NiceCandidate *cand = i->data;
+  for (ri = component->remote_candidates; ri; ri = ri->next) {
+    NiceCandidate *rcand = ri->data;
+    for (i = component->local_candidates; i; i = i->next) {
+      NiceCandidate *cand = i->data;
 
-    uname_len = priv_create_username (agent, stream,
-				      component->id,  remote_candidate, cand,
-				      uname, sizeof (uname), TRUE);
+      uname_len = priv_create_username (agent, stream,
+          component->id,  rcand, cand,
+          uname, sizeof (uname), TRUE);
 
-    validater_data[j].username = g_memdup(uname, uname_len);
-    validater_data[j].username_len = uname_len;
+      validater_data[j].username = g_memdup(uname, uname_len);
+      validater_data[j].username_len = uname_len;
 
-    if (cand->password) {
-      validater_data[j].password = (uint8_t *) cand->password;
-      validater_data[j].password_len = strlen (cand->password);
-    } else {
-      validater_data[j].password = (uint8_t *) stream->local_password;
-      validater_data[j].password_len = strlen (stream->local_password);
+      if (cand->password) {
+        validater_data[j].password = (uint8_t *) cand->password;
+        validater_data[j].password_len = strlen (cand->password);
+      } else {
+        validater_data[j].password = (uint8_t *) stream->local_password;
+        validater_data[j].password_len = strlen (stream->local_password);
+      }
+
+
+      if (agent->compatibility == NICE_COMPATIBILITY_MSN) {
+        validater_data[j].password =
+            g_base64_decode ((gchar *) validater_data[j].password,
+                &validater_data[j].password_len);
+      }
+      nice_debug ("Agent %p : Adding to validater data '%s' : '%s'",
+          agent, validater_data[j].username, validater_data[j].password);
+      j++;
     }
-
-
-    if (agent->compatibility == NICE_COMPATIBILITY_MSN) {
-      validater_data[j].password =
-          g_base64_decode ((gchar *) validater_data[j].password,
-              &validater_data[j].password_len);
-    }
-    j++;
   }
 
 

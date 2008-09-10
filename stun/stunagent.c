@@ -76,11 +76,17 @@ bool stun_agent_default_validater (StunAgent *agent,
   int i;
 
   for (i = 0; val && val[i].username ; i++) {
+    stun_debug ("Comparing username '");
+    stun_debug_bytes (username, username_len);
+    stun_debug ("' (%d) with '", username_len);
+    stun_debug_bytes (val[i].username, val[i].username_len);
+    stun_debug ("' (%d) : %d\n",
+        val[i].username_len, memcmp (username, val[i].username, username_len));
     if (username_len == val[i].username_len &&
         memcmp (username, val[i].username, username_len) == 0) {
       *password = (uint8_t *) val[i].password;
       *password_len = val[i].password_len;
-
+      stun_debug ("Found valid username, returning password : '%s'\n", *password);
       return true;
     }
   }
