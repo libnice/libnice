@@ -76,7 +76,7 @@ bool stun_agent_default_validater (StunAgent *agent,
   int i;
 
   for (i = 0; val && val[i].username ; i++) {
-    if (username_len == val[i].username_len ||
+    if (username_len == val[i].username_len &&
         memcmp (username, val[i].username, username_len) == 0) {
       *password = (uint8_t *) val[i].password;
       *password_len = val[i].password_len;
