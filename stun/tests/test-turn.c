@@ -201,7 +201,7 @@ static void numb (void)
       (struct sockaddr *)&alternate_addr, &alternate_addrlen,
       &bandwidth, &lifetime,
       STUN_USAGE_TURN_COMPATIBILITY_TD9);
-  assert (val == STUN_USAGE_TURN_RETURN_SUCCESS);
+  assert (val == STUN_USAGE_TURN_RETURN_MAPPED_SUCCESS);
 
   printaddr ("Relay address found : ", (struct sockaddr *)&relay_addr, relay_addrlen);
   printaddr ("Mapped address found : ",(struct sockaddr *) &addr, addrlen);
