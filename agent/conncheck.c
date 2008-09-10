@@ -72,13 +72,22 @@ static int priv_timer_expired (GTimeVal *restrict timer, GTimeVal *restrict now)
     now->tv_sec >= timer->tv_sec;
 }
 
-static  int priv_agent_to_usage_compatibility (NiceAgent *agent) {
+static StunUsageIceCompatibility priv_agent_to_ice_compatibility (NiceAgent *agent) {
   return agent->compatibility == NICE_COMPATIBILITY_ID19 ?
       STUN_USAGE_ICE_COMPATIBILITY_ID19 :
       agent->compatibility == NICE_COMPATIBILITY_GOOGLE ?
       STUN_USAGE_ICE_COMPATIBILITY_GOOGLE :
       agent->compatibility == NICE_COMPATIBILITY_MSN ?
-      STUN_USAGE_ICE_COMPATIBILITY_MSN : NICE_COMPATIBILITY_ID19;
+      STUN_USAGE_ICE_COMPATIBILITY_MSN : STUN_USAGE_ICE_COMPATIBILITY_ID19;
+}
+
+static StunUsageTurnCompatibility priv_agent_to_turn_compatibility (NiceAgent *agent) {
+  return agent->compatibility == NICE_COMPATIBILITY_ID19 ?
+      STUN_USAGE_TURN_COMPATIBILITY_TD9 :
+      agent->compatibility == NICE_COMPATIBILITY_GOOGLE ?
+      STUN_USAGE_TURN_COMPATIBILITY_GOOGLE :
+      agent->compatibility == NICE_COMPATIBILITY_MSN ?
+      STUN_USAGE_TURN_COMPATIBILITY_MSN : STUN_USAGE_TURN_COMPATIBILITY_TD9;
 }
 
 
@@ -1201,7 +1210,7 @@ int conn_check_send (NiceAgent *agent, CandidateCheckPair *pair)
         uname, uname_len, password, password_len,
         cand_use, controlling, priority,
         agent->tie_breaker,
-        priv_agent_to_usage_compatibility (agent));
+        priv_agent_to_ice_compatibility (agent));
 
     if (agent->compatibility == NICE_COMPATIBILITY_MSN) {
       g_free (password);
@@ -1547,8 +1556,6 @@ static gboolean priv_map_reply_to_conn_check_request (NiceAgent *agent, Stream *
 {
   struct sockaddr sockaddr;
   socklen_t socklen = sizeof (sockaddr);
-  struct sockaddr alternate;
-  socklen_t alternatelen = sizeof (sockaddr);
   GSList *i;
   StunUsageIceReturn res;
   gboolean trans_found = FALSE;
@@ -1564,15 +1571,12 @@ static gboolean priv_map_reply_to_conn_check_request (NiceAgent *agent, Stream *
 
       if (memcmp (discovery_id, response_id, sizeof(stun_transid_t)) == 0) {
         res = stun_usage_ice_conncheck_process (resp, &sockaddr, &socklen,
-            &alternate, &alternatelen,
-            priv_agent_to_usage_compatibility (agent));
+            priv_agent_to_ice_compatibility (agent));
         nice_debug ("Agent %p : stun_bind_process/conncheck for %p res %d "
             "(controlling=%d).", agent, p, (int)res, agent->controlling_mode);
 
 
-        if (res == STUN_USAGE_ICE_RETURN_ALTERNATE_SERVER) {
-          /* TODO : handle alternate server */
-        } else if (res == STUN_USAGE_ICE_RETURN_SUCCESS) {
+        if (res == STUN_USAGE_ICE_RETURN_SUCCESS) {
           /* case: found a matching connectivity check request */
 
           CandidateCheckPair *ok_pair = NULL;
@@ -1679,7 +1683,8 @@ static gboolean priv_map_reply_to_discovery_request (NiceAgent *agent, StunMessa
   for (i = agent->discovery_list; i && trans_found != TRUE; i = i->next) {
     CandidateDiscovery *d = i->data;
 
-    if (d->stun_message.buffer) {
+    if (d->type == NICE_CANDIDATE_TYPE_SERVER_REFLEXIVE &&
+        d->stun_message.buffer) {
       stun_message_id (&d->stun_message, discovery_id);
 
       if (memcmp (discovery_id, response_id, sizeof(stun_transid_t)) == 0) {
@@ -1926,7 +1931,7 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, Stream *stream,
     res = stun_usage_ice_conncheck_create_reply (&agent->stun_agent, &req,
         &msg, rbuf, &rbuf_len, &sockaddr, sizeof (sockaddr),
         &control, agent->tie_breaker,
-        priv_agent_to_usage_compatibility (agent));
+        priv_agent_to_ice_compatibility (agent));
 
     if (agent->compatibility == NICE_COMPATIBILITY_MSN) {
       g_free (req.key);
