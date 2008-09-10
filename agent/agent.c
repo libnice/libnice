@@ -729,7 +729,8 @@ nice_agent_add_stream (
 NICEAPI_EXPORT void nice_agent_set_relay_info(NiceAgent *agent,
     guint stream_id, guint component_id,
     const gchar *server_ip, guint server_port,
-    const gchar *username, const gchar *password)
+    const gchar *username, const gchar *password,
+    gboolean long_term_credentials)
 {
 
   Component *component = NULL;
@@ -743,11 +744,15 @@ NICEAPI_EXPORT void nice_agent_set_relay_info(NiceAgent *agent,
       nice_address_set_port (&component->turn_server, server_port);
     }
 
+
     g_free (component->turn_username);
     component->turn_username = g_strdup (username);
 
     g_free (component->turn_password);
     component->turn_password = g_strdup (password);
+
+    component->turn_long_term = long_term_credentials;
+
   }
   g_static_rec_mutex_unlock (&agent->mutex);
 }
