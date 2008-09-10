@@ -57,7 +57,6 @@ typedef enum {
   STUN_USAGE_ICE_RETURN_SUCCESS,
   STUN_USAGE_ICE_RETURN_ERROR,
   STUN_USAGE_ICE_RETURN_RETRY,
-  STUN_USAGE_ICE_RETURN_ALTERNATE_SERVER,
   STUN_USAGE_ICE_RETURN_ROLE_CONFLICT,
 } StunUsageIceReturn;
 
@@ -74,7 +73,6 @@ stun_usage_ice_conncheck_create (StunAgent *agent, StunMessage *msg,
 
 StunUsageIceReturn stun_usage_ice_conncheck_process (StunMessage *msg,
     struct sockaddr *addr, socklen_t *addrlen,
-    struct sockaddr *alternate_server, socklen_t *alternate_server_len,
     StunUsageIceCompatibility compatibility);
 
 /**

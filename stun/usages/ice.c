@@ -96,7 +96,6 @@ stun_usage_ice_conncheck_create (StunAgent *agent, StunMessage *msg,
 
 StunUsageIceReturn stun_usage_ice_conncheck_process (StunMessage *msg,
     struct sockaddr *addr, socklen_t *addrlen,
-    struct sockaddr *alternate_server, socklen_t *alternate_server_len,
     StunUsageIceCompatibility compatibility)
 {
   int val, code = -1;
@@ -123,25 +122,6 @@ StunUsageIceReturn stun_usage_ice_conncheck_process (StunMessage *msg,
        * is authenticated, for security reasons. */
       stun_debug (" STUN error message received (code: %d)\n", code);
 
-      /* ALTERNATE-SERVER mechanism */
-      if ((code / 100) == 3) {
-        if (alternate_server && alternate_server_len) {
-          if (stun_message_find_addr (msg, STUN_ATTRIBUTE_ALTERNATE_SERVER,
-                  alternate_server, alternate_server_len)) {
-            stun_debug (" Unexpectedly missing ALTERNATE-SERVER attribute\n");
-            return STUN_USAGE_ICE_RETURN_ERROR;
-          }
-        } else {
-          if (!stun_message_has_attribute (msg, STUN_ATTRIBUTE_ALTERNATE_SERVER)) {
-            stun_debug (" Unexpectedly missing ALTERNATE-SERVER attribute\n");
-            return STUN_USAGE_ICE_RETURN_ERROR;
-          }
-        }
-
-        stun_debug ("Found alternate server\n");
-        return STUN_USAGE_ICE_RETURN_ALTERNATE_SERVER;
-
-      }
       return STUN_USAGE_ICE_RETURN_ERROR;
   }
 
