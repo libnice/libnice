@@ -135,8 +135,7 @@ static void numb (void)
   assert (ret == 0);
 
   stun_agent_init (&agent, STUN_ALL_KNOWN_ATTRIBUTES,
-      STUN_COMPATIBILITY_3489BIS, STUN_AGENT_USAGE_LONG_TERM_CREDENTIALS |
-      STUN_AGENT_USAGE_IGNORE_CREDENTIALS);
+      STUN_COMPATIBILITY_3489BIS, STUN_AGENT_USAGE_LONG_TERM_CREDENTIALS);
 
   /* Allocate a client socket and connect to server */
   fd = socket (AF_INET, SOCK_DGRAM, 0);
