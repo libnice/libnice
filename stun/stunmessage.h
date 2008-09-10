@@ -213,6 +213,8 @@ struct stun_message_t {
   size_t buffer_len;
   uint8_t *key;
   size_t key_len;
+  uint8_t long_term_key[16];
+  bool long_term_valid;
 };
 
 /**

@@ -107,6 +107,9 @@ StunValidationStatus stun_agent_validate (StunAgent *agent, StunMessage *msg,
   int sent_id_idx = -1;
   uint16_t unknown;
   int error_code;
+  int ignore_credentials = 0;
+  uint8_t long_term_key[16];
+  bool long_term_key_valid = FALSE;
 
   len = stun_message_validate_buffer_length (buffer, buffer_len);
   if (len == STUN_MESSAGE_BUFFER_INVALID) {
@@ -122,6 +125,7 @@ StunValidationStatus stun_agent_validate (StunAgent *agent, StunMessage *msg,
   msg->agent = agent;
   msg->key = NULL;
   msg->key_len = 0;
+  msg->long_term_valid = FALSE;
 
   /* TODO: reject it or not ? */
   if (agent->compatibility == STUN_COMPATIBILITY_3489BIS &&
@@ -161,6 +165,9 @@ StunValidationStatus stun_agent_validate (StunAgent *agent, StunMessage *msg,
 
         key = agent->sent_ids[sent_id_idx].key;
         key_len = agent->sent_ids[sent_id_idx].key_len;
+        memcpy (long_term_key, agent->sent_ids[sent_id_idx].long_term_key,
+            sizeof(long_term_key));
+        long_term_key_valid = agent->sent_ids[sent_id_idx].long_term_valid;
         break;
       }
     }
@@ -169,19 +176,21 @@ StunValidationStatus stun_agent_validate (StunAgent *agent, StunMessage *msg,
     }
   }
 
+  ignore_credentials =
+      (agent->usage_flags & STUN_AGENT_USAGE_IGNORE_CREDENTIALS) ||
+      (stun_message_get_class (msg) == STUN_ERROR &&
+       stun_message_find_error (msg, &error_code) == 0 &&
+       (error_code == 400 || error_code == 401));
 
   if (key == NULL &&
-      (agent->usage_flags & STUN_AGENT_USAGE_IGNORE_CREDENTIALS) == 0 &&
+      ignore_credentials == 0 &&
       (stun_message_get_class (msg) == STUN_REQUEST ||
        stun_message_get_class (msg) == STUN_INDICATION) &&
-      !(stun_message_get_class (msg) == STUN_ERROR &&
-        stun_message_find_error (msg, &error_code) == 0 &&
-        (error_code == 400 || error_code == 401)) &&
-      ((agent->usage_flags & STUN_AGENT_USAGE_SHORT_TERM_CREDENTIALS &&
+      (((agent->usage_flags & STUN_AGENT_USAGE_SHORT_TERM_CREDENTIALS) &&
        (!stun_message_has_attribute (msg, STUN_ATTRIBUTE_USERNAME) ||
         !stun_message_has_attribute (msg, STUN_ATTRIBUTE_MESSAGE_INTEGRITY))) ||
-       (agent->usage_flags & STUN_AGENT_USAGE_LONG_TERM_CREDENTIALS &&
-        stun_message_get_class (msg) != STUN_INDICATION &&
+      ((agent->usage_flags & STUN_AGENT_USAGE_LONG_TERM_CREDENTIALS) &&
+        stun_message_get_class (msg) == STUN_REQUEST &&
         (!stun_message_has_attribute (msg, STUN_ATTRIBUTE_USERNAME) ||
          !stun_message_has_attribute (msg, STUN_ATTRIBUTE_MESSAGE_INTEGRITY) ||
          !stun_message_has_attribute (msg, STUN_ATTRIBUTE_NONCE) ||
@@ -193,8 +202,7 @@ StunValidationStatus stun_agent_validate (StunAgent *agent, StunMessage *msg,
   }
 
   if (stun_message_has_attribute (msg, STUN_ATTRIBUTE_MESSAGE_INTEGRITY) &&
-      ((key == NULL &&
-          (agent->usage_flags & STUN_AGENT_USAGE_IGNORE_CREDENTIALS) == 0) ||
+      ((key == NULL && ignore_credentials == 0) ||
           (agent->usage_flags & STUN_AGENT_USAGE_FORCE_VALIDATER))) {
     username_len = 0;
     username = (uint8_t *) stun_message_find (msg, STUN_ATTRIBUTE_USERNAME,
@@ -206,8 +214,7 @@ StunValidationStatus stun_agent_validate (StunAgent *agent, StunMessage *msg,
     }
   }
 
-  if ((agent->usage_flags & STUN_AGENT_USAGE_IGNORE_CREDENTIALS) == 0 &&
-      key != NULL && key_len > 0) {
+  if (ignore_credentials == 0 && key != NULL && key_len > 0) {
     hash = (uint8_t *) stun_message_find (msg,
         STUN_ATTRIBUTE_MESSAGE_INTEGRITY, &hlen);
 
@@ -221,15 +228,22 @@ StunValidationStatus stun_agent_validate (StunAgent *agent, StunMessage *msg,
         uint16_t username_len;
         uint8_t md5[16];
 
-        realm = (uint8_t *) stun_message_find (msg,  STUN_ATTRIBUTE_REALM, &realm_len);
-        username = (uint8_t *) stun_message_find (msg,
-            STUN_ATTRIBUTE_USERNAME, &username_len);
-        if (username == NULL || realm == NULL) {
-          return STUN_VALIDATION_UNAUTHORIZED;
+        if (long_term_key_valid) {
+          memcpy (md5, long_term_key, sizeof (md5));
+        } else {
+          realm = (uint8_t *) stun_message_find (msg,  STUN_ATTRIBUTE_REALM, &realm_len);
+          username = (uint8_t *) stun_message_find (msg,
+              STUN_ATTRIBUTE_USERNAME, &username_len);
+          if (username == NULL || realm == NULL) {
+            return STUN_VALIDATION_UNAUTHORIZED;
+          }
+          stun_hash_creds (realm, realm_len,
+              username,  username_len,
+              key, key_len, md5);
         }
-        stun_hash_creds (realm, realm_len,
-            username,  username_len,
-            key, key_len, md5);
+
+        memcpy (msg->long_term_key, md5, sizeof(md5));
+        msg->long_term_valid = TRUE;
 
         stun_sha1 (msg->buffer, hash + 20 - msg->buffer, sha, md5, sizeof(md5),
             agent->compatibility == STUN_COMPATIBILITY_RFC3489 ? TRUE : FALSE);
@@ -290,6 +304,7 @@ bool stun_agent_init_request (StunAgent *agent, StunMessage *msg,
   msg->agent = agent;
   msg->key = NULL;
   msg->key_len = 0;
+  msg->long_term_valid = FALSE;
 
   stun_make_transid (id);
 
@@ -317,6 +332,7 @@ bool stun_agent_init_indication (StunAgent *agent, StunMessage *msg,
   msg->agent = agent;
   msg->key = NULL;
   msg->key_len = 0;
+  msg->long_term_valid = FALSE;
 
   stun_make_transid (id);
   ret = stun_message_init (msg, STUN_INDICATION, m, id);
@@ -347,6 +363,9 @@ bool stun_agent_init_response (StunAgent *agent, StunMessage *msg,
   msg->agent = agent;
   msg->key = request->key;
   msg->key_len = request->key_len;
+  memcpy (msg->long_term_key, request->long_term_key,
+      sizeof(msg->long_term_key));
+  msg->long_term_valid = request->long_term_valid;
 
   stun_message_id (request, id);
 
@@ -378,6 +397,9 @@ bool stun_agent_init_error (StunAgent *agent, StunMessage *msg,
   msg->agent = agent;
   msg->key = request->key;
   msg->key_len = request->key_len;
+  memcpy (msg->long_term_key, request->long_term_key,
+      sizeof(msg->long_term_key));
+  msg->long_term_valid = request->long_term_valid;
 
   stun_message_id (request, id);
 
@@ -444,7 +466,9 @@ size_t stun_agent_finish_message (StunAgent *agent, StunMessage *msg,
   if (key != NULL) {
     bool skip = FALSE;
 
-    if (agent->usage_flags & STUN_AGENT_USAGE_LONG_TERM_CREDENTIALS) {
+    if (msg->long_term_valid) {
+      memcpy (md5, msg->long_term_key, sizeof(msg->long_term_key));
+    } else if (agent->usage_flags & STUN_AGENT_USAGE_LONG_TERM_CREDENTIALS) {
       uint8_t *realm = NULL;
       uint8_t *username = NULL;
       uint16_t realm_len;
@@ -460,6 +484,8 @@ size_t stun_agent_finish_message (StunAgent *agent, StunMessage *msg,
             username,  username_len,
             key, key_len, md5);
       }
+      memcpy (msg->long_term_key, md5, sizeof(msg->long_term_key));
+      msg->long_term_valid = TRUE;
     }
 
     /* If no realm/username and long term credentials,
@@ -511,6 +537,9 @@ size_t stun_agent_finish_message (StunAgent *agent, StunMessage *msg,
         agent->sent_ids[i].method = stun_message_get_method (msg);
         agent->sent_ids[i].key = (uint8_t *) key;
         agent->sent_ids[i].key_len = key_len;
+        memcpy (agent->sent_ids[i].long_term_key, msg->long_term_key,
+            sizeof(msg->long_term_key));
+        agent->sent_ids[i].long_term_valid = msg->long_term_valid;
         agent->sent_ids[i].valid = TRUE;
         break;
       }
