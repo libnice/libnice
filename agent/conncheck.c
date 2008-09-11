@@ -1025,7 +1025,6 @@ size_t priv_gen_username (NiceAgent *agent, guint component_id,
       len += local_len;
     } else if (agent->compatibility == NICE_COMPATIBILITY_MSN) {
       gchar component_str[10];
-      g_snprintf (component_str, sizeof(component_str), "%d", component_id);
       guchar *local_decoded = NULL;
       guchar *remote_decoded = NULL;
       gsize local_decoded_len;
@@ -1033,6 +1032,7 @@ size_t priv_gen_username (NiceAgent *agent, guint component_id,
       gsize total_len;
       int padding;
 
+      g_snprintf (component_str, sizeof(component_str), "%d", component_id);
       local_decoded = g_base64_decode (local, &local_decoded_len);
       remote_decoded = g_base64_decode (remote, &remote_decoded_len);
 
