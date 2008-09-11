@@ -1809,6 +1809,100 @@ static gboolean priv_map_reply_to_relay_request (NiceAgent *agent, StunMessage *
   return trans_found;
 }
 
+
+typedef struct {
+  NiceAgent *agent;
+  Stream *stream;
+  Component *component;
+  uint8_t *password;
+} conncheck_validater_data;
+
+static bool conncheck_stun_validater (StunAgent *agent,
+    StunMessage *message, uint8_t *username, uint16_t username_len,
+    uint8_t **password, size_t *password_len, void *user_data)
+{
+  conncheck_validater_data *data = (conncheck_validater_data*) user_data;
+  GSList *i;
+  uint8_t uname[NICE_STREAM_MAX_UNAME];
+  guint uname_len = 0;
+
+  for (i = data->component->local_candidates; i; i = i->next) {
+    NiceCandidate *cand = i->data;
+    gchar *ufrag = NULL;
+
+    if (cand->username)
+      ufrag = cand->username;
+    else if (data->stream)
+      ufrag = data->stream->local_ufrag;
+
+    if (data->agent->compatibility == NICE_COMPATIBILITY_ID19 &&
+        strlen (ufrag) + 1 <= NICE_STREAM_MAX_UNAME) {
+      memcpy (uname, ufrag, strlen (ufrag));
+      uname_len = strlen (ufrag);
+      memcpy (uname + uname_len, ":", 1);
+      uname_len++;
+    } else if (data->agent->compatibility == NICE_COMPATIBILITY_GOOGLE &&
+        strlen (ufrag) <= NICE_STREAM_MAX_UNAME) {
+      memcpy (uname, ufrag, strlen (ufrag));
+      uname_len = strlen (ufrag);
+    } else if (data->agent->compatibility == NICE_COMPATIBILITY_MSN) {
+      gchar component_str[10];
+      guchar *local_decoded = NULL;
+      gsize local_decoded_len;
+
+      g_snprintf (component_str, sizeof(component_str),
+          "%d", data->component->id);
+      local_decoded = g_base64_decode (ufrag, &local_decoded_len);
+
+      if (local_decoded_len + 2 + strlen (component_str) <=
+          NICE_STREAM_MAX_UNAME) {
+
+        memcpy (uname, local_decoded, local_decoded_len);
+        uname_len = local_decoded_len;
+        memcpy (uname + uname_len, ":", 1);
+        uname_len++;
+        memcpy (uname + uname_len, component_str, strlen (component_str));
+        uname_len += strlen (component_str);
+
+        memcpy (uname + uname_len, ":", 1);
+        uname_len++;
+      }
+
+      g_free (local_decoded);
+    }
+
+    stun_debug ("Comparing username '");
+    stun_debug_bytes (username, username_len);
+    stun_debug ("' (%d) with '", username_len);
+    stun_debug_bytes (uname, uname_len);
+    stun_debug ("' (%d) : %d\n",
+        uname, memcmp (username, uname, uname_len));
+    if (uname_len > 0 && username_len >= uname_len &&
+        memcmp (username, uname, uname_len) == 0) {
+      gchar *pass = NULL;
+
+      if (cand->password)
+        pass = cand->password;
+      else
+        pass = data->stream->local_password;
+
+      *password = (uint8_t *) pass;
+      *password_len = strlen (pass);
+
+      if (data->agent->compatibility == NICE_COMPATIBILITY_MSN) {
+        data->password = g_base64_decode (pass, password_len);
+        *password = data->password;
+      }
+
+      stun_debug ("Found valid username, returning password: '%s'\n", *password);
+      return true;
+    }
+  }
+
+  return false;
+}
+
+
 /**
  * Processing an incoming STUN message.
  *
@@ -1840,9 +1934,8 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, Stream *stream,
   StunMessage req;
   StunMessage msg;
   StunValidationStatus valid;
-  stun_validater_data *validater_data = NULL;
-  GSList *i, *ri;
-  int j, k;
+  conncheck_validater_data validater_data = {agent, stream, component, NULL};
+  GSList *i;
   NiceCandidate *remote_candidate = NULL;
   NiceCandidate *local_candidate = NULL;
 
@@ -1856,69 +1949,19 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, Stream *stream,
     }
   }
 
-  /* if we get a peer reflexive, we should check all local:remote possibilities
-     also, we could receive from the external interface the username used
-     with the internal interface, so the remote_candidate is not the
-     same remote candidate used by the peer */
-
-  validater_data = g_new0(stun_validater_data,
-      g_slist_length(component->local_candidates) *
-      g_slist_length (component->remote_candidates));
-
-
-  /* We have to check all the local candidates into our validater_data because a
-     server reflexive candidate shares the same socket as the host candidate,
-     so we have no idea the user/pass is coming from which candidate */
-  j = 0;
-  for (ri = component->remote_candidates; ri; ri = ri->next) {
-    NiceCandidate *rcand = ri->data;
-    for (i = component->local_candidates; i; i = i->next) {
-      NiceCandidate *cand = i->data;
-
-      uname_len = priv_create_username (agent, stream,
-          component->id,  rcand, cand,
-          uname, sizeof (uname), TRUE);
-
-      validater_data[j].username = g_memdup(uname, uname_len);
-      validater_data[j].username_len = uname_len;
-
-      if (cand->password) {
-        validater_data[j].password = (uint8_t *) cand->password;
-        validater_data[j].password_len = strlen (cand->password);
-      } else {
-        validater_data[j].password = (uint8_t *) stream->local_password;
-        validater_data[j].password_len = strlen (stream->local_password);
-      }
-
-
-      if (agent->compatibility == NICE_COMPATIBILITY_MSN) {
-        validater_data[j].password =
-            g_base64_decode ((gchar *) validater_data[j].password,
-                &validater_data[j].password_len);
-      }
-      nice_debug ("Agent %p : Adding to validater data '%s' : '%s'",
-          agent, validater_data[j].username, validater_data[j].password);
-      j++;
-    }
-  }
-
-
   /* note: contents of 'buf' already validated, so it is
    *       a valid and fully received STUN message */
 
-  nice_debug ("Agent %p : inbound STUN packet for %u/%u (stream/component):",
+  nice_debug ("Agent %p: inbound STUN packet for %u/%u (stream/component):",
       agent, stream->id, component->id);
 
   /* note: ICE  7.2. "STUN Server Procedures" (ID-19) */
 
-  valid = stun_agent_validate (&agent->stun_agent, &req, (uint8_t *) buf, len,
-      stun_agent_default_validater, validater_data);
+  valid = stun_agent_validate (&agent->stun_agent, &req,
+      (uint8_t *) buf, len, conncheck_stun_validater, &validater_data);
 
-  for (k = 0; k < j; k++) {
-    g_free(validater_data[k].username);
-    if (agent->compatibility == NICE_COMPATIBILITY_MSN)
-      g_free(validater_data[k].password);
-  }
+  if (validater_data.password)
+    g_free (validater_data.password);
 
   if (valid == STUN_VALIDATION_NOT_STUN ||
       valid == STUN_VALIDATION_INCOMPLETE_STUN ||
