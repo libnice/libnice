@@ -617,7 +617,7 @@ void conn_check_remote_candidates_set(NiceAgent *agent)
 
       for (k = component->incoming_checks; k; k = k->next) {
 	IncomingCheck *icheck = k->data;
-	/* sect 7.2.1.3., "Learning Peer Reflexive Candidates", has to 
+	/* sect 7.2.1.3., "Learning Peer Reflexive Candidates", has to
 	 * be handled separately */
 	for (l = component->remote_candidates; l; l = l->next) {
 	  NiceCandidate *cand = l->data;
@@ -627,15 +627,16 @@ void conn_check_remote_candidates_set(NiceAgent *agent)
 	  }
 	}
 	if (match != TRUE) {
-	  /* note: we have gotten an incoming connectivity check from 
+	  /* note: we have gotten an incoming connectivity check from
 	   *       an address that is not a known remote candidate */
-	  NiceCandidate *candidate = 
-	    discovery_learn_remote_peer_reflexive_candidate (agent, 
-							     stream, 
-							     component, 
-							     icheck->priority, 
-							     &icheck->from, 
-							     icheck->local_socket);
+	  NiceCandidate *candidate =
+	    discovery_learn_remote_peer_reflexive_candidate (agent,
+                stream,
+                component,
+                icheck->priority,
+                &icheck->from,
+                icheck->local_socket,
+                NULL, NULL);
 	  if (candidate) {
 	    priv_schedule_triggered_check (agent, stream, component, icheck->local_socket, candidate, icheck->use_candidate);
 	  }
@@ -1935,19 +1936,12 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, Stream *stream,
   StunMessage msg;
   StunValidationStatus valid;
   conncheck_validater_data validater_data = {agent, stream, component, NULL};
-  GSList *i;
+  GSList *i, *j;
   NiceCandidate *remote_candidate = NULL;
+  NiceCandidate *remote_candidate2 = NULL;
   NiceCandidate *local_candidate = NULL;
 
   nice_address_copy_to_sockaddr (from, &sockaddr);
-
-  for (i = component->remote_candidates; i; i = i->next) {
-    NiceCandidate *cand = i->data;
-    if (nice_address_equal (from, &cand->addr)) {
-      remote_candidate = cand;
-      break;
-    }
-  }
 
   /* note: contents of 'buf' already validated, so it is
    *       a valid and fully received STUN message */
@@ -1967,7 +1961,8 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, Stream *stream,
       valid == STUN_VALIDATION_INCOMPLETE_STUN ||
       valid == STUN_VALIDATION_BAD_REQUEST)
   {
-    nice_debug ("Agent %p : Incorrectly multiplexed STUN message ignored.", agent);
+    nice_debug ("Agent %p : Incorrectly multiplexed STUN message ignored.",
+        agent);
     return FALSE;
   }
 
@@ -2009,28 +2004,40 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, Stream *stream,
   username = (uint8_t *) stun_message_find (&req, STUN_ATTRIBUTE_USERNAME,
 					    &username_len);
 
-  /* We need to find which local candidate was used */
-  for (i = component->local_candidates; i; i = i->next) {
-    gboolean inbound = TRUE;
+  for (i = component->remote_candidates; i; i = i->next) {
     NiceCandidate *cand = i->data;
+    if (nice_address_equal (from, &cand->addr)) {
+      remote_candidate = cand;
+      break;
+    }
+  }
+
+  /* We need to find which local candidate was used */
+  for (i = component->remote_candidates; i; i = i->next) {
+    for (j = component->local_candidates; j; j = j->next) {
+      gboolean inbound = TRUE;
+      NiceCandidate *rcand = i->data;
+      NiceCandidate *lcand = j->data;
 
       /* If we receive a response, then the username is local:remote */
-    if (agent->compatibility != NICE_COMPATIBILITY_MSN) {
-      if (stun_message_get_class (&req) == STUN_REQUEST ||
-	  stun_message_get_class (&req) == STUN_INDICATION) {
-	inbound = TRUE;
-      } else {
-	inbound = FALSE;
+      if (agent->compatibility != NICE_COMPATIBILITY_MSN) {
+        if (stun_message_get_class (&req) == STUN_REQUEST ||
+            stun_message_get_class (&req) == STUN_INDICATION) {
+          inbound = TRUE;
+        } else {
+          inbound = FALSE;
+        }
       }
-    }
-    uname_len = priv_create_username (agent, stream,
-				      component->id,  remote_candidate, cand,
-				      uname, sizeof (uname), inbound);
-    if (username &&
-	uname_len == username_len &&
-	memcmp (uname, username, username_len) == 0) {
-      local_candidate = cand;
-      break;
+      uname_len = priv_create_username (agent, stream,
+          component->id,  rcand, lcand,
+          uname, sizeof (uname), inbound);
+      if (username &&
+          uname_len == username_len &&
+          memcmp (uname, username, username_len) == 0) {
+        local_candidate = lcand;
+        remote_candidate2 = rcand;
+        break;
+      }
     }
   }
 
@@ -2056,14 +2063,17 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, Stream *stream,
 
   if (stun_message_get_class (&req) == STUN_REQUEST) {
     if (agent->compatibility == NICE_COMPATIBILITY_MSN) {
-      username = (uint8_t *) stun_message_find (&req, STUN_ATTRIBUTE_USERNAME,
-          &username_len);
+      username = (uint8_t *) stun_message_find (&req,
+          STUN_ATTRIBUTE_USERNAME, &username_len);
       uname_len = priv_create_username (agent, stream,
-          component->id,  remote_candidate, local_candidate,
+          component->id,  remote_candidate2, local_candidate,
           uname, sizeof (uname), FALSE);
       memcpy (username, uname, username_len);
-      req.key = g_base64_decode ((gchar *) remote_candidate->password,
-          &req.key_len);
+      if (remote_candidate2)
+        req.key = g_base64_decode ((gchar *) remote_candidate2->password,
+            &req.key_len);
+      else
+        req.key = NULL;
     }
 
     rbuf_len = sizeof (rbuf);
@@ -2097,7 +2107,8 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, Stream *stream,
 	nice_debug ("Agent %p : No matching remote candidate for incoming check ->"
             "peer-reflexive candidate.", agent);
 	remote_candidate = discovery_learn_remote_peer_reflexive_candidate (
-            agent, stream, component, priority, from, udp_socket);
+            agent, stream, component, priority, from, udp_socket,
+            local_candidate, remote_candidate2);
       }
 
       priv_reply_to_conn_check (agent, stream, component, remote_candidate,

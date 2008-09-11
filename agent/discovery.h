@@ -99,8 +99,8 @@ discovery_add_peer_reflexive_candidate (
   guint component_id,
   NiceAddress *address,
   NiceUDPSocket *base_socket,
-  NiceCandidate *local_candidate,
-  NiceCandidate *remote_candidate);
+  NiceCandidate *local,
+  NiceCandidate *remote);
 
 NiceCandidate *
 discovery_learn_remote_peer_reflexive_candidate (
@@ -109,6 +109,8 @@ discovery_learn_remote_peer_reflexive_candidate (
   Component *component,
   guint32 priority, 
   const NiceAddress *remote_address,
-  NiceUDPSocket *udp_socket);
+  NiceUDPSocket *udp_socket,
+  NiceCandidate *local,
+  NiceCandidate *remote);
 
 #endif /*_NICE_CONNCHECK_H */
