@@ -401,9 +401,9 @@ static gboolean priv_conn_check_tick_unlocked (gpointer pointer)
   if (pair) {
     priv_conn_check_initiate (agent, pair);
     keep_timer_going = TRUE;
+  } else {
+    keep_timer_going = priv_conn_check_unfreeze_next (agent);
   }
-  else 
-    priv_conn_check_unfreeze_next (agent);
 
   for (j = agent->streams; j; j = j->next) {
     Stream *stream = j->data;
