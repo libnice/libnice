@@ -1830,47 +1830,24 @@ static bool conncheck_stun_validater (StunAgent *agent,
   for (i = data->component->local_candidates; i; i = i->next) {
     NiceCandidate *cand = i->data;
     gchar *ufrag = NULL;
+    gsize ufrag_len;
 
     if (cand->username)
       ufrag = cand->username;
     else if (data->stream)
       ufrag = data->stream->local_ufrag;
+    ufrag_len = strlen (ufrag);
 
-    if (data->agent->compatibility == NICE_COMPATIBILITY_ID19 &&
-        strlen (ufrag) + 1 <= NICE_STREAM_MAX_UNAME) {
-      memcpy (uname, ufrag, strlen (ufrag));
-      uname_len = strlen (ufrag);
-      memcpy (uname + uname_len, ":", 1);
-      uname_len++;
-    } else if (data->agent->compatibility == NICE_COMPATIBILITY_GOOGLE &&
-        strlen (ufrag) <= NICE_STREAM_MAX_UNAME) {
-      memcpy (uname, ufrag, strlen (ufrag));
-      uname_len = strlen (ufrag);
-    } else if (data->agent->compatibility == NICE_COMPATIBILITY_MSN) {
-      gchar component_str[10];
-      guchar *local_decoded = NULL;
-      gsize local_decoded_len;
+    if (data->agent->compatibility == NICE_COMPATIBILITY_MSN)
+      ufrag = (gchar *)g_base64_decode (ufrag, &ufrag_len);
 
-      g_snprintf (component_str, sizeof(component_str),
-          "%d", data->component->id);
-      local_decoded = g_base64_decode (ufrag, &local_decoded_len);
-
-      if (local_decoded_len + 2 + strlen (component_str) <=
-          NICE_STREAM_MAX_UNAME) {
-
-        memcpy (uname, local_decoded, local_decoded_len);
-        uname_len = local_decoded_len;
-        memcpy (uname + uname_len, ":", 1);
-        uname_len++;
-        memcpy (uname + uname_len, component_str, strlen (component_str));
-        uname_len += strlen (component_str);
-
-        memcpy (uname + uname_len, ":", 1);
-        uname_len++;
-      }
-
-      g_free (local_decoded);
+    if (ufrag_len <= NICE_STREAM_MAX_UNAME) {
+      memcpy (uname, ufrag, ufrag_len);
+      uname_len = ufrag_len;
     }
+
+    if (data->agent->compatibility == NICE_COMPATIBILITY_MSN)
+      g_free (ufrag);
 
     stun_debug ("Comparing username '");
     stun_debug_bytes (username, username_len);
