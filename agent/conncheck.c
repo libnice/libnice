@@ -1615,16 +1615,18 @@ static gboolean priv_map_reply_to_conn_check_request (NiceAgent *agent, Stream *
            *       "Discovering Peer Reflexive Candidates" ICE ID-19) */
 
           ok_pair = priv_process_response_check_for_peer_reflexive(agent, stream, component,
-								   p, sockptr, &sockaddr, local_candidate, remote_candidate);
+              p, sockptr, &sockaddr, local_candidate, remote_candidate);
+
           if (!ok_pair)
             ok_pair = p;
 
-          /* step: notify the client of a new component state (must be done
-           *       before the possible check list state update step */
-          agent_signal_component_state_change (agent,
-					     stream->id,
-					     component->id,
-					     NICE_COMPONENT_STATE_CONNECTED);
+          /* Do not step down to CONNECTED if we're already at state READY*/
+          if (component->state != NICE_COMPONENT_STATE_READY) {
+            /* step: notify the client of a new component state (must be done
+             *       before the possible check list state update step */
+            agent_signal_component_state_change (agent,
+                stream->id, component->id, NICE_COMPONENT_STATE_CONNECTED);
+          }
 
 
           /* step: updating nominated flag (ICE 7.1.2.2.4 "Updating the
