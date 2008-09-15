@@ -70,7 +70,7 @@ static inline int priv_timer_expired (GTimeVal *restrict timer, GTimeVal *restri
 }
 
 static StunUsageTurnCompatibility priv_agent_to_turn_compatibility (NiceAgent *agent) {
-  return agent->compatibility == NICE_COMPATIBILITY_ID19 ?
+  return agent->compatibility == NICE_COMPATIBILITY_DRAFT19 ?
       STUN_USAGE_TURN_COMPATIBILITY_TD9 :
       agent->compatibility == NICE_COMPATIBILITY_GOOGLE ?
       STUN_USAGE_TURN_COMPATIBILITY_GOOGLE :

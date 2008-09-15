@@ -56,7 +56,7 @@ main (void)
   g_thread_init (NULL);
 
   /* set up agent */
-  agent = nice_agent_new (NULL, NICE_COMPATIBILITY_ID19);
+  agent = nice_agent_new (NULL, NICE_COMPATIBILITY_DRAFT19);
   g_assert (nice_address_set_from_string (&addr, "192.168.0.1"));
   nice_agent_add_local_address (agent, &addr);
   stream_id = nice_agent_add_stream (agent, 1);

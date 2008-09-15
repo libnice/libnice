@@ -98,7 +98,7 @@ int main (void)
   len = sizeof (resp_buf);
   val = stun_usage_ice_conncheck_create_reply (&agent, &req,
       &resp, resp_buf, &len, (struct sockaddr *)&ip4,
-      sizeof (ip4), &control, tie, STUN_USAGE_ICE_COMPATIBILITY_ID19);
+      sizeof (ip4), &control, tie, STUN_USAGE_ICE_COMPATIBILITY_DRAFT19);
   assert (val == EINVAL);
   assert (len == 0);
 
@@ -112,7 +112,7 @@ int main (void)
   len = sizeof (resp_buf);
   val = stun_usage_ice_conncheck_create_reply (&agent, &req,
       &resp, resp_buf, &len, (struct sockaddr *)&ip4,
-      sizeof (ip4), &control, tie, STUN_USAGE_ICE_COMPATIBILITY_ID19);
+      sizeof (ip4), &control, tie, STUN_USAGE_ICE_COMPATIBILITY_DRAFT19);
   assert (val == EPROTO);
   assert (len > 0);
 
@@ -166,7 +166,7 @@ int main (void)
   len = sizeof (resp_buf);
   val = stun_usage_ice_conncheck_create_reply (&agent, &req,
       &resp, resp_buf, &len, (struct sockaddr *)&ip4,
-      sizeof (ip4), &control, tie, STUN_USAGE_ICE_COMPATIBILITY_ID19);
+      sizeof (ip4), &control, tie, STUN_USAGE_ICE_COMPATIBILITY_DRAFT19);
   assert (val == 0);
   assert (len > 0);
   assert (stun_agent_validate (&agent, &resp, resp_buf, len,
@@ -186,7 +186,7 @@ int main (void)
   len = sizeof (resp_buf);
   val = stun_usage_ice_conncheck_create_reply (&agent, &req,
       &resp, resp_buf, &len, (struct sockaddr *)&ip4,
-      sizeof (ip4), &control, tie, STUN_USAGE_ICE_COMPATIBILITY_ID19);
+      sizeof (ip4), &control, tie, STUN_USAGE_ICE_COMPATIBILITY_DRAFT19);
   assert (val == EAFNOSUPPORT);
   assert (len == 0);
 
@@ -206,7 +206,7 @@ int main (void)
   control = true;
   val = stun_usage_ice_conncheck_create_reply (&agent, &req,
       &resp, resp_buf, &len, (struct sockaddr *)&ip4,
-      sizeof (ip4), &control, tie, STUN_USAGE_ICE_COMPATIBILITY_ID19);
+      sizeof (ip4), &control, tie, STUN_USAGE_ICE_COMPATIBILITY_DRAFT19);
   assert (val == EACCES);
   assert (len > 0);
   assert (control == false);
@@ -227,7 +227,7 @@ int main (void)
   control = false;
   val = stun_usage_ice_conncheck_create_reply (&agent, &req,
       &resp, resp_buf, &len, (struct sockaddr *)&ip4,
-      sizeof (ip4), &control, tie, STUN_USAGE_ICE_COMPATIBILITY_ID19);
+      sizeof (ip4), &control, tie, STUN_USAGE_ICE_COMPATIBILITY_DRAFT19);
   assert (val == 0);
   assert (len > 0);
   assert (control == false);

@@ -62,7 +62,7 @@ main (void)
   g_assert (nice_address_set_from_string (&addr_remote, "192.168.0.2"));
   nice_address_set_port (&addr_remote, 2345);
 
-  agent = nice_agent_new ( NULL, NICE_COMPATIBILITY_ID19);
+  agent = nice_agent_new ( NULL, NICE_COMPATIBILITY_DRAFT19);
 
   g_assert (agent->local_addresses == NULL);
 

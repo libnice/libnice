@@ -73,16 +73,16 @@ static int priv_timer_expired (GTimeVal *restrict timer, GTimeVal *restrict now)
 }
 
 static StunUsageIceCompatibility priv_agent_to_ice_compatibility (NiceAgent *agent) {
-  return agent->compatibility == NICE_COMPATIBILITY_ID19 ?
-      STUN_USAGE_ICE_COMPATIBILITY_ID19 :
+  return agent->compatibility == NICE_COMPATIBILITY_DRAFT19 ?
+      STUN_USAGE_ICE_COMPATIBILITY_DRAFT19 :
       agent->compatibility == NICE_COMPATIBILITY_GOOGLE ?
       STUN_USAGE_ICE_COMPATIBILITY_GOOGLE :
       agent->compatibility == NICE_COMPATIBILITY_MSN ?
-      STUN_USAGE_ICE_COMPATIBILITY_MSN : STUN_USAGE_ICE_COMPATIBILITY_ID19;
+      STUN_USAGE_ICE_COMPATIBILITY_MSN : STUN_USAGE_ICE_COMPATIBILITY_DRAFT19;
 }
 
 static StunUsageTurnCompatibility priv_agent_to_turn_compatibility (NiceAgent *agent) {
-  return agent->compatibility == NICE_COMPATIBILITY_ID19 ?
+  return agent->compatibility == NICE_COMPATIBILITY_DRAFT19 ?
       STUN_USAGE_TURN_COMPATIBILITY_TD9 :
       agent->compatibility == NICE_COMPATIBILITY_GOOGLE ?
       STUN_USAGE_TURN_COMPATIBILITY_GOOGLE :
@@ -901,7 +901,7 @@ int conn_check_add_for_candidate (NiceAgent *agent, guint stream_id, Component *
 
       /* note: do not create pairs where local candidate is 
        *       a srv-reflexive (ICE 5.7.3. "Pruning the Pairs" ID-19) */
-      if (agent->compatibility == NICE_COMPATIBILITY_ID19 &&
+      if (agent->compatibility == NICE_COMPATIBILITY_DRAFT19 &&
           local->type == NICE_CANDIDATE_TYPE_SERVER_REFLEXIVE)
 	continue;
 
@@ -1010,7 +1010,7 @@ size_t priv_gen_username (NiceAgent *agent, guint component_id,
   gsize local_len = strlen (local);
 
   if (remote_len > 0 && local_len > 0) {
-    if (agent->compatibility == NICE_COMPATIBILITY_ID19 &&
+    if (agent->compatibility == NICE_COMPATIBILITY_DRAFT19 &&
         dest_len >= remote_len + local_len + 1) {
       memcpy (dest, remote, remote_len);
       len += remote_len;

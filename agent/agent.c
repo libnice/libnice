@@ -199,8 +199,8 @@ nice_agent_class_init (NiceAgentClass *klass)
          "compatibility",
          "ICE specification compatibility",
          "The compatibility mode for the agent",
-         NICE_COMPATIBILITY_ID19, NICE_COMPATIBILITY_LAST,
-         NICE_COMPATIBILITY_ID19,
+         NICE_COMPATIBILITY_DRAFT19, NICE_COMPATIBILITY_LAST,
+         NICE_COMPATIBILITY_DRAFT19,
          G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY));
 
   g_object_class_install_property (gobject_class, PROP_STUN_SERVER,
@@ -370,7 +370,7 @@ nice_agent_init (NiceAgent *agent)
   agent->discovery_timer_id = 0;
   agent->conncheck_timer_id = 0;
   agent->keepalive_timer_id = 0;
-  agent->compatibility = NICE_COMPATIBILITY_ID19;
+  agent->compatibility = NICE_COMPATIBILITY_DRAFT19;
 
   stun_agent_init (&agent->stun_agent, STUN_ALL_KNOWN_ATTRIBUTES,
       STUN_COMPATIBILITY_3489BIS,
@@ -479,7 +479,7 @@ nice_agent_set_property (
 
     case PROP_COMPATIBILITY:
       agent->compatibility = g_value_get_uint (value);
-      if (agent->compatibility == NICE_COMPATIBILITY_ID19) {
+      if (agent->compatibility == NICE_COMPATIBILITY_DRAFT19) {
         stun_agent_init (&agent->stun_agent, STUN_ALL_KNOWN_ATTRIBUTES,
             STUN_COMPATIBILITY_3489BIS,
             STUN_AGENT_USAGE_SHORT_TERM_CREDENTIALS |
@@ -701,7 +701,7 @@ priv_add_new_candidate_discovery_turn (NiceAgent *agent,
       cdisco->component = stream_find_component_by_id (stream, component_id);
       cdisco->agent = agent;
 
-      if (agent->compatibility == NICE_COMPATIBILITY_ID19) {
+      if (agent->compatibility == NICE_COMPATIBILITY_DRAFT19) {
         stun_agent_init (&cdisco->turn_agent, STUN_ALL_KNOWN_ATTRIBUTES,
             STUN_COMPATIBILITY_3489BIS,
             long_term ? STUN_AGENT_USAGE_LONG_TERM_CREDENTIALS :

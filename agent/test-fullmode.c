@@ -775,8 +775,8 @@ int main (void)
    */
 
   /* step: create the agents L and R */
-  lagent = nice_agent_new (g_main_loop_get_context (global_mainloop), NICE_COMPATIBILITY_ID19);
-  ragent = nice_agent_new (g_main_loop_get_context (global_mainloop), NICE_COMPATIBILITY_ID19);
+  lagent = nice_agent_new (g_main_loop_get_context (global_mainloop), NICE_COMPATIBILITY_DRAFT19);
+  ragent = nice_agent_new (g_main_loop_get_context (global_mainloop), NICE_COMPATIBILITY_DRAFT19);
 
   /* step: add a timer to catch state changes triggered by signals */
   timer_id = g_timeout_add (60000, timer_cb, NULL);
