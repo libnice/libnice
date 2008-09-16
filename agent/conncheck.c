@@ -1286,8 +1286,7 @@ static gboolean priv_schedule_triggered_check (NiceAgent *agent, Stream *stream,
 	if (p->state == NICE_CHECK_WAITING ||
 	    p->state == NICE_CHECK_FROZEN)
 	  priv_conn_check_initiate (agent, p);
-
-	if (p->state == NICE_CHECK_IN_PROGRESS) {
+        else if (p->state == NICE_CHECK_IN_PROGRESS) {
 	  /* XXX: according to ICE 7.2.1.4 "Triggered Checks" (ID-19),
 	   * we should cancel the existing one, and send a new one...? :P */
 	  nice_debug ("Agent %p : Skipping triggered check, already in progress..", agent);
