@@ -392,8 +392,7 @@ static gboolean priv_conn_check_tick_unlocked (gpointer pointer)
   for (i = agent->streams; i ; i = i->next) {
     Stream *stream = i->data;
   
-    pair = priv_conn_check_find_next_waiting (stream->conncheck_list);  
-
+    pair = priv_conn_check_find_next_waiting (stream->conncheck_list);
     if (pair)
       break;
   }
@@ -703,6 +702,7 @@ static gboolean priv_update_selected_pair (NiceAgent *agent, Component *componen
     component->selected_pair.priority = pair->priority;
 
     agent_signal_new_selected_pair (agent, pair->stream_id, component->id, pair->local->foundation, pair->remote->foundation);
+
   }
 
   return TRUE;
@@ -733,12 +733,10 @@ static void priv_update_check_list_failed_components (NiceAgent *agent, Stream *
       
       if (p->stream_id == stream->id &&
 	  p->component_id == (c + 1)) {
-	
 	if (p->state != NICE_CHECK_FAILED)
 	  break;
       }
     }
-
     /* note: all checks have failed */
     if (i == NULL)
       agent_signal_component_state_change (agent, 
@@ -1764,7 +1762,7 @@ static gboolean priv_map_reply_to_relay_request (NiceAgent *agent, StunMessage *
         res = stun_usage_turn_process (resp,
             &relayaddr, &relayaddrlen, &sockaddr, &socklen, &alternate, &alternatelen,
             &bandwidth, &lifetime, priv_agent_to_turn_compatibility (agent));
-        nice_debug ("Agent %p : stun_bind_process/disc for %p res %d.",
+        nice_debug ("Agent %p : stun_turn_process/disc for %p res %d.",
             agent, d, (int)res);
 
         if (res == STUN_USAGE_TURN_RETURN_ALTERNATE_SERVER) {

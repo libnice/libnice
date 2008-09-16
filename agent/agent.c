@@ -713,7 +713,7 @@ priv_add_new_candidate_discovery_turn (NiceAgent *agent,
             STUN_AGENT_USAGE_SHORT_TERM_CREDENTIALS);
       }
 
-      nice_debug ("Agent %p : Adding new srv-rflx candidate discovery %p\n", agent, cdisco);
+      nice_debug ("Agent %p : Adding new relay-rflx candidate discovery %p\n", agent, cdisco);
       agent->discovery_list = modified_list;
       ++agent->discovery_unsched_items;
     }
