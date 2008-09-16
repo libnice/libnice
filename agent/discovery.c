@@ -69,13 +69,25 @@ static inline int priv_timer_expired (GTimeVal *restrict timer, GTimeVal *restri
     now->tv_sec >= timer->tv_sec;
 }
 
-static StunUsageTurnCompatibility priv_agent_to_turn_compatibility (NiceAgent *agent) {
+static StunUsageTurnCompatibility
+priv_agent_to_turn_compatibility (NiceAgent *agent) {
   return agent->compatibility == NICE_COMPATIBILITY_DRAFT19 ?
-      STUN_USAGE_TURN_COMPATIBILITY_TD9 :
+      STUN_USAGE_TURN_COMPATIBILITY_DRAFT9 :
       agent->compatibility == NICE_COMPATIBILITY_GOOGLE ?
       STUN_USAGE_TURN_COMPATIBILITY_GOOGLE :
       agent->compatibility == NICE_COMPATIBILITY_MSN ?
-      STUN_USAGE_TURN_COMPATIBILITY_MSN : STUN_USAGE_TURN_COMPATIBILITY_TD9;
+      STUN_USAGE_TURN_COMPATIBILITY_MSN : STUN_USAGE_TURN_COMPATIBILITY_DRAFT9;
+}
+
+static NiceUdpTurnSocketCompatibility
+priv_agent_to_udp_turn_compatibility (NiceAgent *agent) {
+  return agent->compatibility == NICE_COMPATIBILITY_DRAFT19 ?
+      NICE_UDP_TURN_SOCKET_COMPATIBILITY_DRAFT9 :
+      agent->compatibility == NICE_COMPATIBILITY_GOOGLE ?
+      NICE_UDP_TURN_SOCKET_COMPATIBILITY_GOOGLE :
+      agent->compatibility == NICE_COMPATIBILITY_MSN ?
+      NICE_UDP_TURN_SOCKET_COMPATIBILITY_MSN :
+      NICE_UDP_TURN_SOCKET_COMPATIBILITY_DRAFT9;
 }
 
 /**
@@ -424,7 +436,7 @@ discovery_add_relay_candidate (
       if (nice_udp_turn_create_socket_full (&agent->relay_socket_factory,
               relay_socket, address, base_socket, &component->turn_server,
               component->turn_username, component->turn_password,
-              NICE_UDP_TURN_SOCKET_COMPATIBILITY_GOOGLE)) {
+              priv_agent_to_udp_turn_compatibility (agent))) {
         candidate->sockptr = relay_socket;
         candidate->base_addr = base_socket->addr;
 

@@ -75,7 +75,7 @@ size_t stun_usage_turn_create (StunAgent *agent, StunMessage *msg,
 {
   stun_agent_init_request (agent, msg, buffer, buffer_len, STUN_ALLOCATE);
 
-  if (compatibility == STUN_USAGE_TURN_COMPATIBILITY_TD9) {
+  if (compatibility == STUN_USAGE_TURN_COMPATIBILITY_DRAFT9) {
     if (stun_message_append32 (msg, STUN_ATTRIBUTE_REQUESTED_TRANSPORT,
             TURN_REQUESTED_TRANSPORT_UDP) != 0)
       return 0;
@@ -93,7 +93,7 @@ size_t stun_usage_turn_create (StunAgent *agent, StunMessage *msg,
       return 0;
   }
 
-  if (compatibility == STUN_USAGE_TURN_COMPATIBILITY_TD9 &&
+  if (compatibility == STUN_USAGE_TURN_COMPATIBILITY_DRAFT9 &&
       request_props != STUN_USAGE_TURN_REQUEST_PORT_NORMAL) {
     uint32_t req = 0;
 
@@ -158,7 +158,7 @@ size_t stun_usage_turn_create_refresh (StunAgent *agent, StunMessage *msg,
   uint8_t *username = NULL;
   uint16_t len;
 
-  if (compatibility == STUN_USAGE_TURN_COMPATIBILITY_TD9) {
+  if (compatibility == STUN_USAGE_TURN_COMPATIBILITY_DRAFT9) {
     stun_agent_init_request (agent, msg, buffer, buffer_len, STUN_REFRESH);
     if (lifetime >= 0) {
       if (stun_message_append32 (msg, STUN_ATTRIBUTE_LIFETIME, lifetime) != 0)
@@ -250,7 +250,7 @@ StunUsageTurnReturn stun_usage_turn_process (StunMessage *msg,
 
   stun_debug ("Received %u-bytes STUN message\n", stun_message_length (msg));
 
-  if (compatibility == STUN_USAGE_TURN_COMPATIBILITY_TD9) {
+  if (compatibility == STUN_USAGE_TURN_COMPATIBILITY_DRAFT9) {
     val = stun_message_find_xor_addr (msg,
         STUN_ATTRIBUTE_XOR_MAPPED_ADDRESS, addr, addrlen);
 

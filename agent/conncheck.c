@@ -83,11 +83,11 @@ static StunUsageIceCompatibility priv_agent_to_ice_compatibility (NiceAgent *age
 
 static StunUsageTurnCompatibility priv_agent_to_turn_compatibility (NiceAgent *agent) {
   return agent->compatibility == NICE_COMPATIBILITY_DRAFT19 ?
-      STUN_USAGE_TURN_COMPATIBILITY_TD9 :
+      STUN_USAGE_TURN_COMPATIBILITY_DRAFT9 :
       agent->compatibility == NICE_COMPATIBILITY_GOOGLE ?
       STUN_USAGE_TURN_COMPATIBILITY_GOOGLE :
       agent->compatibility == NICE_COMPATIBILITY_MSN ?
-      STUN_USAGE_TURN_COMPATIBILITY_MSN : STUN_USAGE_TURN_COMPATIBILITY_TD9;
+      STUN_USAGE_TURN_COMPATIBILITY_MSN : STUN_USAGE_TURN_COMPATIBILITY_DRAFT9;
 }
 
 

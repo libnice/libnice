@@ -157,7 +157,7 @@ static void numb (void)
       STUN_USAGE_TURN_REQUEST_PORT_NORMAL,
       0, 0,
       username, strlen (username), password, strlen(password),
-      STUN_USAGE_TURN_COMPATIBILITY_TD9);
+      STUN_USAGE_TURN_COMPATIBILITY_DRAFT9);
   assert (req_len > 0);
 
   val = send (fd, req, req_len, MSG_NOSIGNAL);
@@ -174,7 +174,7 @@ static void numb (void)
       (struct sockaddr *)&addr, &addrlen,
       (struct sockaddr *)&alternate_addr, &alternate_addrlen,
       &bandwidth, &lifetime,
-      STUN_USAGE_TURN_COMPATIBILITY_TD9);
+      STUN_USAGE_TURN_COMPATIBILITY_DRAFT9);
   assert (val == STUN_USAGE_TURN_RETURN_ERROR);
 
   req_len = stun_usage_turn_create (&agent, &req_msg, req, sizeof(req),
@@ -182,7 +182,7 @@ static void numb (void)
       STUN_USAGE_TURN_REQUEST_PORT_NORMAL,
       0, 0,
       username, strlen (username), password, strlen(password),
-      STUN_USAGE_TURN_COMPATIBILITY_TD9);
+      STUN_USAGE_TURN_COMPATIBILITY_DRAFT9);
   assert (req_len > 0);
 
   val = send (fd, req, req_len, MSG_NOSIGNAL);
@@ -199,7 +199,7 @@ static void numb (void)
       (struct sockaddr *)&addr, &addrlen,
       (struct sockaddr *)&alternate_addr, &alternate_addrlen,
       &bandwidth, &lifetime,
-      STUN_USAGE_TURN_COMPATIBILITY_TD9);
+      STUN_USAGE_TURN_COMPATIBILITY_DRAFT9);
   assert (val == STUN_USAGE_TURN_RETURN_MAPPED_SUCCESS);
 
   printaddr ("Relay address found : ", (struct sockaddr *)&relay_addr, relay_addrlen);
@@ -207,7 +207,7 @@ static void numb (void)
 
 
   req_len = stun_usage_turn_create_refresh (&agent, &refresh_msg, refresh,
-      sizeof(refresh),  &req_msg, 0, STUN_USAGE_TURN_COMPATIBILITY_TD9);
+      sizeof(refresh),  &req_msg, 0, STUN_USAGE_TURN_COMPATIBILITY_DRAFT9);
   assert (req_len > 0);
 
   val = send (fd, refresh, req_len, MSG_NOSIGNAL);
