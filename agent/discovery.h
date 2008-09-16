@@ -61,7 +61,7 @@ struct _CandidateDiscovery
   uint8_t stun_buffer[STUN_MAX_MESSAGE_SIZE];
   StunMessage stun_message;
   uint8_t stun_resp_buffer[STUN_MAX_MESSAGE_SIZE];
-  StunMessage stun_resp_message;
+  StunMessage stun_resp_msg;
 }; 
 
 void discovery_free_item (gpointer data, gpointer user_data);

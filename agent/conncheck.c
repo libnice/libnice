@@ -1796,11 +1796,46 @@ static gboolean priv_map_reply_to_relay_request (NiceAgent *agent, StunMessage *
           d->stun_message.buffer_len = 0;
           d->done = TRUE;
           trans_found = TRUE;
-        } else if (res == STUN_USAGE_BIND_RETURN_ERROR) {
-          /* case: STUN error, the check STUN context was freed */
-          d->stun_message.buffer = NULL;
-          d->stun_message.buffer_len = 0;
-          d->done = TRUE;
+        } else if (res == STUN_USAGE_TURN_RETURN_ERROR) {
+          int code = -1;
+          uint8_t *sent_nonce = NULL;
+          uint8_t *recv_nonce = NULL;
+          uint16_t sent_nonce_len = 0;
+          uint16_t recv_nonce_len = 0;
+
+          sent_nonce = (uint8_t *) stun_message_find (&d->stun_message,
+              STUN_ATTRIBUTE_NONCE, &sent_nonce_len);
+          recv_nonce = (uint8_t *) stun_message_find (resp,
+              STUN_ATTRIBUTE_NONCE, &recv_nonce_len);
+
+          /* check for unauthorized error response */
+          if (d->component->turn_long_term &&
+              stun_message_get_class (resp) == STUN_ERROR &&
+              stun_message_find_error (resp, &code) == 0 &&
+              code == 401 && recv_nonce != NULL &&
+              recv_nonce_len > 0) {
+
+            if (recv_nonce_len == sent_nonce_len &&
+                sent_nonce != NULL &&
+                memcmp (sent_nonce, recv_nonce, sent_nonce_len) == 0) {
+              /* case: a real unauthorized error */
+              d->stun_message.buffer = NULL;
+              d->stun_message.buffer_len = 0;
+              d->done = TRUE;
+            } else {
+              d->stun_resp_msg = *resp;
+              memcpy (d->stun_resp_buffer, resp->buffer,
+                  stun_message_length (resp));
+              d->stun_resp_msg.buffer = d->stun_resp_buffer;
+              d->stun_resp_msg.buffer_len = sizeof(d->stun_resp_buffer);
+              d->pending = FALSE;
+            }
+          } else {
+            /* case: STUN error, the check STUN context was freed */
+            d->stun_message.buffer = NULL;
+            d->stun_message.buffer_len = 0;
+            d->done = TRUE;
+          }
           trans_found = TRUE;
         }
       }

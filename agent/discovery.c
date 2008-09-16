@@ -697,9 +697,9 @@ static gboolean priv_discovery_tick_unlocked (gpointer pointer)
           buffer_len = stun_usage_bind_create (&agent->stun_agent,
               &cand->stun_message, cand->stun_buffer, sizeof(cand->stun_buffer));
         } else if (cand->type == NICE_CANDIDATE_TYPE_RELAYED) {
-          buffer_len = stun_usage_turn_create (&agent->stun_agent,
+          buffer_len = stun_usage_turn_create (&cand->turn_agent,
               &cand->stun_message,  cand->stun_buffer, sizeof(cand->stun_buffer),
-              NULL,
+              cand->stun_resp_msg.buffer == NULL ? NULL : &cand->stun_resp_msg,
               STUN_USAGE_TURN_REQUEST_PORT_NORMAL,
               0, 0,
               (uint8_t *)cand->component->turn_username,
