@@ -1337,6 +1337,7 @@ _nice_agent_recv (
       NiceCandidate *cand = i->data;
       if (cand->type == NICE_CANDIDATE_TYPE_RELAYED) {
         len = nice_udp_turn_socket_parse_recv (cand->sockptr, &from, len, buf, &from, buf, len);
+        udp_socket = cand->sockptr;
       }
     }
   }
