@@ -43,7 +43,38 @@
 
 #include "agent.h"
 
-#define USE_TURN 0
+#define USE_TURN 1
+#define USE_LOOPBACK 0
+
+#if USE_LOOPBACK
+#define USE_TURN_SERVER_ORG 1
+#else
+#define USE_TURN_SERVER_ORG 0
+#endif
+
+#define NUMB_IP "64.251.22.149"
+#define NUMB_PORT 3478
+#define NUMB_USER "youness.alaoui@collabora.co.uk"
+#define NUMB_PASS "badger"
+
+#define TSORG_IP "127.0.0.1"
+#define TSORG_PORT 3478
+#define TSORG_USER "toto"
+#define TSORG_PASS "password"
+
+
+#if USE_TURN_SERVER_ORG
+#define TURN_IP TSORG_IP
+#define TURN_PORT TSORG_PORT
+#define TURN_USER TSORG_USER
+#define TURN_PASS TSORG_PASS
+#else
+#define TURN_IP NUMB_IP
+#define TURN_PORT NUMB_PORT
+#define TURN_USER NUMB_USER
+#define TURN_PASS NUMB_PASS
+#endif
+
 
 static NiceComponentState global_lagent_state[2] = { NICE_COMPONENT_STATE_LAST, NICE_COMPONENT_STATE_LAST };
 static NiceComponentState global_ragent_state[2] = { NICE_COMPONENT_STATE_LAST, NICE_COMPONENT_STATE_LAST };
@@ -66,6 +97,7 @@ static void priv_print_global_status (void)
   g_debug ("\tgathering_done=%d", global_lagent_gathering_done && global_ragent_gathering_done);
   g_debug ("\tlstate[rtp]=%d [rtcp]=%d", global_lagent_state[0], global_lagent_state[1]);
   g_debug ("\trstate[rtp]=%d [rtcp]=%d", global_ragent_state[0], global_ragent_state[1]);
+  g_debug ("\tL cands=%d R cands=%d", global_lagent_cands, global_ragent_cands);
 }
 
 static gboolean timer_cb (gpointer pointer)
@@ -252,13 +284,13 @@ static int run_full_test (NiceAgent *lagent, NiceAgent *ragent, NiceAddress *bas
   g_assert (rs_id > 0);
 #if USE_TURN
   nice_agent_set_relay_info(lagent, ls_id, 1,
-      "64.251.22.149", 3478, "youness.alaoui@collabora.co.uk", "badger", TRUE);
+      TURN_IP, TURN_PORT, TURN_USER, TURN_PASS, TRUE);
   nice_agent_set_relay_info(lagent, ls_id, 2,
-      "64.251.22.149", 3478, "youness.alaoui@collabora.co.uk", "badger", TRUE);
+      TURN_IP, TURN_PORT, TURN_USER, TURN_PASS, TRUE);
   nice_agent_set_relay_info(ragent, rs_id, 1,
-      "64.251.22.149", 3478, "youness.alaoui@collabora.co.uk", "badger", TRUE);
+      TURN_IP, TURN_PORT, TURN_USER, TURN_PASS, TRUE);
   nice_agent_set_relay_info(ragent, rs_id, 2,
-      "64.251.22.149", 3478, "youness.alaoui@collabora.co.uk", "badger", TRUE);
+      TURN_IP, TURN_PORT, TURN_USER, TURN_PASS, TRUE);
 #endif
 
 
@@ -394,13 +426,13 @@ static int run_full_test_delayed_answer (NiceAgent *lagent, NiceAgent *ragent, N
   g_assert (rs_id > 0);
 #if USE_TURN
   nice_agent_set_relay_info(lagent, ls_id, 1,
-      "64.251.22.149", 3478, "youness.alaoui@collabora.co.uk", "badger", TRUE);
+      TURN_IP, TURN_PORT, TURN_USER, TURN_PASS, TRUE);
   nice_agent_set_relay_info(lagent, ls_id, 2,
-      "64.251.22.149", 3478, "youness.alaoui@collabora.co.uk", "badger", TRUE);
+      TURN_IP, TURN_PORT, TURN_USER, TURN_PASS, TRUE);
   nice_agent_set_relay_info(ragent, rs_id, 1,
-      "64.251.22.149", 3478, "youness.alaoui@collabora.co.uk", "badger", TRUE);
+      TURN_IP, TURN_PORT, TURN_USER, TURN_PASS, TRUE);
   nice_agent_set_relay_info(ragent, rs_id, 2,
-      "64.251.22.149", 3478, "youness.alaoui@collabora.co.uk", "badger", TRUE);
+      TURN_IP, TURN_PORT, TURN_USER, TURN_PASS, TRUE);
 #endif
 
 
@@ -553,9 +585,9 @@ static int run_full_test_wrong_password (NiceAgent *lagent, NiceAgent *ragent, N
   g_assert (rs_id > 0);
 #if USE_TURN
   nice_agent_set_relay_info(lagent, ls_id, 1,
-      "64.251.22.149", 3478, "youness.alaoui@collabora.co.uk", "badger", TRUE);
+      TURN_IP, TURN_PORT, TURN_USER, TURN_PASS, TRUE);
   nice_agent_set_relay_info(ragent, rs_id, 1,
-      "64.251.22.149", 3478, "youness.alaoui@collabora.co.uk", "badger", TRUE);
+      TURN_IP, TURN_PORT, TURN_USER, TURN_PASS, TRUE);
 #endif
 
   nice_agent_gather_candidates (lagent, ls_id);
@@ -579,6 +611,7 @@ static int run_full_test_wrong_password (NiceAgent *lagent, NiceAgent *ragent, N
 
   /* step: find out the local candidates of each agent */
   cands = nice_agent_get_local_candidates(lagent, ls_id, NICE_COMPONENT_TYPE_RTP);
+  
   for (i = cands; i; i = i->next) {
     NiceCandidate *cand = i->data;
     if (cand) {
@@ -600,7 +633,7 @@ static int run_full_test_wrong_password (NiceAgent *lagent, NiceAgent *ragent, N
   }
   g_slist_free (cands);
   g_debug ("test-fullmode: Got local candidates...");
- 
+
   /* step: pass the remote candidates to agents  */
   cands = g_slist_append (NULL, &cdes);
   {
@@ -672,9 +705,9 @@ static int run_full_test_control_conflict (NiceAgent *lagent, NiceAgent *ragent,
   g_assert (rs_id > 0);
 #if USE_TURN
   nice_agent_set_relay_info(lagent, ls_id, 1,
-      "64.251.22.149", 3478, "youness.alaoui@collabora.co.uk", "badger", TRUE);
+      TURN_IP, TURN_PORT, TURN_USER, TURN_PASS, TRUE);
   nice_agent_set_relay_info(ragent, rs_id, 1,
-      "64.251.22.149", 3478, "youness.alaoui@collabora.co.uk", "badger", TRUE);
+      TURN_IP, TURN_PORT, TURN_USER, TURN_PASS, TRUE);
 #endif
 
   nice_agent_gather_candidates (lagent, ls_id);
@@ -779,17 +812,24 @@ int main (void)
   ragent = nice_agent_new (g_main_loop_get_context (global_mainloop), NICE_COMPATIBILITY_DRAFT19);
 
   /* step: add a timer to catch state changes triggered by signals */
-  timer_id = g_timeout_add (60000, timer_cb, NULL);
+#if USE_TURN
+  timer_id = g_timeout_add (300000, timer_cb, NULL);
+#else
+  timer_id = g_timeout_add (30000, timer_cb, NULL);
+#endif
 
   /* step: specify which local interface to use */
+#if USE_LOOPBACK
   if (!nice_address_set_from_string (&baseaddr, "127.0.0.1"))
     g_assert_not_reached ();
   nice_agent_add_local_address (lagent, &baseaddr);
   nice_agent_add_local_address (ragent, &baseaddr);
-  /*  if (!nice_address_set_from_string (&baseaddr, "192.168.1.106"))
+#else
+  if (!nice_address_set_from_string (&baseaddr, "192.168.1.106"))
     g_assert_not_reached ();
   nice_agent_add_local_address (lagent, &baseaddr);
-  nice_agent_add_local_address (ragent, &baseaddr);*/
+  nice_agent_add_local_address (ragent, &baseaddr);
+#endif
 
   g_signal_connect (G_OBJECT (lagent), "candidate-gathering-done", 
 		    G_CALLBACK (cb_candidate_gathering_done), (gpointer)1);
@@ -832,9 +872,6 @@ int main (void)
     g_free (string);
     g_object_get (G_OBJECT (lagent), "stun-server-port", &port, NULL);
     g_assert (stun_server_port == NULL || port == (guint)atoi (stun_server_port));
-    g_object_get (G_OBJECT (lagent), "turn-server", &string, NULL);
-    g_free (string);
-    g_object_get (G_OBJECT (lagent), "turn-server-port", &port, NULL);
     g_object_get (G_OBJECT (lagent), "controlling-mode", &mode, NULL);
     g_assert (mode == TRUE);
     g_object_set (G_OBJECT (lagent), "max-connectivity-checks", 300, NULL);
@@ -892,6 +929,11 @@ int main (void)
   g_assert (global_ragent_state[0] == NICE_COMPONENT_STATE_FAILED);
   g_assert (global_ragent_state[1] == NICE_COMPONENT_STATE_LAST);
 
+  /* The max connectivity checks test can't be run with TURN because
+     we'll have 3 local candidates instead of 1 and the checks will
+     be random, so we can't predict how many will fail/succeed */
+#if USE_TURN == 0
+
   /* step: run test with a hard limit for connecitivity checks */
   g_debug ("test-fullmode: TEST STARTS / max connectivity checks");
   g_object_set (G_OBJECT (lagent), "max-connectivity-checks", 1, NULL);
@@ -902,8 +944,10 @@ int main (void)
   /* should FAIL as agent L can't send any checks: */
   g_assert (global_lagent_state[0] == NICE_COMPONENT_STATE_FAILED ||
 	    global_lagent_state[1] == NICE_COMPONENT_STATE_FAILED);
-  g_assert (global_ragent_state[0] == NICE_COMPONENT_STATE_FAILED ||
-	    global_ragent_state[1] == NICE_COMPONENT_STATE_FAILED);
+  g_assert (global_lagent_state[0] == NICE_COMPONENT_STATE_FAILED ||
+	    global_lagent_state[1] == NICE_COMPONENT_STATE_FAILED);
+#endif
+
   g_object_set (G_OBJECT (lagent), "max-connectivity-checks", 100, NULL);
   g_object_set (G_OBJECT (ragent), "max-connectivity-checks", 100, NULL);
   result = run_full_test (lagent, ragent, &baseaddr, 4, 0);
