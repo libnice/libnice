@@ -2081,11 +2081,13 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, Stream *stream,
           component->id,  remote_candidate2, local_candidate,
           uname, sizeof (uname), FALSE);
       memcpy (username, uname, username_len);
-      if (remote_candidate2)
+      if (remote_candidate2) {
         req.key = g_base64_decode ((gchar *) remote_candidate2->password,
             &req.key_len);
-      else
+      } else {
         req.key = NULL;
+        req.key_len = 0;
+      }
     }
 
     rbuf_len = sizeof (rbuf);
