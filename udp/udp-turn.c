@@ -65,6 +65,7 @@ typedef struct {
   size_t username_len;
   uint8_t *password;
   size_t password_len;
+  NiceUdpTurnSocketCompatibility compatibility;
 } turn_priv;
 
 
@@ -90,22 +91,30 @@ nice_udp_turn_socket_parse_recv (
         (uint8_t *) recv_buf, (size_t) recv_len, NULL, NULL);
 
     if (valid == STUN_VALIDATION_SUCCESS) {
-      uint32_t cookie;
-      if (stun_message_find32 (&msg, STUN_ATTRIBUTE_MAGIC_COOKIE, &cookie) != 0)
-        goto recv;
-      if (cookie != TURN_MAGIC_COOKIE)
-        goto recv;
+      if (priv->compatibility != NICE_UDP_TURN_SOCKET_COMPATIBILITY_DRAFT9) {
+        uint32_t cookie;
+        if (stun_message_find32 (&msg, STUN_ATTRIBUTE_MAGIC_COOKIE, &cookie) != 0)
+          goto recv;
+        if (cookie != TURN_MAGIC_COOKIE)
+          goto recv;
+      }
 
       if (stun_message_get_class (&msg) == STUN_RESPONSE &&
-          stun_message_get_method (&msg) == STUN_SEND) {
+          stun_message_get_method (&msg) == STUN_IND_SEND) {
         return 0;
       } else if (stun_message_get_class (&msg) == STUN_INDICATION &&
           stun_message_get_method (&msg) == STUN_IND_DATA) {
         uint16_t data_len;
         uint8_t *data;
-        if (stun_message_find_addr (&msg, STUN_ATTRIBUTE_REMOTE_ADDRESS,
-                (struct sockaddr *)&sa, &from_len) != 0)
-          goto recv;
+        if (priv->compatibility == NICE_UDP_TURN_SOCKET_COMPATIBILITY_DRAFT9) {
+          if (stun_message_find_xor_addr (&msg, STUN_ATTRIBUTE_REMOTE_ADDRESS,
+                  (struct sockaddr *)&sa, &from_len) != 0)
+            goto recv;
+        } else {
+          if (stun_message_find_addr (&msg, STUN_ATTRIBUTE_REMOTE_ADDRESS,
+                  (struct sockaddr *)&sa, &from_len) != 0)
+            goto recv;
+        }
 
         data = (uint8_t *) stun_message_find (&msg, STUN_ATTRIBUTE_DATA, &data_len);
         if (data == NULL)
@@ -161,22 +170,33 @@ socket_send (
 
   nice_address_copy_to_sockaddr (to, (struct sockaddr *)&sa);
 
-  if (!stun_agent_init_request (&priv->agent, &msg, buffer, sizeof(buffer), STUN_SEND))
-    goto send;
+  if (priv->compatibility == NICE_UDP_TURN_SOCKET_COMPATIBILITY_DRAFT9) {
+    if (!stun_agent_init_indication (&priv->agent, &msg,
+            buffer, sizeof(buffer), STUN_IND_SEND))
+      goto send;
+    if (stun_message_append_xor_addr (&msg, STUN_ATTRIBUTE_PEER_ADDRESS,
+            (struct sockaddr *)&sa, sizeof(sa)) != 0)
+      goto send;
+  } else {
+    if (!stun_agent_init_request (&priv->agent, &msg,
+            buffer, sizeof(buffer), STUN_SEND))
+      goto send;
 
-  if (stun_message_append32 (&msg, STUN_ATTRIBUTE_MAGIC_COOKIE,
-          TURN_MAGIC_COOKIE) != 0)
-    goto send;
+    if (stun_message_append32 (&msg, STUN_ATTRIBUTE_MAGIC_COOKIE,
+            TURN_MAGIC_COOKIE) != 0)
+      goto send;
 
-  if (priv->username != NULL && priv->username_len > 0) {
-    if (stun_message_append_bytes (&msg, STUN_ATTRIBUTE_USERNAME,
-            priv->username, priv->username_len) != 0)
+    if (priv->username != NULL && priv->username_len > 0) {
+      if (stun_message_append_bytes (&msg, STUN_ATTRIBUTE_USERNAME,
+              priv->username, priv->username_len) != 0)
+        goto send;
+    }
+
+    if (stun_message_append_xor_addr (&msg, STUN_ATTRIBUTE_DESTINATION_ADDRESS,
+            (struct sockaddr *)&sa, sizeof(sa)) != 0)
       goto send;
   }
 
-  if (stun_message_append_addr (&msg, STUN_ATTRIBUTE_DESTINATION_ADDRESS,
-          (struct sockaddr *)&sa, sizeof(sa)) != 0)
-    goto send;
 
   if (stun_message_append_bytes (&msg, STUN_ATTRIBUTE_DATA, buf, len) != 0)
     goto send;
@@ -185,7 +205,8 @@ socket_send (
       priv->password, priv->password_len);
 
   if (stun_len > 0) {
-    nice_udp_socket_send (priv->udp_socket, &priv->server_addr, stun_len, (gchar *)buffer);
+    nice_udp_socket_send (priv->udp_socket, &priv->server_addr,
+        stun_len, (gchar *)buffer);
     return TRUE;
   }
  send:
@@ -225,10 +246,17 @@ nice_udp_turn_create_socket_full (
 {
   turn_priv *priv = g_new0 (turn_priv, 1);
 
-  stun_agent_init (&priv->agent, STUN_ALL_KNOWN_ATTRIBUTES,
-            STUN_COMPATIBILITY_RFC3489,
-            STUN_AGENT_USAGE_SHORT_TERM_CREDENTIALS |
-            STUN_AGENT_USAGE_IGNORE_CREDENTIALS);
+  if (compatibility == NICE_UDP_TURN_SOCKET_COMPATIBILITY_DRAFT9) {
+    stun_agent_init (&priv->agent, STUN_ALL_KNOWN_ATTRIBUTES,
+        STUN_COMPATIBILITY_3489BIS,
+        STUN_AGENT_USAGE_SHORT_TERM_CREDENTIALS |
+        STUN_AGENT_USAGE_IGNORE_CREDENTIALS);
+  } else {
+    stun_agent_init (&priv->agent, STUN_ALL_KNOWN_ATTRIBUTES,
+        STUN_COMPATIBILITY_RFC3489,
+        STUN_AGENT_USAGE_SHORT_TERM_CREDENTIALS |
+        STUN_AGENT_USAGE_IGNORE_CREDENTIALS);
+  }
 
   priv->locked = FALSE;
   priv->udp_socket = udp_socket;
@@ -237,6 +265,7 @@ nice_udp_turn_create_socket_full (
   priv->password = (uint8_t *)password;
   priv->password_len = (size_t) strlen (password);
   priv->server_addr = *server_addr;
+  priv->compatibility = compatibility;
   sock->addr = *addr;
   sock->fileno = udp_socket->fileno;
   sock->send = socket_send;
