@@ -1966,6 +1966,22 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, Stream *stream,
   valid = stun_agent_validate (&agent->stun_agent, &req,
       (uint8_t *) buf, len, conncheck_stun_validater, &validater_data);
 
+  /* Check for relay candidates stnu agents */
+  if (valid == STUN_VALIDATION_BAD_REQUEST ||
+      valid == STUN_VALIDATION_UNMATCHED_RESPONSE) {
+    for (i = agent->discovery_list; i; i = i->next) {
+      CandidateDiscovery *d = i->data;
+      if (d->type == NICE_CANDIDATE_TYPE_RELAYED &&
+          d->stream == stream && d->component == component &&
+          d->nicesock == udp_socket) {
+        valid = stun_agent_validate (&d->turn_agent, &req,
+            (uint8_t *) buf, len, conncheck_stun_validater, &validater_data);
+        break;
+      }
+    }
+  }
+
+
   if (validater_data.password)
     g_free (validater_data.password);
 
