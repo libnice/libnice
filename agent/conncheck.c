@@ -1372,11 +1372,11 @@ static void priv_reply_to_conn_check (NiceAgent *agent, Stream *stream, Componen
   nice_udp_socket_send (udp_socket, toaddr, rbuf_len, (const gchar*)rbuf);
   
   if (rcand) {
-    if (use_candidate)
-      priv_mark_pair_nominated (agent, stream, component, rcand);
-
     /* note: upon succesful check, make the reserve check immediately */
     priv_schedule_triggered_check (agent, stream, component, udp_socket, rcand, use_candidate);
+
+    if (use_candidate)
+      priv_mark_pair_nominated (agent, stream, component, rcand);
   }
 }
 
