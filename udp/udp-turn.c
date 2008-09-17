@@ -260,10 +260,16 @@ nice_udp_turn_create_socket_full (
 
   priv->locked = FALSE;
   priv->udp_socket = udp_socket;
-  priv->username = (uint8_t *)username;
-  priv->username_len = (size_t) strlen (username);
-  priv->password = (uint8_t *)password;
-  priv->password_len = (size_t) strlen (password);
+
+  if (compatibility == NICE_UDP_TURN_SOCKET_COMPATIBILITY_MSN) {
+    priv->username = g_base64_decode (username, &priv->username_len);
+    priv->password = g_base64_decode (password, &priv->password_len);
+  } else {
+    priv->username = (uint8_t *)g_strdup (username);
+    priv->username_len = (size_t) strlen (username);
+    priv->password = (uint8_t *)g_strdup (password);
+    priv->password_len = (size_t) strlen (password);
+  }
   priv->server_addr = *server_addr;
   priv->compatibility = compatibility;
   sock->addr = *addr;

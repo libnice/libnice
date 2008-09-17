@@ -697,16 +697,29 @@ static gboolean priv_discovery_tick_unlocked (gpointer pointer)
           buffer_len = stun_usage_bind_create (&agent->stun_agent,
               &cand->stun_message, cand->stun_buffer, sizeof(cand->stun_buffer));
         } else if (cand->type == NICE_CANDIDATE_TYPE_RELAYED) {
+          uint8_t *username = (uint8_t *)cand->component->turn_username;
+          size_t username_len = (size_t) strlen (cand->component->turn_username);
+          uint8_t *password = (uint8_t *)cand->component->turn_password;
+          size_t password_len = (size_t) strlen (cand->component->turn_password);
+
+          if (agent->compatibility == NICE_COMPATIBILITY_MSN) {
+            username = g_base64_decode ((gchar *)username, &username_len);
+            password = g_base64_decode ((gchar *)password, &password_len);
+          }
+
           buffer_len = stun_usage_turn_create (&cand->turn_agent,
               &cand->stun_message,  cand->stun_buffer, sizeof(cand->stun_buffer),
               cand->stun_resp_msg.buffer == NULL ? NULL : &cand->stun_resp_msg,
               STUN_USAGE_TURN_REQUEST_PORT_NORMAL,
               0, 0,
-              (uint8_t *)cand->component->turn_username,
-              (size_t) strlen (cand->component->turn_username),
-              (uint8_t *)cand->component->turn_password,
-              (size_t) strlen (cand->component->turn_password),
+              username, username_len,
+              password, password_len,
               priv_agent_to_turn_compatibility (agent));
+
+          if (agent->compatibility == NICE_COMPATIBILITY_MSN) {
+            g_free (username);
+            g_free (password);
+          }
         }
 
 	if (buffer_len > 0) {
