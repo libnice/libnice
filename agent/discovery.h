@@ -57,6 +57,8 @@ struct _CandidateDiscovery
   Stream *stream;
   Component *component;
   StunAgent turn_agent;
+  uint8_t *msn_turn_username;
+  uint8_t *msn_turn_password;
   stun_timer_t timer;
   uint8_t stun_buffer[STUN_MAX_MESSAGE_SIZE];
   StunMessage stun_message;

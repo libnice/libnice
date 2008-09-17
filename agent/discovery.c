@@ -98,6 +98,8 @@ void discovery_free_item (gpointer data, gpointer user_data)
 {
   CandidateDiscovery *cand = data;
   g_assert (user_data == NULL);
+  g_free (cand->msn_turn_username);
+  g_free (cand->msn_turn_password);
   g_slice_free (CandidateDiscovery, cand);
 }
 
@@ -717,8 +719,8 @@ static gboolean priv_discovery_tick_unlocked (gpointer pointer)
               priv_agent_to_turn_compatibility (agent));
 
           if (agent->compatibility == NICE_COMPATIBILITY_MSN) {
-            g_free (username);
-            g_free (password);
+            cand->msn_turn_username = username;
+            cand->msn_turn_password = password;
           }
         }
 
