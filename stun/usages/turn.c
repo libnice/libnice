@@ -269,8 +269,8 @@ StunUsageTurnReturn stun_usage_turn_process (StunMessage *msg,
       stun_debug (" No MAPPED-ADDRESS: %s\n", strerror (val));
       return STUN_USAGE_TURN_RETURN_ERROR;
     }
-  }else if (compatibility == STUN_USAGE_TURN_COMPATIBILITY_MSN) {
-    val = stun_message_find_xor_addr (msg,
+  } else if (compatibility == STUN_USAGE_TURN_COMPATIBILITY_MSN) {
+    val = stun_message_find_addr (msg,
         STUN_ATTRIBUTE_MSN_MAPPED_ADDRESS, addr, addrlen);
 
     if (val == 0)
