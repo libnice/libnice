@@ -192,7 +192,7 @@ socket_send (
         goto send;
     }
 
-    if (stun_message_append_xor_addr (&msg, STUN_ATTRIBUTE_DESTINATION_ADDRESS,
+    if (stun_message_append_addr (&msg, STUN_ATTRIBUTE_DESTINATION_ADDRESS,
             (struct sockaddr *)&sa, sizeof(sa)) != 0)
       goto send;
   }
