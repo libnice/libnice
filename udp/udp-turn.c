@@ -219,6 +219,8 @@ static void
 socket_close (NiceUDPSocket *sock)
 {
   turn_priv *priv = (turn_priv *) sock->priv;
+  g_free (priv->username);
+  g_free (priv->password);
   g_free (priv);
 }
 
