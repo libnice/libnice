@@ -588,6 +588,10 @@ void agent_signal_new_selected_pair (NiceAgent *agent, guint stream_id, guint co
   lf_copy = g_strdup (local_foundation);
   rf_copy = g_strdup (remote_foundation);
 
+  if (component->selected_pair.local->type == NICE_CANDIDATE_TYPE_RELAYED) {
+    nice_udp_turn_socket_set_peer (component->selected_pair.local->sockptr,
+                                   &component->selected_pair.remote->addr);
+  }
 
   g_signal_emit (agent, signals[SIGNAL_NEW_SELECTED_PAIR], 0,
       stream_id, component_id, lf_copy, rf_copy);

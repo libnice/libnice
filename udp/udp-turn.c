@@ -57,8 +57,14 @@
 #include <stun/stunagent.h>
 
 typedef struct {
+  NiceAddress peer;
+  uint16_t channel;
+} ChannelBinding;
+
+typedef struct {
   StunAgent agent;
-  int locked;
+  GList *channels;
+  ChannelBinding *current_binding;
   NiceUDPSocket *udp_socket;
   NiceAddress server_addr;
   uint8_t *username;
@@ -67,6 +73,143 @@ typedef struct {
   size_t password_len;
   NiceUdpTurnSocketCompatibility compatibility;
 } turn_priv;
+
+
+static gboolean
+priv_send_channel_bind (turn_priv *priv,  StunMessage *resp,
+    uint16_t channel, NiceAddress *peer) {
+  uint32_t channel_attr = channel << 16;
+  StunMessage msg;
+  uint8_t buffer[STUN_MAX_MESSAGE_SIZE];
+  size_t stun_len;
+  struct sockaddr_storage sa;
+
+  nice_address_copy_to_sockaddr (peer, (struct sockaddr *)&sa);
+
+  if (!stun_agent_init_request (&priv->agent, &msg,
+          buffer, sizeof(buffer), STUN_CHANNELBIND))
+    return FALSE;
+
+  if (stun_message_append32 (&msg, STUN_ATTRIBUTE_CHANNEL_NUMBER,
+          channel_attr) != 0)
+    return FALSE;
+
+  if (stun_message_append_xor_addr (&msg, STUN_ATTRIBUTE_PEER_ADDRESS,
+          (struct sockaddr *)&sa, sizeof(sa)) != 0)
+    return FALSE;
+
+  if (priv->username != NULL && priv->username_len > 0) {
+    if (stun_message_append_bytes (&msg, STUN_ATTRIBUTE_USERNAME,
+            priv->username, priv->username_len) != 0)
+      return FALSE;
+  }
+
+  if (resp) {
+    uint8_t *realm;
+    uint8_t *nonce;
+    uint16_t len;
+
+    realm = (uint8_t *) stun_message_find (resp, STUN_ATTRIBUTE_REALM, &len);
+    if (realm != NULL) {
+      if (stun_message_append_bytes (&msg, STUN_ATTRIBUTE_REALM, realm, len) != 0)
+        return 0;
+    }
+    nonce = (uint8_t *) stun_message_find (resp, STUN_ATTRIBUTE_NONCE, &len);
+    if (nonce != NULL) {
+      if (stun_message_append_bytes (&msg, STUN_ATTRIBUTE_NONCE, nonce, len) != 0)
+        return 0;
+    }
+  }
+
+  stun_len = stun_agent_finish_message (&priv->agent, &msg,
+      priv->password, priv->password_len);
+
+  g_debug ("Sending %d bytes of CHANNEL-BIND", stun_len);
+  if (stun_len > 0) {
+    nice_udp_socket_send (priv->udp_socket, &priv->server_addr,
+        stun_len, (gchar *)buffer);
+    return TRUE;
+  }
+
+  return FALSE;
+}
+NICEAPI_EXPORT gboolean
+nice_udp_turn_socket_set_peer (NiceUDPSocket *sock, NiceAddress *peer)
+{
+  turn_priv *priv = (turn_priv *) sock->priv;
+  StunMessage msg;
+  uint8_t buffer[STUN_MAX_MESSAGE_SIZE];
+  size_t stun_len;
+  struct sockaddr_storage sa;
+
+  nice_address_copy_to_sockaddr (peer, (struct sockaddr *)&sa);
+
+  if (priv->current_binding)
+    return FALSE;
+
+  if (priv->compatibility == NICE_UDP_TURN_SOCKET_COMPATIBILITY_DRAFT9) {
+    uint16_t channel = 0x4000;
+    GList *i = priv->channels;
+    for (; i; i = i->next) {
+      ChannelBinding *b = i->data;
+      if (channel == b->channel) {
+        i = priv->channels;
+        channel++;
+        continue;
+      }
+    }
+
+    if (channel >= 0x4000 && channel < 0xffff) {
+      gboolean ret = priv_send_channel_bind (priv, NULL, channel, peer);
+      if (ret) {
+        priv->current_binding = g_new0 (ChannelBinding, 1);
+        priv->current_binding->channel = channel;
+        priv->current_binding->peer = *peer;
+      }
+      return ret;
+    }
+    return FALSE;
+  } else if (priv->compatibility == NICE_UDP_TURN_SOCKET_COMPATIBILITY_MSN) {
+    if (!stun_agent_init_request (&priv->agent, &msg,
+            buffer, sizeof(buffer), STUN_OLD_SET_ACTIVE_DST))
+      return FALSE;
+
+    if (stun_message_append32 (&msg, STUN_ATTRIBUTE_MAGIC_COOKIE,
+            TURN_MAGIC_COOKIE) != 0)
+      return FALSE;
+
+    if (priv->username != NULL && priv->username_len > 0) {
+      if (stun_message_append_bytes (&msg, STUN_ATTRIBUTE_USERNAME,
+              priv->username, priv->username_len) != 0)
+        return FALSE;
+    }
+
+    if (stun_message_append_addr (&msg, STUN_ATTRIBUTE_DESTINATION_ADDRESS,
+            (struct sockaddr *)&sa, sizeof(sa)) != 0)
+      return FALSE;
+
+    stun_len = stun_agent_finish_message (&priv->agent, &msg,
+        priv->password, priv->password_len);
+
+    if (stun_len > 0) {
+      priv->current_binding = g_new0 (ChannelBinding, 1);
+      priv->current_binding->channel = 0;
+      priv->current_binding->peer = *peer;
+      nice_udp_socket_send (priv->udp_socket, &priv->server_addr,
+          stun_len, (gchar *)buffer);
+    }
+    return TRUE;
+  } else if (priv->compatibility == NICE_UDP_TURN_SOCKET_COMPATIBILITY_GOOGLE) {
+    priv->current_binding = g_new0 (ChannelBinding, 1);
+    priv->current_binding->channel = 0;
+    priv->current_binding->peer = *peer;
+    return TRUE;
+  } else {
+    return FALSE;
+  }
+
+  return FALSE;
+}
 
 
 gint
@@ -219,6 +362,12 @@ static void
 socket_close (NiceUDPSocket *sock)
 {
   turn_priv *priv = (turn_priv *) sock->priv;
+  GList *i = priv->channels;
+  for (; i; i = i->next) {
+    ChannelBinding *b = i->data;
+    g_free (b);
+  }
+  g_list_free (priv->channels);
   g_free (priv->username);
   g_free (priv->password);
   g_free (priv);
@@ -261,7 +410,8 @@ nice_udp_turn_create_socket_full (
         STUN_AGENT_USAGE_SHORT_TERM_CREDENTIALS);
   }
 
-  priv->locked = FALSE;
+  priv->channels = NULL;
+  priv->current_binding = NULL;
   priv->udp_socket = udp_socket;
 
   if (compatibility == NICE_UDP_TURN_SOCKET_COMPATIBILITY_MSN) {

@@ -59,6 +59,9 @@ nice_udp_turn_socket_parse_recv (
   guint recv_len);
 
 gboolean
+nice_udp_turn_socket_set_peer (NiceUDPSocket *sock, NiceAddress *peer);
+
+gboolean
 nice_udp_turn_create_socket_full (
   NiceUDPSocketFactory *man,
   NiceUDPSocket *sock,
