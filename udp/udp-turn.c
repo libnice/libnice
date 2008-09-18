@@ -308,48 +308,74 @@ socket_send (
   turn_priv *priv = (turn_priv *) sock->priv;
   StunMessage msg;
   uint8_t buffer[STUN_MAX_MESSAGE_SIZE];
-  size_t stun_len;
+  size_t msg_len;
   struct sockaddr_storage sa;
+  GList *i = priv->channels;
+  ChannelBinding *binding = NULL;
+
+  for (; i; i = i->next) {
+    ChannelBinding *b = i->data;
+    if (nice_address_equal (&b->peer, to)) {
+      binding = b;
+      break;
+    }
+  }
 
   nice_address_copy_to_sockaddr (to, (struct sockaddr *)&sa);
 
-  if (priv->compatibility == NICE_UDP_TURN_SOCKET_COMPATIBILITY_DRAFT9) {
-    if (!stun_agent_init_indication (&priv->agent, &msg,
-            buffer, sizeof(buffer), STUN_IND_SEND))
+  if (binding) {
+    if (priv->compatibility == NICE_UDP_TURN_SOCKET_COMPATIBILITY_DRAFT9 &&
+        len + sizeof(uint32_t) <= sizeof(buffer)) {
+      uint16_t len16 = (uint16_t) len;
+      memcpy (buffer, &binding->channel, sizeof(uint16_t));
+      memcpy (buffer + sizeof(uint16_t), &len16,sizeof(uint16_t));
+      memcpy (buffer + sizeof(uint32_t), buf, len);
+      msg_len = len + sizeof(uint32_t);
+    } else {
       goto send;
-    if (stun_message_append_xor_addr (&msg, STUN_ATTRIBUTE_PEER_ADDRESS,
-            (struct sockaddr *)&sa, sizeof(sa)) != 0)
-      goto send;
+    }
   } else {
-    if (!stun_agent_init_request (&priv->agent, &msg,
-            buffer, sizeof(buffer), STUN_SEND))
-      goto send;
-
-    if (stun_message_append32 (&msg, STUN_ATTRIBUTE_MAGIC_COOKIE,
-            TURN_MAGIC_COOKIE) != 0)
-      goto send;
-
-    if (priv->username != NULL && priv->username_len > 0) {
-      if (stun_message_append_bytes (&msg, STUN_ATTRIBUTE_USERNAME,
-              priv->username, priv->username_len) != 0)
+    if (priv->compatibility == NICE_UDP_TURN_SOCKET_COMPATIBILITY_DRAFT9) {
+      if (!stun_agent_init_indication (&priv->agent, &msg,
+              buffer, sizeof(buffer), STUN_IND_SEND))
         goto send;
+      if (stun_message_append_xor_addr (&msg, STUN_ATTRIBUTE_PEER_ADDRESS,
+              (struct sockaddr *)&sa, sizeof(sa)) != 0)
+        goto send;
+    } else {
+      if (!stun_agent_init_request (&priv->agent, &msg,
+              buffer, sizeof(buffer), STUN_SEND))
+        goto send;
+
+      if (stun_message_append32 (&msg, STUN_ATTRIBUTE_MAGIC_COOKIE,
+              TURN_MAGIC_COOKIE) != 0)
+        goto send;
+      if (priv->username != NULL && priv->username_len > 0) {
+        if (stun_message_append_bytes (&msg, STUN_ATTRIBUTE_USERNAME,
+                priv->username, priv->username_len) != 0)
+          goto send;
+      }
+      if (stun_message_append_addr (&msg, STUN_ATTRIBUTE_DESTINATION_ADDRESS,
+              (struct sockaddr *)&sa, sizeof(sa)) != 0)
+        goto send;
+
+      if (priv->compatibility == NICE_UDP_TURN_SOCKET_COMPATIBILITY_GOOGLE &&
+          priv->current_binding &&
+          nice_address_equal (&priv->current_binding->peer, to)) {
+        stun_message_append32 (&msg, STUN_ATTRIBUTE_OPTIONS, 1);
+      }
     }
 
-    if (stun_message_append_addr (&msg, STUN_ATTRIBUTE_DESTINATION_ADDRESS,
-            (struct sockaddr *)&sa, sizeof(sa)) != 0)
+    if (stun_message_append_bytes (&msg, STUN_ATTRIBUTE_DATA, buf, len) != 0)
       goto send;
+
+    msg_len = stun_agent_finish_message (&priv->agent, &msg,
+        priv->password, priv->password_len);
   }
 
-
-  if (stun_message_append_bytes (&msg, STUN_ATTRIBUTE_DATA, buf, len) != 0)
-    goto send;
-
-  stun_len = stun_agent_finish_message (&priv->agent, &msg,
-      priv->password, priv->password_len);
-
-  if (stun_len > 0) {
+  if (msg_len > 0) {
     nice_udp_socket_send (priv->udp_socket, &priv->server_addr,
-        stun_len, (gchar *)buffer);
+        msg_len, (gchar *)buffer);
     return TRUE;
   }
  send:
