@@ -1316,7 +1316,7 @@ _nice_agent_recv (
     gchar tmpbuf[INET6_ADDRSTRLEN];
     nice_address_to_string (&from, tmpbuf);
     nice_debug ("Agent %p : Packet received on local socket %u from [%s]:%u (%u octets).", agent,
-             udp_socket->fileno, tmpbuf, nice_address_get_port (&from), len);
+        udp_socket->fileno, tmpbuf, nice_address_get_port (&from), len);
   }
 #endif
 
