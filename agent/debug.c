@@ -39,15 +39,20 @@
 
 #include "debug.h"
 
-#include <glib.h>
+#include "stunagent.h"
+
 
 static int debug_enabled = 1;
 
-void nice_debug_enable (void) {
+void nice_debug_enable (gboolean with_stun) {
   debug_enabled = 1;
+  if (with_stun)
+    stun_debug_enable ();
 }
-void nice_debug_disable (void) {
+void nice_debug_disable (gboolean with_stun) {
   debug_enabled = 0;
+  if (with_stun)
+    stun_debug_disable ();
 }
 
 void nice_debug (const char *fmt, ...)

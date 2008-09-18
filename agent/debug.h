@@ -36,8 +36,10 @@
 #ifndef _DEBUG_H
 #define _DEBUG_H
 
-void nice_debug_enable (void);
-void nice_debug_disable (void);
+#include <glib.h>
+
+void nice_debug_enable (gboolean with_stun);
+void nice_debug_disable (gboolean with_stun);
 void nice_debug (const char *fmt, ...);
 
 #endif /* _DEBUG_H */

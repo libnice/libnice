@@ -45,6 +45,7 @@
 #include "address.h"
 #include "candidate.h"
 #include "random.h"
+#include "debug.h"
 
 
 G_BEGIN_DECLS

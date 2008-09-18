@@ -39,6 +39,8 @@ nice_candidate_ice_priority_full
 nice_candidate_jingle_priority
 nice_candidate_new
 nice_candidate_pair_priority
+nice_debug_enable
+nice_debug_disable
 nice_interface_free
 nice_interface_new
 nice_list_local_interfaces

@@ -102,7 +102,7 @@ test_fallback_LDADD = $(COMMON_LDADD)
 
 test_thread_LDADD = $(COMMON_LDADD)
 
-pkginclude_HEADERS = agent.h candidate.h
+pkginclude_HEADERS = agent.h candidate.h debug.h
 
 all-local:
 	chmod a+x $(srcdir)/check-test-fullmode-with-stun.sh
