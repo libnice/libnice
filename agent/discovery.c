@@ -438,7 +438,8 @@ discovery_add_relay_candidate (
       if (nice_udp_turn_create_socket_full (&agent->relay_socket_factory,
               relay_socket, address, base_socket, &component->turn_server,
               component->turn_username, component->turn_password,
-              priv_agent_to_udp_turn_compatibility (agent))) {
+              priv_agent_to_udp_turn_compatibility (agent),
+              component->turn_long_term)) {
         candidate->sockptr = relay_socket;
         candidate->base_addr = base_socket->addr;
 

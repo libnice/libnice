@@ -244,20 +244,21 @@ nice_udp_turn_create_socket_full (
   NiceAddress *server_addr,
   gchar *username,
   gchar *password,
-  NiceUdpTurnSocketCompatibility compatibility)
+  NiceUdpTurnSocketCompatibility compatibility,
+  gboolean long_term)
 {
   turn_priv *priv = g_new0 (turn_priv, 1);
 
   if (compatibility == NICE_UDP_TURN_SOCKET_COMPATIBILITY_DRAFT9) {
     stun_agent_init (&priv->agent, STUN_ALL_KNOWN_ATTRIBUTES,
         STUN_COMPATIBILITY_3489BIS,
-        STUN_AGENT_USAGE_SHORT_TERM_CREDENTIALS |
-        STUN_AGENT_USAGE_IGNORE_CREDENTIALS);
+        long_term ? STUN_AGENT_USAGE_LONG_TERM_CREDENTIALS :
+        STUN_AGENT_USAGE_SHORT_TERM_CREDENTIALS);
   } else {
     stun_agent_init (&priv->agent, STUN_ALL_KNOWN_ATTRIBUTES,
         STUN_COMPATIBILITY_RFC3489,
-        STUN_AGENT_USAGE_SHORT_TERM_CREDENTIALS |
-        STUN_AGENT_USAGE_IGNORE_CREDENTIALS);
+        long_term ? STUN_AGENT_USAGE_LONG_TERM_CREDENTIALS :
+        STUN_AGENT_USAGE_SHORT_TERM_CREDENTIALS);
   }
 
   priv->locked = FALSE;
