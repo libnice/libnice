@@ -43,6 +43,9 @@
 
 #include "stunmessage.h"
 
+#include <sys/types.h>
+#include <sys/socket.h>
+
 # ifdef __cplusplus
 extern "C" {
 # endif
