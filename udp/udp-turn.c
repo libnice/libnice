@@ -228,6 +228,8 @@ nice_udp_turn_socket_parse_recv (
   StunMessage msg;
   struct sockaddr_storage sa;
   guint from_len = sizeof (sa);
+  GList *i = priv->channels;
+  ChannelBinding *binding = NULL;
 
   if (nice_address_equal (&priv->server_addr, recv_from)) {
     valid = stun_agent_validate (&priv->agent, &msg,
@@ -243,7 +245,33 @@ nice_udp_turn_socket_parse_recv (
       }
 
       if (stun_message_get_class (&msg) == STUN_RESPONSE &&
-          stun_message_get_method (&msg) == STUN_IND_SEND) {
+          stun_message_get_method (&msg) == STUN_SEND) {
+        if (priv->compatibility == NICE_UDP_TURN_SOCKET_COMPATIBILITY_GOOGLE) {
+          uint32_t options = 0;
+          if (stun_message_find32 (&msg, STUN_ATTRIBUTE_OPTIONS, &options) == 0 &&
+              options & 0x1)
+            goto msn_google_lock;
+        }
+        return 0;
+      } else if (stun_message_get_class (&msg) == STUN_RESPONSE &&
+          stun_message_get_method (&msg) == STUN_OLD_SET_ACTIVE_DST) {
+        if (priv->compatibility == NICE_UDP_TURN_SOCKET_COMPATIBILITY_MSN)
+          goto msn_google_lock;
+
+        return 0;
+      } else if (stun_message_get_class (&msg) == STUN_ERROR &&
+          stun_message_get_method (&msg) == STUN_CHANNELBIND) {
+        if (priv->current_binding) {
+          priv_send_channel_bind (priv, &msg,
+              priv->current_binding->channel, &priv->current_binding->peer);
+        }
+        return 0;
+      } else if (stun_message_get_class (&msg) == STUN_RESPONSE &&
+          stun_message_get_method (&msg) == STUN_CHANNELBIND) {
+        if (priv->current_binding) {
+          priv->channels = g_list_append (priv->channels, priv->current_binding);
+          priv->current_binding = NULL;
+        }
         return 0;
       } else if (stun_message_get_class (&msg) == STUN_INDICATION &&
           stun_message_get_method (&msg) == STUN_IND_DATA) {
@@ -274,9 +302,43 @@ nice_udp_turn_socket_parse_recv (
   }
 
  recv:
-  *from = *recv_from;
+  for (; i; i = i->next) {
+    ChannelBinding *b = i->data;
+    if (priv->compatibility == NICE_UDP_TURN_SOCKET_COMPATIBILITY_DRAFT9) {
+      if (b->channel == ((uint16_t *)recv_buf)[0]) {
+        recv_len = ((uint16_t *)recv_buf)[1];
+        recv_buf += sizeof(uint32_t);
+        binding = b;
+        break;
+      }
+    } else {
+      binding = b;
+      break;
+    }
+  }
+
+  if (binding) {
+    *from = binding->peer;
+  } else {
+    *from = *recv_from;
+  }
   memmove (buf, recv_buf, len > recv_len ? recv_len : len);
   return len > recv_len ? recv_len : len;
+
+ msn_google_lock:
+
+  if (priv->current_binding) {
+    GList *i = priv->channels;
+    for (; i; i = i->next) {
+      ChannelBinding *b = i->data;
+      g_free (b);
+    }
+    g_list_free (priv->channels);
+    priv->channels = g_list_append (NULL, priv->current_binding);
+    priv->current_binding = NULL;
+  }
+
+  return 0;
 }
 
 static gint
