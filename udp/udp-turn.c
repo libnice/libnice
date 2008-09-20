@@ -124,7 +124,6 @@ priv_send_channel_bind (turn_priv *priv,  StunMessage *resp,
   stun_len = stun_agent_finish_message (&priv->agent, &msg,
       priv->password, priv->password_len);
 
-  g_debug ("Sending %d bytes of CHANNEL-BIND", stun_len);
   if (stun_len > 0) {
     nice_udp_socket_send (priv->udp_socket, &priv->server_addr,
         stun_len, (gchar *)buffer);
@@ -277,6 +276,7 @@ nice_udp_turn_socket_parse_recv (
           stun_message_get_method (&msg) == STUN_IND_DATA) {
         uint16_t data_len;
         uint8_t *data;
+
         if (priv->compatibility == NICE_UDP_TURN_SOCKET_COMPATIBILITY_DRAFT9) {
           if (stun_message_find_xor_addr (&msg, STUN_ATTRIBUTE_REMOTE_ADDRESS,
                   (struct sockaddr *)&sa, &from_len) != 0)
