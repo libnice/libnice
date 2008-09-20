@@ -58,8 +58,8 @@ main (void)
   g_thread_init (NULL);
 
 
-  g_assert (nice_address_set_from_string (&addr_local, "192.168.0.1"));
-  g_assert (nice_address_set_from_string (&addr_remote, "192.168.0.2"));
+  g_assert (nice_address_set_from_string (&addr_local, "127.0.0.1"));
+  g_assert (nice_address_set_from_string (&addr_remote, "127.0.0.1"));
   nice_address_set_port (&addr_remote, 2345);
 
   agent = nice_agent_new ( NULL, NICE_COMPATIBILITY_DRAFT19);
