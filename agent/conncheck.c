@@ -1957,8 +1957,14 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, Stream *stream,
   /* note: contents of 'buf' already validated, so it is
    *       a valid and fully received STUN message */
 
-  nice_debug ("Agent %p: inbound STUN packet for %u/%u (stream/component):",
-      agent, stream->id, component->id);
+#ifndef NDEBUG
+  {
+    gchar tmpbuf[INET6_ADDRSTRLEN];
+    nice_address_to_string (from, tmpbuf);
+    nice_debug ("Agent %p: inbound STUN packet for %u/%u (stream/component) from [%s]:%u (%u octets) :",
+        agent, stream->id, component->id, tmpbuf, nice_address_get_port (from), len);
+  }
+#endif
 
   /* note: ICE  7.2. "STUN Server Procedures" (ID-19) */
 
