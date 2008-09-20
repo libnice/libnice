@@ -302,11 +302,11 @@ nice_udp_turn_socket_parse_recv (
   }
 
  recv:
-  for (; i; i = i->next) {
+  for (i = priv->channels; i; i = i->next) {
     ChannelBinding *b = i->data;
     if (priv->compatibility == NICE_UDP_TURN_SOCKET_COMPATIBILITY_DRAFT9) {
-      if (b->channel == ((uint16_t *)recv_buf)[0]) {
-        recv_len = ((uint16_t *)recv_buf)[1];
+      if (b->channel == ntohs(((uint16_t *)recv_buf)[0])) {
+        recv_len = ntohs (((uint16_t *)recv_buf)[1]);
         recv_buf += sizeof(uint32_t);
         binding = b;
         break;
@@ -388,8 +388,9 @@ socket_send (
   if (binding) {
     if (priv->compatibility == NICE_UDP_TURN_SOCKET_COMPATIBILITY_DRAFT9 &&
         len + sizeof(uint32_t) <= sizeof(buffer)) {
-      uint16_t len16 = (uint16_t) len;
-      memcpy (buffer, &binding->channel, sizeof(uint16_t));
+      uint16_t len16 = htons ((uint16_t) len);
+      uint16_t channel16 = htons (binding->channel);
+      memcpy (buffer, &channel16, sizeof(uint16_t));
       memcpy (buffer + sizeof(uint16_t), &len16,sizeof(uint16_t));
       memcpy (buffer + sizeof(uint32_t), buf, len);
       msg_len = len + sizeof(uint32_t);
