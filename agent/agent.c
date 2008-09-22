@@ -367,9 +367,9 @@ nice_agent_init (NiceAgent *agent)
 
   agent->discovery_list = NULL;
   agent->discovery_unsched_items = 0;
-  agent->discovery_timer_id = 0;
-  agent->conncheck_timer_id = 0;
-  agent->keepalive_timer_id = 0;
+  agent->discovery_timer_source = NULL;
+  agent->conncheck_timer_source = NULL;
+  agent->keepalive_timer_source = NULL;
   agent->compatibility = NICE_COMPATIBILITY_DRAFT19;
 
   stun_agent_init (&agent->stun_agent, STUN_ALL_KNOWN_ATTRIBUTES,
@@ -909,9 +909,10 @@ nice_agent_gather_candidates (
 
 static void priv_remove_keepalive_timer (NiceAgent *agent)
 {
-  if (agent->keepalive_timer_id) {
-    g_source_remove (agent->keepalive_timer_id),
-      agent->keepalive_timer_id = 0;
+  if (agent->keepalive_timer_source != NULL) {
+    g_source_destroy (agent->keepalive_timer_source);
+    g_source_unref (agent->keepalive_timer_source);
+    agent->keepalive_timer_source = NULL;
   }
 }
 
@@ -2042,7 +2043,7 @@ nice_agent_set_selected_pair (
 }
 
 
-guint agent_timeout_add_with_context (NiceAgent *agent, guint interval,
+GSource* agent_timeout_add_with_context (NiceAgent *agent, guint interval,
     GSourceFunc function, gpointer data)
 {
   GSource *source;
@@ -2054,9 +2055,8 @@ guint agent_timeout_add_with_context (NiceAgent *agent, guint interval,
 
   g_source_set_callback (source, function, data, NULL);
   id = g_source_attach (source, agent->main_context);
-  g_source_unref (source);
 
-  return id;
+  return source;
 }
 
 

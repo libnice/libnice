@@ -117,9 +117,11 @@ void discovery_free (NiceAgent *agent)
 
     agent->discovery_unsched_items = 0;
   }
-  if (agent->discovery_timer_id)
-    g_source_remove (agent->discovery_timer_id),
-      agent->discovery_timer_id = 0;
+  if (agent->discovery_timer_source != NULL) {
+    g_source_destroy (agent->discovery_timer_source);
+    g_source_unref (agent->discovery_timer_source);
+    agent->discovery_timer_source = NULL;
+  }
 }
 
 /**
@@ -843,11 +845,11 @@ void discovery_schedule (NiceAgent *agent)
 
   if (agent->discovery_unsched_items > 0) {
     
-    if (agent->discovery_timer_id == 0) {
+    if (agent->discovery_timer_source == NULL) {
       /* step: run first iteration immediately */
       gboolean res = priv_discovery_tick_unlocked (agent);
       if (res == TRUE) {
-        agent->discovery_timer_id = agent_timeout_add_with_context (agent, agent->timer_ta, priv_discovery_tick, agent);
+        agent->discovery_timer_source = agent_timeout_add_with_context (agent, agent->timer_ta, priv_discovery_tick, agent);
       }
     }
   }

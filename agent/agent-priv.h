@@ -86,9 +86,9 @@ struct _NiceAgent
   NiceRNG *rng;                   /**< random number generator */
   GSList *discovery_list;         /**< list of CandidateDiscovery items */
   guint discovery_unsched_items;  /**< number of discovery items unscheduled */
-  guint discovery_timer_id;       /**< id of discovery timer */
-  guint conncheck_timer_id;       /**< id of discovery timer */
-  guint keepalive_timer_id;       /**< id of keepalive timer */
+  GSource *discovery_timer_source; /**< source of discovery timer */
+  GSource *conncheck_timer_source; /**< source of conncheck timer */
+  GSource *keepalive_timer_source; /**< source of keepalive timer */
   guint64 tie_breaker;            /**< tie breaker (ICE sect 5.2
 				     "Determining Role" ID-19) */
   GStaticRecMutex mutex;                 /* Mutex used for thread-safe lib */
@@ -133,7 +133,7 @@ void agent_signal_initial_binding_request_received (NiceAgent *agent, Stream *st
 
 guint64 agent_candidate_pair_priority (NiceAgent *agent, NiceCandidate *local, NiceCandidate *remote);
 
-guint agent_timeout_add_with_context (NiceAgent *agent, guint interval, GSourceFunc function, gpointer data);
+GSource *agent_timeout_add_with_context (NiceAgent *agent, guint interval, GSourceFunc function, gpointer data);
 
 void priv_attach_stream_component_socket (NiceAgent *agent,
     Stream *stream,

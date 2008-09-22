@@ -537,13 +537,13 @@ gboolean conn_check_schedule_next (NiceAgent *agent)
     nice_debug ("Agent %p : priv_conn_check_tick_unlocked returned %d", agent, res);
 
     /* step: schedule timer if not running yet */
-    if (res && agent->conncheck_timer_id == 0) {
-      agent->conncheck_timer_id = agent_timeout_add_with_context (agent, agent->timer_ta, priv_conn_check_tick, agent);
+    if (res && agent->conncheck_timer_source == NULL) {
+      agent->conncheck_timer_source = agent_timeout_add_with_context (agent, agent->timer_ta, priv_conn_check_tick, agent);
     }
 
     /* step: also start the keepalive timer */
-    if (agent->keepalive_timer_id == 0) {
-      agent->keepalive_timer_id = agent_timeout_add_with_context (agent, NICE_AGENT_TIMER_TR_DEFAULT, priv_conn_keepalive_tick, agent);
+    if (agent->keepalive_timer_source == NULL) {
+      agent->keepalive_timer_source = agent_timeout_add_with_context (agent, NICE_AGENT_TIMER_TR_DEFAULT, priv_conn_keepalive_tick, agent);
     }
 
   }
@@ -951,9 +951,10 @@ void conn_check_free (NiceAgent *agent)
     }
   }
 
-  if (agent->conncheck_timer_id) {
-    g_source_remove (agent->conncheck_timer_id),
-      agent->conncheck_timer_id = 0;
+  if (agent->conncheck_timer_source != NULL) {
+    g_source_destroy (agent->conncheck_timer_source);
+    g_source_unref (agent->conncheck_timer_source);
+    agent->conncheck_timer_source = NULL;
   }
 }
 
