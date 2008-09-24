@@ -482,16 +482,14 @@ nice_udp_turn_create_socket_full (
   NiceAddress *server_addr,
   gchar *username,
   gchar *password,
-  NiceUdpTurnSocketCompatibility compatibility,
-  gboolean long_term)
+  NiceUdpTurnSocketCompatibility compatibility)
 {
   turn_priv *priv = g_new0 (turn_priv, 1);
 
   if (compatibility == NICE_UDP_TURN_SOCKET_COMPATIBILITY_DRAFT9) {
     stun_agent_init (&priv->agent, STUN_ALL_KNOWN_ATTRIBUTES,
         STUN_COMPATIBILITY_3489BIS,
-        long_term ? STUN_AGENT_USAGE_LONG_TERM_CREDENTIALS :
-        STUN_AGENT_USAGE_SHORT_TERM_CREDENTIALS);
+        STUN_AGENT_USAGE_LONG_TERM_CREDENTIALS);
   } else if (compatibility == NICE_UDP_TURN_SOCKET_COMPATIBILITY_MSN) {
     stun_agent_init (&priv->agent, STUN_ALL_KNOWN_ATTRIBUTES,
         STUN_COMPATIBILITY_RFC3489,

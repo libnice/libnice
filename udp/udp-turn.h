@@ -70,8 +70,7 @@ nice_udp_turn_create_socket_full (
   NiceAddress *server_addr,
   gchar *username,
   gchar *password,
-  NiceUdpTurnSocketCompatibility compatibility,
-  gboolean long_term);
+  NiceUdpTurnSocketCompatibility compatibility);
 
 
 void

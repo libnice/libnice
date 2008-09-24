@@ -683,7 +683,7 @@ static gboolean
 priv_add_new_candidate_discovery_turn (NiceAgent *agent,
     NiceCandidate *host_candidate, NiceAddress server,
     Stream *stream, guint component_id,
-    NiceAddress *addr, gboolean long_term)
+    NiceAddress *addr)
 {
   CandidateDiscovery *cdisco;
   GSList *modified_list;
@@ -708,12 +708,10 @@ priv_add_new_candidate_discovery_turn (NiceAgent *agent,
       if (agent->compatibility == NICE_COMPATIBILITY_DRAFT19) {
         stun_agent_init (&cdisco->turn_agent, STUN_ALL_KNOWN_ATTRIBUTES,
             STUN_COMPATIBILITY_3489BIS,
-            long_term ? STUN_AGENT_USAGE_LONG_TERM_CREDENTIALS :
-            STUN_AGENT_USAGE_SHORT_TERM_CREDENTIALS);
+            STUN_AGENT_USAGE_LONG_TERM_CREDENTIALS);
       } else {
         stun_agent_init (&cdisco->turn_agent, STUN_ALL_KNOWN_ATTRIBUTES,
             STUN_COMPATIBILITY_RFC3489,
-            long_term ? STUN_AGENT_USAGE_LONG_TERM_CREDENTIALS :
             STUN_AGENT_USAGE_SHORT_TERM_CREDENTIALS);
       }
 
@@ -782,8 +780,7 @@ nice_agent_add_stream (
 NICEAPI_EXPORT void nice_agent_set_relay_info(NiceAgent *agent,
     guint stream_id, guint component_id,
     const gchar *server_ip, guint server_port,
-    const gchar *username, const gchar *password,
-    gboolean long_term_credentials)
+    const gchar *username, const gchar *password)
 {
 
   Component *component = NULL;
@@ -803,8 +800,6 @@ NICEAPI_EXPORT void nice_agent_set_relay_info(NiceAgent *agent,
 
     g_free (component->turn_password);
     component->turn_password = g_strdup (password);
-
-    component->turn_long_term = long_term_credentials;
 
   }
   g_static_rec_mutex_unlock (&agent->mutex);
@@ -882,8 +877,7 @@ nice_agent_gather_candidates (
                 component->turn_server,
                 stream,
                 n + 1 /* component-id */,
-                addr,
-                component->turn_long_term);
+                addr);
 
 	  if (res != TRUE) {
 	    /* note: memory allocation failure, return error */

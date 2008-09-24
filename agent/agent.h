@@ -147,8 +147,7 @@ void nice_agent_set_relay_info(
     const gchar *server_ip,
     guint server_port,
     const gchar *username,
-    const gchar *password,
-    gboolean long_term_credentials);
+    const gchar *password);
 
 void
 nice_agent_gather_candidates (

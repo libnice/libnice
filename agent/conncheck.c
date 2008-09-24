@@ -1809,7 +1809,7 @@ static gboolean priv_map_reply_to_relay_request (NiceAgent *agent, StunMessage *
               STUN_ATTRIBUTE_NONCE, &recv_nonce_len);
 
           /* check for unauthorized error response */
-          if (d->component->turn_long_term &&
+          if (agent->compatibility == NICE_COMPATIBILITY_DRAFT19 &&
               stun_message_get_class (resp) == STUN_ERROR &&
               stun_message_find_error (resp, &code) == 0 &&
               code == 401 && recv_nonce != NULL &&
