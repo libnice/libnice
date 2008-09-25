@@ -284,13 +284,13 @@ static int run_full_test (NiceAgent *lagent, NiceAgent *ragent, NiceAddress *bas
   g_assert (rs_id > 0);
 #if USE_TURN
   nice_agent_set_relay_info(lagent, ls_id, 1,
-      TURN_IP, TURN_PORT, TURN_USER, TURN_PASS, TRUE);
+      TURN_IP, TURN_PORT, TURN_USER, TURN_PASS);
   nice_agent_set_relay_info(lagent, ls_id, 2,
-      TURN_IP, TURN_PORT, TURN_USER, TURN_PASS, TRUE);
+      TURN_IP, TURN_PORT, TURN_USER, TURN_PASS);
   nice_agent_set_relay_info(ragent, rs_id, 1,
-      TURN_IP, TURN_PORT, TURN_USER, TURN_PASS, TRUE);
+      TURN_IP, TURN_PORT, TURN_USER, TURN_PASS);
   nice_agent_set_relay_info(ragent, rs_id, 2,
-      TURN_IP, TURN_PORT, TURN_USER, TURN_PASS, TRUE);
+      TURN_IP, TURN_PORT, TURN_USER, TURN_PASS);
 #endif
 
 
@@ -426,13 +426,13 @@ static int run_full_test_delayed_answer (NiceAgent *lagent, NiceAgent *ragent, N
   g_assert (rs_id > 0);
 #if USE_TURN
   nice_agent_set_relay_info(lagent, ls_id, 1,
-      TURN_IP, TURN_PORT, TURN_USER, TURN_PASS, TRUE);
+      TURN_IP, TURN_PORT, TURN_USER, TURN_PASS);
   nice_agent_set_relay_info(lagent, ls_id, 2,
-      TURN_IP, TURN_PORT, TURN_USER, TURN_PASS, TRUE);
+      TURN_IP, TURN_PORT, TURN_USER, TURN_PASS);
   nice_agent_set_relay_info(ragent, rs_id, 1,
-      TURN_IP, TURN_PORT, TURN_USER, TURN_PASS, TRUE);
+      TURN_IP, TURN_PORT, TURN_USER, TURN_PASS);
   nice_agent_set_relay_info(ragent, rs_id, 2,
-      TURN_IP, TURN_PORT, TURN_USER, TURN_PASS, TRUE);
+      TURN_IP, TURN_PORT, TURN_USER, TURN_PASS);
 #endif
 
 
@@ -585,9 +585,9 @@ static int run_full_test_wrong_password (NiceAgent *lagent, NiceAgent *ragent, N
   g_assert (rs_id > 0);
 #if USE_TURN
   nice_agent_set_relay_info(lagent, ls_id, 1,
-      TURN_IP, TURN_PORT, TURN_USER, TURN_PASS, TRUE);
+      TURN_IP, TURN_PORT, TURN_USER, TURN_PASS);
   nice_agent_set_relay_info(ragent, rs_id, 1,
-      TURN_IP, TURN_PORT, TURN_USER, TURN_PASS, TRUE);
+      TURN_IP, TURN_PORT, TURN_USER, TURN_PASS);
 #endif
 
   nice_agent_gather_candidates (lagent, ls_id);
@@ -705,9 +705,9 @@ static int run_full_test_control_conflict (NiceAgent *lagent, NiceAgent *ragent,
   g_assert (rs_id > 0);
 #if USE_TURN
   nice_agent_set_relay_info(lagent, ls_id, 1,
-      TURN_IP, TURN_PORT, TURN_USER, TURN_PASS, TRUE);
+      TURN_IP, TURN_PORT, TURN_USER, TURN_PASS);
   nice_agent_set_relay_info(ragent, rs_id, 1,
-      TURN_IP, TURN_PORT, TURN_USER, TURN_PASS, TRUE);
+      TURN_IP, TURN_PORT, TURN_USER, TURN_PASS);
 #endif
 
   nice_agent_gather_candidates (lagent, ls_id);
