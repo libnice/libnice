@@ -1952,6 +1952,7 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, Stream *stream,
   NiceCandidate *remote_candidate = NULL;
   NiceCandidate *remote_candidate2 = NULL;
   NiceCandidate *local_candidate = NULL;
+  gboolean turn_msg = FALSE;
 
   nice_address_copy_to_sockaddr (from, &sockaddr);
 
@@ -1982,6 +1983,7 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, Stream *stream,
           d->nicesock == udp_socket) {
         valid = stun_agent_validate (&d->turn_agent, &req,
             (uint8_t *) buf, len, conncheck_stun_validater, &validater_data);
+        turn_msg = TRUE;
         break;
       }
     }
@@ -2076,7 +2078,8 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, Stream *stream,
   }
 
   if (agent->compatibility == NICE_COMPATIBILITY_GOOGLE &&
-      local_candidate == NULL) {
+      local_candidate == NULL &&
+      turn_msg == FALSE) {
     /* if we couldn't match the username and the stun agent has
        IGNORE_CREDENTIALS then we have an integrity check failing */
     nice_debug ("Agent %p : Username check failed.", agent);
