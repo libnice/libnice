@@ -709,10 +709,15 @@ priv_add_new_candidate_discovery_turn (NiceAgent *agent,
         stun_agent_init (&cdisco->turn_agent, STUN_ALL_KNOWN_ATTRIBUTES,
             STUN_COMPATIBILITY_3489BIS,
             STUN_AGENT_USAGE_LONG_TERM_CREDENTIALS);
-      } else {
+      } else if (agent->compatibility == NICE_COMPATIBILITY_MSN) {
         stun_agent_init (&cdisco->turn_agent, STUN_ALL_KNOWN_ATTRIBUTES,
             STUN_COMPATIBILITY_RFC3489,
             STUN_AGENT_USAGE_SHORT_TERM_CREDENTIALS);
+      } else if (agent->compatibility == NICE_COMPATIBILITY_GOOGLE) {
+        stun_agent_init (&cdisco->turn_agent, STUN_ALL_KNOWN_ATTRIBUTES,
+            STUN_COMPATIBILITY_RFC3489,
+            STUN_AGENT_USAGE_SHORT_TERM_CREDENTIALS |
+            STUN_AGENT_USAGE_IGNORE_CREDENTIALS);
       }
 
       nice_debug ("Agent %p : Adding new relay-rflx candidate discovery %p\n", agent, cdisco);
