@@ -512,8 +512,13 @@ nice_udp_turn_create_socket_full (
   } else {
     priv->username = (uint8_t *)g_strdup (username);
     priv->username_len = (size_t) strlen (username);
-    priv->password = (uint8_t *)g_strdup (password);
-    priv->password_len = (size_t) strlen (password);
+    if (compatibility == NICE_UDP_TURN_SOCKET_COMPATIBILITY_GOOGLE) {
+      priv->password = NULL;
+      priv->password_len = 0;
+    } else {
+      priv->password = (uint8_t *)g_strdup (password);
+      priv->password_len = (size_t) strlen (password);
+    }
   }
   priv->server_addr = *server_addr;
   priv->compatibility = compatibility;
