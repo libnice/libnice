@@ -458,7 +458,14 @@ discovery_add_relay_candidate (
         candidate->sockptr = relay_socket;
         candidate->base_addr = base_socket->addr;
 
-        priv_generate_msn_credentials (agent, candidate);
+        priv_generate_candidate_credentials (agent, candidate);
+
+        /* Google uses the turn username as the candidate username */
+        if (agent->compatibility == NICE_COMPATIBILITY_GOOGLE) {
+          g_free (candidate->username);
+          candidate->username = g_strdup (component->turn_username);
+        }
+
         priv_assign_foundation (agent, candidate);
 
         result = priv_add_local_candidate_pruned (component, candidate);
