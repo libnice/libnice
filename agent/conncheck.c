@@ -1699,7 +1699,12 @@ static gboolean priv_map_reply_to_discovery_request (NiceAgent *agent, StunMessa
             agent, d, (int)res);
 
         if (res == STUN_USAGE_BIND_RETURN_ALTERNATE_SERVER) {
-          /* TODO : handle alternate server */
+          /* handle alternate server */
+          NiceAddress niceaddr;
+          nice_address_set_from_sockaddr (&niceaddr, &alternate);
+          d->server = niceaddr;
+
+          d->pending = FALSE;
         } else if (res == STUN_USAGE_BIND_RETURN_SUCCESS) {
           /* case: succesful binding discovery, create a new local candidate */
           NiceAddress niceaddr;
@@ -1769,7 +1774,12 @@ static gboolean priv_map_reply_to_relay_request (NiceAgent *agent, StunMessage *
             agent, d, (int)res);
 
         if (res == STUN_USAGE_TURN_RETURN_ALTERNATE_SERVER) {
-          /* TODO : handle alternate server */
+          /* handle alternate server */
+          NiceAddress niceaddr;
+          nice_address_set_from_sockaddr (&niceaddr, &alternate);
+          d->server = niceaddr;
+
+          d->pending = FALSE;
         } else if (res == STUN_USAGE_TURN_RETURN_RELAY_SUCCESS ||
                    res == STUN_USAGE_TURN_RETURN_MAPPED_SUCCESS) {
           /* case: succesful allocate, create a new local candidate */
