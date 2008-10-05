@@ -1775,9 +1775,8 @@ static gboolean priv_map_reply_to_relay_request (NiceAgent *agent, StunMessage *
 
         if (res == STUN_USAGE_TURN_RETURN_ALTERNATE_SERVER) {
           /* handle alternate server */
-          NiceAddress niceaddr;
-          nice_address_set_from_sockaddr (&niceaddr, &alternate);
-          d->server = niceaddr;
+          nice_address_set_from_sockaddr (&d->server, &alternate);
+          nice_address_set_from_sockaddr (&d->component->turn_server, &alternate);
 
           d->pending = FALSE;
         } else if (res == STUN_USAGE_TURN_RETURN_RELAY_SUCCESS ||
