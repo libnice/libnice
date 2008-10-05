@@ -1127,6 +1127,9 @@ static
 size_t priv_get_password (NiceAgent *agent, Stream *stream,
     NiceCandidate *remote, uint8_t **password)
 {
+  if (agent->compatibility == NICE_COMPATIBILITY_GOOGLE)
+    return 0;
+
   if (remote && remote->password) {
     *password = (uint8_t *)remote->password;
     return strlen (remote->password);
