@@ -229,7 +229,8 @@ static void priv_assign_foundation (NiceAgent *agent, NiceCandidate *candidate)
 }
 
 static
-void priv_generate_msn_credentials (NiceAgent *agent, NiceCandidate *candidate)
+void priv_generate_candidate_credentials (NiceAgent *agent,
+    NiceCandidate *candidate)
 {
 
   if (agent->compatibility == NICE_COMPATIBILITY_MSN) {
@@ -246,6 +247,19 @@ void priv_generate_msn_credentials (NiceAgent *agent, NiceCandidate *candidate)
 
     candidate->username = g_base64_encode (username, 32);
     candidate->password = g_base64_encode (password, 16);
+
+  } else if (agent->compatibility == NICE_COMPATIBILITY_GOOGLE) {
+    gchar username[16];
+
+    if (candidate->username)
+      g_free (candidate->username);
+    if (candidate->password)
+      g_free (candidate->password);
+    candidate->password = NULL;
+
+    nice_rng_generate_bytes_print (agent->rng, 16, (gchar *)username);
+
+    candidate->username = g_strdup (username);
 
   }
 
@@ -289,7 +303,7 @@ NiceCandidate *discovery_add_local_host_candidate (
         candidate->priority = nice_candidate_ice_priority (candidate);
       }
 
-      priv_generate_msn_credentials (agent, candidate);
+      priv_generate_candidate_credentials (agent, candidate);
       priv_assign_foundation (agent, candidate);
 
       /* note: candidate username and password are left NULL as stream
@@ -379,7 +393,7 @@ discovery_add_server_reflexive_candidate (
     candidate->sockptr = base_socket;
     candidate->base_addr = base_socket->addr;
 
-    priv_generate_msn_credentials (agent, candidate);
+    priv_generate_candidate_credentials (agent, candidate);
     priv_assign_foundation (agent, candidate);
 
     result = priv_add_local_candidate_pruned (component, candidate);
