@@ -54,7 +54,7 @@
 
 #include "udp-bsd.h"
 
-/*** NiceUDPSocket ***/
+/*** NiceSocket ***/
 static int sock_recv_err (int fd)
 {
 #ifdef MSG_ERRQUEUE
@@ -74,7 +74,7 @@ static int sock_recv_err (int fd)
 
 static gint
 socket_recv (
-  NiceUDPSocket *sock,
+  NiceSocket *sock,
   NiceAddress *from,
   guint len,
   gchar *buf)
@@ -97,7 +97,7 @@ socket_recv (
 
 static gboolean
 socket_send (
-  NiceUDPSocket *sock,
+  NiceSocket *sock,
   const NiceAddress *to,
   guint len,
   const gchar *buf)
@@ -116,18 +116,18 @@ socket_send (
 }
 
 static void
-socket_close (NiceUDPSocket *sock)
+socket_close (NiceSocket *sock)
 {
   close (sock->fileno);
 }
 
-/*** NiceUDPSocketFactory ***/
+/*** NiceSocketFactory ***/
 
 static gboolean
 socket_factory_init_socket (
   G_GNUC_UNUSED
-  NiceUDPSocketFactory *man,
-  NiceUDPSocket *sock,
+  NiceSocketFactory *man,
+  NiceSocket *sock,
   NiceAddress *addr)
 {
   int sockfd = -1;
@@ -228,7 +228,7 @@ socket_factory_init_socket (
 static void
 socket_factory_close (
   G_GNUC_UNUSED
-  NiceUDPSocketFactory *man)
+  NiceSocketFactory *man)
 {
   (void)man;
 }
@@ -236,7 +236,7 @@ socket_factory_close (
 NICEAPI_EXPORT void
 nice_udp_bsd_socket_factory_init (
   G_GNUC_UNUSED
-  NiceUDPSocketFactory *man)
+  NiceSocketFactory *man)
 {
   man->init = socket_factory_init_socket;
   man->close = socket_factory_close;

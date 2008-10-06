@@ -38,12 +38,12 @@
 #ifndef _UDP_BSD_H
 #define _UDP_BSD_H
 
-#include "udp.h"
+#include "socket.h"
 
 G_BEGIN_DECLS
 
 void
-nice_udp_bsd_socket_factory_init (NiceUDPSocketFactory *man);
+nice_udp_bsd_socket_factory_init (NiceSocketFactory *man);
 
 G_END_DECLS
 

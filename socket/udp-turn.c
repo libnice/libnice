@@ -75,7 +75,7 @@ typedef struct {
   GList *channels;
   GList *retransmissions;
   ChannelBinding *current_binding;
-  NiceUDPSocket *udp_socket;
+  NiceSocket *base_socket;
   NiceAddress server_addr;
   uint8_t *username;
   size_t username_len;
@@ -148,7 +148,7 @@ priv_send_channel_bind (turn_priv *priv,  StunMessage *resp,
       priv->password, priv->password_len);
 
   if (stun_len > 0) {
-    nice_udp_socket_send (priv->udp_socket, &priv->server_addr,
+    nice_socket_send (priv->base_socket, &priv->server_addr,
         stun_len, (gchar *)buffer);
     return TRUE;
   }
@@ -156,7 +156,7 @@ priv_send_channel_bind (turn_priv *priv,  StunMessage *resp,
   return FALSE;
 }
 NICEAPI_EXPORT gboolean
-nice_udp_turn_socket_set_peer (NiceUDPSocket *sock, NiceAddress *peer)
+nice_udp_turn_socket_set_peer (NiceSocket *sock, NiceAddress *peer)
 {
   turn_priv *priv = (turn_priv *) sock->priv;
   StunMessage msg;
@@ -217,7 +217,7 @@ nice_udp_turn_socket_set_peer (NiceUDPSocket *sock, NiceAddress *peer)
       priv->current_binding = g_new0 (ChannelBinding, 1);
       priv->current_binding->channel = 0;
       priv->current_binding->peer = *peer;
-      nice_udp_socket_send (priv->udp_socket, &priv->server_addr,
+      nice_socket_send (priv->base_socket, &priv->server_addr,
           stun_len, (gchar *)buffer);
     }
     return TRUE;
@@ -236,7 +236,7 @@ nice_udp_turn_socket_set_peer (NiceUDPSocket *sock, NiceAddress *peer)
 
 gint
 nice_udp_turn_socket_parse_recv (
-  NiceUDPSocket *sock,
+  NiceSocket *sock,
   NiceAddress *from,
   guint len,
   gchar *buf,
@@ -366,7 +366,7 @@ nice_udp_turn_socket_parse_recv (
 
 static gint
 socket_recv (
-  NiceUDPSocket *sock,
+  NiceSocket *sock,
   NiceAddress *from,
   guint len,
   gchar *buf)
@@ -376,7 +376,7 @@ socket_recv (
   gint recv_len;
   NiceAddress recv_from;
 
-  recv_len = nice_udp_socket_recv (priv->udp_socket, &recv_from,
+  recv_len = nice_socket_recv (priv->base_socket, &recv_from,
       sizeof(recv_buf), (gchar *) recv_buf);
 
   return nice_udp_turn_socket_parse_recv (sock, from, len, buf, &recv_from,
@@ -385,7 +385,7 @@ socket_recv (
 
 static gboolean
 socket_send (
-  NiceUDPSocket *sock,
+  NiceSocket *sock,
   const NiceAddress *to,
   guint len,
   const gchar *buf)
@@ -460,18 +460,18 @@ socket_send (
   }
 
   if (msg_len > 0) {
-    nice_udp_socket_send (priv->udp_socket, &priv->server_addr,
+    nice_socket_send (priv->base_socket, &priv->server_addr,
         msg_len, (gchar *)buffer);
     return TRUE;
   }
  send:
-  nice_udp_socket_send (priv->udp_socket, to, len, buf);
+  nice_socket_send (priv->base_socket, to, len, buf);
 
   return TRUE;
 }
 
 static void
-socket_close (NiceUDPSocket *sock)
+socket_close (NiceSocket *sock)
 {
   turn_priv *priv = (turn_priv *) sock->priv;
   GList *i = priv->channels;
@@ -485,12 +485,12 @@ socket_close (NiceUDPSocket *sock)
   g_free (priv);
 }
 
-/*** NiceUDPSocketFactory ***/
+/*** NiceSocketFactory ***/
 
 static gboolean
 socket_factory_init_socket (
-  NiceUDPSocketFactory *man,
-  NiceUDPSocket *sock,
+  NiceSocketFactory *man,
+  NiceSocket *sock,
   NiceAddress *addr)
 {
   return FALSE;
@@ -498,10 +498,10 @@ socket_factory_init_socket (
 
 NICEAPI_EXPORT gboolean
 nice_udp_turn_create_socket_full (
-  NiceUDPSocketFactory *man,
-  NiceUDPSocket *sock,
+  NiceSocketFactory *man,
+  NiceSocket *sock,
   NiceAddress *addr,
-  NiceUDPSocket *udp_socket,
+  NiceSocket *base_socket,
   NiceAddress *server_addr,
   gchar *username,
   gchar *password,
@@ -527,7 +527,7 @@ nice_udp_turn_create_socket_full (
 
   priv->channels = NULL;
   priv->current_binding = NULL;
-  priv->udp_socket = udp_socket;
+  priv->base_socket = base_socket;
 
   if (compatibility == NICE_UDP_TURN_SOCKET_COMPATIBILITY_MSN) {
     priv->username = g_base64_decode (username, &priv->username_len);
@@ -546,7 +546,7 @@ nice_udp_turn_create_socket_full (
   priv->server_addr = *server_addr;
   priv->compatibility = compatibility;
   sock->addr = *addr;
-  sock->fileno = udp_socket->fileno;
+  sock->fileno = base_socket->fileno;
   sock->send = socket_send;
   sock->recv = socket_recv;
   sock->close = socket_close;
@@ -557,14 +557,14 @@ nice_udp_turn_create_socket_full (
 static void
 socket_factory_close (
   G_GNUC_UNUSED
-  NiceUDPSocketFactory *man)
+  NiceSocketFactory *man)
 {
 }
 
 NICEAPI_EXPORT void
 nice_udp_turn_socket_factory_init (
   G_GNUC_UNUSED
-  NiceUDPSocketFactory *man)
+  NiceSocketFactory *man)
 {
 
   man->init = socket_factory_init_socket;

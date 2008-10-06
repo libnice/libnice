@@ -35,10 +35,10 @@
  * file under either the MPL or the LGPL.
  */
 
-#ifndef _GOOGLE_RELAY_H
-#define _GOOGLE_RELAY_H
+#ifndef _UDP_TURN_H
+#define _UDP_TURN_H
 
-#include "udp.h"
+#include "socket.h"
 
 G_BEGIN_DECLS
 
@@ -50,7 +50,7 @@ typedef enum {
 
 gint
 nice_udp_turn_socket_parse_recv (
-  NiceUDPSocket *sock,
+  NiceSocket *sock,
   NiceAddress *from,
   guint len,
   gchar *buf,
@@ -59,14 +59,14 @@ nice_udp_turn_socket_parse_recv (
   guint recv_len);
 
 gboolean
-nice_udp_turn_socket_set_peer (NiceUDPSocket *sock, NiceAddress *peer);
+nice_udp_turn_socket_set_peer (NiceSocket *sock, NiceAddress *peer);
 
 gboolean
 nice_udp_turn_create_socket_full (
-  NiceUDPSocketFactory *man,
-  NiceUDPSocket *sock,
+  NiceSocketFactory *man,
+  NiceSocket *sock,
   NiceAddress *addr,
-  NiceUDPSocket *udp_socket,
+  NiceSocket *udp_socket,
   NiceAddress *server_addr,
   gchar *username,
   gchar *password,
@@ -74,9 +74,9 @@ nice_udp_turn_create_socket_full (
 
 
 void
-nice_udp_turn_socket_factory_init (NiceUDPSocketFactory *man);
+nice_udp_turn_socket_factory_init (NiceSocketFactory *man);
 
 G_END_DECLS
 
-#endif /* _UDP_BSD_H */
+#endif /* _UDP_TURN_H */
 
