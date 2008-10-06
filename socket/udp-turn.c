@@ -56,6 +56,15 @@
 #include "udp-bsd.h"
 #include <stun/stunagent.h>
 
+
+typedef struct {
+  StunMessage msg;
+  uint8_t buffer[STUN_MAX_MESSAGE_SIZE];
+  stun_timer_t timer;
+  gboolean done;
+} UDPMessage;
+
+
 typedef struct {
   NiceAddress peer;
   uint16_t channel;
@@ -64,6 +73,7 @@ typedef struct {
 typedef struct {
   StunAgent agent;
   GList *channels;
+  GList *retransmissions;
   ChannelBinding *current_binding;
   NiceUDPSocket *udp_socket;
   NiceAddress server_addr;
@@ -74,6 +84,19 @@ typedef struct {
   NiceUdpTurnSocketCompatibility compatibility;
 } turn_priv;
 
+
+static gboolean retransmit_udp_packet (turn_priv *priv)
+{
+    NiceAgent *agent = pointer;
+  gboolean ret;
+
+  g_static_rec_mutex_lock (&agent->mutex);
+  ret = priv_discovery_tick_unlocked (pointer);
+  g_static_rec_mutex_unlock (&agent->mutex);
+
+  return ret;
+}
+}
 
 static gboolean
 priv_send_channel_bind (turn_priv *priv,  StunMessage *resp,
