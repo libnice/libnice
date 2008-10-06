@@ -55,6 +55,7 @@
 #include "udp-turn.h"
 #include "udp-bsd.h"
 #include <stun/stunagent.h>
+#include <stun/usages/timer.h>
 
 
 typedef struct {
@@ -84,7 +85,7 @@ typedef struct {
   NiceUdpTurnSocketCompatibility compatibility;
 } turn_priv;
 
-
+#if 0
 static gboolean retransmit_udp_packet (turn_priv *priv)
 {
     NiceAgent *agent = pointer;
@@ -96,7 +97,7 @@ static gboolean retransmit_udp_packet (turn_priv *priv)
 
   return ret;
 }
-}
+#endif
 
 static gboolean
 priv_send_channel_bind (turn_priv *priv,  StunMessage *resp,
