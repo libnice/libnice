@@ -13,37 +13,24 @@ AM_CFLAGS = \
 	$(GLIB_CFLAGS) \
 	-I $(top_srcdir)/address
 
-COMMON_LDADD = libudp.la $(GLIB_LIBS) $(top_builddir)/address/libaddress.la
+COMMON_LDADD = libsocket.la $(GLIB_LIBS) $(top_builddir)/address/libaddress.la  $(top_builddir)/stun/libstun.la
 
-noinst_LTLIBRARIES = libudp.la
+noinst_LTLIBRARIES = libsocket.la
 
-libudp_la_SOURCES = \
-	udp.h \
-	udp-generic.c \
+libsocket_la_SOURCES = \
+	socket.h \
+	socket.c \
 	udp-bsd.h \
 	udp-bsd.c \
 	udp-turn.h \
-	udp-turn.c \
-	udp-fake.h \
-	udp-fake.c
+	udp-turn.c
 
-noinst_PROGRAMS = udp-client udp-echo-server
-
-udp_client_LDADD = $(COMMON_LDADD)
-
-udp_echo_server_LDADD = $(COMMON_LDADD)
-
-check_PROGRAMS = test-fake test-bsd
-dist_check_SCRIPTS = test-echo.sh
-
-test_fake_LDADD = $(COMMON_LDADD)
+check_PROGRAMS = test-bsd
 
 test_bsd_LDADD = $(COMMON_LDADD)
 
-test-echo.sh::
-	chmod +x $(srcdir)/$@
 
-TESTS = $(dist_check_SCRIPTS) $(check_PROGRAMS)
+TESTS = $(check_PROGRAMS)
 
-pkginclude_HEADERS = udp.h udp-fake.h udp-bsd.h
+pkginclude_HEADERS = socket.h udp-bsd.h udp-turn.h
 

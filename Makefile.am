@@ -13,7 +13,7 @@ ALWAYS_SUBDIRS = \
 	local \
 	stun \
 	tests \
-	udp \
+	socket \
 	random \
 	agent \
 	nice

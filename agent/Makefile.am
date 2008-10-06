@@ -14,7 +14,7 @@ AM_CFLAGS = \
 	-I $(top_srcdir) \
 	-I $(top_srcdir)/address \
 	-I $(top_srcdir)/random \
-	-I $(top_srcdir)/udp \
+	-I $(top_srcdir)/socket \
 	-I $(top_srcdir)/stun
 
 COMMON_LDADD = libagent.la $(GLIB_LIBS)
@@ -57,12 +57,12 @@ libagent_la_SOURCES = \
 libagent_la_LIBADD = \
 	../address/libaddress.la \
 	../random/librandom.la \
-	../udp/libudp.la \
+	../socket/libsocket.la \
 	../stun/libstun.la
 libagent_la_DEPENDENCIES = \
 	../address/libaddress.la \
 	../random/librandom.la \
-	../udp/libudp.la \
+	../socket/libsocket.la \
 	../stun/libstun.la
 
 check_PROGRAMS = \

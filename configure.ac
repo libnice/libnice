@@ -13,7 +13,7 @@ AC_CONFIG_FILES([
 	stun/tests/Makefile
 	stun/tools/Makefile
 	local/Makefile
-	udp/Makefile
+	socket/Makefile
 	nice/Makefile
 	nice/nice.pc
 	random/Makefile

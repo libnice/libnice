@@ -9,7 +9,7 @@
 AM_CFLAGS = -Wall -Werror \
 	$(GST_CFLAGS) \
 	-I $(top_srcdir) \
-	-I $(top_srcdir)/udp \
+	-I $(top_srcdir)/socket \
 	-I $(top_srcdir)/agent \
 	-I $(top_srcdir)/random \
 	-I $(top_srcdir)/address \
