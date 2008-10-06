@@ -40,55 +40,56 @@
 
 #include <string.h>
 
-#include "udp-bsd.h"
+#include "socket.h"
 
 int
 main (void)
 {
-  NiceUDPSocketFactory factory;
-  NiceUDPSocket server;
-  NiceUDPSocket client;
+  NiceSocketFactory *factory;
+  NiceSocket *server;
+  NiceSocket *client;
   NiceAddress tmp;
   gchar buf[5];
 
-  nice_udp_bsd_socket_factory_init (&factory);
+  factory = nice_socket_factory_new (NICE_SOCKET_FACTORY_UDP_BSD);
 
-  if (!nice_udp_socket_factory_make (&factory, &server, NULL))
+  server = nice_socket_new (factory, NULL);
+  if (!server)
     g_assert_not_reached();
 
   // not bound to a particular interface
-  g_assert (server.addr.s.ip4.sin_addr.s_addr == 0);
+  g_assert (server->addr.s.ip4.sin_addr.s_addr == 0);
   // is bound to a particular port
-  g_assert (nice_address_get_port (&server.addr) != 0);
+  g_assert (nice_address_get_port (&server->addr) != 0);
 
-  g_assert (nice_udp_socket_factory_make (&factory, &client, NULL));
+  g_assert ((client = nice_socket_new (factory, NULL)) != NULL);
   // not bound to a particular interface
-  g_assert (client.addr.s.ip4.sin_addr.s_addr == 0);
+  g_assert (client->addr.s.ip4.sin_addr.s_addr == 0);
   // is bound to a particular port
-  g_assert (nice_address_get_port (&client.addr) != 0);
+  g_assert (nice_address_get_port (&client->addr) != 0);
 
   if (!nice_address_set_from_string (&tmp, "127.0.0.1"))
     g_assert_not_reached();
-  g_assert (nice_address_get_port (&server.addr) != 0);
-  nice_address_set_port (&tmp, nice_address_get_port (&server.addr));
+  g_assert (nice_address_get_port (&server->addr) != 0);
+  nice_address_set_port (&tmp, nice_address_get_port (&server->addr));
   g_assert (nice_address_get_port (&tmp) != 0);
 
-  nice_udp_socket_send (&client, &tmp, 5, "hello");
+  nice_socket_send (client, &tmp, 5, "hello");
 
-  g_assert (5 == nice_udp_socket_recv (&server, &tmp, 5, buf));
+  g_assert (5 == nice_socket_recv (server, &tmp, 5, buf));
   g_assert (0 == strncmp (buf, "hello", 5));
   g_assert (nice_address_get_port (&tmp)
-             == nice_address_get_port (&client.addr));
+             == nice_address_get_port (&client->addr));
 
-  nice_udp_socket_send (&server, &tmp, 5, "uryyb");
-  g_assert (5 == nice_udp_socket_recv (&client, &tmp, 5, buf));
+  nice_socket_send (server, &tmp, 5, "uryyb");
+  g_assert (5 == nice_socket_recv (client, &tmp, 5, buf));
   g_assert (0 == strncmp (buf, "uryyb", 5));
   g_assert (nice_address_get_port (&tmp)
-             == nice_address_get_port (&server.addr));
+             == nice_address_get_port (&server->addr));
 
-  nice_udp_socket_close (&client);
-  nice_udp_socket_close (&server);
-  nice_udp_socket_factory_close (&factory);
+  nice_socket_free (client);
+  nice_socket_free (server);
+  nice_socket_factory_free (factory);
   return 0;
 }
 
