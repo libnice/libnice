@@ -42,26 +42,60 @@
 
 #include <glib.h>
 
-#include <udp.h>
+#include "socket.h"
+#include "udp-bsd.h"
+#include "udp-turn.h"
 
-NICEAPI_EXPORT gboolean
-nice_udp_socket_factory_make (
-  NiceUDPSocketFactory *man,
-  NiceUDPSocket *sock,
-  NiceAddress *addr)
+
+NICEAPI_EXPORT NiceSocketFactory *
+nice_socket_factory_new (NiceSocketFactoryType type)
 {
-  return man->init (man, sock, addr);
+  NiceSocketFactory *man = g_new0 (NiceSocketFactory, 1);
+
+  if (man) {
+    switch(type) {
+      case NICE_SOCKET_FACTORY_UDP_BSD:
+        nice_udp_bsd_socket_factory_init (man);
+        break;
+      case NICE_SOCKET_FACTORY_UDP_RELAY:
+        nice_udp_turn_socket_factory_init (man);
+        break;
+      default:
+        g_free (man);
+        man = NULL;
+    }
+  }
+
+  return man;
 }
 
 NICEAPI_EXPORT void
-nice_udp_socket_factory_close (NiceUDPSocketFactory *man)
+nice_socket_factory_free (NiceSocketFactory *man)
 {
-  man->close (man);
+  if (man) {
+    man->close (man);
+    g_free (man);
+  }
+}
+
+NICEAPI_EXPORT NiceSocket *
+nice_socket_new (
+  NiceSocketFactory *man,
+  NiceAddress *addr)
+{
+  NiceSocket *sock = g_slice_new0 (NiceSocket);
+
+  if (!man || !sock || !man->init (man, sock, addr)) {
+    g_free (sock);
+    sock = NULL;
+  }
+
+  return sock;
 }
 
 NICEAPI_EXPORT gint
-nice_udp_socket_recv (
-  NiceUDPSocket *sock,
+nice_socket_recv (
+  NiceSocket *sock,
   NiceAddress *from,
   guint len,
   gchar *buf)
@@ -70,8 +104,8 @@ nice_udp_socket_recv (
 }
 
 NICEAPI_EXPORT void
-nice_udp_socket_send (
-  NiceUDPSocket *sock,
+nice_socket_send (
+  NiceSocket *sock,
   const NiceAddress *to,
   guint len,
   const gchar *buf)
@@ -80,8 +114,11 @@ nice_udp_socket_send (
 }
 
 NICEAPI_EXPORT void
-nice_udp_socket_close (NiceUDPSocket *sock)
+nice_socket_free (NiceSocket *sock)
 {
-  sock->close (sock);
+  if (sock) {
+    sock->close (sock);
+    g_slice_free (NiceSocket,sock);
+  }
 }
 

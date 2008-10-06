@@ -35,36 +35,48 @@
  * file under either the MPL or the LGPL.
  */
 
-#ifndef _UDP_H
-#define _UDP_H
+#ifndef _SOCKET_H
+#define _SOCKET_H
 
 #include "address.h"
 
 G_BEGIN_DECLS
 
-typedef struct _NiceUDPSocket NiceUDPSocket;
+typedef struct _NiceSocket NiceSocket;
 
-struct _NiceUDPSocket
+struct _NiceSocket
 {
   NiceAddress addr;
   guint fileno;
-  gint (*recv) (NiceUDPSocket *sock, NiceAddress *from, guint len,
+  gint (*recv) (NiceSocket *sock, NiceAddress *from, guint len,
       gchar *buf);
-  gboolean (*send) (NiceUDPSocket *sock, const NiceAddress *to, guint len,
+  gboolean (*send) (NiceSocket *sock, const NiceAddress *to, guint len,
       const gchar *buf);
-  void (*close) (NiceUDPSocket *sock);
+  void (*close) (NiceSocket *sock);
   void *priv;
 };
 
-typedef struct _NiceUDPSocketManager NiceUDPSocketFactory;
+typedef struct _NiceSocketFactory NiceSocketFactory;
 
-struct _NiceUDPSocketManager
+struct _NiceSocketFactory
 {
-  gboolean (*init) (NiceUDPSocketFactory *man, NiceUDPSocket *sock,
+  gboolean (*init) (NiceSocketFactory *man, NiceSocket *sock,
       NiceAddress *sin);
-  void (*close) (NiceUDPSocketFactory *man);
+  void (*close) (NiceSocketFactory *man);
   void *priv;
 };
+
+typedef enum {
+  NICE_SOCKET_FACTORY_UDP_BSD,
+  NICE_SOCKET_FACTORY_UDP_RELAY,
+} NiceSocketFactoryType;
+
+G_GNUC_WARN_UNUSED_RESULT
+NiceSocketFactory *
+nice_socket_factory_new (NiceSocketFactoryType type);
+
+void
+nice_socket_factory_free (NiceSocketFactory *man);
 
 /**
  * If sin is not NULL, the new socket will be bound to that IP address/port.
@@ -72,34 +84,30 @@ struct _NiceUDPSocketManager
  * address bound to will be set in sock->addr.
  */
 G_GNUC_WARN_UNUSED_RESULT
-gboolean
-nice_udp_socket_factory_make (
-  NiceUDPSocketFactory *man,
-  NiceUDPSocket *sock,
-  NiceAddress *addr);
-
-void
-nice_udp_socket_factory_close (NiceUDPSocketFactory *man);
+NiceSocket *
+nice_socket_new (
+  NiceSocketFactory *man,
+  NiceAddress *adddr);
 
 G_GNUC_WARN_UNUSED_RESULT
 gint
-nice_udp_socket_recv (
-  NiceUDPSocket *sock,
+nice_socket_recv (
+  NiceSocket *sock,
   NiceAddress *from,
   guint len,
   gchar *buf);
 
 void
-nice_udp_socket_send (
-  NiceUDPSocket *sock,
+nice_socket_send (
+  NiceSocket *sock,
   const NiceAddress *to,
   guint len,
   const gchar *buf);
 
 void
-nice_udp_socket_close (NiceUDPSocket *sock);
+nice_socket_free (NiceSocket *sock);
 
 G_END_DECLS
 
-#endif /* _UDP_H */
+#endif /* _SOCKET_H */
 
