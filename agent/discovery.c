@@ -289,57 +289,52 @@ NiceCandidate *discovery_add_local_host_candidate (
 
   candidate = nice_candidate_new (NICE_CANDIDATE_TYPE_HOST);
   if (candidate) {
-    NiceUDPSocket *udp_socket = g_slice_new0 (NiceUDPSocket);
-    if (udp_socket) {
-      candidate->stream_id = stream_id;
-      candidate->component_id = component_id;
-      candidate->addr = *address;
-      candidate->base_addr = *address;
-      if (agent->compatibility == NICE_COMPATIBILITY_GOOGLE) {
-        candidate->priority = nice_candidate_jingle_priority (candidate) * 1000;
-      } else if (agent->compatibility == NICE_COMPATIBILITY_MSN)  {
-        candidate->priority = nice_candidate_msn_priority (candidate) * 1000;
-      } else {
-        candidate->priority = nice_candidate_ice_priority (candidate);
-      }
+    candidate->stream_id = stream_id;
+    candidate->component_id = component_id;
+    candidate->addr = *address;
+    candidate->base_addr = *address;
+    if (agent->compatibility == NICE_COMPATIBILITY_GOOGLE) {
+      candidate->priority = nice_candidate_jingle_priority (candidate) * 1000;
+    } else if (agent->compatibility == NICE_COMPATIBILITY_MSN)  {
+      candidate->priority = nice_candidate_msn_priority (candidate) * 1000;
+    } else {
+      candidate->priority = nice_candidate_ice_priority (candidate);
+    }
 
-      priv_generate_candidate_credentials (agent, candidate);
-      priv_assign_foundation (agent, candidate);
+    priv_generate_candidate_credentials (agent, candidate);
+    priv_assign_foundation (agent, candidate);
 
       /* note: candidate username and password are left NULL as stream
 	 level ufrag/password are used */
-      if (nice_udp_socket_factory_make (&agent->udp_socket_factory,
-					udp_socket, address)) {
-	gboolean result;
+    udp_socket = nice_socket_new (agent->udp_socket_factory, address);
+    if (udp_socket) {
+      gboolean result;
 
-	priv_attach_stream_component_socket (agent, stream, component,
-            udp_socket);
+      priv_attach_stream_component_socket (agent, stream, component, udp_socket);
 
-        candidate->sockptr = udp_socket;
-        candidate->addr = udp_socket->addr;
-        candidate->base_addr = udp_socket->addr;
+      candidate->sockptr = udp_socket;
+      candidate->addr = udp_socket->addr;
+      candidate->base_addr = udp_socket->addr;
 
-	result = priv_add_local_candidate_pruned (component, candidate);
+      result = priv_add_local_candidate_pruned (component, candidate);
 
-	if (result == TRUE) {
-	  GSList *modified_list = g_slist_append (component->sockets, udp_socket);
-	  if (modified_list) {
-	    /* success: store a pointer to the sockaddr */
-	    component->sockets = modified_list;
-	    agent_signal_new_candidate (agent, candidate);
-	  }
-	  else { /* error: list memory allocation */
-	    candidate = NULL; /* note: candidate already owned by component */
-	  }
-	}
-	else /* error: memory allocation, or duplicate candidatet */
-	  errors = TRUE;
+      if (result == TRUE) {
+        GSList *modified_list = g_slist_append (component->sockets, udp_socket);
+        if (modified_list) {
+          /* success: store a pointer to the sockaddr */
+          component->sockets = modified_list;
+          agent_signal_new_candidate (agent, candidate);
+        } else { /* error: list memory allocation */
+          candidate = NULL; /* note: candidate already owned by component */
+        }
+      } else {
+        /* error: memory allocation, or duplicate candidates */
+        errors = TRUE;
       }
-      else /* error: socket factory make */
-	errors = TRUE;
-    }
-    else /* error: udp socket memory allocation */
+    } else {
+      /* error: socket new */
       errors = TRUE;
+    }
   }
 
   /* clean up after errors */
