@@ -1423,7 +1423,7 @@ nice_agent_recv (
               {
                 NiceSocket *socket;
 
-		socket = component_find_udp_socket_by_fd (component, j);
+		socket = component_find_socket_by_fd (component, j);
                 g_assert (socket);
 
                 len = _nice_agent_recv (agent, stream, component, socket,
@@ -1464,7 +1464,7 @@ nice_agent_recv_sock (
     goto done;
   }
 
-  socket = component_find_udp_socket_by_fd (component, sock);
+  socket = component_find_socket_by_fd (component, sock);
   g_assert (socket);
 
   ret = _nice_agent_recv (agent, stream, component,
@@ -1565,7 +1565,7 @@ nice_agent_poll_read (
                 Stream *s = i->data;
                 Component *c = stream_find_component_by_fd (s, j);
 
-		socket = component_find_udp_socket_by_fd (c, j);
+		socket = component_find_socket_by_fd (c, j);
 
                 if (socket != NULL) {
 		  stream = s;

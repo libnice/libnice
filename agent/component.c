@@ -119,8 +119,8 @@ component_free (Component *cmp)
  * Note: there might be multiple sockets using the same
  *       handle.
  */
-NiceUDPSocket *
-component_find_udp_socket_by_fd (Component *component, guint fd)
+NiceSocket *
+component_find_socket_by_fd (Component *component, guint fd)
 {
   GSList *i;
 
