@@ -68,7 +68,7 @@ void stun_sha1 (const uint8_t *msg, size_t len, uint8_t *sha,
 
   /* RFC 3489 specifies that the message's size should be 64 bytes,
      and \x00 padding should be done */
-  if (padding) {
+  if (padding && ((len - 24) % 64) > 0) {
     uint16_t pad_size = 64 - ((len - 24) % 64);
     int i;
     uint8_t pad_char[1] = {0};
