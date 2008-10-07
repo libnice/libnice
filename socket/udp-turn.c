@@ -267,18 +267,18 @@ nice_udp_turn_socket_parse_recv (
           goto recv;
       }
 
-      if (stun_message_get_class (&msg) == STUN_RESPONSE &&
-          stun_message_get_method (&msg) == STUN_SEND) {
-        if (priv->compatibility == NICE_UDP_TURN_SOCKET_COMPATIBILITY_GOOGLE) {
+      if (stun_message_get_method (&msg) == STUN_SEND) {
+        if (stun_message_get_class (&msg) == STUN_RESPONSE &&
+            priv->compatibility == NICE_UDP_TURN_SOCKET_COMPATIBILITY_GOOGLE) {
           uint32_t options = 0;
           if (stun_message_find32 (&msg, STUN_ATTRIBUTE_OPTIONS, &options) == 0 &&
               options & 0x1)
             goto msn_google_lock;
         }
         return 0;
-      } else if (stun_message_get_class (&msg) == STUN_RESPONSE &&
-          stun_message_get_method (&msg) == STUN_OLD_SET_ACTIVE_DST) {
-        if (priv->compatibility == NICE_UDP_TURN_SOCKET_COMPATIBILITY_MSN)
+      } else if (stun_message_get_method (&msg) == STUN_OLD_SET_ACTIVE_DST) {
+        if (stun_message_get_class (&msg) == STUN_RESPONSE &&
+            priv->compatibility == NICE_UDP_TURN_SOCKET_COMPATIBILITY_MSN)
           goto msn_google_lock;
 
         return 0;
