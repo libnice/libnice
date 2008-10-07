@@ -41,7 +41,6 @@
 
 #include <string.h>
 
-#include "udp.h"
 #include "agent.h"
 
 int
@@ -66,7 +65,6 @@ main (void)
 
     {
       NiceCandidate *candidate;
-      NiceUDPSocket *sock;
       guint len;
       gchar buf[1024];
       GSList *candidates;
@@ -74,8 +72,7 @@ main (void)
       candidates = nice_agent_get_local_candidates (agent, stream_id, 1);
       candidate = candidates->data;
       g_slist_free (candidates);
-      sock = candidate->sockptr;
-      nice_udp_socket_send (sock, &candidate->addr, 7, "\x80lalala");
+      nice_socket_send (candidate->sockptr, &candidate->addr, 7, "\x80lalala");
       len = nice_agent_recv (agent, stream_id,
           candidate->component_id, 1024, buf);
       g_assert (len == 7);

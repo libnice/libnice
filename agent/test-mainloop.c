@@ -86,15 +86,13 @@ main (void)
       g_main_loop_get_context (loop), recv_cb, GUINT_TO_POINTER (42));
 
     {
-      NiceUDPSocket *sock;
       NiceCandidate *candidate;
       GSList *candidates;
 
       candidates = nice_agent_get_local_candidates (agent, 1, 1);
       candidate = candidates->data;
-      sock = candidate->sockptr;
 
-      nice_udp_socket_send (sock, &(candidate->addr), 6, "\x80hello");
+      nice_socket_send (candidate->sockptr, &(candidate->addr), 6, "\x80hello");
       g_slist_free (candidates);
     }
 

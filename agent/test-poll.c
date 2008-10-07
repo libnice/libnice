@@ -44,7 +44,6 @@
 #include <unistd.h>
 
 #include <nice/nice.h>
-#include "udp.h"
 
 
 static gboolean cb_called = FALSE;
@@ -73,7 +72,7 @@ main (void)
 {
   NiceAgent *agent;
   NiceAddress addr;
-  NiceUDPSocket *sock;
+  NiceSocket *sock;
   gint pipe_fds[2];
   GSList *fds = NULL;
   GSList *readable;
@@ -132,7 +131,7 @@ main (void)
 
   /* send fake data */
 
-  nice_udp_socket_send (sock, &addr, 7, "\x80lalala");
+  nice_socket_send (sock, &addr, 7, "\x80lalala");
 
   /* poll again */
 
