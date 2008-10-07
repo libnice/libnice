@@ -68,8 +68,6 @@ struct _NiceAgent
   GObject parent;                 /**< gobject pointer */
 
   gboolean full_mode;             /**< property: full-mode */
-  NiceSocketFactory *udp_socket_factory; /**< property: socket factory */
-  NiceSocketFactory *relay_socket_factory; /**< property: socket factory */
   GTimeVal next_check_tv;         /**< property: next conncheck timestamp */
   gchar *stun_server_ip;          /**< property: STUN server IP */
   guint stun_server_port;         /**< property: STUN server port */

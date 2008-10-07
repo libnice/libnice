@@ -60,7 +60,7 @@
 #include "discovery.h"
 #include "stun/usages/bind.h"
 #include "stun/usages/turn.h"
-#include "udp-turn.h"
+#include "socket.h"
 
 static inline int priv_timer_expired (GTimeVal *restrict timer, GTimeVal *restrict now)
 {
@@ -306,7 +306,7 @@ NiceCandidate *discovery_add_local_host_candidate (
 
       /* note: candidate username and password are left NULL as stream
 	 level ufrag/password are used */
-    udp_socket = nice_socket_new (agent->udp_socket_factory, address);
+    udp_socket = nice_udp_bsd_socket_new (address);
     if (udp_socket) {
       gboolean result;
 
@@ -431,7 +431,6 @@ discovery_add_relay_candidate (
 
   candidate = nice_candidate_new (NICE_CANDIDATE_TYPE_RELAYED);
   if (candidate) {
-    relay_socket = g_slice_new0 (NiceSocket);
     if (relay_socket) {
       if (agent->compatibility == NICE_COMPATIBILITY_GOOGLE) {
         candidate->priority = nice_candidate_jingle_priority (candidate) * 1000;
@@ -446,10 +445,11 @@ discovery_add_relay_candidate (
       candidate->addr = *address;
 
       /* step: link to the base candidate+socket */
-      if (nice_udp_turn_create_socket_full (agent->relay_socket_factory,
-              relay_socket, address, base_socket, &component->turn_server,
-              component->turn_username, component->turn_password,
-              priv_agent_to_udp_turn_compatibility (agent))) {
+      relay_socket = nice_udp_turn_socket_new (address,
+          base_socket, &component->turn_server,
+          component->turn_username, component->turn_password,
+          priv_agent_to_udp_turn_compatibility (agent), &agent->mutex);
+      if (relay_socket) {
         candidate->sockptr = relay_socket;
         candidate->base_addr = base_socket->addr;
 
@@ -466,12 +466,18 @@ discovery_add_relay_candidate (
         result = priv_add_local_candidate_pruned (component, candidate);
         if (result) {
           agent_signal_new_candidate (agent, candidate);
-        } else /* error: memory allocation, or duplicate candidate */
+        } else {
+          /* error: memory allocation, or duplicate candidate */
           errors = TRUE;
-      } else /* error: socket factory make */
+        }
+      } else {
+        /* error: socket factory make */
         errors = TRUE;
-    } else /* error: udp socket memory allocation */
+      }
+    } else {
+      /* error: udp socket memory allocation */
       errors = TRUE;
+    }
   }
 
   /* clean up after errors */
@@ -479,7 +485,7 @@ discovery_add_relay_candidate (
     if (candidate)
       nice_candidate_free (candidate), candidate = NULL;
     if (relay_socket)
-      g_slice_free (NiceSocket, relay_socket);
+      nice_socket_free (relay_socket);
   }
   return candidate;
 }

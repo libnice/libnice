@@ -376,11 +376,6 @@ nice_agent_init (NiceAgent *agent)
       STUN_AGENT_USAGE_SHORT_TERM_CREDENTIALS |
       STUN_AGENT_USAGE_USE_FINGERPRINT);
 
-  agent->udp_socket_factory =
-      nice_socket_factory_new (NICE_SOCKET_FACTORY_UDP_BSD);
-  agent->relay_socket_factory =
-      nice_socket_factory_new (NICE_SOCKET_FACTORY_UDP_RELAY);
-
   agent->rng = nice_rng_new ();
   priv_generate_tie_breaker (agent);
 
@@ -1801,11 +1796,6 @@ nice_agent_dispose (GObject *object)
 
   if (G_OBJECT_CLASS (nice_agent_parent_class)->dispose)
     G_OBJECT_CLASS (nice_agent_parent_class)->dispose (object);
-
-  nice_socket_factory_free (agent->udp_socket_factory);
-  agent->udp_socket_factory = NULL;
-  nice_socket_factory_free (agent->relay_socket_factory);
-  agent->relay_socket_factory = NULL;
 
   g_static_rec_mutex_free (&agent->mutex);
 }
