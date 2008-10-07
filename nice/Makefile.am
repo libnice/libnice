@@ -35,48 +35,7 @@ AM_CFLAGS = \
 	-I $(top_srcdir)/socket \
 	-I $(top_srcdir)/stun
 
-EXTRA_PROGRAMS = \
-	ice-test-client \
-	ice-test-server \
-	jingle-test-server
-
 COMMON_LDADD = libnice.la $(GLIB_LIBS)
-
-ice_test_client_SOURCES = \
-	ice-test-client.c \
-	readline.h \
-	readline.c \
-	util.h \
-	util.c
-
-ice_test_client_LDADD = $(top_builddir)/stun/libstun.la $(COMMON_LDADD)
-
-ice_test_server_SOURCES = \
-	ice-test-server.c \
-	readline.h \
-	readline.c \
-	util.h \
-	util.c
-
-ice_test_server_LDADD = $(COMMON_LDADD)
-
-jingle_test_server_LDADD = $(COMMON_LDADD)
-
-check_PROGRAMS = \
-	test-readline
-
-# XXX: test programs disabled due to changes in API
-EXTRA_PROGRAMS += \
-	test-util
-
-test_readline_SOURCES = test-readline.c readline.h readline.c
-
-test_readline_LDADD = $(COMMON_LDADD)
-
-test_util_SOURCES = test-util.c util.h util.c
-
-test_util_LDADD = $(COMMON_LDADD)
-
 test-symbols.sh::
 	chmod +x $(srcdir)/$@
 
@@ -89,7 +48,7 @@ CLEANFILES += libnice.symbols
 check_SCRIPTS = test-symbols.sh
 check_DATA = libnice.symbols
 
-TESTS = $(check_PROGRAMS) $(check_SCRIPTS)
+TESTS = $(check_SCRIPTS)
 
 EXTRA_DIST = $(check_SCRIPTS) libnice.sym
 
