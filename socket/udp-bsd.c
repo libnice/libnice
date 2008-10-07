@@ -121,7 +121,6 @@ socket_close (NiceSocket *sock)
   close (sock->fileno);
 }
 
-/*** NiceSocketFactory ***/
 
 NiceSocket *
 nice_udp_bsd_socket_new (NiceAddress *addr)

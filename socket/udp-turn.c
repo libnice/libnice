@@ -486,7 +486,6 @@ socket_close (NiceSocket *sock)
   g_free (priv);
 }
 
-/*** NiceSocketFactory ***/
 
 NICEAPI_EXPORT NiceSocket *
 nice_udp_turn_socket_new (

@@ -45,15 +45,13 @@
 int
 main (void)
 {
-  NiceSocketFactory *factory;
   NiceSocket *server;
   NiceSocket *client;
   NiceAddress tmp;
   gchar buf[5];
 
-  factory = nice_socket_factory_new (NICE_SOCKET_FACTORY_UDP_BSD);
 
-  server = nice_socket_new (factory, NULL);
+  server = nice_udp_bsd_socket_new (NULL);
   if (!server)
     g_assert_not_reached();
 
@@ -62,7 +60,7 @@ main (void)
   // is bound to a particular port
   g_assert (nice_address_get_port (&server->addr) != 0);
 
-  g_assert ((client = nice_socket_new (factory, NULL)) != NULL);
+  g_assert ((client = nice_udp_bsd_socket_new (NULL)) != NULL);
   // not bound to a particular interface
   g_assert (client->addr.s.ip4.sin_addr.s_addr == 0);
   // is bound to a particular port
@@ -89,7 +87,6 @@ main (void)
 
   nice_socket_free (client);
   nice_socket_free (server);
-  nice_socket_factory_free (factory);
   return 0;
 }
 
