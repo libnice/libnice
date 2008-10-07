@@ -34,21 +34,3 @@ libgstnice_la_SOURCES = \
 libgstnice_la_LIBADD = $(COMMON_LDADD)
 
 libgstnice_la_LDFLAGS = -module -avoid-version
-
-# programs
-
-#check_PROGRAMS = \
-#	test
-
-#test_LDADD = \
-#	$(COMMON_LDADD) \
-#	../stun/libstun.la \
-#	libgstnice.la
-
-# TESTS = $(check_PROGRAMS)
-
-#noinst_PROGRAMS = \
-#	jingle-gst-test-server
-
-#jingle_gst_test_server_LDADD = $(COMMON_LDADD)
-
