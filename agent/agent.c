@@ -57,8 +57,7 @@
 
 #include "debug.h"
 
-#include "udp.h"
-#include "udp-bsd.h"
+#include "socket.h"
 #include "udp-turn.h"
 #include "candidate.h"
 #include "component.h"
@@ -377,8 +376,10 @@ nice_agent_init (NiceAgent *agent)
       STUN_AGENT_USAGE_SHORT_TERM_CREDENTIALS |
       STUN_AGENT_USAGE_USE_FINGERPRINT);
 
-  nice_udp_bsd_socket_factory_init (&agent->udp_socket_factory);
-  nice_udp_turn_socket_factory_init (&agent->relay_socket_factory);
+  agent->udp_socket_factory =
+      nice_socket_factory_new (NICE_SOCKET_FACTORY_UDP_BSD);
+  agent->relay_socket_factory =
+      nice_socket_factory_new (NICE_SOCKET_FACTORY_UDP_RELAY);
 
   agent->rng = nice_rng_new ();
   priv_generate_tie_breaker (agent);
@@ -1305,22 +1306,21 @@ _nice_agent_recv (
   NiceAgent *agent,
   Stream *stream,
   Component *component,
-  NiceUDPSocket *udp_socket,
+  NiceSocket *socket,
   guint buf_len,
   gchar *buf)
 {
   NiceAddress from;
   gint len;
 
-  len = nice_udp_socket_recv (udp_socket, &from,
-			      buf_len, buf);
+  len = nice_socket_recv (socket, &from,  buf_len, buf);
 
 #ifndef NDEBUG
   if (len >= 0) {
     gchar tmpbuf[INET6_ADDRSTRLEN];
     nice_address_to_string (&from, tmpbuf);
     nice_debug ("Agent %p : Packet received on local socket %u from [%s]:%u (%u octets).", agent,
-        udp_socket->fileno, tmpbuf, nice_address_get_port (&from), len);
+        socket->fileno, tmpbuf, nice_address_get_port (&from), len);
   }
 #endif
 
@@ -1341,7 +1341,7 @@ _nice_agent_recv (
       NiceCandidate *cand = i->data;
       if (cand->type == NICE_CANDIDATE_TYPE_RELAYED) {
         len = nice_udp_turn_socket_parse_recv (cand->sockptr, &from, len, buf, &from, buf, len);
-        udp_socket = cand->sockptr;
+        socket = cand->sockptr;
       }
     }
   }
@@ -1352,7 +1352,7 @@ _nice_agent_recv (
     return len;
 
 
-  if (conn_check_handle_inbound_stun (agent, stream, component, udp_socket,
+  if (conn_check_handle_inbound_stun (agent, stream, component, socket,
           &from, buf, len))
     /* handled STUN message*/
     return 0;
@@ -1399,7 +1399,7 @@ nice_agent_recv (
 
   for (i = component->sockets; i; i = i->next)
     {
-      NiceUDPSocket *sockptr = i->data;
+      NiceSocket *sockptr = i->data;
 
       FD_SET (sockptr->fileno, &fds);
       max_fd = MAX (sockptr->fileno, max_fd);
@@ -1421,7 +1421,7 @@ nice_agent_recv (
           for (j = 0; j <= max_fd; j++)
             if (FD_ISSET (j, &fds))
               {
-                NiceUDPSocket *socket;
+                NiceSocket *socket;
 
 		socket = component_find_udp_socket_by_fd (component, j);
                 g_assert (socket);
@@ -1454,7 +1454,7 @@ nice_agent_recv_sock (
   guint buf_len,
   gchar *buf)
 {
-  NiceUDPSocket *socket;
+  NiceSocket *socket;
   Stream *stream;
   Component *component;
   guint ret = 0;
@@ -1517,7 +1517,7 @@ nice_agent_poll_read (
 
 	  for (j = component->sockets; j; j = j->next)
 	    {
-	      NiceUDPSocket *sockptr = j->data;
+	      NiceSocket *sockptr = j->data;
 
 	      FD_SET (sockptr->fileno, &fds);
 	      max_fd = MAX (sockptr->fileno, max_fd);
@@ -1554,7 +1554,7 @@ nice_agent_poll_read (
 	}
         else
           {
-            NiceUDPSocket *socket = NULL;
+            NiceSocket *socket = NULL;
             Stream *stream = NULL;
 	    Component *component = NULL;
             gchar buf[MAX_BUFFER_SIZE];
@@ -1622,7 +1622,7 @@ nice_agent_send (
 
   if (component->selected_pair.local != NULL)
     {
-      NiceUDPSocket *sock;
+      NiceSocket *sock;
       NiceAddress *addr;
 
 #ifndef NDEBUG
@@ -1636,7 +1636,7 @@ nice_agent_send (
 
       sock = component->selected_pair.local->sockptr;
       addr = &component->selected_pair.remote->addr;
-      nice_udp_socket_send (sock, addr, len, buf);
+      nice_socket_send (sock, addr, len, buf);
       component->media_after_tick = TRUE;
 
       ret = len;
@@ -1802,10 +1802,10 @@ nice_agent_dispose (GObject *object)
   if (G_OBJECT_CLASS (nice_agent_parent_class)->dispose)
     G_OBJECT_CLASS (nice_agent_parent_class)->dispose (object);
 
-  nice_udp_socket_factory_close (&agent->udp_socket_factory);
-
-  nice_udp_socket_factory_close (&agent->relay_socket_factory);
-
+  nice_socket_factory_free (agent->udp_socket_factory);
+  agent->udp_socket_factory = NULL;
+  nice_socket_factory_free (agent->relay_socket_factory);
+  agent->relay_socket_factory = NULL;
 
   g_static_rec_mutex_free (&agent->mutex);
 }
@@ -1818,7 +1818,7 @@ struct _IOCtx
   NiceAgent *agent;
   Stream *stream;
   Component *component;
-  NiceUDPSocket *socket;
+  NiceSocket *socket;
 };
 
 
@@ -1827,7 +1827,7 @@ io_ctx_new (
   NiceAgent *agent,
   Stream *stream,
   Component *component,
-  NiceUDPSocket *socket)
+  NiceSocket *socket)
 {
   IOCtx *ctx;
 
@@ -1888,7 +1888,7 @@ void
 priv_attach_stream_component_socket (NiceAgent *agent,
     Stream *stream,
     Component *component,
-    NiceUDPSocket *udp_socket)
+    NiceSocket *socket)
 {
   GIOChannel *io;
   GSource *source;
@@ -1897,11 +1897,11 @@ priv_attach_stream_component_socket (NiceAgent *agent,
   if (!component->ctx)
     return;
 
-  io = g_io_channel_unix_new (udp_socket->fileno);
+  io = g_io_channel_unix_new (socket->fileno);
   /* note: without G_IO_ERR the glib mainloop goes into
    *       busyloop if errors are encountered */
   source = g_io_create_watch (io, G_IO_IN | G_IO_ERR);
-  ctx = io_ctx_new (agent, stream, component, udp_socket);
+  ctx = io_ctx_new (agent, stream, component, socket);
   g_source_set_callback (source, (GSourceFunc) nice_agent_g_source_cb,
       ctx, (GDestroyNotify) io_ctx_free);
   nice_debug ("Agent %p : Attach source %p (stream %u).", agent, source, stream->id);

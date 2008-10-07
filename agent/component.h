@@ -67,7 +67,7 @@ struct _CandidatePair
 struct _IncomingCheck
 {
   NiceAddress from;
-  NiceUDPSocket *local_socket;
+  NiceSocket *local_socket;
   uint32_t priority;
   gboolean use_candidate;
 };
@@ -79,7 +79,7 @@ struct _Component
   NiceComponentState state;
   GSList *local_candidates;    /**< list of Candidate objs */
   GSList *remote_candidates;   /**< list of Candidate objs */
-  GSList *sockets;             /**< list of NiceUDPSocket objs */
+  GSList *sockets;             /**< list of NiceSocket objs */
   GSList *gsources;            /**< list of GSource objs */
   GSList *incoming_checks;     /**< list of IncomingCheck objs */
   NiceAddress turn_server;       /**< TURN server address */

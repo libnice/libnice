@@ -48,7 +48,7 @@ struct _CandidateDiscovery
   NiceAgent *agent;         /**< back pointer to owner */
   NiceCandidateType type;   /**< candidate type STUN or TURN */
   guint socket;             /**< XXX: should be taken from local cand: existing socket to use */
-  NiceUDPSocket *nicesock;  /**< XXX: should be taken from local cand: existing socket to use */
+  NiceSocket *nicesock;  /**< XXX: should be taken from local cand: existing socket to use */
   NiceAddress server;       /**< STUN/TURN server address */
   NiceAddress *interface;   /**< Address of local interface */
   GTimeVal next_tick;       /**< next tick timestamp */
@@ -84,7 +84,7 @@ discovery_add_relay_candidate (
   guint stream_id,
   guint component_id,
   NiceAddress *address,
-  NiceUDPSocket *base_socket);
+  NiceSocket *base_socket);
 
 NiceCandidate* 
 discovery_add_server_reflexive_candidate (
@@ -92,7 +92,7 @@ discovery_add_server_reflexive_candidate (
   guint stream_id,
   guint component_id,
   NiceAddress *address,
-  NiceUDPSocket *base_socket);
+  NiceSocket *base_socket);
 
 NiceCandidate* 
 discovery_add_peer_reflexive_candidate (
@@ -100,7 +100,7 @@ discovery_add_peer_reflexive_candidate (
   guint stream_id,
   guint component_id,
   NiceAddress *address,
-  NiceUDPSocket *base_socket,
+  NiceSocket *base_socket,
   NiceCandidate *local,
   NiceCandidate *remote);
 
@@ -111,7 +111,7 @@ discovery_learn_remote_peer_reflexive_candidate (
   Component *component,
   guint32 priority, 
   const NiceAddress *remote_address,
-  NiceUDPSocket *udp_socket,
+  NiceSocket *udp_socket,
   NiceCandidate *local,
   NiceCandidate *remote);
 

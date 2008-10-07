@@ -281,7 +281,7 @@ NiceCandidate *discovery_add_local_host_candidate (
   NiceCandidate *candidate;
   Component *component;
   Stream *stream;
-  NiceUDPSocket *udp_socket = NULL;
+  NiceSocket *udp_socket = NULL;
   gboolean errors = FALSE;
 
   if (!agent_find_component (agent, stream_id, component_id, &stream, &component))
@@ -347,7 +347,7 @@ NiceCandidate *discovery_add_local_host_candidate (
     if (candidate)
       nice_candidate_free (candidate), candidate = NULL;
     if (udp_socket)
-      g_slice_free (NiceUDPSocket, udp_socket);
+      nice_socket_free (udp_socket);
   }
   
   return candidate;
@@ -365,7 +365,7 @@ discovery_add_server_reflexive_candidate (
   guint stream_id,
   guint component_id,
   NiceAddress *address,
-  NiceUDPSocket *base_socket)
+  NiceSocket *base_socket)
 {
   NiceCandidate *candidate;
   Component *component;
@@ -422,21 +422,21 @@ discovery_add_relay_candidate (
   guint stream_id,
   guint component_id,
   NiceAddress *address,
-  NiceUDPSocket *base_socket)
+  NiceSocket *base_socket)
 {
   NiceCandidate *candidate;
   Component *component;
   Stream *stream;
   gboolean result = FALSE;
   gboolean errors = FALSE;
-  NiceUDPSocket *relay_socket = NULL;
+  NiceSocket *relay_socket = NULL;
 
   if (!agent_find_component (agent, stream_id, component_id, &stream, &component))
     return NULL;
 
   candidate = nice_candidate_new (NICE_CANDIDATE_TYPE_RELAYED);
   if (candidate) {
-    relay_socket = g_slice_new0 (NiceUDPSocket);
+    relay_socket = g_slice_new0 (NiceSocket);
     if (relay_socket) {
       if (agent->compatibility == NICE_COMPATIBILITY_GOOGLE) {
         candidate->priority = nice_candidate_jingle_priority (candidate) * 1000;
@@ -451,7 +451,7 @@ discovery_add_relay_candidate (
       candidate->addr = *address;
 
       /* step: link to the base candidate+socket */
-      if (nice_udp_turn_create_socket_full (&agent->relay_socket_factory,
+      if (nice_udp_turn_create_socket_full (agent->relay_socket_factory,
               relay_socket, address, base_socket, &component->turn_server,
               component->turn_username, component->turn_password,
               priv_agent_to_udp_turn_compatibility (agent))) {
@@ -484,7 +484,7 @@ discovery_add_relay_candidate (
     if (candidate)
       nice_candidate_free (candidate), candidate = NULL;
     if (relay_socket)
-      g_slice_free (NiceUDPSocket, relay_socket);
+      g_slice_free (NiceSocket, relay_socket);
   }
   return candidate;
 }
@@ -501,7 +501,7 @@ discovery_add_peer_reflexive_candidate (
   guint stream_id,
   guint component_id,
   NiceAddress *address,
-  NiceUDPSocket *base_socket,
+  NiceSocket *base_socket,
   NiceCandidate *local,
   NiceCandidate *remote)
 {
@@ -602,7 +602,7 @@ NiceCandidate *discovery_learn_remote_peer_reflexive_candidate (
   Component *component,
   guint32 priority, 
   const NiceAddress *remote_address,
-  NiceUDPSocket *udp_socket,
+  NiceSocket *udp_socket,
   NiceCandidate *local,
   NiceCandidate *remote)
 {
@@ -751,7 +751,7 @@ static gboolean priv_discovery_tick_unlocked (gpointer pointer)
           stun_timer_start (&cand->timer);
 
           /* send the conncheck */
-          nice_udp_socket_send (cand->nicesock, &cand->server,
+          nice_socket_send (cand->nicesock, &cand->server,
               buffer_len, (gchar *)cand->stun_buffer);
 
 	  /* case: success, start waiting for the result */
@@ -800,7 +800,7 @@ static gboolean priv_discovery_tick_unlocked (gpointer pointer)
                   timeout);
 
               /* TODO retransmit */
-              nice_udp_socket_send (cand->nicesock, &cand->server,
+              nice_socket_send (cand->nicesock, &cand->server,
                   stun_message_length (&cand->stun_message),
                   (gchar *)cand->stun_buffer);
 

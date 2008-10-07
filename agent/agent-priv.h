@@ -68,8 +68,8 @@ struct _NiceAgent
   GObject parent;                 /**< gobject pointer */
 
   gboolean full_mode;             /**< property: full-mode */
-  NiceUDPSocketFactory udp_socket_factory; /**< property: socket factory */
-  NiceUDPSocketFactory relay_socket_factory; /**< property: socket factory */
+  NiceSocketFactory *udp_socket_factory; /**< property: socket factory */
+  NiceSocketFactory *relay_socket_factory; /**< property: socket factory */
   GTimeVal next_check_tv;         /**< property: next conncheck timestamp */
   gchar *stun_server_ip;          /**< property: STUN server IP */
   guint stun_server_port;         /**< property: STUN server port */
@@ -138,6 +138,6 @@ GSource *agent_timeout_add_with_context (NiceAgent *agent, guint interval, GSour
 void priv_attach_stream_component_socket (NiceAgent *agent,
     Stream *stream,
     Component *component,
-    NiceUDPSocket *udp_socket);
+    NiceSocket *socket);
 
 #endif /*_NICE_AGENT_PRIV_H */

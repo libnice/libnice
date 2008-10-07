@@ -39,7 +39,7 @@
 #ifndef _CANDIDATE_H
 #define _CANDIDATE_H
 
-#include "udp.h"
+#include "socket.h"
 
 G_BEGIN_DECLS
 
@@ -76,7 +76,7 @@ struct _NiceCandidate
   guint stream_id;
   guint component_id;
   gchar foundation[NICE_CANDIDATE_MAX_FOUNDATION];
-  NiceUDPSocket *sockptr;
+  NiceSocket *sockptr;
   gchar *username;        /* pointer to a NULL-terminated username string */
   gchar *password;        /* pointer to a NULL-terminated password string */
 };

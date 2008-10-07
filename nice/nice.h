@@ -38,9 +38,7 @@
 #ifndef _NICE_H
 #define _NICE_H
 
-#include "udp.h"
-#include "udp-bsd.h"
-#include "udp-fake.h"
+#include "socket.h"
 #include "agent.h"
 #include "random.h"
 #include "random-glib.h"

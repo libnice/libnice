@@ -87,9 +87,8 @@ component_free (Component *cmp)
       cmp->restart_candidate = NULL;
 
   for (i = cmp->sockets; i; i = i->next) {
-    NiceUDPSocket *udpsocket = i->data;
-    nice_udp_socket_close (udpsocket);
-    g_slice_free (NiceUDPSocket, udpsocket);
+    NiceSocket *udpsocket = i->data;
+    nice_socket_free (udpsocket);
   }
 
   for (i = cmp->gsources; i; i = i->next) {
@@ -130,7 +129,7 @@ component_find_udp_socket_by_fd (Component *component, guint fd)
   
   for (i = component->sockets; i; i = i->next)
     {
-      NiceUDPSocket *sockptr = i->data;
+      NiceSocket *sockptr = i->data;
 
       if (sockptr->fileno == fd)
         return sockptr;

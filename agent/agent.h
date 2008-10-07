@@ -41,7 +41,7 @@
 
 #include <glib-object.h>
 
-#include "udp.h"
+#include "socket.h"
 #include "address.h"
 #include "candidate.h"
 #include "random.h"
