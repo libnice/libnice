@@ -42,8 +42,8 @@
 
 G_BEGIN_DECLS
 
-void
-nice_udp_bsd_socket_factory_init (NiceSocketFactory *man);
+NiceSocket *
+nice_udp_bsd_socket_new (NiceAddress *addr);
 
 G_END_DECLS
 

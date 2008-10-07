@@ -56,39 +56,6 @@ struct _NiceSocket
   void *priv;
 };
 
-typedef struct _NiceSocketFactory NiceSocketFactory;
-
-struct _NiceSocketFactory
-{
-  gboolean (*init) (NiceSocketFactory *man, NiceSocket *sock,
-      NiceAddress *sin);
-  void (*close) (NiceSocketFactory *man);
-  void *priv;
-};
-
-typedef enum {
-  NICE_SOCKET_FACTORY_UDP_BSD,
-  NICE_SOCKET_FACTORY_UDP_RELAY,
-} NiceSocketFactoryType;
-
-G_GNUC_WARN_UNUSED_RESULT
-NiceSocketFactory *
-nice_socket_factory_new (NiceSocketFactoryType type);
-
-void
-nice_socket_factory_free (NiceSocketFactory *man);
-
-/**
- * If sin is not NULL, the new socket will be bound to that IP address/port.
- * If sin->sin_port is 0, a port will be assigned at random. In all cases, the
- * address bound to will be set in sock->addr.
- */
-G_GNUC_WARN_UNUSED_RESULT
-NiceSocket *
-nice_socket_new (
-  NiceSocketFactory *man,
-  NiceAddress *adddr);
-
 G_GNUC_WARN_UNUSED_RESULT
 gint
 nice_socket_recv (
@@ -106,6 +73,9 @@ nice_socket_send (
 
 void
 nice_socket_free (NiceSocket *sock);
+
+#include "udp-bsd.h"
+#include "udp-turn.h"
 
 G_END_DECLS
 

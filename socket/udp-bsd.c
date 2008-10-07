@@ -123,18 +123,17 @@ socket_close (NiceSocket *sock)
 
 /*** NiceSocketFactory ***/
 
-static gboolean
-socket_factory_init_socket (
-  G_GNUC_UNUSED
-  NiceSocketFactory *man,
-  NiceSocket *sock,
-  NiceAddress *addr)
+NiceSocket *
+nice_udp_bsd_socket_new (NiceAddress *addr)
 {
   int sockfd = -1;
   struct sockaddr_storage name;
   guint name_len = sizeof (name);
+  NiceSocket *sock = g_slice_new0 (NiceSocket);
 
-  (void)man;
+  if (!sock) {
+    return NULL;
+  }
 
   if (addr != NULL)
     {
@@ -187,8 +186,11 @@ socket_factory_init_socket (
 #endif
     }
 
-  if (sockfd == -1)
-    return FALSE;
+  if (sockfd == -1) {
+    g_slice_free (NiceSocket, sock);
+    return NULL;
+  }
+
 #ifdef IP_RECVERR
   else
     {
@@ -204,17 +206,17 @@ socket_factory_init_socket (
   fcntl (sockfd, F_SETFL, fcntl (sockfd, F_GETFL) | O_NONBLOCK);
 #endif
 
-  if(bind (sockfd, (struct sockaddr *) &name, sizeof (name)) != 0)
-    {
-      close (sockfd);
-      return FALSE;
-    }
+  if(bind (sockfd, (struct sockaddr *) &name, sizeof (name)) != 0) {
+    g_slice_free (NiceSocket, sock);
+    close (sockfd);
+    return NULL;
+  }
 
-  if (getsockname (sockfd, (struct sockaddr *) &name, &name_len) != 0)
-    {
-      close (sockfd);
-      return FALSE;
-    }
+  if (getsockname (sockfd, (struct sockaddr *) &name, &name_len) != 0) {
+    g_slice_free (NiceSocket, sock);
+    close (sockfd);
+    return NULL;
+  }
 
   nice_address_set_from_sockaddr (&sock->addr, (struct sockaddr *)&name);
 
@@ -222,23 +224,5 @@ socket_factory_init_socket (
   sock->send = socket_send;
   sock->recv = socket_recv;
   sock->close = socket_close;
-  return TRUE;
+  return sock;
 }
-
-static void
-socket_factory_close (
-  G_GNUC_UNUSED
-  NiceSocketFactory *man)
-{
-  (void)man;
-}
-
-NICEAPI_EXPORT void
-nice_udp_bsd_socket_factory_init (
-  G_GNUC_UNUSED
-  NiceSocketFactory *man)
-{
-  man->init = socket_factory_init_socket;
-  man->close = socket_factory_close;
-}
-

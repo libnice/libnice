@@ -488,27 +488,22 @@ socket_close (NiceSocket *sock)
 
 /*** NiceSocketFactory ***/
 
-static gboolean
-socket_factory_init_socket (
-  NiceSocketFactory *man,
-  NiceSocket *sock,
-  NiceAddress *addr)
-{
-  return FALSE;
-}
-
-NICEAPI_EXPORT gboolean
-nice_udp_turn_create_socket_full (
-  NiceSocketFactory *man,
-  NiceSocket *sock,
-  NiceAddress *addr,
-  NiceSocket *base_socket,
-  NiceAddress *server_addr,
-  gchar *username,
-  gchar *password,
-  NiceUdpTurnSocketCompatibility compatibility)
+NICEAPI_EXPORT NiceSocket *
+nice_udp_turn_socket_new (
+    NiceAddress *addr,
+    NiceSocket *base_socket,
+    NiceAddress *server_addr,
+    gchar *username,
+    gchar *password,
+    NiceUdpTurnSocketCompatibility compatibility,
+    GStaticRecMutex *mutex)
 {
   turn_priv *priv = g_new0 (turn_priv, 1);
+  NiceSocket *sock = g_slice_new0 (NiceSocket);
+
+  if (!sock) {
+    return NULL;
+  }
 
   if (compatibility == NICE_UDP_TURN_SOCKET_COMPATIBILITY_DRAFT9) {
     stun_agent_init (&priv->agent, STUN_ALL_KNOWN_ATTRIBUTES,
@@ -552,24 +547,5 @@ nice_udp_turn_create_socket_full (
   sock->recv = socket_recv;
   sock->close = socket_close;
   sock->priv = (void *) priv;
-  return TRUE;
+  return sock;
 }
-
-static void
-socket_factory_close (
-  G_GNUC_UNUSED
-  NiceSocketFactory *man)
-{
-}
-
-NICEAPI_EXPORT void
-nice_udp_turn_socket_factory_init (
-  G_GNUC_UNUSED
-  NiceSocketFactory *man)
-{
-
-  man->init = socket_factory_init_socket;
-  man->close = socket_factory_close;
-
-}
-

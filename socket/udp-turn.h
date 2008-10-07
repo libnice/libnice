@@ -61,20 +61,16 @@ nice_udp_turn_socket_parse_recv (
 gboolean
 nice_udp_turn_socket_set_peer (NiceSocket *sock, NiceAddress *peer);
 
-gboolean
-nice_udp_turn_create_socket_full (
-  NiceSocketFactory *man,
-  NiceSocket *sock,
-  NiceAddress *addr,
-  NiceSocket *udp_socket,
-  NiceAddress *server_addr,
-  gchar *username,
-  gchar *password,
-  NiceUdpTurnSocketCompatibility compatibility);
+NiceSocket *
+nice_udp_turn_socket_new (
+    NiceAddress *addr,
+    NiceSocket *udp_socket,
+    NiceAddress *server_addr,
+    gchar *username,
+    gchar *password,
+    NiceUdpTurnSocketCompatibility compatibility,
+    GStaticRecMutex *mutex);
 
-
-void
-nice_udp_turn_socket_factory_init (NiceSocketFactory *man);
 
 G_END_DECLS
 

@@ -43,55 +43,7 @@
 #include <glib.h>
 
 #include "socket.h"
-#include "udp-bsd.h"
-#include "udp-turn.h"
 
-
-NICEAPI_EXPORT NiceSocketFactory *
-nice_socket_factory_new (NiceSocketFactoryType type)
-{
-  NiceSocketFactory *man = g_new0 (NiceSocketFactory, 1);
-
-  if (man) {
-    switch(type) {
-      case NICE_SOCKET_FACTORY_UDP_BSD:
-        nice_udp_bsd_socket_factory_init (man);
-        break;
-      case NICE_SOCKET_FACTORY_UDP_RELAY:
-        nice_udp_turn_socket_factory_init (man);
-        break;
-      default:
-        g_free (man);
-        man = NULL;
-    }
-  }
-
-  return man;
-}
-
-NICEAPI_EXPORT void
-nice_socket_factory_free (NiceSocketFactory *man)
-{
-  if (man) {
-    man->close (man);
-    g_free (man);
-  }
-}
-
-NICEAPI_EXPORT NiceSocket *
-nice_socket_new (
-  NiceSocketFactory *man,
-  NiceAddress *addr)
-{
-  NiceSocket *sock = g_slice_new0 (NiceSocket);
-
-  if (!man || !sock || !man->init (man, sock, addr)) {
-    g_free (sock);
-    sock = NULL;
-  }
-
-  return sock;
-}
 
 NICEAPI_EXPORT gint
 nice_socket_recv (
