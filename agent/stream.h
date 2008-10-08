@@ -41,6 +41,7 @@
 #include <glib.h>
 
 #include "component.h"
+#include "random.h"
 
 G_BEGIN_DECLS
 
