@@ -445,10 +445,10 @@ discovery_add_relay_candidate (
       candidate->addr = *address;
 
       /* step: link to the base candidate+socket */
-      relay_socket = nice_udp_turn_socket_new (address,
+      relay_socket = nice_udp_turn_socket_new (agent, address,
           base_socket, &component->turn_server,
           component->turn_username, component->turn_password,
-          priv_agent_to_udp_turn_compatibility (agent), &agent->mutex);
+          priv_agent_to_udp_turn_compatibility (agent));
       if (relay_socket) {
         candidate->sockptr = relay_socket;
         candidate->base_addr = base_socket->addr;

@@ -39,6 +39,7 @@
 #define _UDP_TURN_H
 
 #include "socket.h"
+#include "agent.h"
 
 G_BEGIN_DECLS
 
@@ -63,13 +64,13 @@ nice_udp_turn_socket_set_peer (NiceSocket *sock, NiceAddress *peer);
 
 NiceSocket *
 nice_udp_turn_socket_new (
+    NiceAgent *agent,
     NiceAddress *addr,
     NiceSocket *udp_socket,
     NiceAddress *server_addr,
     gchar *username,
     gchar *password,
-    NiceUdpTurnSocketCompatibility compatibility,
-    GStaticRecMutex *mutex);
+    NiceUdpTurnSocketCompatibility compatibility);
 
 
 G_END_DECLS

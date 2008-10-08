@@ -56,14 +56,13 @@
 #include "udp-bsd.h"
 #include <stun/stunagent.h>
 #include <stun/usages/timer.h>
-
+#include "agent-priv.h"
 
 typedef struct {
-  StunMessage msg;
+  StunMessage message;
   uint8_t buffer[STUN_MAX_MESSAGE_SIZE];
   stun_timer_t timer;
-  gboolean done;
-} UDPMessage;
+} TURNMessage;
 
 
 typedef struct {
@@ -72,10 +71,12 @@ typedef struct {
 } ChannelBinding;
 
 typedef struct {
+  NiceAgent *nice;
   StunAgent agent;
   GList *channels;
-  GList *retransmissions;
   ChannelBinding *current_binding;
+  TURNMessage *current_binding_msg;
+  GSource *tick_source;
   NiceSocket *base_socket;
   NiceAddress server_addr;
   uint8_t *username;
@@ -85,47 +86,128 @@ typedef struct {
   NiceUdpTurnSocketCompatibility compatibility;
 } turn_priv;
 
-#if 0
-static gboolean retransmit_udp_packet (turn_priv *priv)
+static void
+priv_schedule_tick (turn_priv *priv);
+
+
+static gboolean
+priv_retransmissions_tick_unlocked (turn_priv *priv)
 {
-    NiceAgent *agent = pointer;
+  if (priv->current_binding_msg) {
+    guint timeout = stun_timer_refresh (&priv->current_binding_msg->timer);
+    switch (timeout) {
+      case -1:
+        /* Time out */
+        g_free (priv->current_binding);
+        priv->current_binding = NULL;
+        g_free (priv->current_binding_msg);
+        priv->current_binding_msg = NULL;
+        break;
+      case 0:
+        /* Retransmit */
+        nice_socket_send (priv->base_socket, &priv->server_addr,
+            stun_message_length (&priv->current_binding_msg->message),
+            (gchar *)priv->current_binding_msg->buffer);
+        break;
+      default:
+        break;
+    }
+  }
+
+  priv_schedule_tick (priv);
+  return FALSE;
+}
+
+
+static gboolean
+priv_retransmissions_tick (gpointer pointer)
+{
+  turn_priv *priv = pointer;
   gboolean ret;
 
-  g_static_rec_mutex_lock (&agent->mutex);
-  ret = priv_discovery_tick_unlocked (pointer);
-  g_static_rec_mutex_unlock (&agent->mutex);
+  g_static_rec_mutex_lock (&priv->nice->mutex);
+  ret = priv_retransmissions_tick_unlocked (priv);
+  g_static_rec_mutex_unlock (&priv->nice->mutex);
 
   return ret;
 }
-#endif
+
+static void
+priv_schedule_tick (turn_priv *priv)
+{
+  if (priv->tick_source != NULL) {
+    g_source_destroy (priv->tick_source);
+    g_source_unref (priv->tick_source);
+    priv->tick_source = NULL;
+  }
+
+  if (priv->current_binding_msg) {
+    guint timeout = stun_timer_remainder (&priv->current_binding_msg->timer);
+    if (timeout > 0) {
+      priv->tick_source = agent_timeout_add_with_context (priv->nice, timeout,
+          priv_retransmissions_tick, priv);
+    } else {
+      priv_retransmissions_tick_unlocked (priv);
+    }
+  }
+}
+
+static void
+priv_send_turn_message (turn_priv *priv, TURNMessage *msg)
+{
+  size_t stun_len = stun_message_length (&msg->message);
+
+  if (priv->current_binding_msg) {
+    g_free (priv->current_binding_msg);
+    priv->current_binding_msg = NULL;
+  }
+
+  nice_socket_send (priv->base_socket, &priv->server_addr,
+      stun_len, (gchar *)msg->buffer);
+
+  if (nice_socket_is_reliable (priv->base_socket)) {
+    stun_timer_start_reliable (&msg->timer);
+  } else {
+    stun_timer_start (&msg->timer);
+    priv->current_binding_msg = msg;
+    priv_schedule_tick (priv);
+  }
+}
 
 static gboolean
 priv_send_channel_bind (turn_priv *priv,  StunMessage *resp,
     uint16_t channel, NiceAddress *peer) {
   uint32_t channel_attr = channel << 16;
-  StunMessage msg;
-  uint8_t buffer[STUN_MAX_MESSAGE_SIZE];
   size_t stun_len;
   struct sockaddr_storage sa;
+  TURNMessage *msg = g_new0 (TURNMessage, 1);
 
   nice_address_copy_to_sockaddr (peer, (struct sockaddr *)&sa);
 
-  if (!stun_agent_init_request (&priv->agent, &msg,
-          buffer, sizeof(buffer), STUN_CHANNELBIND))
+  if (!stun_agent_init_request (&priv->agent, &msg->message,
+          msg->buffer, sizeof(msg->buffer), STUN_CHANNELBIND)) {
+    g_free (msg);
     return FALSE;
+  }
 
-  if (stun_message_append32 (&msg, STUN_ATTRIBUTE_CHANNEL_NUMBER,
-          channel_attr) != 0)
+  if (stun_message_append32 (&msg->message, STUN_ATTRIBUTE_CHANNEL_NUMBER,
+          channel_attr) != 0) {
+    g_free (msg);
     return FALSE;
+  }
 
-  if (stun_message_append_xor_addr (&msg, STUN_ATTRIBUTE_PEER_ADDRESS,
-          (struct sockaddr *)&sa, sizeof(sa)) != 0)
+  if (stun_message_append_xor_addr (&msg->message, STUN_ATTRIBUTE_PEER_ADDRESS,
+          (struct sockaddr *)&sa, sizeof(sa)) != 0) {
+    g_free (msg);
     return FALSE;
+  }
 
   if (priv->username != NULL && priv->username_len > 0) {
-    if (stun_message_append_bytes (&msg, STUN_ATTRIBUTE_USERNAME,
-            priv->username, priv->username_len) != 0)
+    if (stun_message_append_bytes (&msg->message, STUN_ATTRIBUTE_USERNAME,
+            priv->username, priv->username_len) != 0) {
+      g_free (msg);
       return FALSE;
+    }
   }
 
   if (resp) {
@@ -135,25 +217,31 @@ priv_send_channel_bind (turn_priv *priv,  StunMessage *resp,
 
     realm = (uint8_t *) stun_message_find (resp, STUN_ATTRIBUTE_REALM, &len);
     if (realm != NULL) {
-      if (stun_message_append_bytes (&msg, STUN_ATTRIBUTE_REALM, realm, len) != 0)
+      if (stun_message_append_bytes (&msg->message, STUN_ATTRIBUTE_REALM,
+              realm, len) != 0) {
+        g_free (msg);
         return 0;
+      }
     }
     nonce = (uint8_t *) stun_message_find (resp, STUN_ATTRIBUTE_NONCE, &len);
     if (nonce != NULL) {
-      if (stun_message_append_bytes (&msg, STUN_ATTRIBUTE_NONCE, nonce, len) != 0)
+      if (stun_message_append_bytes (&msg->message, STUN_ATTRIBUTE_NONCE,
+              nonce, len) != 0) {
+        g_free (msg);
         return 0;
+      }
     }
   }
 
-  stun_len = stun_agent_finish_message (&priv->agent, &msg,
+  stun_len = stun_agent_finish_message (&priv->agent, &msg->message,
       priv->password, priv->password_len);
 
   if (stun_len > 0) {
-    nice_socket_send (priv->base_socket, &priv->server_addr,
-        stun_len, (gchar *)buffer);
+    priv_send_turn_message (priv, msg);
     return TRUE;
   }
 
+  g_free (msg);
   return FALSE;
 }
 NICEAPI_EXPORT gboolean
@@ -284,6 +372,8 @@ nice_udp_turn_socket_parse_recv (
         return 0;
       } else if (stun_message_get_class (&msg) == STUN_ERROR &&
           stun_message_get_method (&msg) == STUN_CHANNELBIND) {
+        g_free (priv->current_binding_msg);
+        priv->current_binding_msg = NULL;
         if (priv->current_binding) {
           priv_send_channel_bind (priv, &msg,
               priv->current_binding->channel, &priv->current_binding->peer);
@@ -291,6 +381,8 @@ nice_udp_turn_socket_parse_recv (
         return 0;
       } else if (stun_message_get_class (&msg) == STUN_RESPONSE &&
           stun_message_get_method (&msg) == STUN_CHANNELBIND) {
+        g_free (priv->current_binding_msg);
+        priv->current_binding_msg = NULL;
         if (priv->current_binding) {
           priv->channels = g_list_append (priv->channels, priv->current_binding);
           priv->current_binding = NULL;
@@ -496,13 +588,13 @@ socket_close (NiceSocket *sock)
 
 NICEAPI_EXPORT NiceSocket *
 nice_udp_turn_socket_new (
+    NiceAgent *agent,
     NiceAddress *addr,
     NiceSocket *base_socket,
     NiceAddress *server_addr,
     gchar *username,
     gchar *password,
-    NiceUdpTurnSocketCompatibility compatibility,
-    GStaticRecMutex *mutex)
+    NiceUdpTurnSocketCompatibility compatibility)
 {
   turn_priv *priv = g_new0 (turn_priv, 1);
   NiceSocket *sock = g_slice_new0 (NiceSocket);
@@ -527,6 +619,7 @@ nice_udp_turn_socket_new (
         STUN_AGENT_USAGE_IGNORE_CREDENTIALS);
   }
 
+  priv->nice = agent;
   priv->channels = NULL;
   priv->current_binding = NULL;
   priv->base_socket = base_socket;

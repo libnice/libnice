@@ -41,6 +41,8 @@
 
 #include <glib-object.h>
 
+typedef struct _NiceAgent NiceAgent;
+
 #include "socket.h"
 #include "address.h"
 #include "candidate.h"
@@ -106,7 +108,6 @@ typedef enum
   NICE_COMPATIBILITY_LAST = NICE_COMPATIBILITY_MSN
 } NiceCompatibility;
 
-typedef struct _NiceAgent NiceAgent;
 
 typedef void (*NiceAgentRecvFunc) (
   NiceAgent *agent, guint stream_id, guint component_id, guint len,
