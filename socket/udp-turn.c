@@ -619,12 +619,27 @@ static void
 socket_close (NiceSocket *sock)
 {
   turn_priv *priv = (turn_priv *) sock->priv;
-  GList *i = priv->channels;
-  for (; i; i = i->next) {
+  GList *i = NULL;
+  for (i = priv->channels; i; i = i->next) {
     ChannelBinding *b = i->data;
     g_free (b);
   }
   g_list_free (priv->channels);
+
+  for (i = priv->pending_bindings; i; i = i->next) {
+    ChannelBinding *b = i->data;
+    g_free (b);
+  }
+  g_list_free (priv->pending_bindings);
+
+  if (priv->tick_source != NULL) {
+    g_source_destroy (priv->tick_source);
+    g_source_unref (priv->tick_source);
+    priv->tick_source = NULL;
+  }
+
+  g_free (priv->current_binding);
+  g_free (priv->current_binding_msg);
   g_free (priv->username);
   g_free (priv->password);
   g_free (priv);
