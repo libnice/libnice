@@ -44,6 +44,7 @@
 #include <glib.h>
 
 #include "agent.h"
+#include "socket.h"
 #include "candidate.h"
 #include "stream.h"
 #include "conncheck.h"

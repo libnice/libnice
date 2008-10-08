@@ -38,10 +38,7 @@
 #ifndef _NICE_H
 #define _NICE_H
 
-#include "socket.h"
 #include "agent.h"
-#include "random.h"
-#include "random-glib.h"
 
 #endif /* _NICE_H */
 
