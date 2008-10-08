@@ -56,6 +56,13 @@
 
 #define STUN_RELIABLE_TIMEOUT 7900
 
+#if STUN_RELIABLE_TIMEOUT < STUN_END_TIMEOUT
+/* Reliable timeout MUST be bigger (or equal) to end timeout, so that
+ * retransmissions never happen with reliable transports. */
+# error Inconsistent STUN timeout values!
+#endif
+
+
 /**
  * Clock used throughout the STUN code.
  * STUN requires a monotonic 1kHz clock to operate properly.
@@ -127,11 +134,6 @@ int stun_timer_refresh (stun_timer_t *timer)
   unsigned delay = stun_timer_remainder (timer);
   if (delay == 0)
   {
-#if STUN_RELIABLE_TIMEOUT < STUN_END_TIMEOUT
-/* Reliable timeout MUST be bigger (or equal) to end timeout, so that
- * retransmissions never happen with reliable transports. */
-# error Inconsistent STUN timeout values!
-#endif
     if (timer->delay >= STUN_END_TIMEOUT)
       return -1;
 
