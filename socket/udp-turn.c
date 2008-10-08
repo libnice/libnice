@@ -74,6 +74,7 @@ typedef struct {
   NiceAgent *nice;
   StunAgent agent;
   GList *channels;
+  GList *pending_bindings;
   ChannelBinding *current_binding;
   TURNMessage *current_binding_msg;
   GSource *tick_source;
@@ -89,6 +90,21 @@ typedef struct {
 static void
 priv_schedule_tick (turn_priv *priv);
 
+static gboolean
+priv_add_channel_binding (turn_priv *priv, NiceAddress *peer);
+
+
+static void
+priv_process_pending_bindings (turn_priv *priv)
+{
+  gboolean ret = FALSE;
+  while (priv->pending_bindings != NULL && ret == FALSE) {
+    NiceAddress *peer = priv->pending_bindings->data;
+    ret = priv_add_channel_binding (priv, peer);
+    priv->pending_bindings = g_list_remove (priv->pending_bindings, peer);
+    g_free (peer);
+  }
+}
 
 static gboolean
 priv_retransmissions_tick_unlocked (turn_priv *priv)
@@ -102,6 +118,7 @@ priv_retransmissions_tick_unlocked (turn_priv *priv)
         priv->current_binding = NULL;
         g_free (priv->current_binding_msg);
         priv->current_binding_msg = NULL;
+        priv_process_pending_bindings (priv);
         break;
       case 0:
         /* Retransmit */
@@ -244,17 +261,21 @@ priv_send_channel_bind (turn_priv *priv,  StunMessage *resp,
   g_free (msg);
   return FALSE;
 }
-NICEAPI_EXPORT gboolean
-nice_udp_turn_socket_set_peer (NiceSocket *sock, NiceAddress *peer)
+
+static gboolean
+priv_add_channel_binding (turn_priv *priv, NiceAddress *peer)
 {
-  turn_priv *priv = (turn_priv *) sock->priv;
   size_t stun_len;
   struct sockaddr_storage sa;
 
   nice_address_copy_to_sockaddr (peer, (struct sockaddr *)&sa);
 
-  if (priv->current_binding)
+  if (priv->current_binding) {
+    NiceAddress * pending= g_new0 (NiceAddress, 1);
+    *pending = *peer;
+    priv->pending_bindings = g_list_append (priv->pending_bindings, pending);
     return FALSE;
+  }
 
   if (priv->compatibility == NICE_UDP_TURN_SOCKET_COMPATIBILITY_DRAFT9) {
     uint16_t channel = 0x4000;
@@ -331,6 +352,13 @@ nice_udp_turn_socket_set_peer (NiceSocket *sock, NiceAddress *peer)
   return FALSE;
 }
 
+NICEAPI_EXPORT gboolean
+nice_udp_turn_socket_set_peer (NiceSocket *sock, NiceAddress *peer)
+{
+  turn_priv *priv = (turn_priv *) sock->priv;
+  return priv_add_channel_binding (priv, peer);
+}
+
 
 gint
 nice_udp_turn_socket_parse_recv (
@@ -399,6 +427,7 @@ nice_udp_turn_socket_parse_recv (
           priv->channels = g_list_append (priv->channels, priv->current_binding);
           priv->current_binding = NULL;
         }
+        priv_process_pending_bindings (priv);
         return 0;
       } else if (stun_message_get_class (&msg) == STUN_INDICATION &&
           stun_message_get_method (&msg) == STUN_IND_DATA) {
@@ -466,6 +495,7 @@ nice_udp_turn_socket_parse_recv (
     g_list_free (priv->channels);
     priv->channels = g_list_append (NULL, priv->current_binding);
     priv->current_binding = NULL;
+    priv_process_pending_bindings (priv);
   }
 
   return 0;
