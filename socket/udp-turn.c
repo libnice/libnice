@@ -404,31 +404,80 @@ nice_udp_turn_socket_parse_recv (
         }
         return 0;
       } else if (stun_message_get_method (&msg) == STUN_OLD_SET_ACTIVE_DST) {
-        g_free (priv->current_binding_msg);
-        priv->current_binding_msg = NULL;
-        if (stun_message_get_class (&msg) == STUN_RESPONSE &&
-            priv->compatibility == NICE_UDP_TURN_SOCKET_COMPATIBILITY_MSN)
-          goto msn_google_lock;
+        stun_transid_t request_id;
+        stun_transid_t response_id;
+        if (priv->current_binding && priv->current_binding_msg) {
+          stun_message_id (&msg, response_id);
+          stun_message_id (&priv->current_binding_msg->message, request_id);
+          if (memcmp (request_id, response_id, sizeof(stun_transid_t)) == 0) {
+            g_free (priv->current_binding_msg);
+            priv->current_binding_msg = NULL;
+
+            if (stun_message_get_class (&msg) == STUN_RESPONSE &&
+                priv->compatibility == NICE_UDP_TURN_SOCKET_COMPATIBILITY_MSN) {
+              goto msn_google_lock;
+            } else {
+              g_free (priv->current_binding);
+              priv->current_binding = NULL;
+            }
+          }
+        }
 
         return 0;
-      } else if (stun_message_get_class (&msg) == STUN_ERROR &&
-          stun_message_get_method (&msg) == STUN_CHANNELBIND) {
-        g_free (priv->current_binding_msg);
-        priv->current_binding_msg = NULL;
-        if (priv->current_binding) {
-          priv_send_channel_bind (priv, &msg,
-              priv->current_binding->channel, &priv->current_binding->peer);
+      } else if (stun_message_get_method (&msg) == STUN_CHANNELBIND) {
+        stun_transid_t request_id;
+        stun_transid_t response_id;
+        if (priv->current_binding && priv->current_binding_msg) {
+          stun_message_id (&msg, response_id);
+          stun_message_id (&priv->current_binding_msg->message, request_id);
+          if (memcmp (request_id, response_id, sizeof(stun_transid_t)) == 0) {
+            if (stun_message_get_class (&msg) == STUN_ERROR) {
+              int code = -1;
+              uint8_t *sent_nonce = NULL;
+              uint8_t *recv_nonce = NULL;
+              uint16_t sent_nonce_len = 0;
+              uint16_t recv_nonce_len = 0;
+
+              sent_nonce = (uint8_t *) stun_message_find (
+                  &priv->current_binding_msg->message,
+                  STUN_ATTRIBUTE_NONCE, &sent_nonce_len);
+
+              recv_nonce = (uint8_t *) stun_message_find (&msg,
+                  STUN_ATTRIBUTE_NONCE, &recv_nonce_len);
+
+              /* check for unauthorized error response */
+              if (stun_message_find_error (&msg, &code) == 0 &&
+                  code == 401 && recv_nonce != NULL &&
+                  recv_nonce_len > 0 &&
+                  recv_nonce_len == sent_nonce_len &&
+                  sent_nonce != NULL &&
+                  memcmp (sent_nonce, recv_nonce, sent_nonce_len) == 0) {
+                g_free (priv->current_binding_msg);
+                priv->current_binding_msg = NULL;
+                if (priv->current_binding) {
+                  priv_send_channel_bind (priv, &msg,
+                      priv->current_binding->channel,
+                      &priv->current_binding->peer);
+                }
+              } else {
+                g_free (priv->current_binding);
+                priv->current_binding = NULL;
+                g_free (priv->current_binding_msg);
+                priv->current_binding_msg = NULL;
+                priv_process_pending_bindings (priv);
+              }
+            } else if (stun_message_get_class (&msg) == STUN_RESPONSE) {
+              g_free (priv->current_binding_msg);
+              priv->current_binding_msg = NULL;
+              if (priv->current_binding) {
+                priv->channels = g_list_append (priv->channels,
+                    priv->current_binding);
+                priv->current_binding = NULL;
+              }
+              priv_process_pending_bindings (priv);
+            }
+          }
         }
-        return 0;
-      } else if (stun_message_get_class (&msg) == STUN_RESPONSE &&
-          stun_message_get_method (&msg) == STUN_CHANNELBIND) {
-        g_free (priv->current_binding_msg);
-        priv->current_binding_msg = NULL;
-        if (priv->current_binding) {
-          priv->channels = g_list_append (priv->channels, priv->current_binding);
-          priv->current_binding = NULL;
-        }
-        priv_process_pending_bindings (priv);
         return 0;
       } else if (stun_message_get_class (&msg) == STUN_INDICATION &&
           stun_message_get_method (&msg) == STUN_IND_DATA) {
