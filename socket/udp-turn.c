@@ -433,25 +433,25 @@ nice_udp_turn_socket_parse_recv (
           if (memcmp (request_id, response_id, sizeof(stun_transid_t)) == 0) {
             if (stun_message_get_class (&msg) == STUN_ERROR) {
               int code = -1;
-              uint8_t *sent_nonce = NULL;
-              uint8_t *recv_nonce = NULL;
-              uint16_t sent_nonce_len = 0;
-              uint16_t recv_nonce_len = 0;
+              uint8_t *sent_realm = NULL;
+              uint8_t *recv_realm = NULL;
+              uint16_t sent_realm_len = 0;
+              uint16_t recv_realm_len = 0;
 
-              sent_nonce = (uint8_t *) stun_message_find (
+              sent_realm = (uint8_t *) stun_message_find (
                   &priv->current_binding_msg->message,
-                  STUN_ATTRIBUTE_NONCE, &sent_nonce_len);
-
-              recv_nonce = (uint8_t *) stun_message_find (&msg,
-                  STUN_ATTRIBUTE_NONCE, &recv_nonce_len);
+                  STUN_ATTRIBUTE_REALM, &sent_realm_len);
+              recv_realm = (uint8_t *) stun_message_find (&msg,
+                  STUN_ATTRIBUTE_REALM, &recv_realm_len);
 
               /* check for unauthorized error response */
               if (stun_message_find_error (&msg, &code) == 0 &&
-                  code == 401 && recv_nonce != NULL &&
-                  recv_nonce_len > 0 &&
-                  recv_nonce_len == sent_nonce_len &&
-                  sent_nonce != NULL &&
-                  memcmp (sent_nonce, recv_nonce, sent_nonce_len) == 0) {
+                  (code == 438 || (code == 401 &&
+                   !(recv_realm != NULL &&
+                       recv_realm_len > 0 &&
+                       recv_realm_len == sent_realm_len &&
+                       sent_realm != NULL &&
+                       memcmp (sent_realm, recv_realm, sent_realm_len) == 0)))) {
                 g_free (priv->current_binding_msg);
                 priv->current_binding_msg = NULL;
                 if (priv->current_binding) {
