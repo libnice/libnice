@@ -186,9 +186,10 @@ priv_send_turn_message (turn_priv *priv, TURNMessage *msg)
     stun_timer_start_reliable (&msg->timer);
   } else {
     stun_timer_start (&msg->timer);
-    priv->current_binding_msg = msg;
-    priv_schedule_tick (priv);
   }
+
+  priv->current_binding_msg = msg;
+  priv_schedule_tick (priv);
 }
 
 static gboolean
