@@ -62,7 +62,7 @@
  */
 static void stun_gettime (struct timespec *restrict now)
 {
-#if (_POSIX_MONOTONIC_CLOCK - 0) >= 0
+#if defined (_POSIX_MONOTONIC_CLOCK) && (_POSIX_MONOTONIC_CLOCK >= 0)
   if (clock_gettime (CLOCK_MONOTONIC, now))
 #endif
   {  // fallback to wall clock
