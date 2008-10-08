@@ -800,7 +800,7 @@ static gboolean priv_discovery_tick_unlocked (gpointer pointer)
               stun_debug ("STUN transaction retransmitted (timeout %dms).\n",
                   timeout);
 
-              /* TODO retransmit */
+              /* retransmit */
               nice_socket_send (cand->nicesock, &cand->server,
                   stun_message_length (&cand->stun_message),
                   (gchar *)cand->stun_buffer);

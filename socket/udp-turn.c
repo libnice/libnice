@@ -349,7 +349,8 @@ nice_udp_turn_socket_parse_recv (
     if (valid == STUN_VALIDATION_SUCCESS) {
       if (priv->compatibility != NICE_UDP_TURN_SOCKET_COMPATIBILITY_DRAFT9) {
         uint32_t cookie;
-        if (stun_message_find32 (&msg, STUN_ATTRIBUTE_MAGIC_COOKIE, &cookie) != 0)
+        if (stun_message_find32 (&msg, STUN_ATTRIBUTE_MAGIC_COOKIE,
+                &cookie) != 0)
           goto recv;
         if (cookie != TURN_MAGIC_COOKIE)
           goto recv;
@@ -358,9 +359,9 @@ nice_udp_turn_socket_parse_recv (
       if (stun_message_get_method (&msg) == STUN_SEND) {
         if (stun_message_get_class (&msg) == STUN_RESPONSE &&
             priv->compatibility == NICE_UDP_TURN_SOCKET_COMPATIBILITY_GOOGLE) {
-          uint32_t options = 0;
-          if (stun_message_find32 (&msg, STUN_ATTRIBUTE_OPTIONS, &options) == 0 &&
-              options & 0x1)
+          uint32_t opts = 0;
+          if (stun_message_find32 (&msg, STUN_ATTRIBUTE_OPTIONS, &opts) == 0 &&
+              opts & 0x1)
             goto msn_google_lock;
         }
         return 0;
@@ -403,7 +404,9 @@ nice_udp_turn_socket_parse_recv (
             goto recv;
         }
 
-        data = (uint8_t *) stun_message_find (&msg, STUN_ATTRIBUTE_DATA, &data_len);
+        data = (uint8_t *) stun_message_find (&msg, STUN_ATTRIBUTE_DATA,
+            &data_len);
+
         if (data == NULL)
           goto recv;
 
