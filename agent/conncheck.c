@@ -1810,37 +1810,38 @@ static gboolean priv_map_reply_to_relay_request (NiceAgent *agent, StunMessage *
           trans_found = TRUE;
         } else if (res == STUN_USAGE_TURN_RETURN_ERROR) {
           int code = -1;
-          uint8_t *sent_nonce = NULL;
-          uint8_t *recv_nonce = NULL;
-          uint16_t sent_nonce_len = 0;
-          uint16_t recv_nonce_len = 0;
+          uint8_t *sent_realm = NULL;
+          uint8_t *recv_realm = NULL;
+          uint16_t sent_realm_len = 0;
+          uint16_t recv_realm_len = 0;
 
-          sent_nonce = (uint8_t *) stun_message_find (&d->stun_message,
-              STUN_ATTRIBUTE_NONCE, &sent_nonce_len);
-          recv_nonce = (uint8_t *) stun_message_find (resp,
-              STUN_ATTRIBUTE_NONCE, &recv_nonce_len);
+          sent_realm = (uint8_t *) stun_message_find (&d->stun_message,
+              STUN_ATTRIBUTE_REALM, &sent_realm_len);
+          recv_realm = (uint8_t *) stun_message_find (resp,
+              STUN_ATTRIBUTE_REALM, &recv_realm_len);
 
           /* check for unauthorized error response */
           if (agent->compatibility == NICE_COMPATIBILITY_DRAFT19 &&
               stun_message_get_class (resp) == STUN_ERROR &&
               stun_message_find_error (resp, &code) == 0 &&
-              code == 401 && recv_nonce != NULL &&
-              recv_nonce_len > 0) {
+              recv_realm != NULL && recv_realm_len > 0) {
 
-            if (recv_nonce_len == sent_nonce_len &&
-                sent_nonce != NULL &&
-                memcmp (sent_nonce, recv_nonce, sent_nonce_len) == 0) {
-              /* case: a real unauthorized error */
-              d->stun_message.buffer = NULL;
-              d->stun_message.buffer_len = 0;
-              d->done = TRUE;
-            } else {
+            if (code == 438 ||
+                (code == 401 &&
+                    !(recv_realm_len == sent_realm_len &&
+                        sent_realm != NULL &&
+                        memcmp (sent_realm, recv_realm, sent_realm_len) == 0))) {
               d->stun_resp_msg = *resp;
               memcpy (d->stun_resp_buffer, resp->buffer,
                   stun_message_length (resp));
               d->stun_resp_msg.buffer = d->stun_resp_buffer;
               d->stun_resp_msg.buffer_len = sizeof(d->stun_resp_buffer);
               d->pending = FALSE;
+            } else {
+              /* case: a real unauthorized error */
+              d->stun_message.buffer = NULL;
+              d->stun_message.buffer_len = 0;
+              d->done = TRUE;
             }
           } else {
             /* case: STUN error, the check STUN context was freed */
