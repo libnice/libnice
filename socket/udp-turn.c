@@ -248,8 +248,6 @@ NICEAPI_EXPORT gboolean
 nice_udp_turn_socket_set_peer (NiceSocket *sock, NiceAddress *peer)
 {
   turn_priv *priv = (turn_priv *) sock->priv;
-  StunMessage msg;
-  uint8_t buffer[STUN_MAX_MESSAGE_SIZE];
   size_t stun_len;
   struct sockaddr_storage sa;
 
@@ -281,35 +279,46 @@ nice_udp_turn_socket_set_peer (NiceSocket *sock, NiceAddress *peer)
     }
     return FALSE;
   } else if (priv->compatibility == NICE_UDP_TURN_SOCKET_COMPATIBILITY_MSN) {
-    if (!stun_agent_init_request (&priv->agent, &msg,
-            buffer, sizeof(buffer), STUN_OLD_SET_ACTIVE_DST))
+    TURNMessage *msg = g_new0 (TURNMessage, 1);
+    if (!stun_agent_init_request (&priv->agent, &msg->message,
+            msg->buffer, sizeof(msg->buffer), STUN_OLD_SET_ACTIVE_DST)) {
+      g_free (msg);
       return FALSE;
-
-    if (stun_message_append32 (&msg, STUN_ATTRIBUTE_MAGIC_COOKIE,
-            TURN_MAGIC_COOKIE) != 0)
-      return FALSE;
-
-    if (priv->username != NULL && priv->username_len > 0) {
-      if (stun_message_append_bytes (&msg, STUN_ATTRIBUTE_USERNAME,
-              priv->username, priv->username_len) != 0)
-        return FALSE;
     }
 
-    if (stun_message_append_addr (&msg, STUN_ATTRIBUTE_DESTINATION_ADDRESS,
-            (struct sockaddr *)&sa, sizeof(sa)) != 0)
+    if (stun_message_append32 (&msg->message, STUN_ATTRIBUTE_MAGIC_COOKIE,
+            TURN_MAGIC_COOKIE) != 0) {
+      g_free (msg);
       return FALSE;
+    }
 
-    stun_len = stun_agent_finish_message (&priv->agent, &msg,
+    if (priv->username != NULL && priv->username_len > 0) {
+      if (stun_message_append_bytes (&msg->message, STUN_ATTRIBUTE_USERNAME,
+              priv->username, priv->username_len) != 0) {
+        g_free (msg);
+        return FALSE;
+      }
+    }
+
+    if (stun_message_append_addr (&msg->message,
+            STUN_ATTRIBUTE_DESTINATION_ADDRESS,
+            (struct sockaddr *)&sa, sizeof(sa)) != 0) {
+      g_free (msg);
+      return FALSE;
+    }
+
+    stun_len = stun_agent_finish_message (&priv->agent, &msg->message,
         priv->password, priv->password_len);
 
     if (stun_len > 0) {
       priv->current_binding = g_new0 (ChannelBinding, 1);
       priv->current_binding->channel = 0;
       priv->current_binding->peer = *peer;
-      nice_socket_send (priv->base_socket, &priv->server_addr,
-          stun_len, (gchar *)buffer);
+      priv_send_turn_message (priv, msg);
+      return TRUE;
     }
-    return TRUE;
+    g_free (msg);
+    return FALSE;
   } else if (priv->compatibility == NICE_UDP_TURN_SOCKET_COMPATIBILITY_GOOGLE) {
     priv->current_binding = g_new0 (ChannelBinding, 1);
     priv->current_binding->channel = 0;
@@ -366,6 +375,8 @@ nice_udp_turn_socket_parse_recv (
         }
         return 0;
       } else if (stun_message_get_method (&msg) == STUN_OLD_SET_ACTIVE_DST) {
+        g_free (priv->current_binding_msg);
+        priv->current_binding_msg = NULL;
         if (stun_message_get_class (&msg) == STUN_RESPONSE &&
             priv->compatibility == NICE_UDP_TURN_SOCKET_COMPATIBILITY_MSN)
           goto msn_google_lock;
