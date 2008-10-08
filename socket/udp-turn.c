@@ -471,6 +471,13 @@ socket_send (
   return TRUE;
 }
 
+static gboolean
+socket_is_reliable (NiceSocket *sock)
+{
+  turn_priv *priv = (turn_priv *) sock->priv;
+  return nice_socket_is_reliable (priv->base_socket);
+}
+
 static void
 socket_close (NiceSocket *sock)
 {
@@ -544,6 +551,7 @@ nice_udp_turn_socket_new (
   sock->fileno = base_socket->fileno;
   sock->send = socket_send;
   sock->recv = socket_recv;
+  sock->is_reliable = socket_is_reliable;
   sock->close = socket_close;
   sock->priv = (void *) priv;
   return sock;

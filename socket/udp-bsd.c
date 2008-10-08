@@ -115,6 +115,12 @@ socket_send (
   return sent == (ssize_t)len;
 }
 
+static gboolean
+socket_is_reliable (NiceSocket *sock)
+{
+  return FALSE;
+}
+
 static void
 socket_close (NiceSocket *sock)
 {
@@ -222,6 +228,7 @@ nice_udp_bsd_socket_new (NiceAddress *addr)
   sock->fileno = sockfd;
   sock->send = socket_send;
   sock->recv = socket_recv;
+  sock->is_reliable = socket_is_reliable;
   sock->close = socket_close;
   return sock;
 }

@@ -52,6 +52,7 @@ struct _NiceSocket
       gchar *buf);
   gboolean (*send) (NiceSocket *sock, const NiceAddress *to, guint len,
       const gchar *buf);
+  gboolean (*is_reliable) (NiceSocket *sock);
   void (*close) (NiceSocket *sock);
   void *priv;
 };
@@ -70,6 +71,10 @@ nice_socket_send (
   const NiceAddress *to,
   guint len,
   const gchar *buf);
+
+gboolean
+nice_socket_is_reliable (NiceSocket *sock);
+
 
 void
 nice_socket_free (NiceSocket *sock);

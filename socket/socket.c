@@ -65,6 +65,12 @@ nice_socket_send (
   sock->send (sock, to, len, buf);
 }
 
+NICEAPI_EXPORT gboolean
+nice_socket_is_reliable (NiceSocket *sock)
+{
+  return sock->is_reliable (sock);
+}
+
 NICEAPI_EXPORT void
 nice_socket_free (NiceSocket *sock)
 {
