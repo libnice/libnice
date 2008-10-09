@@ -431,53 +431,51 @@ discovery_add_relay_candidate (
 
   candidate = nice_candidate_new (NICE_CANDIDATE_TYPE_RELAYED);
   if (candidate) {
+    if (agent->compatibility == NICE_COMPATIBILITY_GOOGLE) {
+      candidate->priority = nice_candidate_jingle_priority (candidate) * 1000;
+    } else if (agent->compatibility == NICE_COMPATIBILITY_MSN)  {
+      candidate->priority = nice_candidate_msn_priority (candidate) * 1000;
+    } else {
+      candidate->priority =  nice_candidate_ice_priority_full
+          (NICE_CANDIDATE_TYPE_PREF_RELAYED, 0, component_id);
+    }
+    candidate->stream_id = stream_id;
+    candidate->component_id = component_id;
+    candidate->addr = *address;
+
+    /* step: link to the base candidate+socket */
+    relay_socket = nice_udp_turn_socket_new (agent, address,
+        base_socket, &component->turn_server,
+        component->turn_username, component->turn_password,
+        priv_agent_to_udp_turn_compatibility (agent));
     if (relay_socket) {
+      candidate->sockptr = relay_socket;
+      candidate->base_addr = base_socket->addr;
+
+      priv_generate_candidate_credentials (agent, candidate);
+
+      /* Google uses the turn username as the candidate username */
       if (agent->compatibility == NICE_COMPATIBILITY_GOOGLE) {
-        candidate->priority = nice_candidate_jingle_priority (candidate) * 1000;
-      } else if (agent->compatibility == NICE_COMPATIBILITY_MSN)  {
-        candidate->priority = nice_candidate_msn_priority (candidate) * 1000;
-      } else {
-        candidate->priority =  nice_candidate_ice_priority_full
-            (NICE_CANDIDATE_TYPE_PREF_RELAYED, 0, component_id);
+        g_free (candidate->username);
+        candidate->username = g_strdup (component->turn_username);
       }
-      candidate->stream_id = stream_id;
-      candidate->component_id = component_id;
-      candidate->addr = *address;
 
-      /* step: link to the base candidate+socket */
-      relay_socket = nice_udp_turn_socket_new (agent, address,
-          base_socket, &component->turn_server,
-          component->turn_username, component->turn_password,
-          priv_agent_to_udp_turn_compatibility (agent));
-      if (relay_socket) {
-        candidate->sockptr = relay_socket;
-        candidate->base_addr = base_socket->addr;
+      priv_assign_foundation (agent, candidate);
 
-        priv_generate_candidate_credentials (agent, candidate);
-
-        /* Google uses the turn username as the candidate username */
-        if (agent->compatibility == NICE_COMPATIBILITY_GOOGLE) {
-          g_free (candidate->username);
-          candidate->username = g_strdup (component->turn_username);
-        }
-
-        priv_assign_foundation (agent, candidate);
-
-        result = priv_add_local_candidate_pruned (component, candidate);
-        if (result) {
-          agent_signal_new_candidate (agent, candidate);
-        } else {
-          /* error: memory allocation, or duplicate candidate */
-          errors = TRUE;
-        }
+      result = priv_add_local_candidate_pruned (component, candidate);
+      if (result) {
+        agent_signal_new_candidate (agent, candidate);
       } else {
-        /* error: socket factory make */
+        /* error: memory allocation, or duplicate candidate */
         errors = TRUE;
       }
     } else {
-      /* error: udp socket memory allocation */
+      /* error: socket factory make */
       errors = TRUE;
     }
+  } else {
+    /* error: udp socket memory allocation */
+    errors = TRUE;
   }
 
   /* clean up after errors */
