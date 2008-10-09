@@ -346,6 +346,8 @@ nice_agent_class_init (NiceAgentClass *klass)
           G_TYPE_UINT,
           G_TYPE_INVALID);
 
+  /* Init debug options depending on env variables */
+  nice_debug_init ();
 }
 
 static void priv_generate_tie_breaker (NiceAgent *agent) 

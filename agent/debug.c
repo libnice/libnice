@@ -42,14 +42,46 @@
 #include "stunagent.h"
 
 
-static int debug_enabled = 1;
+static int debug_enabled = 0;
 
-void nice_debug_enable (gboolean with_stun) {
+#define NICE_DEBUG_STUN 1
+#define NICE_DEBUG_NICE 2
+
+static const GDebugKey keys[] = {
+  { (gchar *)"stun",  NICE_DEBUG_STUN },
+  { (gchar *)"nice",  NICE_DEBUG_NICE },
+  { NULL, 0},
+};
+
+
+void nice_debug_init ()
+{
+  const gchar *flags_string;
+  guint flags;
+
+  flags_string = g_getenv ("NICE_DEBUG");
+
+  nice_debug_disable (TRUE);
+
+  if (flags_string != NULL) {
+    flags = g_parse_debug_string (flags_string, keys,  2);
+
+    if (flags & NICE_DEBUG_NICE)
+      nice_debug_enable (FALSE);
+    if (flags & NICE_DEBUG_STUN)
+      stun_debug_enable ();
+
+  }
+}
+
+void nice_debug_enable (gboolean with_stun)
+{
   debug_enabled = 1;
   if (with_stun)
     stun_debug_enable ();
 }
-void nice_debug_disable (gboolean with_stun) {
+void nice_debug_disable (gboolean with_stun)
+{
   debug_enabled = 0;
   if (with_stun)
     stun_debug_disable ();

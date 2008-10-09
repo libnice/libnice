@@ -38,6 +38,7 @@
 
 #include <glib.h>
 
+void nice_debug_init (void);
 void nice_debug_enable (gboolean with_stun);
 void nice_debug_disable (gboolean with_stun);
 void nice_debug (const char *fmt, ...);
