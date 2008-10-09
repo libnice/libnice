@@ -605,7 +605,8 @@ socket_send (
       memcpy (buffer + sizeof(uint32_t), buf, len);
       msg_len = len + sizeof(uint32_t);
     } else {
-      goto send;
+      nice_socket_send (priv->base_socket, &priv->server_addr, len, buf);
+      return TRUE;
     }
   } else {
     if (priv->compatibility == NICE_UDP_TURN_SOCKET_COMPATIBILITY_DRAFT9) {
