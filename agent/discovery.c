@@ -367,8 +367,7 @@ void priv_generate_candidate_credentials (NiceAgent *agent,
 
     nice_rng_generate_bytes_print (agent->rng, 16, (gchar *)username);
 
-    candidate->username = g_strdup (username);
-
+    candidate->username = g_strndup (username, 16);
   }
 
 
