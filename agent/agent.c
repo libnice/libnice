@@ -702,6 +702,7 @@ priv_add_new_candidate_discovery_turn (NiceAgent *agent,
       if (agent->compatibility == NICE_COMPATIBILITY_DRAFT19) {
         stun_agent_init (&cdisco->turn_agent, STUN_ALL_KNOWN_ATTRIBUTES,
             STUN_COMPATIBILITY_3489BIS,
+            STUN_AGENT_USAGE_ADD_SOFTWARE |
             STUN_AGENT_USAGE_LONG_TERM_CREDENTIALS);
       } else if (agent->compatibility == NICE_COMPATIBILITY_MSN) {
         stun_agent_init (&cdisco->turn_agent, STUN_ALL_KNOWN_ATTRIBUTES,
