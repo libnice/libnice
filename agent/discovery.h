@@ -47,10 +47,8 @@ struct _CandidateDiscovery
 {
   NiceAgent *agent;         /**< back pointer to owner */
   NiceCandidateType type;   /**< candidate type STUN or TURN */
-  guint socket;             /**< XXX: should be taken from local cand: existing socket to use */
   NiceSocket *nicesock;  /**< XXX: should be taken from local cand: existing socket to use */
   NiceAddress server;       /**< STUN/TURN server address */
-  NiceAddress *interface;   /**< Address of local interface */
   GTimeVal next_tick;       /**< next tick timestamp */
   gboolean pending;         /**< is discovery in progress? */
   gboolean done;            /**< is discovery complete? */

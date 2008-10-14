@@ -659,10 +659,8 @@ priv_add_new_candidate_discovery_stun (NiceAgent *agent,
 
     if (modified_list) {
       cdisco->type = NICE_CANDIDATE_TYPE_SERVER_REFLEXIVE;
-      cdisco->socket = host_candidate->sockptr->fileno;
       cdisco->nicesock = host_candidate->sockptr;
       cdisco->server = server;
-      cdisco->interface = addr;
       cdisco->stream = stream;
       cdisco->component = stream_find_component_by_id (stream, component_id);
       cdisco->agent = agent;
@@ -695,10 +693,8 @@ priv_add_new_candidate_discovery_turn (NiceAgent *agent,
 
     if (modified_list) {
       cdisco->type = NICE_CANDIDATE_TYPE_RELAYED;
-      cdisco->socket = host_candidate->sockptr->fileno;
       cdisco->nicesock = host_candidate->sockptr;
       cdisco->server = server;
-      cdisco->interface = addr;
       cdisco->stream = stream;
       cdisco->component = stream_find_component_by_id (stream, component_id);
       cdisco->agent = agent;
