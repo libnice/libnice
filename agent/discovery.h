@@ -41,9 +41,7 @@
 #include "stream.h"
 #include "agent.h"
 
-typedef struct _CandidateDiscovery CandidateDiscovery;
-
-struct _CandidateDiscovery
+typedef struct
 {
   NiceAgent *agent;         /**< back pointer to owner */
   NiceCandidateType type;   /**< candidate type STUN or TURN */
@@ -62,7 +60,7 @@ struct _CandidateDiscovery
   StunMessage stun_message;
   uint8_t stun_resp_buffer[STUN_MAX_MESSAGE_SIZE];
   StunMessage stun_resp_msg;
-}; 
+} CandidateDiscovery;
 
 void discovery_free_item (gpointer data, gpointer user_data);
 void discovery_free (NiceAgent *agent);
