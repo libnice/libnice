@@ -82,7 +82,9 @@ size_t stun_usage_turn_create (StunAgent *agent, StunMessage *msg,
 
 size_t stun_usage_turn_create_refresh (StunAgent *agent, StunMessage *msg,
     uint8_t *buffer, size_t buffer_len,
-    StunMessage *previous_request, int lifetime,
+    StunMessage *previous_response, int32_t lifetime,
+    uint8_t *username, size_t username_len,
+    uint8_t *password, size_t password_len,
     StunUsageTurnCompatibility compatibility);
 
 StunUsageTurnReturn stun_usage_turn_process (StunMessage *msg,
@@ -91,6 +93,10 @@ StunUsageTurnReturn stun_usage_turn_process (StunMessage *msg,
     struct sockaddr *alternate_server, socklen_t *alternate_server_len,
     uint32_t *bandwidth, uint32_t *lifetime,
     StunUsageTurnCompatibility compatibility);
+
+StunUsageTurnReturn stun_usage_turn_refresh_process (StunMessage *msg,
+    uint32_t *lifetime, StunUsageTurnCompatibility compatibility);
+
 
 # ifdef __cplusplus
 }
