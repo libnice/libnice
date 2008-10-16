@@ -100,6 +100,9 @@ StunUsageIceReturn stun_usage_ice_conncheck_process (StunMessage *msg,
 {
   int val, code = -1;
 
+  if (stun_message_get_method (msg) != STUN_BINDING)
+    return STUN_USAGE_ICE_RETURN_RETRY;
+
   switch (stun_message_get_class (msg))
   {
     case STUN_REQUEST:

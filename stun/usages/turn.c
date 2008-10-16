@@ -207,6 +207,9 @@ StunUsageTurnReturn stun_usage_turn_process (StunMessage *msg,
   int val, code = -1;
   StunUsageTurnReturn ret = STUN_USAGE_TURN_RETURN_RELAY_SUCCESS;
 
+  if (stun_message_get_method (msg) != STUN_ALLOCATE)
+    return STUN_USAGE_TURN_RETURN_RETRY;
+
   switch (stun_message_get_class (msg))
   {
     case STUN_REQUEST:

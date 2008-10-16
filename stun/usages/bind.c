@@ -72,6 +72,9 @@ StunUsageBindReturn stun_usage_bind_process (StunMessage *msg,
 {
   int val, code = -1;
 
+  if (stun_message_get_method (msg) != STUN_BINDING)
+    return STUN_USAGE_BIND_RETURN_RETRY;
+
   switch (stun_message_get_class (msg))
   {
     case STUN_REQUEST:
