@@ -62,6 +62,32 @@ typedef struct
   StunMessage stun_resp_msg;
 } CandidateDiscovery;
 
+typedef struct
+{
+  NiceAgent *agent;         /**< back pointer to owner */
+  NiceSocket *nicesock;     /**< existing socket to use */
+  NiceSocket *relay_socket; /**< relay socket from which we receive */
+  NiceAddress server;       /**< STUN/TURN server address */
+  Stream *stream;
+  Component *component;
+  StunAgent turn_agent;
+  GSource *timer_source;
+  GSource *tick_source;
+  uint8_t *msn_turn_username;
+  uint8_t *msn_turn_password;
+  stun_timer_t timer;
+  uint8_t stun_buffer[STUN_MAX_MESSAGE_SIZE];
+  StunMessage stun_message;
+  uint8_t stun_resp_buffer[STUN_MAX_MESSAGE_SIZE];
+  StunMessage stun_resp_msg;
+} CandidateRefresh;
+
+void refresh_free_item (gpointer data, gpointer user_data);
+void refresh_free (NiceAgent *agent);
+void refresh_prune_stream (NiceAgent *agent, guint stream_id);
+void refresh_cancel (CandidateRefresh *refresh);
+
+
 void discovery_free_item (gpointer data, gpointer user_data);
 void discovery_free (NiceAgent *agent);
 void discovery_prune_stream (NiceAgent *agent, guint stream_id);

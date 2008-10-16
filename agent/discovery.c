@@ -151,6 +151,78 @@ void discovery_prune_stream (NiceAgent *agent, guint stream_id)
   }
 }
 
+
+/**
+ * Frees the CandidateDiscovery structure pointed to
+ * by 'user data'. Compatible with g_slist_foreach().
+ */
+void refresh_free_item (gpointer data, gpointer user_data)
+{
+  CandidateRefresh *cand = data;
+
+  g_assert (user_data == NULL);
+
+  if (cand->timer_source != NULL) {
+    g_source_destroy (cand->timer_source);
+    g_source_unref (cand->timer_source);
+    cand->timer_source = NULL;
+  }
+  if (cand->tick_source != NULL) {
+    g_source_destroy (cand->tick_source);
+    g_source_unref (cand->tick_source);
+    cand->tick_source = NULL;
+  }
+
+
+  g_slice_free (CandidateRefresh, cand);
+}
+
+/**
+ * Frees all discovery related resources for the agent.
+ */
+void refresh_free (NiceAgent *agent)
+{
+  if (agent->refresh_list) {
+    GSList *tmp = agent->refresh_list;
+    agent->refresh_list = NULL;
+
+    g_slist_foreach (tmp, refresh_free_item, NULL);
+    g_slist_free (tmp);
+
+  }
+}
+
+/**
+ * Prunes the list of discovery processes for items related
+ * to stream 'stream_id'. 
+ *
+ * @return TRUE on success, FALSE on a fatal error
+ */
+void refresh_prune_stream (NiceAgent *agent, guint stream_id)
+{
+  GSList *i;
+
+  for (i = agent->refresh_list; i ;) {
+    CandidateRefresh *cand = i->data;
+    GSList *next = i->next;
+
+    if (cand->stream->id == stream_id) {
+      agent->refresh_list = g_slist_remove (agent->refresh_list, cand);
+      refresh_free_item (cand, NULL);
+    }
+
+    i = next;
+  }
+
+}
+
+void refresh_cancel (CandidateRefresh *refresh)
+{
+  refresh->agent->refresh_list = g_slist_remove (refresh->agent->refresh_list,
+      refresh);
+  refresh_free_item (refresh, NULL);
+}
+
 /**
  * Adds a new local candidate. Implements the candidate pruning
  * defined in ICE spec section 4.1.3 "Eliminating Redundant
