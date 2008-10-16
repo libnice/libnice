@@ -91,7 +91,7 @@ priv_agent_to_udp_turn_compatibility (NiceAgent *agent) {
 }
 
 /**
- * Frees the CandidateDiscovery structure pointed to 
+ * Frees the CandidateDiscovery structure pointed to
  * by 'user data'. Compatible with g_slist_foreach().
  */
 void discovery_free_item (gpointer data, gpointer user_data)
@@ -733,7 +733,7 @@ static gboolean priv_discovery_tick_unlocked (gpointer pointer)
               &cand->stun_message,  cand->stun_buffer, sizeof(cand->stun_buffer),
               cand->stun_resp_msg.buffer == NULL ? NULL : &cand->stun_resp_msg,
               STUN_USAGE_TURN_REQUEST_PORT_NORMAL,
-              0, 0,
+              -1, -1,
               username, username_len,
               password, password_len,
               priv_agent_to_turn_compatibility (agent));
