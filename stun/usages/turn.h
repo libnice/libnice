@@ -75,7 +75,7 @@ size_t stun_usage_turn_create (StunAgent *agent, StunMessage *msg,
     uint8_t *buffer, size_t buffer_len,
     StunMessage *previous_request,
     uint32_t request_ports,
-    uint32_t bandwidth, uint32_t lifetime,
+    int32_t bandwidth, int32_t lifetime,
     uint8_t *username, size_t username_len,
     uint8_t *password, size_t password_len,
     StunUsageTurnCompatibility compatibility);
