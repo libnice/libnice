@@ -159,6 +159,12 @@ void discovery_prune_stream (NiceAgent *agent, guint stream_id)
 void refresh_free_item (gpointer data, gpointer user_data)
 {
   CandidateRefresh *cand = data;
+  NiceAgent *agent = cand->agent;
+  uint8_t *username;
+  size_t username_len;
+  uint8_t *password;
+  size_t password_len;
+  size_t buffer_len = 0;
 
   g_assert (user_data == NULL);
 
@@ -173,6 +179,36 @@ void refresh_free_item (gpointer data, gpointer user_data)
     cand->tick_source = NULL;
   }
 
+  username = (uint8_t *)cand->component->turn_username;
+  username_len = (size_t) strlen (cand->component->turn_username);
+  password = (uint8_t *)cand->component->turn_password;
+  password_len = (size_t) strlen (cand->component->turn_password);
+
+  if (agent->compatibility == NICE_COMPATIBILITY_MSN) {
+    username = g_base64_decode ((gchar *)username, &username_len);
+    password = g_base64_decode ((gchar *)password, &password_len);
+  }
+
+  buffer_len = stun_usage_turn_create_refresh (&cand->turn_agent,
+      &cand->stun_message,  cand->stun_buffer, sizeof(cand->stun_buffer),
+      cand->stun_resp_msg.buffer == NULL ? NULL : &cand->stun_resp_msg, 0,
+      username, username_len,
+      password, password_len,
+      priv_agent_to_turn_compatibility (agent));
+
+  if (buffer_len > 0) {
+    /* send the refresh twice since we won't do retransmissions */
+    nice_socket_send (cand->nicesock, &cand->server,
+        buffer_len, (gchar *)cand->stun_buffer);
+    nice_socket_send (cand->nicesock, &cand->server,
+        buffer_len, (gchar *)cand->stun_buffer);
+
+  }
+
+  if (agent->compatibility == NICE_COMPATIBILITY_MSN) {
+    g_free (username);
+    g_free (password);
+  }
 
   g_slice_free (CandidateRefresh, cand);
 }
