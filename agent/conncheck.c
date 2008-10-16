@@ -515,6 +515,117 @@ static gboolean priv_conn_keepalive_tick (gpointer pointer)
   return ret;
 }
 
+static gboolean priv_turn_allocate_refresh_retransmissions_tick (gpointer pointer)
+{
+  CandidateRefresh *cand = (CandidateRefresh *) pointer;
+  guint timeout;
+
+  g_static_rec_mutex_lock (&cand->agent->mutex);
+
+  g_source_destroy (cand->tick_source);
+  g_source_unref (cand->tick_source);
+  cand->tick_source = NULL;
+
+  timeout = stun_timer_refresh (&cand->timer);
+  switch (timeout) {
+    case -1:
+      /* Time out */
+      refresh_cancel (cand);
+      break;
+    case 0:
+      /* Retransmit */
+      nice_socket_send (cand->nicesock, &cand->server,
+          stun_message_length (&cand->stun_message), (gchar *)cand->stun_buffer);
+
+      timeout = stun_timer_remainder (&cand->timer);
+      cand->tick_source = agent_timeout_add_with_context (cand->agent, timeout,
+          priv_turn_allocate_refresh_retransmissions_tick, cand);
+      break;
+    default:
+      cand->tick_source = agent_timeout_add_with_context (cand->agent, timeout,
+          priv_turn_allocate_refresh_retransmissions_tick, cand);
+      break;
+  }
+
+
+  g_static_rec_mutex_unlock (&cand->agent->mutex);
+  return FALSE;
+}
+
+static void priv_turn_allocate_refresh_tick_unlocked (CandidateRefresh *cand)
+{
+  uint8_t *username;
+  size_t username_len;
+  uint8_t *password;
+  size_t password_len;
+  size_t buffer_len = 0;
+
+  username = (uint8_t *)cand->component->turn_username;
+  username_len = (size_t) strlen (cand->component->turn_username);
+  password = (uint8_t *)cand->component->turn_password;
+  password_len = (size_t) strlen (cand->component->turn_password);
+
+  if (cand->agent->compatibility == NICE_COMPATIBILITY_MSN) {
+    username = g_base64_decode ((gchar *)username, &username_len);
+    password = g_base64_decode ((gchar *)password, &password_len);
+  }
+
+  buffer_len = stun_usage_turn_create_refresh (&cand->turn_agent,
+      &cand->stun_message,  cand->stun_buffer, sizeof(cand->stun_buffer),
+      cand->stun_resp_msg.buffer == NULL ? NULL : &cand->stun_resp_msg, -1,
+      username, username_len,
+      password, password_len,
+      priv_agent_to_turn_compatibility (cand->agent));
+
+  if (cand->agent->compatibility == NICE_COMPATIBILITY_MSN) {
+    g_free (cand->msn_turn_username);
+    g_free (cand->msn_turn_password);
+    cand->msn_turn_username = username;
+    cand->msn_turn_password = password;
+  }
+
+  nice_debug ("Agent %p : Sending allocate Refresh %d", agent, buffer_len);
+
+  if (buffer_len > 0) {
+    stun_timer_start (&cand->timer);
+
+    /* send the refresh */
+    nice_socket_send (cand->nicesock, &cand->server,
+        buffer_len, (gchar *)cand->stun_buffer);
+
+    if (cand->tick_source != NULL) {
+      g_source_destroy (cand->tick_source);
+      g_source_unref (cand->tick_source);
+      cand->tick_source = NULL;
+    }
+
+    cand->tick_source = agent_timeout_add_with_context (cand->agent,
+        stun_timer_remainder (&cand->timer),
+        priv_turn_allocate_refresh_retransmissions_tick, cand);
+  }
+
+}
+
+
+/**
+ * Timer callback that handles refreshing TURN allocations
+ *
+ * This function is designed for the g_timeout_add() interface.
+ *
+ * @return will return FALSE when no more pending timers.
+ */
+static gboolean priv_turn_allocate_refresh_tick (gpointer pointer)
+{
+  CandidateRefresh *cand = (CandidateRefresh *) pointer;
+
+  g_static_rec_mutex_lock (&cand->agent->mutex);
+  priv_turn_allocate_refresh_tick_unlocked (cand);
+  g_static_rec_mutex_unlock (&cand->agent->mutex);
+
+  return FALSE;
+}
+
+
 /**
  * Initiates the next pending connectivity check.
  * 
@@ -1729,6 +1840,43 @@ static gboolean priv_map_reply_to_discovery_request (NiceAgent *agent, StunMessa
 }
 
 
+static CandidateRefresh *
+priv_add_new_turn_refresh (CandidateDiscovery *cdisco, NiceCandidate *relay_cand,
+    guint lifetime)
+{
+  CandidateRefresh *cand;
+  NiceAgent *agent = cdisco->agent;
+  GSList *modified_list;
+
+  cand = g_slice_new0 (CandidateRefresh);
+  if (cand) {
+    modified_list = g_slist_append (agent->refresh_list, cand);
+
+    if (modified_list) {
+      cand->nicesock = cdisco->nicesock;
+      cand->relay_socket = relay_cand->sockptr;
+      cand->server = cdisco->server;
+      cand->stream = cdisco->stream;
+      cand->component = cdisco->component;
+      cand->agent = cdisco->agent;
+      memcpy (&cand->turn_agent, &cdisco->turn_agent, sizeof(StunAgent));
+      nice_debug ("Agent %p : Adding new refresh candidate %p with timeout %d",
+          agent, cand, (lifetime - 60) * 1000);
+      agent->refresh_list = modified_list;
+
+      /* step: also start the keepalive timer */
+      /* refresh should be sent 1 minute before it expires */
+      cand->timer_source =
+          agent_timeout_add_with_context (agent, (lifetime - 60) * 1000,
+              priv_turn_allocate_refresh_tick, cand);
+
+      nice_debug ("timer source is : %d", cand->timer_source);
+    }
+  }
+
+  return cand;
+}
+
 /**
  * Tries to match STUN reply in 'buf' to an existing STUN discovery
  * transaction. If found, a reply is sent.
@@ -1776,6 +1924,7 @@ static gboolean priv_map_reply_to_relay_request (NiceAgent *agent, StunMessage *
                    res == STUN_USAGE_TURN_RETURN_MAPPED_SUCCESS) {
           /* case: succesful allocate, create a new local candidate */
           NiceAddress niceaddr;
+          NiceCandidate *relay_cand;
 
           /* We also received our mapped address */
           if (res == STUN_USAGE_TURN_RETURN_MAPPED_SUCCESS) {
@@ -1790,12 +1939,15 @@ static gboolean priv_map_reply_to_relay_request (NiceAgent *agent, StunMessage *
           }
 
           nice_address_set_from_sockaddr (&niceaddr, &relayaddr);
-          discovery_add_relay_candidate (
+          relay_cand = discovery_add_relay_candidate (
              d->agent,
              d->stream->id,
              d->component->id,
              &niceaddr,
              d->nicesock);
+
+          priv_add_new_turn_refresh (d, relay_cand, lifetime);
+
 
           d->stun_message.buffer = NULL;
           d->stun_message.buffer_len = 0;
@@ -1841,6 +1993,89 @@ static gboolean priv_map_reply_to_relay_request (NiceAgent *agent, StunMessage *
             d->stun_message.buffer = NULL;
             d->stun_message.buffer_len = 0;
             d->done = TRUE;
+          }
+          trans_found = TRUE;
+        }
+      }
+    }
+  }
+
+  return trans_found;
+}
+
+
+/**
+ * Tries to match STUN reply in 'buf' to an existing STUN discovery
+ * transaction. If found, a reply is sent.
+ * 
+ * @return TRUE if a matching transaction is found
+ */
+static gboolean priv_map_reply_to_relay_refresh (NiceAgent *agent, StunMessage *resp)
+{
+  uint32_t lifetime;
+  GSList *i;
+  StunUsageTurnReturn res;
+  gboolean trans_found = FALSE;
+  stun_transid_t refresh_id;
+  stun_transid_t response_id;
+  stun_message_id (resp, response_id);
+
+  for (i = agent->refresh_list; i && trans_found != TRUE; i = i->next) {
+    CandidateRefresh *cand = i->data;
+
+    if (cand->stun_message.buffer) {
+      stun_message_id (&cand->stun_message, refresh_id);
+
+      if (memcmp (refresh_id, response_id, sizeof(stun_transid_t)) == 0) {
+        res = stun_usage_turn_refresh_process (resp,
+            &lifetime, priv_agent_to_turn_compatibility (cand->agent));
+        nice_debug ("Agent %p : stun_turn_refresh_process for %p res %d.",
+            agent, cand, (int)res);
+        if (res == STUN_USAGE_TURN_RETURN_RELAY_SUCCESS) {
+          /* refresh should be sent 1 minute before it expires */
+          cand->timer_source =
+              agent_timeout_add_with_context (cand->agent, (lifetime - 60) * 1000,
+              priv_turn_allocate_refresh_tick, cand);
+
+          g_source_destroy (cand->tick_source);
+          g_source_unref (cand->tick_source);
+          cand->tick_source = NULL;
+        } else if (res == STUN_USAGE_TURN_RETURN_ERROR) {
+          int code = -1;
+          uint8_t *sent_realm = NULL;
+          uint8_t *recv_realm = NULL;
+          uint16_t sent_realm_len = 0;
+          uint16_t recv_realm_len = 0;
+
+          sent_realm = (uint8_t *) stun_message_find (&cand->stun_message,
+              STUN_ATTRIBUTE_REALM, &sent_realm_len);
+          recv_realm = (uint8_t *) stun_message_find (resp,
+              STUN_ATTRIBUTE_REALM, &recv_realm_len);
+
+          /* check for unauthorized error response */
+          if (cand->agent->compatibility == NICE_COMPATIBILITY_DRAFT19 &&
+              stun_message_get_class (resp) == STUN_ERROR &&
+              stun_message_find_error (resp, &code) == 0 &&
+              recv_realm != NULL && recv_realm_len > 0) {
+
+            if (code == 438 ||
+                (code == 401 &&
+                    !(recv_realm_len == sent_realm_len &&
+                        sent_realm != NULL &&
+                        memcmp (sent_realm, recv_realm, sent_realm_len) == 0))) {
+              cand->stun_resp_msg = *resp;
+              memcpy (cand->stun_resp_buffer, resp->buffer,
+                  stun_message_length (resp));
+              cand->stun_resp_msg.buffer = cand->stun_resp_buffer;
+              cand->stun_resp_msg.buffer_len = sizeof(cand->stun_resp_buffer);
+              priv_turn_allocate_refresh_tick_unlocked (cand);
+            } else {
+              /* case: a real unauthorized error */
+              refresh_cancel (cand);
+            }
+          } else {
+            /* case: STUN error, the check STUN context was freed */
+              refresh_cancel (cand);
           }
           trans_found = TRUE;
         }
@@ -1979,7 +2214,7 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, Stream *stream,
   valid = stun_agent_validate (&agent->stun_agent, &req,
       (uint8_t *) buf, len, conncheck_stun_validater, &validater_data);
 
-  /* Check for relay candidates stnu agents */
+  /* Check for relay candidates stun agents */
   if (valid == STUN_VALIDATION_BAD_REQUEST ||
       valid == STUN_VALIDATION_UNMATCHED_RESPONSE) {
     for (i = agent->discovery_list; i; i = i->next) {
@@ -1989,6 +2224,23 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, Stream *stream,
           d->nicesock == socket) {
         valid = stun_agent_validate (&d->turn_agent, &req,
             (uint8_t *) buf, len, conncheck_stun_validater, &validater_data);
+        turn_msg = TRUE;
+        break;
+      }
+    }
+  }
+  /* Check for relay candidates stun agents */
+  if (valid == STUN_VALIDATION_BAD_REQUEST ||
+      valid == STUN_VALIDATION_UNMATCHED_RESPONSE) {
+    for (i = agent->refresh_list; i; i = i->next) {
+      CandidateRefresh *r = i->data;
+      nice_debug ("Comparing %p to %p, %p to %p and %p and %p to %p", r->stream,
+          stream, r->component, component, r->nicesock, r->relay_socket, socket);
+      if (r->stream == stream && r->component == component &&
+          (r->nicesock == socket || r->relay_socket == socket)) {
+        valid = stun_agent_validate (&r->turn_agent, &req,
+            (uint8_t *) buf, len, conncheck_stun_validater, &validater_data);
+        nice_debug ("Validating gave %d", valid);
         turn_msg = TRUE;
         break;
       }
@@ -2190,9 +2442,13 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, Stream *stream,
       if (trans_found != TRUE)
         trans_found = priv_map_reply_to_discovery_request (agent, &req);
 
-      /* step: let's try to match the response to an existing discovery */
+      /* step: let's try to match the response to an existing turn allocate */
       if (trans_found != TRUE)
         trans_found = priv_map_reply_to_relay_request (agent, &req);
+
+      /* step: let's try to match the response to an existing turn refresh */
+      if (trans_found != TRUE)
+        trans_found = priv_map_reply_to_relay_refresh (agent, &req);
 
       if (trans_found != TRUE)
         nice_debug ("Agent %p : Unable to match to an existing transaction, "

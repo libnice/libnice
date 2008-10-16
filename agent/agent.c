@@ -371,6 +371,8 @@ nice_agent_init (NiceAgent *agent)
   agent->discovery_timer_source = NULL;
   agent->conncheck_timer_source = NULL;
   agent->keepalive_timer_source = NULL;
+  agent->refresh_list = NULL;
+
   agent->compatibility = NICE_COMPATIBILITY_DRAFT19;
 
   stun_agent_init (&agent->stun_agent, STUN_ALL_KNOWN_ATTRIBUTES,
@@ -935,6 +937,7 @@ nice_agent_remove_stream (
   /* note: remove items with matching stream_ids from both lists */
   conn_check_prune_stream (agent, stream);
   discovery_prune_stream (agent, stream_id);
+  refresh_prune_stream (agent, stream_id);
 
   /* remove the stream itself */
   for (i = stream->components; i; i = i->next) {
@@ -1761,6 +1764,8 @@ nice_agent_dispose (GObject *object)
   /* step: free resources for the binding discovery timers */
   discovery_free (agent);
   g_assert (agent->discovery_list == NULL);
+  refresh_free (agent);
+  g_assert (agent->refresh_list == NULL);
 
   /* step: free resources for the connectivity check timers */
   conn_check_free (agent);
