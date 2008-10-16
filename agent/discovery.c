@@ -685,13 +685,11 @@ static gboolean priv_discovery_tick_unlocked (gpointer pointer)
   int not_done = 0; /* note: track whether to continue timer */
   size_t buffer_len = 0;
 
-#ifndef NDEBUG
   {
     static int tick_counter = 0;
     if (tick_counter++ % 50 == 0)
       nice_debug ("Agent %p : discovery tick #%d with list %p (1)", agent, tick_counter, agent->discovery_list);
   }
-#endif
 
   for (i = agent->discovery_list; i ; i = i->next) {
     cand = i->data;

@@ -1047,14 +1047,12 @@ static gboolean priv_add_remote_candidate (
 	candidate->type = type;
 	if (addr)
 	  candidate->addr = *addr;
-#ifndef NDEBUG
 	{
 	  gchar tmpbuf[INET6_ADDRSTRLEN];
 	  nice_address_to_string (addr, tmpbuf);
 	  nice_debug ("Agent %p : Adding remote candidate with addr [%s]:%u.", agent, tmpbuf,
 		   nice_address_get_port (addr));
 	}
-#endif
 	
 	if (base_addr)
 	  candidate->base_addr = *base_addr;
@@ -1330,7 +1328,9 @@ _nice_agent_recv (
 
   if (nice_address_equal (&from, &component->turn_server)) {
     GSList * i = NULL;
+#ifndef NDEBUG
     nice_debug ("Agent %p : Packet received from TURN server candidate.", agent);
+#endif
     for (i = component->local_candidates; i; i = i->next) {
       NiceCandidate *cand = i->data;
       if (cand->type == NICE_CANDIDATE_TYPE_RELAYED) {

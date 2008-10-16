@@ -354,15 +354,12 @@ static gboolean priv_conn_check_tick_stream (Stream *stream, NiceAgent *agent, G
       }
     }
   }
-  
-#ifndef NDEBUG
-  {
+    {
     static int tick_counter = 0;
     if (tick_counter++ % 50 == 0 || keep_timer_going != TRUE)
       nice_debug ("Agent %p : timer(%p) tick #%u: %u frozen, %u in-progress, %u waiting, %u succeeded, %u nominated, %u waiting-for-nom.", agent, 
 	       agent, tick_counter, frozen, s_inprogress, waiting, s_succeeded, s_nominated, s_waiting_for_nomination);
   }
-#endif
 
   return keep_timer_going;
 
@@ -1189,7 +1186,6 @@ int conn_check_send (NiceAgent *agent, CandidateCheckPair *pair)
 
   nice_address_copy_to_sockaddr (&pair->remote->addr, &sockaddr);
 
-#ifndef NDEBUG
   {
     gchar tmpbuf[INET6_ADDRSTRLEN];
     nice_address_to_string (&pair->remote->addr, tmpbuf);
@@ -1202,7 +1198,6 @@ int conn_check_send (NiceAgent *agent, CandidateCheckPair *pair)
 	     uname, password, priority);
 
   }
-#endif
 
   if (cand_use) 
     pair->nominated = controlling;
@@ -1358,7 +1353,6 @@ static void priv_reply_to_conn_check (NiceAgent *agent, Stream *stream, Componen
 {
   g_assert (rcand == NULL || nice_address_equal(&rcand->addr, toaddr) == TRUE);
 
-#ifndef NDEBUG
   {
     gchar tmpbuf[INET6_ADDRSTRLEN];
     nice_address_to_string (toaddr, tmpbuf);
@@ -1370,7 +1364,6 @@ static void priv_reply_to_conn_check (NiceAgent *agent, Stream *stream, Componen
 	     rcand, component->id,
 	     (int)use_candidate);
   }
-#endif
 
   nice_socket_send (socket, toaddr, rbuf_len, (const gchar*)rbuf);
   
