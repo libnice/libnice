@@ -289,6 +289,9 @@ StunUsageTurnReturn stun_usage_turn_process (StunMessage *msg,
     }
   }
 
+  stun_message_find32 (msg, STUN_ATTRIBUTE_LIFETIME, lifetime);
+  stun_message_find32 (msg, STUN_ATTRIBUTE_BANDWIDTH, bandwidth);
+
   stun_debug (" Mapped address found!\n");
   return ret;
 
