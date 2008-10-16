@@ -584,7 +584,7 @@ static void priv_turn_allocate_refresh_tick_unlocked (CandidateRefresh *cand)
     cand->msn_turn_password = password;
   }
 
-  nice_debug ("Agent %p : Sending allocate Refresh %d", agent, buffer_len);
+  nice_debug ("Agent %p : Sending allocate Refresh %d", cand->agent, buffer_len);
 
   if (buffer_len > 0) {
     stun_timer_start (&cand->timer);
