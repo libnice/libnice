@@ -52,6 +52,7 @@ typedef enum {
 gint
 nice_udp_turn_socket_parse_recv (
   NiceSocket *sock,
+  NiceSocket **from_sock,
   NiceAddress *from,
   guint len,
   gchar *buf,

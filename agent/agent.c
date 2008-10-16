@@ -1333,9 +1333,10 @@ _nice_agent_recv (
 #endif
     for (i = component->local_candidates; i; i = i->next) {
       NiceCandidate *cand = i->data;
-      if (cand->type == NICE_CANDIDATE_TYPE_RELAYED) {
-        len = nice_udp_turn_socket_parse_recv (cand->sockptr, &from, len, buf, &from, buf, len);
-        socket = cand->sockptr;
+      if (cand->type == NICE_CANDIDATE_TYPE_RELAYED &&
+          cand->stream_id == stream->id && cand->component_id == component->id) {
+        len = nice_udp_turn_socket_parse_recv (cand->sockptr, &socket,
+            &from, len, buf, &from, buf, len);
       }
     }
   }

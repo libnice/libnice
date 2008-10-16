@@ -364,6 +364,7 @@ nice_udp_turn_socket_set_peer (NiceSocket *sock, NiceAddress *peer)
 gint
 nice_udp_turn_socket_parse_recv (
   NiceSocket *sock,
+  NiceSocket **from_sock,
   NiceAddress *from,
   guint len,
   gchar *buf,
@@ -502,6 +503,7 @@ nice_udp_turn_socket_parse_recv (
 
         nice_address_set_from_sockaddr (from, (struct sockaddr *)&sa);
 
+        *from_sock = sock;
         memmove (buf, data, len > data_len ? data_len : len);
         return len > data_len ? data_len : len;
       } else {
@@ -528,9 +530,11 @@ nice_udp_turn_socket_parse_recv (
 
   if (binding) {
     *from = binding->peer;
+    *from_sock = sock;
   } else {
     *from = *recv_from;
   }
+
   memmove (buf, recv_buf, len > recv_len ? recv_len : len);
   return len > recv_len ? recv_len : len;
 
@@ -562,12 +566,13 @@ socket_recv (
   uint8_t recv_buf[STUN_MAX_MESSAGE_SIZE];
   gint recv_len;
   NiceAddress recv_from;
+  NiceSocket *dummy;;
 
   recv_len = nice_socket_recv (priv->base_socket, &recv_from,
       sizeof(recv_buf), (gchar *) recv_buf);
 
-  return nice_udp_turn_socket_parse_recv (sock, from, len, buf, &recv_from,
-      (gchar *) recv_buf, (guint) recv_len);
+  return nice_udp_turn_socket_parse_recv (sock, &dummy, from, len, buf,
+      &recv_from, (gchar *) recv_buf, (guint) recv_len);
 }
 
 static gboolean
