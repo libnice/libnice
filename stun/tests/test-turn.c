@@ -207,7 +207,8 @@ static void numb (void)
 
 
   req_len = stun_usage_turn_create_refresh (&agent, &refresh_msg, refresh,
-      sizeof(refresh),  &req_msg, 0, STUN_USAGE_TURN_COMPATIBILITY_DRAFT9);
+      sizeof(refresh),  &req_msg, 0, username, strlen (username),
+      password, strlen(password),STUN_USAGE_TURN_COMPATIBILITY_DRAFT9);
   assert (req_len > 0);
 
   val = send (fd, refresh, req_len, MSG_NOSIGNAL);
