@@ -1341,8 +1341,7 @@ _nice_agent_recv (
     }
   }
 
-  if (!stun_message_validate_buffer_length ((uint8_t *) buf, (size_t) len) ==
-      len)
+  if (stun_message_validate_buffer_length ((uint8_t *) buf, (size_t) len) != len)
     /* If the retval is no 0, its not a valid stun packet, probably data */
     return len;
 
