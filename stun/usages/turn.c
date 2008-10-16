@@ -83,13 +83,14 @@ size_t stun_usage_turn_create (StunAgent *agent, StunMessage *msg,
       if (stun_message_append32 (msg, STUN_ATTRIBUTE_BANDWIDTH, bandwidth) != 0)
         return 0;
     }
-    if (lifetime > 0) {
-      if (stun_message_append32 (msg, STUN_ATTRIBUTE_LIFETIME, lifetime) != 0)
-        return 0;
-    }
   } else {
     if (stun_message_append32 (msg, STUN_ATTRIBUTE_MAGIC_COOKIE,
             TURN_MAGIC_COOKIE) != 0)
+      return 0;
+  }
+
+  if (lifetime >= 0) {
+    if (stun_message_append32 (msg, STUN_ATTRIBUTE_LIFETIME, lifetime) != 0)
       return 0;
   }
 
