@@ -25,7 +25,9 @@ libsocket_la_SOURCES = \
 	udp-bsd.h \
 	udp-bsd.c \
 	udp-turn.h \
-	udp-turn.c
+	udp-turn.c \
+	tcp-turn.h \
+	tcp-turn.c
 
 check_PROGRAMS = test-bsd
 

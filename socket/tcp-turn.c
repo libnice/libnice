@@ -40,7 +40,7 @@
  */
 
 /*
- * Implementation of UDP socket interface using TCP Berkeley sockets. (See
+ * Implementation of TCP relay socket interface using TCP Berkeley sockets. (See
  * http://en.wikipedia.org/wiki/Berkeley_sockets.)
  */
 #ifdef HAVE_CONFIG_H
@@ -59,8 +59,6 @@
 typedef struct {
   NiceUdpTurnSocketCompatibility compatibility;
   GQueue send_queue;
-  WriteBlockedCb cb;
-  gpointer user_data;
   gchar recv_buf[65536];
   guint recv_buf_len;
   guint expecting_len;
@@ -71,21 +69,21 @@ struct to_be_sent {
   gchar *buf;
 };
 
-/*** NiceUDPSocket ***/
+/*** NiceSocket ***/
 
 static gint
 socket_recv (
-  NiceUDPSocket *sock,
+  NiceSocket *sock,
   NiceAddress *from,
   guint len,
   gchar *buf)
 {
   TurnTcpPriv *priv = sock->priv;
   int ret;
-  int padlen;
+  guint padlen;
 
   if (priv->expecting_len == 0) {
-    int headerlen = 0;
+    guint headerlen = 0;
 
     if (priv->compatibility == NICE_UDP_TURN_SOCKET_COMPATIBILITY_DRAFT9)
       headerlen = 4;
@@ -105,19 +103,18 @@ socket_recv (
 
     priv->recv_buf_len += ret;
 
-    if (ret < headerlen)
+    if (priv->recv_buf_len < headerlen)
       return 0;
 
     if (priv->compatibility == NICE_UDP_TURN_SOCKET_COMPATIBILITY_DRAFT9) {
       guint16 magic = ntohs (*(guint16*)priv->recv_buf);
       guint16 packetlen = ntohs (*(guint16*)(priv->recv_buf + 2));
 
-      /* Its STUN */
-      if (magic < 4000) {
+      if (magic < 0x4000) {
+        /* Its STUN */
         priv->expecting_len = 20 + packetlen;
-      /* Channel data */
-      }
-      else {
+      } else {
+        /* Channel data */
         priv->expecting_len = 4 + packetlen;
       }
     }
@@ -128,7 +125,10 @@ socket_recv (
     }
   }
 
-  padlen = (priv->expecting_len % 4) ?  4 - priv->expecting_len % 4 : 0;
+  if (priv->compatibility == NICE_UDP_TURN_SOCKET_COMPATIBILITY_DRAFT9)
+    padlen = (priv->expecting_len % 4) ?  4 - (priv->expecting_len % 4) : 0;
+  else
+    padlen = 0;
 
   ret = read (sock->fileno, priv->recv_buf + priv->recv_buf_len,
       priv->expecting_len + padlen - priv->recv_buf_len);
@@ -151,19 +151,10 @@ socket_recv (
 
   return 0;
 }
-
 static void
-add_to_be_sent (NiceUDPSocket *sock, const gchar *buf, guint len)
-{
-  TurnTcpPriv *priv = sock->priv;
-  struct to_be_sent *tbs = g_slice_new (struct to_be_sent);
+add_to_be_sent (NiceSocket *sock, const gchar *buf, guint len, gboolean head);
 
-  tbs->buf = g_memdup (buf, len);
-  tbs->length = len;
-  g_queue_push_tail (&priv->send_queue, tbs);
 
-  priv->cb (sock, priv->user_data);
-}
 
 /*
  * Returns:
@@ -172,8 +163,8 @@ add_to_be_sent (NiceUDPSocket *sock, const gchar *buf, guint len)
  * 1 = sent everything
  */
 
-gint
-socket_send_more (NiceUDPSocket *sock)
+static gint
+socket_send_more (NiceSocket *sock)
 {
   TurnTcpPriv *priv = sock->priv;
   struct to_be_sent *tbs = NULL;
@@ -183,22 +174,43 @@ socket_send_more (NiceUDPSocket *sock)
 
     ret = write (sock->fileno, tbs->buf, tbs->length);
 
-    if (ret <= 0) {
-      if (errno == EAGAIN)
-        return 0;
-      else
-        return -1;
+    if (ret < 0) {
+      if (errno == EAGAIN) {
+        add_to_be_sent (sock, tbs->buf, tbs->length, TRUE);
+      }
+    } else if (ret < (int) tbs->length) {
+      add_to_be_sent (sock, tbs->buf + ret, tbs->length - ret, TRUE);
     }
 
+    g_free (tbs->buf);
     g_slice_free (struct to_be_sent, tbs);
   }
 
   return 1;
 }
 
+
+static void
+add_to_be_sent (NiceSocket *sock, const gchar *buf, guint len, gboolean head)
+{
+  TurnTcpPriv *priv = sock->priv;
+  struct to_be_sent *tbs = g_slice_new (struct to_be_sent);
+
+  tbs->buf = g_memdup (buf, len);
+  tbs->length = len;
+  if (head)
+    g_queue_push_head (&priv->send_queue, tbs);
+  else
+    g_queue_push_tail (&priv->send_queue, tbs);
+
+  /* TODO add io watch */
+  socket_send_more (NULL);
+}
+
+
 static gboolean
 socket_send (
-  NiceUDPSocket *sock,
+  NiceSocket *sock,
   const NiceAddress *to,
   guint len,
   const gchar *buf)
@@ -208,35 +220,37 @@ socket_send (
 
   if (priv->compatibility == NICE_UDP_TURN_SOCKET_COMPATIBILITY_GOOGLE) {
     guint16 tmpbuf = htons (len);
-    ret = write (sock->fileno, &tmpbuf, 2);
+    ret = write (sock->fileno, &tmpbuf, sizeof(guint16));
 
-    if (ret <= 0) {
+    if (ret < 0) {
       if (errno == EAGAIN) {
-        add_to_be_sent (sock, (gchar*) &tmpbuf, 2);
-        add_to_be_sent (sock, buf, len);
+        add_to_be_sent (sock, (gchar*) &tmpbuf, sizeof(guint16), FALSE);
+        add_to_be_sent (sock, buf, len, FALSE);
         return TRUE;
       } else {
         return FALSE;
       }
+    } else if ((guint)ret < sizeof(guint16)) {
+      add_to_be_sent (sock, ((gchar*) &tmpbuf) + ret,
+          sizeof(guint16) - ret, FALSE);
+      add_to_be_sent (sock, buf, len, FALSE);
+      return TRUE;
     }
-
-    if ((guint)ret != len)
-      return FALSE;
   }
 
   ret = write (sock->fileno, buf, len);
 
-  if (ret <= 0) {
+  if (ret < 0) {
     if (errno == EAGAIN) {
-      add_to_be_sent (sock, buf, len);
+      add_to_be_sent (sock, buf, len, FALSE);
       return TRUE;
     } else {
       return FALSE;
     }
+  } else if ((guint)ret < len) {
+    add_to_be_sent (sock, buf + ret, len - ret, FALSE);
+    return TRUE;
   }
-
-  if ((guint)ret != len)
-    return FALSE;
 
   if (priv->compatibility == NICE_UDP_TURN_SOCKET_COMPATIBILITY_DRAFT9 &&
       len % 4) {
@@ -245,13 +259,16 @@ socket_send (
 
     ret = write (sock->fileno, padbuf, padlen);
 
-    if (ret <= 0) {
+    if (ret < 0) {
       if (errno == EAGAIN) {
-        add_to_be_sent (sock, padbuf, padlen);
+        add_to_be_sent (sock, padbuf, padlen, FALSE);
         return TRUE;
       } else {
         return FALSE;
       }
+    } else if (ret < padlen) {
+      add_to_be_sent (sock, padbuf, padlen - ret, FALSE);
+      return TRUE;
     }
   }
 
@@ -266,7 +283,7 @@ free_to_be_sent (struct to_be_sent *tbs)
 }
 
 static void
-socket_close (NiceUDPSocket *sock)
+socket_close (NiceSocket *sock)
 {
   TurnTcpPriv *priv = sock->priv;
   close (sock->fileno);
@@ -275,48 +292,47 @@ socket_close (NiceUDPSocket *sock)
   g_slice_free(TurnTcpPriv, sock->priv);
 }
 
+static gboolean
+socket_is_reliable (NiceSocket *sock)
+{
+  return TRUE;
+}
 
-gboolean
-nice_tcp_turn_create_socket_full (
-  G_GNUC_UNUSED
-  NiceUDPSocketFactory *man,
-  NiceUDPSocket *sock,
-  NiceAddress *local_addr,
-  NiceAddress *remote_addr,
-  NiceUdpTurnSocketCompatibility compatibility,
-  WriteBlockedCb cb,
-  gpointer user_data)
+
+NiceSocket *
+nice_tcp_turn_socket_new (
+    NiceAgent *agent,
+    NiceAddress *addr,
+    NiceUdpTurnSocketCompatibility compatibility)
 {
   int sockfd = -1;
+  int ret;
   struct sockaddr_storage name;
   guint name_len = sizeof (name);
-  struct sockaddr_storage remote_name;
-  guint remote_name_len = sizeof (remote_name);
-  int ret;
+  NiceSocket *sock = g_slice_new0 (NiceSocket);
   TurnTcpPriv *priv;
 
-  if (local_addr != NULL)
-    {
-      nice_address_copy_to_sockaddr(local_addr, (struct sockaddr *)&name);
-    }
-  else
-    {
-      memset (&name, 0, sizeof (name));
-      name.ss_family = AF_UNSPEC;
-    }
+  if (addr != NULL) {
+    nice_address_copy_to_sockaddr(addr, (struct sockaddr *)&name);
+  } else {
+    memset (&name, 0, sizeof (name));
+    name.ss_family = AF_UNSPEC;
+  }
 
-  if ((sockfd == -1)
-   && ((name.ss_family == AF_UNSPEC) || (name.ss_family == AF_INET)))
-    {
-      sockfd = socket (PF_INET, SOCK_STREAM, 0);
-      name.ss_family = AF_INET;
+  if ((sockfd == -1) &&
+      ((name.ss_family == AF_UNSPEC) ||
+          (name.ss_family == AF_INET))) {
+    sockfd = socket (PF_INET, SOCK_STREAM, 0);
+    name.ss_family = AF_INET;
 #ifdef HAVE_SA_LEN
-      name.ss_len = sizeof (struct sockaddr_in);
+    name.ss_len = sizeof (struct sockaddr_in);
 #endif
-    }
+  }
 
-  if (sockfd == -1)
-    return FALSE;
+  if (sockfd == -1) {
+    g_slice_free (NiceSocket, sock);
+    return NULL;
+  }
 
 #ifdef FD_CLOEXEC
   fcntl (sockfd, F_SETFD, fcntl (sockfd, F_GETFD) | FD_CLOEXEC);
@@ -325,70 +341,24 @@ nice_tcp_turn_create_socket_full (
   fcntl (sockfd, F_SETFL, fcntl (sockfd, F_GETFL) | O_NONBLOCK);
 #endif
 
-  if(bind (sockfd, (struct sockaddr *) &name, sizeof (name)) != 0)
-    {
-      close (sockfd);
-      return FALSE;
-    }
 
-  if (getsockname (sockfd, (struct sockaddr *) &name, &name_len) != 0)
-    {
-      close (sockfd);
-      return FALSE;
-    }
-
-  nice_address_set_from_sockaddr (&sock->addr, (struct sockaddr *)&name);
-
-  nice_address_copy_to_sockaddr (remote_addr, (struct sockaddr *)&remote_name);
-
-  ret = connect (sockfd, (const struct sockaddr *)&remote_name,
-      remote_name_len);
+  ret = connect (sockfd, (const struct sockaddr *)&name, name_len);
 
   if (ret < 0 && errno != EINPROGRESS) {
     close (sockfd);
-    return FALSE;
+    g_slice_free (NiceSocket, sock);
+    return NULL;
   }
 
   sock->priv = priv = g_slice_new0 (TurnTcpPriv);
 
-  priv->cb = cb;
-  priv->user_data = user_data;
   priv->compatibility = compatibility;
 
   sock->fileno = sockfd;
   sock->send = socket_send;
   sock->recv = socket_recv;
+  sock->is_reliable = socket_is_reliable;
   sock->close = socket_close;
-  return TRUE;
+
+  return sock;
 }
-
-/*** NiceUDPSocketFactory ***/
-
-
-static void
-socket_factory_close (
-  G_GNUC_UNUSED
-  NiceUDPSocketFactory *man)
-{
-  (void)man;
-}
-
-
-static gboolean
-socket_factory_init_socket (
-  NiceUDPSocketFactory *man,
-  NiceUDPSocket *sock,
-  NiceAddress *addr)
-{
-  return FALSE;
-}
-
-NICEAPI_EXPORT void
-nice_tcp_turn_socket_factory_init (
-  G_GNUC_UNUSED
-  NiceUDPSocketFactory *man)
-{
-  man->init = socket_factory_init_socket;
-  man->close = socket_factory_close;
-}
-

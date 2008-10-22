@@ -38,28 +38,16 @@
 #ifndef _TCP_TURN_H
 #define _TCP_TURN_H
 
-#include "udp.h"
-#include "udp-turn.h"
+#include "socket.h"
 
 G_BEGIN_DECLS
 
-void
-nice_tcp_turn_socket_factory_init (NiceUDPSocketFactory *man);
 
-typedef void (*WriteBlockedCb) (NiceUDPSocket *sock, gpointer user_data);
-
-gboolean
-nice_tcp_turn_create_socket_full (
-  G_GNUC_UNUSED
-  NiceUDPSocketFactory *man,
-  NiceUDPSocket *sock,
-  NiceAddress *local_addr,
-  NiceAddress *remote_addr,
-  NiceUdpTurnSocketCompatibility compatibility,
-  WriteBlockedCb cb,
-  gpointer user_data);
-
-gint socket_send_more (NiceUDPSocket *sock);
+NiceSocket *
+nice_tcp_turn_socket_new (
+    NiceAgent *agent,
+    NiceAddress *addr,
+    NiceUdpTurnSocketCompatibility compatibility);
 
 
 G_END_DECLS
