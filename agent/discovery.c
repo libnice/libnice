@@ -179,10 +179,10 @@ void refresh_free_item (gpointer data, gpointer user_data)
     cand->tick_source = NULL;
   }
 
-  username = (uint8_t *)cand->component->turn_username;
-  username_len = (size_t) strlen (cand->component->turn_username);
-  password = (uint8_t *)cand->component->turn_password;
-  password_len = (size_t) strlen (cand->component->turn_password);
+  username = (uint8_t *)cand->turn->username;
+  username_len = (size_t) strlen (cand->turn->username);
+  password = (uint8_t *)cand->turn->password;
+  password_len = (size_t) strlen (cand->turn->password);
 
   if (agent->compatibility == NICE_COMPATIBILITY_MSN) {
     username = g_base64_decode ((gchar *)username, &username_len);
@@ -524,7 +524,8 @@ discovery_add_relay_candidate (
   guint stream_id,
   guint component_id,
   NiceAddress *address,
-  NiceSocket *base_socket)
+  NiceSocket *base_socket,
+  TurnServer *turn)
 {
   NiceCandidate *candidate;
   Component *component;
@@ -549,11 +550,12 @@ discovery_add_relay_candidate (
     candidate->stream_id = stream_id;
     candidate->component_id = component_id;
     candidate->addr = *address;
+    candidate->turn = turn;
 
     /* step: link to the base candidate+socket */
     relay_socket = nice_udp_turn_socket_new (agent, address,
-        base_socket, &component->turn_server,
-        component->turn_username, component->turn_password,
+        base_socket, &turn->server,
+        turn->username, turn->password,
         priv_agent_to_udp_turn_compatibility (agent));
     if (relay_socket) {
       candidate->sockptr = relay_socket;
@@ -564,7 +566,7 @@ discovery_add_relay_candidate (
       /* Google uses the turn username as the candidate username */
       if (agent->compatibility == NICE_COMPATIBILITY_GOOGLE) {
         g_free (candidate->username);
-        candidate->username = g_strdup (component->turn_username);
+        candidate->username = g_strdup (turn->username);
       }
 
       priv_assign_foundation (agent, candidate);
@@ -826,10 +828,10 @@ static gboolean priv_discovery_tick_unlocked (gpointer pointer)
           buffer_len = stun_usage_bind_create (&agent->stun_agent,
               &cand->stun_message, cand->stun_buffer, sizeof(cand->stun_buffer));
         } else if (cand->type == NICE_CANDIDATE_TYPE_RELAYED) {
-          uint8_t *username = (uint8_t *)cand->component->turn_username;
-          size_t username_len = (size_t) strlen (cand->component->turn_username);
-          uint8_t *password = (uint8_t *)cand->component->turn_password;
-          size_t password_len = (size_t) strlen (cand->component->turn_password);
+          uint8_t *username = (uint8_t *)cand->turn->username;
+          size_t username_len = (size_t) strlen (cand->turn->username);
+          uint8_t *password = (uint8_t *)cand->turn->password;
+          size_t password_len = (size_t) strlen (cand->turn->password);
 
           if (agent->compatibility == NICE_COMPATIBILITY_MSN) {
             username = g_base64_decode ((gchar *)username, &username_len);
@@ -846,6 +848,8 @@ static gboolean priv_discovery_tick_unlocked (gpointer pointer)
               priv_agent_to_turn_compatibility (agent));
 
           if (agent->compatibility == NICE_COMPATIBILITY_MSN) {
+            g_free (cand->msn_turn_username);
+            g_free (cand->msn_turn_password);
             cand->msn_turn_username = username;
             cand->msn_turn_password = password;
           }

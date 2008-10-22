@@ -98,6 +98,7 @@ typedef enum
   NICE_COMPONENT_TYPE_RTCP = 2
 } NiceComponentType;
 
+
 typedef enum
 {
   NICE_COMPATIBILITY_DRAFT19 = 0,
@@ -139,14 +140,15 @@ nice_agent_remove_stream (
   guint stream_id);
 
 
-void nice_agent_set_relay_info(
+gboolean nice_agent_set_relay_info(
     NiceAgent *agent,
     guint stream_id,
     guint component_id,
     const gchar *server_ip,
     guint server_port,
     const gchar *username,
-    const gchar *password);
+    const gchar *password,
+    NiceRelayType type);
 
 void
 nice_agent_gather_candidates (

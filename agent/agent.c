@@ -58,7 +58,7 @@
 #include "debug.h"
 
 #include "socket.h"
-#include "udp-turn.h"
+#include "stun/usages/turn.h"
 #include "candidate.h"
 #include "component.h"
 #include "conncheck.h"
@@ -102,13 +102,22 @@ enum
   N_SIGNALS,
 };
 
-
 static guint signals[N_SIGNALS];
 
 static gboolean priv_attach_stream_component (NiceAgent *agent,
     Stream *stream,
     Component *component);
 static void priv_detach_stream_component (Stream *stream, Component *component);
+
+static StunUsageTurnCompatibility
+priv_agent_to_turn_compatibility (NiceAgent *agent) {
+  return agent->compatibility == NICE_COMPATIBILITY_DRAFT19 ?
+      STUN_USAGE_TURN_COMPATIBILITY_DRAFT9 :
+      agent->compatibility == NICE_COMPATIBILITY_GOOGLE ?
+      STUN_USAGE_TURN_COMPATIBILITY_GOOGLE :
+      agent->compatibility == NICE_COMPATIBILITY_MSN ?
+      STUN_USAGE_TURN_COMPATIBILITY_MSN : STUN_USAGE_TURN_COMPATIBILITY_DRAFT9;
+}
 
 Stream *agent_find_stream (NiceAgent *agent, guint stream_id)
 {
@@ -646,8 +655,7 @@ agent_candidate_pair_priority (NiceAgent *agent, NiceCandidate *local, NiceCandi
 static gboolean
 priv_add_new_candidate_discovery_stun (NiceAgent *agent,
     NiceCandidate *host_candidate, NiceAddress server,
-    Stream *stream, guint component_id,
-    NiceAddress *addr)
+    Stream *stream, guint component_id)
 {
   CandidateDiscovery *cdisco;
   GSList *modified_list;
@@ -679,9 +687,8 @@ priv_add_new_candidate_discovery_stun (NiceAgent *agent,
 
 static gboolean
 priv_add_new_candidate_discovery_turn (NiceAgent *agent,
-    NiceCandidate *host_candidate, NiceAddress server,
-    Stream *stream, guint component_id,
-    NiceAddress *addr)
+    NiceCandidate *host_candidate, TurnServer *turn,
+    Stream *stream, guint component_id)
 {
   CandidateDiscovery *cdisco;
   GSList *modified_list;
@@ -692,11 +699,25 @@ priv_add_new_candidate_discovery_turn (NiceAgent *agent,
   cdisco = g_slice_new0 (CandidateDiscovery);
   if (cdisco) {
     modified_list = g_slist_append (agent->discovery_list, cdisco);
+    priv_agent_to_turn_compatibility (agent);
 
     if (modified_list) {
       cdisco->type = NICE_CANDIDATE_TYPE_RELAYED;
-      cdisco->nicesock = host_candidate->sockptr;
-      cdisco->server = server;
+      if (turn->type ==  NICE_RELAY_TYPE_UDP) {
+        cdisco->nicesock = host_candidate->sockptr;
+      } else {
+        cdisco->nicesock = nice_tcp_turn_socket_new (agent,
+            &turn->server,
+            priv_agent_to_turn_compatibility (agent));
+        if (!cdisco->nicesock) {
+          agent->discovery_list = g_slist_remove (modified_list, cdisco);
+          g_slice_free (CandidateDiscovery, cdisco);
+          return FALSE;
+        }
+      }
+      cdisco->turn = turn;
+      cdisco->server = turn->server;
+
       cdisco->stream = stream;
       cdisco->component = stream_find_component_by_id (stream, component_id);
       cdisco->agent = agent;
@@ -779,10 +800,12 @@ nice_agent_add_stream (
 }
 
 
-NICEAPI_EXPORT void nice_agent_set_relay_info(NiceAgent *agent,
+NICEAPI_EXPORT gboolean
+nice_agent_set_relay_info(NiceAgent *agent,
     guint stream_id, guint component_id,
     const gchar *server_ip, guint server_port,
-    const gchar *username, const gchar *password)
+    const gchar *username, const gchar *password,
+    NiceRelayType type)
 {
 
   Component *component = NULL;
@@ -790,21 +813,27 @@ NICEAPI_EXPORT void nice_agent_set_relay_info(NiceAgent *agent,
   g_static_rec_mutex_lock (&agent->mutex);
 
   if (agent_find_component (agent, stream_id, component_id, NULL, &component)) {
-    nice_address_init (&component->turn_server);
+    TurnServer *turn = g_slice_new0 (TurnServer);
+    nice_address_init (&turn->server);
 
-    if (nice_address_set_from_string (&component->turn_server, server_ip)) {
-      nice_address_set_port (&component->turn_server, server_port);
+    if (nice_address_set_from_string (&turn->server, server_ip)) {
+      nice_address_set_port (&turn->server, server_port);
+    } else {
+      g_slice_free (TurnServer, turn);
+      g_static_rec_mutex_unlock (&agent->mutex);
+      return FALSE;
     }
 
 
-    g_free (component->turn_username);
-    component->turn_username = g_strdup (username);
+    turn->username = g_strdup (username);
+    turn->password = g_strdup (password);
+    turn->type = type;
 
-    g_free (component->turn_password);
-    component->turn_password = g_strdup (password);
-
+    component->turn_servers = g_list_append (component->turn_servers, turn);
   }
+
   g_static_rec_mutex_unlock (&agent->mutex);
+  return TRUE;
 }
 
 
@@ -860,8 +889,7 @@ nice_agent_gather_candidates (
                     host_candidate,
                     stun_server,
                     stream,
-                    n + 1 /* component-id */,
-                    addr);
+                    n + 1);
 
             if (res != TRUE) {
               /* note: memory allocation failure, return error */
@@ -870,22 +898,25 @@ nice_agent_gather_candidates (
           }
 	}
 
-	if (agent->full_mode &&
-            component && nice_address_is_valid (&component->turn_server)) {
+	if (agent->full_mode && component) {
+          GList *item;
 
-	  gboolean res =
-	    priv_add_new_candidate_discovery_turn (agent,
-                host_candidate,
-                component->turn_server,
-                stream,
-                n + 1 /* component-id */,
-                addr);
+          for (item = component->turn_servers; item; item = item->next) {
+            TurnServer *turn = item->data;
 
-	  if (res != TRUE) {
-	    /* note: memory allocation failure, return error */
-	    g_error ("Memory allocation failure?");
-	  }
-	}
+            gboolean res =
+                priv_add_new_candidate_discovery_turn (agent,
+                    host_candidate,
+                    turn,
+                    stream,
+                    n + 1);
+
+            if (res != TRUE) {
+              /* note: memory allocation failure, return error */
+              g_error ("Memory allocation failure?");
+            }
+          }
+        }
       }
     }
 
@@ -1307,6 +1338,7 @@ _nice_agent_recv (
 {
   NiceAddress from;
   gint len;
+  GList *item;
 
   len = nice_socket_recv (socket, &from,  buf_len, buf);
 
@@ -1329,18 +1361,24 @@ _nice_agent_recv (
       return 0;
     }
 
-  if (nice_address_equal (&from, &component->turn_server)) {
-    GSList * i = NULL;
+  for (item = component->turn_servers; item; item = g_list_next (item)) {
+    TurnServer *turn = item->data;
+    if (nice_address_equal (&from, &turn->server)) {
+      GSList * i = NULL;
 #ifndef NDEBUG
-    nice_debug ("Agent %p : Packet received from TURN server candidate.", agent);
+      nice_debug ("Agent %p : Packet received from TURN server candidate.",
+          agent);
 #endif
-    for (i = component->local_candidates; i; i = i->next) {
-      NiceCandidate *cand = i->data;
-      if (cand->type == NICE_CANDIDATE_TYPE_RELAYED &&
-          cand->stream_id == stream->id && cand->component_id == component->id) {
-        len = nice_udp_turn_socket_parse_recv (cand->sockptr, &socket,
-            &from, len, buf, &from, buf, len);
+      for (i = component->local_candidates; i; i = i->next) {
+        NiceCandidate *cand = i->data;
+        if (cand->type == NICE_CANDIDATE_TYPE_RELAYED &&
+            cand->stream_id == stream->id &&
+            cand->component_id == component->id) {
+          len = nice_udp_turn_socket_parse_recv (cand->sockptr, &socket,
+              &from, len, buf, &from, buf, len);
+        }
       }
+      break;
     }
   }
 

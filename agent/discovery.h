@@ -52,6 +52,7 @@ typedef struct
   gboolean done;            /**< is discovery complete? */
   Stream *stream;
   Component *component;
+  TurnServer *turn;
   StunAgent turn_agent;
   uint8_t *msn_turn_username;
   uint8_t *msn_turn_password;
@@ -70,6 +71,7 @@ typedef struct
   NiceAddress server;       /**< STUN/TURN server address */
   Stream *stream;
   Component *component;
+  TurnServer *turn;
   StunAgent turn_agent;
   GSource *timer_source;
   GSource *tick_source;
@@ -106,7 +108,8 @@ discovery_add_relay_candidate (
   guint stream_id,
   guint component_id,
   NiceAddress *address,
-  NiceSocket *base_socket);
+  NiceSocket *base_socket,
+  TurnServer *turn);
 
 NiceCandidate* 
 discovery_add_server_reflexive_candidate (

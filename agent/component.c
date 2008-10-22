@@ -71,6 +71,7 @@ void
 component_free (Component *cmp)
 {
   GSList *i;
+  GList *item;
 
   for (i = cmp->local_candidates; i; i = i->next) {
     NiceCandidate *candidate = i->data;
@@ -107,8 +108,13 @@ component_free (Component *cmp)
   g_slist_free (cmp->gsources);
   g_slist_free (cmp->incoming_checks);
 
-  g_free (cmp->turn_username);
-  g_free (cmp->turn_password);
+  for (item = cmp->turn_servers; item; item = g_list_next (item)) {
+    TurnServer *turn = item->data;
+    g_free (turn->username);
+    g_free (turn->password);
+    g_slice_free (TurnServer, turn);
+  }
+  g_list_free (cmp->turn_servers);
 
   g_slice_free (Component, cmp);
 }

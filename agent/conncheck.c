@@ -560,10 +560,10 @@ static void priv_turn_allocate_refresh_tick_unlocked (CandidateRefresh *cand)
   size_t password_len;
   size_t buffer_len = 0;
 
-  username = (uint8_t *)cand->component->turn_username;
-  username_len = (size_t) strlen (cand->component->turn_username);
-  password = (uint8_t *)cand->component->turn_password;
-  password_len = (size_t) strlen (cand->component->turn_password);
+  username = (uint8_t *)cand->turn->username;
+  username_len = (size_t) strlen (cand->turn->username);
+  password = (uint8_t *)cand->turn->password;
+  password_len = (size_t) strlen (cand->turn->password);
 
   if (cand->agent->compatibility == NICE_COMPATIBILITY_MSN) {
     username = g_base64_decode ((gchar *)username, &username_len);
@@ -1856,6 +1856,7 @@ priv_add_new_turn_refresh (CandidateDiscovery *cdisco, NiceCandidate *relay_cand
       cand->nicesock = cdisco->nicesock;
       cand->relay_socket = relay_cand->sockptr;
       cand->server = cdisco->server;
+      cand->turn = cdisco->turn;
       cand->stream = cdisco->stream;
       cand->component = cdisco->component;
       cand->agent = cdisco->agent;
@@ -1917,7 +1918,7 @@ static gboolean priv_map_reply_to_relay_request (NiceAgent *agent, StunMessage *
         if (res == STUN_USAGE_TURN_RETURN_ALTERNATE_SERVER) {
           /* handle alternate server */
           nice_address_set_from_sockaddr (&d->server, &alternate);
-          nice_address_set_from_sockaddr (&d->component->turn_server, &alternate);
+          nice_address_set_from_sockaddr (&d->turn->server, &alternate);
 
           d->pending = FALSE;
         } else if (res == STUN_USAGE_TURN_RETURN_RELAY_SUCCESS ||
@@ -1944,7 +1945,8 @@ static gboolean priv_map_reply_to_relay_request (NiceAgent *agent, StunMessage *
              d->stream->id,
              d->component->id,
              &niceaddr,
-             d->nicesock);
+             d->nicesock,
+             d->turn);
 
           priv_add_new_turn_refresh (d, relay_cand, lifetime);
 

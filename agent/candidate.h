@@ -64,7 +64,24 @@ typedef enum
   NICE_CANDIDATE_TRANSPORT_UDP,
 } NiceCandidateTransport;
 
+typedef enum {
+  NICE_RELAY_TYPE_UDP,
+  NICE_RELAY_TYPE_TCP,
+  NICE_RELAY_TYPE_TLS
+} NiceRelayType;
+
+
 typedef struct _NiceCandidate NiceCandidate;
+
+typedef struct _TurnServer TurnServer;
+
+struct _TurnServer
+{
+  NiceAddress server;       /**< TURN server address */
+  gchar *username;           /**< TURN username */
+  gchar *password;           /**< TURN password */
+  NiceRelayType type;             /**< TURN type */
+};
 
 struct _NiceCandidate
 {
@@ -79,6 +96,7 @@ struct _NiceCandidate
   NiceSocket *sockptr;
   gchar *username;        /* pointer to a NULL-terminated username string */
   gchar *password;        /* pointer to a NULL-terminated password string */
+  TurnServer *turn;
 };
 
 

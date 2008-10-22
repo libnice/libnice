@@ -82,9 +82,7 @@ struct _Component
   GSList *sockets;             /**< list of NiceSocket objs */
   GSList *gsources;            /**< list of GSource objs */
   GSList *incoming_checks;     /**< list of IncomingCheck objs */
-  NiceAddress turn_server;       /**< TURN server address */
-  gchar *turn_username;           /**< TURN username */
-  gchar *turn_password;           /**< TURN password */
+  GList *turn_servers;             /**< List of TURN servers */
   CandidatePair selected_pair; /**< independent from checklists, 
 				    see ICE 11.1. "Sending Media" (ID-19) */
   gboolean media_after_tick;   /**< true if media received since last
