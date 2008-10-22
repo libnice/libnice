@@ -81,6 +81,7 @@ nice_socket_free (NiceSocket *sock);
 
 #include "udp-bsd.h"
 #include "udp-turn.h"
+#include "tcp-turn.h"
 
 G_END_DECLS
 
