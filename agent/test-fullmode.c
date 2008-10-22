@@ -68,11 +68,13 @@
 #define TURN_PORT TSORG_PORT
 #define TURN_USER TSORG_USER
 #define TURN_PASS TSORG_PASS
+#define TURN_TYPE NICE_RELAY_TYPE_UDP
 #else
 #define TURN_IP NUMB_IP
 #define TURN_PORT NUMB_PORT
 #define TURN_USER NUMB_USER
 #define TURN_PASS NUMB_PASS
+#define TURN_TYPE NICE_RELAY_TYPE_UDP
 #endif
 
 
@@ -284,13 +286,13 @@ static int run_full_test (NiceAgent *lagent, NiceAgent *ragent, NiceAddress *bas
   g_assert (rs_id > 0);
 #if USE_TURN
   nice_agent_set_relay_info(lagent, ls_id, 1,
-      TURN_IP, TURN_PORT, TURN_USER, TURN_PASS);
+      TURN_IP, TURN_PORT, TURN_USER, TURN_PASS, TURN_TYPE);
   nice_agent_set_relay_info(lagent, ls_id, 2,
-      TURN_IP, TURN_PORT, TURN_USER, TURN_PASS);
+      TURN_IP, TURN_PORT, TURN_USER, TURN_PASS, TURN_TYPE);
   nice_agent_set_relay_info(ragent, rs_id, 1,
-      TURN_IP, TURN_PORT, TURN_USER, TURN_PASS);
+      TURN_IP, TURN_PORT, TURN_USER, TURN_PASS, TURN_TYPE);
   nice_agent_set_relay_info(ragent, rs_id, 2,
-      TURN_IP, TURN_PORT, TURN_USER, TURN_PASS);
+      TURN_IP, TURN_PORT, TURN_USER, TURN_PASS, TURN_TYPE);
 #endif
 
 
@@ -426,13 +428,13 @@ static int run_full_test_delayed_answer (NiceAgent *lagent, NiceAgent *ragent, N
   g_assert (rs_id > 0);
 #if USE_TURN
   nice_agent_set_relay_info(lagent, ls_id, 1,
-      TURN_IP, TURN_PORT, TURN_USER, TURN_PASS);
+      TURN_IP, TURN_PORT, TURN_USER, TURN_PASS, TURN_TYPE);
   nice_agent_set_relay_info(lagent, ls_id, 2,
-      TURN_IP, TURN_PORT, TURN_USER, TURN_PASS);
+      TURN_IP, TURN_PORT, TURN_USER, TURN_PASS, TURN_TYPE);
   nice_agent_set_relay_info(ragent, rs_id, 1,
-      TURN_IP, TURN_PORT, TURN_USER, TURN_PASS);
+      TURN_IP, TURN_PORT, TURN_USER, TURN_PASS, TURN_TYPE);
   nice_agent_set_relay_info(ragent, rs_id, 2,
-      TURN_IP, TURN_PORT, TURN_USER, TURN_PASS);
+      TURN_IP, TURN_PORT, TURN_USER, TURN_PASS, TURN_TYPE);
 #endif
 
 
@@ -585,9 +587,9 @@ static int run_full_test_wrong_password (NiceAgent *lagent, NiceAgent *ragent, N
   g_assert (rs_id > 0);
 #if USE_TURN
   nice_agent_set_relay_info(lagent, ls_id, 1,
-      TURN_IP, TURN_PORT, TURN_USER, TURN_PASS);
+      TURN_IP, TURN_PORT, TURN_USER, TURN_PASS, TURN_TYPE);
   nice_agent_set_relay_info(ragent, rs_id, 1,
-      TURN_IP, TURN_PORT, TURN_USER, TURN_PASS);
+      TURN_IP, TURN_PORT, TURN_USER, TURN_PASS, TURN_TYPE);
 #endif
 
   nice_agent_gather_candidates (lagent, ls_id);
@@ -705,9 +707,9 @@ static int run_full_test_control_conflict (NiceAgent *lagent, NiceAgent *ragent,
   g_assert (rs_id > 0);
 #if USE_TURN
   nice_agent_set_relay_info(lagent, ls_id, 1,
-      TURN_IP, TURN_PORT, TURN_USER, TURN_PASS);
+      TURN_IP, TURN_PORT, TURN_USER, TURN_PASS, TURN_TYPE);
   nice_agent_set_relay_info(ragent, rs_id, 1,
-      TURN_IP, TURN_PORT, TURN_USER, TURN_PASS);
+      TURN_IP, TURN_PORT, TURN_USER, TURN_PASS, TURN_TYPE);
 #endif
 
   nice_agent_gather_candidates (lagent, ls_id);
@@ -825,7 +827,7 @@ int main (void)
   nice_agent_add_local_address (lagent, &baseaddr);
   nice_agent_add_local_address (ragent, &baseaddr);
 #else
-  if (!nice_address_set_from_string (&baseaddr, "192.168.1.106"))
+  if (!nice_address_set_from_string (&baseaddr, "192.168.1.110"))
     g_assert_not_reached ();
   nice_agent_add_local_address (lagent, &baseaddr);
   nice_agent_add_local_address (ragent, &baseaddr);
