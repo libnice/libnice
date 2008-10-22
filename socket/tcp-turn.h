@@ -39,6 +39,7 @@
 #define _TCP_TURN_H
 
 #include "socket.h"
+#include "agent.h"
 
 G_BEGIN_DECLS
 

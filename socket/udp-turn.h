@@ -38,16 +38,18 @@
 #ifndef _UDP_TURN_H
 #define _UDP_TURN_H
 
-#include "socket.h"
-#include "agent.h"
-
-G_BEGIN_DECLS
 
 typedef enum {
   NICE_UDP_TURN_SOCKET_COMPATIBILITY_DRAFT9,
   NICE_UDP_TURN_SOCKET_COMPATIBILITY_GOOGLE,
   NICE_UDP_TURN_SOCKET_COMPATIBILITY_MSN,
 } NiceUdpTurnSocketCompatibility;
+
+#include "socket.h"
+#include "agent.h"
+
+
+G_BEGIN_DECLS
 
 gint
 nice_udp_turn_socket_parse_recv (
