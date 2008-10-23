@@ -22,9 +22,6 @@ nice_agent_get_local_credentials
 nice_agent_get_remote_candidates
 nice_agent_get_type
 nice_agent_new
-nice_agent_poll_read
-nice_agent_recv
-nice_agent_recv_sock
 nice_agent_remove_stream
 nice_agent_restart
 nice_agent_send

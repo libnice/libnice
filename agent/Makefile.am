@@ -68,9 +68,7 @@ libagent_la_DEPENDENCIES = \
 check_PROGRAMS = \
 	test \
 	test-add-remove-stream \
-	test-recv \
 	test-priority \
-	test-poll \
 	test-mainloop \
 	test-fullmode \
 	test-restart \
@@ -86,11 +84,7 @@ test_LDADD = $(COMMON_LDADD)
 
 test_add_remove_stream_LDADD = $(COMMON_LDADD)
 
-test_recv_LDADD = $(COMMON_LDADD)
-
 test_priority_LDADD = $(COMMON_LDADD)
-
-test_poll_LDADD = $(COMMON_LDADD)
 
 test_mainloop_LDADD = $(COMMON_LDADD)
 

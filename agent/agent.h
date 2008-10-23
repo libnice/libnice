@@ -184,30 +184,6 @@ nice_agent_set_remote_candidates (
   guint component_id,
   const GSList *candidates);
 
-guint
-nice_agent_recv (
-  NiceAgent *agent,
-  guint stream_id,
-  guint component_id,
-  guint buf_len,
-  gchar *buf);
-
-guint
-nice_agent_recv_sock (
-  NiceAgent *agent,
-  guint stream_id,
-  guint component_id,
-  guint sock,
-  guint buf_len,
-  gchar *buf);
-
-GSList *
-nice_agent_poll_read (
-  NiceAgent *agent,
-  GSList *other_fds,
-  NiceAgentRecvFunc func,
-  gpointer data);
-
 gint
 nice_agent_send (
   NiceAgent *agent,

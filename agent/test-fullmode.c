@@ -43,8 +43,8 @@
 
 #include "agent.h"
 
-#define USE_TURN 1
-#define USE_LOOPBACK 0
+#define USE_TURN 0
+#define USE_LOOPBACK 1
 
 #if USE_LOOPBACK
 #define USE_TURN_SERVER_ORG 1
