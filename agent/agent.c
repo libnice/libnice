@@ -1615,6 +1615,7 @@ typedef struct _IOCtx IOCtx;
 
 struct _IOCtx
 {
+  GIOChannel *channel;
   NiceAgent *agent;
   Stream *stream;
   Component *component;
@@ -1627,7 +1628,8 @@ io_ctx_new (
   NiceAgent *agent,
   Stream *stream,
   Component *component,
-  NiceSocket *socket)
+  NiceSocket *socket,
+  GIOChannel *channel)
 {
   IOCtx *ctx;
 
@@ -1637,6 +1639,7 @@ io_ctx_new (
     ctx->stream = stream;
     ctx->component = component;
     ctx->socket = socket;
+    ctx->channel = channel;
   }
   return ctx;
 }
@@ -1645,6 +1648,7 @@ io_ctx_new (
 static void
 io_ctx_free (IOCtx *ctx)
 {
+  g_io_channel_unref (ctx->channel);
   g_slice_free (IOCtx, ctx);
 }
 
@@ -1701,7 +1705,7 @@ priv_attach_stream_component_socket (NiceAgent *agent,
   /* note: without G_IO_ERR the glib mainloop goes into
    *       busyloop if errors are encountered */
   source = g_io_create_watch (io, G_IO_IN | G_IO_ERR);
-  ctx = io_ctx_new (agent, stream, component, socket);
+  ctx = io_ctx_new (agent, stream, component, socket, io);
   g_source_set_callback (source, (GSourceFunc) nice_agent_g_source_cb,
       ctx, (GDestroyNotify) io_ctx_free);
   nice_debug ("Agent %p : Attach source %p (stream %u).", agent, source, stream->id);
