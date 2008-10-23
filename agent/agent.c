@@ -710,6 +710,7 @@ priv_add_new_candidate_discovery_turn (NiceAgent *agent,
             component_id);
 
         cdisco->nicesock = nice_tcp_turn_socket_new (agent,
+            component->ctx,
             &turn->server,
             priv_agent_to_turn_compatibility (agent));
         if (!cdisco->nicesock) {

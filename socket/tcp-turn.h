@@ -47,6 +47,7 @@ G_BEGIN_DECLS
 NiceSocket *
 nice_tcp_turn_socket_new (
     NiceAgent *agent,
+    GMainContext *ctx,
     NiceAddress *addr,
     NiceUdpTurnSocketCompatibility compatibility);
 

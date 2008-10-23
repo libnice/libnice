@@ -63,6 +63,9 @@ typedef struct {
   guint recv_buf_len;
   guint expecting_len;
   NiceAddress server_addr;
+  GMainContext *context;
+  GIOChannel *io_channel;
+  GSource *io_source;
 } TurnTcpPriv;
 
 struct to_be_sent {
@@ -166,9 +169,14 @@ add_to_be_sent (NiceSocket *sock, const gchar *buf, guint len, gboolean head);
  * 1 = sent everything
  */
 
-static gint
-socket_send_more (NiceSocket *sock)
+static gboolean
+socket_send_more (
+  GIOChannel *source,
+  G_GNUC_UNUSED
+  GIOCondition condition,
+  gpointer data)
 {
+  NiceSocket *sock = (NiceSocket *) data;
   TurnTcpPriv *priv = sock->priv;
   struct to_be_sent *tbs = NULL;
 
@@ -180,16 +188,31 @@ socket_send_more (NiceSocket *sock)
     if (ret < 0) {
       if (errno == EAGAIN) {
         add_to_be_sent (sock, tbs->buf, tbs->length, TRUE);
+        g_free (tbs->buf);
+        g_slice_free (struct to_be_sent, tbs);
+        break;
       }
     } else if (ret < (int) tbs->length) {
       add_to_be_sent (sock, tbs->buf + ret, tbs->length - ret, TRUE);
+      g_free (tbs->buf);
+      g_slice_free (struct to_be_sent, tbs);
+      break;
     }
 
     g_free (tbs->buf);
     g_slice_free (struct to_be_sent, tbs);
   }
 
-  return 1;
+  if (g_queue_is_empty (&priv->send_queue)) {
+    g_io_channel_unref (priv->io_channel);
+    priv->io_channel = NULL;
+    g_source_destroy (priv->io_source);
+    g_source_unref (priv->io_source);
+    priv->io_source = NULL;
+    return FALSE;
+  }
+
+  return TRUE;
 }
 
 
@@ -206,8 +229,13 @@ add_to_be_sent (NiceSocket *sock, const gchar *buf, guint len, gboolean head)
   else
     g_queue_push_tail (&priv->send_queue, tbs);
 
-  /* TODO add io watch */
-  socket_send_more (NULL);
+  if (priv->io_channel == NULL) {
+    priv->io_channel = g_io_channel_unix_new (sock->fileno);
+    priv->io_source = g_io_create_watch (priv->io_channel, G_IO_OUT);
+    g_source_set_callback (priv->io_source, (GSourceFunc) socket_send_more,
+        sock, NULL);
+    g_source_attach (priv->io_source, priv->context);
+  }
 }
 
 
@@ -221,57 +249,72 @@ socket_send (
   int ret;
   TurnTcpPriv *priv = sock->priv;
 
-  if (priv->compatibility == NICE_UDP_TURN_SOCKET_COMPATIBILITY_GOOGLE) {
-    guint16 tmpbuf = htons (len);
-    ret = write (sock->fileno, &tmpbuf, sizeof(guint16));
+  if (g_queue_is_empty (&priv->send_queue)) {
+    if (priv->compatibility == NICE_UDP_TURN_SOCKET_COMPATIBILITY_GOOGLE) {
+      guint16 tmpbuf = htons (len);
+      ret = write (sock->fileno, &tmpbuf, sizeof(guint16));
+
+      if (ret < 0) {
+        if (errno == EAGAIN) {
+          add_to_be_sent (sock, (gchar*) &tmpbuf, sizeof(guint16), FALSE);
+          add_to_be_sent (sock, buf, len, FALSE);
+          return TRUE;
+        } else {
+          return FALSE;
+        }
+      } else if ((guint)ret < sizeof(guint16)) {
+        add_to_be_sent (sock, ((gchar*) &tmpbuf) + ret,
+            sizeof(guint16) - ret, FALSE);
+        add_to_be_sent (sock, buf, len, FALSE);
+        return TRUE;
+      }
+    }
+
+    ret = write (sock->fileno, buf, len);
 
     if (ret < 0) {
       if (errno == EAGAIN) {
-        add_to_be_sent (sock, (gchar*) &tmpbuf, sizeof(guint16), FALSE);
         add_to_be_sent (sock, buf, len, FALSE);
         return TRUE;
       } else {
         return FALSE;
       }
-    } else if ((guint)ret < sizeof(guint16)) {
-      add_to_be_sent (sock, ((gchar*) &tmpbuf) + ret,
-          sizeof(guint16) - ret, FALSE);
-      add_to_be_sent (sock, buf, len, FALSE);
+    } else if ((guint)ret < len) {
+      add_to_be_sent (sock, buf + ret, len - ret, FALSE);
       return TRUE;
     }
-  }
 
-  ret = write (sock->fileno, buf, len);
+    if (priv->compatibility == NICE_UDP_TURN_SOCKET_COMPATIBILITY_DRAFT9 &&
+        len % 4) {
+      gchar padbuf[3] = {0, 0, 0};
+      int padlen = (len%4) ? 4 - (len%4) : 0;
 
-  if (ret < 0) {
-    if (errno == EAGAIN) {
-      add_to_be_sent (sock, buf, len, FALSE);
-      return TRUE;
-    } else {
-      return FALSE;
-    }
-  } else if ((guint)ret < len) {
-    add_to_be_sent (sock, buf + ret, len - ret, FALSE);
-    return TRUE;
-  }
+      ret = write (sock->fileno, padbuf, padlen);
 
-  if (priv->compatibility == NICE_UDP_TURN_SOCKET_COMPATIBILITY_DRAFT9 &&
-      len % 4) {
-    gchar padbuf[3] = {0, 0, 0};
-    int padlen = (len%4) ? 4 - (len%4) : 0;
-
-    ret = write (sock->fileno, padbuf, padlen);
-
-    if (ret < 0) {
-      if (errno == EAGAIN) {
-        add_to_be_sent (sock, padbuf, padlen, FALSE);
+      if (ret < 0) {
+        if (errno == EAGAIN) {
+          add_to_be_sent (sock, padbuf, padlen, FALSE);
+          return TRUE;
+        } else {
+          return FALSE;
+        }
+      } else if (ret < padlen) {
+        add_to_be_sent (sock, padbuf, padlen - ret, FALSE);
         return TRUE;
-      } else {
-        return FALSE;
       }
-    } else if (ret < padlen) {
-      add_to_be_sent (sock, padbuf, padlen - ret, FALSE);
-      return TRUE;
+    }
+  } else {
+    if (priv->compatibility == NICE_UDP_TURN_SOCKET_COMPATIBILITY_GOOGLE) {
+      guint16 tmpbuf = htons (len);
+      add_to_be_sent (sock, (gchar*) &tmpbuf, sizeof(guint16), FALSE);
+    }
+    add_to_be_sent (sock, buf, len, FALSE);
+
+    if (priv->compatibility == NICE_UDP_TURN_SOCKET_COMPATIBILITY_DRAFT9 &&
+        len % 4) {
+      gchar padbuf[3] = {0, 0, 0};
+      int padlen = (len%4) ? 4 - (len%4) : 0;
+      add_to_be_sent (sock, padbuf, padlen, FALSE);
     }
   }
 
@@ -292,6 +335,9 @@ socket_close (NiceSocket *sock)
   close (sock->fileno);
   g_queue_foreach (&priv->send_queue, (GFunc) free_to_be_sent, NULL);
   g_queue_clear (&priv->send_queue);
+  g_io_channel_unref (priv->io_channel);
+  g_source_destroy (priv->io_source);
+  g_source_unref (priv->io_source);
   g_slice_free(TurnTcpPriv, sock->priv);
 }
 
@@ -305,6 +351,7 @@ socket_is_reliable (NiceSocket *sock)
 NiceSocket *
 nice_tcp_turn_socket_new (
     NiceAgent *agent,
+    GMainContext *ctx,
     NiceAddress *addr,
     NiceUdpTurnSocketCompatibility compatibility)
 {
@@ -357,6 +404,7 @@ nice_tcp_turn_socket_new (
 
   priv->compatibility = compatibility;
   priv->server_addr = *addr;
+  priv->context = ctx;
 
   sock->fileno = sockfd;
   sock->send = socket_send;
