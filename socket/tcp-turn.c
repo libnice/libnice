@@ -62,6 +62,7 @@ typedef struct {
   gchar recv_buf[65536];
   guint recv_buf_len;
   guint expecting_len;
+  NiceAddress server_addr;
 } TurnTcpPriv;
 
 struct to_be_sent {
@@ -146,6 +147,8 @@ socket_recv (
     memcpy (buf, priv->recv_buf, copy_len);
     priv->expecting_len = 0;
     priv->recv_buf_len = 0;
+    if (from)
+      *from = priv->server_addr;
     return copy_len;
   }
 
@@ -353,6 +356,7 @@ nice_tcp_turn_socket_new (
   sock->priv = priv = g_slice_new0 (TurnTcpPriv);
 
   priv->compatibility = compatibility;
+  priv->server_addr = *addr;
 
   sock->fileno = sockfd;
   sock->send = socket_send;
