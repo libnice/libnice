@@ -1741,6 +1741,7 @@ static void priv_detach_stream_component (Stream *stream, Component *component)
     GSource *source = i->data;
     nice_debug ("Detach source %p (stream %u).", source, stream->id);
     g_source_destroy (source);
+    g_source_unref (source);
   }
 
   g_slist_free (component->gsources);

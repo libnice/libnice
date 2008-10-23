@@ -95,6 +95,7 @@ component_free (Component *cmp)
   for (i = cmp->gsources; i; i = i->next) {
     GSource *source = i->data;
     g_source_destroy (source);
+    g_source_unref (source);
   }
  
   for (i = cmp->incoming_checks; i; i = i->next) {
