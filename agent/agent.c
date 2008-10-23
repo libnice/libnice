@@ -706,6 +706,9 @@ priv_add_new_candidate_discovery_turn (NiceAgent *agent,
       if (turn->type ==  NICE_RELAY_TYPE_UDP) {
         cdisco->nicesock = host_candidate->sockptr;
       } else {
+        Component *component = stream_find_component_by_id (stream,
+            component_id);
+
         cdisco->nicesock = nice_tcp_turn_socket_new (agent,
             &turn->server,
             priv_agent_to_turn_compatibility (agent));
@@ -714,6 +717,9 @@ priv_add_new_candidate_discovery_turn (NiceAgent *agent,
           g_slice_free (CandidateDiscovery, cdisco);
           return FALSE;
         }
+
+        priv_attach_stream_component_socket (agent, stream,
+            component, cdisco->nicesock);
       }
       cdisco->turn = turn;
       cdisco->server = turn->server;
@@ -738,7 +744,8 @@ priv_add_new_candidate_discovery_turn (NiceAgent *agent,
             STUN_AGENT_USAGE_IGNORE_CREDENTIALS);
       }
 
-      nice_debug ("Agent %p : Adding new relay-rflx candidate discovery %p\n", agent, cdisco);
+      nice_debug ("Agent %p : Adding new relay-rflx candidate discovery %p\n",
+          agent, cdisco);
       agent->discovery_list = modified_list;
       ++agent->discovery_unsched_items;
     }
