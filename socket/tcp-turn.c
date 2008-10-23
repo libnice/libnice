@@ -222,6 +222,9 @@ add_to_be_sent (NiceSocket *sock, const gchar *buf, guint len, gboolean head)
   TurnTcpPriv *priv = sock->priv;
   struct to_be_sent *tbs = g_slice_new (struct to_be_sent);
 
+  if (len <= 0)
+    return;
+
   tbs->buf = g_memdup (buf, len);
   tbs->length = len;
   if (head)
@@ -248,7 +251,14 @@ socket_send (
 {
   int ret;
   TurnTcpPriv *priv = sock->priv;
+  gchar padbuf[3] = {0, 0, 0};
+  int padlen = (len%4) ? 4 - (len%4) : 0;
 
+  if (priv->compatibility != NICE_UDP_TURN_SOCKET_COMPATIBILITY_DRAFT9)
+    padlen = 0;
+
+  /* First try to send the data, don't send it later if it can be sent now
+     this way we avoid allocating memory on every send */
   if (g_queue_is_empty (&priv->send_queue)) {
     if (priv->compatibility == NICE_UDP_TURN_SOCKET_COMPATIBILITY_GOOGLE) {
       guint16 tmpbuf = htons (len);
@@ -275,19 +285,19 @@ socket_send (
     if (ret < 0) {
       if (errno == EAGAIN) {
         add_to_be_sent (sock, buf, len, FALSE);
+        add_to_be_sent (sock, padbuf, padlen, FALSE);
         return TRUE;
       } else {
         return FALSE;
       }
     } else if ((guint)ret < len) {
       add_to_be_sent (sock, buf + ret, len - ret, FALSE);
+      add_to_be_sent (sock, padbuf, padlen, FALSE);
       return TRUE;
     }
 
     if (priv->compatibility == NICE_UDP_TURN_SOCKET_COMPATIBILITY_DRAFT9 &&
         len % 4) {
-      gchar padbuf[3] = {0, 0, 0};
-      int padlen = (len%4) ? 4 - (len%4) : 0;
 
       ret = write (sock->fileno, padbuf, padlen);
 
@@ -309,13 +319,7 @@ socket_send (
       add_to_be_sent (sock, (gchar*) &tmpbuf, sizeof(guint16), FALSE);
     }
     add_to_be_sent (sock, buf, len, FALSE);
-
-    if (priv->compatibility == NICE_UDP_TURN_SOCKET_COMPATIBILITY_DRAFT9 &&
-        len % 4) {
-      gchar padbuf[3] = {0, 0, 0};
-      int padlen = (len%4) ? 4 - (len%4) : 0;
-      add_to_be_sent (sock, padbuf, padlen, FALSE);
-    }
+    add_to_be_sent (sock, padbuf, padlen, FALSE);
   }
 
   return TRUE;
