@@ -36,5 +36,5 @@ test_bsd_LDADD = $(COMMON_LDADD)
 
 TESTS = $(check_PROGRAMS)
 
-pkginclude_HEADERS = socket.h udp-bsd.h udp-turn.h
+pkginclude_HEADERS = socket.h udp-bsd.h udp-turn.h tcp-turn.h
 
