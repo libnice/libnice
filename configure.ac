@@ -20,6 +20,14 @@ AC_CONFIG_FILES([
 	gst/Makefile
 	])
 
+# Set the libtool C/A/R version info
+NICE_CURRENT=0
+NICE_REVISION=0
+NICE_AGE=0
+NICE_LIBVERSION=${NICE_CURRENT}:${NICE_REVISION}:${NICE_AGE}
+NICE_LT_LDFLAGS="-version-info ${NICE_LIBVERSION}"
+AC_SUBST(NICE_LT_LDFLAGS)
+
 # Checks for programs.
 
 AC_PROG_CC

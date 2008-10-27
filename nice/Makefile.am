@@ -23,7 +23,8 @@ libnice_la_LIBADD = \
 
 libnice_la_LDFLAGS = \
 	-export-symbols $(srcdir)/libnice.sym \
-	-version-info 0:0:0
+	$(NICE_LT_LDFLAGS)
+
 
 AM_CFLAGS = \
 	$(ERROR_CFLAGS) \
