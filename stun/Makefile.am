@@ -15,7 +15,7 @@ AM_CPPFLAGS = -I$(top_srcdir)
 
 noinst_LTLIBRARIES = libstun.la
 
-libstun_la_SOURCES = stun.h constants.h \
+libstun_la_SOURCES = constants.h \
 	stunagent.c stunagent.h \
 	stunmessage.c stunmessage.h \
 	stun3489bis.c stun3489bis.h \

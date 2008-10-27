@@ -54,8 +54,8 @@
 
 #include "udp-turn.h"
 #include "udp-bsd.h"
-#include <stun/stunagent.h>
-#include <stun/usages/timer.h>
+#include "stun/stunagent.h"
+#include "stun/usages/timer.h"
 #include "agent-priv.h"
 
 typedef struct {

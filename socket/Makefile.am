@@ -13,7 +13,8 @@ AM_CFLAGS = \
 	$(GLIB_CFLAGS) \
 	-I $(top_srcdir)/address \
 	-I $(top_srcdir)/random \
-	-I $(top_srcdir)/agent
+	-I $(top_srcdir)/agent \
+	-I $(top_srcdir)/
 
 COMMON_LDADD = libsocket.la $(GLIB_LIBS) $(top_builddir)/address/libaddress.la  $(top_builddir)/stun/libstun.la
 
