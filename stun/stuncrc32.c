@@ -137,7 +137,7 @@ static const uint32_t crc32_tab[] = {
 };
 
 
-uint32_t crc32 (const crc_data data, size_t n)
+uint32_t crc32 (const crc_data *data, size_t n)
 {
   size_t i;
   uint32_t crc = 0xffffffff;

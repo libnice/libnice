@@ -61,7 +61,7 @@ uint32_t stun_fingerprint (const uint8_t *msg, size_t len)
 
   data[0].buf = (void *)msg;
   data[0].len = 2;
-  data[1].buf = &fakelen;
+  data[1].buf = (uint8_t *)&fakelen;
   data[1].len = 2;
   data[2].buf = (void *)(msg + 4);
   /* first 4 bytes done, last 8 bytes not summed */
