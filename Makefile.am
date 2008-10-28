@@ -10,7 +10,6 @@ include common.mk
 
 ALWAYS_SUBDIRS = \
 	address \
-	local \
 	stun \
 	tests \
 	socket \
