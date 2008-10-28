@@ -38,7 +38,6 @@
 # include "config.h"
 #endif
 
-#include <arpa/inet.h>
 
 #include <glib.h>
 

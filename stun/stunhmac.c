@@ -41,9 +41,6 @@
 #include <openssl/hmac.h>
 #include <openssl/rand.h>
 
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
 #include "stunmessage.h"
 #include "stunhmac.h"
 

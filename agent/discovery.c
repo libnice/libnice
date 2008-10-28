@@ -42,14 +42,11 @@
 # include <config.h>
 #endif
 
+#include <glib.h>
+
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
-
-#include <netinet/in.h>
-#include <arpa/inet.h>
-
-#include <glib.h>
 
 #include "debug.h"
 

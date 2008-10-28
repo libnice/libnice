@@ -45,7 +45,6 @@
 # include "config.h"
 #endif
 
-#include <arpa/inet.h>
 
 #include <unistd.h>
 #include <string.h>
