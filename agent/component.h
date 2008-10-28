@@ -68,7 +68,7 @@ struct _IncomingCheck
 {
   NiceAddress from;
   NiceSocket *local_socket;
-  uint32_t priority;
+  guint32 priority;
   gboolean use_candidate;
 };
 
