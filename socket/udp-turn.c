@@ -375,7 +375,7 @@ nice_udp_turn_socket_parse_recv (
   StunValidationStatus valid;
   StunMessage msg;
   struct sockaddr_storage sa;
-  guint from_len = sizeof (sa);
+  socklen_t from_len = sizeof (sa);
   GList *i = priv->channels;
   ChannelBinding *binding = NULL;
 

@@ -176,7 +176,7 @@ int stun_xor_address (const StunMessage *msg,
     case AF_INET:
     {
       struct sockaddr_in *ip4 = (struct sockaddr_in *)addr;
-      if (addrlen < sizeof (*ip4))
+      if ((size_t) addrlen < sizeof (*ip4))
         return EINVAL;
 
       ip4->sin_port ^= htons (magic_cookie >> 16);
@@ -189,7 +189,7 @@ int stun_xor_address (const StunMessage *msg,
       struct sockaddr_in6 *ip6 = (struct sockaddr_in6 *)addr;
       unsigned short i;
 
-      if (addrlen < sizeof (*ip6))
+      if ((size_t) addrlen < sizeof (*ip6))
         return EINVAL;
 
       ip6->sin6_port ^= htons (magic_cookie >> 16);

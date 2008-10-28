@@ -70,7 +70,7 @@ int stun_trans_init (stun_trans_t *tr, int fd,
 {
   assert (fd != -1);
 
-  if (srvlen > sizeof (tr->dst))
+  if ((size_t) srvlen > sizeof (tr->dst))
     return ENOBUFS;
 
   tr->own_fd = -1;
@@ -126,7 +126,7 @@ int stun_trans_create (stun_trans_t *restrict tr, int type, int proto,
 {
   int val, fd;
 
-  if (srvlen < sizeof(*srv))
+  if ((size_t) srvlen < sizeof(*srv))
     return EINVAL;
 
   fd = stun_socket (srv->sa_family, type, proto);

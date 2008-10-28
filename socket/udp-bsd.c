@@ -80,7 +80,7 @@ socket_recv (
 {
   gint recvd;
   struct sockaddr_storage sa;
-  guint from_len = sizeof (sa);
+  socklen_t from_len = sizeof (sa);
 
   recvd = recvfrom (sock->fileno, buf, len, 0, (struct sockaddr *) &sa,
       &from_len);
@@ -132,7 +132,7 @@ nice_udp_bsd_socket_new (NiceAddress *addr)
 {
   int sockfd = -1;
   struct sockaddr_storage name;
-  guint name_len = sizeof (name);
+  socklen_t name_len = sizeof (name);
   NiceSocket *sock = g_slice_new0 (NiceSocket);
 
   if (!sock) {

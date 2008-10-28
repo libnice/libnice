@@ -217,7 +217,7 @@ stun_message_find_addr (const StunMessage *msg, stun_attr_type_t type,
     case 1:
       {
         struct sockaddr_in *ip4 = (struct sockaddr_in *)addr;
-        if ((*addrlen < sizeof (*ip4)) || (len != 8))
+        if (((size_t) *addrlen < sizeof (*ip4)) || (len != 8))
         {
           *addrlen = sizeof (*ip4);
           return EINVAL;
@@ -237,7 +237,7 @@ stun_message_find_addr (const StunMessage *msg, stun_attr_type_t type,
     case 2:
       {
         struct sockaddr_in6 *ip6 = (struct sockaddr_in6 *)addr;
-        if ((*addrlen < sizeof (*ip6)) || (len != 20))
+        if (((size_t) *addrlen < sizeof (*ip6)) || (len != 20))
         {
           *addrlen = sizeof (*ip6);
           return EINVAL;
@@ -402,7 +402,7 @@ stun_message_append_addr (StunMessage *msg, stun_attr_type_t type,
   uint16_t alen, port;
   uint8_t family;
 
-  if (addrlen < sizeof (struct sockaddr))
+  if ((size_t) addrlen < sizeof (struct sockaddr))
     return EINVAL;
 
   switch (addr->sa_family)
@@ -420,7 +420,7 @@ stun_message_append_addr (StunMessage *msg, stun_attr_type_t type,
     case AF_INET6:
       {
         const struct sockaddr_in6 *ip6 = (const struct sockaddr_in6 *)addr;
-        if (addrlen < sizeof (*ip6))
+        if ((size_t) addrlen < sizeof (*ip6))
           return EINVAL;
 
         family = 2;
@@ -453,7 +453,7 @@ int stun_message_append_xor_addr (StunMessage *msg, stun_attr_type_t type,
   /* Must be big enough to hold any supported address: */
   struct sockaddr_storage xor;
 
-  if (addrlen > sizeof (xor))
+  if ((size_t) addrlen > sizeof (xor))
     addrlen = sizeof (xor);
   memcpy (&xor, addr, addrlen);
 
@@ -474,7 +474,7 @@ int stun_message_append_xor_addr_full (StunMessage *msg, stun_attr_type_t type,
   /* Must be big enough to hold any supported address: */
   struct sockaddr_storage xor;
 
-  if (addrlen > sizeof (xor))
+  if ((size_t) addrlen > sizeof (xor))
     addrlen = sizeof (xor);
   memcpy (&xor, addr, addrlen);
 
