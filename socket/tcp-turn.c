@@ -54,6 +54,10 @@
 
 #include "tcp-turn.h"
 
+#ifdef G_OS_WIN32
+#define EINPROGRESS WSAEINPROGRESS
+#endif
+
 typedef struct {
   NiceUdpTurnSocketCompatibility compatibility;
   GQueue send_queue;
