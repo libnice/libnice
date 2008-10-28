@@ -12,13 +12,11 @@ lib_LTLIBRARIES = libnice.la
 
 libnice_la_SOURCES =
 libnice_la_DEPENDENCIES = \
-	../local/liblocal.la \
 	../agent/libagent.la \
 	libnice.sym
 
 libnice_la_LIBADD = \
 	$(GLIB_LIBS) \
-	../local/liblocal.la \
 	../agent/libagent.la
 
 libnice_la_LDFLAGS = \
