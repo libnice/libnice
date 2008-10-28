@@ -38,12 +38,10 @@
 #endif
 
 #include "stunmessage.h"
+#include "stunagent.h"
 
 #include <string.h>
 #include <stdlib.h>
-
-#include <errno.h>
-#include <netinet/in.h>
 
 
 static bool stun_agent_is_unknown (StunAgent *agent, uint16_t type);

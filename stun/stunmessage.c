@@ -37,17 +37,18 @@
 # include <config.h>
 #endif
 
+#include "stunmessage.h"
+
+#ifdef _WIN32
+#include <winsock2.h>
+#else
 #include <sys/types.h>
 #include <sys/socket.h>
+#endif
 
-#include "stunmessage.h"
 
 #include <string.h>
 #include <stdlib.h>
-
-#include <errno.h>
-#include <netinet/in.h>
-
 
 
 
