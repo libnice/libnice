@@ -42,6 +42,7 @@
 
 #ifdef G_OS_WIN32
 #include <winsock2.h>
+#include <ws2tcpip.h>
 #else
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -93,7 +94,6 @@ nice_address_set_port (NiceAddress *addr, guint port);
 guint
 nice_address_get_port (const NiceAddress *addr);
 
-G_GNUC_WARN_UNUSED_RESULT
 gboolean
 nice_address_set_from_string (NiceAddress *addr, const gchar *str);
 

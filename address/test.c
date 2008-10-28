@@ -40,11 +40,6 @@
 #endif
 
 #include <string.h>
-
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <arpa/inet.h>
-
 #include "address.h"
 
 static void
@@ -53,11 +48,6 @@ test_ipv4 (void)
   NiceAddress addr;
   NiceAddress other;
   gchar str[NICE_ADDRESS_STRING_LEN];
-  struct sockaddr_in sin;
-
-  sin.sin_family = AF_INET;
-  sin.sin_port = htons (9876);
-  g_assert (inet_pton (AF_INET, "1.2.3.4", &sin.sin_addr) > 0);
 
   nice_address_init (&addr);
   nice_address_init (&other);
@@ -76,7 +66,8 @@ test_ipv4 (void)
   /* from sockaddr_in */
   nice_address_set_port (&other, 9876); /* in native byte order */
   other.s.ip4.sin_family = AF_INET;
-  nice_address_set_from_sockaddr (&addr, (struct sockaddr*)&sin);
+  nice_address_set_from_string (&addr, "1.2.3.4");
+  nice_address_set_port (&addr, 9876); /* in native byte order */
   nice_address_to_string (&addr, str);
   nice_address_to_string (&other, str);
   g_assert (TRUE == nice_address_equal (&addr, &other));
@@ -106,15 +97,11 @@ test_ipv6 (void)
   NiceAddress addr, other, v4addr;
   gchar str[NICE_ADDRESS_STRING_LEN];
   struct sockaddr_in6 sin, sin2;
-  
+
   g_assert (nice_address_set_from_string (&v4addr, "172.1.0.1") == TRUE);
 
   memset (&sin, 0, sizeof (sin));
   memset (&sin2, 0, sizeof (sin2));
-
-  sin.sin6_family = AF_INET6;
-  sin.sin6_port = htons (9876);
-  g_assert (inet_pton (AF_INET6, "11:2233:4455:6677:8899:aabb:ccdd:eeff", &sin.sin6_addr) > 0);
 
   nice_address_init (&addr);
   nice_address_set_ipv6 (&addr, (guchar *)
@@ -128,8 +115,11 @@ test_ipv6 (void)
   g_assert (0 == strcmp (str, "11:2233:4455:6677:8899:aabb:ccdd:eeff"));
 
   nice_address_set_port (&addr, 9876); /* in native byte order */
-  nice_address_set_from_sockaddr (&other, (struct sockaddr*)&sin);
+  nice_address_set_from_string (&other, "11:2233:4455:6677:8899:aabb:ccdd:eeff");
+  nice_address_set_port (&other, 9876); /* in native byte order */
+
   nice_address_copy_to_sockaddr (&other, (struct sockaddr*)&sin2);
+  nice_address_copy_to_sockaddr (&addr, (struct sockaddr*)&sin);
   g_assert (memcmp (&sin, &sin2, sizeof(sin)) == 0);
   nice_address_to_string (&addr, str);
   nice_address_to_string (&other, str);
@@ -160,8 +150,19 @@ test_ipv6 (void)
 int
 main (void)
 {
+#ifdef G_OS_WIN32
+  WSADATA w;
+#endif
+
+#ifdef G_OS_WIN32
+  WSAStartup(0x0202, &w);
+#endif
   test_ipv4 ();
   test_ipv6 ();
+
+#ifdef G_OS_WIN32
+  WSACleanup();
+#endif
   return 0;
 }
 

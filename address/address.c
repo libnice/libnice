@@ -121,6 +121,21 @@ nice_address_get_port (const NiceAddress *addr)
 NICEAPI_EXPORT gboolean
 nice_address_set_from_string (NiceAddress *addr, const gchar *str)
 {
+#ifdef G_OS_WIN32
+  union {
+    struct sockaddr  addr;
+    struct sockaddr_in  ip4;
+    struct sockaddr_in6 ip6;
+  } s;
+  int len4 = sizeof(s.ip4);
+  int len6 = sizeof(s.ip6);
+  if (WSAStringToAddress((char *)str, AF_INET, NULL, &s.addr, &len4) == 0)
+      nice_address_set_from_sockaddr (addr, &s.addr);
+  else if (WSAStringToAddress((char *)str, AF_INET6, NULL, &s.addr, &len6) == 0)
+    nice_address_set_from_sockaddr (addr, &s.addr);
+  else
+    return FALSE; /* Invalid address */
+#else
   union
   {
     struct in_addr  ipv4;
@@ -129,11 +144,11 @@ nice_address_set_from_string (NiceAddress *addr, const gchar *str)
 
   if (inet_pton (AF_INET, str, &a.ipv4) > 0)
       nice_address_set_ipv4 (addr, ntohl (a.ipv4.s_addr));
-  else
-  if (inet_pton (AF_INET6, str, &a.ipv6) > 0)
+  else if (inet_pton (AF_INET6, str, &a.ipv6) > 0)
       nice_address_set_ipv6 (addr, a.ipv6.s6_addr);
   else
     return FALSE; /* Invalid address */
+#endif
 
   return TRUE;
 }
@@ -188,10 +203,29 @@ nice_address_copy_to_sockaddr (const NiceAddress *addr,
 NICEAPI_EXPORT void
 nice_address_to_string (const NiceAddress *addr, gchar *dst)
 {
+#ifdef G_OS_WIN32
+  DWORD len;
+  int ret;
+
+  switch (addr->s.addr.sa_family) {
+    case AF_INET:
+      len = INET_ADDRSTRLEN;
+      ret = WSAAddressToString ((LPSOCKADDR)&addr->s.ip4, sizeof(addr->s.ip6),
+          NULL, dst, &len);
+      break;
+    case AF_INET6:
+      len = INET6_ADDRSTRLEN;
+      ret = WSAAddressToString ((LPSOCKADDR)&addr->s.ip6, sizeof(addr->s.ip6),
+          NULL, dst, &len);
+      break;
+    default:
+      g_assert_not_reached();
+  }
+
+#else
   const gchar *ret = NULL;
 
-  switch (addr->s.addr.sa_family)
-    {
+  switch (addr->s.addr.sa_family) {
     case AF_INET:
       ret = inet_ntop (AF_INET, &addr->s.ip4.sin_addr, dst, INET_ADDRSTRLEN);
       break;
@@ -201,9 +235,8 @@ nice_address_to_string (const NiceAddress *addr, gchar *dst)
       break;
     default:
       g_assert_not_reached();
-    }
-
-  g_assert (ret == dst);
+  }
+#endif
 }
 
 
