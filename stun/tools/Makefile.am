@@ -16,7 +16,7 @@ bin_PROGRAMS = stunbdc stund
 check_PROGRAMS = stund
 
 stund_SOURCES = stund.c stund.h
-stund_LDADD = ../libstun.la -lpthread
+stund_LDADD = ../libstun.la
 
 stunbdc_SOURCES = stunbdc.c 
 
