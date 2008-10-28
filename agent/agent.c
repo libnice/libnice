@@ -45,15 +45,18 @@
 # include <config.h>
 #endif
 
+#include <glib.h>
+
 #include <string.h>
 #include <errno.h>
 
-#include <sys/select.h>
+#ifdef G_OS_WIN32
+#include <winsock2.h>
+#else
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
-
-#include <glib.h>
+#endif
 
 #include "debug.h"
 

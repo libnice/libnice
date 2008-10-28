@@ -40,11 +40,24 @@
 #include <string.h>
 #include <assert.h>
 
+#ifdef _WIN32
+#include <winsock2.h>
+#define ENOENT -1
+#define EINVAL -2
+#define ENOBUFS -3
+#define EAFNOSUPPORT -4
+#define EPROTO -5
+#define EACCES -6
+#define EINPROGRESS -7
+#else
 #include <sys/types.h>
 #include <sys/socket.h>
-#include "stunagent.h"
-#include <errno.h>
 #include <arpa/inet.h>
+#include <errno.h>
+#endif
+
+
+#include "stunagent.h"
 
 /** ICE connectivity checks **/
 #include "ice.h"

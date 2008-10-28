@@ -41,11 +41,24 @@
 #include <string.h>
 #include <assert.h>
 
-#include <sys/socket.h>
 #include <sys/time.h>
 #include <unistd.h>
+
+#ifdef _WIN32
+#define ENOENT -1
+#define EINVAL -2
+#define ENOBUFS -3
+#define EAFNOSUPPORT -4
+#define EPROTO -5
+#define EACCES -6
+#define EINPROGRESS -7
+#define EAGAIN -8
+#define ENOSYS -9
+#else
 #include <errno.h>
-#include <netinet/in.h>
+#endif
+
+
 #ifdef HAVE_POLL
 # include <poll.h>
 #endif

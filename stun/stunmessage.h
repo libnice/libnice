@@ -41,6 +41,13 @@
 #include <stdbool.h>
 #include "constants.h"
 
+#ifdef _WIN32
+#include <winsock2.h>
+#include <ws2tcpip.h>
+#else
+#include <sys/socket.h>
+#endif
+
 typedef struct stun_message_t StunMessage;
 
 /* Message classes */

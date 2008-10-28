@@ -39,8 +39,13 @@
 # include <config.h>
 #endif
 
+#ifdef _WIN32
+#include <winsock2.h>
+#else
 #include <sys/socket.h>
 #include <netinet/in.h> /* htons() */
+#endif
+
 #include <string.h>
 #include <stdlib.h>
 

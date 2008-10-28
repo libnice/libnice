@@ -37,14 +37,16 @@
 # include <config.h>
 #endif
 
-#include <sys/types.h>
+#ifndef _WIN32
 #include <sys/socket.h>
+#include <netdb.h>
+
+#include <sys/types.h>
 #include "stun/stunagent.h"
 #include "stun/usages/bind.h"
 
 #include <unistd.h>
 #include <getopt.h>
-#include <netdb.h>
 #include <errno.h>
 
 #include <stdlib.h>

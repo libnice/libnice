@@ -41,10 +41,16 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdarg.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
 
+#ifdef _WIN32
+#define ENOENT -1
+#define EINVAL -2
+#define ENOBUFS -3
+#define EAFNOSUPPORT -4
+#else
 #include <errno.h>
+#endif
+
 #include "utils.h"
 
 /** Compares two socket addresses

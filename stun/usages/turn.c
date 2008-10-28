@@ -37,8 +37,12 @@
 # include <config.h>
 #endif
 
+#ifdef _WIN32
+#include <winsock2.h>
+#else
 #include <sys/types.h>
 #include <sys/socket.h>
+#endif
 
 #include "stun/stunagent.h"
 #include "turn.h"
