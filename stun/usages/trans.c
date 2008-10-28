@@ -213,9 +213,9 @@ ssize_t stun_trans_sendto (stun_trans_t *tr, const uint8_t *buf, size_t len,
   do
   {
     if (dstlen > 0)
-      val = sendto (tr->fd, buf, len, flags, dst, dstlen);
+      val = sendto (tr->fd, (void *)buf, len, flags, dst, dstlen);
     else
-      val = send (tr->fd, buf, len, flags);
+      val = send (tr->fd, (void *)buf, len, flags);
   }
   while ((val == -1) && stun_err_dequeue (tr->fd));
 
@@ -231,9 +231,9 @@ ssize_t stun_trans_recvfrom (stun_trans_t *tr, uint8_t *buf, size_t maxlen,
   ssize_t val;
 
   if (dstlen != NULL)
-    val = recvfrom (tr->fd, buf, maxlen, flags, dst, dstlen);
+    val = recvfrom (tr->fd, (void *)buf, maxlen, flags, dst, dstlen);
   else
-    val = recv (tr->fd, buf, maxlen, flags);
+    val = recv (tr->fd, (void *)buf, maxlen, flags);
 
   if ((val == -1) && stun_err_dequeue (tr->fd))
     errno = EAGAIN;
