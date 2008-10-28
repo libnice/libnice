@@ -38,11 +38,16 @@
 #ifndef _ADDRESS_H
 #define _ADDRESS_H
 
+#include <glib.h>
+
+#ifdef G_OS_WIN32
+#include <winsock2.h>
+#else
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
-
-#include <glib.h>
+#include <arpa/inet.h>
+#endif
 
 G_BEGIN_DECLS
 

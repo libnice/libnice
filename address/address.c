@@ -41,10 +41,6 @@
 
 #include <string.h>
 
-#include <arpa/inet.h>
-
-#include <glib.h>
-
 #include "address.h"
 
 
