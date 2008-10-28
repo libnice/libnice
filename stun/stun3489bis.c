@@ -49,20 +49,20 @@
 
 uint32_t stun_fingerprint (const uint8_t *msg, size_t len)
 {
-  struct iovec iov[3];
+  crc_data data[3];
   uint16_t fakelen = htons (len - 20u);
 
   // assert (len >= 28u);
 
-  iov[0].iov_base = (void *)msg;
-  iov[0].iov_len = 2;
-  iov[1].iov_base = &fakelen;
-  iov[1].iov_len = 2;
-  iov[2].iov_base = (void *)(msg + 4);
+  data[0].buf = (void *)msg;
+  data[0].len = 2;
+  data[1].buf = &fakelen;
+  data[1].len = 2;
+  data[2].buf = (void *)(msg + 4);
   /* first 4 bytes done, last 8 bytes not summed */
-  iov[2].iov_len = len - 12u;
+  data[2].len = len - 12u;
 
-  return htonl (crc32 (iov, sizeof (iov) / sizeof (iov[0])) ^ 0x5354554e);
+  return htonl (crc32 (data, 3) ^ 0x5354554e);
 }
 
 bool stun_has_cookie (const StunMessage *msg)

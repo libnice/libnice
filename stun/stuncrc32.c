@@ -137,15 +137,15 @@ static const uint32_t crc32_tab[] = {
 };
 
 
-uint32_t crc32 (const struct iovec *iov, size_t n)
+uint32_t crc32 (const crc_data data, size_t n)
 {
   size_t i;
   uint32_t crc = 0xffffffff;
 
   for (i = 0; i < n; i++)
   {
-    const uint8_t *p = iov[i].iov_base;
-    size_t size = iov[i].iov_len;
+    const uint8_t *p = data[i].buf;
+    size_t size = data[i].len;
 
     while (size--)
       crc = crc32_tab[(crc ^ *p++) & 0xFF] ^ (crc >> 8);

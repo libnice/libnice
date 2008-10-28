@@ -40,8 +40,13 @@
 
 #include <stdint.h>
 #include <stdlib.h>
-#include <sys/uio.h>
 
-uint32_t crc32 (const struct iovec *iov, size_t n);
+typedef struct {
+  uint8_t *buf;
+  size_t len;
+} crc_data;
+
+
+uint32_t crc32 (const crc_data *data, size_t n);
 
 #endif /* _CRC32_H */
