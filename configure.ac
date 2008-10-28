@@ -12,7 +12,6 @@ AC_CONFIG_FILES([
 	stun/Makefile
 	stun/tests/Makefile
 	stun/tools/Makefile
-	local/Makefile
 	socket/Makefile
 	nice/Makefile
 	nice/nice.pc
