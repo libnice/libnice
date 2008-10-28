@@ -41,8 +41,18 @@
  * @brief STUN client generic transaction layer
  */
 
-# include <sys/types.h>
-# include <sys/socket.h>
+#ifdef _WIN32
+#include <winsock2.h>
+#include <ws2tcpip.h>
+#else
+#include <sys/socket.h>
+#endif
+
+
+
+#include <stdint.h>
+#include <sys/types.h>
+#include <stdbool.h>
 
 
 typedef struct stun_trans_s
