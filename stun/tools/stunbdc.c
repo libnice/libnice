@@ -181,3 +181,8 @@ int main (int argc, char *argv[])
 
   return run (family, server, port) ? 1 : 0;
 }
+#else
+int main () {
+  return 0;
+}
+#endif

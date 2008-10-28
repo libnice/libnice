@@ -37,6 +37,8 @@
 # include <config.h>
 #endif
 
+#ifndef _WIN32
+
 #include <stdio.h>
 #include <stdint.h>
 #include <string.h>
@@ -44,9 +46,12 @@
 #include <signal.h>
 
 #include <sys/types.h>
+
+
 #include <sys/socket.h>
 #include <netdb.h>
 #include <netinet/in.h>
+
 #include <unistd.h>
 #include <errno.h>
 #include <limits.h>
@@ -308,3 +313,9 @@ int main (int argc, char *argv[])
   signal (SIGTERM, exit_handler);
   return run (family, IPPROTO_UDP, port) ? EXIT_FAILURE : EXIT_SUCCESS;
 }
+
+#else
+int main () {
+  return 0;
+}
+#endif
