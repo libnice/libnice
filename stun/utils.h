@@ -43,8 +43,13 @@
 
 #include "stunmessage.h"
 
+#ifdef _WIN32
+#include <winsock2.h>
+typedef size_t socklen_t;
+#else
 #include <sys/types.h>
 #include <sys/socket.h>
+#endif
 
 # ifdef __cplusplus
 extern "C" {
