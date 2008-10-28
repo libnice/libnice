@@ -51,6 +51,15 @@
 #include <string.h>
 #include <stdlib.h>
 
+#ifdef _WIN32
+#define ENOENT -1
+#define EINVAL -2
+#define ENOBUFS -3
+#define EAFNOSUPPORT -4
+#else
+#include <errno.h>
+#endif
+
 
 
 bool stun_message_init (StunMessage *msg, stun_class_t c, stun_method_t m,
