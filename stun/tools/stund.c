@@ -117,15 +117,12 @@ int listen_socket (int fam, int type, int proto, uint16_t port)
     switch (fam)
     {
       case AF_INET:
-        setsockopt (fd, SOL_IP, IP_PKTINFO, &yes, sizeof (yes));
 #ifdef IP_RECVERR
         setsockopt (fd, SOL_IP, IP_RECVERR, &yes, sizeof (yes));
 #endif
         break;
 
       case AF_INET6:
-        setsockopt (fd, SOL_IPV6, IPV6_RECVPKTINFO, &yes,
-                    sizeof (yes));
 #ifdef IPV6_RECVERR
         setsockopt (fd, SOL_IPV6, IPV6_RECVERR, &yes, sizeof (yes));
 #endif
