@@ -67,29 +67,30 @@
  * Clock used throughout the STUN code.
  * STUN requires a monotonic 1kHz clock to operate properly.
  */
-static void stun_gettime (struct timespec *restrict now)
+static void stun_gettime (struct timeval *restrict now)
 {
 #if defined (_POSIX_MONOTONIC_CLOCK) && (_POSIX_MONOTONIC_CLOCK >= 0)
-  if (clock_gettime (CLOCK_MONOTONIC, now))
+  struct timespec spec;
+  if (!clock_gettime (CLOCK_MONOTONIC, &spec)) {
+    now->tv_sec = spec.tv_sec;
+    now->tv_usec = spec.tv_nsec / 1000;
+  } else
 #endif
   {  // fallback to wall clock
-    struct timeval tv;
-    gettimeofday (&tv, NULL);
-    now->tv_sec = tv.tv_sec;
-    now->tv_nsec = tv.tv_usec * 1000;
+    gettimeofday (now, NULL);
   }
 }
 
 
-static void add_delay (struct timespec *ts, unsigned delay)
+static void add_delay (struct timeval *ts, unsigned delay)
 {
   div_t d = div (delay, 1000);
   ts->tv_sec += d.quot;
-  ts->tv_nsec += d.rem * 1000000;
+  ts->tv_usec += d.rem * 1000;
 
-  while (ts->tv_nsec > 1000000000)
+  while (ts->tv_usec > 1000000)
   {
-    ts->tv_nsec -= 1000000000;
+    ts->tv_usec -= 1000000;
     ts->tv_sec++;
   }
 }
@@ -113,18 +114,18 @@ void stun_timer_start_reliable (stun_timer_t *timer)
 unsigned stun_timer_remainder (const stun_timer_t *timer)
 {
   unsigned delay;
-  struct timespec now;
+  struct timeval now;
 
   stun_gettime (&now);
   if (now.tv_sec > timer->deadline.tv_sec)
     return 0;
 
   delay = timer->deadline.tv_sec - now.tv_sec;
-  if ((delay == 0) && (now.tv_nsec >= timer->deadline.tv_nsec))
+  if ((delay == 0) && (now.tv_usec >= timer->deadline.tv_usec))
     return 0;
 
   delay *= 1000;
-  delay += ((signed)(timer->deadline.tv_nsec - now.tv_nsec)) / 1000000;
+  delay += ((signed)(timer->deadline.tv_usec - now.tv_usec)) / 1000;
   return delay;
 }
 

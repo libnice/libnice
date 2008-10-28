@@ -41,12 +41,16 @@
  * @brief STUN retransmission timer
  */
 
+#ifdef _WIN32
+#include <winsock2.h>
+#else
 # include <sys/types.h>
 # include <time.h>
+#endif
 
 typedef struct stun_timer_s
 {
-  struct timespec deadline;
+  struct timeval deadline;
   unsigned delay;
 } stun_timer_t;
 
