@@ -177,7 +177,7 @@ static void numb (void)
   req_len = stun_usage_turn_create (&agent, &req_msg, req, sizeof(req),
       NULL,
       STUN_USAGE_TURN_REQUEST_PORT_NORMAL,
-      0, 0,
+      -1, -1,
       username, strlen (username), password, strlen(password),
       STUN_USAGE_TURN_COMPATIBILITY_DRAFT9);
   assert (req_len > 0);
@@ -202,7 +202,7 @@ static void numb (void)
   req_len = stun_usage_turn_create (&agent, &req_msg, req, sizeof(req),
       &msg,
       STUN_USAGE_TURN_REQUEST_PORT_NORMAL,
-      0, 0,
+      -1, -1,
       username, strlen (username), password, strlen(password),
       STUN_USAGE_TURN_COMPATIBILITY_DRAFT9);
   assert (req_len > 0);
