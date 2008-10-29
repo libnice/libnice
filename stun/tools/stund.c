@@ -190,7 +190,7 @@ ssize_t send_safe (int fd, const struct msghdr *msg)
 }
 
 
-static int dgram_process (int sock, StunAgent *agent)
+static int dgram_process (int sock, StunAgent *oldagent, StunAgent *newagent)
 {
   struct sockaddr_storage addr;
   uint8_t buf[STUN_MAX_MESSAGE_SIZE];
@@ -199,6 +199,7 @@ static int dgram_process (int sock, StunAgent *agent)
   StunMessage request;
   StunMessage response;
   StunValidationStatus validation;
+  StunAgent *agent = NULL;
 
   struct msghdr mh =
   {
@@ -214,7 +215,15 @@ static int dgram_process (int sock, StunAgent *agent)
   if (len == (size_t)-1)
     return -1;
 
-  validation = stun_agent_validate (agent, &request, buf, len, NULL, 0);
+  validation = stun_agent_validate (newagent, &request, buf, len, NULL, 0);
+
+  if (validation == STUN_VALIDATION_SUCCESS) {
+    agent = newagent;
+  }
+  else {
+    validation = stun_agent_validate (oldagent, &request, buf, len, NULL, 0);
+    agent = oldagent;
+  }
 
   /* Unknown attributes */
   if (validation == STUN_VALIDATION_UNKNOWN_REQUEST_ATTRIBUTE)
@@ -258,17 +267,19 @@ send_buf:
 
 static int run (int family, int protocol, unsigned port)
 {
-  StunAgent agent;
+  StunAgent oldagent;
+  StunAgent newagent;
   int sock = listen_socket (family, SOCK_DGRAM, protocol, htons (port));
   if (sock == -1)
     return -1;
 
-
-  stun_agent_init (&agent, known_attributes,
+  stun_agent_init (&oldagent, known_attributes,
+      STUN_COMPATIBILITY_RFC3489, 0);
+  stun_agent_init (&newagent, known_attributes,
       STUN_COMPATIBILITY_3489BIS, STUN_AGENT_USAGE_USE_FINGERPRINT);
 
   for (;;)
-    dgram_process (sock, &agent);
+    dgram_process (sock, &oldagent, &newagent);
 }
 
 
