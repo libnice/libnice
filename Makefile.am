@@ -22,7 +22,7 @@ SUBDIRS += gst
 endif
 
 DIST_SUBDIRS = $(ALWAYS_SUBDIRS) gst
-DISTCHECK_CONFIGURE_FLAGS = --disable-assert --without-gstreamer
+DISTCHECK_CONFIGURE_FLAGS = --disable-assert
 
 EXTRA_DIST = \
 	common.mk \
