@@ -11,7 +11,6 @@ include common.mk
 ALWAYS_SUBDIRS = \
 	address \
 	stun \
-	tests \
 	socket \
 	random \
 	agent \

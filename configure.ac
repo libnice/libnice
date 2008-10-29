@@ -8,7 +8,6 @@ AC_CONFIG_FILES([
 	Makefile
 	address/Makefile
 	agent/Makefile
-	tests/Makefile
 	stun/Makefile
 	stun/tests/Makefile
 	stun/tools/Makefile

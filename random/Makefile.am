@@ -20,7 +20,7 @@ librandom_la_SOURCES = \
 
 check_PROGRAMS = test
 
-test_LDADD = $(GLIB_LIBS) librandom.la
+test_LDADD = librandom.la $(GLIB_LIBS)
 
 TESTS = $(check_PROGRAMS)
 

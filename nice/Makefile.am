@@ -34,7 +34,6 @@ AM_CFLAGS = \
 	-I $(top_srcdir)/socket \
 	-I $(top_srcdir)/stun
 
-COMMON_LDADD = libnice.la $(GLIB_LIBS)
 test-symbols.sh::
 	chmod +x $(srcdir)/$@
 
