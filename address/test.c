@@ -103,7 +103,10 @@ test_ipv6 (void)
   memset (&sin, 0, sizeof (sin));
   memset (&sin2, 0, sizeof (sin2));
 
+  memset (&addr, 0, sizeof (NiceAddress));
+  memset (&other, 0, sizeof (NiceAddress));
   nice_address_init (&addr);
+  nice_address_init (&other);
   nice_address_set_ipv6 (&addr, (guchar *)
       "\x00\x11\x22\x33"
       "\x44\x55\x66\x77"
@@ -120,10 +123,11 @@ test_ipv6 (void)
 
   nice_address_copy_to_sockaddr (&other, (struct sockaddr*)&sin2);
   nice_address_copy_to_sockaddr (&addr, (struct sockaddr*)&sin);
-  g_assert (memcmp (&sin, &sin2, sizeof(sin)) == 0);
+  g_assert (nice_address_equal (&addr, &other) == TRUE);
   nice_address_to_string (&addr, str);
   nice_address_to_string (&other, str);
-  g_assert (nice_address_equal (&addr, &other) == TRUE);
+
+  g_assert (memcmp (&sin, &sin2, sizeof(sin)) == 0);
 
   /* private IPv6 address */
   nice_address_set_ipv6 (&addr, (guchar *)
