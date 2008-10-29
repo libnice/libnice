@@ -38,9 +38,6 @@ nice_candidate_new
 nice_candidate_pair_priority
 nice_debug_disable
 nice_debug_enable
-nice_interface_free
-nice_interface_new
-nice_list_local_interfaces
 nice_rng_free
 nice_rng_generate_bytes
 nice_rng_generate_bytes_print
