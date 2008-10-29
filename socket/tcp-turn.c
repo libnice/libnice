@@ -54,10 +54,6 @@
 
 #include "tcp-turn.h"
 
-#ifdef G_OS_WIN32
-#define EINPROGRESS WSAEINPROGRESS
-#endif
-
 typedef struct {
   NiceUdpTurnSocketCompatibility compatibility;
   GQueue send_queue;
@@ -101,7 +97,11 @@ socket_recv (
     ret = read (sock->fileno, priv->recv_buf + priv->recv_buf_len,
         headerlen - priv->recv_buf_len);
     if (ret < 0) {
+#ifdef G_OS_WIN32
+      if (WSAGetLastError () == WSAEWOULDBLOCK)
+#else
       if (errno == EAGAIN)
+#endif
         return 0;
       else
         return ret;
@@ -139,7 +139,11 @@ socket_recv (
   ret = read (sock->fileno, priv->recv_buf + priv->recv_buf_len,
       priv->expecting_len + padlen - priv->recv_buf_len);
   if (ret < 0) {
+#ifdef G_OS_WIN32
+    if (WSAGetLastError () == WSAEWOULDBLOCK)
+#else
     if (errno == EAGAIN)
+#endif
       return 0;
     else
       return ret;
@@ -188,7 +192,11 @@ socket_send_more (
     ret = write (sock->fileno, tbs->buf, tbs->length);
 
     if (ret < 0) {
+#ifdef G_OS_WIN32
+      if (WSAGetLastError () == WSAEWOULDBLOCK) {
+#else
       if (errno == EAGAIN) {
+#endif
         add_to_be_sent (sock, tbs->buf, tbs->length, TRUE);
         g_free (tbs->buf);
         g_slice_free (struct to_be_sent, tbs);
@@ -267,15 +275,19 @@ socket_send (
       ret = write (sock->fileno, &tmpbuf, sizeof(guint16));
 
       if (ret < 0) {
+#ifdef G_OS_WIN32
+        if (WSAGetLastError () == WSAEWOULDBLOCK) {
+#else
         if (errno == EAGAIN) {
-          add_to_be_sent (sock, (gchar*) &tmpbuf, sizeof(guint16), FALSE);
+#endif
+          add_to_be_sent (sock, (gchar *) &tmpbuf, sizeof(guint16), FALSE);
           add_to_be_sent (sock, buf, len, FALSE);
           return TRUE;
         } else {
           return FALSE;
         }
       } else if ((guint)ret < sizeof(guint16)) {
-        add_to_be_sent (sock, ((gchar*) &tmpbuf) + ret,
+        add_to_be_sent (sock, ((gchar *) &tmpbuf) + ret,
             sizeof(guint16) - ret, FALSE);
         add_to_be_sent (sock, buf, len, FALSE);
         return TRUE;
@@ -285,7 +297,11 @@ socket_send (
     ret = write (sock->fileno, buf, len);
 
     if (ret < 0) {
+#ifdef G_OS_WIN32
+      if (WSAGetLastError () == WSAEWOULDBLOCK) {
+#else
       if (errno == EAGAIN) {
+#endif
         add_to_be_sent (sock, buf, len, FALSE);
         add_to_be_sent (sock, padbuf, padlen, FALSE);
         return TRUE;
@@ -304,7 +320,11 @@ socket_send (
       ret = write (sock->fileno, padbuf, padlen);
 
       if (ret < 0) {
+#ifdef G_OS_WIN32
+        if (WSAGetLastError () == WSAEWOULDBLOCK) {
+#else
         if (errno == EAGAIN) {
+#endif
           add_to_be_sent (sock, padbuf, padlen, FALSE);
           return TRUE;
         } else {
@@ -400,7 +420,11 @@ nice_tcp_turn_socket_new (
 
   ret = connect (sockfd, (const struct sockaddr *)&name, name_len);
 
+#ifdef G_OS_WIN32
+  if (ret < 0 && WSAGetLastError () != WSAEINPROGRESS) {
+#else
   if (ret < 0 && errno != EINPROGRESS) {
+#endif
     close (sockfd);
     g_slice_free (NiceSocket, sock);
     return NULL;

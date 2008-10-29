@@ -135,9 +135,14 @@ int stun_trans_create (stun_trans_t *restrict tr, int type, int proto,
   if (fd == -1)
     return errno;
 
-  if (connect (fd, srv, srvlen) && (errno != EINPROGRESS))
-  {
+  if (connect (fd, srv, srvlen) &&
+#ifdef _WIN32
+      (WSAGetLastError () != WSAEINPROGRESS)) {
+    val = WSAGetLastError ();
+#else
+    (errno != EINPROGRESS)) {
     val = errno;
+#endif
     goto error;
   }
 

@@ -165,8 +165,11 @@ static void numb (void)
   assert (fd != -1);
 
   val = connect (fd,res->ai_addr, res->ai_addrlen);
+#ifdef G_OS_WIN32
+  assert (val == 0 || (WSAGetLastError () == WSAEINPROGRESS));
+#else
   assert (val == 0 || (errno == EINPROGRESS));
-
+#endif
 
   memset (&hints, 0, sizeof (hints));
   hints.ai_family = AF_UNSPEC;
