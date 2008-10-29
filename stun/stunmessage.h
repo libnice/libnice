@@ -46,6 +46,7 @@
 #include <ws2tcpip.h>
 #else
 #include <sys/socket.h>
+#include <arpa/inet.h>
 #endif
 
 typedef struct stun_message_t StunMessage;
