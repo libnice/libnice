@@ -54,6 +54,8 @@
 #define EINPROGRESS -7
 #define EAGAIN -8
 #define ENOSYS -9
+
+#define close closesocket
 #else
 #include <errno.h>
 #endif

@@ -63,6 +63,7 @@
 #define MSG_NOSIGNAL 0
 
 #define alarm(...)
+#define close closesocket
 #else
 #include <sys/types.h>
 #include <sys/socket.h>
