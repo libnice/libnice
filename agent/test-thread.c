@@ -38,10 +38,10 @@
 # include <config.h>
 #endif
 
+#include "agent.h"
+
 #include <stdlib.h>
 #include <string.h>
-
-#include "agent.h"
 
 GMainLoop *error_loop;
 
@@ -82,9 +82,9 @@ cb_new_selected_pair(NiceAgent *agent,
 {
   g_debug ("test-thread:%s: %p", __func__, data);
 
-  if ((intptr_t)data == 1)
+  if ((int)data == 1)
     g_atomic_int_inc (&global_lagent_cands);
-  else if ((intptr_t)data == 2)
+  else if ((int)data == 2)
     g_atomic_int_inc (&global_ragent_cands);
 }
 

@@ -38,16 +38,38 @@
 #endif
 
 #include <sys/types.h>
-#include <sys/socket.h>
 #include "stun/stunagent.h"
 #include "stun/usages/bind.h"
 
 #include <stdlib.h>
 #include <stdio.h>
-#include <errno.h>
 #include <unistd.h>
 #include <string.h>
+
+#ifdef _WIN32
+#include <winsock2.h>
+#include <ws2tcpip.h>
+#define ENOENT -1
+#define EINVAL -2
+#define ENOBUFS -3
+#define EAFNOSUPPORT -4
+#define EPROTO -5
+#define EACCES -6
+#define EINPROGRESS -7
+#define EAGAIN -8
+#define ENOSYS -9
+
+#define MSG_DONTWAIT 0
+#define MSG_NOSIGNAL 0
+
+#define alarm(...)
+#else
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <arpa/inet.h>
 #include <netdb.h>
+#include <errno.h>
+#endif
 
 #undef NDEBUG /* ensure assertions are built-in */
 #include <assert.h>

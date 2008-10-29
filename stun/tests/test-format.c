@@ -38,7 +38,6 @@
 #endif
 
 #include <sys/types.h>
-#include <sys/socket.h>
 
 #include "stun/stunagent.h"
 #include <stdio.h>
@@ -46,8 +45,24 @@
 #include <stdlib.h>
 #include <stdarg.h>
 #include <assert.h>
+
+#ifdef _WIN32
+#include <winsock2.h>
+#define ENOENT -1
+#define EINVAL -2
+#define ENOBUFS -3
+#define EAFNOSUPPORT -4
+#define EPROTO -5
+#define EACCES -6
+#define EINPROGRESS -7
+#define EAGAIN -8
+#define ENOSYS -9
+#else
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <arpa/inet.h>
 #include <errno.h>
-#include <netinet/in.h>
+#endif
 
 
 static void fatal (const char *msg, ...)

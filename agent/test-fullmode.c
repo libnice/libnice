@@ -38,10 +38,11 @@
 # include <config.h>
 #endif
 
+#include "agent.h"
+
 #include <stdlib.h>
 #include <string.h>
 
-#include "agent.h"
 
 #define USE_TURN 0
 #define USE_LOOPBACK 1
@@ -127,7 +128,7 @@ static void cb_nice_recv (NiceAgent *agent, guint stream_id, guint component_id,
   if (strncmp ("12345678", buf, 8))
     return;
 
-  if ((intptr_t)user_data == 2) {
+  if ((int)user_data == 2) {
     global_ragent_read = len;
     g_main_loop_quit (global_mainloop);
   }
@@ -137,9 +138,9 @@ static void cb_candidate_gathering_done(NiceAgent *agent, gpointer data)
 {
   g_debug ("test-fullmode:%s: %p", G_STRFUNC, data);
 
-  if ((intptr_t)data == 1)
+  if ((int)data == 1)
     global_lagent_gathering_done = TRUE;
-  else if ((intptr_t)data == 2)
+  else if ((int)data == 2)
     global_ragent_gathering_done = TRUE;
 
   if (global_lagent_gathering_done &&
@@ -154,9 +155,9 @@ static void cb_component_state_changed (NiceAgent *agent, guint stream_id, guint
 {
   g_debug ("test-fullmode:%s: %p", __func__, data);
 
-  if ((intptr_t)data == 1)
+  if ((int)data == 1)
     global_lagent_state[component_id - 1] = state;
-  else if ((intptr_t)data == 2)
+  else if ((int)data == 2)
     global_ragent_state[component_id - 1] = state;
   
   if (state == NICE_COMPONENT_STATE_READY)
@@ -191,9 +192,9 @@ static void cb_new_selected_pair(NiceAgent *agent, guint stream_id, guint compon
 {
   g_debug ("test-fullmode:%s: %p", __func__, data);
 
-  if ((intptr_t)data == 1)
+  if ((int)data == 1)
     ++global_lagent_cands;
-  else if ((intptr_t)data == 2)
+  else if ((int)data == 2)
     ++global_ragent_cands;
 
   /* XXX: dear compiler, these are for you: */
@@ -213,9 +214,9 @@ static void cb_initial_binding_request_received(NiceAgent *agent, guint stream_i
 {
   g_debug ("test-fullmode:%s: %p", __func__, data);
 
-  if ((intptr_t)data == 1)
+  if ((int)data == 1)
     global_lagent_ibr_received = TRUE;
-  else if ((intptr_t)data == 2)
+  else if ((int)data == 2)
     global_ragent_ibr_received = TRUE;
 
   if (global_exit_when_ibr_received)

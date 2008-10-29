@@ -37,17 +37,29 @@
 # include <config.h>
 #endif
 
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-
 #include "stun/stunagent.h"
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 #include <stdarg.h>
 
+#ifdef _WIN32
+#include <winsock2.h>
+#define ENOENT -1
+#define EINVAL -2
+#define ENOBUFS -3
+#define EAFNOSUPPORT -4
+#define EPROTO -5
+#define EACCES -6
+#define EINPROGRESS -7
+#define EAGAIN -8
+#define ENOSYS -9
+#else
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <arpa/inet.h>
 #include <errno.h>
+#endif
 
 
 # define STUN_MAX_STR (763u)

@@ -39,11 +39,12 @@
 # include <config.h>
 #endif
 
+#include "agent.h"
+#include "agent-priv.h" /* for testing purposes */
+
 #include <stdlib.h>
 #include <string.h>
 
-#include "agent.h"
-#include "agent-priv.h" /* for testing purposes */
 
 static NiceComponentState global_lagent_state = NICE_COMPONENT_STATE_LAST;
 static NiceComponentState global_ragent_state = NICE_COMPONENT_STATE_LAST;
