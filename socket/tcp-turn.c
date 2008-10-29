@@ -94,8 +94,8 @@ socket_recv (
     else
       g_assert_not_reached();
 
-    ret = read (sock->fileno, priv->recv_buf + priv->recv_buf_len,
-        headerlen - priv->recv_buf_len);
+    ret = recv (sock->fileno, priv->recv_buf + priv->recv_buf_len,
+        headerlen - priv->recv_buf_len, 0);
     if (ret < 0) {
 #ifdef G_OS_WIN32
       if (WSAGetLastError () == WSAEWOULDBLOCK)
@@ -136,8 +136,8 @@ socket_recv (
   else
     padlen = 0;
 
-  ret = read (sock->fileno, priv->recv_buf + priv->recv_buf_len,
-      priv->expecting_len + padlen - priv->recv_buf_len);
+  ret = recv (sock->fileno, priv->recv_buf + priv->recv_buf_len,
+      priv->expecting_len + padlen - priv->recv_buf_len, 0);
   if (ret < 0) {
 #ifdef G_OS_WIN32
     if (WSAGetLastError () == WSAEWOULDBLOCK)
@@ -189,7 +189,7 @@ socket_send_more (
   while ((tbs = g_queue_pop_head (&priv->send_queue))) {
     int ret;
 
-    ret = write (sock->fileno, tbs->buf, tbs->length);
+    ret = send (sock->fileno, tbs->buf, tbs->length, 0);
 
     if (ret < 0) {
 #ifdef G_OS_WIN32
@@ -272,7 +272,7 @@ socket_send (
   if (g_queue_is_empty (&priv->send_queue)) {
     if (priv->compatibility == NICE_UDP_TURN_SOCKET_COMPATIBILITY_GOOGLE) {
       guint16 tmpbuf = htons (len);
-      ret = write (sock->fileno, &tmpbuf, sizeof(guint16));
+      ret = send (sock->fileno, (void *) &tmpbuf, sizeof(guint16), 0);
 
       if (ret < 0) {
 #ifdef G_OS_WIN32
@@ -294,7 +294,7 @@ socket_send (
       }
     }
 
-    ret = write (sock->fileno, buf, len);
+    ret = send (sock->fileno, buf, len, 0);
 
     if (ret < 0) {
 #ifdef G_OS_WIN32
@@ -317,7 +317,7 @@ socket_send (
     if (priv->compatibility == NICE_UDP_TURN_SOCKET_COMPATIBILITY_DRAFT9 &&
         len % 4) {
 
-      ret = write (sock->fileno, padbuf, padlen);
+      ret = send (sock->fileno, padbuf, padlen, 0);
 
       if (ret < 0) {
 #ifdef G_OS_WIN32
