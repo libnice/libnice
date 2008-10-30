@@ -1209,8 +1209,8 @@ nice_agent_get_local_credentials (
     goto done;
   }
 
-  *ufrag = stream->local_ufrag;
-  *pwd = stream->local_password;
+  *ufrag = strdup (stream->local_ufrag);
+  *pwd = strdup (stream->local_password);
   ret = TRUE;
 
  done:
