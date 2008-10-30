@@ -12,7 +12,6 @@ AM_CFLAGS = \
 	$(ERROR_CFLAGS) \
 	$(GLIB_CFLAGS) \
 	-I $(top_srcdir) \
-	-I $(top_srcdir)/address \
 	-I $(top_srcdir)/random \
 	-I $(top_srcdir)/socket \
 	-I $(top_srcdir)/stun
@@ -37,6 +36,8 @@ BUILT_SOURCES = \
 CLEANFILES += $(BUILT_SOURCES)
 
 libagent_la_SOURCES = \
+	address.h \
+	address.c \
 	debug.h \
 	debug.c \
 	candidate.h \
@@ -55,18 +56,17 @@ libagent_la_SOURCES = \
 	$(BUILT_SOURCES)
 
 libagent_la_LIBADD = \
-	../address/libaddress.la \
 	../random/librandom.la \
 	../socket/libsocket.la \
 	../stun/libstun.la
 libagent_la_DEPENDENCIES = \
-	../address/libaddress.la \
 	../random/librandom.la \
 	../socket/libsocket.la \
 	../stun/libstun.la
 
 check_PROGRAMS = \
 	test \
+	test-address \
 	test-add-remove-stream \
 	test-priority \
 	test-mainloop \
@@ -82,6 +82,8 @@ TESTS = $(check_PROGRAMS) $(dist_check_SCRIPTS)
 
 test_LDADD = $(COMMON_LDADD)
 
+test_address_LDADD = $(COMMON_LDADD)
+
 test_add_remove_stream_LDADD = $(COMMON_LDADD)
 
 test_priority_LDADD = $(COMMON_LDADD)
@@ -96,7 +98,7 @@ test_fallback_LDADD = $(COMMON_LDADD)
 
 test_thread_LDADD = $(COMMON_LDADD)
 
-pkginclude_HEADERS = agent.h candidate.h debug.h
+pkginclude_HEADERS = agent.h candidate.h debug.h address.h
 
 all-local:
 	chmod a+x $(srcdir)/check-test-fullmode-with-stun.sh

@@ -28,7 +28,6 @@ AM_CFLAGS = \
 	$(ERROR_CFLAGS) \
 	$(GLIB_CFLAGS) \
 	-I $(top_srcdir) \
-	-I $(top_srcdir)/address \
 	-I $(top_srcdir)/agent \
 	-I $(top_srcdir)/random \
 	-I $(top_srcdir)/socket \

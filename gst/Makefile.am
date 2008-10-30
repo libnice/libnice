@@ -12,7 +12,6 @@ AM_CFLAGS = -Wall -Werror \
 	-I $(top_srcdir)/socket \
 	-I $(top_srcdir)/agent \
 	-I $(top_srcdir)/random \
-	-I $(top_srcdir)/address \
 	-I $(top_srcdir)/stun
 
 COMMON_LDADD = \

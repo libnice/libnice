@@ -9,7 +9,6 @@
 include common.mk
 
 ALWAYS_SUBDIRS = \
-	address \
 	stun \
 	socket \
 	random \

@@ -11,12 +11,11 @@ include $(top_srcdir)/common.mk
 AM_CFLAGS = \
 	$(ERROR_CFLAGS) \
 	$(GLIB_CFLAGS) \
-	-I $(top_srcdir)/address \
 	-I $(top_srcdir)/random \
 	-I $(top_srcdir)/agent \
 	-I $(top_srcdir)/
 
-COMMON_LDADD = libsocket.la $(GLIB_LIBS) $(top_builddir)/address/libaddress.la  $(top_builddir)/stun/libstun.la
+COMMON_LDADD = libsocket.la $(top_builddir)/agent/libagent.la $(GLIB_LIBS) $(top_builddir)/stun/libstun.la
 
 noinst_LTLIBRARIES = libsocket.la
 
