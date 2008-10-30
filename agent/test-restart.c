@@ -92,7 +92,7 @@ static void cb_nice_recv (NiceAgent *agent, guint stream_id, guint component_id,
   }
 }
 
-static void cb_candidate_gathering_done(NiceAgent *agent, gpointer data)
+static void cb_candidate_gathering_done(NiceAgent *agent, guint stream_id, gpointer data)
 {
   g_debug ("test-restart:%s: %p", G_STRFUNC, data);
 

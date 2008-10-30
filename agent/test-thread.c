@@ -89,7 +89,7 @@ cb_new_selected_pair(NiceAgent *agent,
 }
 
 
-static void cb_candidate_gathering_done(NiceAgent *agent, gpointer data)
+static void cb_candidate_gathering_done(NiceAgent *agent, guint stream_id, gpointer data)
 {
   NiceAgent *other = g_object_get_data (G_OBJECT (agent), "other-agent");
   const gchar *ufrag = NULL, *password = NULL;
