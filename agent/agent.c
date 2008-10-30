@@ -292,10 +292,10 @@ nice_agent_class_init (NiceAgentClass *klass)
           0,
           NULL,
           NULL,
-          agent_marshal_VOID__VOID,
+          agent_marshal_VOID__UINT,
           G_TYPE_NONE,
-          0,
-          G_TYPE_INVALID);
+          1,
+          G_TYPE_UINT, G_TYPE_INVALID);
 
  /* signature: void cb(NiceAgent *agent, guint stream_id, guint component_id, 
                 gchar *lfoundation, gchar* rfoundation, gpointer self) */
@@ -577,7 +577,15 @@ void agent_gathering_done (NiceAgent *agent)
 
 void agent_signal_gathering_done (NiceAgent *agent)
 {
-  g_signal_emit (agent, signals[SIGNAL_CANDIDATE_GATHERING_DONE], 0);
+  GSList *i;
+
+  for (i = agent->streams; i; i = i->next) {
+    Stream *stream = i->data;
+    if (stream->gathering) {
+      g_signal_emit (agent, signals[SIGNAL_CANDIDATE_GATHERING_DONE], 0, stream->id);
+      stream->gathering = FALSE;
+    }
+  }
 }
 
 void agent_signal_initial_binding_request_received (NiceAgent *agent, Stream *stream)
@@ -870,66 +878,68 @@ nice_agent_gather_candidates (
     goto done;
   }
 
-  nice_debug ("Agent %p : In %s mode, starting candidate gathering.", agent, agent->full_mode ? "ICE-FULL" : "ICE-LITE");
+  nice_debug ("Agent %p : In %s mode, starting candidate gathering.", agent,
+      agent->full_mode ? "ICE-FULL" : "ICE-LITE");
 
   /* generate a local host candidate for each local address */
 
-  for (i = agent->local_addresses; i; i = i->next)
-    {
-      NiceAddress *addr = i->data;
-      NiceCandidate *host_candidate;
+  for (i = agent->local_addresses; i; i = i->next){
+    NiceAddress *addr = i->data;
+    NiceCandidate *host_candidate;
 
-      for (n = 0; n < stream->n_components; n++) {
-        Component *component = stream_find_component_by_id (stream, n + 1);
-	host_candidate = discovery_add_local_host_candidate (agent, stream->id,
-							     n + 1, addr);
+    for (n = 0; n < stream->n_components; n++) {
+      Component *component = stream_find_component_by_id (stream, n + 1);
+      host_candidate = discovery_add_local_host_candidate (agent, stream->id,
+          n + 1, addr);
 
-	if (!host_candidate) {
-          g_error ("No host candidate??");
-	  break;
-	}
+      if (!host_candidate) {
+        g_error ("No host candidate??");
+        break;
+      }
 
-	if (agent->full_mode &&
-	    agent->stun_server_ip) {
-          NiceAddress stun_server;
-          if (nice_address_set_from_string (&stun_server, agent->stun_server_ip)) {
-            nice_address_set_port (&stun_server, agent->stun_server_port);
+      if (agent->full_mode &&
+          agent->stun_server_ip) {
+        NiceAddress stun_server;
+        if (nice_address_set_from_string (&stun_server, agent->stun_server_ip)) {
+          nice_address_set_port (&stun_server, agent->stun_server_port);
 
-            gboolean res =
-                priv_add_new_candidate_discovery_stun (agent,
-                    host_candidate,
-                    stun_server,
-                    stream,
-                    n + 1);
+          gboolean res =
+              priv_add_new_candidate_discovery_stun (agent,
+                  host_candidate,
+                  stun_server,
+                  stream,
+                  n + 1);
 
-            if (res != TRUE) {
-              /* note: memory allocation failure, return error */
-              g_error ("Memory allocation failure?");
-            }
+          if (res != TRUE) {
+            /* note: memory allocation failure, return error */
+            g_error ("Memory allocation failure?");
           }
-	}
+        }
+      }
 
-	if (agent->full_mode && component) {
-          GList *item;
+      if (agent->full_mode && component) {
+        GList *item;
 
-          for (item = component->turn_servers; item; item = item->next) {
-            TurnServer *turn = item->data;
+        for (item = component->turn_servers; item; item = item->next) {
+          TurnServer *turn = item->data;
 
-            gboolean res =
-                priv_add_new_candidate_discovery_turn (agent,
-                    host_candidate,
-                    turn,
-                    stream,
-                    n + 1);
+          gboolean res =
+              priv_add_new_candidate_discovery_turn (agent,
+                  host_candidate,
+                  turn,
+                  stream,
+                  n + 1);
 
-            if (res != TRUE) {
-              /* note: memory allocation failure, return error */
-              g_error ("Memory allocation failure?");
-            }
+          if (res != TRUE) {
+            /* note: memory allocation failure, return error */
+            g_error ("Memory allocation failure?");
           }
         }
       }
     }
+  }
+
+  stream->gathering = TRUE;
 
 
   /* note: no async discoveries pending, signal that we are ready */

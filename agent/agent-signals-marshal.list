@@ -1,11 +1,10 @@
 # component-status-changed
 VOID:UINT,UINT,UINT
-# candidate-gathering-done
-VOID:VOID
 # new-selected-pair
 VOID:UINT,UINT,STRING,STRING
 # new-candidate
 VOID:UINT,UINT,STRING
+# candidate-gathering-done
 # initial-binding-request-received
 VOID:UINT
 

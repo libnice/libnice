@@ -82,6 +82,7 @@ struct _Stream
   gchar local_password[NICE_STREAM_MAX_PWD];
   gchar remote_ufrag[NICE_STREAM_MAX_UFRAG];
   gchar remote_password[NICE_STREAM_MAX_PWD];
+  gboolean gathering;
 };
 
 Stream *
