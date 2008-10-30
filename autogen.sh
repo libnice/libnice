@@ -1,6 +1,7 @@
 #!/bin/sh
 set -e
 
+test -d m4 || mkdir m4
 gtkdocize || exit 1
 
 autoreconf -i
