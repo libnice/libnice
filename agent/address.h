@@ -67,11 +67,6 @@ struct _NiceAddress
   } s;
 };
 
-static inline void
-nice_address_init (NiceAddress *addr)
-{
-  addr->s.addr.sa_family = AF_UNSPEC;
-}
 
 NiceAddress *
 nice_address_new (void);
@@ -80,7 +75,7 @@ void
 nice_address_free (NiceAddress *addr);
 
 NiceAddress *
-nice_address_dup (const NiceAddress *a);
+nice_address_dup (const NiceAddress *addr);
 
 void
 nice_address_set_ipv4 (NiceAddress *addr, guint32 addr_ipv4);
@@ -110,11 +105,11 @@ void
 nice_address_to_string (const NiceAddress *addr, gchar *dst);
 
 gboolean
-nice_address_is_private (const NiceAddress *a);
+nice_address_is_private (const NiceAddress *addr);
 
 G_GNUC_WARN_UNUSED_RESULT
 gboolean
-nice_address_is_valid (const NiceAddress *a);
+nice_address_is_valid (const NiceAddress *addr);
 
 G_END_DECLS
 

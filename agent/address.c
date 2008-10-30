@@ -44,6 +44,12 @@
 #include "address.h"
 
 
+NICEAPI_EXPORT void
+nice_address_init (NiceAddress *addr)
+{
+  addr->s.addr.sa_family = AF_UNSPEC;
+}
+
 NICEAPI_EXPORT NiceAddress *
 nice_address_new (void)
 {
