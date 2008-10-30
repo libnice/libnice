@@ -39,9 +39,19 @@
 #ifndef _CANDIDATE_H
 #define _CANDIDATE_H
 
-#include "socket.h"
+
+/**
+ * SECTION:candidate
+ * @short_description: ICE candidate representation
+ *
+ * 
+ */
+
 
 G_BEGIN_DECLS
+
+#include "socket.h"
+
 
 #define NICE_CANDIDATE_TYPE_PREF_HOST                 120
 #define NICE_CANDIDATE_TYPE_PREF_PEER_REFLEXIVE       110
@@ -49,8 +59,23 @@ G_BEGIN_DECLS
 #define NICE_CANDIDATE_TYPE_PREF_RELAYED               60
 
 /* Max foundation size '1*32ice-char' plus terminating NULL, ICE ID-19  */
-#define NICE_CANDIDATE_MAX_FOUNDATION                32+1 
+/**
+ * NICE_CANDIDATE_MAX_FOUNDATION:
+ *
+ * The maximum size a candidate foundation can have.
+ */
+#define NICE_CANDIDATE_MAX_FOUNDATION                32+1
 
+
+/**
+ * NiceCandidateType:
+ * @NICE_CANDIDATE_TYPE_HOST: A host candidate
+ * @NICE_CANDIDATE_TYPE_SERVER_REFLEXIVE: A server reflexive candidate
+ * @NICE_CANDIDATE_TYPE_PEER_REFLEXIVE: A peer reflexive candidate
+ * @NICE_CANDIDATE_TYPE_RELAYED: A relay candidate
+ *
+ * An enum represneting the type of a candidate
+ */
 typedef enum
 {
   NICE_CANDIDATE_TYPE_HOST,
@@ -59,11 +84,25 @@ typedef enum
   NICE_CANDIDATE_TYPE_RELAYED,
 } NiceCandidateType;
 
+/**
+ * NiceCandidateTransport:
+ * @NICE_CANDIDATE_TRANSPORT_UDP: UDP transport
+ *
+ * An enum representing the type of transport to use
+ */
 typedef enum
 {
   NICE_CANDIDATE_TRANSPORT_UDP,
 } NiceCandidateTransport;
 
+/**
+ * NiceRelayType:
+ * @NICE_RELAY_TYPE_TURN_UDP: A TURN relay using UDP
+ * @NICE_RELAY_TYPE_TURN_TCP: A TURN relay using TCP
+ * @NICE_RELAY_TYPE_TURN_TLS: A TURN relay using TLS over TCP
+ *
+ * An enum representing the type of relay to use
+ */
 typedef enum {
   NICE_RELAY_TYPE_TURN_UDP,
   NICE_RELAY_TYPE_TURN_TCP,
@@ -75,6 +114,15 @@ typedef struct _NiceCandidate NiceCandidate;
 
 typedef struct _TurnServer TurnServer;
 
+/**
+ * TurnServer:
+ * @server: The #NiceAddress of the TURN server
+ * @username: The TURN username
+ * @password: The TURN password
+ * @type: The #NiceRelayType of the server
+ *
+ * A structure to store the TURN relay settings
+ */
 struct _TurnServer
 {
   NiceAddress server;       /**< TURN server address */
@@ -83,6 +131,26 @@ struct _TurnServer
   NiceRelayType type;             /**< TURN type */
 };
 
+/**
+ * NiceCandidate:
+ * @type: The type of candidate
+ * @transport: The transport being used for the candidate
+ * @addr: The #NiceAddress of the candidate
+ * @base_addr: The #NiceAddress of the base address used by the candidate
+ * @priority: The priority of the candidate
+ * @stream_id: The ID of the stream to which belongs the candidate
+ * @component_id: The ID of the component to which belongs the candidate
+ * @foundation: The foundation of the candidate
+ * @username: The candidate-specific username to use (overrides the one set
+ * by nice_agent_set_local_credentials() or nice_agent_set_remote_credentials())
+ * @password: The candidate-specific password to use (overrides the one set
+ * by nice_agent_set_local_credentials() or nice_agent_set_remote_credentials())
+ * @turn: The #TurnServer settings if the candidate is
+ * of type %NICE_CANDIDATE_TYPE_RELAYED
+ * @sockptr: The underlying socket
+ *
+ * A structure to represent an ICE candidate
+ */
 struct _NiceCandidate
 {
   NiceCandidateType type;
@@ -93,18 +161,43 @@ struct _NiceCandidate
   guint stream_id;
   guint component_id;
   gchar foundation[NICE_CANDIDATE_MAX_FOUNDATION];
-  NiceSocket *sockptr;
   gchar *username;        /* pointer to a NULL-terminated username string */
   gchar *password;        /* pointer to a NULL-terminated password string */
   TurnServer *turn;
+  NiceSocket *sockptr;
 };
 
-
+/**
+ * nice_candidate_new:
+ * @type: The #NiceCandidateType of the candidate to create
+ *
+ * Creates a new candidate. Must be freed with nice_candidate_free()
+ *
+ * Returns: A new #NiceCandidate
+ */
 NiceCandidate *
 nice_candidate_new (NiceCandidateType type);
 
+/**
+ * nice_candidate_free:
+ * @candidate: The candidate to free
+ *
+ * Frees a #NiceCandidate
+ */
 void
 nice_candidate_free (NiceCandidate *candidate);
+
+/**
+ * nice_candidate_copy:
+ * @candidate: The candidate to copy
+ *
+ * Makes a copy of a #NiceCandidate
+ *
+ * Returns: A new #NiceCandidate, a copy of @candidate
+ */
+NiceCandidate *
+nice_candidate_copy (const NiceCandidate *candidate);
+
 
 gfloat
 nice_candidate_jingle_priority (NiceCandidate *candidate);
@@ -121,8 +214,6 @@ nice_candidate_ice_priority (const NiceCandidate *candidate);
 guint64
 nice_candidate_pair_priority (guint32 o_prio, guint32 a_prio);
 
-NiceCandidate *
-nice_candidate_copy (const NiceCandidate *candidate);
 
 G_END_DECLS
 

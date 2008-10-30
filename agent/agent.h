@@ -47,6 +47,12 @@ typedef struct _NiceAgent NiceAgent;
 #include "candidate.h"
 #include "debug.h"
 
+/**
+ * SECTION:agent
+ * @short_description:  ICE agent API implementation
+ *
+ * 
+ */
 
 G_BEGIN_DECLS
 
@@ -72,46 +78,6 @@ G_BEGIN_DECLS
   (G_TYPE_INSTANCE_GET_CLASS ((obj), \
   NICE_TYPE_AGENT, NiceAgentClass))
 
-/** 
- * A hard limit for number for remote candidates. This
- * limit is enforced to protect against malevolent remote 
- * clients.
- */
-#define NICE_AGENT_MAX_REMOTE_CANDIDATES    25
-
-typedef enum
-{
-  NICE_COMPONENT_STATE_DISCONNECTED, /* no activity scheduled */
-  NICE_COMPONENT_STATE_GATHERING,    /* gathering local candidates */
-  NICE_COMPONENT_STATE_CONNECTING,   /* establishing connectivity */
-  NICE_COMPONENT_STATE_CONNECTED,    /* at least one working candidate pair */
-  NICE_COMPONENT_STATE_READY,        /* ICE concluded, candidate pair
-					selection is now final */
-  NICE_COMPONENT_STATE_FAILED,       /* connectivity checks have been completed,
-					but connectivity was not established */
-  NICE_COMPONENT_STATE_LAST
-} NiceComponentState;
-
-typedef enum
-{
-  NICE_COMPONENT_TYPE_RTP = 1,
-  NICE_COMPONENT_TYPE_RTCP = 2
-} NiceComponentType;
-
-
-typedef enum
-{
-  NICE_COMPATIBILITY_DRAFT19 = 0,
-  NICE_COMPATIBILITY_GOOGLE,
-  NICE_COMPATIBILITY_MSN,
-  NICE_COMPATIBILITY_LAST = NICE_COMPATIBILITY_MSN
-} NiceCompatibility;
-
-
-typedef void (*NiceAgentRecvFunc) (
-  NiceAgent *agent, guint stream_id, guint component_id, guint len,
-  gchar *buf, gpointer user_data);
-
 
 typedef struct _NiceAgentClass NiceAgentClass;
 
@@ -123,23 +89,167 @@ struct _NiceAgentClass
 
 GType nice_agent_get_type (void);
 
+
+/**
+ * NICE_AGENT_MAX_REMOTE_CANDIDATES:
+ *
+ * A hard limit for number for remote candidates. This
+ * limit is enforced to protect against malevolent remote
+ * clients.
+ */
+#define NICE_AGENT_MAX_REMOTE_CANDIDATES    25
+
+/**
+ * NiceComponentState:
+ * @NICE_COMPONENT_STATE_DISCONNECTED: No activity scheduled
+ * @NICE_COMPONENT_STATE_GATHERING: Gathering local candidates
+ * @NICE_COMPONENT_STATE_CONNECTING: Establishing connectivity
+ * @NICE_COMPONENT_STATE_CONNECTED: At least one working candidate pair
+ * @NICE_COMPONENT_STATE_READY: ICE concluded, candidate pair selection
+ * is now final
+ * @NICE_COMPONENT_STATE_FAILED: Connectivity checks have been completed,
+ * but connectivity was not established
+ *
+ * An enum representing the state of a component.
+ * See #NiceAgent::component-state-changed
+ */
+typedef enum
+{
+  NICE_COMPONENT_STATE_DISCONNECTED,
+  NICE_COMPONENT_STATE_GATHERING,
+  NICE_COMPONENT_STATE_CONNECTING,
+  NICE_COMPONENT_STATE_CONNECTED,
+  NICE_COMPONENT_STATE_READY,
+  NICE_COMPONENT_STATE_FAILED,
+  NICE_COMPONENT_STATE_LAST
+} NiceComponentState;
+
+
+/**
+ * NiceComponentType:
+ * @NICE_COMPONENT_TYPE_RTP: RTP Component type
+ * @NICE_COMPONENT_TYPE_RTCP: RTCP Component type
+ *
+ * Convenience enum representing the type of a component for use as the
+ * component_id for RTP/RTCP usages.
+ <example>
+   <title>Example of use.</title>
+   <programlisting>
+   nice_agent_send (agent, stream_id, NICE_COMPONENT_TYPE_RTP, len, buf);
+   </programlisting>
+  </example>
+ */
+typedef enum
+{
+  NICE_COMPONENT_TYPE_RTP = 1,
+  NICE_COMPONENT_TYPE_RTCP = 2
+} NiceComponentType;
+
+
+/**
+ * NiceCompatibility:
+ * @NICE_COMPATIBILITY_DRAFT19: Use compatibility for ICE Draft 19 specs
+ * @NICE_COMPATIBILITY_GOOGLE: Use compatibility for Google Talk specs
+ * @NICE_COMPATIBILITY_MSN: Use compatibility for MSN Messenger specs
+ *
+ * An enum to specify which compatible specifications the #NiceAgent should use.
+ * Use with nice_agent_new()
+ */
+typedef enum
+{
+  NICE_COMPATIBILITY_DRAFT19 = 0,
+  NICE_COMPATIBILITY_GOOGLE,
+  NICE_COMPATIBILITY_MSN,
+  NICE_COMPATIBILITY_LAST = NICE_COMPATIBILITY_MSN
+} NiceCompatibility;
+
+/**
+ * NiceAgentRecvFunc:
+ * @agent: The #NiceAgent Object
+ * @stream_id: The id of the stream
+ * @component_id: The id of the component of the stream
+ *        which received the data
+ * @len: The length of the data
+ * @buf: The buffer containing the data received
+ * @user_data: The user data set in nice_agent_attach_recv()
+ *
+ * Callback function when data is received on a component
+ *
+ */
+typedef void (*NiceAgentRecvFunc) (
+  NiceAgent *agent, guint stream_id, guint component_id, guint len,
+  gchar *buf, gpointer user_data);
+
+
+/**
+ * nice_agent_new:
+ * @ctx: The Glib Mainloop Context to use for timers
+ * @compat: The compatibility mode of the agent
+ *
+ * Create a new #NiceAgent.
+ *
+ * Returns: the new agent GObject
+ */
 NiceAgent *
 nice_agent_new (GMainContext *ctx, NiceCompatibility compat);
 
+/**
+ * nice_agent_add_local_address:
+ * @agent: The #NiceAgent Object
+ * @addr: The address to listen to
+ * If the port is 0, then a random port will be chosen by the system
+ *
+ * Add a local address from which to derive local host candidates
+ *
+ * Returns: %TRUE on success, %FALSE on fatal (memory allocation) errors
+ */
 gboolean
 nice_agent_add_local_address (NiceAgent *agent, NiceAddress *addr);
 
+
+/**
+ * nice_agent_add_stream:
+ * @agent: The #NiceAgent Object
+ * @n_components: The number of components to add to the stream
+ *
+ * Adds a data stream to @agent containing @n_components components.
+ *
+ * Returns: The ID of the new stream, 0 on failure
+ **/
 guint
 nice_agent_add_stream (
   NiceAgent *agent,
   guint n_components);
 
+/**
+ * nice_agent_remove_stream:
+ * @agent: The #NiceAgent Object
+ * @stream_id: The ID of the stream to remove
+ *
+ * Remove and free a previously created data stream from @agent
+ *
+ **/
 void
 nice_agent_remove_stream (
   NiceAgent *agent,
   guint stream_id);
 
-
+/**
+ * nice_agent_set_relay_info:
+ * @agent: The #NiceAgent Object
+ * @stream_id: The ID of the stream
+ * @component_id: The ID of the component
+ * @server_ip: The IP address of the TURN server
+ * @server_port: The port of the TURN server
+ * @username: The TURN username to use for the allocate
+ * @password: The TURN password to use for the allocate
+ * @type: The type of relay to use
+ *
+ * Sets the settings for using a relay server during the candidate discovery.
+ *
+ * Returns: %TRUE if the TURN settings were accepted.
+ * %FALSE if the address was invalid.
+ */
 gboolean nice_agent_set_relay_info(
     NiceAgent *agent,
     guint stream_id,
@@ -150,23 +260,96 @@ gboolean nice_agent_set_relay_info(
     const gchar *password,
     NiceRelayType type);
 
+/**
+ * nice_agent_gather_candidates:
+ * @agent: The #NiceAgent Object
+ * @stream_id: The id of the stream to start
+ *
+ * Start the candidate gathering process.
+ * Once done, #NiceAgent::candidate-gathering-done is called for the stream
+ *
+ <note>
+   <para>
+    Local addresses must be previously set with nice_agent_add_local_address()
+   </para>
+ </note>
+ */
 void
 nice_agent_gather_candidates (
   NiceAgent *agent,
   guint stream_id);
 
+/**
+ * nice_agent_set_remote_credentials:
+ * @agent: The #NiceAgent Object
+ * @stream_id: The ID of the stream
+ * @ufrag: NULL-terminated string containing an ICE username fragment
+ *    (length must be between 22 and 256 chars)
+ * @pwd: NULL-terminated string containing an ICE password
+ *    (length must be between 4 and 256 chars)
+ *
+ * Sets the remote credentials for stream @stream_id.
+ *
+ <note>
+   <para>
+     Stream credentials do not override per-candidate credentials if set
+   </para>
+ </note>
+ *
+ * Returns: %TRUE on success, %FALSE on error.
+ */
 gboolean
 nice_agent_set_remote_credentials (
   NiceAgent *agent,
   guint stream_id,
   const gchar *ufrag, const gchar *pwd);
 
+
+
+/**
+ * nice_agent_get_local_credentials:
+ * @agent: The #NiceAgent Object
+ * @stream_id: The ID of the stream
+ * @ufrag: a pointer to a NULL-terminated string containing
+ * an ICE username fragment [OUT].
+ * This string must be freed with g_free()
+ * @pwd: a pointer to a NULL-terminated string containing an ICE
+ * password [OUT]
+ * This string must be freed with g_free()
+ *
+ * Gets the local credentials for stream @stream_id.
+ *
+ * Returns: %TRUE on success, %FALSE on error.
+ */
 gboolean
 nice_agent_get_local_credentials (
   NiceAgent *agent,
   guint stream_id,
   const gchar **ufrag, const gchar **pwd);
 
+
+/**
+ * nice_agent_add_remote_candidate:
+ * @agent: The #NiceAgent Object
+ * @stream_id: The ID of the stream the candidate is for
+ * @component_id: The ID of the component the candidate is for
+ * @type: The type of the new candidate
+ * @addr: The new candidate's IP address
+ * @username: The new candidate's username
+ * (optional - overrides the value set in nice_agent_set_remote_credentials())
+ * @password: The new candidate's password
+ * (optional - overrides the value set in nice_agent_set_remote_credentials())
+ *
+ * Adds a new remote candidate to the agent
+ *
+ <note>
+   <para>
+    NICE_AGENT_MAX_REMOTE_CANDIDATES is the absolute maximum limit for remote candidates
+   </para>
+ </note>
+ *
+ * Returns: %TRUE on success, %FALSE on fatal (memory alloc) errors
+ **/
 gboolean
 nice_agent_add_remote_candidate (
   NiceAgent *agent,
@@ -177,6 +360,24 @@ nice_agent_add_remote_candidate (
   const gchar *username,
   const gchar *password);
 
+/**
+ * nice_agent_set_remote_candidates:
+ * @agent: The #NiceAgent Object
+ * @stream_id: The ID of the stream the candidates are for
+ * @component_id: The ID of the component the candidates are for
+ * @candidates: a #GList of #NiceCandidate items describing each candidate to add
+ *
+ * Sets the remote candidates for a component of a stream.
+ * Replaces any existing remote candidates.
+ *
+ <note>
+   <para>
+    NICE_AGENT_MAX_REMOTE_CANDIDATES is the absolute maximum limit for remote candidates
+   </para>
+ </note>
+ *
+ * Returns: The number of candidates added, negative on fatal (memory allocs) errors
+ **/
 int
 nice_agent_set_remote_candidates (
   NiceAgent *agent,
@@ -184,6 +385,26 @@ nice_agent_set_remote_candidates (
   guint component_id,
   const GSList *candidates);
 
+
+/**
+ * nice_agent_send:
+ * @agent: The #NiceAgent Object
+ * @stream_id: The ID of the stream to send to
+ * @component_id: The ID of the component to send to
+ * @len: The length of the buffer to send
+ * @buf: The buffer of data to send
+ *
+ * Sends a data payload over a stream's component.
+ *
+ <note>
+   <para>
+     Component state MUST be NICE_COMPONENT_STATE_READY, or as a special case,
+     in any state if component was in READY state before and was then restarted
+   </para>
+ </note>
+ *
+ * Returns: The number of bytes sent, or negative error code
+ */
 gint
 nice_agent_send (
   NiceAgent *agent,
@@ -192,22 +413,91 @@ nice_agent_send (
   guint len,
   const gchar *buf);
 
+/**
+ * nice_agent_get_local_candidates:
+ * @agent: The #NiceAgent Object
+ * @stream_id: The ID of the stream
+ * @component_id: The ID of the component
+ *
+ * Retreive from the agent the list of all local candidates for a stream's component
+ *
+ <note>
+   <para>
+     The caller owns the returned GSList as well as the candidates contained
+     within it.
+     To get full results, the client should wait for the
+     #NiceAgent::candidates-gathering-done signal.
+   </para>
+ </note>
+ *
+ * Returns: a #GSList of #NiceCandidate objects representing
+ * the local candidates of @agent
+ **/
 GSList *
 nice_agent_get_local_candidates (
   NiceAgent *agent,
   guint stream_id,
   guint component_id);
 
+
+/**
+ * nice_agent_get_remote_candidates:
+ * @agent: The #NiceAgent Object
+ * @stream_id: The ID of the stream
+ * @component_id: The ID of the component
+ *
+ * Get a list of the remote candidates set on a stream's component
+ *
+ <note>
+   <para>
+     The caller owns the returned GSList but not the candidates contained within it.
+   </para>
+   <para>
+     The list of remote candidates can change during processing.
+     The client should register for the #NiceAgent::new-remote-candidate signal to
+     get notification of new remote candidates.
+   </para>
+ </note>
+ *
+ * Returns: a #GSList of #NiceCandidates objects representing
+ * the remote candidates set on the @agent
+ **/
 GSList *
 nice_agent_get_remote_candidates (
   NiceAgent *agent,
   guint stream_id,
   guint component_id);
 
-gboolean 
+/**
+ * nice_agent_restart:
+ * @agent: The #NiceAgent Object
+ *
+ * Restarts the session as defined in ICE draft 19. This function
+ * needs to be called both when initiating (ICE spec section 9.1.1.1.
+ * "ICE Restarts"), as well as when reacting (spec section 9.2.1.1.
+ * "Detecting ICE Restart") to a restart.
+ *
+ * Returns: %TRUE on success %FALSE on error
+ **/
+gboolean
 nice_agent_restart (
   NiceAgent *agent);
 
+
+/**
+ * nice_agent_attach_recv:
+ * @agent: The #NiceAgent Object
+ * @stream_id: The ID of stream
+ * @component_id: The ID of the component
+ * @ctx: The Glib Mainloop Context to use for listening on the component
+ * @func: The callback function to be called when data is received on the component
+ * @data: user data associated with the callback
+ *
+ * Attaches the stream's component's sockets to the Glib Mainloop Context in order
+ * to be notified whenever data becomes available for a component.
+ *
+ * Returns: %TRUE on success, %FALSE if the stream or component IDs are invalid.
+ */
 gboolean
 nice_agent_attach_recv (
   NiceAgent *agent,
@@ -217,7 +507,24 @@ nice_agent_attach_recv (
   NiceAgentRecvFunc func,
   gpointer data);
 
-gboolean 
+
+/**
+ * nice_agent_set_selected_pair:
+ * @agent: The #NiceAgent Object
+ * @stream_id: The ID of the stream
+ * @component_id: The ID of the component
+ * @lfoundation: The local foundation of the candidate to use
+ * @rfoundation: The remote foundation of the candidate to use
+ *
+ * Sets the selected candidate pair for media transmission
+ * for a given stream's component. Calling this function will
+ * disable all further ICE processing (connection check,
+ * state machine updates, etc). Note that keepalives will
+ * continue to be sent.
+ *
+ * Returns: %TRUE on success, %FALSE if the candidate pair cannot be found
+ */
+gboolean
 nice_agent_set_selected_pair (
   NiceAgent *agent,
   guint stream_id,
@@ -225,7 +532,23 @@ nice_agent_set_selected_pair (
   const gchar *lfoundation,
   const gchar *rfoundation);
 
-
+/**
+ * nice_agent_set_selected_remote_candidate:
+ * @agent: The #NiceAgent Object
+ * @stream_id: The ID of the stream
+ * @component_id: The ID of the component
+ * @candidate: The #NiceCandidate to select
+ *
+ * Sets the selected remote candidate for media transmission
+ * for a given stream's component. This is used to force the selection of
+ * a specific remote candidate even when connectivity checks are failing
+ * (e.g. non-ICE compatible candidates).
+ * Calling this function will disable all further ICE processing (connection check,
+ * state machine updates, etc). Note that keepalives will
+ * continue to be sent.
+ *
+ * Returns: %TRUE on success, %FALSE on failure
+ */
 gboolean
 nice_agent_set_selected_remote_candidate (
   NiceAgent *agent,

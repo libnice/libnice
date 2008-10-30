@@ -36,10 +36,6 @@
  * file under either the MPL or the LGPL.
  */
 
-/**
- * @file agent.c
- * @brief ICE agent API implementation
- */
 
 #ifdef HAVE_CONFIG_H
 # include <config.h>
@@ -399,13 +395,6 @@ nice_agent_init (NiceAgent *agent)
 }
 
 
-/**
- * nice_agent_new:
- *
- * Create a new NiceAgent.
- *
- * Returns: the new agent
- **/
 NICEAPI_EXPORT NiceAgent *
 nice_agent_new (GMainContext *ctx, NiceCompatibility compat)
 {
@@ -768,18 +757,6 @@ priv_add_new_candidate_discovery_turn (NiceAgent *agent,
   return FALSE;
 }
 
-
-/**
- * nice_agent_add_stream:
- *  @agent: a NiceAgent
- *  @n_components: number of components
- *
- * Add a data stream to @agent.
- *
- * @pre local addresses must be set with nice_agent_add_local_address()
- *
- * Returns: the ID of the new stream, 0 on failure
- **/
 NICEAPI_EXPORT guint
 nice_agent_add_stream (
   NiceAgent *agent,
@@ -849,12 +826,6 @@ nice_agent_set_relay_info(NiceAgent *agent,
   return TRUE;
 }
 
-
-/**
- * nice_agent_gather_candidates:
- *
- * start the candidate gathering process
- */
 
 NICEAPI_EXPORT void
 nice_agent_gather_candidates (
@@ -958,11 +929,6 @@ static void priv_remove_keepalive_timer (NiceAgent *agent)
   }
 }
 
-/**
- * nice_agent_remove_stream:
- *  @agent: a NiceAgent
- *  @stream_id: the ID of the stream to remove
- **/
 NICEAPI_EXPORT void
 nice_agent_remove_stream (
   NiceAgent *agent,
@@ -1000,16 +966,6 @@ nice_agent_remove_stream (
   g_static_rec_mutex_unlock (&agent->mutex);
 }
 
-/**
- * nice_agent_add_local_address:
- *  @agent: A NiceAgent
- *  @addr: the address of a local IP interface
- *
- * Inform the agent of the presence of an address that a local 
- * network interface is bound to.
- *
- * @return FALSE on fatal (memory allocation) errors
- **/
 NICEAPI_EXPORT gboolean
 nice_agent_add_local_address (NiceAgent *agent, NiceAddress *addr)
 {
@@ -1034,12 +990,6 @@ nice_agent_add_local_address (NiceAgent *agent, NiceAddress *addr)
   return ret;
 }
 
-/**
- * Adds a new, or updates an existing, remote candidate.
- *
- * @return TRUE if candidate was succesfully added or 
- *         update, otherwise FALSE
- */
 static gboolean priv_add_remote_candidate (
   NiceAgent *agent,
   guint stream_id,
@@ -1135,21 +1085,6 @@ static gboolean priv_add_remote_candidate (
   return TRUE;
 }
 
-/**
- * Sets the remote credentials for stream 'stream_id'.
- *
- * Note: stream credentials do not override per-candidate 
- *       credentials if set
- *
- * @agent: a NiceAgent
- * @stream_id: identifier returnedby nice_agent_add_stream()
- * @ufrag: NULL-terminated string containing an ICE username fragment
- *    (length must be between 22 and 256 chars)
- * @pwd: NULL-terminated string containing an ICE password
- *    (length must be between 4 and 256 chars)
- *
- * @return TRUE on success
- */
 NICEAPI_EXPORT gboolean
 nice_agent_set_remote_credentials (
   NiceAgent *agent,
@@ -1177,18 +1112,7 @@ nice_agent_set_remote_credentials (
   return ret;
 }
 
-/**
- * Gets the local credentials for stream 'stream_id'.
- *
- * @agent: a NiceAgent
- * @stream_id: identifier returnedby nice_agent_add_stream()
- * @ufrag: a pointer to a NULL-terminated string containing 
- *         an ICE username fragment [OUT]
- * @pwd: a pointer to a NULL-terminated string containing an ICE
- *         password [OUT]
- *
- * @return TRUE on success
- */
+
 NICEAPI_EXPORT gboolean
 nice_agent_get_local_credentials (
   NiceAgent *agent,
@@ -1219,22 +1143,7 @@ nice_agent_get_local_credentials (
   return ret;
 }
 
-/**
- * nice_agent_add_remote_candidate
- *  @agent: a NiceAgent
- *  @stream_id: the ID of the stream the candidate is for
- *  @component_id: the ID of the component the candidate is for
- *  @type: the type of the new candidate
- *  @addr: the new candidate's IP address
- *  @username: the new candidate's username (XXX: candidates don't have usernames)
- *  @password: the new candidate's password (XXX: candidates don't have usernames)
- *
- * Add a candidate our peer has informed us about to the agent's list.
- *
- * Note: NICE_AGENT_MAX_REMOTE_CANDIDATES is the absolute
- *       maximum limit for remote candidates
- * @return FALSE on fatal (memory alloc) errors
- **/
+
 NICEAPI_EXPORT gboolean
 nice_agent_add_remote_candidate (
   NiceAgent *agent,
@@ -1246,13 +1155,7 @@ nice_agent_add_remote_candidate (
   const gchar *password)
 {
 
-  /* XXX: to be deprecated */
-
   g_static_rec_mutex_lock (&agent->mutex);
-
-  /* XXX: should we allow use of this method without an 
-   *      initial call to nice_agent_set_remote_candidates()
-   *      with an empty set? */
 
   gboolean ret =
     priv_add_remote_candidate (agent,
@@ -1275,22 +1178,7 @@ nice_agent_add_remote_candidate (
   return ret;
 }
 
-/**
- * nice_agent_set_remote_candidates
- *  @agent: a NiceAgent
- *  @stream_id: the ID of the stream the candidate is for
- *  @component_id: the ID of the component the candidate is for
- *  @candidates: a list of NiceCandidate items describing the candidates
- *
- * Sets the remote candidates for a component of a stream. Replaces
- * any existing remote candidates.
- *
- * Note: NICE_AGENT_MAX_REMOTE_CANDIDATES is the absolute
- *       maximum limit for remote candidates
- *
- * @return number of candidates added, negative on fatal (memory
- *         allocs) errors
- **/
+
 NICEAPI_EXPORT int
 nice_agent_set_remote_candidates (NiceAgent *agent, guint stream_id, guint component_id, const GSList *candidates)
 {
@@ -1336,12 +1224,6 @@ nice_agent_set_remote_candidates (NiceAgent *agent, guint stream_id, guint compo
 }
 
 
-/**
- * Reads data from a ready, nonblocking socket attached to an ICE
- * stream component.
- *
- * @return number of octets received, or negative on error
- */
 static gint
 _nice_agent_recv (
   NiceAgent *agent,
@@ -1411,15 +1293,7 @@ _nice_agent_recv (
   return len;
 }
 
-/**
- * Sends a data payload over a stream component.
- *
- * @pre component state MUST be NICE_COMPONENT_STATE_READY,
- * or as a special case, in any state if component was
- * in READY state before and was then restarted
- *
- * @return number of bytes sent, or negative error code
- */
+
 NICEAPI_EXPORT gint
 nice_agent_send (
   NiceAgent *agent,
@@ -1467,16 +1341,6 @@ nice_agent_send (
 }
 
 
-/**
- * nice_agent_get_local_candidates:
- *  @agent: A NiceAgent
- *
- * The caller owns the returned GSList as well as the candidates contained
- * within it. To get full results, the client should wait for the
- * 'candidates-gathering-done' signal.
- *
- * Returns: a GSList of local candidates (NiceCandidate) belonging to @agent
- **/
 NICEAPI_EXPORT GSList *
 nice_agent_get_local_candidates (
   NiceAgent *agent,
@@ -1502,19 +1366,6 @@ nice_agent_get_local_candidates (
 }
 
 
-/**
- * nice_agent_get_remote_candidates:
- *  @agent: A NiceAgent
- *
- * The caller owns the returned GSList but not the candidates contained within
- * it.
- *
- * Note: the list of remote candidates can change during processing.
- * The client should register for the "new-remote-candidate" signal to
- * get notification of new remote candidates.
- *
- * Returns: a GSList of remote candidates (NiceCandidate) belonging to @agent
- **/
 NICEAPI_EXPORT GSList *
 nice_agent_get_remote_candidates (
   NiceAgent *agent,
@@ -1538,17 +1389,7 @@ nice_agent_get_remote_candidates (
   return ret;
 }
 
-/**
- * nice_agent_restart
- *  @agent: A NiceAgent
- *
- * Restarts the session as defined in ICE spec (ID-19). This function
- * needs to be called both when initiating (ICE spec section 9.1.1.1.
- * "ICE Restarts"), as well as when reacting (spec section 9.2.1.1. 
- * "Detecting ICE Restart") to a restart.
- *
- * Returns: FALSE on error
- **/
+
 gboolean 
 nice_agent_restart (
   NiceAgent *agent)
@@ -1813,13 +1654,6 @@ nice_agent_attach_recv (
   return ret;
 }
 
-/**
- * Sets the selected candidate pair for media transmission
- * for given stream component. Calling this function will
- * disable all further ICE processing (connection check,
- * state machine updates, etc). Note that keepalives will
- * continue to be sent.
- */
 NICEAPI_EXPORT gboolean
 nice_agent_set_selected_pair (
   NiceAgent *agent,
@@ -1879,21 +1713,6 @@ GSource* agent_timeout_add_with_context (NiceAgent *agent, guint interval,
 }
 
 
-/**
- * nice_agent_set_selected_remote_candidate:
- * @agent: a #NiceAgent
- * @stream_id: the stream id
- * @component_id: the component id
- * @candidate: the #NiceCandidate to force
- *
- * Sets the selected remote candidate for media transmission
- * for given stream component. Calling this function will
- * disable all further ICE processing (connection check,
- * state machine updates, etc). Note that keepalives will
- * continue to be sent.
- *
- * Returns: %TRUE on success, %FALSE on failure
- */
 NICEAPI_EXPORT gboolean
 nice_agent_set_selected_remote_candidate (
   NiceAgent *agent,

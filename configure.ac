@@ -15,6 +15,10 @@ AC_CONFIG_FILES([
 	nice/nice.pc
 	random/Makefile
 	gst/Makefile
+	docs/Makefile
+	docs/reference/Makefile
+	docs/reference/libnice/Makefile
+	docs/reference/libstun/Makefile
 	])
 
 # Set the libtool C/A/R version info
@@ -96,6 +100,9 @@ AS_IF([test "${enable_coverage}" != "no"], [
 ])
 AC_SUBST(CCACHE_DISABLE)
 
+# check for gtk-doc
+GTK_DOC_CHECK(1.9)
+AC_CONFIG_MACRO_DIR(m4)
 
 AC_OUTPUT
 

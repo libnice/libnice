@@ -1,0 +1,21 @@
+<?xml version="1.0"?>
+<!DOCTYPE book PUBLIC "-//OASIS//DTD DocBook XML V4.1.2//EN"
+               "http://www.oasis-open.org/docbook/xml/4.1.2/docbookx.dtd">
+<book id="index" xmlns:xi="http://www.w3.org/2003/XInclude">
+  <bookinfo>
+    <title>libnice Reference Manual</title>
+    <releaseinfo>
+      for libnice 0.0.1
+      The latest version of this documentation can be found on-line at
+      <ulink role="online-location" url="http://nice.freedesktop.org/libnice/index.html">http://nice.freedesktop.org/libnice/</ulink>.
+    </releaseinfo>
+  </bookinfo>
+
+  <chapter>
+    <title>libnice's public API</title>
+    <xi:include href="xml/agent.xml"/>
+    <xi:include href="xml/address.xml"/>
+    <xi:include href="xml/debug.xml"/>
+    <xi:include href="xml/candidate.xml"/>
+  </chapter>
+</book>

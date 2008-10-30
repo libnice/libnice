@@ -13,7 +13,8 @@ ALWAYS_SUBDIRS = \
 	socket \
 	random \
 	agent \
-	nice
+	nice \
+	docs
 SUBDIRS = $(ALWAYS_SUBDIRS)
 
 if WITH_GSTREAMER
@@ -21,7 +22,7 @@ SUBDIRS += gst
 endif
 
 DIST_SUBDIRS = $(ALWAYS_SUBDIRS) gst
-DISTCHECK_CONFIGURE_FLAGS = --disable-assert
+DISTCHECK_CONFIGURE_FLAGS = --disable-assert -enable-gtk-doc
 
 EXTRA_DIST = \
 	common.mk \

@@ -36,11 +36,41 @@
 #ifndef _DEBUG_H
 #define _DEBUG_H
 
+
+/**
+ * SECTION:debug
+ * @short_description: Debug messages utility functions
+ *
+ * 
+ */
+
+
 #include <glib.h>
 
+/**
+ * nice_debug_init:
+ *
+ * Initialize the debugging system. Uses the NICE_DEBUG environment variable
+ * to set the appropriate debugging flags
+ */
 void nice_debug_init (void);
+
+/**
+ * nice_debug_enable:
+ * @with_stun: Also enable stun debugging messages
+ *
+ * Enables libnice debug output to the terminal
+ */
 void nice_debug_enable (gboolean with_stun);
+
+/**
+ * nice_debug_disable:
+ * @with_stun: Also disable stun debugging messages
+ *
+ * Disables libnice debug output to the terminal
+ */
 void nice_debug_disable (gboolean with_stun);
+
 void nice_debug (const char *fmt, ...);
 
 #endif /* _DEBUG_H */
