@@ -65,9 +65,9 @@ typedef enum
 } NiceCandidateTransport;
 
 typedef enum {
-  NICE_RELAY_TYPE_UDP,
-  NICE_RELAY_TYPE_TCP,
-  NICE_RELAY_TYPE_TLS
+  NICE_RELAY_TYPE_TURN_UDP,
+  NICE_RELAY_TYPE_TURN_TCP,
+  NICE_RELAY_TYPE_TURN_TLS
 } NiceRelayType;
 
 

@@ -714,7 +714,7 @@ priv_add_new_candidate_discovery_turn (NiceAgent *agent,
 
     if (modified_list) {
       cdisco->type = NICE_CANDIDATE_TYPE_RELAYED;
-      if (turn->type ==  NICE_RELAY_TYPE_UDP) {
+      if (turn->type ==  NICE_RELAY_TYPE_TURN_UDP) {
         cdisco->nicesock = host_candidate->sockptr;
       } else {
         Component *component = stream_find_component_by_id (stream,
