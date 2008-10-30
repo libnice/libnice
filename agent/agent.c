@@ -193,7 +193,12 @@ nice_agent_class_init (NiceAgentClass *klass)
   gobject_class->dispose = nice_agent_dispose;
 
   /* install properties */
-
+  /**
+   * NiceAgent:main-context:
+   *
+   * A GLib main context is needed for all timeouts used by libnice.
+   * This is a property being set by the nice_agent_new() call.
+   */
   g_object_class_install_property (gobject_class, PROP_MAIN_CONTEXT,
       g_param_spec_pointer (
          "main-context",
@@ -201,6 +206,13 @@ nice_agent_class_init (NiceAgentClass *klass)
          "The GMainContext to use for timeouts",
          G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY));
 
+  /**
+   * NiceAgent:compatibility:
+   *
+   * The Nice agent can work in various compatibility modes depending on
+   * what the application/peer needs.
+   * <para> See also: #NiceCompatibility</para>
+   */
   g_object_class_install_property (gobject_class, PROP_COMPATIBILITY,
       g_param_spec_uint (
          "compatibility",
@@ -264,7 +276,14 @@ nice_agent_class_init (NiceAgentClass *klass)
 
   /* install signals */
 
-  /* signature: void cb(NiceAgent *agent, guint stream_id, guint component_id, guint state, gpointer self) */
+  /**
+   * NiceAgent::component-state-changed
+   * @stream_id: The ID of the stream
+   * @component_id: The ID of the component
+   * @state: The #NiceComponentState of the component
+   *
+   * This signal is fired whenever a component's state changes
+   */
   signals[SIGNAL_COMPONENT_STATE_CHANGED] =
       g_signal_new (
           "component-state-changed",
@@ -279,7 +298,13 @@ nice_agent_class_init (NiceAgentClass *klass)
           G_TYPE_UINT, G_TYPE_UINT, G_TYPE_UINT,
           G_TYPE_INVALID);
 
-  /* signature: void cb(NiceAgent *agent, gpointer self) */
+  /**
+   * NiceAgent::candidate-gathering-done:
+   * @stream_id: The ID of the stream
+   *
+   * This signal is fired whenever a stream has finished gathering its
+   * candidates after a call to nice_agent_gather_candidates()
+   */
   signals[SIGNAL_CANDIDATE_GATHERING_DONE] =
       g_signal_new (
           "candidate-gathering-done",
@@ -293,8 +318,16 @@ nice_agent_class_init (NiceAgentClass *klass)
           1,
           G_TYPE_UINT, G_TYPE_INVALID);
 
- /* signature: void cb(NiceAgent *agent, guint stream_id, guint component_id, 
-                gchar *lfoundation, gchar* rfoundation, gpointer self) */
+  /**
+   * NiceAgent::new-selected-pair
+   * @stream_id: The ID of the stream
+   * @component_id: The ID of the component
+   * @lfoundation: The local foundation of the selected candidate pair
+   * @rfoundation: The remote foundation of the selected candidate pair
+   *
+   * This signal is fired once a candidate pair is selected for data transfer for
+   * a stream's component
+   */
   signals[SIGNAL_NEW_SELECTED_PAIR] =
       g_signal_new (
           "new-selected-pair",
@@ -309,7 +342,15 @@ nice_agent_class_init (NiceAgentClass *klass)
           G_TYPE_UINT, G_TYPE_UINT, G_TYPE_STRING, G_TYPE_STRING,
           G_TYPE_INVALID);
 
- /* signature: void cb(NiceAgent *agent, guint stream_id, guint component_id, gchar *foundation) */
+  /**
+   * NiceAgent::new-candidate
+   * @stream_id: The ID of the stream
+   * @component_id: The ID of the component
+   * @foundation: The foundation of the new candidate
+   *
+   * This signal is fired when the agent discovers a new candidate
+   * <para> See also: #NiceAgent::candidates-gathering-done </para>
+   */
   signals[SIGNAL_NEW_CANDIDATE] =
       g_signal_new (
           "new-candidate",
@@ -324,7 +365,16 @@ nice_agent_class_init (NiceAgentClass *klass)
           G_TYPE_UINT, G_TYPE_UINT, G_TYPE_STRING,
           G_TYPE_INVALID);
 
- /* signature: void cb(NiceAgent *agent, guint stream_id, guint component_id, gchar *foundation) */
+  /**
+   * NiceAgent::new-remote-candidate
+   * @stream_id: The ID of the stream
+   * @component_id: The ID of the component
+   * @foundation: The foundation of the new candidate
+   *
+   * This signal is fired when the agent discovers a new remote candidate.
+   * This can happen with peer reflexive candidates.
+   * <para> See also: #NiceAgent::candidates-gathering-done </para>
+   */
   signals[SIGNAL_NEW_REMOTE_CANDIDATE] =
       g_signal_new (
           "new-remote-candidate",
@@ -339,7 +389,13 @@ nice_agent_class_init (NiceAgentClass *klass)
           G_TYPE_UINT, G_TYPE_UINT, G_TYPE_STRING,
           G_TYPE_INVALID);
 
-  /* signature: void cb(NiceAgent *agent, guint stream_id, gpointer self) */
+  /**
+   * NiceAgent::initial-binding-request-received
+   * @stream_id: The ID of the stream
+   *
+   * This signal is fired when we received our first binding request from
+   * the peer.
+   */
   signals[SIGNAL_INITIAL_BINDING_REQUEST_RECEIVED] =
       g_signal_new (
           "initial-binding-request-received",

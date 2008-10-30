@@ -38,7 +38,7 @@ FIXXREF_OPTIONS=
 # e.g. HFILE_GLOB=$(top_srcdir)/gtk/*.h
 # e.g. CFILE_GLOB=$(top_srcdir)/gtk/*.c
 HFILE_GLOB=$(DOC_SOURCE_DIR)/agent.h $(DOC_SOURCE_DIR)/address.h $(DOC_SOURCE_DIR)/debug.h $(DOC_SOURCE_DIR)/candidate.h
-CFILE_GLOB=
+CFILE_GLOB=$(DOC_SOURCE_DIR)/agent.c
 
 # Header files to ignore when scanning.
 # e.g. IGNORE_HFILES=gtkdebug.h gtkintl.h

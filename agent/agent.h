@@ -39,20 +39,84 @@
 #ifndef _AGENT_H
 #define _AGENT_H
 
+/**
+ * SECTION:agent
+ * @short_description:  ICE agent API implementation
+ * @see_also: #NiceCandidate
+ * @see_also: #NiceAddress
+ * @include: agent.h
+ * @stability: Stable
+ *
+ * The #NiceAgent is your main object when using libnice.
+ * It is the agent that will take care of everything relating to ICE.
+ * It will take care of discovering your local candidates and do
+ *  connectivity checks to create a stream of data between you and your peer.
+ *
+ <example>
+   <title>Simple example on how to use libnice</title>
+   <programlisting>
+   NiceAddress base_addr;
+   guint stream_id;
+   gchar buffer[] = "hello world!";
+   GSList *lcands = NULL;
+
+   // Create a nice agent
+   NiceAgent *agent = nice_agent_new (NULL, NICE_COMPATIBILITY_DRAFT19);
+
+   // Specify which local interface to use
+   nice_address_set_from_string (&base_addr, "127.0.0.1");
+   nice_agent_add_local_address (agent, &base_addr);
+
+   // Connect the signals
+   g_signal_connect (G_OBJECT (agent), "candidate-gathering-done",
+                     G_CALLBACK (cb_candidate_gathering_done), NULL);
+   g_signal_connect (G_OBJECT (lagent), "component-state-changed",
+                     G_CALLBACK (cb_component_state_changed), NULL);
+   g_signal_connect (G_OBJECT (lagent), "new-selected-pair",
+                     G_CALLBACK (cb_new_selected_pair), NULL);
+
+   // Create a new stream with one component and start gathering candidates
+   stream_id = nice_agent_add_stream (agent, 1);
+   nice_agent_gather_candidates (agent, stream_id);
+
+   // Attach to the component to receive the data
+   nice_agent_attach_recv (agent, stream_id, 1, NULL,
+                          cb_nice_recv, NULL);
+
+   // ... Wait until the signal candidate-gathering-done is fired ...
+   lcands = nice_agent_get_local_candidates(agent, stream_id, 1);
+
+   // ... Send local candidates to the peer and set the peer's remote candidates
+   nice_agent_set_remote_candidates (agent, stream_id, 1, rcands);
+
+   // ... Wait until the signal new-selected-pair is fired ...
+   // Send our message!
+   nice_agent_send (lagent, ls_id, 1, sizeof(buffer), buffer);
+
+   // Anything received will be received through the cb_nice_recv callback
+
+   // Destroy the object
+   g_object_unref(agent);
+
+   </programlisting>
+ </example>
+ */
+
+
 #include <glib-object.h>
 
+/**
+ * NiceAgent:
+ *
+ * The #NiceAgent is the main GObject of the libnice library and represents
+ * the ICE agent.
+ */
 typedef struct _NiceAgent NiceAgent;
 
 #include "address.h"
 #include "candidate.h"
 #include "debug.h"
 
-/**
- * SECTION:agent
- * @short_description:  ICE agent API implementation
- *
- * 
- */
 
 G_BEGIN_DECLS
 
@@ -77,7 +141,6 @@ G_BEGIN_DECLS
 #define NICE_AGENT_GET_CLASS(obj) \
   (G_TYPE_INSTANCE_GET_CLASS ((obj), \
   NICE_TYPE_AGENT, NiceAgentClass))
-
 
 typedef struct _NiceAgentClass NiceAgentClass;
 
@@ -109,6 +172,7 @@ GType nice_agent_get_type (void);
  * is now final
  * @NICE_COMPONENT_STATE_FAILED: Connectivity checks have been completed,
  * but connectivity was not established
+ * @NICE_COMPONENT_STATE_LAST: Dummy state
  *
  * An enum representing the state of a component.
  * See #NiceAgent::component-state-changed
@@ -151,6 +215,7 @@ typedef enum
  * @NICE_COMPATIBILITY_DRAFT19: Use compatibility for ICE Draft 19 specs
  * @NICE_COMPATIBILITY_GOOGLE: Use compatibility for Google Talk specs
  * @NICE_COMPATIBILITY_MSN: Use compatibility for MSN Messenger specs
+ * @NICE_COMPATIBILITY_LAST: Dummy last compatibility mode
  *
  * An enum to specify which compatible specifications the #NiceAgent should use.
  * Use with nice_agent_new()
@@ -187,8 +252,9 @@ typedef void (*NiceAgentRecvFunc) (
  * @compat: The compatibility mode of the agent
  *
  * Create a new #NiceAgent.
+ * The returned object must be freed with g_object_unref()
  *
- * Returns: the new agent GObject
+ * Returns: The new agent GObject
  */
 NiceAgent *
 nice_agent_new (GMainContext *ctx, NiceCompatibility compat);
@@ -344,7 +410,8 @@ nice_agent_get_local_credentials (
  *
  <note>
    <para>
-    NICE_AGENT_MAX_REMOTE_CANDIDATES is the absolute maximum limit for remote candidates
+    NICE_AGENT_MAX_REMOTE_CANDIDATES is the absolute maximum limit
+    for remote candidates
    </para>
  </note>
  *
@@ -372,11 +439,13 @@ nice_agent_add_remote_candidate (
  *
  <note>
    <para>
-    NICE_AGENT_MAX_REMOTE_CANDIDATES is the absolute maximum limit for remote candidates
+    NICE_AGENT_MAX_REMOTE_CANDIDATES is the absolute maximum limit
+    for remote candidates
    </para>
  </note>
  *
- * Returns: The number of candidates added, negative on fatal (memory allocs) errors
+ * Returns: The number of candidates added,
+ * negative on fatal (memory allocs) errors
  **/
 int
 nice_agent_set_remote_candidates (
@@ -419,7 +488,8 @@ nice_agent_send (
  * @stream_id: The ID of the stream
  * @component_id: The ID of the component
  *
- * Retreive from the agent the list of all local candidates for a stream's component
+ * Retreive from the agent the list of all local candidates
+ * for a stream's component
  *
  <note>
    <para>
@@ -450,12 +520,13 @@ nice_agent_get_local_candidates (
  *
  <note>
    <para>
-     The caller owns the returned GSList but not the candidates contained within it.
+     The caller owns the returned GSList but not the candidates
+     contained within it.
    </para>
    <para>
      The list of remote candidates can change during processing.
-     The client should register for the #NiceAgent::new-remote-candidate signal to
-     get notification of new remote candidates.
+     The client should register for the #NiceAgent::new-remote-candidate signal
+     to get notified of new remote candidates.
    </para>
  </note>
  *
@@ -490,11 +561,12 @@ nice_agent_restart (
  * @stream_id: The ID of stream
  * @component_id: The ID of the component
  * @ctx: The Glib Mainloop Context to use for listening on the component
- * @func: The callback function to be called when data is received on the component
+ * @func: The callback function to be called when data is received on
+ * the stream's component
  * @data: user data associated with the callback
  *
- * Attaches the stream's component's sockets to the Glib Mainloop Context in order
- * to be notified whenever data becomes available for a component.
+ * Attaches the stream's component's sockets to the Glib Mainloop Context in
+ * order to be notified whenever data becomes available for a component.
  *
  * Returns: %TRUE on success, %FALSE if the stream or component IDs are invalid.
  */
@@ -543,8 +615,8 @@ nice_agent_set_selected_pair (
  * for a given stream's component. This is used to force the selection of
  * a specific remote candidate even when connectivity checks are failing
  * (e.g. non-ICE compatible candidates).
- * Calling this function will disable all further ICE processing (connection check,
- * state machine updates, etc). Note that keepalives will
+ * Calling this function will disable all further ICE processing
+ * (connection check, state machine updates, etc). Note that keepalives will
  * continue to be sent.
  *
  * Returns: %TRUE on success, %FALSE on failure

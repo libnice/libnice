@@ -43,8 +43,13 @@
 /**
  * SECTION:candidate
  * @short_description: ICE candidate representation
+ * @see_also: #NiceAddress
+ * @stability: Stable
  *
- * 
+ * A representation of an ICE candidate. Make sure you read the ICE drafts[1] to
+ * understand correctly the concept of ICE candidates.
+ *
+ * [1] http://tools.ietf.org/wg/mmusic/draft-ietf-mmusic-ice/
  */
 
 
@@ -206,7 +211,8 @@ gfloat
 nice_candidate_msn_priority (NiceCandidate *candidate);
 
 guint32
-nice_candidate_ice_priority_full (guint type_pref, guint local_pref, guint component_id);
+nice_candidate_ice_priority_full (guint type_pref, guint local_pref,
+    guint component_id);
 
 guint32
 nice_candidate_ice_priority (const NiceCandidate *candidate);

@@ -33,6 +33,7 @@ NICE_AGENT_CLASS
 NICE_IS_AGENT_CLASS
 NICE_AGENT_GET_CLASS
 <SUBSECTION Private>
+NiceAgentClass
 </SECTION>
 
 <SECTION>
@@ -75,6 +76,7 @@ nice_candidate_pair_priority
 <TITLE>NiceAddress</TITLE>
 NICE_ADDRESS_STRING_LEN
 NiceAddress
+nice_address_init
 nice_address_new
 nice_address_free
 nice_address_dup
@@ -89,4 +91,54 @@ nice_address_equal
 nice_address_to_string
 nice_address_is_private
 nice_address_is_valid
+</SECTION>
+
+
+
+<SECTION>
+<FILE>component</FILE>
+<SUBSECTION Private>
+Component
+CandidatePair
+IncomingCheck
+component_new
+component_free
+component_find_socket_by_fd
+component_find_pair
+component_restart
+component_update_selected_pair
+component_find_remote_candidate
+component_set_selected_remote_candidate
+</SECTION>
+
+<SECTION>
+<FILE>agent-priv</FILE>
+<SUBSECTION Private>
+NICE_AGENT_TIMER_TA_DEFAULT
+NICE_AGENT_TIMER_TR_DEFAULT
+NICE_AGENT_TIMER_TR_MIN
+NICE_AGENT_MAX_CONNECTIVITY_CHECKS_DEFAULT
+MAX_STUN_DATAGRAM_PAYLOAD
+NiceAgent
+agent_find_component
+agent_find_stream
+agent_gathering_done
+agent_signal_gathering_done
+agent_signal_new_selected_pair
+agent_signal_component_state_change
+agent_signal_new_candidate
+agent_signal_new_remote_candidate
+agent_signal_initial_binding_request_received
+agent_candidate_pair_priority
+agent_timeout_add_with_context
+priv_attach_stream_component_socket
+</SECTION>
+
+<SECTION>
+<FILE>agent-signals-marshal</FILE>
+<SUBSECTION Private>
+agent_marshal_VOID__UINT_UINT_UINT
+agent_marshal_VOID__UINT_UINT_STRING_STRING
+agent_marshal_VOID__UINT_UINT_STRING
+agent_marshal_VOID__UINT
 </SECTION>
