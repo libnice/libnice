@@ -791,11 +791,6 @@ nice_agent_add_stream (
 
   g_static_rec_mutex_lock (&agent->mutex);
 
-  if (!agent->local_addresses) {
-    g_warning ("Agent %p: no local addresses defined!", agent);
-    goto done;
-  }
-
   stream = stream_new (n_components);
   if (stream) {
     modified_list = g_slist_append (agent->streams, stream);
@@ -813,7 +808,6 @@ nice_agent_add_stream (
 
   ret = stream->id;
 
- done:
   g_static_rec_mutex_unlock (&agent->mutex);
   return ret;
 }
