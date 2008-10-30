@@ -6,7 +6,6 @@ AC_CONFIG_HEADER([config.h])
 AM_INIT_AUTOMAKE([-Wall])
 AC_CONFIG_FILES([
 	Makefile
-	address/Makefile
 	agent/Makefile
 	stun/Makefile
 	stun/tests/Makefile
