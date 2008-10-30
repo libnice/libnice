@@ -2,6 +2,8 @@
 *.loT
 *.o
 *.la
+*.gcda
+*.gcno
 Makefile
 Makefile.in
 .deps
