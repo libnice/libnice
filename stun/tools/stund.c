@@ -267,7 +267,7 @@ static int run (int family, int protocol, unsigned port)
 
 
   stun_agent_init (&agent, known_attributes,
-      STUN_COMPATIBILITY_3489BIS, STUN_AGENT_USAGE_USE_FINGERPRINT);
+      STUN_COMPATIBILITY_RFC5389, STUN_AGENT_USAGE_USE_FINGERPRINT);
 
   for (;;)
     dgram_process (sock, &agent);

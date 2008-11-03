@@ -204,7 +204,7 @@ static void bad_responses (void)
     STUN_ATTRIBUTE_ERROR_CODE, 0};
 
   stun_agent_init (&agent, known_attributes,
-      STUN_COMPATIBILITY_3489BIS, 0);
+      STUN_COMPATIBILITY_RFC5389, 0);
 
   /* Allocate a local UDP port */
   int servfd = listen_dgram (), fd;
@@ -282,7 +282,7 @@ static void responses (void)
     STUN_ATTRIBUTE_ERROR_CODE, 0};
 
   stun_agent_init (&agent, known_attributes,
-      STUN_COMPATIBILITY_3489BIS, 0);
+      STUN_COMPATIBILITY_RFC5389, 0);
 
   /* Allocate a local UDP port for server */
   servfd = listen_dgram ();
@@ -414,7 +414,7 @@ static void keepalive (void)
     STUN_ATTRIBUTE_ERROR_CODE, 0};
 
   stun_agent_init (&agent, known_attributes,
-      STUN_COMPATIBILITY_3489BIS, 0);
+      STUN_COMPATIBILITY_RFC5389, 0);
 
   /* Allocate a local UDP port for server */
   servfd = listen_dgram ();

@@ -717,7 +717,7 @@ nice_udp_turn_socket_new (
 
   if (compatibility == NICE_UDP_TURN_SOCKET_COMPATIBILITY_DRAFT9) {
     stun_agent_init (&priv->agent, STUN_ALL_KNOWN_ATTRIBUTES,
-        STUN_COMPATIBILITY_3489BIS,
+        STUN_COMPATIBILITY_RFC5389,
         STUN_AGENT_USAGE_LONG_TERM_CREDENTIALS);
   } else if (compatibility == NICE_UDP_TURN_SOCKET_COMPATIBILITY_MSN) {
     stun_agent_init (&priv->agent, STUN_ALL_KNOWN_ATTRIBUTES,

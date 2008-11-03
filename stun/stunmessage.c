@@ -603,7 +603,7 @@ stun_method_t stun_message_get_method (const StunMessage *msg)
 {
   uint16_t t = stun_getw (msg->buffer);
   /* HACK HACK HACK
-     A google/msn data indication is 0x0115 which is contrary to the rfc3489bis
+     A google/msn data indication is 0x0115 which is contrary to the RFC 5389
      which states that 8th and 12th bits are for the class and that 0x01 is
      for indications...
      So 0x0115 is reported as a "connect error response", while it should be
@@ -624,7 +624,7 @@ stun_class_t stun_message_get_class (const StunMessage *msg)
 {
   uint16_t t = stun_getw (msg->buffer);
   /* HACK HACK HACK
-     A google/msn data indication is 0x0115 which is contrary to the rfc3489bis
+     A google/msn data indication is 0x0115 which is contrary to the RFC 5389
      which states that 8th and 12th bits are for the class and that 0x01 is
      for indications...
      So 0x0115 is reported as a "connect error response", while it should be

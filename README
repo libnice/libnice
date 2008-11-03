@@ -47,8 +47,7 @@ ICE draft 15
   http://tools.ietf.org/wg/mmusic/draft-ietf-mmusic-ice/
 STUN
   http://tools.ietf.org/html/rfc3489
-STUN bis (used by ICE)
-  http://tools.ietf.org/wg/behave/draft-ietf-behave-rfc3489bis/
+  http://tools.ietf.org/html/rfc5389
 TURN 
   http://tools.ietf.org/wg/behave/draft-ietf-behave-turn/
 RTP

@@ -442,7 +442,7 @@ nice_agent_init (NiceAgent *agent)
   agent->compatibility = NICE_COMPATIBILITY_DRAFT19;
 
   stun_agent_init (&agent->stun_agent, STUN_ALL_KNOWN_ATTRIBUTES,
-      STUN_COMPATIBILITY_3489BIS,
+      STUN_COMPATIBILITY_RFC5389,
       STUN_AGENT_USAGE_SHORT_TERM_CREDENTIALS |
       STUN_AGENT_USAGE_USE_FINGERPRINT);
 
@@ -540,7 +540,7 @@ nice_agent_set_property (
       agent->compatibility = g_value_get_uint (value);
       if (agent->compatibility == NICE_COMPATIBILITY_DRAFT19) {
         stun_agent_init (&agent->stun_agent, STUN_ALL_KNOWN_ATTRIBUTES,
-            STUN_COMPATIBILITY_3489BIS,
+            STUN_COMPATIBILITY_RFC5389,
             STUN_AGENT_USAGE_SHORT_TERM_CREDENTIALS |
             STUN_AGENT_USAGE_USE_FINGERPRINT);
       } else if (agent->compatibility == NICE_COMPATIBILITY_GOOGLE) {
@@ -789,7 +789,7 @@ priv_add_new_candidate_discovery_turn (NiceAgent *agent,
 
       if (agent->compatibility == NICE_COMPATIBILITY_DRAFT19) {
         stun_agent_init (&cdisco->turn_agent, STUN_ALL_KNOWN_ATTRIBUTES,
-            STUN_COMPATIBILITY_3489BIS,
+            STUN_COMPATIBILITY_RFC5389,
             STUN_AGENT_USAGE_ADD_SOFTWARE |
             STUN_AGENT_USAGE_LONG_TERM_CREDENTIALS);
       } else if (agent->compatibility == NICE_COMPATIBILITY_MSN) {

@@ -183,7 +183,7 @@ static void test_message (void)
   validate (fpr_resp, 36);
 
   stun_agent_init (&agent, known_attributes,
-      STUN_COMPATIBILITY_3489BIS, STUN_AGENT_USAGE_USE_FINGERPRINT);
+      STUN_COMPATIBILITY_RFC5389, STUN_AGENT_USAGE_USE_FINGERPRINT);
 
   if (stun_agent_validate (&agent, &msg, extra_garbage, sizeof(extra_garbage),
           NULL, NULL) != STUN_VALIDATION_NOT_STUN)
@@ -298,7 +298,7 @@ static void test_attribute (void)
   printf ("Attribute test message length: %u\n", sizeof (acme));
 
   stun_agent_init (&agent, known_attributes,
-      STUN_COMPATIBILITY_3489BIS, STUN_AGENT_USAGE_SHORT_TERM_CREDENTIALS);
+      STUN_COMPATIBILITY_RFC5389, STUN_AGENT_USAGE_SHORT_TERM_CREDENTIALS);
 
   if (stun_agent_validate (&agent, &msg, acme, sizeof(acme),
           NULL, NULL) != STUN_VALIDATION_UNAUTHORIZED)
@@ -529,7 +529,7 @@ static void test_vectors (void)
     STUN_ATTRIBUTE_PRIORITY, 0};
 
   stun_agent_init (&agent, known_attributes,
-      STUN_COMPATIBILITY_3489BIS,
+      STUN_COMPATIBILITY_RFC5389,
       STUN_AGENT_USAGE_SHORT_TERM_CREDENTIALS |
       STUN_AGENT_USAGE_USE_FINGERPRINT);
 

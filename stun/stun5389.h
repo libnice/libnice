@@ -36,8 +36,8 @@
  */
 
 
-#ifndef _STUN_3489BIS_H
-#define _STUN_3489BIS_H
+#ifndef _STUN_5389_H
+#define _STUN_5389_H
 
 
 #ifdef _WIN32
@@ -64,5 +64,5 @@ bool stun_has_cookie (const StunMessage *msg);
 int stun_message_append_software (StunMessage *msg);
 
 
-#endif /* _STUN_3489BIS_H */
+#endif /* _STUN_5389_H */
 

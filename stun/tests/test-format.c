@@ -147,7 +147,7 @@ check_af (const char *name, int family, socklen_t addrlen)
   uint16_t known_attributes[] = {STUN_ATTRIBUTE_USERNAME, STUN_ATTRIBUTE_MESSAGE_INTEGRITY, STUN_ATTRIBUTE_ERROR_CODE, 0};
 
   stun_agent_init (&agent, known_attributes,
-      STUN_COMPATIBILITY_3489BIS, STUN_AGENT_USAGE_USE_FINGERPRINT);
+      STUN_COMPATIBILITY_RFC5389, STUN_AGENT_USAGE_USE_FINGERPRINT);
 
   assert (addrlen <= sizeof (addr));
 
@@ -190,7 +190,7 @@ int main (void)
   uint16_t known_attributes[] = {STUN_ATTRIBUTE_USERNAME, STUN_ATTRIBUTE_MESSAGE_INTEGRITY, STUN_ATTRIBUTE_ERROR_CODE, 0};
 
   stun_agent_init (&agent, known_attributes,
-      STUN_COMPATIBILITY_3489BIS, STUN_AGENT_USAGE_USE_FINGERPRINT);
+      STUN_COMPATIBILITY_RFC5389, STUN_AGENT_USAGE_USE_FINGERPRINT);
 
   /* Request formatting test */
   stun_agent_init_request (&agent, &msg, buf, sizeof(buf), STUN_BINDING);

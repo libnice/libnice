@@ -197,7 +197,7 @@ uses the lower layer API.
 
 The following STUN usages are currently implemented by the
 transaction layer:
-- Binding discovery (RFC3489bis with RFC3489 backward compatibility)
+- Binding discovery (RFC5389 with RFC3489 backward compatibility)
 - ICE connectivity checks
 
 The following usages are planned but not implemented currently:

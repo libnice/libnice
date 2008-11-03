@@ -18,7 +18,7 @@ noinst_LTLIBRARIES = libstun.la
 libstun_la_SOURCES = constants.h \
 	stunagent.c stunagent.h \
 	stunmessage.c stunmessage.h \
-	stun3489bis.c stun3489bis.h \
+	stun5389.c stun5389.h \
 	stuncrc32.c stuncrc32.h \
 	stunhmac.c stunhmac.h \
 	utils.c  utils.h \

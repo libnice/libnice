@@ -99,7 +99,7 @@ int main (void)
   StunValidationStatus valid;
 
   stun_agent_init (&agent, STUN_ALL_KNOWN_ATTRIBUTES,
-      STUN_COMPATIBILITY_3489BIS,
+      STUN_COMPATIBILITY_RFC5389,
       STUN_AGENT_USAGE_USE_FINGERPRINT |
       STUN_AGENT_USAGE_SHORT_TERM_CREDENTIALS);
 
