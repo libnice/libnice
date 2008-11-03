@@ -290,7 +290,7 @@ nice_agent_class_init (NiceAgentClass *klass)
       g_signal_new (
           "component-state-changed",
           G_OBJECT_CLASS_TYPE (klass),
-          G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
+          G_SIGNAL_RUN_LAST,
           0,
           NULL,
           NULL,
@@ -311,7 +311,7 @@ nice_agent_class_init (NiceAgentClass *klass)
       g_signal_new (
           "candidate-gathering-done",
           G_OBJECT_CLASS_TYPE (klass),
-          G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
+          G_SIGNAL_RUN_LAST,
           0,
           NULL,
           NULL,
@@ -334,7 +334,7 @@ nice_agent_class_init (NiceAgentClass *klass)
       g_signal_new (
           "new-selected-pair",
           G_OBJECT_CLASS_TYPE (klass),
-          G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
+          G_SIGNAL_RUN_LAST,
           0,
           NULL,
           NULL,
@@ -357,7 +357,7 @@ nice_agent_class_init (NiceAgentClass *klass)
       g_signal_new (
           "new-candidate",
           G_OBJECT_CLASS_TYPE (klass),
-          G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
+          G_SIGNAL_RUN_LAST,
           0,
           NULL,
           NULL,
@@ -381,7 +381,7 @@ nice_agent_class_init (NiceAgentClass *klass)
       g_signal_new (
           "new-remote-candidate",
           G_OBJECT_CLASS_TYPE (klass),
-          G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
+          G_SIGNAL_RUN_LAST,
           0,
           NULL,
           NULL,
@@ -402,7 +402,7 @@ nice_agent_class_init (NiceAgentClass *klass)
       g_signal_new (
           "initial-binding-request-received",
           G_OBJECT_CLASS_TYPE (klass),
-          G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
+          G_SIGNAL_RUN_LAST,
           0,
           NULL,
           NULL,
