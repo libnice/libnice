@@ -75,6 +75,21 @@
  */
 static void stun_gettime (struct timeval *now)
 {
+#ifdef _WIN32
+  FILETIME ft;
+  unsigned long long *time64 = (unsigned long long *) &ft;
+
+  GetSystemTimeAsFileTime (&ft);
+
+  /* Convert from 100s of nanoseconds since 1601-01-01
+   * to Unix epoch. Yes, this is Y2038 unsafe.
+   */
+  *time64 -= (unsigned long long) 116444736000000000;
+  *time64 /= 10;
+
+  now->tv_sec = *time64 / 1000000;
+  now->tv_usec = *time64 % 1000000;
+#else
 #if defined (_POSIX_MONOTONIC_CLOCK) && (_POSIX_MONOTONIC_CLOCK >= 0)
   struct timespec spec;
   if (!clock_gettime (CLOCK_MONOTONIC, &spec)) {
@@ -85,6 +100,7 @@ static void stun_gettime (struct timeval *now)
   {  // fallback to wall clock
     gettimeofday (now, NULL);
   }
+#endif 
 }
 
 
