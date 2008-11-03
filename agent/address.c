@@ -107,7 +107,8 @@ nice_address_set_port (NiceAddress *addr, guint port)
 guint
 nice_address_get_port (const NiceAddress *addr)
 {
-  g_assert (addr);
+  if (!addr)
+	  return 0;
 
   switch (addr->s.addr.sa_family)
     {
@@ -117,7 +118,7 @@ nice_address_get_port (const NiceAddress *addr)
       return ntohs (addr->s.ip6.sin6_port);
     }
 
-  g_assert_not_reached();
+  return 0;
 }
 
 
@@ -266,7 +267,7 @@ nice_address_equal (const NiceAddress *a, const NiceAddress *b)
           && (a->s.ip6.sin6_scope_id == b->s.ip6.sin6_scope_id);
     }
 
-  g_assert_not_reached ();
+  return FALSE;
 }
 
 
@@ -333,7 +334,7 @@ nice_address_is_private (const NiceAddress *a)
       return ipv6_address_is_private (a->s.ip6.sin6_addr.s6_addr);
     }
 
-  g_assert_not_reached ();
+  return FALSE;
 }
 
 
