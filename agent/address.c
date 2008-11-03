@@ -37,6 +37,8 @@
  */
 #ifdef HAVE_CONFIG_H
 # include "config.h"
+#else
+#define NICEAPI_EXPORT
 #endif
 
 #include <string.h>

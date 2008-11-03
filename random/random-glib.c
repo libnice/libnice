@@ -81,7 +81,7 @@ rng_free (NiceRNG *rng)
   g_slice_free (NiceRNG, rng);
 }
 
-NICEAPI_EXPORT NiceRNG *
+NiceRNG *
 nice_rng_glib_new (void)
 {
   NiceRNG *ret;
@@ -94,7 +94,7 @@ nice_rng_glib_new (void)
   return ret;
 }
 
-NICEAPI_EXPORT NiceRNG *
+NiceRNG *
 nice_rng_glib_new_predictable (void)
 {
   NiceRNG *rng;

@@ -49,7 +49,7 @@ static NiceRNG * (*nice_rng_new_func) (void) = NULL;
 /** 
  * Creates a new random number generator instance.
  */
-NICEAPI_EXPORT NiceRNG *
+NiceRNG *
 nice_rng_new (void)
 {
   if (nice_rng_new_func == NULL)
@@ -61,7 +61,7 @@ nice_rng_new (void)
 /**
  * Sets a new generator function.
  */
-NICEAPI_EXPORT void
+void
 nice_rng_set_new_func (NiceRNG * (*func) (void))
 {
   nice_rng_new_func = func;
@@ -72,7 +72,7 @@ nice_rng_set_new_func (NiceRNG * (*func) (void))
  *
  * @param rng context
  */
-NICEAPI_EXPORT void
+void
 nice_rng_free (NiceRNG *rng)
 {
   rng->free (rng);
@@ -85,7 +85,7 @@ nice_rng_free (NiceRNG *rng)
  * @param len number of octets to product
  * @param buf buffer to store the results
  */
-NICEAPI_EXPORT void
+void
 nice_rng_generate_bytes (NiceRNG *rng, guint len, gchar *buf)
 {
   rng->generate_bytes (rng, len, buf);
@@ -98,7 +98,7 @@ nice_rng_generate_bytes (NiceRNG *rng, guint len, gchar *buf)
  * @param low closed lower bound
  * @param high open upper bound
  */
-NICEAPI_EXPORT guint
+guint
 nice_rng_generate_int (NiceRNG *rng, guint low, guint high)
 {
   return rng->generate_int (rng, low, high);
@@ -115,7 +115,7 @@ nice_rng_generate_int (NiceRNG *rng, guint low, guint high)
  * @param len number of octets to product
  * @param buf buffer to store the results
  */
-NICEAPI_EXPORT void
+void
 nice_rng_generate_bytes_print (NiceRNG *rng, guint len, gchar *buf)
 {
   guint i;

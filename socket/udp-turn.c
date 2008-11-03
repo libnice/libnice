@@ -351,7 +351,7 @@ priv_add_channel_binding (turn_priv *priv, NiceAddress *peer)
   return FALSE;
 }
 
-NICEAPI_EXPORT gboolean
+gboolean
 nice_udp_turn_socket_set_peer (NiceSocket *sock, NiceAddress *peer)
 {
   turn_priv *priv = (turn_priv *) sock->priv;
@@ -699,7 +699,7 @@ socket_close (NiceSocket *sock)
 }
 
 
-NICEAPI_EXPORT NiceSocket *
+NiceSocket *
 nice_udp_turn_socket_new (
     NiceAgent *agent,
     NiceAddress *addr,

@@ -44,7 +44,7 @@
 #include "socket.h"
 
 
-NICEAPI_EXPORT gint
+gint
 nice_socket_recv (
   NiceSocket *sock,
   NiceAddress *from,
@@ -54,7 +54,7 @@ nice_socket_recv (
   return sock->recv (sock, from, len, buf);
 }
 
-NICEAPI_EXPORT void
+void
 nice_socket_send (
   NiceSocket *sock,
   const NiceAddress *to,
@@ -64,13 +64,13 @@ nice_socket_send (
   sock->send (sock, to, len, buf);
 }
 
-NICEAPI_EXPORT gboolean
+gboolean
 nice_socket_is_reliable (NiceSocket *sock)
 {
   return sock->is_reliable (sock);
 }
 
-NICEAPI_EXPORT void
+void
 nice_socket_free (NiceSocket *sock)
 {
   if (sock) {
