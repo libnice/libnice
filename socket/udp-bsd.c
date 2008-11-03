@@ -128,7 +128,11 @@ socket_is_reliable (NiceSocket *sock)
 static void
 socket_close (NiceSocket *sock)
 {
+#ifdef G_OS_WIN32
+  closesocket(sock->fileno);
+#else
   close (sock->fileno);
+#endif
 }
 
 
@@ -168,7 +172,11 @@ nice_udp_bsd_socket_new (NiceAddress *addr)
           if (!v6)
 #endif
             {
+#ifdef G_OS_WIN32
+              closesocket(sock->fileno);
+#else
               close (sockfd);
+#endif
               sockfd = -1;
             }
           else
@@ -217,13 +225,21 @@ nice_udp_bsd_socket_new (NiceAddress *addr)
 
   if(bind (sockfd, (struct sockaddr *) &name, sizeof (name)) != 0) {
     g_slice_free (NiceSocket, sock);
+#ifdef G_OS_WIN32
+    closesocket(sock->fileno);
+#else
     close (sockfd);
+#endif
     return NULL;
   }
 
   if (getsockname (sockfd, (struct sockaddr *) &name, &name_len) != 0) {
     g_slice_free (NiceSocket, sock);
+#ifdef G_OS_WIN32
+    closesocket(sock->fileno);
+#else
     close (sockfd);
+#endif
     return NULL;
   }
 

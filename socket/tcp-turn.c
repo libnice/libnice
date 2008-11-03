@@ -361,7 +361,11 @@ static void
 socket_close (NiceSocket *sock)
 {
   TurnTcpPriv *priv = sock->priv;
+#ifdef G_OS_WIN32
+  closesocket(sock->fileno);
+#else
   close (sock->fileno);
+#endif
   g_queue_foreach (&priv->send_queue, (GFunc) free_to_be_sent, NULL);
   g_queue_clear (&priv->send_queue);
   g_io_channel_unref (priv->io_channel);
@@ -425,10 +429,11 @@ nice_tcp_turn_socket_new (
 
 #ifdef G_OS_WIN32
   if (ret < 0 && WSAGetLastError () != WSAEINPROGRESS) {
+    closesocket (sockfd);
 #else
   if (ret < 0 && errno != EINPROGRESS) {
-#endif
     close (sockfd);
+#endif
     g_slice_free (NiceSocket, sock);
     return NULL;
   }
