@@ -101,8 +101,8 @@ void stun_hash_creds (const uint8_t *realm, size_t realm_len,
 {
   EVP_MD_CTX ctx;
   const uint8_t *username_trimmed = priv_trim_var (username, &username_len);
-  const uint8_t *password_trimmed = priv_trim_var (password, &password_len);;
-  const uint8_t *realm_trimmed = priv_trim_var (realm, &realm_len);;
+  const uint8_t *password_trimmed = priv_trim_var (password, &password_len);
+  const uint8_t *realm_trimmed = priv_trim_var (realm, &realm_len);
 
   EVP_MD_CTX_init (&ctx);
   EVP_DigestInit_ex (&ctx, EVP_md5 (), NULL);

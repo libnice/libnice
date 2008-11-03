@@ -73,8 +73,8 @@ uint32_t stun_fingerprint (const uint8_t *msg, size_t len)
 bool stun_has_cookie (const StunMessage *msg)
 {
   stun_transid_t id;
-  stun_message_id (msg, id);
   uint32_t cookie = htonl (STUN_MAGIC_COOKIE);
+  stun_message_id (msg, id);
   return memcmp (id, &cookie, sizeof (cookie)) == 0;
 }
 

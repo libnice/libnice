@@ -924,9 +924,10 @@ nice_agent_gather_candidates (
           agent->stun_server_ip) {
         NiceAddress stun_server;
         if (nice_address_set_from_string (&stun_server, agent->stun_server_ip)) {
+		  gboolean res;
           nice_address_set_port (&stun_server, agent->stun_server_port);
 
-          gboolean res =
+          res =
               priv_add_new_candidate_discovery_stun (agent,
                   host_candidate,
                   stun_server,
@@ -1212,10 +1213,11 @@ nice_agent_add_remote_candidate (
   const gchar *username,
   const gchar *password)
 {
+  gboolean ret;
 
   g_static_rec_mutex_lock (&agent->mutex);
 
-  gboolean ret =
+  ret =
     priv_add_remote_candidate (agent,
 			       stream_id,
 			       component_id,
