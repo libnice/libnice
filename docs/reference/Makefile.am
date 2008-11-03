@@ -1,2 +1,2 @@
 
-SUBDIRS = libnice libstun
+SUBDIRS = libnice
