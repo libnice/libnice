@@ -41,8 +41,13 @@
  * @brief STUN binding discovery
  */
 
+
+#ifdef _WIN32
+#include "win32_common.h"
+#else
 # include <stdbool.h>
 # include <stdint.h>
+#endif
 
 # include "stun/stunagent.h"
 

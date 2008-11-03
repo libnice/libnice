@@ -35,9 +35,16 @@
 #ifndef _STUN_AGENT_H
 #define _STUN_AGENT_H
 
+
+#ifdef _WIN32
+#include "win32_common.h"
+#else
 #include <stdint.h>
-#include <sys/types.h>
 #include <stdbool.h>
+#endif
+
+
+#include <sys/types.h>
 
 typedef struct stun_agent_t StunAgent;
 

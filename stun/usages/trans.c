@@ -41,8 +41,6 @@
 #include <string.h>
 #include <assert.h>
 
-#include <sys/time.h>
-#include <unistd.h>
 
 #ifdef _WIN32
 #define ENOENT -1
@@ -58,6 +56,7 @@
 #define close closesocket
 #else
 #include <errno.h>
+#include <unistd.h>
 #endif
 
 

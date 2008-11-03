@@ -39,9 +39,13 @@
 
 #ifdef _WIN32
 #include <winsock2.h>
+#include "win32_common.h"
 #else
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <stdbool.h>
+#include <unistd.h>
+#include <sys/time.h>
 #endif
 
 #include "bind.h"
@@ -50,11 +54,8 @@
 #include <assert.h>
 #include <string.h>
 #include <stdlib.h>
-#include <stdbool.h>
 #include <time.h>
 #include <errno.h>
-#include <unistd.h>
-#include <sys/time.h>
 #include <fcntl.h>
 #include "timer.h"
 #include "trans.h"

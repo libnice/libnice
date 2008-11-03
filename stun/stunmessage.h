@@ -36,9 +36,14 @@
 #define _STUN_MESSAGE_H
 
 
+#ifdef _WIN32
+#include "win32_common.h"
+#else
 #include <stdint.h>
-#include <sys/types.h>
 #include <stdbool.h>
+#endif
+
+#include <sys/types.h>
 #include "constants.h"
 
 #ifdef _WIN32

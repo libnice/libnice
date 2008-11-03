@@ -37,14 +37,20 @@
 # include <config.h>
 #endif
 
+#ifdef _WIN32
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+#else
+#include <sys/time.h>
+#include <unistd.h>
+#endif
+
 #include "timer.h"
 
 #include <stdlib.h> /* div() */
 #include <time.h>
 
 #include <sys/types.h>
-#include <sys/time.h>
-#include <unistd.h>
 
 
 /**

@@ -39,9 +39,14 @@
 #ifndef _STUN_3489BIS_H
 #define _STUN_3489BIS_H
 
+
+#ifdef _WIN32
+#include "win32_common.h"
+#else
 # include <stdint.h>
-# include <sys/types.h>
 # include <stdbool.h>
+#endif
+# include <sys/types.h>
 
 
 /**

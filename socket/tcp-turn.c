@@ -47,12 +47,15 @@
 # include "config.h"
 #endif
 
-#include <unistd.h>
+#include "tcp-turn.h"
+
 #include <string.h>
 #include <errno.h>
 #include <fcntl.h>
 
-#include "tcp-turn.h"
+#ifndef G_OS_WIN32
+#include <unistd.h>
+#endif
 
 typedef struct {
   NiceUdpTurnSocketCompatibility compatibility;

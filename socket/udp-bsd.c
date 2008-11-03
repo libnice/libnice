@@ -46,12 +46,17 @@
 #endif
 
 
-#include <unistd.h>
 #include <string.h>
 #include <errno.h>
 #include <fcntl.h>
 
 #include "udp-bsd.h"
+
+#ifdef G_OS_WIN32
+typedef unsigned long ssize_t;
+#else
+#include <unistd.h>
+#endif
 
 /*** NiceSocket ***/
 static int sock_recv_err (int fd)

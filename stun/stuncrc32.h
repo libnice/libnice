@@ -38,7 +38,13 @@
 #ifndef _CRC32_H
 #define _CRC32_H
 
+
+#ifdef _WIN32
+#include "win32_common.h"
+#else
 #include <stdint.h>
+#endif
+
 #include <stdlib.h>
 
 typedef struct {
