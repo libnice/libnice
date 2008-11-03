@@ -59,7 +59,7 @@
 #include "stun/usages/turn.h"
 #include "socket.h"
 
-static inline int priv_timer_expired (GTimeVal *restrict timer, GTimeVal *restrict now)
+static inline int priv_timer_expired (GTimeVal *timer, GTimeVal *now)
 {
   return (now->tv_sec == timer->tv_sec) ?
     now->tv_usec >= timer->tv_usec :

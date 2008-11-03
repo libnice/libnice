@@ -67,7 +67,7 @@
  * Clock used throughout the STUN code.
  * STUN requires a monotonic 1kHz clock to operate properly.
  */
-static void stun_gettime (struct timeval *restrict now)
+static void stun_gettime (struct timeval *now)
 {
 #if defined (_POSIX_MONOTONIC_CLOCK) && (_POSIX_MONOTONIC_CLOCK >= 0)
   struct timespec spec;

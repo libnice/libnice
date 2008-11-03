@@ -48,7 +48,7 @@
 #include <assert.h>
 
 void stun_sha1 (const uint8_t *msg, size_t len, uint8_t *sha,
-    const void *restrict key, size_t keylen, int padding)
+    const void *key, size_t keylen, int padding)
 {
   HMAC_CTX ctx;
   uint16_t fakelen = htons (len - 20u);

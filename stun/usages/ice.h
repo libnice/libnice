@@ -103,8 +103,8 @@ StunUsageIceReturn stun_usage_ice_conncheck_process (StunMessage *msg,
 int
 stun_usage_ice_conncheck_create_reply (StunAgent *agent, StunMessage *req,
     StunMessage *msg, uint8_t *buf, size_t *plen,
-    const struct sockaddr *restrict src, socklen_t srclen,
-    bool *restrict control, uint64_t tie,
+    const struct sockaddr *src, socklen_t srclen,
+    bool *control, uint64_t tie,
     StunUsageIceCompatibility compatibility);
 
 /**

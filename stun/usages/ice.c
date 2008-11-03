@@ -200,7 +200,7 @@ int
 stun_usage_ice_conncheck_create_reply (StunAgent *agent, StunMessage *req,
     StunMessage *msg, uint8_t *buf, size_t *plen,
     const struct sockaddr *src, socklen_t srclen,
-    bool *restrict control, uint64_t tie,
+    bool *control, uint64_t tie,
     StunUsageIceCompatibility compatibility)
 {
   const char *username = NULL;

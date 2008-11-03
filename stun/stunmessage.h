@@ -257,7 +257,7 @@ uint16_t stun_message_length (const StunMessage *msg);
  * otherwise NULL.
  */
 const void * stun_message_find (const StunMessage * msg, stun_attr_type_t type,
-    uint16_t *restrict palen);
+    uint16_t *palen);
 
 
 /**
@@ -323,7 +323,7 @@ int stun_message_find_string (const StunMessage *msg, stun_attr_type_t type,
  * EAFNOSUPPORT if address family is unknown.
  */
 int stun_message_find_addr (const StunMessage *msg, stun_attr_type_t type,
-    struct sockaddr *restrict addr, socklen_t *restrict addrlen);
+    struct sockaddr *addr, socklen_t *addrlen);
 
 /**
  * Extracts an obfuscated network address attribute from a valid STUN message.
@@ -338,14 +338,14 @@ int stun_message_find_addr (const StunMessage *msg, stun_attr_type_t type,
  * EAFNOSUPPORT if address family is unknown.
  */
 int stun_message_find_xor_addr (const StunMessage *msg, stun_attr_type_t type,
-    struct sockaddr *restrict addr, socklen_t *restrict addrlen);
+    struct sockaddr *addr, socklen_t *addrlen);
 
 int stun_message_find_xor_addr_full (const StunMessage *msg,
-    stun_attr_type_t type, struct sockaddr *restrict addr,
-    socklen_t *restrict addrlen, uint32_t magic_cookie);
+    stun_attr_type_t type, struct sockaddr *addr,
+    socklen_t *addrlen, uint32_t magic_cookie);
 
 
-int stun_message_find_error (const StunMessage *msg, int *restrict code);
+int stun_message_find_error (const StunMessage *msg, int *code);
 
 void *stun_message_append (StunMessage *msg, stun_attr_type_t type,
     size_t length);
@@ -407,7 +407,7 @@ int stun_message_append_string (StunMessage *msg, stun_attr_type_t type,
  * EINVAL if the socket address length is too small w.r.t. the address family.
  */
 int stun_message_append_addr (StunMessage * msg, stun_attr_type_t type,
-    const struct sockaddr *restrict addr, socklen_t addrlen);
+    const struct sockaddr *addr, socklen_t addrlen);
 
 /**
  * Appends an attribute consisting of a xor'ed network address.
@@ -421,10 +421,10 @@ int stun_message_append_addr (StunMessage * msg, stun_attr_type_t type,
  * EINVAL if the socket address length is too small w.r.t. the address family.
  */
 int stun_message_append_xor_addr (StunMessage * msg, stun_attr_type_t type,
-    const struct sockaddr *restrict addr, socklen_t addrlen);
+    const struct sockaddr *addr, socklen_t addrlen);
 
 int stun_message_append_xor_addr_full (StunMessage * msg, stun_attr_type_t type,
-    const struct sockaddr *restrict addr, socklen_t addrlen,
+    const struct sockaddr *addr, socklen_t addrlen,
     uint32_t magic_cookie);
 
 /**

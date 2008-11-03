@@ -65,7 +65,7 @@ static void priv_prune_pending_checks (Stream *stream, guint component_id);
 static gboolean priv_schedule_triggered_check (NiceAgent *agent, Stream *stream, Component *component, NiceSocket *local_socket, NiceCandidate *remote_cand, gboolean use_candidate);
 static void priv_mark_pair_nominated (NiceAgent *agent, Stream *stream, Component *component, NiceCandidate *remotecand);
 
-static int priv_timer_expired (GTimeVal *restrict timer, GTimeVal *restrict now)
+static int priv_timer_expired (GTimeVal *timer, GTimeVal *now)
 {
   return (now->tv_sec == timer->tv_sec) ?
     now->tv_usec >= timer->tv_usec :

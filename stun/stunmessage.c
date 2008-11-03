@@ -89,7 +89,7 @@ uint16_t stun_message_length (const StunMessage *msg)
 
 const void *
 stun_message_find (const StunMessage *msg, stun_attr_type_t type,
-    uint16_t *restrict palen)
+    uint16_t *palen)
 {
   size_t length = stun_message_length (msg);
   size_t offset = 0;
@@ -146,7 +146,7 @@ int stun_message_find_flag (const StunMessage *msg, stun_attr_type_t type)
 
 int
 stun_message_find32 (const StunMessage *msg, stun_attr_type_t type,
-    uint32_t *restrict pval)
+    uint32_t *pval)
 {
   const void *ptr;
   uint16_t len;
@@ -210,7 +210,7 @@ int stun_message_find_string (const StunMessage *msg, stun_attr_type_t type,
 
 int
 stun_message_find_addr (const StunMessage *msg, stun_attr_type_t type,
-    struct sockaddr *restrict addr, socklen_t *restrict addrlen)
+    struct sockaddr *addr, socklen_t *addrlen)
 {
   const uint8_t *ptr;
   uint16_t len;
@@ -270,8 +270,8 @@ stun_message_find_addr (const StunMessage *msg, stun_attr_type_t type,
 
 int
 stun_message_find_xor_addr (const StunMessage *msg, stun_attr_type_t type,
-    struct sockaddr *restrict addr,
-    socklen_t *restrict addrlen)
+    struct sockaddr *addr,
+    socklen_t *addrlen)
 {
   int val = stun_message_find_addr (msg, type, addr, addrlen);
   if (val)
@@ -282,7 +282,7 @@ stun_message_find_xor_addr (const StunMessage *msg, stun_attr_type_t type,
 
 int
 stun_message_find_xor_addr_full (const StunMessage *msg, stun_attr_type_t type,
-    struct sockaddr *restrict addr,  socklen_t *restrict addrlen,
+    struct sockaddr *addr,  socklen_t *addrlen,
     uint32_t magic_cookie)
 {
   int val = stun_message_find_addr (msg, type, addr, addrlen);
@@ -292,7 +292,7 @@ stun_message_find_xor_addr_full (const StunMessage *msg, stun_attr_type_t type,
   return stun_xor_address (msg, addr, *addrlen, magic_cookie);
 }
 
-int stun_message_find_error (const StunMessage *msg, int *restrict code)
+int stun_message_find_error (const StunMessage *msg, int *code)
 {
   uint16_t alen;
   const uint8_t *ptr = stun_message_find (msg, STUN_ATTRIBUTE_ERROR_CODE, &alen);
@@ -405,7 +405,7 @@ stun_message_append_string (StunMessage * msg, stun_attr_type_t type,
 
 int
 stun_message_append_addr (StunMessage *msg, stun_attr_type_t type,
-    const struct sockaddr *restrict addr, socklen_t addrlen)
+    const struct sockaddr *addr, socklen_t addrlen)
 {
   const void *pa;
   uint8_t *ptr;
@@ -457,7 +457,7 @@ stun_message_append_addr (StunMessage *msg, stun_attr_type_t type,
 
 
 int stun_message_append_xor_addr (StunMessage *msg, stun_attr_type_t type,
-    const struct sockaddr *restrict addr, socklen_t addrlen)
+    const struct sockaddr *addr, socklen_t addrlen)
 {
   int val;
   /* Must be big enough to hold any supported address: */
@@ -477,7 +477,7 @@ int stun_message_append_xor_addr (StunMessage *msg, stun_attr_type_t type,
 }
 
 int stun_message_append_xor_addr_full (StunMessage *msg, stun_attr_type_t type,
-    const struct sockaddr *restrict addr, socklen_t addrlen,
+    const struct sockaddr *addr, socklen_t addrlen,
     uint32_t magic_cookie)
 {
   int val;

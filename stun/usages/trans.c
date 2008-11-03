@@ -123,8 +123,8 @@ static int stun_socket (int family, int type, int proto)
 }
 
 
-int stun_trans_create (stun_trans_t *restrict tr, int type, int proto,
-                       const struct sockaddr *restrict srv, socklen_t srvlen)
+int stun_trans_create (stun_trans_t *tr, int type, int proto,
+                       const struct sockaddr *srv, socklen_t srvlen)
 {
   int val, fd;
 
@@ -231,8 +231,8 @@ ssize_t stun_trans_sendto (stun_trans_t *tr, const uint8_t *buf, size_t len,
 
 
 ssize_t stun_trans_recvfrom (stun_trans_t *tr, uint8_t *buf, size_t maxlen,
-                       struct sockaddr *restrict dst,
-                       socklen_t *restrict dstlen)
+                       struct sockaddr * dst,
+                       socklen_t * dstlen)
 {
   static const int flags = MSG_DONTWAIT | MSG_NOSIGNAL;
   ssize_t val;
