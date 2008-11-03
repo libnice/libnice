@@ -37,6 +37,13 @@
 # include <config.h>
 #endif
 
+#ifdef _WIN32
+/* This is needed because openssl/rand.h will include windows.h which will
+   include winsock.h if WIN32_LEAN_AND_MEAN is not defined.. and it causes
+   some compilation issues with ws2def.h */
+#define WIN32_LEAN_AND_MEAN
+#endif
+
 #include <openssl/evp.h>
 #include <openssl/hmac.h>
 #include <openssl/rand.h>
