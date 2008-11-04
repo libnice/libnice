@@ -83,30 +83,30 @@ nice_candidate_free (NiceCandidate *candidate)
 }
 
 
-NICEAPI_EXPORT gfloat
+guint32
 nice_candidate_jingle_priority (NiceCandidate *candidate)
 {
   switch (candidate->type)
     {
-    case NICE_CANDIDATE_TYPE_HOST:             return 1.0;
-    case NICE_CANDIDATE_TYPE_SERVER_REFLEXIVE: return 0.9;
-    case NICE_CANDIDATE_TYPE_PEER_REFLEXIVE:   return 0.9;
-    case NICE_CANDIDATE_TYPE_RELAYED:          return 0.5;
+    case NICE_CANDIDATE_TYPE_HOST:             return 1000;
+    case NICE_CANDIDATE_TYPE_SERVER_REFLEXIVE: return 900;
+    case NICE_CANDIDATE_TYPE_PEER_REFLEXIVE:   return 900;
+    case NICE_CANDIDATE_TYPE_RELAYED:          return 500;
     }
 
   /* appease GCC */
   return 0;
 }
 
-NICEAPI_EXPORT gfloat
+guint32
 nice_candidate_msn_priority (NiceCandidate *candidate)
 {
   switch (candidate->type)
     {
-    case NICE_CANDIDATE_TYPE_HOST:             return 0.830;
-    case NICE_CANDIDATE_TYPE_SERVER_REFLEXIVE: return 0.550;
-    case NICE_CANDIDATE_TYPE_PEER_REFLEXIVE:   return 0.550;
-    case NICE_CANDIDATE_TYPE_RELAYED:          return 0.450;
+    case NICE_CANDIDATE_TYPE_HOST:             return 830;
+    case NICE_CANDIDATE_TYPE_SERVER_REFLEXIVE: return 550;
+    case NICE_CANDIDATE_TYPE_PEER_REFLEXIVE:   return 550;
+    case NICE_CANDIDATE_TYPE_RELAYED:          return 450;
     }
 
   /* appease GCC */
@@ -118,8 +118,7 @@ nice_candidate_msn_priority (NiceCandidate *candidate)
  * ICE 4.1.2.1. "Recommended Formula" (ID-19):
  * returns number between 1 and 0x7effffff 
  */
-G_GNUC_CONST
-NICEAPI_EXPORT guint32
+guint32
 nice_candidate_ice_priority_full (
   // must be ∈ (0, 126) (max 2^7 - 2)
   guint type_preference,
@@ -135,8 +134,7 @@ nice_candidate_ice_priority_full (
 }
 
 
-G_GNUC_CONST
-NICEAPI_EXPORT guint32
+guint32
 nice_candidate_ice_priority (const NiceCandidate *candidate)
 {
   guint8 type_preference = 0;
@@ -161,7 +159,7 @@ nice_candidate_ice_priority (const NiceCandidate *candidate)
  * Calculates the pair priority as specified in ICE
  * sect 5.7.2. "Computing Pair Priority and Ordering Pairs" (ID-19).
  */
-NICEAPI_EXPORT guint64
+guint64
 nice_candidate_pair_priority (guint32 o_prio, guint32 a_prio)
 {
   guint32 max = o_prio > a_prio ? o_prio : a_prio;

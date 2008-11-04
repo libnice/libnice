@@ -212,10 +212,10 @@ NiceCandidate *
 nice_candidate_copy (const NiceCandidate *candidate);
 
 
-gfloat
+guint32
 nice_candidate_jingle_priority (NiceCandidate *candidate);
 
-gfloat
+guint32
 nice_candidate_msn_priority (NiceCandidate *candidate);
 
 guint32
