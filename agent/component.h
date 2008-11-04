@@ -102,9 +102,6 @@ component_new (
 void
 component_free (Component *cmp);
 
-NiceSocket *
-component_find_socket_by_fd (Component *component, guint fd);
-
 gboolean
 component_find_pair (Component *cmp, NiceAgent *agent, const gchar *lfoundation, const gchar *rfoundation, CandidatePair *pair);
 

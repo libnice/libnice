@@ -121,31 +121,6 @@ component_free (Component *cmp)
 }
 
 /**
- * Returns a component UDP socket struct that uses handle 'fd'.
- *
- * Note: there might be multiple sockets using the same
- *       handle.
- */
-NiceSocket *
-component_find_socket_by_fd (Component *component, guint fd)
-{
-  GSList *i;
-
-  /* XXX: this won't work anymore, a single fd may be used
-  *       by multiple candidates */
-  
-  for (i = component->sockets; i; i = i->next)
-    {
-      NiceSocket *sockptr = i->data;
-
-      if (sockptr->fileno == fd)
-        return sockptr;
-    }
-
-  return NULL;
-}
-
-/**
  * Finds a candidate pair that has matching foundation ids.
  *
  * @return TRUE if pair found, pointer to pair stored at 'pair'

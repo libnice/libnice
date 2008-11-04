@@ -97,9 +97,6 @@ stream_all_components_ready (const Stream *stream);
 Component *
 stream_find_component_by_id (const Stream *stream, guint id);
 
-Component *
-stream_find_component_by_fd (const Stream *stream, guint fd);
-
 void
 stream_initialize_credentials (Stream *stream, NiceRNG *rng);
 

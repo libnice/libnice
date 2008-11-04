@@ -130,28 +130,6 @@ stream_all_components_ready (const Stream *stream)
 
 
 /**
- * Returns the component that owns a socket using
- * handle 'fd'.
- *
- * See also component_find_socket_by_fd()
- */
-Component *
-stream_find_component_by_fd (const Stream *stream, guint fd)
-{
-  GSList *i;
-
-  for (i = stream->components; i; i = i->next) {
-    Component *component = i->data;
-    NiceSocket *socket =
-      component_find_socket_by_fd (component, fd);
-    if (socket)
-      return component;
-  }
-
-  return NULL;
-}
-
-/**
  * Initialized the local crendentials for the stream.
  */
 void stream_initialize_credentials (Stream *stream, NiceRNG *rng)
