@@ -726,7 +726,7 @@ NiceCandidate *discovery_learn_remote_peer_reflexive_candidate (
     candidate->transport = NICE_CANDIDATE_TRANSPORT_UDP;
     candidate->addr = *remote_address;
     candidate->base_addr = *remote_address;
-    candidate->priority = priority;;
+    candidate->priority = priority;
     candidate->stream_id = stream->id;
     candidate->component_id = component->id;
 

@@ -54,14 +54,14 @@ nice_socket_recv (
   return sock->recv (sock, from, len, buf);
 }
 
-void
+gboolean
 nice_socket_send (
   NiceSocket *sock,
   const NiceAddress *to,
   guint len,
   const gchar *buf)
 {
-  sock->send (sock, to, len, buf);
+  return sock->send (sock, to, len, buf);
 }
 
 gboolean

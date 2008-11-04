@@ -75,7 +75,7 @@ nice_socket_recv (
   guint len,
   gchar *buf);
 
-void
+gboolean
 nice_socket_send (
   NiceSocket *sock,
   const NiceAddress *to,

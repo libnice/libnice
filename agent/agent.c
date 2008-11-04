@@ -1351,10 +1351,10 @@ nice_agent_send (
 
       sock = component->selected_pair.local->sockptr;
       addr = &component->selected_pair.remote->addr;
-      nice_socket_send (sock, addr, len, buf);
-      component->media_after_tick = TRUE;
-
-      ret = len;
+      if (nice_socket_send (sock, addr, len, buf)) {
+        component->media_after_tick = TRUE;
+        ret = len;
+      }
       goto done;
     }
 

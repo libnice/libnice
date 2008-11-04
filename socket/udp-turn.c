@@ -607,8 +607,7 @@ socket_send (
       memcpy (buffer + sizeof(uint32_t), buf, len);
       msg_len = len + sizeof(uint32_t);
     } else {
-      nice_socket_send (priv->base_socket, &priv->server_addr, len, buf);
-      return TRUE;
+      return nice_socket_send (priv->base_socket, &priv->server_addr, len, buf);
     }
   } else {
     if (priv->compatibility == NICE_UDP_TURN_SOCKET_COMPATIBILITY_DRAFT9) {
@@ -650,14 +649,11 @@ socket_send (
   }
 
   if (msg_len > 0) {
-    nice_socket_send (priv->base_socket, &priv->server_addr,
+    return nice_socket_send (priv->base_socket, &priv->server_addr,
         msg_len, (gchar *)buffer);
-    return TRUE;
   }
  send:
-  nice_socket_send (priv->base_socket, to, len, buf);
-
-  return TRUE;
+  return nice_socket_send (priv->base_socket, to, len, buf);
 }
 
 static gboolean
