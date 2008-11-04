@@ -777,7 +777,7 @@ priv_add_new_candidate_discovery_turn (NiceAgent *agent,
           return FALSE;
         }
 
-        priv_attach_stream_component_socket (agent, stream,
+        agent_attach_stream_component_socket (agent, stream,
             component, cdisco->nicesock);
       }
       cdisco->turn = turn;
@@ -1605,7 +1605,7 @@ nice_agent_g_source_cb (
  */
 
 void
-priv_attach_stream_component_socket (NiceAgent *agent,
+agent_attach_stream_component_socket (NiceAgent *agent,
     Stream *stream,
     Component *component,
     NiceSocket *socket)
@@ -1643,7 +1643,7 @@ priv_attach_stream_component (NiceAgent *agent,
   GSList *i;
 
   for (i = component->sockets; i; i = i->next)
-    priv_attach_stream_component_socket (agent, stream, component, i->data);
+    agent_attach_stream_component_socket (agent, stream, component, i->data);
 
   return TRUE;
 }

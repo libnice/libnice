@@ -414,7 +414,8 @@ NiceCandidate *discovery_add_local_host_candidate (
     if (udp_socket) {
       gboolean result;
 
-      priv_attach_stream_component_socket (agent, stream, component, udp_socket);
+      agent_attach_stream_component_socket (agent, stream,
+          component, udp_socket);
 
       candidate->sockptr = udp_socket;
       candidate->addr = udp_socket->addr;
