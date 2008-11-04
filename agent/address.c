@@ -45,6 +45,60 @@
 
 #include "address.h"
 
+#ifdef G_OS_WIN32
+#define inet_pton inet_pton_win32
+#define inet_ntop inet_ntop_win32
+
+
+static const char *
+inet_ntop_win32(int af, const void *src, char *dst, socklen_t cnt)
+{
+  if (af == AF_INET) {
+    struct sockaddr_in in;
+    memset(&in, 0, sizeof(in));
+    in.sin_family = AF_INET;
+    memcpy(&in.sin_addr, src, sizeof(struct in_addr));
+    getnameinfo((struct sockaddr *)&in, sizeof(struct sockaddr_in),
+        dst, cnt, NULL, 0, NI_NUMERICHOST);
+    return dst;
+  } else if (af == AF_INET6) {
+    struct sockaddr_in6 in;
+    memset(&in, 0, sizeof(in));
+    in.sin6_family = AF_INET6;
+    memcpy(&in.sin6_addr, src, sizeof(struct in_addr6));
+    getnameinfo((struct sockaddr *)&in, sizeof(struct sockaddr_in6),
+        dst, cnt, NULL, 0, NI_NUMERICHOST);
+    return dst;
+  }
+  return NULL;
+}
+
+static int
+inet_pton_win32(int af, const char *src, void *dst)
+{
+  struct addrinfo hints, *res, *ressave;
+
+  memset(&hints, 0, sizeof(struct addrinfo));
+  hints.ai_family = af;
+
+  if (getaddrinfo(src, NULL, &hints, &res) != 0) {
+    return -1;
+  }
+
+  ressave = res;
+
+  while (res) {
+    memcpy(dst, res->ai_addr, res->ai_addrlen);
+    res = res->ai_next;
+  }
+
+  freeaddrinfo(ressave);
+  return 0;
+}
+
+#endif
+
+
 
 NICEAPI_EXPORT void
 nice_address_init (NiceAddress *addr)
@@ -130,21 +184,6 @@ nice_address_get_port (const NiceAddress *addr)
 NICEAPI_EXPORT gboolean
 nice_address_set_from_string (NiceAddress *addr, const gchar *str)
 {
-#ifdef G_OS_WIN32
-  union {
-    struct sockaddr  addr;
-    struct sockaddr_in  ip4;
-    struct sockaddr_in6 ip6;
-  } s;
-  int len4 = sizeof(s.ip4);
-  int len6 = sizeof(s.ip6);
-  if (WSAStringToAddress((char *)str, AF_INET, NULL, &s.addr, &len4) == 0)
-      nice_address_set_from_sockaddr (addr, &s.addr);
-  else if (WSAStringToAddress((char *)str, AF_INET6, NULL, &s.addr, &len6) == 0)
-    nice_address_set_from_sockaddr (addr, &s.addr);
-  else
-    return FALSE; /* Invalid address */
-#else
   union
   {
     struct in_addr  ipv4;
@@ -157,7 +196,6 @@ nice_address_set_from_string (NiceAddress *addr, const gchar *str)
       nice_address_set_ipv6 (addr, a.ipv6.s6_addr);
   else
     return FALSE; /* Invalid address */
-#endif
 
   return TRUE;
 }
@@ -212,26 +250,6 @@ nice_address_copy_to_sockaddr (const NiceAddress *addr,
 NICEAPI_EXPORT void
 nice_address_to_string (const NiceAddress *addr, gchar *dst)
 {
-#ifdef G_OS_WIN32
-  DWORD len;
-  int ret;
-
-  switch (addr->s.addr.sa_family) {
-    case AF_INET:
-      len = INET_ADDRSTRLEN;
-      ret = WSAAddressToString ((LPSOCKADDR)&addr->s.ip4, sizeof(addr->s.ip6),
-          NULL, dst, &len);
-      break;
-    case AF_INET6:
-      len = INET6_ADDRSTRLEN;
-      ret = WSAAddressToString ((LPSOCKADDR)&addr->s.ip6, sizeof(addr->s.ip6),
-          NULL, dst, &len);
-      break;
-    default:
-      g_assert_not_reached();
-  }
-
-#else
   const gchar *ret = NULL;
 
   switch (addr->s.addr.sa_family) {
@@ -245,7 +263,6 @@ nice_address_to_string (const NiceAddress *addr, gchar *dst)
     default:
       g_assert_not_reached();
   }
-#endif
 }
 
 
