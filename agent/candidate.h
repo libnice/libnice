@@ -142,7 +142,7 @@ struct _TurnServer
  * @transport: The transport being used for the candidate
  * @addr: The #NiceAddress of the candidate
  * @base_addr: The #NiceAddress of the base address used by the candidate
- * @priority: The priority of the candidate
+ * @priority: The priority of the candidate <emphasis> see note </emphasis>
  * @stream_id: The ID of the stream to which belongs the candidate
  * @component_id: The ID of the component to which belongs the candidate
  * @foundation: The foundation of the candidate
@@ -155,6 +155,14 @@ struct _TurnServer
  * @sockptr: The underlying socket
  *
  * A structure to represent an ICE candidate
+ <note>
+   <para>
+   The @priority is an integer as specified in the ICE draft 19. If you are
+   using the MSN or the GOOGLE compatibility mode (which are based on ICE
+   draft 6, which uses a floating point qvalue as priority), then the @priority
+   value will represent the qvalue multiplied by 1000.
+   </para>
+ </note>
  */
 struct _NiceCandidate
 {

@@ -400,18 +400,21 @@ nice_agent_get_local_credentials (
  * @component_id: The ID of the component the candidates are for
  * @candidates: a #GList of #NiceCandidate items describing each candidate to add
  *
- * Sets the remote candidates for a component of a stream.
- * Replaces any existing remote candidates.
+ * Sets, adds or updates the remote candidates for a component of a stream.
  *
  <note>
    <para>
     NICE_AGENT_MAX_REMOTE_CANDIDATES is the absolute maximum limit
-    for remote candidates
+    for remote candidates.
+   </para>
+   <para>
+   You must first call nice_agent_gather_candidates() before
+   calling nice_agent_set_remote_candidates()
    </para>
  </note>
  *
- * Returns: The number of candidates added,
- * negative on fatal (memory allocs) errors
+ * Returns: The number of candidates added, negative on errors (memory allocation
+ * or if the local candidates are not done gathering yet)
  **/
 int
 nice_agent_set_remote_candidates (
