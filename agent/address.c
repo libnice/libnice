@@ -51,7 +51,7 @@
 
 
 static const char *
-inet_ntop_win32(int af, const void *src, char *dst, socklen_t cnt)
+inet_ntop_win32 (int af, const void *src, char *dst, socklen_t cnt)
 {
   if (af == AF_INET) {
     struct sockaddr_in in;
@@ -82,18 +82,25 @@ inet_pton_win32(int af, const char *src, void *dst)
   hints.ai_family = af;
 
   if (getaddrinfo(src, NULL, &hints, &res) != 0) {
-    return -1;
+    return 0;
   }
 
   ressave = res;
 
-  while (res) {
-    memcpy(dst, res->ai_addr, res->ai_addrlen);
-    res = res->ai_next;
+  while (res)  {
+    if( res->ai_addr->sa_family == AF_INET) {
+      memcpy(dst, &((struct sockaddr_in *) res->ai_addr)->sin_addr,
+          res->ai_addrlen);
+      res = res->ai_next;
+    } else if(res->ai_addr->sa_family == AF_INET6) {
+      memcpy(dst, &((struct sockaddr_in6 *) res->ai_addr)->sin6_addr,
+          res->ai_addrlen);
+      res = res->ai_next;
+    }
   }
 
   freeaddrinfo(ressave);
-  return 0;
+  return 1;
 }
 
 #endif
@@ -162,7 +169,7 @@ guint
 nice_address_get_port (const NiceAddress *addr)
 {
   if (!addr)
-	  return 0;
+          return 0;
 
   switch (addr->s.addr.sa_family)
     {
@@ -334,9 +341,9 @@ ipv6_address_is_private (const guchar *addr)
       ((addr[0] & 0xfe) == 0xfc) ||
       /* ::1 loopback */
       ((memcmp (addr, "\x00\x00\x00\x00"
-		"\x00\x00\x00\x00"
-		"\x00\x00\x00\x00"
-		"\x00\x00\x00\x01", 16) == 0))); 
+                "\x00\x00\x00\x00"
+                "\x00\x00\x00\x00"
+                "\x00\x00\x00\x01", 16) == 0))); 
 }
 
 
