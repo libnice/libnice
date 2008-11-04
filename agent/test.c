@@ -88,22 +88,6 @@ main (void)
   g_assert (strncmp (candidate->foundation, "1", 1) == 0);
   g_slist_free (candidates);
 
-  /* add remote candidate */
-  nice_agent_add_remote_candidate (agent, stream_id, 1,
-      NICE_CANDIDATE_TYPE_HOST,
-      &addr_remote, "username", "password");
-  candidates = nice_agent_get_remote_candidates (agent, stream_id, 1);
-  g_assert (candidates != NULL);
-  g_assert (g_slist_length (candidates) == 1);
-  candidate = candidates->data;
-  g_assert (nice_address_equal (&(candidate->addr), &addr_remote));
-  g_assert (candidate->stream_id == stream_id);
-  g_assert (candidate->component_id == 1);
-  g_assert (candidate->type == NICE_CANDIDATE_TYPE_HOST);
-  g_assert (0 == strcmp (candidate->username, "username"));
-  g_assert (0 == strcmp (candidate->password, "password"));
-  g_slist_free (candidates);
-
   /* clean up */
   g_object_unref (agent);
   return 0;

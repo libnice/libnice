@@ -1202,43 +1202,6 @@ nice_agent_get_local_credentials (
   return ret;
 }
 
-
-NICEAPI_EXPORT gboolean
-nice_agent_add_remote_candidate (
-  NiceAgent *agent,
-  guint stream_id,
-  guint component_id,
-  NiceCandidateType type,
-  NiceAddress *addr,
-  const gchar *username,
-  const gchar *password)
-{
-  gboolean ret;
-
-  g_static_rec_mutex_lock (&agent->mutex);
-
-  ret =
-    priv_add_remote_candidate (agent,
-			       stream_id,
-			       component_id,
-			       type,
-			       addr,
-			       NULL,
-			       NICE_CANDIDATE_TRANSPORT_UDP,
-			       0,
-			       username,
-			       password,
-			       NULL);
-
-  /* XXX/later: for each component, generate a new check with the new
-     candidate, see below set_remote_candidates() */
-
-
-  g_static_rec_mutex_unlock (&agent->mutex);
-  return ret;
-}
-
-
 NICEAPI_EXPORT int
 nice_agent_set_remote_candidates (NiceAgent *agent, guint stream_id, guint component_id, const GSList *candidates)
 {

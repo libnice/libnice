@@ -393,40 +393,6 @@ nice_agent_get_local_credentials (
   guint stream_id,
   const gchar **ufrag, const gchar **pwd);
 
-
-/**
- * nice_agent_add_remote_candidate:
- * @agent: The #NiceAgent Object
- * @stream_id: The ID of the stream the candidate is for
- * @component_id: The ID of the component the candidate is for
- * @type: The type of the new candidate
- * @addr: The new candidate's IP address
- * @username: The new candidate's username
- * (optional - overrides the value set in nice_agent_set_remote_credentials())
- * @password: The new candidate's password
- * (optional - overrides the value set in nice_agent_set_remote_credentials())
- *
- * Adds a new remote candidate to the agent
- *
- <note>
-   <para>
-    NICE_AGENT_MAX_REMOTE_CANDIDATES is the absolute maximum limit
-    for remote candidates
-   </para>
- </note>
- *
- * Returns: %TRUE on success, %FALSE on fatal (memory alloc) errors
- **/
-gboolean
-nice_agent_add_remote_candidate (
-  NiceAgent *agent,
-  guint stream_id,
-  guint component_id,
-  NiceCandidateType type,
-  NiceAddress *addr,
-  const gchar *username,
-  const gchar *password);
-
 /**
  * nice_agent_set_remote_candidates:
  * @agent: The #NiceAgent Object
