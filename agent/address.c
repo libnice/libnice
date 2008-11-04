@@ -160,7 +160,7 @@ nice_address_set_port (NiceAddress *addr, guint port)
       addr->s.ip6.sin6_port = htons (port);
       break;
     default:
-      g_assert_not_reached();
+      g_return_if_reached ();
     }
 }
 
@@ -179,7 +179,7 @@ nice_address_get_port (const NiceAddress *addr)
       return ntohs (addr->s.ip6.sin6_port);
     }
 
-  return 0;
+  g_return_val_if_reached (0);
 }
 
 
@@ -224,7 +224,7 @@ nice_address_set_from_sockaddr (NiceAddress *addr,
       memcpy(&addr->s.ip6, sa, sizeof (addr->s.ip6));
       break;
     default:
-      g_assert_not_reached();
+      g_return_if_reached ();
     }
 }
 
@@ -250,7 +250,7 @@ nice_address_copy_to_sockaddr (const NiceAddress *addr,
       memcpy (sin6, &addr->s.ip6, sizeof (*sin6));
       break;
     default:
-      g_assert_not_reached ();
+      g_return_if_reached ();
     }
 }
 
@@ -268,7 +268,7 @@ nice_address_to_string (const NiceAddress *addr, gchar *dst)
                        INET6_ADDRSTRLEN);
       break;
     default:
-      g_assert_not_reached();
+      g_return_if_reached ();
   }
 }
 
@@ -291,7 +291,7 @@ nice_address_equal (const NiceAddress *a, const NiceAddress *b)
           && (a->s.ip6.sin6_scope_id == b->s.ip6.sin6_scope_id);
     }
 
-  return FALSE;
+  g_return_val_if_reached (FALSE);
 }
 
 
@@ -358,7 +358,7 @@ nice_address_is_private (const NiceAddress *a)
       return ipv6_address_is_private (a->s.ip6.sin6_addr.s6_addr);
     }
 
-  return FALSE;
+  g_return_val_if_reached (FALSE);
 }
 
 
