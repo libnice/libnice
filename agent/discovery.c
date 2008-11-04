@@ -682,12 +682,17 @@ static guint priv_highest_remote_foundation (Component *component)
 {
   GSList *i;
   guint highest = 0;
+  gchar foundation[NICE_CANDIDATE_MAX_FOUNDATION];
 
-  for (i = component->remote_candidates; i; i = i->next) {
-    NiceCandidate *cand = i->data;
-    guint foundation_id = (guint)atoi (cand->foundation);
-    if (foundation_id > highest)
-      highest = foundation_id;
+  for (;;) {
+    g_snprintf (foundation, NICE_CANDIDATE_MAX_FOUNDATION, "%u", highest);
+    for (i = component->remote_candidates; i; i = i->next) {
+      NiceCandidate *cand = i->data;
+      if (strncmp (foundation, cand->foundation,
+              NICE_CANDIDATE_MAX_FOUNDATION) != 0) {
+        return highest;
+      }
+    }
   }
 
   return highest;
@@ -730,7 +735,8 @@ NiceCandidate *discovery_learn_remote_peer_reflexive_candidate (
     candidate->stream_id = stream->id;
     candidate->component_id = component->id;
 
-    g_snprintf (candidate->foundation, NICE_CANDIDATE_MAX_FOUNDATION, "%u", next_remote_id);
+    g_snprintf (candidate->foundation, NICE_CANDIDATE_MAX_FOUNDATION,
+        "%u", next_remote_id);
 
     if (agent->compatibility == NICE_COMPATIBILITY_MSN &&
 	remote && local) {
