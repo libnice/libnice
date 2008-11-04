@@ -1208,11 +1208,12 @@ nice_agent_set_remote_candidates (NiceAgent *agent, guint stream_id, guint compo
   const GSList *i; 
   int added = 0;
 
-
-  if (agent->discovery_unsched_items > 0)
-    return -1;
-
   g_static_rec_mutex_lock (&agent->mutex);
+
+  if (agent->discovery_unsched_items > 0) {
+    g_static_rec_mutex_unlock (&agent->mutex);
+    return -1;
+  }
 
  for (i = candidates; i && added >= 0; i = i->next) {
    NiceCandidate *d = (NiceCandidate*) i->data;
