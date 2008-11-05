@@ -91,20 +91,19 @@ NiceAgent GObject interface defined in 'nice/agent.h'.
 The rough order of control follow is as follows:
 
 - client should initialize glib with g_type_init()
-- creation of NiceAgent object instance (a UDP socket factory object
-  instance must be given as a parameter)
-- setting agent properties such as STUN and TURN server addresses, and
-  selection of ICE operating mode
+- creation of NiceAgent object instance
+- setting agent properties such as STUN and TURN server addresses
 - connecting the GObject signals with g_signal_connect() to application
   callback functions
 - adding local interface addresses to use with
   nice_agent_add_local_address()
-- attach the mainloop context to connect the NiceAgent state machine to
-  the application's event loop (using nice_agent_main_context_attach())
 
 And continues when making an initial offer:
 
 - creating the streams with nice_agent_add_stream()
+- attach the mainloop context to connect the NiceAgent sockets to
+  the application's event loop (using nice_agent_attach_recv())
+- start candidate gathering by calling nice_agent_gather_candidates()
 - the application should wait for the "candidate-gathering-done" signal
   before going forward (so that ICE can gather the needed set of local
   connectiviy candidates) 
@@ -118,7 +117,7 @@ And continues when making an initial offer:
 
 Alternatively, when answering to an initial offer:
 
-- the first three steps are the same as above (making initial offer)
+- the first five steps are the same as above (making initial offer)
 - pass the remote session information to NiceAgent using 
   nice_agent_set_remote_candidates() and
   nice_agent_set_remote_credentials()
@@ -158,11 +157,6 @@ Restarting ICE:
   a new offer/answer for the restarted ICE session.
 - Restart will reinitialize the local credentials (see 
   nice_agent_get_local_credentials()).
-- To use the "dribble" mode, client first has to initialize the stream with
-  calling nice_agent_set_remote_candidates() with an empty set of 
-  candidates, and then start adding new remote candidates with 
-  nice_agent_add_remote_candidate().
-     - XXX: initial plan, needs review...
 - Note that to modify the set of local candidates, a new stream 
   has to be created. For the remote party, this looks like a ICE
   restart as well.
@@ -188,9 +182,8 @@ Notes about sending media:
 STUN API
 --------
 
-The underlying STUN library takes care of:
-- formatting and parsing STUN messages (lower layer),
-- running STUN transactions for different STUN usages (higher layer).
+The underlying STUN library takes care of formatting and parsing STUN
+messages (lower layer),
 
 Applications should only need to use the higher layer API which then
 uses the lower layer API.
@@ -198,30 +191,11 @@ uses the lower layer API.
 The following STUN usages are currently implemented by the
 transaction layer:
 - Binding discovery (RFC5389 with RFC3489 backward compatibility)
-- ICE connectivity checks
-
-The following usages are planned but not implemented currently:
-- Relay (TURN)
 - Binding keep-alive
+- ICE connectivity checks
+- TURN
+- STUN retransmission timers
 
-STUN transaction API
---------------------
-
-STUN transaction are supported through a set of non-blocking functions.
-The application is responsible for blocking polling operation, so that
-it can run any number of STUN transactions and other work within the
-same thread:
-- Initialization and initiation of the transaction: stun_*_start()
-- I/O event polling: stun_*_fd() resp. stun_*_timeout() specify which
-  file description resp. how long to wait for it
-- Incoming data processing: stun_*_process()
-- Timeout processing: stun_*_elapse()
-- Cancellation (at any time) of the transaction: stun_*_cancel()
-
-On the "server" side, STUN requires that requests processing be
-indempotent, and there are no timeouts in the currently supported
-usages. As such, each usage is made of a single function that
-parses a request and formats an answer: stun_*_reply()
 
 STUN message API
 ----------------
