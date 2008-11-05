@@ -2226,6 +2226,10 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, Stream *stream,
           d->nicesock == socket) {
         valid = stun_agent_validate (&d->turn_agent, &req,
             (uint8_t *) buf, len, conncheck_stun_validater, &validater_data);
+
+        if (valid == STUN_VALIDATION_UNMATCHED_RESPONSE)
+          continue;
+
         turn_msg = TRUE;
         break;
       }
@@ -2243,6 +2247,8 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, Stream *stream,
         valid = stun_agent_validate (&r->turn_agent, &req,
             (uint8_t *) buf, len, conncheck_stun_validater, &validater_data);
         nice_debug ("Validating gave %d", valid);
+        if (valid == STUN_VALIDATION_UNMATCHED_RESPONSE)
+          continue;
         turn_msg = TRUE;
         break;
       }
