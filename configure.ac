@@ -1,6 +1,6 @@
 
 AC_PREREQ(2.59c)
-AC_INIT(nice, 0.0.1)
+AC_INIT(nice, 0.0.1.1)
 AC_CONFIG_SRCDIR([agent/agent.c])
 AC_CONFIG_HEADER([config.h])
 AM_INIT_AUTOMAKE([-Wall])
