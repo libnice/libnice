@@ -42,6 +42,7 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 GMainLoop *error_loop;
 
@@ -66,6 +67,7 @@ mainloop_thread (gpointer data)
 {
   GMainLoop *loop = data;
 
+  usleep (100000);
   g_main_loop_run (loop);
 
   return NULL;
