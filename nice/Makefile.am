@@ -47,7 +47,7 @@ check_DATA = libnice.symbols
 
 TESTS = $(check_SCRIPTS)
 
-EXTRA_DIST = $(check_SCRIPTS) libnice.sym
+EXTRA_DIST = $(check_SCRIPTS) libnice.sym libnice.ver
 
 pkginclude_HEADERS = nice.h
 

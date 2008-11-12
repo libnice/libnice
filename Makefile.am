@@ -25,6 +25,10 @@ DIST_SUBDIRS = $(ALWAYS_SUBDIRS) gst
 DISTCHECK_CONFIGURE_FLAGS = --disable-assert -enable-gtk-doc
 
 EXTRA_DIST = \
+	COPYING.LGPL \
+	COPYING.MPL \
+	aclocal.m4 \
+	autogen.sh \
 	common.mk \
 	scripts/lcov.mk \
 	scripts/lcov.sh \

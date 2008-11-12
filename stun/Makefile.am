@@ -30,3 +30,4 @@ libstun_la_SOURCES = constants.h \
 
 libstun_la_LIBADD = $(OPENSSL_LIBS) $(LIBRT)
 
+EXTRA_DIST = win32_common.h
