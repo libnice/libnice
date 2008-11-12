@@ -2212,7 +2212,7 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, Stream *stream,
   NiceCandidate *remote_candidate = NULL;
   NiceCandidate *remote_candidate2 = NULL;
   NiceCandidate *local_candidate = NULL;
-  gboolean turn_msg = FALSE;
+  gboolean discovery_msg = FALSE;
 
   nice_address_copy_to_sockaddr (from, &sockaddr);
 
@@ -2233,13 +2233,12 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, Stream *stream,
   valid = stun_agent_validate (&agent->stun_agent, &req,
       (uint8_t *) buf, len, conncheck_stun_validater, &validater_data);
 
-  /* Check for relay candidates stun agents */
+  /* Check for discovery candidates stun agents */
   if (valid == STUN_VALIDATION_BAD_REQUEST ||
       valid == STUN_VALIDATION_UNMATCHED_RESPONSE) {
     for (i = agent->discovery_list; i; i = i->next) {
       CandidateDiscovery *d = i->data;
-      if (d->type == NICE_CANDIDATE_TYPE_RELAYED &&
-          d->stream == stream && d->component == component &&
+      if (d->stream == stream && d->component == component &&
           d->nicesock == socket) {
         valid = stun_agent_validate (&d->stun_agent, &req,
             (uint8_t *) buf, len, conncheck_stun_validater, &validater_data);
@@ -2247,12 +2246,12 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, Stream *stream,
         if (valid == STUN_VALIDATION_UNMATCHED_RESPONSE)
           continue;
 
-        turn_msg = TRUE;
+        discovery_msg = TRUE;
         break;
       }
     }
   }
-  /* Check for relay candidates stun agents */
+  /* Check for relay refresh stun agents */
   if (valid == STUN_VALIDATION_BAD_REQUEST ||
       valid == STUN_VALIDATION_UNMATCHED_RESPONSE) {
     for (i = agent->refresh_list; i; i = i->next) {
@@ -2266,7 +2265,7 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, Stream *stream,
         nice_debug ("Validating gave %d", valid);
         if (valid == STUN_VALIDATION_UNMATCHED_RESPONSE)
           continue;
-        turn_msg = TRUE;
+        discovery_msg = TRUE;
         break;
       }
     }
@@ -2363,7 +2362,7 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, Stream *stream,
 
   if (agent->compatibility == NICE_COMPATIBILITY_GOOGLE &&
       local_candidate == NULL &&
-      turn_msg == FALSE) {
+      discovery_msg == FALSE) {
     /* if we couldn't match the username and the stun agent has
        IGNORE_CREDENTIALS then we have an integrity check failing */
     nice_debug ("Agent %p : Username check failed.", agent);

@@ -835,7 +835,7 @@ static gboolean priv_discovery_tick_unlocked (gpointer pointer)
 					     NICE_COMPONENT_STATE_GATHERING);
 
         if (cand->type == NICE_CANDIDATE_TYPE_SERVER_REFLEXIVE) {
-          buffer_len = stun_usage_bind_create (&agent->stun_agent,
+          buffer_len = stun_usage_bind_create (&cand->stun_agent,
               &cand->stun_message, cand->stun_buffer, sizeof(cand->stun_buffer));
         } else if (cand->type == NICE_CANDIDATE_TYPE_RELAYED) {
           uint8_t *username = (uint8_t *)cand->turn->username;

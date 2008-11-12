@@ -732,6 +732,9 @@ priv_add_new_candidate_discovery_stun (NiceAgent *agent,
       cdisco->stream = stream;
       cdisco->component = stream_find_component_by_id (stream, component_id);
       cdisco->agent = agent;
+      stun_agent_init (&cdisco->stun_agent, STUN_ALL_KNOWN_ATTRIBUTES,
+          STUN_COMPATIBILITY_RFC3489, 0);
+
       nice_debug ("Agent %p : Adding new srv-rflx candidate discovery %p\n", agent, cdisco);
       agent->discovery_list = modified_list;
       ++agent->discovery_unsched_items;
