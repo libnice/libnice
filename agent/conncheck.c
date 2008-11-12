@@ -880,6 +880,7 @@ static void priv_update_check_list_state_for_ready (NiceAgent *agent, Stream *st
 	  p->state == NICE_CHECK_DISCOVERED) {
 	++succeeded;
 	if (p->nominated == TRUE) {
+          ++nominated;
 	  priv_prune_pending_checks (stream, p->component_id);
 	  agent_signal_component_state_change (agent,
 					       p->stream_id,
