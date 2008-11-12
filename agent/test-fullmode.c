@@ -483,17 +483,10 @@ static int run_full_test_delayed_answer (NiceAgent *lagent, NiceAgent *ragent, N
   rs_id = nice_agent_add_stream (ragent, 2);
   g_assert (ls_id > 0);
   g_assert (rs_id > 0);
-#if USE_TURN
-  nice_agent_set_relay_info(lagent, ls_id, 1,
-      TURN_IP, TURN_PORT, TURN_USER, TURN_PASS, TURN_TYPE);
-  nice_agent_set_relay_info(lagent, ls_id, 2,
-      TURN_IP, TURN_PORT, TURN_USER, TURN_PASS, TURN_TYPE);
-  nice_agent_set_relay_info(ragent, rs_id, 1,
-      TURN_IP, TURN_PORT, TURN_USER, TURN_PASS, TURN_TYPE);
-  nice_agent_set_relay_info(ragent, rs_id, 2,
-      TURN_IP, TURN_PORT, TURN_USER, TURN_PASS, TURN_TYPE);
-#endif
 
+  /* We don't try this with TURN because as long as both agents don't
+     have the remote candidates, they won't be able to create the
+     permission on the TURN server, so the connchecks will never go through */
 
   nice_agent_gather_candidates (lagent, ls_id);
   nice_agent_gather_candidates (ragent, rs_id);
