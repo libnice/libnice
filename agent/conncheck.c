@@ -124,6 +124,7 @@ static gboolean priv_conn_check_initiate (NiceAgent *agent, CandidateCheckPair *
   g_get_current_time (&pair->next_tick);
   g_time_val_add (&pair->next_tick, agent->timer_ta * 1000);
   pair->state = NICE_CHECK_IN_PROGRESS;
+  nice_debug ("Agent %p : pair %p state IN_PROGRESS", agent, pair);
   conn_check_send (agent, pair);
   return TRUE;
 }
@@ -176,6 +177,7 @@ static gboolean priv_conn_check_unfreeze_next (NiceAgent *agent)
   if (pair) {
     nice_debug ("Agent %p : Pair %p with s/c-id %u/%u (%s) unfrozen.", agent, pair, pair->stream_id, pair->component_id, pair->foundation);
     pair->state = NICE_CHECK_WAITING;
+    nice_debug ("Agent %p : pair %p state WAITING", agent, pair);
     return TRUE;
   }
 
@@ -212,6 +214,7 @@ static void priv_conn_check_unfreeze_related (NiceAgent *agent, Stream *stream, 
 	  strcmp (p->foundation, ok_check->foundation) == 0) {
 	nice_debug ("Agent %p : Unfreezing check %p (after succesful check %p).", agent, p, ok_check);
 	p->state = NICE_CHECK_WAITING;
+        nice_debug ("Agent %p : pair %p state WAITING", agent, p);
 	++unfrozen;
       }
     }
@@ -232,6 +235,7 @@ static void priv_conn_check_unfreeze_related (NiceAgent *agent, Stream *stream, 
 	      strcmp (p->foundation, ok_check->foundation) == 0) {
 	    nice_debug ("Agent %p : Unfreezing check %p from stream %u (after succesful check %p).", agent, p, s->id, ok_check);
 	    p->state = NICE_CHECK_WAITING;
+            nice_debug ("Agent %p : pair %p state WAITING", agent, p);
 	    ++unfrozen;
 					    
 	  }
@@ -269,6 +273,7 @@ static gboolean priv_conn_check_tick_stream (Stream *stream, NiceAgent *agent, G
       if (p->stun_message.buffer == NULL) {
 	nice_debug ("Agent %p : STUN connectivity check was cancelled, marking as done.", agent);
 	p->state = NICE_CHECK_FAILED;
+        nice_debug ("Agent %p : pair %p state FAILED", agent, p);
       } else if (priv_timer_expired (&p->next_tick, now)) {
         int timeout = stun_timer_refresh (&p->timer);
         switch (timeout) {
@@ -276,6 +281,7 @@ static gboolean priv_conn_check_tick_stream (Stream *stream, NiceAgent *agent, G
             /* case: error, abort processing */
             nice_debug ("Agent %p : Retransmissions failed, giving up on connectivity check %p", agent, p);
             p->state = NICE_CHECK_FAILED;
+            nice_debug ("Agent %p : pair %p state FAILED", agent, p);
             p->stun_message.buffer = NULL;
             p->stun_message.buffer_len = 0;
             break;
@@ -946,6 +952,7 @@ static gboolean priv_add_new_check_pair (NiceAgent *agent, guint stream_id, Comp
 
       pair->priority = agent_candidate_pair_priority (agent, local, remote);
       pair->state = initial_state;
+      nice_debug ("Agent %p : creating new pair %p state %d", agent, pair, initial_state);
       pair->nominated = use_candidate;
       pair->controlling = agent->controlling_mode;
       
@@ -1301,13 +1308,13 @@ int conn_check_send (NiceAgent *agent, CandidateCheckPair *pair)
   {
     gchar tmpbuf[INET6_ADDRSTRLEN];
     nice_address_to_string (&pair->remote->addr, tmpbuf);
-    nice_debug ("Agent %p : STUN-CC REQ to '%s:%u', socket=%u, pair=%s (c-id:%u), tie=%llu, username='%s', password='%s', priority=%u.", agent, 
+    nice_debug ("Agent %p : STUN-CC REQ to '%s:%u', socket=%u, pair=%s (c-id:%u), tie=%llu, username='%s' (%d), password='%s' (%d), priority=%u.", agent, 
 	     tmpbuf,
 	     ntohs(((struct sockaddr_in*)(&sockaddr))->sin_port), 
 	     pair->local->sockptr->fileno,
 	     pair->foundation, pair->component_id,
 	     (unsigned long long)agent->tie_breaker,
-	     uname, password, priority);
+        uname, uname_len, password, password_len, priority);
 
   }
 
@@ -1322,6 +1329,8 @@ int conn_check_send (NiceAgent *agent, CandidateCheckPair *pair)
         cand_use, controlling, priority,
         agent->tie_breaker,
         priv_agent_to_ice_compatibility (agent));
+
+    nice_debug ("Agent %p: conncheck created %d - %p", agent, buffer_len, pair->stun_message.buffer);
 
     if (agent->compatibility == NICE_COMPATIBILITY_MSN) {
       g_free (password);
@@ -1358,14 +1367,17 @@ static void priv_prune_pending_checks (Stream *stream, guint component_id)
     CandidateCheckPair *p = i->data;
     if (p->component_id == component_id) {
       if (p->state == NICE_CHECK_FROZEN ||
-	  p->state == NICE_CHECK_WAITING)
+	  p->state == NICE_CHECK_WAITING) {
 	p->state = NICE_CHECK_CANCELLED;
-      
+        nice_debug ("Agent XXX : pair %p state CANCELED", p);
+      }
+
       /* note: a SHOULD level req. in ICE 8.1.2. "Updating States" (ID-19) */
       if (p->state == NICE_CHECK_IN_PROGRESS) {
         p->stun_message.buffer = NULL;
         p->stun_message.buffer_len = 0;
 	p->state = NICE_CHECK_CANCELLED;
+        nice_debug ("Agent XXX : pair %p state CANCELED", p);
       }
     }
   }
@@ -1544,6 +1556,7 @@ static CandidateCheckPair *priv_add_peer_reflexive_pair (NiceAgent *agent, guint
       pair->local = local_cand;
       pair->remote = parent_pair->remote;
       pair->state = NICE_CHECK_DISCOVERED;
+      nice_debug ("Agent %p : pair %p state DISCOVERED", agent, pair);
       g_snprintf (pair->foundation, NICE_CANDIDATE_PAIR_MAX_FOUNDATION, "%s:%s", local_cand->foundation, parent_pair->remote->foundation);
       if (agent->controlling_mode == TRUE)
 	pair->priority = nice_candidate_pair_priority (local_cand->priority, parent_pair->priority);
@@ -1643,6 +1656,7 @@ static CandidateCheckPair *priv_process_response_check_for_peer_reflexive(NiceAg
 					      local_candidate,
 					      remote_candidate);
     p->state = NICE_CHECK_FAILED;
+    nice_debug ("Agent %p : pair %p state FAILED", agent, p);
 	    
     /* step: add a new discovered pair (see ICE 7.1.2.2.2
 	       "Constructing a Valid Pair" (ID-19)) */
@@ -1756,6 +1770,7 @@ static gboolean priv_map_reply_to_conn_check_request (NiceAgent *agent, Stream *
           p->stun_message.buffer = NULL;
           p->stun_message.buffer_len = 0;
           p->state = NICE_CHECK_WAITING;
+          nice_debug ("Agent %p : pair %p state WAITING", agent, p);
           trans_found = TRUE;
         } else if (res == STUN_USAGE_ICE_RETURN_ERROR) {
           /* case: STUN error, the check STUN context was freed */
@@ -2334,6 +2349,7 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, Stream *stream,
       uname_len = priv_create_username (agent, stream,
           component->id,  rcand, lcand,
           uname, sizeof (uname), inbound);
+
       if (username &&
           uname_len == username_len &&
           memcmp (uname, username, username_len) == 0) {
