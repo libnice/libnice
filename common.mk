@@ -1,7 +1,6 @@
 
 ERROR_CFLAGS = \
-	-Wall \
-	-Werror \
+	$(NICE_CFLAGS) \
 	-Wextra \
 	-Wundef \
 	-Wnested-externs \

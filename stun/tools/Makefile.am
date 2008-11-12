@@ -8,7 +8,7 @@
 #
 
 include $(top_srcdir)/common.mk
-AM_CFLAGS = -std=gnu99
+AM_CFLAGS = -std=gnu99 $(ERROR_CFLAGS)
 AM_CPPFLAGS = -I$(top_srcdir) 
 
 bin_PROGRAMS = stunbdc stund

@@ -1,6 +1,11 @@
 
 AC_PREREQ(2.59c)
+
+dnl releases only do -Wall, cvs and prerelease does -Werror too
+dnl use a three digit version number for releases, and four for cvs/prerelease
 AC_INIT(nice, 0.0.1.1)
+NICE_RELEASE="no"
+
 AC_CONFIG_SRCDIR([agent/agent.c])
 AC_CONFIG_HEADER([config.h])
 AM_INIT_AUTOMAKE([-Wall])
@@ -28,12 +33,13 @@ NICE_LIBVERSION=${NICE_CURRENT}:${NICE_REVISION}:${NICE_AGE}
 NICE_LT_LDFLAGS="-version-info ${NICE_LIBVERSION}"
 AC_SUBST(NICE_LT_LDFLAGS)
 
+
 # Checks for programs.
 
 AC_PROG_CC
-dnl AC_PROG_CC_C99
 AC_USE_SYSTEM_EXTENSIONS
 AC_PROG_LIBTOOL
+
 
 # Checks for compiler features
 
@@ -44,6 +50,15 @@ AC_HEADER_STDBOOL
 AC_DEFINE([_FORTIFY_SOURCE], [2], [Define to `2' to get GNU/libc warnings.])
 AC_DEFINE([NICEAPI_EXPORT], [ ], [Public library function implementation])
 AC_CHECK_HEADERS([arpa/inet.h net/in.h ifaddrs.h])
+
+NICE_CFLAGS="-Wall"
+dnl if asked for, add -Werror if supported
+if test "x$NICE_RELEASE" != "xyes"; then
+  NICE_CFLAGS="$NICE_CFLAGS -Werror"
+fi
+
+AC_SUBST(NICE_CFLAGS)
+AC_MSG_NOTICE([set NICE_CFLAGS to $NICE_CFLAGS])
 
 # Checks for libraries.
 AC_CHECK_LIB(rt, clock_gettime, [LIBRT="-lrt"], [LIBRT=""])

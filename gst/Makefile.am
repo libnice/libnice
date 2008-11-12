@@ -6,7 +6,7 @@
 #
 # Licensed under MPL 1.1/LGPL 2.1. See file COPYING.
 
-AM_CFLAGS = -Wall -Werror \
+AM_CFLAGS = $(NICE_CFLAGS) \
 	$(GST_CFLAGS) \
 	-I $(top_srcdir) \
 	-I $(top_srcdir)/socket \
