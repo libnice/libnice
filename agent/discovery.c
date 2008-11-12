@@ -761,7 +761,13 @@ NiceCandidate *discovery_learn_remote_peer_reflexive_candidate (
       g_free(decoded_remote);
 
       candidate->password = g_strdup(remote->password);
+    } else if (agent->compatibility == NICE_COMPATIBILITY_GOOGLE) {
+      g_free (candidate->username);
+      g_free (candidate->password);
+      candidate->username = g_strdup(remote->username);
+      candidate->password = g_strdup(remote->password);
     }
+
 
     candidate->sockptr = NULL; /* not stored for remote candidates */
     /* note: candidate username and password are left NULL as stream 
