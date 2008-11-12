@@ -53,7 +53,7 @@ typedef struct
   Stream *stream;
   Component *component;
   TurnServer *turn;
-  StunAgent turn_agent;
+  StunAgent stun_agent;
   uint8_t *msn_turn_username;
   uint8_t *msn_turn_password;
   stun_timer_t timer;
@@ -72,7 +72,7 @@ typedef struct
   Stream *stream;
   Component *component;
   TurnServer *turn;
-  StunAgent turn_agent;
+  StunAgent stun_agent;
   GSource *timer_source;
   GSource *tick_source;
   uint8_t *msn_turn_username;

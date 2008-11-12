@@ -576,7 +576,7 @@ static void priv_turn_allocate_refresh_tick_unlocked (CandidateRefresh *cand)
     password = g_base64_decode ((gchar *)password, &password_len);
   }
 
-  buffer_len = stun_usage_turn_create_refresh (&cand->turn_agent,
+  buffer_len = stun_usage_turn_create_refresh (&cand->stun_agent,
       &cand->stun_message,  cand->stun_buffer, sizeof(cand->stun_buffer),
       cand->stun_resp_msg.buffer == NULL ? NULL : &cand->stun_resp_msg, -1,
       username, username_len,
@@ -1877,7 +1877,7 @@ priv_add_new_turn_refresh (CandidateDiscovery *cdisco, NiceCandidate *relay_cand
       cand->stream = cdisco->stream;
       cand->component = cdisco->component;
       cand->agent = cdisco->agent;
-      memcpy (&cand->turn_agent, &cdisco->turn_agent, sizeof(StunAgent));
+      memcpy (&cand->stun_agent, &cdisco->stun_agent, sizeof(StunAgent));
       nice_debug ("Agent %p : Adding new refresh candidate %p with timeout %d",
           agent, cand, (lifetime - 60) * 1000);
       agent->refresh_list = modified_list;
@@ -2241,7 +2241,7 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, Stream *stream,
       if (d->type == NICE_CANDIDATE_TYPE_RELAYED &&
           d->stream == stream && d->component == component &&
           d->nicesock == socket) {
-        valid = stun_agent_validate (&d->turn_agent, &req,
+        valid = stun_agent_validate (&d->stun_agent, &req,
             (uint8_t *) buf, len, conncheck_stun_validater, &validater_data);
 
         if (valid == STUN_VALIDATION_UNMATCHED_RESPONSE)
@@ -2261,7 +2261,7 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, Stream *stream,
           stream, r->component, component, r->nicesock, r->relay_socket, socket);
       if (r->stream == stream && r->component == component &&
           (r->nicesock == socket || r->relay_socket == socket)) {
-        valid = stun_agent_validate (&r->turn_agent, &req,
+        valid = stun_agent_validate (&r->stun_agent, &req,
             (uint8_t *) buf, len, conncheck_stun_validater, &validater_data);
         nice_debug ("Validating gave %d", valid);
         if (valid == STUN_VALIDATION_UNMATCHED_RESPONSE)

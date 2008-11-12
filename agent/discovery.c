@@ -186,7 +186,7 @@ void refresh_free_item (gpointer data, gpointer user_data)
     password = g_base64_decode ((gchar *)password, &password_len);
   }
 
-  buffer_len = stun_usage_turn_create_refresh (&cand->turn_agent,
+  buffer_len = stun_usage_turn_create_refresh (&cand->stun_agent,
       &cand->stun_message,  cand->stun_buffer, sizeof(cand->stun_buffer),
       cand->stun_resp_msg.buffer == NULL ? NULL : &cand->stun_resp_msg, 0,
       username, username_len,
@@ -848,7 +848,7 @@ static gboolean priv_discovery_tick_unlocked (gpointer pointer)
             password = g_base64_decode ((gchar *)password, &password_len);
           }
 
-          buffer_len = stun_usage_turn_create (&cand->turn_agent,
+          buffer_len = stun_usage_turn_create (&cand->stun_agent,
               &cand->stun_message,  cand->stun_buffer, sizeof(cand->stun_buffer),
               cand->stun_resp_msg.buffer == NULL ? NULL : &cand->stun_resp_msg,
               STUN_USAGE_TURN_REQUEST_PORT_NORMAL,
