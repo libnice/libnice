@@ -1424,7 +1424,8 @@ static gboolean priv_schedule_triggered_check (NiceAgent *agent, Stream *stream,
 	  /* note: to take care of the controlling-controlling case in 
 	   *       aggressive nomination mode, send a new triggered
 	   *       check to nominate the pair */
-	  if (agent->controlling_mode)
+	  if (agent->compatibility == NICE_COMPATIBILITY_DRAFT19 &&
+              agent->controlling_mode)
 	    priv_conn_check_initiate (agent, p);
 	}
 
