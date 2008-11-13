@@ -94,8 +94,8 @@ cb_new_selected_pair(NiceAgent *agent,
 static void cb_candidate_gathering_done(NiceAgent *agent, guint stream_id, gpointer data)
 {
   NiceAgent *other = g_object_get_data (G_OBJECT (agent), "other-agent");
-  const gchar *ufrag = NULL, *password = NULL;
-  GSList *cands;
+  gchar *ufrag = NULL, *password = NULL;
+  GSList *cands, *i;
   guint id, other_id;
   gpointer tmp;
 
@@ -109,11 +109,17 @@ static void cb_candidate_gathering_done(NiceAgent *agent, guint stream_id, gpoin
   nice_agent_get_local_credentials(agent, id, &ufrag, &password);
   nice_agent_set_remote_credentials (other,
       other_id, ufrag, password);
+  g_free (ufrag);
+  g_free (password);
 
   cands = nice_agent_get_local_candidates(agent, id, 1);
   g_assert (cands != NULL);
 
   nice_agent_set_remote_candidates (other, other_id, 1, cands);
+
+  for (i = cands; i; i = i->next)
+    nice_candidate_free ((NiceCandidate *) i->data);
+  g_slist_free (cands);
 }
 
 

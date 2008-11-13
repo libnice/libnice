@@ -263,6 +263,8 @@ static void priv_get_local_addr (NiceAgent *agent, guint stream_id, guint compon
       *dstaddr = cand->addr;
     }
   }
+  for (i = cands; i; i = i->next)
+    nice_candidate_free ((NiceCandidate *) i->data);
   g_slist_free (cands);
 }
 
@@ -279,8 +281,11 @@ static GSList *priv_get_local_candidate (NiceAgent *agent, guint stream_id, guin
       out_cand = cand;
     }
   }
+  result = g_slist_append (result, nice_candidate_copy (out_cand));
+
+  for (i = cands; i; i = i->next)
+    nice_candidate_free ((NiceCandidate *) i->data);
   g_slist_free (cands);
-  result = g_slist_append (result, out_cand);
   return result;
 }
 
@@ -300,7 +305,7 @@ static int run_full_test (NiceAgent *lagent, NiceAgent *ragent, NiceAddress *bas
 {
   //  NiceAddress laddr, raddr, laddr_rtcp, raddr_rtcp;   
   NiceCandidate cdes;
-  GSList *cands;
+  GSList *cands, *i;
   guint ls_id, rs_id;
 
   init_candidate (&cdes);
@@ -407,15 +412,23 @@ static int run_full_test (NiceAgent *lagent, NiceAgent *ragent, NiceAddress *bas
   g_slist_free (cands);*/
   cands = priv_get_local_candidate (ragent, rs_id, NICE_COMPONENT_TYPE_RTP);
   nice_agent_set_remote_candidates (lagent, ls_id, NICE_COMPONENT_TYPE_RTP, cands);
+  for (i = cands; i; i = i->next)
+    nice_candidate_free ((NiceCandidate *) i->data);
   g_slist_free (cands);
   cands = priv_get_local_candidate (ragent, rs_id, NICE_COMPONENT_TYPE_RTCP);
   nice_agent_set_remote_candidates (lagent, ls_id, NICE_COMPONENT_TYPE_RTCP, cands);
+  for (i = cands; i; i = i->next)
+    nice_candidate_free ((NiceCandidate *) i->data);
   g_slist_free (cands);
   cands = priv_get_local_candidate (lagent, ls_id, NICE_COMPONENT_TYPE_RTP);
   nice_agent_set_remote_candidates (ragent, rs_id, NICE_COMPONENT_TYPE_RTP, cands);
+  for (i = cands; i; i = i->next)
+    nice_candidate_free ((NiceCandidate *) i->data);
   g_slist_free (cands);
   cands = priv_get_local_candidate (lagent, ls_id, NICE_COMPONENT_TYPE_RTCP);
   nice_agent_set_remote_candidates (ragent, rs_id, NICE_COMPONENT_TYPE_RTCP, cands);
+  for (i = cands; i; i = i->next)
+    nice_candidate_free ((NiceCandidate *) i->data);
   g_slist_free (cands);
 
   g_debug ("test-fullmode: Set properties, next running mainloop until connectivity checks succeed...");
@@ -672,6 +685,8 @@ static int run_full_test_wrong_password (NiceAgent *lagent, NiceAgent *ragent, N
       laddr = cand->addr;
     }
   }
+  for (i = cands; i; i = i->next)
+    nice_candidate_free ((NiceCandidate *) i->data);
   g_slist_free (cands);
 
   cands = nice_agent_get_local_candidates(ragent, rs_id, NICE_COMPONENT_TYPE_RTP);
@@ -791,6 +806,8 @@ static int run_full_test_control_conflict (NiceAgent *lagent, NiceAgent *ragent,
       laddr = cand->addr;
     }
   }
+  for (i = cands; i; i = i->next)
+    nice_candidate_free ((NiceCandidate *) i->data);
   g_slist_free (cands);
 
   cands = nice_agent_get_local_candidates(ragent, rs_id, NICE_COMPONENT_TYPE_RTP);
@@ -970,6 +987,7 @@ int main (void)
   /* note: verify that correct number of local candidates were reported */
   g_assert (global_lagent_cands == 2);
   g_assert (global_ragent_cands == 2);
+
 
   /* run test with incorrect credentials (make sure process fails) */
   g_debug ("test-fullmode: TEST STARTS / incorrect credentials");

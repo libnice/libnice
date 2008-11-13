@@ -202,6 +202,8 @@ static void priv_get_local_addr (NiceAgent *agent, guint stream_id, guint compon
       break;
     }
   }
+  for (i = cands; i; i = i->next)
+    nice_candidate_free ((NiceCandidate *) i->data);
   g_slist_free (cands);
 }
 

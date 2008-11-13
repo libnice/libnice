@@ -87,12 +87,14 @@ main (void)
 
     {
       NiceCandidate *candidate;
-      GSList *candidates;
+      GSList *candidates, *i;
 
       candidates = nice_agent_get_local_candidates (agent, 1, 1);
       candidate = candidates->data;
 
       nice_socket_send (candidate->sockptr, &(candidate->addr), 6, "\x80hello");
+      for (i = candidates; i; i = i->next)
+        nice_candidate_free ((NiceCandidate *) i->data);
       g_slist_free (candidates);
     }
 

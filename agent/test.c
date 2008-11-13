@@ -49,7 +49,7 @@ main (void)
   NiceAgent *agent;
   NiceAddress addr_local, addr_remote;
   NiceCandidate *candidate;
-  GSList *candidates;
+  GSList *candidates, *i;
   guint stream_id;
 
   nice_address_init (&addr_local);
@@ -86,6 +86,8 @@ main (void)
   nice_address_set_port (&(candidate->addr), 1);
   g_assert (nice_address_equal (&(candidate->addr), &addr_local));
   g_assert (strncmp (candidate->foundation, "1", 1) == 0);
+  for (i = candidates; i; i = i->next)
+    nice_candidate_free ((NiceCandidate *) i->data);
   g_slist_free (candidates);
 
   /* clean up */
