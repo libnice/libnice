@@ -366,7 +366,7 @@ bool stun_agent_init_response (StunAgent *agent, StunMessage *msg,
   msg->agent = agent;
   msg->key = request->key;
   msg->key_len = request->key_len;
-  memcpy (msg->long_term_key, request->long_term_key,
+  memmove (msg->long_term_key, request->long_term_key,
       sizeof(msg->long_term_key));
   msg->long_term_valid = request->long_term_valid;
 
@@ -400,7 +400,7 @@ bool stun_agent_init_error (StunAgent *agent, StunMessage *msg,
   msg->agent = agent;
   msg->key = request->key;
   msg->key_len = request->key_len;
-  memcpy (msg->long_term_key, request->long_term_key,
+  memmove (msg->long_term_key, request->long_term_key,
       sizeof(msg->long_term_key));
   msg->long_term_valid = request->long_term_valid;
 
