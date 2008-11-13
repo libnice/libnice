@@ -99,7 +99,7 @@ priv_process_pending_bindings (turn_priv *priv)
     NiceAddress *peer = priv->pending_bindings->data;
     ret = priv_add_channel_binding (priv, peer);
     priv->pending_bindings = g_list_remove (priv->pending_bindings, peer);
-    g_free (peer);
+    nice_address_free (peer);
   }
 }
 
@@ -269,7 +269,7 @@ priv_add_channel_binding (turn_priv *priv, NiceAddress *peer)
   nice_address_copy_to_sockaddr (peer, (struct sockaddr *)&sa);
 
   if (priv->current_binding) {
-    NiceAddress * pending= g_new0 (NiceAddress, 1);
+    NiceAddress * pending= nice_address_new ();
     *pending = *peer;
     priv->pending_bindings = g_list_append (priv->pending_bindings, pending);
     return FALSE;
