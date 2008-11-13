@@ -712,7 +712,7 @@ agent_candidate_pair_priority (NiceAgent *agent, NiceCandidate *local, NiceCandi
 
 static gboolean
 priv_add_new_candidate_discovery_stun (NiceAgent *agent,
-    NiceCandidate *host_candidate, NiceAddress server,
+    NiceSocket *socket, NiceAddress server,
     Stream *stream, guint component_id)
 {
   CandidateDiscovery *cdisco;
@@ -727,7 +727,7 @@ priv_add_new_candidate_discovery_stun (NiceAgent *agent,
 
     if (modified_list) {
       cdisco->type = NICE_CANDIDATE_TYPE_SERVER_REFLEXIVE;
-      cdisco->nicesock = host_candidate->sockptr;
+      cdisco->nicesock = socket;
       cdisco->server = server;
       cdisco->stream = stream;
       cdisco->component = stream_find_component_by_id (stream, component_id);
@@ -748,7 +748,7 @@ priv_add_new_candidate_discovery_stun (NiceAgent *agent,
 
 static gboolean
 priv_add_new_candidate_discovery_turn (NiceAgent *agent,
-    NiceCandidate *host_candidate, TurnServer *turn,
+    NiceSocket *socket, TurnServer *turn,
     Stream *stream, guint component_id)
 {
   CandidateDiscovery *cdisco;
@@ -763,13 +763,33 @@ priv_add_new_candidate_discovery_turn (NiceAgent *agent,
     priv_agent_to_turn_compatibility (agent);
 
     if (modified_list) {
-      cdisco->type = NICE_CANDIDATE_TYPE_RELAYED;
-      if (turn->type ==  NICE_RELAY_TYPE_TURN_UDP) {
-        cdisco->nicesock = host_candidate->sockptr;
-      } else {
-        Component *component = stream_find_component_by_id (stream,
-            component_id);
+      Component *component = stream_find_component_by_id (stream, component_id);
 
+      cdisco->type = NICE_CANDIDATE_TYPE_RELAYED;
+
+      if (turn->type ==  NICE_RELAY_TYPE_TURN_UDP) {
+        if (agent->compatibility == NICE_COMPATIBILITY_GOOGLE) {
+          GSList *modified_list;
+          NiceAddress addr = socket->addr;
+          NiceSocket *new_socket;
+          nice_address_set_port (&addr, 0);
+
+          new_socket = nice_udp_bsd_socket_new (&addr);
+          if (new_socket) {
+            agent_attach_stream_component_socket (agent, stream,
+                component, new_socket);
+            modified_list = g_slist_append (component->sockets, new_socket);
+            if (modified_list) {
+              /* success: store a pointer to the sockaddr */
+              component->sockets = modified_list;
+              socket = new_socket;
+            } else {
+              nice_socket_free (new_socket);
+            }
+          }
+        }
+        cdisco->nicesock = socket;
+      } else {
         cdisco->nicesock = nice_tcp_turn_socket_new (agent,
             component->ctx,
             &turn->server,
@@ -932,7 +952,7 @@ nice_agent_gather_candidates (
 
           res =
               priv_add_new_candidate_discovery_stun (agent,
-                  host_candidate,
+                  host_candidate->sockptr,
                   stun_server,
                   stream,
                   n + 1);
@@ -952,7 +972,7 @@ nice_agent_gather_candidates (
 
           gboolean res =
               priv_add_new_candidate_discovery_turn (agent,
-                  host_candidate,
+                  host_candidate->sockptr,
                   turn,
                   stream,
                   n + 1);
