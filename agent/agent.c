@@ -1179,7 +1179,7 @@ NICEAPI_EXPORT gboolean
 nice_agent_get_local_credentials (
   NiceAgent *agent,
   guint stream_id,
-  const gchar **ufrag, const gchar **pwd)
+  gchar **ufrag, gchar **pwd)
 {
   Stream *stream;
   gboolean ret = TRUE;
