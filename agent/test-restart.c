@@ -276,13 +276,17 @@ static int run_restart_test (NiceAgent *lagent, NiceAgent *ragent, NiceAddress *
   /* step: pass the remote candidates to agents  */
   cands = g_slist_append (NULL, &cdes);
   {
-      const gchar *ufrag = NULL, *password = NULL;
+      gchar *ufrag = NULL, *password = NULL;
       nice_agent_get_local_credentials(lagent, ls_id, &ufrag, &password);
       nice_agent_set_remote_credentials (ragent,
 					 rs_id, ufrag, password);
+      g_free (ufrag);
+      g_free (password);
       nice_agent_get_local_credentials(ragent, rs_id, &ufrag, &password);
       nice_agent_set_remote_credentials (lagent,
 					 ls_id, ufrag, password);
+      g_free (ufrag);
+      g_free (password);
   }
   cdes.component_id = NICE_COMPONENT_TYPE_RTP;
   cdes.addr = raddr;
@@ -328,13 +332,17 @@ static int run_restart_test (NiceAgent *lagent, NiceAgent *ragent, NiceAddress *
   g_assert (tie_breaker != ragent->tie_breaker);
   nice_agent_restart (lagent);
   {
-      const gchar *ufrag = NULL, *password = NULL;
+      gchar *ufrag = NULL, *password = NULL;
       nice_agent_get_local_credentials(lagent, ls_id, &ufrag, &password);
       nice_agent_set_remote_credentials (ragent,
 					 rs_id, ufrag, password);
+      g_free (ufrag);
+      g_free (password);
       nice_agent_get_local_credentials(ragent, rs_id, &ufrag, &password);
       nice_agent_set_remote_credentials (lagent,
 					 ls_id, ufrag, password);
+      g_free (ufrag);
+      g_free (password);
   }
   
   /* send another packet after restart */
