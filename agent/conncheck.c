@@ -302,7 +302,6 @@ static gboolean priv_conn_check_tick_stream (Stream *stream, NiceAgent *agent, G
               g_time_val_add (&p->next_tick, timeout * 1000);
 
               keep_timer_going = TRUE;
-              p->traffic_after_tick = TRUE; /* for keepalive timer */
               break;
             }
           default:
@@ -312,7 +311,6 @@ static gboolean priv_conn_check_tick_stream (Stream *stream, NiceAgent *agent, G
               g_time_val_add (&p->next_tick, timeout * 1000);
 
               keep_timer_going = TRUE;
-              p->traffic_after_tick = TRUE; /* for keepalive timer */
               break;
             }
         }
@@ -500,11 +498,8 @@ static gboolean priv_conn_keepalive_tick (gpointer pointer)
       for (j = stream->conncheck_list; j ; j = j->next) {
 	CandidateCheckPair *p = j->data;
 
-	if (p->traffic_after_tick != TRUE) {
-	  nice_debug ("Agent %p : resending STUN-CC to keep the candidate alive (pair %p).", agent, p);
-	  conn_check_send (agent, p);
-	}
-	p->traffic_after_tick = FALSE;
+        nice_debug ("Agent %p : resending STUN-CC to keep the candidate alive (pair %p).", agent, p);
+        conn_check_send (agent, p);
       }
     }
   }
@@ -1346,7 +1341,6 @@ int conn_check_send (NiceAgent *agent, CandidateCheckPair *pair)
     /* note: convert from milli to microseconds for g_time_val_add() */
     g_get_current_time (&pair->next_tick);
     g_time_val_add (&pair->next_tick, timeout * 1000);
-    pair->traffic_after_tick = TRUE; /* for keepalive timer */
   }
     
   return 0;
