@@ -78,10 +78,16 @@ static const uint16_t known_attributes[] =  {
 /**
  * Creates a listening socket
  */
-int listen_socket (int fam, int type, int proto, uint16_t port)
+int listen_socket (int fam, int type, int proto, unsigned int port)
 {
   int yes = 1;
   int fd = socket (fam, type, proto);
+  union {
+    struct sockaddr addr;
+    struct sockaddr_in in;
+    struct sockaddr_in6 in6;
+    struct sockaddr_storage storage;
+  } addr;
   if (fd == -1)
   {
     perror ("Error opening IP port");
@@ -90,24 +96,23 @@ int listen_socket (int fam, int type, int proto, uint16_t port)
   if (fd < 3)
     goto error;
 
-  struct sockaddr_storage addr;
   memset (&addr, 0, sizeof (addr));
-  addr.ss_family = fam;
+  addr.storage.ss_family = fam;
 #ifdef HAVE_SA_LEN
-  addr.ss_len = sizeof (addr);
+  addr.storage.ss_len = sizeof (addr);
 #endif
 
   switch (fam)
   {
     case AF_INET:
-      ((struct sockaddr_in *)&addr)->sin_port = port;
+      addr.in.sin_port = htons (port);
       break;
 
     case AF_INET6:
 #ifdef IPV6_V6ONLY
       setsockopt (fd, SOL_IPV6, IPV6_V6ONLY, &yes, sizeof (yes));
 #endif
-      ((struct sockaddr_in6 *)&addr)->sin6_port = port;
+      addr.in6.sin6_port = htons (port);
       break;
   }
 
@@ -271,7 +276,7 @@ static int run (int family, int protocol, unsigned port)
 {
   StunAgent oldagent;
   StunAgent newagent;
-  int sock = listen_socket (family, SOCK_DGRAM, protocol, htons (port));
+  int sock = listen_socket (family, SOCK_DGRAM, protocol, port);
   if (sock == -1)
     return -1;
 

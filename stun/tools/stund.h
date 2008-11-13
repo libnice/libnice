@@ -36,7 +36,7 @@
 #ifndef NICE_STUN_STUND_H
 # define NICE_STUN_STUND_H 1
 
-int listen_socket (int fam, int type, int proto, uint16_t port);
+int listen_socket (int fam, int type, int proto, unsigned port);
 ssize_t send_safe (int fd, const struct msghdr *msg);
 ssize_t recv_safe (int fd, struct msghdr *msg);
 
