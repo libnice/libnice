@@ -171,10 +171,7 @@ static void numb (void)
   assert (val == 0 || (errno == EINPROGRESS));
 #endif
 
-  memset (&hints, 0, sizeof (hints));
-  hints.ai_family = AF_UNSPEC;
-  hints.ai_socktype = SOCK_DGRAM;
-  hints.ai_flags = 0;
+  freeaddrinfo (res);
 
 
   /* Send old-style response */
