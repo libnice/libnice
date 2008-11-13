@@ -571,6 +571,11 @@ discovery_add_relay_candidate (
 
       result = priv_add_local_candidate_pruned (component, candidate);
       if (result) {
+        GSList *modified_list = g_slist_append (component->sockets, relay_socket);
+        if (modified_list) {
+          /* success: store a pointer to the sockaddr */
+          component->sockets = modified_list;
+        }
         agent_signal_new_candidate (agent, candidate);
       } else {
         /* error: memory allocation, or duplicate candidate */
