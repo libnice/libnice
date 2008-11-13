@@ -395,7 +395,7 @@ static void responses (void)
 
 static void keepalive (void)
 {
-  struct sockaddr_storage addr;
+  struct sockaddr_storage addr = {0};
   socklen_t addrlen = sizeof (addr);
   int val, servfd, fd;
 
