@@ -1235,12 +1235,23 @@ nice_agent_set_remote_candidates (NiceAgent *agent, guint stream_id, guint compo
 {
   const GSList *i; 
   int added = 0;
+  Stream *stream;
+
+  nice_debug ("Agent %p: set_remote_candidates %d %d", agent, stream_id, component_id);
 
   g_static_rec_mutex_lock (&agent->mutex);
 
-  if (agent->discovery_unsched_items > 0) {
-    g_static_rec_mutex_unlock (&agent->mutex);
-    return -1;
+  stream = agent_find_stream (agent, stream_id);
+  if (stream == NULL) {
+    added = -1;
+    goto done;
+  }
+
+  if (agent->discovery_unsched_items > 0 || stream->gathering) {
+    nice_debug ("Agent %p: Remote candidates refused for stream %d because "
+        "we are still gathering our own candidates", agent, stream_id);
+    added = -1;
+    goto done;
   }
 
  for (i = candidates; i && added >= 0; i = i->next) {
@@ -1271,6 +1282,7 @@ nice_agent_set_remote_candidates (NiceAgent *agent, guint stream_id, guint compo
      nice_debug ("Agent %p : Warning: unable to schedule any conn checks!", agent);
  }
 
+ done:
  g_static_rec_mutex_unlock (&agent->mutex);
  return added;
 }
