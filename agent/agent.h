@@ -408,7 +408,8 @@ nice_agent_get_local_credentials (
     for remote candidates.
    </para>
    <para>
-   You must first call nice_agent_gather_candidates() before
+   You must first call nice_agent_gather_candidates() and wait for the
+   #NiceAgent::candidate-gathering-done signale before
    calling nice_agent_set_remote_candidates()
    </para>
  </note>
