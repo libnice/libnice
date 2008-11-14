@@ -601,7 +601,15 @@ void agent_gathering_done (NiceAgent *agent)
 
       for (k = component->local_candidates; k; k = k->next) {
         NiceCandidate *local_candidate = k->data;
-
+	{
+	  gchar tmpbuf[INET6_ADDRSTRLEN];
+	  nice_address_to_string (&local_candidate->addr, tmpbuf);
+          nice_debug ("Agent %p: gathered local candidate : [%s]:%u"
+              " for s%d/c%d. U/P '%s'/'%s'", agent,
+              tmpbuf, nice_address_get_port (&local_candidate->addr),
+              local_candidate->stream_id, local_candidate->component_id,
+              local_candidate->username, local_candidate->password);
+	}
         for (l = component->remote_candidates; l; l = l->next) {
           NiceCandidate *remote_candidate = l->data;
 
@@ -991,6 +999,8 @@ nice_agent_gather_candidates (
 
   /* note: no async discoveries pending, signal that we are ready */
   if (agent->discovery_unsched_items == 0) {
+    nice_debug ("Agent %p: Candidate gathering FINISHED, no scheduled items.",
+        agent);
     agent_gathering_done (agent);
   } else {
     g_assert (agent->discovery_list);
@@ -1131,8 +1141,10 @@ static gboolean priv_add_remote_candidate (
 	{
 	  gchar tmpbuf[INET6_ADDRSTRLEN];
 	  nice_address_to_string (addr, tmpbuf);
-	  nice_debug ("Agent %p : Adding remote candidate with addr [%s]:%u.", agent, tmpbuf,
-		   nice_address_get_port (addr));
+	  nice_debug ("Agent %p : Adding remote candidate with addr [%s]:%u"
+              " for s%d/c%d. U/P '%s'/'%s'", agent, tmpbuf,
+              nice_address_get_port (addr), stream_id, component_id,
+              username, password);
 	}
 	
 	if (base_addr)

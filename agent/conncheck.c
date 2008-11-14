@@ -2340,9 +2340,18 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, Stream *stream,
           inbound = FALSE;
         }
       }
+
       uname_len = priv_create_username (agent, stream,
           component->id,  rcand, lcand,
           uname, sizeof (uname), inbound);
+
+      stun_debug ("Comparing username '");
+      stun_debug_bytes (username, username? username_len : 0);
+      stun_debug ("' (%d) with '", username_len);
+      stun_debug_bytes (uname, uname_len);
+      stun_debug ("' (%d) : %d\n",
+          uname_len, username && uname_len == username_len &&
+          memcmp (username, uname, uname_len) == 0);
 
       if (username &&
           uname_len == username_len &&
