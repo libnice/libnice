@@ -2143,7 +2143,7 @@ static bool conncheck_stun_validater (StunAgent *agent,
     stun_debug ("' (%d) with '", username_len);
     stun_debug_bytes (uname, uname_len);
     stun_debug ("' (%d) : %d\n",
-        uname, memcmp (username, uname, uname_len));
+        uname_len, memcmp (username, uname, uname_len));
     if (uname_len > 0 && username_len >= uname_len &&
         memcmp (username, uname, uname_len) == 0) {
       gchar *pass = NULL;
