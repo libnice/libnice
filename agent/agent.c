@@ -1097,7 +1097,6 @@ static gboolean priv_add_remote_candidate (
 {
   Component *component;
   NiceCandidate *candidate;
-  gchar *username_dup = NULL, *password_dup = NULL;
   gboolean error_flag = FALSE;
 
   if (!agent_find_component (agent, stream_id, component_id, NULL, &component))
@@ -1121,10 +1120,6 @@ static gboolean priv_add_remote_candidate (
   }
   else {
     /* case 2: add a new candidate */
-    if (username)
-      username_dup = g_strdup (username);
-    if (password) 
-      password_dup = g_strdup (password);
 
     candidate = nice_candidate_new (type);
     if (candidate) {
@@ -1152,8 +1147,8 @@ static gboolean priv_add_remote_candidate (
 	
 	candidate->transport = transport;
 	candidate->priority = priority;
-	candidate->username = username_dup;
-	candidate->password = password_dup;
+	candidate->username = g_strdup (username);
+	candidate->password = g_strdup (password);
 	
 	if (foundation)
 	  g_strlcpy (candidate->foundation, foundation, NICE_CANDIDATE_MAX_FOUNDATION);
@@ -1171,8 +1166,6 @@ static gboolean priv_add_remote_candidate (
   if (error_flag) {
     if (candidate) 
       nice_candidate_free (candidate);
-    g_free (username_dup);
-    g_free (password_dup);
     return FALSE;
   }
 
