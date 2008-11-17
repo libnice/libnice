@@ -15,7 +15,8 @@ check_PROGRAMS = \
 	test-format \
 	test-bind \
 	test-turn \
-	test-conncheck
+	test-conncheck \
+	test-hmac
 
 dist_check_SCRIPTS = check-bind.sh
 
