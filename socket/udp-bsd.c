@@ -113,7 +113,8 @@ socket_send (
 
   do
     sent = sendto (sock->fileno, buf, len, 0, (struct sockaddr *) &sa,
-                   sizeof (sa));
+        sa.ss_family == AF_INET? sizeof (struct sockaddr_in) :
+        sizeof(struct sockaddr_in6));
   while ((sent == -1) && sock_recv_err (sock->fileno));
   
   return sent == (ssize_t)len;
@@ -196,7 +197,7 @@ nice_udp_bsd_socket_new (NiceAddress *addr)
   if ((sockfd == -1)
    && ((name.ss_family == AF_UNSPEC) || (name.ss_family == AF_INET)))
     {
-      sockfd = socket (PF_INET, SOCK_DGRAM, 0);
+      sockfd = socket (PF_INET, SOCK_DGRAM, IPPROTO_UDP);
       name.ss_family = AF_INET;
 #ifdef HAVE_SA_LEN
       name.ss_len = sizeof (struct sockaddr_in);
@@ -223,7 +224,9 @@ nice_udp_bsd_socket_new (NiceAddress *addr)
   fcntl (sockfd, F_SETFL, fcntl (sockfd, F_GETFL) | O_NONBLOCK);
 #endif
 
-  if(bind (sockfd, (struct sockaddr *) &name, sizeof (name)) != 0) {
+  if(bind (sockfd, (struct sockaddr *) &name,
+          name.ss_family == AF_INET? sizeof (struct sockaddr_in) :
+          sizeof(struct sockaddr_in6)) < 0) {
     g_slice_free (NiceSocket, sock);
 #ifdef G_OS_WIN32
     closesocket(sock->fileno);
@@ -233,7 +236,9 @@ nice_udp_bsd_socket_new (NiceAddress *addr)
     return NULL;
   }
 
-  if (getsockname (sockfd, (struct sockaddr *) &name, &name_len) != 0) {
+  name_len = name.ss_family == AF_INET? sizeof (struct sockaddr_in) :
+      sizeof(struct sockaddr_in6);
+  if (getsockname (sockfd, (struct sockaddr *) &name, &name_len) < 0) {
     g_slice_free (NiceSocket, sock);
 #ifdef G_OS_WIN32
     closesocket(sock->fileno);
