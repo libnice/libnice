@@ -111,6 +111,7 @@ NICEAPI_EXPORT void
 nice_address_init (NiceAddress *addr)
 {
   addr->s.addr.sa_family = AF_UNSPEC;
+  memset (&addr->s, 0, sizeof(addr->s));
 }
 
 NICEAPI_EXPORT NiceAddress *

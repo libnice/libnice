@@ -424,7 +424,8 @@ nice_tcp_turn_socket_new (
   fcntl (sockfd, F_SETFL, fcntl (sockfd, F_GETFL) | O_NONBLOCK);
 #endif
 
-
+  name_len = name.ss_family == AF_INET? sizeof (struct sockaddr_in) :
+      sizeof(struct sockaddr_in6);
   ret = connect (sockfd, (const struct sockaddr *)&name, name_len);
 
 #ifdef G_OS_WIN32
