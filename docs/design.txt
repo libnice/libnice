@@ -212,7 +212,5 @@ format, STUN messages are stored in wire format within the buffers.
 There is no intermediary translation, so the APIs can operate directly
 with data received from or sent to the network.
 
-[1] With two exceptions: creating a new message might require locking
-to ensure uniqueness; and OpenSSL which is used for cryptographic
-hashing and random number generation might access the system entropy
-pool, use threading synchronization...
+[1] With one exception: The random number generated might access the
+system entropy pool (/dev/urandom) if available.

@@ -65,7 +65,6 @@ AC_CHECK_LIB(rt, clock_gettime, [LIBRT="-lrt"], [LIBRT=""])
 AC_CHECK_FUNCS([poll])
 AC_SUBST(LIBRT)
 
-PKG_CHECK_MODULES(OPENSSL, [openssl])
 
 PKG_CHECK_MODULES(GLIB, [dnl
 	glib-2.0 >= 2.10 dnl

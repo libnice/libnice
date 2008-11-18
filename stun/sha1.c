@@ -13,7 +13,6 @@
  */
 
 #include "sha1.h"
-#include "utils.h"
 #include <string.h>
 
 
