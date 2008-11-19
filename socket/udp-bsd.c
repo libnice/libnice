@@ -229,7 +229,7 @@ nice_udp_bsd_socket_new (NiceAddress *addr)
           sizeof(struct sockaddr_in6)) < 0) {
     g_slice_free (NiceSocket, sock);
 #ifdef G_OS_WIN32
-    closesocket(sock->fileno);
+    closesocket(sockfd);
 #else
     close (sockfd);
 #endif
@@ -241,7 +241,7 @@ nice_udp_bsd_socket_new (NiceAddress *addr)
   if (getsockname (sockfd, (struct sockaddr *) &name, &name_len) < 0) {
     g_slice_free (NiceSocket, sock);
 #ifdef G_OS_WIN32
-    closesocket(sock->fileno);
+    closesocket(sockfd);
 #else
     close (sockfd);
 #endif
