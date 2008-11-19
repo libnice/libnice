@@ -2367,14 +2367,11 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, Stream *stream,
       local_candidate == NULL &&
       discovery_msg == FALSE) {
     /* if we couldn't match the username and the stun agent has
-       IGNORE_CREDENTIALS then we have an integrity check failing */
+       IGNORE_CREDENTIALS then we have an integrity check failing.
+       This could happen with the race condition of receiving connchecks
+       before the remote candidates are added. Just drop the message, and let
+       the retransmissions make it work. */
     nice_debug ("Agent %p : Username check failed.", agent);
-    if (stun_agent_init_error (&agent->stun_agent, &msg, rbuf, rbuf_len,
-			       &req, STUN_ERROR_UNAUTHORIZED)) {
-      rbuf_len = stun_agent_finish_message (&agent->stun_agent, &msg, NULL, 0);
-      if (rbuf_len > 0&& agent->compatibility != NICE_COMPATIBILITY_MSN)
-	nice_socket_send (socket, from, rbuf_len, (const gchar*)rbuf);
-    }
     return TRUE;
   }
 
