@@ -439,6 +439,20 @@ nice_tcp_turn_socket_new (
     return NULL;
   }
 
+  name_len = name.ss_family == AF_INET? sizeof (struct sockaddr_in) :
+      sizeof(struct sockaddr_in6);
+  if (getsockname (sockfd, (struct sockaddr *) &name, &name_len) < 0) {
+    g_slice_free (NiceSocket, sock);
+#ifdef G_OS_WIN32
+    closesocket(sockfd);
+#else
+    close (sockfd);
+#endif
+    return NULL;
+  }
+
+  nice_address_set_from_sockaddr (&sock->addr, (struct sockaddr *)&name);
+
   sock->priv = priv = g_slice_new0 (TurnTcpPriv);
 
   priv->compatibility = compatibility;
