@@ -637,8 +637,8 @@ void agent_signal_gathering_done (NiceAgent *agent)
   for (i = agent->streams; i; i = i->next) {
     Stream *stream = i->data;
     if (stream->gathering) {
-      g_signal_emit (agent, signals[SIGNAL_CANDIDATE_GATHERING_DONE], 0, stream->id);
       stream->gathering = FALSE;
+      g_signal_emit (agent, signals[SIGNAL_CANDIDATE_GATHERING_DONE], 0, stream->id);
     }
   }
 }
