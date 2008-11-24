@@ -810,6 +810,11 @@ priv_add_new_candidate_discovery_turn (NiceAgent *agent,
 
         agent_attach_stream_component_socket (agent, stream,
             component, cdisco->nicesock);
+        socket_modified_list = g_slist_append (component->sockets, cdisco->nicesock);
+        if (socket_modified_list) {
+          /* success: store a pointer to the sockaddr */
+          component->sockets = socket_modified_list;
+        }
       }
       cdisco->turn = turn;
       cdisco->server = turn->server;
