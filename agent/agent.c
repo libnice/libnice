@@ -761,6 +761,7 @@ priv_add_new_candidate_discovery_turn (NiceAgent *agent,
 {
   CandidateDiscovery *cdisco;
   GSList *modified_list;
+  GSList *socket_modified_list;
 
   /* note: no need to check for redundant candidates, as this is
    *       done later on in the process */
@@ -777,7 +778,6 @@ priv_add_new_candidate_discovery_turn (NiceAgent *agent,
 
       if (turn->type ==  NICE_RELAY_TYPE_TURN_UDP) {
         if (agent->compatibility == NICE_COMPATIBILITY_GOOGLE) {
-          GSList *modified_list;
           NiceAddress addr = socket->addr;
           NiceSocket *new_socket;
           nice_address_set_port (&addr, 0);
@@ -786,10 +786,10 @@ priv_add_new_candidate_discovery_turn (NiceAgent *agent,
           if (new_socket) {
             agent_attach_stream_component_socket (agent, stream,
                 component, new_socket);
-            modified_list = g_slist_append (component->sockets, new_socket);
-            if (modified_list) {
+            socket_modified_list = g_slist_append (component->sockets, new_socket);
+            if (socket_modified_list) {
               /* success: store a pointer to the sockaddr */
-              component->sockets = modified_list;
+              component->sockets = socket_modified_list;
               socket = new_socket;
             } else {
               nice_socket_free (new_socket);
