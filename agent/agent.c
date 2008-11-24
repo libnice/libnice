@@ -908,6 +908,9 @@ nice_agent_set_relay_info(NiceAgent *agent,
     turn->password = g_strdup (password);
     turn->type = type;
 
+    nice_debug ("Agent %p: added relay server [%s]:%d of type %d", agent,
+        server_ip, server_port, type);
+
     component->turn_servers = g_list_append (component->turn_servers, turn);
   }
 
