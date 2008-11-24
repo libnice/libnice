@@ -36,7 +36,7 @@
 static void MD5Transform(uint32_t buf[4], uint32_t const in[16]);
 
 
-#if __BYTE_ORDER != __BIG_ENDIAN
+#if defined(_WIN32) || __BYTE_ORDER != __BIG_ENDIAN
 #define byteReverse(buf, len)	/* Nothing */
 #else
 /*
