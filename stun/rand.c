@@ -42,24 +42,26 @@
 
 #ifdef _WIN32
 
-#include <Wincrypt.h>
+#include <windows.h>
 
 void RAND_bytes (uint8_t *dst, int len)
 {
-  HCRYPTPROV hCryptProv = NULL;
+  HCRYPTPROV hCryptProv;
   LPCSTR container = "Libnice key container";
 
   if(!CryptAcquireContext(&hCryptProv, container, NULL, PROV_RSA_FULL, 0)) {
     /* non existing container. try to create a new one */
     if (GetLastError() == NTE_BAD_KEYSET) {
-      if(!CryptAcquireContext(&hCryptProv, container, NULL, CRYPT_NEWKEYSET)) {
+      if(!CryptAcquireContext(&hCryptProv, container, NULL, PROV_RSA_FULL, CRYPT_NEWKEYSET)) {
         return;
       }
     }
     return;
   }
 
-  CryptGenRandom (&hCryptProv, len, dst);
+  CryptGenRandom (hCryptProv, len, dst);
+
+  CryptReleaseContext(hCryptProv,0);
 }
 #else
 
