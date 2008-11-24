@@ -999,6 +999,10 @@ int main (void)
   g_assert (global_lagent_cands == 2);
   g_assert (global_ragent_cands == 2);
 
+#ifdef TEST_GOOGLE
+  return result;
+#endif
+
   /* step: run test simulating delayed SDP answer */
   g_debug ("test-fullmode: TEST STARTS / delayed SDP answer");
   result = run_full_test_delayed_answer (lagent, ragent, &baseaddr, 4, 0);
