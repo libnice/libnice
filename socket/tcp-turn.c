@@ -368,9 +368,12 @@ socket_close (NiceSocket *sock)
 #endif
   g_queue_foreach (&priv->send_queue, (GFunc) free_to_be_sent, NULL);
   g_queue_clear (&priv->send_queue);
-  g_io_channel_unref (priv->io_channel);
-  g_source_destroy (priv->io_source);
-  g_source_unref (priv->io_source);
+  if (priv->io_channel)
+	g_io_channel_unref (priv->io_channel);
+  if (priv->io_source) {
+    g_source_destroy (priv->io_source);
+    g_source_unref (priv->io_source);
+  }
   g_slice_free(TurnTcpPriv, sock->priv);
 }
 
