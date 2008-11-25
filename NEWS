@@ -1,0 +1,20 @@
+nice 0.0.3 (2008-11-25)
+========================
+
+Stable google talk support
+Added TCP TURN relay support for google.
+Removed openssl dependency.
+
+nice 0.0.2 (2008-11-12)
+========================
+
+Better support for google talk compatibility mode as well as UDP TURN relay compatibility for Google. 
+Removed -Werror compile flag for releases
+
+nice 0.0.1 (2008-11-05)
+========================
+
+Initial release of libnice.
+It has compatibility support for the latest ICE draft 19, as well as google talk and MSN compatibility.
+It also has support for TURN relays using TURN draft 9 if you're in ICE draft 19 compatibility, or specific Google/MSN relay support if you're in Google/MSN compatibility mode.
+The library is multiplatform and should compile fine on Linux, Mac and Windows systems.
