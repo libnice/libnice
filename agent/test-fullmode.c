@@ -154,7 +154,7 @@ static void cb_nice_recv (NiceAgent *agent, guint stream_id, guint component_id,
   if (strncmp ("12345678", buf, 8))
     return;
 
-  if ((int)user_data == 2) {
+  if (GPOINTER_TO_UINT (user_data) == 2) {
     global_ragent_read = len;
     g_main_loop_quit (global_mainloop);
   }
@@ -164,9 +164,9 @@ static void cb_candidate_gathering_done(NiceAgent *agent, guint stream_id, gpoin
 {
   g_debug ("test-fullmode:%s: %p", G_STRFUNC, data);
 
-  if ((int)data == 1)
+  if (GPOINTER_TO_UINT (data) == 1)
     global_lagent_gathering_done = TRUE;
-  else if ((int)data == 2)
+  else if (GPOINTER_TO_UINT (data) == 2)
     global_ragent_gathering_done = TRUE;
 
   if (global_lagent_gathering_done &&
@@ -181,9 +181,9 @@ static void cb_component_state_changed (NiceAgent *agent, guint stream_id, guint
 {
   g_debug ("test-fullmode:%s: %p", __func__, data);
 
-  if ((int)data == 1)
+  if (GPOINTER_TO_UINT (data) == 1)
     global_lagent_state[component_id - 1] = state;
-  else if ((int)data == 2)
+  else if (GPOINTER_TO_UINT (data) == 2)
     global_ragent_state[component_id - 1] = state;
   
   if (state == NICE_COMPONENT_STATE_READY)
@@ -218,9 +218,9 @@ static void cb_new_selected_pair(NiceAgent *agent, guint stream_id, guint compon
 {
   g_debug ("test-fullmode:%s: %p", __func__, data);
 
-  if ((int)data == 1)
+  if (GPOINTER_TO_UINT (data) == 1)
     ++global_lagent_cands;
-  else if ((int)data == 2)
+  else if (GPOINTER_TO_UINT (data) == 2)
     ++global_ragent_cands;
 
   /* XXX: dear compiler, these are for you: */
@@ -240,9 +240,9 @@ static void cb_initial_binding_request_received(NiceAgent *agent, guint stream_i
 {
   g_debug ("test-fullmode:%s: %p", __func__, data);
 
-  if ((int)data == 1)
+  if (GPOINTER_TO_UINT (data) == 1)
     global_lagent_ibr_received = TRUE;
-  else if ((int)data == 2)
+  else if (GPOINTER_TO_UINT (data) == 2)
     global_ragent_ibr_received = TRUE;
 
   if (global_exit_when_ibr_received)
@@ -351,13 +351,17 @@ static int run_full_test (NiceAgent *lagent, NiceAgent *ragent, NiceAddress *bas
 
   /* step: attach to mainloop (needed to register the fds) */
   nice_agent_attach_recv (lagent, ls_id, NICE_COMPONENT_TYPE_RTP,
-      g_main_loop_get_context (global_mainloop), cb_nice_recv, (gpointer)1);
+      g_main_loop_get_context (global_mainloop), cb_nice_recv,
+      GUINT_TO_POINTER (1));
   nice_agent_attach_recv (lagent, ls_id, NICE_COMPONENT_TYPE_RTCP,
-      g_main_loop_get_context (global_mainloop), cb_nice_recv, (gpointer)1);
+      g_main_loop_get_context (global_mainloop), cb_nice_recv,
+      GUINT_TO_POINTER (1));
   nice_agent_attach_recv (ragent, rs_id, NICE_COMPONENT_TYPE_RTP,
-      g_main_loop_get_context (global_mainloop), cb_nice_recv, (gpointer)2);
+      g_main_loop_get_context (global_mainloop), cb_nice_recv,
+      GUINT_TO_POINTER (2));
   nice_agent_attach_recv (ragent, rs_id, NICE_COMPONENT_TYPE_RTCP,
-      g_main_loop_get_context (global_mainloop), cb_nice_recv, (gpointer)2);
+      g_main_loop_get_context (global_mainloop), cb_nice_recv,
+      GUINT_TO_POINTER (2));
 
   /* step: run mainloop until local candidates are ready
    *       (see timer_cb() above) */
@@ -510,13 +514,17 @@ static int run_full_test_delayed_answer (NiceAgent *lagent, NiceAgent *ragent, N
 
   /* step: attach to mainloop (needed to register the fds) */
   nice_agent_attach_recv (lagent, ls_id, NICE_COMPONENT_TYPE_RTP,
-      g_main_loop_get_context (global_mainloop), cb_nice_recv, (gpointer)1);
+      g_main_loop_get_context (global_mainloop), cb_nice_recv,
+      GUINT_TO_POINTER (1));
   nice_agent_attach_recv (lagent, ls_id, NICE_COMPONENT_TYPE_RTCP,
-      g_main_loop_get_context (global_mainloop), cb_nice_recv, (gpointer)1);
+      g_main_loop_get_context (global_mainloop), cb_nice_recv,
+      GUINT_TO_POINTER (1));
   nice_agent_attach_recv (ragent, rs_id, NICE_COMPONENT_TYPE_RTP,
-      g_main_loop_get_context (global_mainloop), cb_nice_recv, (gpointer)2);
+      g_main_loop_get_context (global_mainloop), cb_nice_recv,
+      GUINT_TO_POINTER (2));
   nice_agent_attach_recv (ragent, rs_id, NICE_COMPONENT_TYPE_RTCP,
-      g_main_loop_get_context (global_mainloop), cb_nice_recv, (gpointer)2);
+      g_main_loop_get_context (global_mainloop), cb_nice_recv,
+      GUINT_TO_POINTER (2));
 
   /* step: run mainloop until local candidates are ready 
    *       (see timer_cb() above) */
@@ -672,9 +680,11 @@ static int run_full_test_wrong_password (NiceAgent *lagent, NiceAgent *ragent, N
 
   /* step: attach to mainloop (needed to register the fds) */
   nice_agent_attach_recv (lagent, ls_id, NICE_COMPONENT_TYPE_RTP,
-      g_main_loop_get_context (global_mainloop), cb_nice_recv, (gpointer)1);
+      g_main_loop_get_context (global_mainloop), cb_nice_recv,
+      GUINT_TO_POINTER (1));
   nice_agent_attach_recv (ragent, rs_id, NICE_COMPONENT_TYPE_RTP,
-      g_main_loop_get_context (global_mainloop), cb_nice_recv, (gpointer)2);
+      g_main_loop_get_context (global_mainloop), cb_nice_recv,
+      GUINT_TO_POINTER (2));
 
   /* step: run mainloop until local candidates are ready 
    *       (see timer_cb() above) */
@@ -800,9 +810,11 @@ static int run_full_test_control_conflict (NiceAgent *lagent, NiceAgent *ragent,
 
   /* step: attach to mainloop (needed to register the fds) */
   nice_agent_attach_recv (lagent, ls_id, NICE_COMPONENT_TYPE_RTP,
-      g_main_loop_get_context (global_mainloop), cb_nice_recv, (gpointer)1);
+      g_main_loop_get_context (global_mainloop), cb_nice_recv,
+      GUINT_TO_POINTER (1));
   nice_agent_attach_recv (ragent, rs_id, NICE_COMPONENT_TYPE_RTP,
-      g_main_loop_get_context (global_mainloop), cb_nice_recv, (gpointer)2);
+      g_main_loop_get_context (global_mainloop), cb_nice_recv,
+      GUINT_TO_POINTER (2));
 
   /* step: run mainloop until local candidates are ready 
    *       (see timer_cb() above) */
@@ -924,26 +936,28 @@ int main (void)
   nice_agent_add_local_address (ragent, &baseaddr);
 #endif
 
-  g_signal_connect (G_OBJECT (lagent), "candidate-gathering-done", 
-		    G_CALLBACK (cb_candidate_gathering_done), (gpointer)1);
-  g_signal_connect (G_OBJECT (ragent), "candidate-gathering-done", 
-		    G_CALLBACK (cb_candidate_gathering_done), (gpointer)2);
-  g_signal_connect (G_OBJECT (lagent), "component-state-changed", 
-		    G_CALLBACK (cb_component_state_changed), (gpointer)1);
-  g_signal_connect (G_OBJECT (ragent), "component-state-changed", 
-		    G_CALLBACK (cb_component_state_changed), (gpointer)2);
-  g_signal_connect (G_OBJECT (lagent), "new-selected-pair", 
-		    G_CALLBACK (cb_new_selected_pair), (gpointer)1);
-  g_signal_connect (G_OBJECT (ragent), "new-selected-pair", 
-		    G_CALLBACK (cb_new_selected_pair), (gpointer)2);
-  g_signal_connect (G_OBJECT (lagent), "new-candidate", 
-		    G_CALLBACK (cb_new_candidate), (gpointer)1);
-  g_signal_connect (G_OBJECT (ragent), "new-candidate", 
-		    G_CALLBACK (cb_new_candidate), (gpointer)2);
-  g_signal_connect (G_OBJECT (lagent), "initial-binding-request-received", 
-		    G_CALLBACK (cb_initial_binding_request_received), (gpointer)1);
-  g_signal_connect (G_OBJECT (ragent), "initial-binding-request-received", 
-		    G_CALLBACK (cb_initial_binding_request_received), (gpointer)2);
+  g_signal_connect (G_OBJECT (lagent), "candidate-gathering-done",
+      G_CALLBACK (cb_candidate_gathering_done), GUINT_TO_POINTER(1));
+  g_signal_connect (G_OBJECT (ragent), "candidate-gathering-done",
+      G_CALLBACK (cb_candidate_gathering_done), GUINT_TO_POINTER (2));
+  g_signal_connect (G_OBJECT (lagent), "component-state-changed",
+      G_CALLBACK (cb_component_state_changed), GUINT_TO_POINTER (1));
+  g_signal_connect (G_OBJECT (ragent), "component-state-changed",
+      G_CALLBACK (cb_component_state_changed), GUINT_TO_POINTER (2));
+  g_signal_connect (G_OBJECT (lagent), "new-selected-pair",
+      G_CALLBACK (cb_new_selected_pair), GUINT_TO_POINTER(1));
+  g_signal_connect (G_OBJECT (ragent), "new-selected-pair",
+      G_CALLBACK (cb_new_selected_pair), GUINT_TO_POINTER (2));
+  g_signal_connect (G_OBJECT (lagent), "new-candidate",
+      G_CALLBACK (cb_new_candidate), GUINT_TO_POINTER (1));
+  g_signal_connect (G_OBJECT (ragent), "new-candidate",
+      G_CALLBACK (cb_new_candidate), GUINT_TO_POINTER (2));
+  g_signal_connect (G_OBJECT (lagent), "initial-binding-request-received",
+      G_CALLBACK (cb_initial_binding_request_received),
+      GUINT_TO_POINTER (1));
+  g_signal_connect (G_OBJECT (ragent), "initial-binding-request-received",
+      G_CALLBACK (cb_initial_binding_request_received),
+      GUINT_TO_POINTER (2));
 
   stun_server = getenv ("NICE_STUN_SERVER");
   stun_server_port = getenv ("NICE_STUN_SERVER_PORT");
