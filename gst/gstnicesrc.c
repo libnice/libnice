@@ -195,21 +195,15 @@ gst_nice_src_read_callback (NiceAgent *agent,
 {
   GstBaseSrc *basesrc = GST_BASE_SRC (data);
   GstNiceSrc *nicesrc = GST_NICE_SRC (basesrc);
-  GstNetBuffer *mybuf;
 
   GST_LOG_OBJECT (agent, "Got buffer, getting out of the main loop");
 
-  mybuf = gst_netbuffer_new ();
-  GST_BUFFER_MALLOCDATA (mybuf) = g_memdup (buf, len);
-  GST_BUFFER_SIZE (mybuf) = len;
-  GST_BUFFER_DATA (mybuf) = GST_BUFFER_MALLOCDATA (mybuf);
-  if (GST_PAD_CAPS (basesrc->srcpad))
-    GST_BUFFER_CAPS (mybuf) = gst_caps_ref (GST_PAD_CAPS (basesrc->srcpad));
-
-  mybuf->from = nicesrc->from;
-  mybuf->to = nicesrc->to;
-
-  nicesrc->outbuf = GST_BUFFER_CAST (mybuf);
+  nicesrc->flow_ret = gst_pad_alloc_buffer (basesrc->srcpad, nicesrc->offset,
+      len, GST_PAD_CAPS (basesrc->srcpad), &nicesrc->outbuf);
+  if (nicesrc->flow_ret == GST_FLOW_OK) {
+    memcpy (nicesrc->outbuf->data, buf, len);
+    nicesrc->outbuf->size = len;
+  }
 
   g_main_loop_quit (nicesrc->mainloop);
 }
@@ -221,10 +215,8 @@ gst_nice_src_unlock_idler (gpointer data)
 
   g_main_loop_quit (nicesrc->mainloop);
 
-  GST_OBJECT_LOCK (nicesrc);
   g_source_unref (nicesrc->idle_source);
   nicesrc->idle_source = NULL;
-  GST_OBJECT_UNLOCK (nicesrc);
 
   return FALSE;
 }
@@ -275,6 +267,7 @@ gst_nice_src_create (
   GST_LOG_OBJECT (nicesrc, "create called");
 
   nicesrc->outbuf = NULL;
+  nicesrc->offset = offset;
 
   GST_OBJECT_LOCK (basesrc);
   if (nicesrc->unlocked) {
@@ -289,23 +282,18 @@ gst_nice_src_create (
     GST_LOG_OBJECT (nicesrc, "Got buffer, pushing");
 
     *buffer = nicesrc->outbuf;
-    GST_BUFFER_OFFSET (*buffer) = offset;
-
-    return GST_FLOW_OK;
+    return nicesrc->flow_ret;
   } else {
     GST_LOG_OBJECT (nicesrc, "Got interrupting, returning wrong-state");
     return GST_FLOW_WRONG_STATE;
   }
+
 }
 
 static void
 gst_nice_src_dispose (GObject *object)
 {
   GstNiceSrc *src = GST_NICE_SRC (object);
-
-  if (src->new_selected_pair_id)
-    g_signal_handler_disconnect (src->agent, src->new_selected_pair_id);
-  src->new_selected_pair_id = 0;
 
   if (src->agent)
     g_object_unref (src->agent);
@@ -380,69 +368,6 @@ gst_nice_src_get_property (
     }
 }
 
-static void
-nice_address_to_gst_net_address (NiceAddress *niceaddr, GstNetAddress *gstaddr)
-{
-  switch (niceaddr->s.addr.sa_family)
-    {
-    case AF_INET:
-      gst_netaddress_set_ip4_address (gstaddr,
-          niceaddr->s.ip4.sin_addr.s_addr,
-          niceaddr->s.ip4.sin_port);
-      break;
-    case AF_INET6:
-      gst_netaddress_set_ip6_address (gstaddr,
-          niceaddr->s.ip6.sin6_addr.s6_addr,
-          niceaddr->s.ip6.sin6_port);
-      break;
-    default:
-      break;
-    }
-}
-
-static void
-new_selected_pair_cb (NiceAgent *agent, guint stream_id, guint component_id,
-    gchar *local_cand, gchar *remote_cand, GstNiceSrc *src)
-{
-  GST_OBJECT_LOCK (src);
-
-  if (stream_id == src->stream_id && component_id == src->component_id)
-    {
-      GSList *local_candidates = nice_agent_get_local_candidates (
-          src->agent, stream_id, component_id);
-      GSList *remote_candidates = nice_agent_get_remote_candidates (
-          src->agent, stream_id, component_id);
-      GSList *item = NULL;
-
-      for (item = local_candidates; item; item = g_slist_next (item))
-        {
-          NiceCandidate *cand = item->data;
-          if (!strcmp (local_cand, cand->foundation))
-            {
-              nice_address_to_gst_net_address (&cand->addr, &src->to);
-              break;
-            }
-        }
-
-      for (item = remote_candidates; item; item = g_slist_next (item))
-        {
-          NiceCandidate *cand = item->data;
-          if (!strcmp (remote_cand, cand->foundation))
-            {
-              nice_address_to_gst_net_address (&cand->addr, &src->from);
-              break;
-            }
-        }
-
-      g_slist_foreach (local_candidates, (GFunc) nice_candidate_free, NULL);
-      g_slist_free (local_candidates);
-      g_slist_foreach (remote_candidates, (GFunc) nice_candidate_free, NULL);
-      g_slist_free (remote_candidates);
-    }
-
-  GST_OBJECT_UNLOCK (src);
-}
-
 static GstStateChangeReturn
 gst_nice_src_change_state (GstElement * element, GstStateChange transition)
 {
@@ -461,25 +386,14 @@ gst_nice_src_change_state (GstElement * element, GstStateChange transition)
         }
       else
         {
-          GST_OBJECT_LOCK (src);
           nice_agent_attach_recv (src->agent, src->stream_id, src->component_id,
               g_main_loop_get_context (src->mainloop),
               gst_nice_src_read_callback, (gpointer) src);
-
-          if (!src->new_selected_pair_id)
-            src->new_selected_pair_id = g_signal_connect (src->agent,
-                "new-selected-pair", G_CALLBACK (new_selected_pair_cb), src);
-          GST_OBJECT_UNLOCK (src);
         }
       break;
     case GST_STATE_CHANGE_READY_TO_NULL:
-      GST_OBJECT_LOCK (src);
       nice_agent_attach_recv (src->agent, src->stream_id, src->component_id,
           g_main_loop_get_context (src->mainloop), NULL, NULL);
-      if (src->new_selected_pair_id)
-        g_signal_handler_disconnect (src->agent, src->new_selected_pair_id);
-      src->new_selected_pair_id = 0;
-      GST_OBJECT_UNLOCK (src);
       break;
     default:
       break;
