@@ -837,6 +837,9 @@ static void priv_update_check_list_failed_components (NiceAgent *agent, Stream *
 
   /* note: iterate the conncheck list for each component separately */
   for (c = 0; c < components; c++) {
+    Component *comp = NULL;
+    agent_find_component (agent, stream->id, c, NULL, &comp);
+
     for (i = stream->conncheck_list; i; i = i->next) {
       CandidateCheckPair *p = i->data;
       
@@ -846,8 +849,11 @@ static void priv_update_check_list_failed_components (NiceAgent *agent, Stream *
 	  break;
       }
     }
-    /* note: all checks have failed */
-    if (i == NULL)
+ 
+    /* note: all checks have failed
+     * Set the component to FAILED only if it actually had remote candidates
+     * that failed.. */
+    if (i == NULL && comp != NULL && comp->remote_candidates != NULL)
       agent_signal_component_state_change (agent, 
 					   stream->id,
 					   (c + 1), /* component-id */
