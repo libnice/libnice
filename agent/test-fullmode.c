@@ -1013,7 +1013,7 @@ int main (void)
   g_assert (global_lagent_cands == 2);
   g_assert (global_ragent_cands == 2);
 
-#ifdef TEST_GOOGLE
+#if TEST_GOOGLE
   return result;
 #endif
 
