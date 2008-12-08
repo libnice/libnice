@@ -58,30 +58,57 @@
 #endif
 
 typedef struct {
-  NiceUdpTurnSocketCompatibility compatibility;
-  GQueue send_queue;
+  NiceTurnSocketCompatibility compatibility;
   gchar recv_buf[65536];
   guint recv_buf_len;
   guint expecting_len;
-  NiceAddress server_addr;
-  GMainContext *context;
-  GIOChannel *io_channel;
-  GSource *io_source;
+  NiceSocket *base_socket;
 } TurnTcpPriv;
 
-struct to_be_sent {
-  guint length;
-  gchar *buf;
-};
 
-/*** NiceSocket ***/
+static void socket_close (NiceSocket *sock);
+static gint socket_recv (NiceSocket *sock, NiceAddress *from,
+    guint len, gchar *buf);
+static gboolean socket_send (NiceSocket *sock, const NiceAddress *to,
+    guint len, const gchar *buf);
+static gboolean socket_is_reliable (NiceSocket *sock);
+
+NiceSocket *
+nice_tcp_turn_socket_new (NiceAgent *agent, NiceSocket *base_socket,
+    NiceTurnSocketCompatibility compatibility)
+{
+  TurnTcpPriv *priv;
+  NiceSocket *sock = g_slice_new0 (NiceSocket);
+  sock->priv = priv = g_slice_new0 (TurnTcpPriv);
+
+  priv->compatibility = compatibility;
+  priv->base_socket = base_socket;
+
+  sock->fileno = priv->base_socket->fileno;
+  sock->addr = priv->base_socket->addr;
+  sock->send = socket_send;
+  sock->recv = socket_recv;
+  sock->is_reliable = socket_is_reliable;
+  sock->close = socket_close;
+
+  return sock;
+}
+
+
+static void
+socket_close (NiceSocket *sock)
+{
+  TurnTcpPriv *priv = sock->priv;
+
+  if (priv->base_socket)
+    nice_socket_free (priv->base_socket);
+
+  g_slice_free(TurnTcpPriv, sock->priv);
+}
+
 
 static gint
-socket_recv (
-  NiceSocket *sock,
-  NiceAddress *from,
-  guint len,
-  gchar *buf)
+socket_recv (NiceSocket *sock, NiceAddress *from, guint len, gchar *buf)
 {
   TurnTcpPriv *priv = sock->priv;
   int ret;
@@ -90,32 +117,24 @@ socket_recv (
   if (priv->expecting_len == 0) {
     guint headerlen = 0;
 
-    if (priv->compatibility == NICE_UDP_TURN_SOCKET_COMPATIBILITY_DRAFT9)
+    if (priv->compatibility == NICE_TURN_SOCKET_COMPATIBILITY_DRAFT9)
       headerlen = 4;
-    else if (priv->compatibility == NICE_UDP_TURN_SOCKET_COMPATIBILITY_GOOGLE)
+    else if (priv->compatibility == NICE_TURN_SOCKET_COMPATIBILITY_GOOGLE)
       headerlen = 2;
     else
-      g_assert_not_reached();
+      return -1;
 
-    ret = recv (sock->fileno, priv->recv_buf + priv->recv_buf_len,
-        headerlen - priv->recv_buf_len, 0);
-    if (ret < 0) {
-#ifdef G_OS_WIN32
-      if (WSAGetLastError () == WSAEWOULDBLOCK)
-#else
-      if (errno == EAGAIN)
-#endif
-        return 0;
-      else
+    ret = nice_socket_recv (priv->base_socket, from,
+        headerlen - priv->recv_buf_len, priv->recv_buf + priv->recv_buf_len);
+    if (ret < 0)
         return ret;
-    }
 
     priv->recv_buf_len += ret;
 
     if (priv->recv_buf_len < headerlen)
       return 0;
 
-    if (priv->compatibility == NICE_UDP_TURN_SOCKET_COMPATIBILITY_DRAFT9) {
+    if (priv->compatibility == NICE_TURN_SOCKET_COMPATIBILITY_DRAFT9) {
       guint16 magic = ntohs (*(guint16*)priv->recv_buf);
       guint16 packetlen = ntohs (*(guint16*)(priv->recv_buf + 2));
 
@@ -127,30 +146,24 @@ socket_recv (
         priv->expecting_len = 4 + packetlen;
       }
     }
-    else if (priv->compatibility == NICE_UDP_TURN_SOCKET_COMPATIBILITY_GOOGLE) {
+    else if (priv->compatibility == NICE_TURN_SOCKET_COMPATIBILITY_GOOGLE) {
       guint len = ntohs (*(guint16*)priv->recv_buf);
       priv->expecting_len = len;
       priv->recv_buf_len = 0;
     }
   }
 
-  if (priv->compatibility == NICE_UDP_TURN_SOCKET_COMPATIBILITY_DRAFT9)
+  if (priv->compatibility == NICE_TURN_SOCKET_COMPATIBILITY_DRAFT9)
     padlen = (priv->expecting_len % 4) ?  4 - (priv->expecting_len % 4) : 0;
   else
     padlen = 0;
 
-  ret = recv (sock->fileno, priv->recv_buf + priv->recv_buf_len,
-      priv->expecting_len + padlen - priv->recv_buf_len, 0);
-  if (ret < 0) {
-#ifdef G_OS_WIN32
-    if (WSAGetLastError () == WSAEWOULDBLOCK)
-#else
-    if (errno == EAGAIN)
-#endif
-      return 0;
-    else
+  ret = nice_socket_recv (priv->base_socket, from,
+      priv->expecting_len + padlen - priv->recv_buf_len,
+      priv->recv_buf + priv->recv_buf_len);
+
+  if (ret < 0)
       return ret;
-  }
 
   priv->recv_buf_len += ret;
 
@@ -159,223 +172,45 @@ socket_recv (
     memcpy (buf, priv->recv_buf, copy_len);
     priv->expecting_len = 0;
     priv->recv_buf_len = 0;
-    if (from)
-      *from = priv->server_addr;
+
     return copy_len;
   }
 
   return 0;
 }
-static void
-add_to_be_sent (NiceSocket *sock, const gchar *buf, guint len, gboolean head);
-
-
-
-/*
- * Returns:
- * -1 = error
- * 0 = have more to send
- * 1 = sent everything
- */
 
 static gboolean
-socket_send_more (
-  GIOChannel *source,
-  G_GNUC_UNUSED
-  GIOCondition condition,
-  gpointer data)
+socket_send (NiceSocket *sock, const NiceAddress *to,
+    guint len, const gchar *buf)
 {
-  NiceSocket *sock = (NiceSocket *) data;
-  TurnTcpPriv *priv = sock->priv;
-  struct to_be_sent *tbs = NULL;
-
-  while ((tbs = g_queue_pop_head (&priv->send_queue))) {
-    int ret;
-
-    ret = send (sock->fileno, tbs->buf, tbs->length, 0);
-
-    if (ret < 0) {
-#ifdef G_OS_WIN32
-      if (WSAGetLastError () == WSAEWOULDBLOCK) {
-#else
-      if (errno == EAGAIN) {
-#endif
-        add_to_be_sent (sock, tbs->buf, tbs->length, TRUE);
-        g_free (tbs->buf);
-        g_slice_free (struct to_be_sent, tbs);
-        break;
-      }
-    } else if (ret < (int) tbs->length) {
-      add_to_be_sent (sock, tbs->buf + ret, tbs->length - ret, TRUE);
-      g_free (tbs->buf);
-      g_slice_free (struct to_be_sent, tbs);
-      break;
-    }
-
-    g_free (tbs->buf);
-    g_slice_free (struct to_be_sent, tbs);
-  }
-
-  if (g_queue_is_empty (&priv->send_queue)) {
-    g_io_channel_unref (priv->io_channel);
-    priv->io_channel = NULL;
-    g_source_destroy (priv->io_source);
-    g_source_unref (priv->io_source);
-    priv->io_source = NULL;
-    return FALSE;
-  }
-
-  return TRUE;
-}
-
-
-static void
-add_to_be_sent (NiceSocket *sock, const gchar *buf, guint len, gboolean head)
-{
-  TurnTcpPriv *priv = sock->priv;
-  struct to_be_sent *tbs = g_slice_new (struct to_be_sent);
-
-  if (len <= 0)
-    return;
-
-  tbs->buf = g_memdup (buf, len);
-  tbs->length = len;
-  if (head)
-    g_queue_push_head (&priv->send_queue, tbs);
-  else
-    g_queue_push_tail (&priv->send_queue, tbs);
-
-  if (priv->io_channel == NULL) {
-    priv->io_channel = g_io_channel_unix_new (sock->fileno);
-    priv->io_source = g_io_create_watch (priv->io_channel, G_IO_OUT);
-    g_source_set_callback (priv->io_source, (GSourceFunc) socket_send_more,
-        sock, NULL);
-    g_source_attach (priv->io_source, priv->context);
-  }
-}
-
-
-static gboolean
-socket_send (
-  NiceSocket *sock,
-  const NiceAddress *to,
-  guint len,
-  const gchar *buf)
-{
-  int ret;
+  gboolean ret = TRUE;
   TurnTcpPriv *priv = sock->priv;
   gchar padbuf[3] = {0, 0, 0};
   int padlen = (len%4) ? 4 - (len%4) : 0;
 
-  if (priv->compatibility != NICE_UDP_TURN_SOCKET_COMPATIBILITY_DRAFT9)
+  if (priv->compatibility != NICE_TURN_SOCKET_COMPATIBILITY_DRAFT9)
     padlen = 0;
 
-  /* First try to send the data, don't send it later if it can be sent now
-     this way we avoid allocating memory on every send */
-  if (g_queue_is_empty (&priv->send_queue)) {
-    if (priv->compatibility == NICE_UDP_TURN_SOCKET_COMPATIBILITY_GOOGLE) {
-      guint16 tmpbuf = htons (len);
-      ret = send (sock->fileno, (void *) &tmpbuf, sizeof(guint16), 0);
+  if (priv->compatibility == NICE_TURN_SOCKET_COMPATIBILITY_GOOGLE) {
+    guint16 tmpbuf = htons (len);
+    ret = nice_socket_send (priv->base_socket, to,
+        sizeof(guint16), (gchar *)&tmpbuf);
 
-      if (ret < 0) {
-#ifdef G_OS_WIN32
-        if (WSAGetLastError () == WSAEWOULDBLOCK) {
-#else
-        if (errno == EAGAIN) {
-#endif
-          add_to_be_sent (sock, (gchar *) &tmpbuf, sizeof(guint16), FALSE);
-          add_to_be_sent (sock, buf, len, FALSE);
-          return TRUE;
-        } else {
-          return FALSE;
-        }
-      } else if ((guint)ret < sizeof(guint16)) {
-        add_to_be_sent (sock, ((gchar *) &tmpbuf) + ret,
-            sizeof(guint16) - ret, FALSE);
-        add_to_be_sent (sock, buf, len, FALSE);
-        return TRUE;
-      }
-    }
-
-    ret = send (sock->fileno, buf, len, 0);
-
-    if (ret < 0) {
-#ifdef G_OS_WIN32
-      if (WSAGetLastError () == WSAEWOULDBLOCK) {
-#else
-      if (errno == EAGAIN) {
-#endif
-        add_to_be_sent (sock, buf, len, FALSE);
-        add_to_be_sent (sock, padbuf, padlen, FALSE);
-        return TRUE;
-      } else {
-        return FALSE;
-      }
-    } else if ((guint)ret < len) {
-      add_to_be_sent (sock, buf + ret, len - ret, FALSE);
-      add_to_be_sent (sock, padbuf, padlen, FALSE);
-      return TRUE;
-    }
-
-    if (priv->compatibility == NICE_UDP_TURN_SOCKET_COMPATIBILITY_DRAFT9 &&
-        len % 4) {
-
-      ret = send (sock->fileno, padbuf, padlen, 0);
-
-      if (ret < 0) {
-#ifdef G_OS_WIN32
-        if (WSAGetLastError () == WSAEWOULDBLOCK) {
-#else
-        if (errno == EAGAIN) {
-#endif
-          add_to_be_sent (sock, padbuf, padlen, FALSE);
-          return TRUE;
-        } else {
-          return FALSE;
-        }
-      } else if (ret < padlen) {
-        add_to_be_sent (sock, padbuf, padlen - ret, FALSE);
-        return TRUE;
-      }
-    }
-  } else {
-    if (priv->compatibility == NICE_UDP_TURN_SOCKET_COMPATIBILITY_GOOGLE) {
-      guint16 tmpbuf = htons (len);
-      add_to_be_sent (sock, (gchar*) &tmpbuf, sizeof(guint16), FALSE);
-    }
-    add_to_be_sent (sock, buf, len, FALSE);
-    add_to_be_sent (sock, padbuf, padlen, FALSE);
+    if (!ret)
+      return ret;
   }
 
-  return TRUE;
+  ret = nice_socket_send (priv->base_socket, to, len, buf);
+
+  if (!ret)
+    return ret;
+
+  if (priv->compatibility == NICE_TURN_SOCKET_COMPATIBILITY_DRAFT9)
+    ret = nice_socket_send (priv->base_socket, to, padlen, padbuf);
+
+  return ret;
 }
 
-static void
-free_to_be_sent (struct to_be_sent *tbs)
-{
-  g_free (tbs->buf);
-  g_slice_free (struct to_be_sent, tbs);
-}
-
-static void
-socket_close (NiceSocket *sock)
-{
-  TurnTcpPriv *priv = sock->priv;
-#ifdef G_OS_WIN32
-  closesocket(sock->fileno);
-#else
-  close (sock->fileno);
-#endif
-  g_queue_foreach (&priv->send_queue, (GFunc) free_to_be_sent, NULL);
-  g_queue_clear (&priv->send_queue);
-  if (priv->io_channel)
-	g_io_channel_unref (priv->io_channel);
-  if (priv->io_source) {
-    g_source_destroy (priv->io_source);
-    g_source_unref (priv->io_source);
-  }
-  g_slice_free(TurnTcpPriv, sock->priv);
-}
 
 static gboolean
 socket_is_reliable (NiceSocket *sock)
@@ -383,90 +218,3 @@ socket_is_reliable (NiceSocket *sock)
   return TRUE;
 }
 
-
-NiceSocket *
-nice_tcp_turn_socket_new (
-    NiceAgent *agent,
-    GMainContext *ctx,
-    NiceAddress *addr,
-    NiceUdpTurnSocketCompatibility compatibility)
-{
-  int sockfd = -1;
-  int ret;
-  struct sockaddr_storage name;
-  guint name_len = sizeof (name);
-  NiceSocket *sock = g_slice_new0 (NiceSocket);
-  TurnTcpPriv *priv;
-
-  if (addr != NULL) {
-    nice_address_copy_to_sockaddr(addr, (struct sockaddr *)&name);
-  } else {
-    memset (&name, 0, sizeof (name));
-    name.ss_family = AF_UNSPEC;
-  }
-
-  if ((sockfd == -1) &&
-      ((name.ss_family == AF_UNSPEC) ||
-          (name.ss_family == AF_INET))) {
-    sockfd = socket (PF_INET, SOCK_STREAM, 0);
-    name.ss_family = AF_INET;
-#ifdef HAVE_SA_LEN
-    name.ss_len = sizeof (struct sockaddr_in);
-#endif
-  }
-
-  if (sockfd == -1) {
-    g_slice_free (NiceSocket, sock);
-    return NULL;
-  }
-
-#ifdef FD_CLOEXEC
-  fcntl (sockfd, F_SETFD, fcntl (sockfd, F_GETFD) | FD_CLOEXEC);
-#endif
-#ifdef O_NONBLOCK
-  fcntl (sockfd, F_SETFL, fcntl (sockfd, F_GETFL) | O_NONBLOCK);
-#endif
-
-  name_len = name.ss_family == AF_INET? sizeof (struct sockaddr_in) :
-      sizeof(struct sockaddr_in6);
-  ret = connect (sockfd, (const struct sockaddr *)&name, name_len);
-
-#ifdef G_OS_WIN32
-  if (ret < 0 && WSAGetLastError () != WSAEINPROGRESS) {
-    closesocket (sockfd);
-#else
-  if (ret < 0 && errno != EINPROGRESS) {
-    close (sockfd);
-#endif
-    g_slice_free (NiceSocket, sock);
-    return NULL;
-  }
-
-  name_len = name.ss_family == AF_INET? sizeof (struct sockaddr_in) :
-      sizeof(struct sockaddr_in6);
-  if (getsockname (sockfd, (struct sockaddr *) &name, &name_len) < 0) {
-    g_slice_free (NiceSocket, sock);
-#ifdef G_OS_WIN32
-    closesocket(sockfd);
-#else
-    close (sockfd);
-#endif
-    return NULL;
-  }
-
-  nice_address_set_from_sockaddr (&sock->addr, (struct sockaddr *)&name);
-
-  sock->priv = priv = g_slice_new0 (TurnTcpPriv);
-
-  priv->compatibility = compatibility;
-  priv->server_addr = *addr;
-  priv->context = ctx;
-
-  sock->fileno = sockfd;
-  sock->send = socket_send;
-  sock->recv = socket_recv;
-  sock->is_reliable = socket_is_reliable;
-  sock->close = socket_close;
-
-  return sock;
-}

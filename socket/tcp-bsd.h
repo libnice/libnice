@@ -34,41 +34,21 @@
  * not delete the provisions above, a recipient may use your version of this
  * file under either the MPL or the LGPL.
  */
-#ifdef HAVE_CONFIG_H
-# include "config.h"
-#endif
 
-
-#include <glib.h>
+#ifndef _TCP_BSD_H
+#define _TCP_BSD_H
 
 #include "socket.h"
+#include "agent.h"
+
+G_BEGIN_DECLS
 
 
-gint
-nice_socket_recv (NiceSocket *sock, NiceAddress *from, guint len, gchar *buf)
-{
-  return sock->recv (sock, from, len, buf);
-}
+NiceSocket *
+nice_tcp_bsd_socket_new (NiceAgent *agent, GMainContext *ctx, NiceAddress *addr);
 
-gboolean
-nice_socket_send (NiceSocket *sock, const NiceAddress *to,
-    guint len, const gchar *buf)
-{
-  return sock->send (sock, to, len, buf);
-}
 
-gboolean
-nice_socket_is_reliable (NiceSocket *sock)
-{
-  return sock->is_reliable (sock);
-}
+G_END_DECLS
 
-void
-nice_socket_free (NiceSocket *sock)
-{
-  if (sock) {
-    sock->close (sock);
-    g_slice_free (NiceSocket,sock);
-  }
-}
+#endif /* _TCP_BSD_H */
 

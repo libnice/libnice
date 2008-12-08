@@ -69,18 +69,11 @@ struct _NiceSocket
 
 G_GNUC_WARN_UNUSED_RESULT
 gint
-nice_socket_recv (
-  NiceSocket *sock,
-  NiceAddress *from,
-  guint len,
-  gchar *buf);
+nice_socket_recv (NiceSocket *sock, NiceAddress *from, guint len, gchar *buf);
 
 gboolean
-nice_socket_send (
-  NiceSocket *sock,
-  const NiceAddress *to,
-  guint len,
-  const gchar *buf);
+nice_socket_send (NiceSocket *sock, const NiceAddress *to,
+  guint len, const gchar *buf);
 
 gboolean
 nice_socket_is_reliable (NiceSocket *sock);
@@ -90,7 +83,9 @@ void
 nice_socket_free (NiceSocket *sock);
 
 #include "udp-bsd.h"
-#include "udp-turn.h"
+#include "tcp-bsd.h"
+#include "pseudossl.h"
+#include "turn.h"
 #include "tcp-turn.h"
 
 G_END_DECLS

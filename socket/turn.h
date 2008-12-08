@@ -35,15 +35,15 @@
  * file under either the MPL or the LGPL.
  */
 
-#ifndef _UDP_TURN_H
-#define _UDP_TURN_H
+#ifndef _TURN_H
+#define _TURN_H
 
 
 typedef enum {
-  NICE_UDP_TURN_SOCKET_COMPATIBILITY_DRAFT9,
-  NICE_UDP_TURN_SOCKET_COMPATIBILITY_GOOGLE,
-  NICE_UDP_TURN_SOCKET_COMPATIBILITY_MSN,
-} NiceUdpTurnSocketCompatibility;
+  NICE_TURN_SOCKET_COMPATIBILITY_DRAFT9,
+  NICE_TURN_SOCKET_COMPATIBILITY_GOOGLE,
+  NICE_TURN_SOCKET_COMPATIBILITY_MSN,
+} NiceTurnSocketCompatibility;
 
 #include "socket.h"
 #include "agent.h"
@@ -52,31 +52,20 @@ typedef enum {
 G_BEGIN_DECLS
 
 gint
-nice_udp_turn_socket_parse_recv (
-  NiceSocket *sock,
-  NiceSocket **from_sock,
-  NiceAddress *from,
-  guint len,
-  gchar *buf,
-  NiceAddress *recv_from,
-  gchar *recv_buf,
-  guint recv_len);
+nice_turn_socket_parse_recv (NiceSocket *sock, NiceSocket **from_sock,
+    NiceAddress *from, guint len, gchar *buf,
+    NiceAddress *recv_from, gchar *recv_buf, guint recv_len);
 
 gboolean
-nice_udp_turn_socket_set_peer (NiceSocket *sock, NiceAddress *peer);
+nice_turn_socket_set_peer (NiceSocket *sock, NiceAddress *peer);
 
 NiceSocket *
-nice_udp_turn_socket_new (
-    NiceAgent *agent,
-    NiceAddress *addr,
-    NiceSocket *udp_socket,
-    NiceAddress *server_addr,
-    gchar *username,
-    gchar *password,
-    NiceUdpTurnSocketCompatibility compatibility);
+nice_turn_socket_new (NiceAgent *agent, NiceAddress *addr,
+    NiceSocket *base_socket, NiceAddress *server_addr,
+    gchar *username, gchar *password, NiceTurnSocketCompatibility compatibility);
 
 
 G_END_DECLS
 
-#endif /* _UDP_TURN_H */
+#endif /* _TURN_H */
 

@@ -689,7 +689,7 @@ void agent_signal_new_selected_pair (NiceAgent *agent, guint stream_id, guint co
   rf_copy = g_strdup (remote_foundation);
 
   if (component->selected_pair.local->type == NICE_CANDIDATE_TYPE_RELAYED) {
-    nice_udp_turn_socket_set_peer (component->selected_pair.local->sockptr,
+    nice_turn_socket_set_peer (component->selected_pair.local->sockptr,
                                    &component->selected_pair.remote->addr);
   }
 
@@ -822,10 +822,14 @@ priv_add_new_candidate_discovery_turn (NiceAgent *agent,
         }
         cdisco->nicesock = socket;
       } else {
-        cdisco->nicesock = nice_tcp_turn_socket_new (agent,
-            component->ctx,
-            &turn->server,
-            priv_agent_to_turn_compatibility (agent));
+        socket = nice_tcp_bsd_socket_new (agent, component->ctx, &turn->server);
+        if (turn->type ==  NICE_RELAY_TYPE_TURN_TLS &&
+            agent->compatibility == NICE_COMPATIBILITY_GOOGLE) {
+          socket = nice_pseudossl_socket_new (agent, socket);
+        }
+        cdisco->nicesock = nice_tcp_turn_socket_new (agent, socket,
+            agent_to_turn_socket_compatibility (agent));
+
         if (!cdisco->nicesock) {
           agent->discovery_list = g_slist_remove (modified_list, cdisco);
           g_slice_free (CandidateDiscovery, cdisco);
@@ -1367,7 +1371,7 @@ _nice_agent_recv (
         if (cand->type == NICE_CANDIDATE_TYPE_RELAYED &&
             cand->stream_id == stream->id &&
             cand->component_id == component->id) {
-          len = nice_udp_turn_socket_parse_recv (cand->sockptr, &socket,
+          len = nice_turn_socket_parse_recv (cand->sockptr, &socket,
               &from, len, buf, &from, buf, len);
         }
       }
