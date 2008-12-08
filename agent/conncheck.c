@@ -819,7 +819,7 @@ static void priv_update_check_list_failed_components (NiceAgent *agent, Stream *
   /* note: iterate the conncheck list for each component separately */
   for (c = 0; c < components; c++) {
     Component *comp = NULL;
-    agent_find_component (agent, stream->id, c, NULL, &comp);
+    agent_find_component (agent, stream->id, c+1, NULL, &comp);
 
     for (i = stream->conncheck_list; i; i = i->next) {
       CandidateCheckPair *p = i->data;
