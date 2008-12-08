@@ -50,6 +50,8 @@
 #include "conncheck.h"
 #include "component.h"
 #include "stun/stunagent.h"
+#include "stun/usages/turn.h"
+#include "stun/usages/ice.h"
 
 /* XXX: starting from ICE ID-18, Ta SHOULD now be set according
  *      to session bandwidth -> this is not yet implemented in NICE */
@@ -139,5 +141,9 @@ void agent_attach_stream_component_socket (NiceAgent *agent,
     Stream *stream,
     Component *component,
     NiceSocket *socket);
+
+StunUsageIceCompatibility agent_to_ice_compatibility (NiceAgent *agent);
+StunUsageTurnCompatibility agent_to_turn_compatibility (NiceAgent *agent);
+NiceTurnSocketCompatibility agent_to_turn_socket_compatibility (NiceAgent *agent);
 
 #endif /*_NICE_AGENT_PRIV_H */

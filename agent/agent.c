@@ -110,14 +110,39 @@ static gboolean priv_attach_stream_component (NiceAgent *agent,
     Component *component);
 static void priv_detach_stream_component (Stream *stream, Component *component);
 
-static StunUsageTurnCompatibility
-priv_agent_to_turn_compatibility (NiceAgent *agent) {
+StunUsageIceCompatibility
+agent_to_ice_compatibility (NiceAgent *agent)
+{
+  return agent->compatibility == NICE_COMPATIBILITY_DRAFT19 ?
+      STUN_USAGE_ICE_COMPATIBILITY_DRAFT19 :
+      agent->compatibility == NICE_COMPATIBILITY_GOOGLE ?
+      STUN_USAGE_ICE_COMPATIBILITY_GOOGLE :
+      agent->compatibility == NICE_COMPATIBILITY_MSN ?
+      STUN_USAGE_ICE_COMPATIBILITY_MSN : STUN_USAGE_ICE_COMPATIBILITY_DRAFT19;
+}
+
+
+StunUsageTurnCompatibility
+agent_to_turn_compatibility (NiceAgent *agent)
+{
   return agent->compatibility == NICE_COMPATIBILITY_DRAFT19 ?
       STUN_USAGE_TURN_COMPATIBILITY_DRAFT9 :
       agent->compatibility == NICE_COMPATIBILITY_GOOGLE ?
       STUN_USAGE_TURN_COMPATIBILITY_GOOGLE :
       agent->compatibility == NICE_COMPATIBILITY_MSN ?
       STUN_USAGE_TURN_COMPATIBILITY_MSN : STUN_USAGE_TURN_COMPATIBILITY_DRAFT9;
+}
+
+NiceTurnSocketCompatibility
+agent_to_turn_socket_compatibility (NiceAgent *agent)
+{
+  return agent->compatibility == NICE_COMPATIBILITY_DRAFT19 ?
+      NICE_TURN_SOCKET_COMPATIBILITY_DRAFT9 :
+      agent->compatibility == NICE_COMPATIBILITY_GOOGLE ?
+      NICE_TURN_SOCKET_COMPATIBILITY_GOOGLE :
+      agent->compatibility == NICE_COMPATIBILITY_MSN ?
+      NICE_TURN_SOCKET_COMPATIBILITY_MSN :
+      NICE_TURN_SOCKET_COMPATIBILITY_DRAFT9;
 }
 
 Stream *agent_find_stream (NiceAgent *agent, guint stream_id)
@@ -769,7 +794,6 @@ priv_add_new_candidate_discovery_turn (NiceAgent *agent,
   cdisco = g_slice_new0 (CandidateDiscovery);
   if (cdisco) {
     modified_list = g_slist_append (agent->discovery_list, cdisco);
-    priv_agent_to_turn_compatibility (agent);
 
     if (modified_list) {
       Component *component = stream_find_component_by_id (stream, component_id);
