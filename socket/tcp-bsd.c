@@ -200,6 +200,12 @@ socket_recv (NiceSocket *sock, NiceAddress *from, guint len, gchar *buf)
   int ret;
 
   ret = recv (sock->fileno, buf, len, 0);
+
+  /* recv returns 0 when the peer performed a shutdown.. we must return -1 here
+   * so that the agent destroys the g_source */
+  if (ret == 0)
+    return -1;
+
   if (ret < 0) {
 #ifdef G_OS_WIN32
     if (WSAGetLastError () == WSAEWOULDBLOCK)
