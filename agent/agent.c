@@ -1339,8 +1339,11 @@ _nice_agent_recv (
 
   len = nice_socket_recv (socket, &from,  buf_len, buf);
 
+  if (len <= 0)
+    return len;
+
 #ifndef NDEBUG
-  if (len >= 0) {
+  if (len > 0) {
     gchar tmpbuf[INET6_ADDRSTRLEN];
     nice_address_to_string (&from, tmpbuf);
     nice_debug ("Agent %p : Packet received on local socket %u from [%s]:%u (%u octets).", agent,
@@ -1348,8 +1351,6 @@ _nice_agent_recv (
   }
 #endif
 
-  if (len == 0)
-    return 0;
 
   if ((guint)len > buf_len)
     {
@@ -1572,6 +1573,7 @@ typedef struct _IOCtx IOCtx;
 struct _IOCtx
 {
   GIOChannel *channel;
+  GSource *source;
   NiceAgent *agent;
   Stream *stream;
   Component *component;
@@ -1585,7 +1587,8 @@ io_ctx_new (
   Stream *stream,
   Component *component,
   NiceSocket *socket,
-  GIOChannel *channel)
+  GIOChannel *channel,
+  GSource *source)
 {
   IOCtx *ctx;
 
@@ -1596,6 +1599,7 @@ io_ctx_new (
     ctx->component = component;
     ctx->socket = socket;
     ctx->channel = channel;
+    ctx->source = source;
   }
   return ctx;
 }
@@ -1610,7 +1614,7 @@ io_ctx_free (IOCtx *ctx)
 
 static gboolean
 nice_agent_g_source_cb (
-  GIOChannel *source,
+  GIOChannel *io,
   G_GNUC_UNUSED
   GIOCondition condition,
   gpointer data)
@@ -1622,19 +1626,29 @@ nice_agent_g_source_cb (
   Stream *stream = ctx->stream;
   Component *component = ctx->component;
   gchar buf[MAX_BUFFER_SIZE];
-  guint len;
+  gint len;
 
   g_static_rec_mutex_lock (&agent->mutex);
 
   /* note: dear compiler, these are for you: */
-  (void)source;
+  (void)io;
 
   len = _nice_agent_recv (agent, stream, component, ctx->socket,
 			  MAX_BUFFER_SIZE, buf);
 
-  if (len > 0 && component->g_source_io_cb)
+  if (len > 0 && component->g_source_io_cb) {
     component->g_source_io_cb (agent, stream->id, component->id,
         len, buf, component->data);
+  } else if (len < 0) {
+    GSource *source = ctx->source;
+    component->gsources = g_slist_remove (component->gsources, source);
+    g_source_destroy (source);
+    g_source_unref (source);
+    /* We don't close the socket because it would be way too complicated to
+     * take care of every path where the socket might still be used.. */
+    nice_debug ("Agent %p: unable to recv from socket %p. Detaching", agent,
+        ctx->socket);
+  }
 
   g_static_rec_mutex_unlock (&agent->mutex);
   return TRUE;
@@ -1661,7 +1675,7 @@ agent_attach_stream_component_socket (NiceAgent *agent,
   /* note: without G_IO_ERR the glib mainloop goes into
    *       busyloop if errors are encountered */
   source = g_io_create_watch (io, G_IO_IN | G_IO_ERR);
-  ctx = io_ctx_new (agent, stream, component, socket, io);
+  ctx = io_ctx_new (agent, stream, component, socket, io, source);
   g_source_set_callback (source, (GSourceFunc) nice_agent_g_source_cb,
       ctx, (GDestroyNotify) io_ctx_free);
   nice_debug ("Agent %p : Attach source %p (stream %u).", agent, source, stream->id);
