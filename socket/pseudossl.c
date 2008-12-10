@@ -177,6 +177,7 @@ socket_recv (NiceSocket *sock, NiceAddress *from, guint len, gchar *buf)
         nice_socket_free (priv->base_socket);
       priv->base_socket = NULL;
 
+      return -1;
     }
   }
   return 0;
