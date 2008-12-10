@@ -28,6 +28,8 @@ libsocket_la_SOURCES = \
 	tcp-bsd.c \
 	pseudossl.h \
 	pseudossl.c \
+	socks5.h \
+	socks5.c \
 	turn.h \
 	turn.c \
 	tcp-turn.h \
@@ -40,5 +42,5 @@ test_bsd_LDADD = $(COMMON_LDADD)
 
 TESTS = $(check_PROGRAMS)
 
-pkginclude_HEADERS = socket.h udp-bsd.h tcp-bsd.h pseudossl.h turn.h tcp-turn.h
+pkginclude_HEADERS = socket.h udp-bsd.h tcp-bsd.h pseudossl.h turn.h tcp-turn.h socks5.h
 

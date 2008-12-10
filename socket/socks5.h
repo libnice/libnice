@@ -35,61 +35,21 @@
  * file under either the MPL or the LGPL.
  */
 
-#ifndef _SOCKET_H
-#define _SOCKET_H
+#ifndef _SOCKS5_H
+#define _SOCKS5_H
 
-#include "address.h"
-
-#ifdef G_OS_WIN32
-#include <winsock2.h>
-#include <ws2tcpip.h>
-#else
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#endif
+#include "socket.h"
+#include "agent.h"
 
 G_BEGIN_DECLS
 
-typedef struct _NiceSocket NiceSocket;
 
-struct _NiceSocket
-{
-  NiceAddress addr;
-  guint fileno;
-  gint (*recv) (NiceSocket *sock, NiceAddress *from, guint len,
-      gchar *buf);
-  gboolean (*send) (NiceSocket *sock, const NiceAddress *to, guint len,
-      const gchar *buf);
-  gboolean (*is_reliable) (NiceSocket *sock);
-  void (*close) (NiceSocket *sock);
-  void *priv;
-};
+NiceSocket *
+nice_socks5_socket_new (NiceAgent *agent, NiceSocket *base_socket,
+    NiceAddress *addr, gchar *username, gchar *password);
 
-G_GNUC_WARN_UNUSED_RESULT
-gint
-nice_socket_recv (NiceSocket *sock, NiceAddress *from, guint len, gchar *buf);
-
-gboolean
-nice_socket_send (NiceSocket *sock, const NiceAddress *to,
-  guint len, const gchar *buf);
-
-gboolean
-nice_socket_is_reliable (NiceSocket *sock);
-
-
-void
-nice_socket_free (NiceSocket *sock);
-
-#include "udp-bsd.h"
-#include "tcp-bsd.h"
-#include "pseudossl.h"
-#include "socks5.h"
-#include "turn.h"
-#include "tcp-turn.h"
 
 G_END_DECLS
 
-#endif /* _SOCKET_H */
+#endif /* _SOCKS5_H */
 

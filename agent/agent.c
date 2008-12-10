@@ -909,7 +909,29 @@ priv_add_new_candidate_discovery_turn (NiceAgent *agent,
         }
         cdisco->nicesock = socket;
       } else {
-        socket = nice_tcp_bsd_socket_new (agent, component->ctx, &turn->server);
+        NiceAddress proxy_server;
+        socket = NULL;
+
+        if (agent->proxy_type != NICE_PROXY_TYPE_NONE &&
+            agent->proxy_ip != NULL &&
+            nice_address_set_from_string (&proxy_server, agent->proxy_ip)) {
+          nice_address_set_port (&proxy_server, agent->proxy_port);
+          socket = nice_tcp_bsd_socket_new (agent, component->ctx, &proxy_server);
+
+          if (socket &&
+              agent->proxy_type == NICE_PROXY_TYPE_SOCKS5) {
+            socket = nice_socks5_socket_new (agent, socket, &turn->server,
+                agent->proxy_username, agent->proxy_password);
+          } else {
+            /* TODO add HTTP support */
+            nice_socket_free (socket);
+            socket = NULL;
+          }
+
+        }
+        if (socket == NULL) {
+          socket = nice_tcp_bsd_socket_new (agent, component->ctx, &turn->server);
+        }
         if (turn->type ==  NICE_RELAY_TYPE_TURN_TLS &&
             agent->compatibility == NICE_COMPATIBILITY_GOOGLE) {
           socket = nice_pseudossl_socket_new (agent, socket);
