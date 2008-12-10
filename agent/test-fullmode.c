@@ -48,6 +48,13 @@
 #define USE_LOOPBACK 1
 #define TEST_GOOGLE 0
 
+#define PROXY_IP "127.0.0.1"
+#define PROXY_PORT 1080
+#define PROXY_TYPE NICE_PROXY_TYPE_SOCKS5
+#define PROXY_USERNAME NULL
+#define PROXY_PASSWORD NULL
+
+
 #if TEST_GOOGLE
 #define NICE_COMPATIBILITY NICE_COMPATIBILITY_GOOGLE
 
@@ -968,6 +975,17 @@ int main (void)
     g_object_set (G_OBJECT (ragent), "stun-server-port", atoi (stun_server_port),  NULL);
   }
 
+  g_object_set (G_OBJECT (lagent), "proxy-ip", PROXY_IP,  NULL);
+  g_object_set (G_OBJECT (lagent), "proxy-port", PROXY_PORT, NULL);
+  g_object_set (G_OBJECT (lagent), "proxy-type", PROXY_TYPE, NULL);
+  g_object_set (G_OBJECT (lagent), "proxy-username", PROXY_USERNAME, NULL);
+  g_object_set (G_OBJECT (lagent), "proxy-password", PROXY_PASSWORD, NULL);
+  g_object_set (G_OBJECT (ragent), "proxy-ip", PROXY_IP,  NULL);
+  g_object_set (G_OBJECT (ragent), "proxy-port", PROXY_PORT, NULL);
+  g_object_set (G_OBJECT (ragent), "proxy-type", PROXY_TYPE, NULL);
+  g_object_set (G_OBJECT (ragent), "proxy-username", PROXY_USERNAME, NULL);
+  g_object_set (G_OBJECT (ragent), "proxy-password", PROXY_PASSWORD, NULL);
+
   /* step: test setter/getter functions for properties */
   {
     guint max_checks = 0;
@@ -979,6 +997,11 @@ int main (void)
     g_free (string);
     g_object_get (G_OBJECT (lagent), "stun-server-port", &port, NULL);
     g_assert (stun_server_port == NULL || port == (guint)atoi (stun_server_port));
+    g_object_get (G_OBJECT (lagent), "proxy-ip", &string, NULL);
+    g_assert (strcmp (string, PROXY_IP) == 0);
+    g_free (string);
+    g_object_get (G_OBJECT (lagent), "proxy-port", &port, NULL);
+    g_assert (port == PROXY_PORT);
     g_object_get (G_OBJECT (lagent), "controlling-mode", &mode, NULL);
     g_assert (mode == TRUE);
     g_object_set (G_OBJECT (lagent), "max-connectivity-checks", 300, NULL);
