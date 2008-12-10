@@ -102,6 +102,7 @@ static gboolean socket_is_reliable (NiceSocket *sock);
 
 static void add_to_be_sent (NiceSocket *sock, const NiceAddress *to,
     const gchar *buf, guint len);
+static void free_to_be_sent (struct to_be_sent *tbs);
 
 
 NiceSocket *
@@ -137,6 +138,9 @@ socket_close (NiceSocket *sock)
 
   if (priv->base_socket)
     nice_socket_free (priv->base_socket);
+
+  g_queue_foreach (&priv->send_queue, (GFunc) free_to_be_sent, NULL);
+  g_queue_clear (&priv->send_queue);
 
   g_slice_free(PseudoSSLPriv, sock->priv);
 }
@@ -216,7 +220,15 @@ add_to_be_sent (NiceSocket *sock, const NiceAddress *to,
   tbs = g_slice_new0 (struct to_be_sent);
   tbs->buf = g_memdup (buf, len);
   tbs->length = len;
-  tbs->to = *to;
+  if (to)
+    tbs->to = *to;
   g_queue_push_tail (&priv->send_queue, tbs);
 
+}
+
+static void
+free_to_be_sent (struct to_be_sent *tbs)
+{
+  g_free (tbs->buf);
+  g_slice_free (struct to_be_sent, tbs);
 }
