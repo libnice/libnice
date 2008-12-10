@@ -213,7 +213,7 @@ add_to_be_sent (NiceSocket *sock, const NiceAddress *to,
   if (len <= 0)
     return;
 
-  tbs = g_slice_new (struct to_be_sent);
+  tbs = g_slice_new0 (struct to_be_sent);
   tbs->buf = g_memdup (buf, len);
   tbs->length = len;
   tbs->to = *to;
