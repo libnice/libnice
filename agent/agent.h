@@ -229,6 +229,26 @@ typedef enum
 } NiceCompatibility;
 
 /**
+ * NiceProxyType:
+ * @NICE_PROXY_TYPE_NONE: Do not use a proxy
+ * @NICE_PROXY_TYPE_SOCKS5: Use a SOCKS5 proxy
+ * @NICE_PROXY_TYPE_HTTP: Use an HTTP proxy
+ * @NICE_PROXY_TYPE_LAST: Dummy last proxy type
+ *
+ * An enum to specify which proxy type to use for relaying.
+ * Note that the proxies will only be used with TCP TURN relaying.
+ * See #NiceAgent:proxy-type
+ */
+typedef enum
+{
+  NICE_PROXY_TYPE_NONE = 0,
+  NICE_PROXY_TYPE_SOCKS5,
+  NICE_PROXY_TYPE_HTTP,
+  NICE_PROXY_TYPE_LAST = NICE_PROXY_TYPE_HTTP,
+} NiceProxyType;
+
+
+/**
  * NiceAgentRecvFunc:
  * @agent: The #NiceAgent Object
  * @stream_id: The id of the stream

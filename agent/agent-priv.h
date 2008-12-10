@@ -74,6 +74,11 @@ struct _NiceAgent
   GTimeVal next_check_tv;         /**< property: next conncheck timestamp */
   gchar *stun_server_ip;          /**< property: STUN server IP */
   guint stun_server_port;         /**< property: STUN server port */
+  gchar *proxy_ip;                /**< property: Proxy server IP */
+  guint proxy_port;               /**< property: Proxy server port */
+  NiceProxyType proxy_type;       /**< property: Proxy type */
+  gchar *proxy_username;          /**< property: Proxy username */
+  gchar *proxy_password;          /**< property: Proxy password */
   gboolean controlling_mode;      /**< property: controlling-mode */
   guint timer_ta;                 /**< property: timer Ta */
   guint max_conn_checks;          /**< property: max connectivity checks */

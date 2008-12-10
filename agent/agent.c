@@ -88,7 +88,12 @@ enum
   PROP_CONTROLLING_MODE,
   PROP_FULL_MODE,
   PROP_STUN_PACING_TIMER,
-  PROP_MAX_CONNECTIVITY_CHECKS
+  PROP_MAX_CONNECTIVITY_CHECKS,
+  PROP_PROXY_TYPE,
+  PROP_PROXY_IP,
+  PROP_PROXY_PORT,
+  PROP_PROXY_USERNAME,
+  PROP_PROXY_PASSWORD
 };
 
 
@@ -299,6 +304,48 @@ nice_agent_class_init (NiceAgentClass *klass)
         "Upper limit for the total number of connectivity checks performed",
         0, 0xffffffff, 
 	0, /* default set in init */
+        G_PARAM_READWRITE));
+
+  g_object_class_install_property (gobject_class, PROP_PROXY_IP,
+      g_param_spec_string (
+        "proxy-ip",
+        "Proxy server IP",
+        "The proxy server used to bypass a proxy firewall",
+        NULL,
+        G_PARAM_READWRITE));
+
+  g_object_class_install_property (gobject_class, PROP_PROXY_PORT,
+      g_param_spec_uint (
+        "proxy-port",
+        "Proxy server port",
+        "The Proxy server used to bypass a proxy firewall",
+        1, 65536,
+	1,
+        G_PARAM_READWRITE));
+
+  g_object_class_install_property (gobject_class, PROP_PROXY_TYPE,
+      g_param_spec_uint (
+         "proxy-type",
+         "Type of proxy to use",
+         "The type of proxy set in the proxy-ip property",
+         NICE_PROXY_TYPE_NONE, NICE_PROXY_TYPE_LAST,
+         NICE_PROXY_TYPE_NONE,
+         G_PARAM_READWRITE));
+
+  g_object_class_install_property (gobject_class, PROP_PROXY_USERNAME,
+      g_param_spec_string (
+        "proxy-username",
+        "Proxy server username",
+        "The username used to authenticate with the proxy",
+        NULL,
+        G_PARAM_READWRITE));
+
+  g_object_class_install_property (gobject_class, PROP_PROXY_PASSWORD,
+      g_param_spec_string (
+        "proxy-password",
+        "Proxy server password",
+        "The password used to authenticate with the proxy",
+        NULL,
         G_PARAM_READWRITE));
 
   /* install signals */
@@ -536,6 +583,26 @@ nice_agent_get_property (
       /* XXX: should we prune the list of already existing checks? */
       break;
 
+    case PROP_PROXY_IP:
+      g_value_set_string (value, agent->proxy_ip);
+      break;
+
+    case PROP_PROXY_PORT:
+      g_value_set_uint (value, agent->proxy_port);
+      break;
+
+    case PROP_PROXY_TYPE:
+      g_value_set_uint (value, agent->proxy_type);
+      break;
+
+    case PROP_PROXY_USERNAME:
+      g_value_set_string (value, agent->proxy_username);
+      break;
+
+    case PROP_PROXY_PASSWORD:
+      g_value_set_string (value, agent->proxy_password);
+      break;
+
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
     }
@@ -604,6 +671,26 @@ nice_agent_set_property (
 
     case PROP_MAX_CONNECTIVITY_CHECKS:
       agent->max_conn_checks = g_value_get_uint (value);
+      break;
+
+    case PROP_PROXY_IP:
+      agent->proxy_ip = g_value_dup_string (value);
+      break;
+
+    case PROP_PROXY_PORT:
+      agent->proxy_port = g_value_get_uint (value);
+      break;
+
+    case PROP_PROXY_TYPE:
+      agent->proxy_type = g_value_get_uint (value);
+      break;
+
+    case PROP_PROXY_USERNAME:
+      agent->proxy_username = g_value_dup_string (value);
+      break;
+
+    case PROP_PROXY_PASSWORD:
+      agent->proxy_password = g_value_dup_string (value);
       break;
 
     default:
