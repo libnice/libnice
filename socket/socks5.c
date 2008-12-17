@@ -1,11 +1,9 @@
 /*
  * This file is part of the Nice GLib ICE library.
  *
- * (C) 2006-2008 Collabora Ltd.
- *  Contact: Dafydd Harries
- *  Contact: Olivier Crete
- * (C) 2006, 2007 Nokia Corporation. All rights reserved.
- *  Contact: Kai Vehmanen
+ * (C) 2008 Collabora Ltd.
+ *  Contact: Youness Alaoui
+ * (C) 2008 Nokia Corporation. All rights reserved.
  *
  * The contents of this file are subject to the Mozilla Public License Version
  * 1.1 (the "License"); you may not use this file except in compliance with
@@ -23,10 +21,7 @@
  * Corporation. All Rights Reserved.
  *
  * Contributors:
- *   Dafydd Harries, Collabora Ltd.
- *   Olivier Crete, Collabora Ltd.
- *   Rémi Denis-Courmont, Nokia
- *   Kai Vehmanen
+ *   Youness Alaoui, Collabora Ltd.
  *
  * Alternatively, the contents of this file may be used under the terms of the
  * the GNU Lesser General Public License Version 2.1 (the "LGPL"), in which
@@ -93,7 +88,7 @@ static void free_to_be_sent (struct to_be_sent *tbs);
 
 
 NiceSocket *
-nice_socks5_socket_new (NiceAgent *agent, NiceSocket *base_socket,
+nice_socks5_socket_new (NiceSocket *base_socket,
     NiceAddress *addr, gchar *username, gchar *password)
 {
   Socks5Priv *priv;
@@ -385,6 +380,8 @@ socket_send (NiceSocket *sock, const NiceAddress *to,
       return nice_socket_send (priv->base_socket, to, len, buf);
     else
       return FALSE;
+  } else if (priv->state == SOCKS_STATE_ERROR) {
+    return FALSE;
   } else {
     add_to_be_sent (sock, to, buf, len);
   }

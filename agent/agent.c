@@ -920,7 +920,7 @@ priv_add_new_candidate_discovery_turn (NiceAgent *agent,
 
           if (socket &&
               agent->proxy_type == NICE_PROXY_TYPE_SOCKS5) {
-            socket = nice_socks5_socket_new (agent, socket, &turn->server,
+            socket = nice_socks5_socket_new (socket, &turn->server,
                 agent->proxy_username, agent->proxy_password);
           } else {
             /* TODO add HTTP support */
