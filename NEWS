@@ -1,3 +1,12 @@
+nice 0.0.4 (2008-12-17)
+========================
+
+Fix compilation for 64bits systems
+Revert the use of netbuffer in the gstreamer elements
+Added support for pseudossl-tcp TURN relay for Google
+Added support for SOCKS5 proxy servers for TCP relaying
+Bug fixes and code cleaning
+
 nice 0.0.3 (2008-11-25)
 ========================
 
