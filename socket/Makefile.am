@@ -30,6 +30,8 @@ libsocket_la_SOURCES = \
 	pseudossl.c \
 	socks5.h \
 	socks5.c \
+	http.h \
+	http.c \
 	turn.h \
 	turn.c \
 	tcp-turn.h \

@@ -918,14 +918,18 @@ priv_add_new_candidate_discovery_turn (NiceAgent *agent,
           nice_address_set_port (&proxy_server, agent->proxy_port);
           socket = nice_tcp_bsd_socket_new (agent, component->ctx, &proxy_server);
 
-          if (socket &&
-              agent->proxy_type == NICE_PROXY_TYPE_SOCKS5) {
-            socket = nice_socks5_socket_new (socket, &turn->server,
-                agent->proxy_username, agent->proxy_password);
-          } else {
-            /* TODO add HTTP support */
-            nice_socket_free (socket);
-            socket = NULL;
+          if (socket) {
+            if (agent->proxy_type == NICE_PROXY_TYPE_SOCKS5) {
+              socket = nice_socks5_socket_new (socket, &turn->server,
+                  agent->proxy_username, agent->proxy_password);
+            } else if (agent->proxy_type == NICE_PROXY_TYPE_HTTP){
+              socket = nice_http_socket_new (socket, &turn->server,
+                  agent->proxy_username, agent->proxy_password);
+            } else {
+              /* TODO add HTTP support */
+              nice_socket_free (socket);
+              socket = NULL;
+            }
           }
 
         }
