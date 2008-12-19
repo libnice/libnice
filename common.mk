@@ -1,6 +1,6 @@
 
 ERROR_CFLAGS = \
-	$(NICE_CFLAGS) \
+	$(LIBNICE_CFLAGS) \
 	-Wextra \
 	-Wundef \
 	-Wnested-externs \

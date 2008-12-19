@@ -6,7 +6,7 @@
 #
 # Licensed under MPL 1.1/LGPL 2.1. See file COPYING.
 
-AM_CFLAGS = $(NICE_CFLAGS) \
+AM_CFLAGS = $(LIBNICE_CFLAGS) \
 	$(GST_CFLAGS) \
 	-I $(top_srcdir) \
 	-I $(top_srcdir)/socket \

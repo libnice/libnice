@@ -3,8 +3,8 @@ AC_PREREQ(2.59c)
 
 dnl releases only do -Wall, cvs and prerelease does -Werror too
 dnl use a three digit version number for releases, and four for cvs/prerelease
-AC_INIT(nice, 0.0.4.1)
-NICE_RELEASE="no"
+AC_INIT(libnice, 0.0.4.1)
+LIBNICE_RELEASE="no"
 
 AC_CONFIG_SRCDIR([agent/agent.c])
 AC_CONFIG_HEADER([config.h])
@@ -26,12 +26,12 @@ AC_CONFIG_FILES([
 	])
 
 # Set the libtool C/A/R version info
-NICE_CURRENT=2
-NICE_REVISION=0
-NICE_AGE=2
-NICE_LIBVERSION=${NICE_CURRENT}:${NICE_REVISION}:${NICE_AGE}
-NICE_LT_LDFLAGS="-version-info ${NICE_LIBVERSION}"
-AC_SUBST(NICE_LT_LDFLAGS)
+LIBNICE_CURRENT=2
+LIBNICE_REVISION=0
+LIBNICE_AGE=2
+LIBNICE_LIBVERSION=${LIBNICE_CURRENT}:${LIBNICE_REVISION}:${LIBNICE_AGE}
+LIBNICE_LT_LDFLAGS="-version-info ${LIBNICE_LIBVERSION}"
+AC_SUBST(LIBNICE_LT_LDFLAGS)
 
 
 # Checks for programs.
@@ -51,14 +51,14 @@ AC_DEFINE([_FORTIFY_SOURCE], [2], [Define to `2' to get GNU/libc warnings.])
 AC_DEFINE([NICEAPI_EXPORT], [ ], [Public library function implementation])
 AC_CHECK_HEADERS([arpa/inet.h net/in.h ifaddrs.h])
 
-NICE_CFLAGS="-Wall"
+LIBNICE_CFLAGS="-Wall"
 dnl if asked for, add -Werror if supported
-if test "x$NICE_RELEASE" != "xyes"; then
-  NICE_CFLAGS="$NICE_CFLAGS -Werror"
+if test "x$LIBNICE_RELEASE" != "xyes"; then
+  LIBNICE_CFLAGS="$LIBNICE_CFLAGS -Werror"
 fi
 
-AC_SUBST(NICE_CFLAGS)
-AC_MSG_NOTICE([set NICE_CFLAGS to $NICE_CFLAGS])
+AC_SUBST(LIBNICE_CFLAGS)
+AC_MSG_NOTICE([set LIBNICE_CFLAGS to $LIBNICE_CFLAGS])
 
 # Checks for libraries.
 AC_CHECK_LIB(rt, clock_gettime, [LIBRT="-lrt"], [LIBRT=""])

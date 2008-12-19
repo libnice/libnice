@@ -21,7 +21,7 @@ libnice_la_LIBADD = \
 
 libnice_la_LDFLAGS = \
 	-export-symbols $(srcdir)/libnice.sym \
-	$(NICE_LT_LDFLAGS)
+	$(LIBNICE_LT_LDFLAGS)
 
 
 AM_CFLAGS = \
