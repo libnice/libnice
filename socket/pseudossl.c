@@ -165,8 +165,8 @@ socket_recv (NiceSocket *sock, NiceAddress *from, guint len, gchar *buf)
       return ret;
     } else if ((guint) ret == sizeof(SSL_SERVER_HANDSHAKE) &&
         memcmp(SSL_SERVER_HANDSHAKE, data, sizeof(SSL_SERVER_HANDSHAKE)) == 0) {
-      priv->handshaken = TRUE;
       struct to_be_sent *tbs = NULL;
+      priv->handshaken = TRUE;
       while ((tbs = g_queue_pop_head (&priv->send_queue))) {
         nice_socket_send (priv->base_socket, &tbs->to, tbs->length, tbs->buf);
         g_free (tbs->buf);
