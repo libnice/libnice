@@ -16,5 +16,6 @@
     <xi:include href="xml/address.xml"/>
     <xi:include href="xml/debug.xml"/>
     <xi:include href="xml/candidate.xml"/>
+    <xi:include href="xml/interfaces.xml"/>
   </chapter>
 </book>

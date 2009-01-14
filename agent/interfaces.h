@@ -39,7 +39,7 @@ G_BEGIN_DECLS
 
 
 /**
- * fs_interfaces_get_ip_for_interface:
+ * nice_interfaces_get_ip_for_interface:
  * @interface_name: name of local interface
  *
  * Retreives the IPv4 address of an interface by its name
@@ -50,7 +50,7 @@ gchar * nice_interfaces_get_ip_for_interface (gchar *interface_name);
 
 
 /**
- * fs_interfaces_get_local_ips:
+ * nice_interfaces_get_local_ips:
  * @include_loopback: Include any loopback devices
  *
  * Get a list of local ipv4 interface addresses
@@ -62,7 +62,7 @@ GList * nice_interfaces_get_local_ips (gboolean include_loopback);
 
 
 /**
- * fs_interfaces_get_local_interfaces:
+ * nice_interfaces_get_local_interfaces:
  *
  * Get the list of local interfaces
  *

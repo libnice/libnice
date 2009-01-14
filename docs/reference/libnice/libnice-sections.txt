@@ -72,6 +72,16 @@ nice_candidate_pair_priority
 
 
 <SECTION>
+<FILE>interfaces</FILE>
+<TITLE>Network interfaces discovery</TITLE>
+<INCLUDE>gst/farsight/fs-interfaces.h</INCLUDE>
+nice_interfaces_get_ip_for_interface
+nice_interfaces_get_local_interfaces
+nice_interfaces_get_local_ips
+</SECTION>
+
+
+<SECTION>
 <FILE>address</FILE>
 <TITLE>NiceAddress</TITLE>
 NICE_ADDRESS_STRING_LEN

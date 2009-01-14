@@ -37,7 +37,7 @@ FIXXREF_OPTIONS=
 # Used for dependencies. The docs will be rebuilt if any of these change.
 # e.g. HFILE_GLOB=$(top_srcdir)/gtk/*.h
 # e.g. CFILE_GLOB=$(top_srcdir)/gtk/*.c
-HFILE_GLOB=$(DOC_SOURCE_DIR)/agent.h $(DOC_SOURCE_DIR)/address.h $(DOC_SOURCE_DIR)/debug.h $(DOC_SOURCE_DIR)/candidate.h
+HFILE_GLOB=$(DOC_SOURCE_DIR)/agent.h $(DOC_SOURCE_DIR)/address.h $(DOC_SOURCE_DIR)/debug.h $(DOC_SOURCE_DIR)/candidate.h $(DOC_SOURCE_DIR)/interfaces.h
 CFILE_GLOB=$(DOC_SOURCE_DIR)/agent.c
 
 # Header files to ignore when scanning.
