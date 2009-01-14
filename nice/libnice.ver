@@ -2,7 +2,6 @@
 libnice {
 global:
 	nice_*;
-	udp_*;
 };
 
 HIDDEN {

@@ -53,6 +53,8 @@ libagent_la_SOURCES = \
 	conncheck.h \
 	discovery.c \
 	discovery.h \
+	interfaces.c \
+	interfaces.h \
 	$(BUILT_SOURCES)
 
 libagent_la_LIBADD = \
