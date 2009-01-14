@@ -14,7 +14,8 @@ ALWAYS_SUBDIRS = \
 	random \
 	agent \
 	nice \
-	docs
+	docs \
+	tests
 SUBDIRS = $(ALWAYS_SUBDIRS)
 
 if WITH_GSTREAMER

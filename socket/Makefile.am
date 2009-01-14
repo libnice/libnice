@@ -37,12 +37,6 @@ libsocket_la_SOURCES = \
 	tcp-turn.h \
 	tcp-turn.c
 
-check_PROGRAMS = test-bsd
-
-test_bsd_LDADD = $(COMMON_LDADD)
-
-
-TESTS = $(check_PROGRAMS)
 
 pkginclude_HEADERS = socket.h udp-bsd.h tcp-bsd.h pseudossl.h turn.h tcp-turn.h socks5.h
 
