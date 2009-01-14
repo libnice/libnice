@@ -69,6 +69,7 @@
 #include "agent-signals-marshal.h"
 
 #include "stream.h"
+#include "interfaces.h"
 
 /* This is the max size of a UDP packet
  * will it work tcp relaying??
@@ -1084,8 +1085,25 @@ nice_agent_gather_candidates (
   nice_debug ("Agent %p : In %s mode, starting candidate gathering.", agent,
       agent->full_mode ? "ICE-FULL" : "ICE-LITE");
 
-  /* generate a local host candidate for each local address */
+  /* if no local addresses added, generate them ourselves */
+  if (agent->local_addresses == NULL) {
+    GList *addresses = nice_interfaces_get_local_ips (FALSE);
+    GList *item;
 
+    for (item = addresses; item; item = g_list_next (item)) {
+      NiceAddress *addr = nice_address_new ();
+
+      if (nice_address_set_from_string (addr, item->data)) {
+        nice_agent_add_local_address (agent, addr);
+      }
+      nice_address_free (addr);
+    }
+
+    g_list_foreach (addresses, (GFunc) g_free, NULL);
+    g_list_free (addresses);
+  }
+
+  /* generate a local host candidate for each local address */
   for (i = agent->local_addresses; i; i = i->next){
     NiceAddress *addr = i->data;
     NiceCandidate *host_candidate;
