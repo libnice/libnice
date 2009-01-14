@@ -15,8 +15,6 @@ AM_CFLAGS = \
 	-I $(top_srcdir)/agent \
 	-I $(top_srcdir)/
 
-COMMON_LDADD = libsocket.la $(top_builddir)/agent/libagent.la $(GLIB_LIBS) $(top_builddir)/stun/libstun.la
-
 noinst_LTLIBRARIES = libsocket.la
 
 libsocket_la_SOURCES = \
