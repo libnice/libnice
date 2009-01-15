@@ -2149,11 +2149,11 @@ static bool conncheck_stun_validater (StunAgent *agent,
       }
 
       stun_debug ("Found valid username, returning password: '%s'\n", *password);
-      return true;
+      return TRUE;
     }
   }
 
-  return false;
+  return FALSE;
 }
 
 

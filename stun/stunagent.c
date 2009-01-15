@@ -82,11 +82,11 @@ bool stun_agent_default_validater (StunAgent *agent,
       *password = (uint8_t *) val[i].password;
       *password_len = val[i].password_len;
       stun_debug ("Found valid username, returning password : '%s'\n", *password);
-      return true;
+      return TRUE;
     }
   }
 
-  return false;
+  return FALSE;
 
 }
 
