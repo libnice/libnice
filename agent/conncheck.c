@@ -61,6 +61,7 @@
 #include "stun/usages/turn.h"
 
 static void priv_update_check_list_failed_components (NiceAgent *agent, Stream *stream);
+static void priv_update_check_list_state_for_ready (NiceAgent *agent, Stream *stream, Component *component);
 static void priv_prune_pending_checks (Stream *stream, guint component_id);
 static gboolean priv_schedule_triggered_check (NiceAgent *agent, Stream *stream, Component *component, NiceSocket *local_socket, NiceCandidate *remote_cand, gboolean use_candidate);
 static void priv_mark_pair_nominated (NiceAgent *agent, Stream *stream, Component *component, NiceCandidate *remotecand);
@@ -393,16 +394,29 @@ static gboolean priv_conn_check_tick_unlocked (gpointer pointer)
     if (res)
       keep_timer_going = res;
   }
-  
+
   /* step: stop timer if no work left */
   if (keep_timer_going != TRUE) {
     nice_debug ("Agent %p : %s: stopping conncheck timer", agent, G_STRFUNC);
     for (i = agent->streams; i; i = i->next) {
       Stream *stream = i->data;
       priv_update_check_list_failed_components (agent, stream);
+      for (j = stream->components; j; j = j->next) {
+        Component *component = j->data;
+        priv_update_check_list_state_for_ready (agent, stream, component);
+      }
       stream->conncheck_state = NICE_CHECKLIST_COMPLETED;
     }
-    conn_check_free (agent);
+
+    /* Stopping the timer so destroy the source.. this will allow
+       the timer to be reset if we get a set_remote_candidates after this
+       point */
+    if (agent->conncheck_timer_source != NULL) {
+      g_source_destroy (agent->conncheck_timer_source);
+      g_source_unref (agent->conncheck_timer_source);
+      agent->conncheck_timer_source = NULL;
+    }
+
     /* XXX: what to signal, is all processing now really done? */
     nice_debug ("Agent %p : changing conncheck state to COMPLETED.", agent);
   }
@@ -1004,10 +1018,17 @@ int conn_check_add_for_candidate (NiceAgent *agent, guint stream_id, Component *
       result = priv_add_new_check_pair (agent, stream_id, component, local, remote, NICE_CHECK_FROZEN, FALSE);
       if (result) {
 	++added;
-	agent_signal_component_state_change (agent, 
-					     stream_id,
-					     component->id,
-					     NICE_COMPONENT_STATE_CONNECTING);
+        if (component->state < NICE_COMPONENT_STATE_CONNECTED) {
+          agent_signal_component_state_change (agent,
+              stream_id,
+              component->id,
+              NICE_COMPONENT_STATE_CONNECTING);
+        } else {
+          agent_signal_component_state_change (agent,
+              stream_id,
+              component->id,
+              NICE_COMPONENT_STATE_CONNECTED);
+        }
       }
       else {
 	added = -1;
@@ -1041,6 +1062,7 @@ void conn_check_free (NiceAgent *agent)
   for (i = agent->streams; i; i = i->next) {
     Stream *stream = i->data;
 
+    nice_debug ("Agent %p, freeing conncheck_list of stream %p", agent, stream);
     if (stream->conncheck_list) {
       g_slist_foreach (stream->conncheck_list, conn_check_free_item, NULL);
       g_slist_free (stream->conncheck_list),
