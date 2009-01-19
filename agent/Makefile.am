@@ -66,4 +66,4 @@ libagent_la_DEPENDENCIES = \
 	../socket/libsocket.la \
 	../stun/libstun.la
 
-pkginclude_HEADERS = agent.h candidate.h debug.h address.h
+pkginclude_HEADERS = agent.h candidate.h debug.h address.h interfaces.h

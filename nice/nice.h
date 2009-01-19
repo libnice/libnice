@@ -39,6 +39,7 @@
 #define _NICE_H
 
 #include "agent.h"
+#include "interfaces.h"
 
 #endif /* _NICE_H */
 
