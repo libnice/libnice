@@ -141,7 +141,6 @@ static void SHA1Transform(uint32_t state[5], const unsigned char buffer[64])
   uint32_t workspace[16];
   block = (CHAR64LONG16 *) workspace;
   memcpy(block, buffer, 64);
-  block =  (CHAR64LONG16 *) buffer;
 
   /* Copy context->state[] to working vars */
   a = state[0];
