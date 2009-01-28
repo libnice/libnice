@@ -36,5 +36,5 @@ libsocket_la_SOURCES = \
 	tcp-turn.c
 
 
-pkginclude_HEADERS = socket.h udp-bsd.h tcp-bsd.h pseudossl.h turn.h tcp-turn.h socks5.h
+pkginclude_HEADERS = socket.h udp-bsd.h tcp-bsd.h pseudossl.h http.h socks5.h turn.h tcp-turn.h
 
