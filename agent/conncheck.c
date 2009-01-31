@@ -2420,10 +2420,11 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, Stream *stream,
       g_free (req.key);
     }
 
-    if (res == EACCES)
+    if (res == STUN_USAGE_ICE_RETURN_ROLE_CONFLICT)
       priv_check_for_role_conflict (agent, control);
 
-    if (res == 0 || res == EACCES) {
+    if (res == STUN_USAGE_ICE_RETURN_SUCCESS ||
+        res == STUN_USAGE_ICE_RETURN_ROLE_CONFLICT) {
       /* case 1: valid incoming request, send a reply/error */
       bool use_candidate =
           stun_usage_ice_conncheck_use_candidate (&req);
