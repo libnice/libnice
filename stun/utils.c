@@ -42,15 +42,6 @@
 #include <stdio.h>
 #include <stdarg.h>
 
-#ifdef _WIN32
-#define ENOENT -1
-#define EINVAL -2
-#define ENOBUFS -3
-#define EAFNOSUPPORT -4
-#else
-#include <errno.h>
-#endif
-
 #include "utils.h"
 
 /** Compares two socket addresses
@@ -167,7 +158,7 @@ void stun_debug_bytes (const void *data, size_t len)
     stun_debug ("%02x", ((const unsigned char *)data)[i]);
 }
 
-int stun_xor_address (const StunMessage *msg,
+StunMessageReturn stun_xor_address (const StunMessage *msg,
     struct sockaddr *addr, socklen_t addrlen,
     uint32_t magic_cookie)
 {
@@ -177,11 +168,11 @@ int stun_xor_address (const StunMessage *msg,
     {
       struct sockaddr_in *ip4 = (struct sockaddr_in *)addr;
       if ((size_t) addrlen < sizeof (*ip4))
-        return EINVAL;
+        return STUN_MESSAGE_RETURN_INVALID;
 
       ip4->sin_port ^= htons (magic_cookie >> 16);
       ip4->sin_addr.s_addr ^= htonl (magic_cookie);
-      return 0;
+      return STUN_MESSAGE_RETURN_SUCCESS;
     }
 
     case AF_INET6:

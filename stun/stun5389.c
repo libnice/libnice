@@ -79,7 +79,7 @@ bool stun_has_cookie (const StunMessage *msg)
 }
 
 
-int stun_message_append_software (StunMessage *msg)
+StunMessageReturn stun_message_append_software (StunMessage *msg)
 {
   static const char software[] = PACKAGE_STRING;
   // assert (strlen (software) < 128);

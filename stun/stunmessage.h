@@ -221,6 +221,15 @@ typedef enum
 } stun_error_t;
 
 
+typedef enum
+{
+  STUN_MESSAGE_RETURN_SUCCESS,
+  STUN_MESSAGE_RETURN_NOT_FOUND,
+  STUN_MESSAGE_RETURN_INVALID,
+  STUN_MESSAGE_RETURN_NOT_ENOUGH_SPACE,
+  STUN_MESSAGE_RETURN_UNSUPPORTED_ADDRESS
+} StunMessageReturn;
+
 #include "stunagent.h"
 #include "stunhmac.h"
 #include "stuncrc32.h"
@@ -272,7 +281,8 @@ const void * stun_message_find (const StunMessage * msg, stun_attr_type_t type,
  * @return 0 if flag is present, ENOENT if it is not, EINVAL if flag payload
  * size is not zero.
  */
-int stun_message_find_flag (const StunMessage *msg, stun_attr_type_t type);
+StunMessageReturn stun_message_find_flag (const StunMessage *msg,
+    stun_attr_type_t type);
 
 /**
  * Extracts a 32-bits attribute from a valid STUN message.
@@ -284,8 +294,8 @@ int stun_message_find_flag (const StunMessage *msg, stun_attr_type_t type);
  * EINVAL if attribute payload was not 32-bits.
  * In case of error, @a *pval is not modified.
  */
-int stun_message_find32 (const StunMessage *msg, stun_attr_type_t type,
-    uint32_t *pval);
+StunMessageReturn stun_message_find32 (const StunMessage *msg,
+    stun_attr_type_t type, uint32_t *pval);
 
 /**
  * Extracts a 64-bits attribute from a valid STUN message.
@@ -296,8 +306,8 @@ int stun_message_find32 (const StunMessage *msg, stun_attr_type_t type,
  * EINVAL if attribute payload was not 64-bits.
  * In case of error, @a *pval is not modified.
  */
-int stun_message_find64 (const StunMessage *msg, stun_attr_type_t type,
-    uint64_t *pval);
+StunMessageReturn stun_message_find64 (const StunMessage *msg,
+    stun_attr_type_t type, uint64_t *pval);
 
 /**
  * Extracts an UTF-8 string from a valid STUN message.
@@ -312,8 +322,8 @@ int stun_message_find64 (const StunMessage *msg, stun_attr_type_t type,
  *
  * @note A nul-byte is appended at the end.
  */
-int stun_message_find_string (const StunMessage *msg, stun_attr_type_t type,
-    char *buf, size_t buflen);
+StunMessageReturn stun_message_find_string (const StunMessage *msg,
+    stun_attr_type_t type, char *buf, size_t buflen);
 
 /**
  * Extracts a network address attribute from a valid STUN message.
@@ -327,8 +337,8 @@ int stun_message_find_string (const StunMessage *msg, stun_attr_type_t type,
  * EINVAL if attribute payload size was wrong or addrlen too small,
  * EAFNOSUPPORT if address family is unknown.
  */
-int stun_message_find_addr (const StunMessage *msg, stun_attr_type_t type,
-    struct sockaddr *addr, socklen_t *addrlen);
+StunMessageReturn stun_message_find_addr (const StunMessage *msg,
+    stun_attr_type_t type, struct sockaddr *addr, socklen_t *addrlen);
 
 /**
  * Extracts an obfuscated network address attribute from a valid STUN message.
@@ -342,21 +352,21 @@ int stun_message_find_addr (const StunMessage *msg, stun_attr_type_t type,
  * EINVAL if attribute payload size was wrong or addrlen too small,
  * EAFNOSUPPORT if address family is unknown.
  */
-int stun_message_find_xor_addr (const StunMessage *msg, stun_attr_type_t type,
-    struct sockaddr *addr, socklen_t *addrlen);
+StunMessageReturn stun_message_find_xor_addr (const StunMessage *msg,
+    stun_attr_type_t type, struct sockaddr *addr, socklen_t *addrlen);
 
-int stun_message_find_xor_addr_full (const StunMessage *msg,
+StunMessageReturn stun_message_find_xor_addr_full (const StunMessage *msg,
     stun_attr_type_t type, struct sockaddr *addr,
     socklen_t *addrlen, uint32_t magic_cookie);
 
 
-int stun_message_find_error (const StunMessage *msg, int *code);
+StunMessageReturn stun_message_find_error (const StunMessage *msg, int *code);
 
 void *stun_message_append (StunMessage *msg, stun_attr_type_t type,
     size_t length);
 
-int stun_message_append_bytes (StunMessage *msg, stun_attr_type_t type,
-    const void *data, size_t len);
+StunMessageReturn stun_message_append_bytes (StunMessage *msg,
+    stun_attr_type_t type, const void *data, size_t len);
 
 /**
  * Appends an empty ("flag") attribute to a STUN message.
@@ -365,7 +375,8 @@ int stun_message_append_bytes (StunMessage *msg, stun_attr_type_t type,
  * @param type attribute type (host byte order)
  * @return 0 on success, ENOBUFS on error.
  */
-int stun_message_append_flag (StunMessage *msg, stun_attr_type_t type);
+StunMessageReturn stun_message_append_flag (StunMessage *msg,
+    stun_attr_type_t type);
 
 /**
  * Appends an attribute consisting of a 32-bits value to a STUN message.
@@ -375,8 +386,8 @@ int stun_message_append_flag (StunMessage *msg, stun_attr_type_t type);
  * @param value payload (host byte order)
  * @return 0 on success, ENOBUFS on error.
  */
-int stun_message_append32 (StunMessage *msg, stun_attr_type_t type,
-    uint32_t value);
+StunMessageReturn stun_message_append32 (StunMessage *msg,
+    stun_attr_type_t type, uint32_t value);
 
 /**
  * Appends an attribute consisting of a 64-bits value to a STUN message.
@@ -386,8 +397,8 @@ int stun_message_append32 (StunMessage *msg, stun_attr_type_t type,
  * @param value payload (host byte order)
  * @return 0 on success, ENOBUFS on error.
  */
-int stun_message_append64 (StunMessage *msg, stun_attr_type_t type,
-    uint64_t value);
+StunMessageReturn stun_message_append64 (StunMessage *msg,
+    stun_attr_type_t type, uint64_t value);
 
 /**
  * Appends an attribute from a nul-terminated string.
@@ -397,8 +408,8 @@ int stun_message_append64 (StunMessage *msg, stun_attr_type_t type,
  * @param str nul-terminated string
  * @return 0 on success, ENOBUFS on error.
  */
-int stun_message_append_string (StunMessage *msg, stun_attr_type_t type,
-    const char *str);
+StunMessageReturn stun_message_append_string (StunMessage *msg,
+    stun_attr_type_t type, const char *str);
 
 /**
  * Appends an attribute consisting of a network address to a STUN message.
@@ -411,8 +422,8 @@ int stun_message_append_string (StunMessage *msg, stun_attr_type_t type,
  * EAFNOSUPPORT is the socket address family is not supported,
  * EINVAL if the socket address length is too small w.r.t. the address family.
  */
-int stun_message_append_addr (StunMessage * msg, stun_attr_type_t type,
-    const struct sockaddr *addr, socklen_t addrlen);
+StunMessageReturn stun_message_append_addr (StunMessage * msg,
+    stun_attr_type_t type, const struct sockaddr *addr, socklen_t addrlen);
 
 /**
  * Appends an attribute consisting of a xor'ed network address.
@@ -425,11 +436,11 @@ int stun_message_append_addr (StunMessage * msg, stun_attr_type_t type,
  * EAFNOSUPPORT is the socket address family is not supported,
  * EINVAL if the socket address length is too small w.r.t. the address family.
  */
-int stun_message_append_xor_addr (StunMessage * msg, stun_attr_type_t type,
-    const struct sockaddr *addr, socklen_t addrlen);
+StunMessageReturn stun_message_append_xor_addr (StunMessage * msg,
+    stun_attr_type_t type, const struct sockaddr *addr, socklen_t addrlen);
 
-int stun_message_append_xor_addr_full (StunMessage * msg, stun_attr_type_t type,
-    const struct sockaddr *addr, socklen_t addrlen,
+StunMessageReturn stun_message_append_xor_addr_full (StunMessage * msg,
+    stun_attr_type_t type, const struct sockaddr *addr, socklen_t addrlen,
     uint32_t magic_cookie);
 
 /**
@@ -439,7 +450,8 @@ int stun_message_append_xor_addr_full (StunMessage * msg, stun_attr_type_t type,
  * @param code STUN host-byte order integer error code
  * @return 0 on success, or ENOBUFS otherwise
  */
-int stun_message_append_error (StunMessage * msg, stun_error_t code);
+StunMessageReturn stun_message_append_error (StunMessage * msg,
+    stun_error_t code);
 
 #define STUN_MESSAGE_BUFFER_INCOMPLETE 0
 #define STUN_MESSAGE_BUFFER_INVALID -1

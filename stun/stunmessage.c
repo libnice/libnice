@@ -51,17 +51,6 @@
 #include <string.h>
 #include <stdlib.h>
 
-#ifdef _WIN32
-#define ENOENT -1
-#define EINVAL -2
-#define ENOBUFS -3
-#define EAFNOSUPPORT -4
-#else
-#include <errno.h>
-#endif
-
-
-
 bool stun_message_init (StunMessage *msg, stun_class_t c, stun_method_t m,
     const stun_transid_t id)
 {
@@ -132,19 +121,21 @@ stun_message_find (const StunMessage *msg, stun_attr_type_t type,
 }
 
 
-int stun_message_find_flag (const StunMessage *msg, stun_attr_type_t type)
+StunMessageReturn
+stun_message_find_flag (const StunMessage *msg, stun_attr_type_t type)
 {
   const void *ptr;
   uint16_t len;
 
   ptr = stun_message_find (msg, type, &len);
   if (ptr == NULL)
-    return ENOENT;
-  return (len == 0) ? 0 : EINVAL;
+    return STUN_MESSAGE_RETURN_NOT_FOUND;
+  return (len == 0) ? STUN_MESSAGE_RETURN_SUCCESS :
+      STUN_MESSAGE_RETURN_INVALID;
 }
 
 
-int
+StunMessageReturn
 stun_message_find32 (const StunMessage *msg, stun_attr_type_t type,
     uint32_t *pval)
 {
@@ -153,7 +144,7 @@ stun_message_find32 (const StunMessage *msg, stun_attr_type_t type,
 
   ptr = stun_message_find (msg, type, &len);
   if (ptr == NULL)
-    return ENOENT;
+    return STUN_MESSAGE_RETURN_NOT_FOUND;
 
   if (len == 4)
   {
@@ -161,13 +152,14 @@ stun_message_find32 (const StunMessage *msg, stun_attr_type_t type,
 
     memcpy (&val, ptr, sizeof (val));
     *pval = ntohl (val);
-    return 0;
+    return STUN_MESSAGE_RETURN_SUCCESS;
   }
-  return EINVAL;
+  return STUN_MESSAGE_RETURN_INVALID;
 }
 
 
-int stun_message_find64 (const StunMessage *msg, stun_attr_type_t type,
+StunMessageReturn
+stun_message_find64 (const StunMessage *msg, stun_attr_type_t type,
     uint64_t *pval)
 {
   const void *ptr;
@@ -175,7 +167,7 @@ int stun_message_find64 (const StunMessage *msg, stun_attr_type_t type,
 
   ptr = stun_message_find (msg, type, &len);
   if (ptr == NULL)
-    return ENOENT;
+    return STUN_MESSAGE_RETURN_NOT_FOUND;
 
   if (len == 8)
   {
@@ -183,13 +175,14 @@ int stun_message_find64 (const StunMessage *msg, stun_attr_type_t type,
 
     memcpy (tab, ptr, sizeof (tab));
     *pval = ((uint64_t)ntohl (tab[0]) << 32) | ntohl (tab[1]);
-    return 0;
+    return STUN_MESSAGE_RETURN_SUCCESS;
   }
-  return EINVAL;
+  return STUN_MESSAGE_RETURN_INVALID;
 }
 
 
-int stun_message_find_string (const StunMessage *msg, stun_attr_type_t type,
+StunMessageReturn
+stun_message_find_string (const StunMessage *msg, stun_attr_type_t type,
     char *buf, size_t buflen)
 {
   const unsigned char *ptr;
@@ -197,18 +190,18 @@ int stun_message_find_string (const StunMessage *msg, stun_attr_type_t type,
 
   ptr = stun_message_find (msg, type, &len);
   if (ptr == NULL)
-    return ENOENT;
+    return STUN_MESSAGE_RETURN_NOT_FOUND;
 
   if (len >= buflen)
-    return ENOBUFS;
+    return STUN_MESSAGE_RETURN_NOT_ENOUGH_SPACE;
 
   memcpy (buf, ptr, len);
   buf[len] = '\0';
-  return 0;
+  return STUN_MESSAGE_RETURN_SUCCESS;
 }
 
 
-int
+StunMessageReturn
 stun_message_find_addr (const StunMessage *msg, stun_attr_type_t type,
     struct sockaddr *addr, socklen_t *addrlen)
 {
@@ -217,10 +210,10 @@ stun_message_find_addr (const StunMessage *msg, stun_attr_type_t type,
 
   ptr = stun_message_find (msg, type, &len);
   if (ptr == NULL)
-    return ENOENT;
+    return STUN_MESSAGE_RETURN_NOT_FOUND;
 
   if (len < 4)
-    return EINVAL;
+    return STUN_MESSAGE_RETURN_INVALID;
 
   switch (ptr[1])
   {
@@ -230,7 +223,7 @@ stun_message_find_addr (const StunMessage *msg, stun_attr_type_t type,
         if (((size_t) *addrlen < sizeof (*ip4)) || (len != 8))
         {
           *addrlen = sizeof (*ip4);
-          return EINVAL;
+          return STUN_MESSAGE_RETURN_INVALID;
         }
 
         memset (ip4, 0, *addrlen);
@@ -241,7 +234,7 @@ stun_message_find_addr (const StunMessage *msg, stun_attr_type_t type,
             *addrlen = sizeof (*ip4);
         memcpy (&ip4->sin_port, ptr + 2, 2);
         memcpy (&ip4->sin_addr, ptr + 4, 4);
-        return 0;
+        return STUN_MESSAGE_RETURN_SUCCESS;
       }
 
     case 2:
@@ -250,7 +243,7 @@ stun_message_find_addr (const StunMessage *msg, stun_attr_type_t type,
         if (((size_t) *addrlen < sizeof (*ip6)) || (len != 20))
         {
           *addrlen = sizeof (*ip6);
-          return EINVAL;
+          return STUN_MESSAGE_RETURN_INVALID;
         }
 
         memset (ip6, 0, *addrlen);
@@ -261,55 +254,56 @@ stun_message_find_addr (const StunMessage *msg, stun_attr_type_t type,
             *addrlen = sizeof (*ip6);
         memcpy (&ip6->sin6_port, ptr + 2, 2);
         memcpy (&ip6->sin6_addr, ptr + 4, 16);
-        return 0;
+        return STUN_MESSAGE_RETURN_SUCCESS;
       }
   }
 
-  return EAFNOSUPPORT;
+  return STUN_MESSAGE_RETURN_UNSUPPORTED_ADDRESS;
 }
 
-int
+StunMessageReturn
 stun_message_find_xor_addr (const StunMessage *msg, stun_attr_type_t type,
     struct sockaddr *addr,
     socklen_t *addrlen)
 {
-  int val = stun_message_find_addr (msg, type, addr, addrlen);
+  StunMessageReturn val = stun_message_find_addr (msg, type, addr, addrlen);
   if (val)
     return val;
 
   return stun_xor_address (msg, addr, *addrlen, STUN_MAGIC_COOKIE);
 }
 
-int
+StunMessageReturn
 stun_message_find_xor_addr_full (const StunMessage *msg, stun_attr_type_t type,
     struct sockaddr *addr,  socklen_t *addrlen,
     uint32_t magic_cookie)
 {
-  int val = stun_message_find_addr (msg, type, addr, addrlen);
+  StunMessageReturn val = stun_message_find_addr (msg, type, addr, addrlen);
   if (val)
     return val;
 
   return stun_xor_address (msg, addr, *addrlen, magic_cookie);
 }
 
-int stun_message_find_error (const StunMessage *msg, int *code)
+StunMessageReturn
+stun_message_find_error (const StunMessage *msg, int *code)
 {
   uint16_t alen;
   const uint8_t *ptr = stun_message_find (msg, STUN_ATTRIBUTE_ERROR_CODE, &alen);
   uint8_t class, number;
 
   if (ptr == NULL)
-    return ENOENT;
+    return STUN_MESSAGE_RETURN_NOT_FOUND;
   if (alen < 4)
-    return EINVAL;
+    return STUN_MESSAGE_RETURN_INVALID;
 
   class = ptr[2] & 0x7;
   number = ptr[3];
   if ((class < 3) || (class > 6) || (number > 99))
-    return EINVAL;
+    return STUN_MESSAGE_RETURN_INVALID;
 
   *code = (class * 100) + number;
-  return 0;
+  return STUN_MESSAGE_RETURN_SUCCESS;
 }
 
 /**
@@ -358,26 +352,27 @@ stun_message_append (StunMessage *msg, stun_attr_type_t type, size_t length)
  * @param len attribute payload length
  * @return 0 on success, ENOBUFS on error.
  */
-int
+StunMessageReturn
 stun_message_append_bytes (StunMessage *msg, stun_attr_type_t type,
     const void *data, size_t len)
 {
   void *ptr = stun_message_append (msg, type, len);
   if (ptr == NULL)
-    return ENOBUFS;
+    return STUN_MESSAGE_RETURN_NOT_ENOUGH_SPACE;
 
   memcpy (ptr, data, len);
-  return 0;
+  return STUN_MESSAGE_RETURN_SUCCESS;
 }
 
 
-int stun_message_append_flag (StunMessage *msg, stun_attr_type_t type)
+StunMessageReturn
+stun_message_append_flag (StunMessage *msg, stun_attr_type_t type)
 {
   return stun_message_append_bytes (msg, type, NULL, 0);
 }
 
 
-int
+StunMessageReturn
 stun_message_append32 (StunMessage *msg, stun_attr_type_t type,
     uint32_t value)
 {
@@ -386,7 +381,8 @@ stun_message_append32 (StunMessage *msg, stun_attr_type_t type,
 }
 
 
-int stun_message_append64 (StunMessage *msg, stun_attr_type_t type,
+StunMessageReturn
+stun_message_append64 (StunMessage *msg, stun_attr_type_t type,
     uint64_t value)
 {
   uint32_t tab[2];
@@ -396,14 +392,14 @@ int stun_message_append64 (StunMessage *msg, stun_attr_type_t type,
 }
 
 
-int
+StunMessageReturn
 stun_message_append_string (StunMessage * msg, stun_attr_type_t type,
     const char *str)
 {
   return stun_message_append_bytes (msg, type, str, strlen (str));
 }
 
-int
+StunMessageReturn
 stun_message_append_addr (StunMessage *msg, stun_attr_type_t type,
     const struct sockaddr *addr, socklen_t addrlen)
 {
@@ -413,7 +409,7 @@ stun_message_append_addr (StunMessage *msg, stun_attr_type_t type,
   uint8_t family;
 
   if ((size_t) addrlen < sizeof (struct sockaddr))
-    return EINVAL;
+    return STUN_MESSAGE_RETURN_INVALID;
 
   switch (addr->sa_family)
   {
@@ -431,7 +427,7 @@ stun_message_append_addr (StunMessage *msg, stun_attr_type_t type,
       {
         const struct sockaddr_in6 *ip6 = (const struct sockaddr_in6 *)addr;
         if ((size_t) addrlen < sizeof (*ip6))
-          return EINVAL;
+          return STUN_MESSAGE_RETURN_INVALID;
 
         family = 2;
         port = ip6->sin6_port;
@@ -441,25 +437,26 @@ stun_message_append_addr (StunMessage *msg, stun_attr_type_t type,
       }
 
     default:
-      return EAFNOSUPPORT;
+      return STUN_MESSAGE_RETURN_UNSUPPORTED_ADDRESS;
   }
 
   ptr = stun_message_append (msg, type, 4 + alen);
   if (ptr == NULL)
-    return ENOBUFS;
+    return STUN_MESSAGE_RETURN_NOT_ENOUGH_SPACE;
 
   ptr[0] = 0;
   ptr[1] = family;
   memcpy (ptr + 2, &port, 2);
   memcpy (ptr + 4, pa, alen);
-  return 0;
+  return STUN_MESSAGE_RETURN_SUCCESS;
 }
 
 
-int stun_message_append_xor_addr (StunMessage *msg, stun_attr_type_t type,
+StunMessageReturn
+stun_message_append_xor_addr (StunMessage *msg, stun_attr_type_t type,
     const struct sockaddr *addr, socklen_t addrlen)
 {
-  int val;
+  StunMessageReturn val;
   /* Must be big enough to hold any supported address: */
   struct sockaddr_storage xor;
 
@@ -476,11 +473,12 @@ int stun_message_append_xor_addr (StunMessage *msg, stun_attr_type_t type,
       addrlen);
 }
 
-int stun_message_append_xor_addr_full (StunMessage *msg, stun_attr_type_t type,
+StunMessageReturn
+stun_message_append_xor_addr_full (StunMessage *msg, stun_attr_type_t type,
     const struct sockaddr *addr, socklen_t addrlen,
     uint32_t magic_cookie)
 {
-  int val;
+  StunMessageReturn val;
   /* Must be big enough to hold any supported address: */
   struct sockaddr_storage xor;
 
@@ -505,7 +503,7 @@ int stun_message_append_xor_addr_full (StunMessage *msg, stun_attr_type_t type,
  * @param code STUN host-byte order integer error code
  * @return 0 on success, or ENOBUFS otherwise
  */
-int
+StunMessageReturn
 stun_message_append_error (StunMessage *msg, stun_error_t code)
 {
   const char *str = stun_strerror (code);
@@ -514,13 +512,13 @@ stun_message_append_error (StunMessage *msg, stun_error_t code)
 
   uint8_t *ptr = stun_message_append (msg, STUN_ATTRIBUTE_ERROR_CODE, 4 + len);
   if (ptr == NULL)
-    return ENOBUFS;
+    return STUN_MESSAGE_RETURN_NOT_ENOUGH_SPACE;
 
   memset (ptr, 0, 2);
   ptr[2] = d.quot;
   ptr[3] = d.rem;
   memcpy (ptr + 4, str, len);
-  return 0;
+  return STUN_MESSAGE_RETURN_SUCCESS;
 }
 
 int stun_message_validate_buffer_length (const uint8_t *msg, size_t length)
