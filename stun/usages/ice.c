@@ -246,13 +246,9 @@ stun_usage_ice_conncheck_create_reply (StunAgent *agent, StunMessage *req,
       err (STUN_ERROR_ROLE_CONFLICT);
       return STUN_USAGE_ICE_RETURN_SUCCESS;
     }
-  }
-#ifndef NDEBUG
-  else
-  if (stun_message_find64 (req, *control ? STUN_ATTRIBUTE_ICE_CONTROLLED
-                                         : STUN_ATTRIBUTE_ICE_CONTROLLING, &q))
+  } else {
     stun_debug ("STUN Role not specified by peer!\n");
-#endif
+  }
 
   if (stun_agent_init_response (agent, msg, buf, len, req) == FALSE) {
     stun_debug ("Unable to create response\n");
@@ -325,108 +321,7 @@ uint32_t stun_usage_ice_conncheck_priority (const StunMessage *msg)
 
 bool stun_usage_ice_conncheck_use_candidate (const StunMessage *msg)
 {
-  return !stun_message_find_flag (msg, STUN_ATTRIBUTE_USE_CANDIDATE);
+  return (stun_message_find_flag (msg,
+          STUN_ATTRIBUTE_USE_CANDIDATE) == STUN_MESSAGE_RETURN_SUCCESS);
 }
 
-
-
-#if 0
-
-/** STUN NAT control */
-struct stun_nested_s
-{
-  stun_bind_t *bind;
-  struct sockaddr_storage mapped;
-  uint32_t refresh;
-  uint32_t bootnonce;
-};
-
-
-int stun_nested_start (stun_nested_t **restrict context, int fd,
-                       const struct sockaddr *restrict mapad,
-                       const struct sockaddr *restrict natad,
-                       socklen_t adlen, uint32_t refresh, int compat)
-{
-  stun_nested_t *ctx;
-  int val;
-
-  if (adlen > sizeof (ctx->mapped))
-    return ENOBUFS;
-
-  ctx = malloc (sizeof (*ctx));
-  memcpy (&ctx->mapped, mapad, adlen);
-  ctx->refresh = 0;
-  ctx->bootnonce = 0;
-
-  /* TODO: forcily set port to 3478 */
-  val = stun_bind_alloc (&ctx->bind, fd, natad, adlen, compat);
-  if (val)
-    return val;
-
-  *context = ctx;
-
-  val = stun_message_append32 (&ctx->bind->trans.message,
-                       STUN_ATTRIBUTE_REFRESH_INTERVAL, refresh);
-  if (val)
-    goto error;
-
-  val = stun_agent_finish_message (&ctx->bind->agent,
-      &ctx->bind->trans.message, NULL, 0);
-  if (val)
-    goto error;
-
-  val = stun_trans_start (&ctx->bind->trans);
-  if (val)
-    goto error;
-
-  return 0;
-
-error:
-  stun_bind_cancel (ctx->bind);
-  return val;
-}
-
-
-int stun_nested_process (stun_nested_t *restrict ctx,
-                         const void *restrict buf, size_t len,
-                         struct sockaddr *restrict intad, socklen_t *adlen)
-{
-  struct sockaddr_storage mapped;
-  socklen_t mappedlen = sizeof (mapped);
-  int val;
-
-  assert (ctx != NULL);
-
-  val = stun_bind_process (ctx->bind, buf, len,
-                           (struct sockaddr *)&mapped, &mappedlen);
-  if (val)
-    return val;
-
-  /* Mapped address mistmatch! (FIXME: what are we really supposed to do
-   * in this case???) */
-  if (sockaddrcmp ((struct sockaddr *)&mapped,
-                   (struct sockaddr *)&ctx->mapped))
-  {
-    stun_debug (" Mapped address mismatch! (Symmetric NAT?)\n");
-    return ECONNREFUSED;
-  }
-
-  val = stun_message_find_xor_addr (&ctx->bind->trans.message,
-      STUN_ATTRIBUTE_XOR_INTERNAL_ADDRESS,
-      intad, adlen);
-  if (val)
-  {
-    stun_debug (" No XOR-INTERNAL-ADDRESS: %s\n", strerror (val));
-    return val;
-  }
-
-  stun_message_find32 (&ctx->bind->trans.message,
-      STUN_ATTRIBUTE_REFRESH_INTERVAL, &ctx->refresh);
-  /* TODO: give this to caller */
-
-  stun_debug (" Internal address found!\n");
-  stun_bind_cancel (ctx->bind);
-  ctx->bind = NULL;
-  return 0;
-}
-#endif
