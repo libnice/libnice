@@ -152,16 +152,17 @@ unsigned stun_timer_remainder (const stun_timer_t *timer)
 }
 
 
-int stun_timer_refresh (stun_timer_t *timer)
+StunUsageTimerReturn stun_timer_refresh (stun_timer_t *timer)
 {
   unsigned delay = stun_timer_remainder (timer);
   if (delay == 0)
   {
     if (timer->delay >= STUN_END_TIMEOUT)
-      return -1;
+      return STUN_USAGE_TIMER_RETURN_TIMEOUT;
 
     add_delay (&timer->deadline, timer->delay *= 2);
+    return STUN_USAGE_TIMER_RETURN_RETRANSMIT;
   }
 
-  return delay;
+  return STUN_USAGE_TIMER_RETURN_SUCCESS;
 }

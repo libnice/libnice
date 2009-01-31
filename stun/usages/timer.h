@@ -54,6 +54,11 @@ typedef struct stun_timer_s
   unsigned delay;
 } stun_timer_t;
 
+typedef enum {
+  STUN_USAGE_TIMER_RETURN_SUCCESS,
+  STUN_USAGE_TIMER_RETURN_RETRANSMIT,
+  STUN_USAGE_TIMER_RETURN_TIMEOUT
+} StunUsageTimerReturn;
 
 # ifdef __cplusplus
 extern "C" {
@@ -73,7 +78,7 @@ void stun_timer_start_reliable (stun_timer_t *timer);
  * 0 if the transaction should be retransmitted,
  * otherwise milliseconds left until next time out or retransmit.
  */
-int stun_timer_refresh (stun_timer_t *timer);
+StunUsageTimerReturn stun_timer_refresh (stun_timer_t *timer);
 unsigned stun_timer_remainder (const stun_timer_t *timer);
 
 # ifdef __cplusplus
