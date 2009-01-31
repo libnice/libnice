@@ -138,7 +138,8 @@ StunValidationStatus stun_agent_validate (StunAgent *agent, StunMessage *msg,
   if (agent->compatibility == STUN_COMPATIBILITY_RFC5389 &&
       agent->usage_flags & STUN_AGENT_USAGE_USE_FINGERPRINT) {
     /* Looks for FINGERPRINT */
-    if (stun_message_find32 (msg, STUN_ATTRIBUTE_FINGERPRINT, &fpr) != 0) {
+    if (stun_message_find32 (msg, STUN_ATTRIBUTE_FINGERPRINT, &fpr) !=
+        STUN_MESSAGE_RETURN_SUCCESS) {
       stun_debug ("STUN demux error: no FINGERPRINT attribute!\n");
       return STUN_VALIDATION_BAD_REQUEST;
     }
@@ -180,7 +181,8 @@ StunValidationStatus stun_agent_validate (StunAgent *agent, StunMessage *msg,
   ignore_credentials =
       (agent->usage_flags & STUN_AGENT_USAGE_IGNORE_CREDENTIALS) ||
       (stun_message_get_class (msg) == STUN_ERROR &&
-       stun_message_find_error (msg, &error_code) == 0 &&
+       stun_message_find_error (msg, &error_code) ==
+          STUN_MESSAGE_RETURN_SUCCESS &&
        (error_code == 400 || error_code == 401)) ||
       (stun_message_get_class (msg) == STUN_INDICATION &&
        (agent->usage_flags & STUN_AGENT_USAGE_NO_INDICATION_AUTH));
@@ -273,7 +275,8 @@ StunValidationStatus stun_agent_validate (StunAgent *agent, StunMessage *msg,
       msg->key = key;
       msg->key_len = key_len;
     } else if (!(stun_message_get_class (msg) == STUN_ERROR &&
-        stun_message_find_error (msg, &error_code) == 0 &&
+        stun_message_find_error (msg, &error_code) ==
+            STUN_MESSAGE_RETURN_SUCCESS &&
         (error_code == 400 || error_code == 401))) {
       stun_debug ("STUN auth error: No message integrity attribute!\n");
       return STUN_VALIDATION_UNAUTHORIZED;
@@ -414,7 +417,7 @@ bool stun_agent_init_error (StunAgent *agent, StunMessage *msg,
       agent->usage_flags & STUN_AGENT_USAGE_ADD_SOFTWARE) {
       stun_message_append_software (msg);
     }
-    if (stun_message_append_error (msg, err) == 0) {
+    if (stun_message_append_error (msg, err) == STUN_MESSAGE_RETURN_SUCCESS) {
       return TRUE;
     }
   }
@@ -444,7 +447,7 @@ size_t stun_agent_build_unknown_attributes_error (StunAgent *agent,
     ids[counter++] = ids[0];
 
   if (stun_message_append_bytes (msg, STUN_ATTRIBUTE_UNKNOWN_ATTRIBUTES,
-          ids, counter * 2) == 0) {
+          ids, counter * 2) == STUN_MESSAGE_RETURN_SUCCESS) {
     return stun_agent_finish_message (agent, msg, request->key, request->key_len);
   }
 
@@ -477,7 +480,8 @@ size_t stun_agent_finish_message (StunAgent *agent, StunMessage *msg,
       uint16_t realm_len;
       uint16_t username_len;
 
-      realm = (uint8_t *) stun_message_find (msg,  STUN_ATTRIBUTE_REALM, &realm_len);
+      realm = (uint8_t *) stun_message_find (msg,
+          STUN_ATTRIBUTE_REALM, &realm_len);
       username = (uint8_t *) stun_message_find (msg,
           STUN_ATTRIBUTE_USERNAME, &username_len);
       if (username == NULL || realm == NULL) {
