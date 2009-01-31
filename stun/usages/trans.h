@@ -65,6 +65,14 @@ typedef struct stun_trans_s
 } stun_trans_t;
 
 
+typedef enum {
+  STUN_USAGE_TRANS_RETURN_SUCCESS,
+  STUN_USAGE_TRANS_RETURN_ERROR,
+  STUN_USAGE_TRANS_RETURN_RETRY,
+  STUN_USAGE_TRANS_RETURN_INVALID_ADDRESS,
+  STUN_USAGE_TRANS_RETURN_UNSUPPORTED,
+} StunUsageTransReturn;
+
 # ifdef __cplusplus
 extern "C" {
 # endif
@@ -77,7 +85,7 @@ extern "C" {
  * @param srv STUN server socket address (ignored if @a srvlen is 0)
  * @param srvlen STUN server socket address length (or 0 @a fd is connected)
  */
-int stun_trans_init (stun_trans_t *tr, int fd,
+StunUsageTransReturn stun_trans_init (stun_trans_t *tr, int fd,
                      const struct sockaddr *srv, socklen_t srvlen);
 
 /**
@@ -89,7 +97,7 @@ int stun_trans_init (stun_trans_t *tr, int fd,
  * @param srv STUN server socket address (ignored if @a srvlen is 0)
  * @param srvlen STUN server socket address length (or 0 @a fd is connected)
  */
-int stun_trans_create (stun_trans_t *tr, int sotype, int proto,
+StunUsageTransReturn stun_trans_create (stun_trans_t *tr, int sotype, int proto,
                        const struct sockaddr *srv, socklen_t srvlen);
 
 /**
@@ -105,7 +113,7 @@ void stun_trans_deinit (stun_trans_t *tr);
  * Always succeeds.
  */
 int stun_trans_fd (const stun_trans_t *tr);
-int stun_trans_poll (stun_trans_t *tr, unsigned int delay);
+StunUsageTransReturn stun_trans_poll (stun_trans_t *tr, unsigned int delay);
 
 /**
  * Safe wrapper around sendto()

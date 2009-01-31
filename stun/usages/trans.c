@@ -43,16 +43,6 @@
 
 
 #ifdef _WIN32
-#define ENOENT -1
-#define EINVAL -2
-#define ENOBUFS -3
-#define EAFNOSUPPORT -4
-#define EPROTO -5
-#define EACCES -6
-#define EINPROGRESS -7
-#define EAGAIN -8
-#define ENOSYS -9
-
 #define close closesocket
 #else
 #include <errno.h>
@@ -66,13 +56,13 @@
 
 #include "trans.h"
 
-int stun_trans_init (stun_trans_t *tr, int fd,
+StunUsageTransReturn stun_trans_init (stun_trans_t *tr, int fd,
                      const struct sockaddr *srv, socklen_t srvlen)
 {
   assert (fd != -1);
 
   if ((size_t) srvlen > sizeof (tr->dst))
-    return ENOBUFS;
+    return STUN_USAGE_TRANS_RETURN_INVALID_ADDRESS;
 
   tr->own_fd = -1;
   tr->fd = fd;
@@ -80,7 +70,7 @@ int stun_trans_init (stun_trans_t *tr, int fd,
   tr->dstlen = srvlen;
   memcpy (&tr->dst, srv, srvlen);
 
-  return 0;
+  return STUN_USAGE_TRANS_RETURN_SUCCESS;
 }
 
 
@@ -122,25 +112,24 @@ static int stun_socket (int family, int type, int proto)
 }
 
 
-int stun_trans_create (stun_trans_t *tr, int type, int proto,
+StunUsageTransReturn stun_trans_create (stun_trans_t *tr, int type, int proto,
                        const struct sockaddr *srv, socklen_t srvlen)
 {
-  int val, fd;
+  StunUsageTransReturn val = STUN_USAGE_TRANS_RETURN_ERROR;
+  int fd;
 
   if ((size_t) srvlen < sizeof(*srv))
-    return EINVAL;
+    return STUN_USAGE_TRANS_RETURN_INVALID_ADDRESS;
 
   fd = stun_socket (srv->sa_family, type, proto);
   if (fd == -1)
-    return errno;
+    return STUN_USAGE_TRANS_RETURN_ERROR;
 
   if (connect (fd, srv, srvlen) &&
 #ifdef _WIN32
       (WSAGetLastError () != WSAEINPROGRESS)) {
-    val = WSAGetLastError ();
 #else
     (errno != EINPROGRESS)) {
-    val = errno;
 #endif
     goto error;
   }
@@ -150,7 +139,7 @@ int stun_trans_create (stun_trans_t *tr, int type, int proto,
     goto error;
 
   tr->own_fd = tr->fd;
-  return 0;
+  return STUN_USAGE_TRANS_RETURN_SUCCESS;
 
 error:
   close (fd);
@@ -241,8 +230,8 @@ ssize_t stun_trans_recvfrom (stun_trans_t *tr, uint8_t *buf, size_t maxlen,
   else
     val = recv (tr->fd, (void *)buf, maxlen, flags);
 
-  if ((val == -1) && stun_err_dequeue (tr->fd))
-    errno = EAGAIN;
+  if (val == -1)
+    stun_err_dequeue (tr->fd);
 
   return val;
 }
@@ -262,7 +251,7 @@ int stun_trans_fd (const stun_trans_t *tr)
  * @return ETIMEDOUT if the transaction has timed out, or 0 if an incoming
  * message needs to be processed.
  */
-int stun_trans_poll (stun_trans_t *tr, unsigned int delay)
+StunUsageTransReturn stun_trans_poll (stun_trans_t *tr, unsigned int delay)
 {
 #ifdef HAVE_POLL
   struct pollfd ufd;
@@ -273,12 +262,12 @@ int stun_trans_poll (stun_trans_t *tr, unsigned int delay)
   ufd.events |= POLLIN;
 
   if (poll (&ufd, 1, delay) <= 0) {
-    return EAGAIN;
+    return STUN_USAGE_TRANS_RETURN_RETRY;
   }
 
-  return 0;
+  return STUN_USAGE_TRANS_RETURN_SUCCESS;
 #else
   (void)tr;
-  return ENOSYS;
+  return STUN_USAGE_TRANS_RETURN_UNSUPPORTED;
 #endif
 }
