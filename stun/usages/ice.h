@@ -58,6 +58,10 @@ typedef enum {
   STUN_USAGE_ICE_RETURN_ERROR,
   STUN_USAGE_ICE_RETURN_RETRY,
   STUN_USAGE_ICE_RETURN_ROLE_CONFLICT,
+  STUN_USAGE_ICE_RETURN_INVALID_REQUEST,
+  STUN_USAGE_ICE_RETURN_INVALID_METHOD,
+  STUN_USAGE_ICE_RETURN_MEMORY_ERROR,
+  STUN_USAGE_ICE_RETURN_INVALID_ADDRESS,
 } StunUsageIceReturn;
 
 
@@ -100,7 +104,7 @@ StunUsageIceReturn stun_usage_ice_conncheck_process (StunMessage *msg,
  * In case of error, the value at @a plen is set to the size of an error
  * response, or 0 if no error response should be sent.
  */
-int
+StunUsageIceReturn
 stun_usage_ice_conncheck_create_reply (StunAgent *agent, StunMessage *req,
     StunMessage *msg, uint8_t *buf, size_t *plen,
     const struct sockaddr *src, socklen_t srclen,

@@ -42,18 +42,10 @@
 
 #ifdef _WIN32
 #include <winsock2.h>
-#define ENOENT -1
-#define EINVAL -2
-#define ENOBUFS -3
-#define EAFNOSUPPORT -4
-#define EPROTO -5
-#define EACCES -6
-#define EINPROGRESS -7
 #else
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
-#include <errno.h>
 #endif
 
 
@@ -196,7 +188,7 @@ stun_bind_error (StunAgent *agent, StunMessage *msg,
   return 1;
 }
 
-int
+StunUsageIceReturn
 stun_usage_ice_conncheck_create_reply (StunAgent *agent, StunMessage *req,
     StunMessage *msg, uint8_t *buf, size_t *plen,
     const struct sockaddr *src, socklen_t srclen,
@@ -207,7 +199,8 @@ stun_usage_ice_conncheck_create_reply (StunAgent *agent, StunMessage *req,
   uint16_t username_len;
   size_t len = *plen;
   uint64_t q;
-  int val = 0, ret = 0;
+  StunMessageReturn val = STUN_MESSAGE_RETURN_SUCCESS;
+  StunUsageIceReturn ret = STUN_USAGE_ICE_RETURN_SUCCESS;
 
 
 #define err( code ) \
@@ -221,7 +214,7 @@ stun_usage_ice_conncheck_create_reply (StunAgent *agent, StunMessage *req,
   {
     stun_debug (" Unhandled non-request (class %u) message.\n",
          stun_message_get_class (req));
-    return EINVAL;
+    return STUN_USAGE_ICE_RETURN_INVALID_REQUEST;
   }
 
   if (stun_message_get_method (req) != STUN_BINDING)
@@ -229,7 +222,7 @@ stun_usage_ice_conncheck_create_reply (StunAgent *agent, StunMessage *req,
     stun_debug (" Bad request (method %u) message.\n",
          stun_message_get_method (req));
     err (STUN_ERROR_BAD_REQUEST);
-    return EPROTO;
+    return STUN_USAGE_ICE_RETURN_INVALID_METHOD;
   }
 
   /* Role conflict handling */
@@ -244,14 +237,14 @@ stun_usage_ice_conncheck_create_reply (StunAgent *agent, StunMessage *req,
       stun_debug (" switching role from \"controll%s\" to \"controll%s\"\n",
            *control ? "ing" : "ed", *control ? "ed" : "ing");
       *control = !*control;
-      ret = EACCES;
+      ret = STUN_USAGE_ICE_RETURN_ROLE_CONFLICT;
     }
     else
     {
       stun_debug (" staying \"controll%s\" (sending error)\n",
            *control ? "ing" : "ed");
       err (STUN_ERROR_ROLE_CONFLICT);
-      return 0;
+      return STUN_USAGE_ICE_RETURN_SUCCESS;
     }
   }
 #ifndef NDEBUG
@@ -304,8 +297,18 @@ stun_usage_ice_conncheck_create_reply (StunAgent *agent, StunMessage *req,
 
 failure:
   assert (*plen == 0);
-  stun_debug (" Fatal error formatting Response: %s\n", strerror (val));
-  return val;
+  stun_debug (" Fatal error formatting Response: %d\n", val);
+
+  switch (val)
+  {
+    case STUN_MESSAGE_RETURN_NOT_ENOUGH_SPACE:
+      return STUN_USAGE_ICE_RETURN_MEMORY_ERROR;
+    case STUN_MESSAGE_RETURN_INVALID:
+    case STUN_MESSAGE_RETURN_UNSUPPORTED_ADDRESS:
+      return STUN_USAGE_ICE_RETURN_INVALID_ADDRESS;
+    default:
+      return STUN_USAGE_ICE_RETURN_ERROR;
+  }
 }
 #undef err
 
