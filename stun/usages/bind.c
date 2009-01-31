@@ -205,10 +205,10 @@ StunUsageBindReturn stun_usage_bind_run (const struct sockaddr *srv,
       ret = stun_trans_poll (&trans, delay);
       if (ret == EAGAIN) {
         switch (stun_timer_refresh (&timer)) {
-          case -1:
+          case STUN_USAGE_TIMER_RETURN_TIMEOUT:
             stun_debug ("STUN transaction failed: time out.\n");
             return STUN_USAGE_BIND_RETURN_TIMEOUT; // fatal error!
-          case 0:
+          case STUN_USAGE_TIMER_RETURN_RETRANSMIT:
             stun_debug ("STUN transaction retransmitted (timeout %dms).\n",
                 stun_timer_remainder (&timer));
             val = stun_trans_send (&trans, req_buf, len);
@@ -218,6 +218,8 @@ StunUsageBindReturn stun_usage_bind_run (const struct sockaddr *srv,
             }
             ret = EAGAIN;
             continue;
+          case STUN_USAGE_TIMER_RETURN_SUCCESS:
+            break;
         }
       }
       val = stun_trans_recv (&trans, buf, sizeof (buf));
