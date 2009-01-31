@@ -181,55 +181,16 @@ StunMessageReturn stun_xor_address (const StunMessage *msg,
       unsigned short i;
 
       if ((size_t) addrlen < sizeof (*ip6))
-        return EINVAL;
+        return STUN_MESSAGE_RETURN_INVALID;
 
       ip6->sin6_port ^= htons (magic_cookie >> 16);
       for (i = 0; i < 16; i++)
         ip6->sin6_addr.s6_addr[i] ^= msg->buffer[4 + i];
-      return 0;
+      return STUN_MESSAGE_RETURN_SUCCESS;
     }
   }
-  return EAFNOSUPPORT;
+  return STUN_MESSAGE_RETURN_UNSUPPORTED_ADDRESS;
 }
-
-/**
- * Compares the length and content of an attribute.
- *
- * @param msg valid STUN message buffer
- * @param type STUN attribute type (host byte order)
- * @param data pointer to value to compare with
- * @param len byte length of the value
- * @return 0 in case of match, ENOENT if attribute was not found,
- * EINVAL if it did not match (different length, or same length but
- * different content)
- */
-int stun_memcmp (const StunMessage *msg, stun_attr_type_t type,
-                 const void *data, size_t len)
-{
-  uint16_t alen;
-  const void *ptr = stun_message_find (msg, type, &alen);
-  if (ptr == NULL)
-    return ENOENT;
-
-  if ((len != alen) || memcmp (ptr, data, len))
-    return EINVAL;
-  return 0;
-}
-
-
-/**
- * Compares the content of an attribute with a string.
- * @param msg valid STUN message buffer
- * @param type STUN attribute type (host byte order)
- * @param str string to compare with
- * @return 0 in case of match, ENOENT if attribute was not found,
- * EINVAL if it did not match
- */
-int stun_strcmp (const StunMessage *msg, stun_attr_type_t type, const char *str)
-{
-  return stun_memcmp (msg, type, str, strlen (str));
-}
-
 
 void *stun_setw (uint8_t *ptr, uint16_t value)
 {

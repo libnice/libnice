@@ -75,11 +75,6 @@ StunMessageReturn stun_xor_address (const StunMessage *msg,
     struct sockaddr *addr, socklen_t addrlen,
     uint32_t magic_cookie);
 
-int stun_memcmp (const StunMessage *msg, stun_attr_type_t type,
-    const void *data, size_t len);
-
-int stun_strcmp (const StunMessage *msg, stun_attr_type_t type, const char *str);
-
 void *stun_setw (uint8_t *ptr, uint16_t value);
 
 void stun_set_type (uint8_t *h, stun_class_t c, stun_method_t m);
