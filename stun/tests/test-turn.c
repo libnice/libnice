@@ -49,15 +49,6 @@
 #ifdef _WIN32
 #include <winsock2.h>
 #include <ws2tcpip.h>
-#define ENOENT -1
-#define EINVAL -2
-#define ENOBUFS -3
-#define EAFNOSUPPORT -4
-#define EPROTO -5
-#define EACCES -6
-#define EINPROGRESS -7
-#define EAGAIN -8
-#define ENOSYS -9
 
 #define MSG_DONTWAIT 0
 #define MSG_NOSIGNAL 0

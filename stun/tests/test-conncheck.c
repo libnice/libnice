@@ -49,16 +49,6 @@
 #ifdef _WIN32
 #include <winsock2.h>
 #include <ws2tcpip.h>
-#define ENOENT -1
-#define EINVAL -2
-#define ENOBUFS -3
-#define EAFNOSUPPORT -4
-#define EPROTO -5
-#define EACCES -6
-#define EINPROGRESS -7
-#define EAGAIN -8
-#define ENOSYS -9
-
 #define MSG_DONTWAIT 0
 #define MSG_NOSIGNAL 0
 
@@ -69,7 +59,6 @@
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <netdb.h>
-#include <errno.h>
 #endif
 
 #undef NDEBUG /* ensure assertions are built-in */
@@ -82,7 +71,8 @@ int main (void)
   uint8_t req_buf[STUN_MAX_MESSAGE_SIZE];
   uint8_t resp_buf[STUN_MAX_MESSAGE_SIZE];
   const uint64_t tie = 0x8000000000000000LL;
-  ssize_t val;
+  StunMessageReturn val;
+  StunUsageIceReturn val2;
   size_t len;
   size_t rlen;
   static char username[] = "L:R", ufrag[] = "L", pass[] = "secret";
@@ -119,32 +109,32 @@ int main (void)
   assert (rlen > 0);
 
   len = sizeof (resp_buf);
-  val = stun_usage_ice_conncheck_create_reply (&agent, &req,
+  val2 = stun_usage_ice_conncheck_create_reply (&agent, &req,
       &resp, resp_buf, &len, (struct sockaddr *)&ip4,
       sizeof (ip4), &control, tie, STUN_USAGE_ICE_COMPATIBILITY_DRAFT19);
-  assert (val == EINVAL);
+  assert (val2 == STUN_USAGE_ICE_RETURN_INVALID_REQUEST);
   assert (len == 0);
 
   /* Incorrect message method */
   assert (stun_agent_init_request (&agent, &req, req_buf, sizeof(req_buf), 0x666));
   val = stun_message_append_string (&req, STUN_ATTRIBUTE_USERNAME, username);
-  assert (val == 0);
+  assert (val == STUN_MESSAGE_RETURN_SUCCESS);
   rlen = stun_agent_finish_message (&agent, &req, pass, strlen (pass));
   assert (rlen > 0);
 
   len = sizeof (resp_buf);
-  val = stun_usage_ice_conncheck_create_reply (&agent, &req,
+  val2 = stun_usage_ice_conncheck_create_reply (&agent, &req,
       &resp, resp_buf, &len, (struct sockaddr *)&ip4,
       sizeof (ip4), &control, tie, STUN_USAGE_ICE_COMPATIBILITY_DRAFT19);
-  assert (val == EPROTO);
+  assert (val2 == STUN_USAGE_ICE_RETURN_INVALID_METHOD);
   assert (len > 0);
 
   /* Unknown attribute */
   assert (stun_agent_init_request (&agent, &req, req_buf, sizeof(req_buf), STUN_BINDING));
   val = stun_message_append_string (&req, 0x666, "The evil unknown attribute!");
-  assert (val == 0);
+  assert (val == STUN_MESSAGE_RETURN_SUCCESS);
   val = stun_message_append_string (&req, STUN_ATTRIBUTE_USERNAME, username);
-  assert (val == 0);
+  assert (val == STUN_MESSAGE_RETURN_SUCCESS);
   rlen = stun_agent_finish_message (&agent, &req, pass, strlen (pass));
   assert (rlen > 0);
 
@@ -178,19 +168,19 @@ int main (void)
   /* Good message */
   assert (stun_agent_init_request (&agent, &req, req_buf, sizeof(req_buf), STUN_BINDING));
   val = stun_message_append32 (&req, STUN_ATTRIBUTE_PRIORITY, 0x12345678);
-  assert (val == 0);
+  assert (val == STUN_MESSAGE_RETURN_SUCCESS);
   val = stun_message_append_flag (&req, STUN_ATTRIBUTE_USE_CANDIDATE);
-  assert (val == 0);
+  assert (val == STUN_MESSAGE_RETURN_SUCCESS);
   val = stun_message_append_string (&req, STUN_ATTRIBUTE_USERNAME, ufrag);
-  assert (val == 0);
+  assert (val == STUN_MESSAGE_RETURN_SUCCESS);
   rlen = stun_agent_finish_message (&agent, &req, pass, strlen (pass));
   assert (rlen > 0);
 
   len = sizeof (resp_buf);
-  val = stun_usage_ice_conncheck_create_reply (&agent, &req,
+  val2 = stun_usage_ice_conncheck_create_reply (&agent, &req,
       &resp, resp_buf, &len, (struct sockaddr *)&ip4,
       sizeof (ip4), &control, tie, STUN_USAGE_ICE_COMPATIBILITY_DRAFT19);
-  assert (val == 0);
+  assert (val == STUN_USAGE_ICE_RETURN_SUCCESS);
   assert (len > 0);
   assert (stun_agent_validate (&agent, &resp, resp_buf, len,
           stun_agent_default_validater, validater_data) == STUN_VALIDATION_SUCCESS);
@@ -201,16 +191,16 @@ int main (void)
   /* Invalid socket address */
   assert (stun_agent_init_request (&agent, &req, req_buf, sizeof(req_buf), STUN_BINDING));
   val = stun_message_append_string (&req, STUN_ATTRIBUTE_USERNAME, ufrag);
-  assert (val == 0);
+  assert (val == STUN_MESSAGE_RETURN_SUCCESS);
   rlen = stun_agent_finish_message (&agent, &req, pass, strlen (pass));
   assert (rlen > 0);
 
   ip4.sin_family = AF_UNSPEC;
   len = sizeof (resp_buf);
-  val = stun_usage_ice_conncheck_create_reply (&agent, &req,
+  val2 = stun_usage_ice_conncheck_create_reply (&agent, &req,
       &resp, resp_buf, &len, (struct sockaddr *)&ip4,
       sizeof (ip4), &control, tie, STUN_USAGE_ICE_COMPATIBILITY_DRAFT19);
-  assert (val == EAFNOSUPPORT);
+  assert (val2 == STUN_USAGE_ICE_RETURN_INVALID_ADDRESS);
   assert (len == 0);
 
   ip4.sin_family = AF_INET;
@@ -218,19 +208,19 @@ int main (void)
   /* Lost role conflict */
   assert (stun_agent_init_request (&agent, &req, req_buf, sizeof(req_buf), STUN_BINDING));
   val = stun_message_append64 (&req, STUN_ATTRIBUTE_ICE_CONTROLLING, tie + 1);
-  assert (val == 0);
+  assert (val == STUN_MESSAGE_RETURN_SUCCESS);
   val = stun_message_append_string (&req, STUN_ATTRIBUTE_USERNAME, ufrag);
-  assert (val == 0);
+  assert (val == STUN_MESSAGE_RETURN_SUCCESS);
   rlen = stun_agent_finish_message (&agent, &req, pass, strlen (pass));
   assert (rlen > 0);
 
 
   len = sizeof (resp_buf);
   control = true;
-  val = stun_usage_ice_conncheck_create_reply (&agent, &req,
+  val2 = stun_usage_ice_conncheck_create_reply (&agent, &req,
       &resp, resp_buf, &len, (struct sockaddr *)&ip4,
       sizeof (ip4), &control, tie, STUN_USAGE_ICE_COMPATIBILITY_DRAFT19);
-  assert (val == EACCES);
+  assert (val2 == STUN_USAGE_ICE_RETURN_ROLE_CONFLICT);
   assert (len > 0);
   assert (control == false);
   assert (stun_agent_validate (&agent, &resp, resp_buf, len,
@@ -240,18 +230,18 @@ int main (void)
   /* Won role conflict */
   assert (stun_agent_init_request (&agent, &req, req_buf, sizeof(req_buf), STUN_BINDING));
   val = stun_message_append64 (&req, STUN_ATTRIBUTE_ICE_CONTROLLED, tie - 1);
-  assert (val == 0);
+  assert (val == STUN_MESSAGE_RETURN_SUCCESS);
   val = stun_message_append_string (&req, STUN_ATTRIBUTE_USERNAME, ufrag);
-  assert (val == 0);
+  assert (val == STUN_MESSAGE_RETURN_SUCCESS);
   rlen = stun_agent_finish_message (&agent, &req, pass, strlen (pass));
   assert (rlen > 0);
 
   len = sizeof (resp_buf);
   control = false;
-  val = stun_usage_ice_conncheck_create_reply (&agent, &req,
+  val2 = stun_usage_ice_conncheck_create_reply (&agent, &req,
       &resp, resp_buf, &len, (struct sockaddr *)&ip4,
       sizeof (ip4), &control, tie, STUN_USAGE_ICE_COMPATIBILITY_DRAFT19);
-  assert (val == 0);
+  assert (val2 == STUN_USAGE_ICE_RETURN_SUCCESS);
   assert (len > 0);
   assert (control == false);
   assert (stun_agent_validate (&agent, &resp, resp_buf, len,

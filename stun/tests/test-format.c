@@ -48,20 +48,10 @@
 
 #ifdef _WIN32
 #include <winsock2.h>
-#define ENOENT -1
-#define EINVAL -2
-#define ENOBUFS -3
-#define EAFNOSUPPORT -4
-#define EPROTO -5
-#define EACCES -6
-#define EINPROGRESS -7
-#define EAGAIN -8
-#define ENOSYS -9
 #else
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
-#include <errno.h>
 #endif
 
 
@@ -155,27 +145,29 @@ check_af (const char *name, int family, socklen_t addrlen)
   stun_agent_init_request (&agent, &msg, buf, sizeof(buf), STUN_BINDING);
 
   if (stun_message_append_addr (&msg, STUN_ATTRIBUTE_MAPPED_ADDRESS,
-                        (struct sockaddr *)&addr, addrlen) != EAFNOSUPPORT)
+          (struct sockaddr *)&addr, addrlen) !=
+      STUN_MESSAGE_RETURN_UNSUPPORTED_ADDRESS)
     fatal ("Unknown address family test failed");
   if (stun_message_append_xor_addr (&msg, STUN_ATTRIBUTE_XOR_MAPPED_ADDRESS,
-                        (struct sockaddr *)&addr, addrlen) != EAFNOSUPPORT)
+          (struct sockaddr *)&addr, addrlen) !=
+      STUN_MESSAGE_RETURN_UNSUPPORTED_ADDRESS)
     fatal ("Unknown address family xor test failed");
 
   addr.ss_family = family;
   if (stun_message_append_addr (&msg, STUN_ATTRIBUTE_MAPPED_ADDRESS,
-                        (struct sockaddr *)&addr, addrlen - 1) != EINVAL)
+          (struct sockaddr *)&addr, addrlen - 1) != STUN_MESSAGE_RETURN_INVALID)
     fatal ("Too small %s sockaddr test failed", name);
 
   if (stun_message_append_xor_addr (&msg, STUN_ATTRIBUTE_XOR_MAPPED_ADDRESS,
-                        (struct sockaddr *)&addr, addrlen - 1) != EINVAL)
+          (struct sockaddr *)&addr, addrlen - 1) != STUN_MESSAGE_RETURN_INVALID)
     fatal ("Too small %s sockaddr xor test failed", name);
 
   if (stun_message_append_addr (&msg, STUN_ATTRIBUTE_MAPPED_ADDRESS,
-                        (struct sockaddr *)&addr, addrlen))
+          (struct sockaddr *)&addr, addrlen) != STUN_MESSAGE_RETURN_SUCCESS)
     fatal ("%s sockaddr test failed", name);
 
   if (stun_message_append_xor_addr (&msg, STUN_ATTRIBUTE_XOR_MAPPED_ADDRESS,
-                            (struct sockaddr *)&addr, addrlen))
+          (struct sockaddr *)&addr, addrlen) != STUN_MESSAGE_RETURN_SUCCESS)
     fatal ("%s sockaddr xor test failed", name);
 }
 
@@ -187,7 +179,10 @@ int main (void)
 
   StunAgent agent;
   StunMessage msg;
-  uint16_t known_attributes[] = {STUN_ATTRIBUTE_USERNAME, STUN_ATTRIBUTE_MESSAGE_INTEGRITY, STUN_ATTRIBUTE_ERROR_CODE, 0};
+  uint16_t known_attributes[] = {STUN_ATTRIBUTE_USERNAME,
+                                 STUN_ATTRIBUTE_MESSAGE_INTEGRITY,
+                                 STUN_ATTRIBUTE_ERROR_CODE,
+                                 0};
 
   stun_agent_init (&agent, known_attributes,
       STUN_COMPATIBILITY_RFC5389, STUN_AGENT_USAGE_USE_FINGERPRINT);
@@ -225,19 +220,22 @@ int main (void)
   stun_agent_init_request (&agent, &msg, buf, sizeof(buf), STUN_BINDING);
 
   for (len = 0;
-       stun_message_append_flag (&msg, 0xffff) != ENOBUFS;
+       stun_message_append_flag (&msg, 0xffff) !=
+           STUN_MESSAGE_RETURN_NOT_ENOUGH_SPACE;
        len += 4)
   {
     if (len > 0xffff)
       fatal ("Overflow protection test failed");
   }
 
-  if (stun_message_append32 (&msg, 0xffff, 0x12345678) != ENOBUFS)
+  if (stun_message_append32 (&msg, 0xffff, 0x12345678) !=
+      STUN_MESSAGE_RETURN_NOT_ENOUGH_SPACE)
     fatal ("Double-word overflow test failed");
   if (stun_message_append64 (&msg, 0xffff,
-                     0x123456789abcdef0) != ENOBUFS)
+          0x123456789abcdef0) != STUN_MESSAGE_RETURN_NOT_ENOUGH_SPACE)
     fatal ("Quad-word overflow test failed");
-  if (stun_message_append_string (&msg, 0xffff, "foobar") != ENOBUFS)
+  if (stun_message_append_string (&msg, 0xffff, "foobar") !=
+      STUN_MESSAGE_RETURN_NOT_ENOUGH_SPACE)
     fatal ("String overflow test failed");
 
   memset (&addr, 0, sizeof (addr));
@@ -246,7 +244,7 @@ int main (void)
   addr.sa_len = sizeof (addr);
 #endif
   if (stun_message_append_xor_addr (&msg, 0xffff, &addr,
-                            sizeof (addr)) != ENOBUFS)
+          sizeof (addr)) != STUN_MESSAGE_RETURN_NOT_ENOUGH_SPACE)
     fatal ("Address overflow test failed");
   len = sizeof (msg);
   if (stun_agent_finish_message (&agent, &msg, NULL, 0) != 0)

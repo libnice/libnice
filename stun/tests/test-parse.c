@@ -45,20 +45,10 @@
 
 #ifdef _WIN32
 #include <winsock2.h>
-#define ENOENT -1
-#define EINVAL -2
-#define ENOBUFS -3
-#define EAFNOSUPPORT -4
-#define EPROTO -5
-#define EACCES -6
-#define EINPROGRESS -7
-#define EAGAIN -8
-#define ENOSYS -9
 #else
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
-#include <errno.h>
 #endif
 
 
@@ -251,7 +241,8 @@ static void test_message (void)
     fatal ("Binding Error Response failed");
 
 
-  if (stun_message_validate_buffer_length (NULL, 0) != STUN_MESSAGE_BUFFER_INVALID)
+  if (stun_message_validate_buffer_length (NULL, 0) !=
+      STUN_MESSAGE_BUFFER_INVALID)
     fatal ("0 bytes test failed");
   if (stun_message_validate_buffer_length ((uint8_t *)"\xf0", 1) >= 0)
     fatal ("1 byte test failed");
@@ -396,51 +387,61 @@ static void test_attribute (void)
   if (!stun_message_has_attribute (&msg, 0xff01))
     fatal ("Present attribute test failed");
 
-  if (stun_message_find_flag (&msg, 0xff00) != ENOENT)
+  if (stun_message_find_flag (&msg, 0xff00) != STUN_MESSAGE_RETURN_NOT_FOUND)
     fatal ("Absent flag test failed");
-  if (stun_message_find_flag (&msg, 0xff01) != 0)
+  if (stun_message_find_flag (&msg, 0xff01) != STUN_MESSAGE_RETURN_SUCCESS)
     fatal ("Flag test failed");
-  if (stun_message_find_flag (&msg, 0xff02) != EINVAL)
+  if (stun_message_find_flag (&msg, 0xff02) != STUN_MESSAGE_RETURN_INVALID)
     fatal ("Too big flag test failed");
 
-  if (stun_message_find32 (&msg, 0xff00, &dword) != ENOENT)
+  if (stun_message_find32 (&msg, 0xff00, &dword) !=
+      STUN_MESSAGE_RETURN_NOT_FOUND)
     fatal ("Absent dword test failed");
-  if (stun_message_find32 (&msg, 0xff01, &dword) != EINVAL)
+  if (stun_message_find32 (&msg, 0xff01, &dword) != STUN_MESSAGE_RETURN_INVALID)
     fatal ("Bad dword test failed");
-  if (stun_message_find32 (&msg, 0xff02, &dword) != 0)
+  if (stun_message_find32 (&msg, 0xff02, &dword) != STUN_MESSAGE_RETURN_SUCCESS)
     fatal ("Double-word test failed");
 
-  if (stun_message_find64 (&msg, 0xff00, &qword) != ENOENT)
+  if (stun_message_find64 (&msg, 0xff00, &qword) !=
+      STUN_MESSAGE_RETURN_NOT_FOUND)
     fatal ("Absent qword test failed");
-  if (stun_message_find64 (&msg, 0xff01, &qword) != EINVAL)
+  if (stun_message_find64 (&msg, 0xff01, &qword) != STUN_MESSAGE_RETURN_INVALID)
     fatal ("Bad qword test failed");
-  if (stun_message_find64 (&msg, 0xff04, &qword) !=0)
+  if (stun_message_find64 (&msg, 0xff04, &qword) != STUN_MESSAGE_RETURN_SUCCESS)
     fatal ("Quad-word test failed");
 
-  if (stun_message_find_string (&msg, 0xff00, str, STUN_MAX_CP) != ENOENT)
+  if (stun_message_find_string (&msg, 0xff00, str, STUN_MAX_CP) !=
+      STUN_MESSAGE_RETURN_NOT_FOUND)
     fatal ("Absent string test failed");
-  if ((stun_message_find_string (&msg, 0xff02, str, STUN_MAX_CP) != 0)
+  if ((stun_message_find_string (&msg, 0xff02, str, STUN_MAX_CP) !=
+          STUN_MESSAGE_RETURN_SUCCESS)
    || strcmp (str, "ABCD"))
     fatal ("String test failed");
 
   addrlen = sizeof (addr);
-  if (stun_message_find_addr (&msg, 0xff01, &addr.sa, &addrlen) != EINVAL)
+  if (stun_message_find_addr (&msg, 0xff01, &addr.sa, &addrlen) !=
+      STUN_MESSAGE_RETURN_INVALID)
     fatal ("Too short addres test failed");
   addrlen = sizeof (addr);
-  if (stun_message_find_addr (&msg, 0xff02, &addr.sa, &addrlen) != EAFNOSUPPORT)
+  if (stun_message_find_addr (&msg, 0xff02, &addr.sa, &addrlen) !=
+      STUN_MESSAGE_RETURN_UNSUPPORTED_ADDRESS)
     fatal ("Unknown address family test failed");
   addrlen = sizeof (addr);
-  if (stun_message_find_addr (&msg, 0xff03, &addr.sa, &addrlen) != EINVAL)
+  if (stun_message_find_addr (&msg, 0xff03, &addr.sa, &addrlen) !=
+      STUN_MESSAGE_RETURN_INVALID)
     fatal ("Too short IPv6 address test failed");
   addrlen = sizeof (addr);
-  if (stun_message_find_addr (&msg, 0xff04, &addr.sa, &addrlen) != 0)
+  if (stun_message_find_addr (&msg, 0xff04, &addr.sa, &addrlen) !=
+      STUN_MESSAGE_RETURN_SUCCESS)
     fatal ("IPv4 address test failed");
   addrlen = sizeof (addr);
-  if (stun_message_find_addr (&msg, 0xff05, &addr.sa, &addrlen) != EINVAL)
+  if (stun_message_find_addr (&msg, 0xff05, &addr.sa, &addrlen) !=
+      STUN_MESSAGE_RETURN_INVALID)
     fatal ("Too big IPv4 address test failed");
   addrlen = sizeof (addr);
-  if (stun_message_find_xor_addr (&msg, 0xff06, &addr.sa, &addrlen)
-   || memcmp (&addr.s6.sin6_addr, "\x20\x01\x0d\xb8""\xde\xad\xbe\xef"
+  if (stun_message_find_xor_addr (&msg, 0xff06, &addr.sa, &addrlen) !=
+      STUN_MESSAGE_RETURN_SUCCESS ||
+      memcmp (&addr.s6.sin6_addr, "\x20\x01\x0d\xb8""\xde\xad\xbe\xef"
                                   "\xde\xfa\xce\xd0""\xfa\xce\xde\xed", 16))
     fatal ("IPv6 address test failed");
 
@@ -647,7 +648,7 @@ static void test_vectors (void)
 
   addrlen = sizeof (ip4);
   if (stun_message_find_xor_addr (&msg, STUN_ATTRIBUTE_XOR_MAPPED_ADDRESS,
-                          (struct sockaddr *)&ip4, &addrlen) != 0)
+          (struct sockaddr *)&ip4, &addrlen) != STUN_MESSAGE_RETURN_SUCCESS)
     fatal ("Response test vector IPv4 extraction failed");
   if (ip4.sin_family != AF_INET)
     fatal ("Response test vector IPv4 family failed");
@@ -680,7 +681,7 @@ static void test_vectors (void)
 
   addrlen = sizeof (ip6);
   if (stun_message_find_xor_addr (&msg, STUN_ATTRIBUTE_XOR_MAPPED_ADDRESS,
-                          (struct sockaddr *)&ip6, &addrlen) != 0)
+          (struct sockaddr *)&ip6, &addrlen) != STUN_MESSAGE_RETURN_SUCCESS)
     fatal ("Response test vector IPv6 extraction failed");
   if (ip6.sin6_family != AF_INET6)
     fatal ("Response test vector IPv6 family failed");

@@ -49,15 +49,6 @@
 #ifdef _WIN32
 #include <winsock2.h>
 #include <ws2tcpip.h>
-#define ENOENT -1
-#define EINVAL -2
-#define ENOBUFS -3
-#define EAFNOSUPPORT -4
-#define EPROTO -5
-#define EACCES -6
-#define EINPROGRESS -7
-#define EAGAIN -8
-#define ENOSYS -9
 
 #define MSG_DONTWAIT 0
 #define MSG_NOSIGNAL 0
@@ -69,7 +60,6 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <netdb.h>
-#include <errno.h>
 #endif
 
 #undef NDEBUG /* ensure assertions are built-in */
@@ -370,9 +360,8 @@ static void responses (void)
       == STUN_VALIDATION_SUCCESS);
 
   stun_agent_init_response (&agent, &msg, buf, sizeof (buf), &msg);
-  val = stun_message_append_addr (&msg, STUN_ATTRIBUTE_MAPPED_ADDRESS,
-                          (struct sockaddr *)&addr, addrlen);
-  assert (val == 0);
+  assert (stun_message_append_addr (&msg, STUN_ATTRIBUTE_MAPPED_ADDRESS,
+          (struct sockaddr *)&addr, addrlen) == STUN_MESSAGE_RETURN_SUCCESS);
   len = stun_agent_finish_message (&agent, &msg, NULL, 0);
   assert (len > 0);
 
