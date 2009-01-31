@@ -248,7 +248,8 @@ socket_send (NiceSocket *sock, const NiceAddress *to,
               buffer, sizeof(buffer), STUN_IND_SEND))
         goto send;
       if (stun_message_append_xor_addr (&msg, STUN_ATTRIBUTE_PEER_ADDRESS,
-              (struct sockaddr *)&sa, sizeof(sa)) != 0)
+              (struct sockaddr *)&sa, sizeof(sa)) !=
+          STUN_MESSAGE_RETURN_SUCCESS)
         goto send;
     } else {
       if (!stun_agent_init_request (&priv->agent, &msg,
@@ -256,15 +257,16 @@ socket_send (NiceSocket *sock, const NiceAddress *to,
         goto send;
 
       if (stun_message_append32 (&msg, STUN_ATTRIBUTE_MAGIC_COOKIE,
-              TURN_MAGIC_COOKIE) != 0)
+              TURN_MAGIC_COOKIE) != STUN_MESSAGE_RETURN_SUCCESS)
         goto send;
       if (priv->username != NULL && priv->username_len > 0) {
         if (stun_message_append_bytes (&msg, STUN_ATTRIBUTE_USERNAME,
-                priv->username, priv->username_len) != 0)
+                priv->username, priv->username_len) !=
+            STUN_MESSAGE_RETURN_SUCCESS)
           goto send;
       }
       if (stun_message_append_addr (&msg, STUN_ATTRIBUTE_DESTINATION_ADDRESS,
-              (struct sockaddr *)&sa, sizeof(sa)) != 0)
+              (struct sockaddr *)&sa, sizeof(sa)) != STUN_MESSAGE_RETURN_SUCCESS)
         goto send;
 
       if (priv->compatibility == NICE_TURN_SOCKET_COMPATIBILITY_GOOGLE &&
@@ -274,7 +276,8 @@ socket_send (NiceSocket *sock, const NiceAddress *to,
       }
     }
 
-    if (stun_message_append_bytes (&msg, STUN_ATTRIBUTE_DATA, buf, len) != 0)
+    if (stun_message_append_bytes (&msg, STUN_ATTRIBUTE_DATA,
+            buf, len) != STUN_MESSAGE_RETURN_SUCCESS)
       goto send;
 
     msg_len = stun_agent_finish_message (&priv->agent, &msg,
@@ -320,7 +323,7 @@ nice_turn_socket_parse_recv (NiceSocket *sock, NiceSocket **from_sock,
       if (priv->compatibility != NICE_TURN_SOCKET_COMPATIBILITY_DRAFT9) {
         uint32_t cookie;
         if (stun_message_find32 (&msg, STUN_ATTRIBUTE_MAGIC_COOKIE,
-                &cookie) != 0)
+                &cookie) != STUN_MESSAGE_RETURN_SUCCESS)
           goto recv;
         if (cookie != TURN_MAGIC_COOKIE)
           goto recv;
@@ -330,8 +333,8 @@ nice_turn_socket_parse_recv (NiceSocket *sock, NiceSocket **from_sock,
         if (stun_message_get_class (&msg) == STUN_RESPONSE &&
             priv->compatibility == NICE_TURN_SOCKET_COMPATIBILITY_GOOGLE) {
           uint32_t opts = 0;
-          if (stun_message_find32 (&msg, STUN_ATTRIBUTE_OPTIONS, &opts) == 0 &&
-              opts & 0x1)
+          if (stun_message_find32 (&msg, STUN_ATTRIBUTE_OPTIONS, &opts) ==
+              STUN_MESSAGE_RETURN_SUCCESS && opts & 0x1)
             goto msn_google_lock;
         }
         return 0;
@@ -377,7 +380,8 @@ nice_turn_socket_parse_recv (NiceSocket *sock, NiceSocket **from_sock,
                   STUN_ATTRIBUTE_REALM, &recv_realm_len);
 
               /* check for unauthorized error response */
-              if (stun_message_find_error (&msg, &code) == 0 &&
+              if (stun_message_find_error (&msg, &code) ==
+                  STUN_MESSAGE_RETURN_SUCCESS &&
                   (code == 438 || (code == 401 &&
                    !(recv_realm != NULL &&
                        recv_realm_len > 0 &&
@@ -418,11 +422,13 @@ nice_turn_socket_parse_recv (NiceSocket *sock, NiceSocket **from_sock,
 
         if (priv->compatibility == NICE_TURN_SOCKET_COMPATIBILITY_DRAFT9) {
           if (stun_message_find_xor_addr (&msg, STUN_ATTRIBUTE_REMOTE_ADDRESS,
-                  (struct sockaddr *)&sa, &from_len) != 0)
+                  (struct sockaddr *)&sa, &from_len) !=
+              STUN_MESSAGE_RETURN_SUCCESS)
             goto recv;
         } else {
           if (stun_message_find_addr (&msg, STUN_ATTRIBUTE_REMOTE_ADDRESS,
-                  (struct sockaddr *)&sa, &from_len) != 0)
+                  (struct sockaddr *)&sa, &from_len) !=
+              STUN_MESSAGE_RETURN_SUCCESS)
             goto recv;
         }
 
@@ -608,20 +614,20 @@ priv_send_channel_bind (TurnPriv *priv,  StunMessage *resp,
   }
 
   if (stun_message_append32 (&msg->message, STUN_ATTRIBUTE_CHANNEL_NUMBER,
-          channel_attr) != 0) {
+          channel_attr) != STUN_MESSAGE_RETURN_SUCCESS) {
     g_free (msg);
     return FALSE;
   }
 
   if (stun_message_append_xor_addr (&msg->message, STUN_ATTRIBUTE_PEER_ADDRESS,
-          (struct sockaddr *)&sa, sizeof(sa)) != 0) {
+          (struct sockaddr *)&sa, sizeof(sa)) != STUN_MESSAGE_RETURN_SUCCESS) {
     g_free (msg);
     return FALSE;
   }
 
   if (priv->username != NULL && priv->username_len > 0) {
     if (stun_message_append_bytes (&msg->message, STUN_ATTRIBUTE_USERNAME,
-            priv->username, priv->username_len) != 0) {
+            priv->username, priv->username_len) != STUN_MESSAGE_RETURN_SUCCESS) {
       g_free (msg);
       return FALSE;
     }
@@ -635,7 +641,7 @@ priv_send_channel_bind (TurnPriv *priv,  StunMessage *resp,
     realm = (uint8_t *) stun_message_find (resp, STUN_ATTRIBUTE_REALM, &len);
     if (realm != NULL) {
       if (stun_message_append_bytes (&msg->message, STUN_ATTRIBUTE_REALM,
-              realm, len) != 0) {
+              realm, len) != STUN_MESSAGE_RETURN_SUCCESS) {
         g_free (msg);
         return 0;
       }
@@ -643,7 +649,7 @@ priv_send_channel_bind (TurnPriv *priv,  StunMessage *resp,
     nonce = (uint8_t *) stun_message_find (resp, STUN_ATTRIBUTE_NONCE, &len);
     if (nonce != NULL) {
       if (stun_message_append_bytes (&msg->message, STUN_ATTRIBUTE_NONCE,
-              nonce, len) != 0) {
+              nonce, len) != STUN_MESSAGE_RETURN_SUCCESS) {
         g_free (msg);
         return 0;
       }
@@ -708,14 +714,14 @@ priv_add_channel_binding (TurnPriv *priv, NiceAddress *peer)
     }
 
     if (stun_message_append32 (&msg->message, STUN_ATTRIBUTE_MAGIC_COOKIE,
-            TURN_MAGIC_COOKIE) != 0) {
+            TURN_MAGIC_COOKIE) != STUN_MESSAGE_RETURN_SUCCESS) {
       g_free (msg);
       return FALSE;
     }
 
     if (priv->username != NULL && priv->username_len > 0) {
       if (stun_message_append_bytes (&msg->message, STUN_ATTRIBUTE_USERNAME,
-              priv->username, priv->username_len) != 0) {
+            priv->username, priv->username_len) != STUN_MESSAGE_RETURN_SUCCESS) {
         g_free (msg);
         return FALSE;
       }
@@ -723,7 +729,7 @@ priv_add_channel_binding (TurnPriv *priv, NiceAddress *peer)
 
     if (stun_message_append_addr (&msg->message,
             STUN_ATTRIBUTE_DESTINATION_ADDRESS,
-            (struct sockaddr *)&sa, sizeof(sa)) != 0) {
+            (struct sockaddr *)&sa, sizeof(sa)) != STUN_MESSAGE_RETURN_SUCCESS) {
       g_free (msg);
       return FALSE;
     }

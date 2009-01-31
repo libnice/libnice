@@ -1991,7 +1991,8 @@ static gboolean priv_map_reply_to_relay_request (NiceAgent *agent, StunMessage *
           /* check for unauthorized error response */
           if (agent->compatibility == NICE_COMPATIBILITY_DRAFT19 &&
               stun_message_get_class (resp) == STUN_ERROR &&
-              stun_message_find_error (resp, &code) == 0 &&
+              stun_message_find_error (resp, &code) ==
+              STUN_MESSAGE_RETURN_SUCCESS &&
               recv_realm != NULL && recv_realm_len > 0) {
 
             if (code == 438 ||
@@ -2078,7 +2079,8 @@ static gboolean priv_map_reply_to_relay_refresh (NiceAgent *agent, StunMessage *
           /* check for unauthorized error response */
           if (cand->agent->compatibility == NICE_COMPATIBILITY_DRAFT19 &&
               stun_message_get_class (resp) == STUN_ERROR &&
-              stun_message_find_error (resp, &code) == 0 &&
+              stun_message_find_error (resp, &code) ==
+              STUN_MESSAGE_RETURN_SUCCESS &&
               recv_realm != NULL && recv_realm_len > 0) {
 
             if (code == 438 ||
