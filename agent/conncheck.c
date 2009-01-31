@@ -257,9 +257,8 @@ static gboolean priv_conn_check_tick_stream (Stream *stream, NiceAgent *agent, G
 	p->state = NICE_CHECK_FAILED;
         nice_debug ("Agent %p : pair %p state FAILED", agent, p);
       } else if (priv_timer_expired (&p->next_tick, now)) {
-        int timeout = stun_timer_refresh (&p->timer);
-        switch (timeout) {
-          case -1:
+        switch (stun_timer_refresh (&p->timer)) {
+          case STUN_USAGE_TIMER_RETURN_TIMEOUT:
             /* case: error, abort processing */
             nice_debug ("Agent %p : Retransmissions failed, giving up on connectivity check %p", agent, p);
             p->state = NICE_CHECK_FAILED;
@@ -267,7 +266,7 @@ static gboolean priv_conn_check_tick_stream (Stream *stream, NiceAgent *agent, G
             p->stun_message.buffer = NULL;
             p->stun_message.buffer_len = 0;
             break;
-          case 0:
+          case STUN_USAGE_TIMER_RETURN_RETRANSMIT:
             {
               /* case: not ready, so schedule a new timeout */
               unsigned int timeout = stun_timer_remainder (&p->timer);
@@ -286,8 +285,10 @@ static gboolean priv_conn_check_tick_stream (Stream *stream, NiceAgent *agent, G
               keep_timer_going = TRUE;
               break;
             }
-          default:
+          case STUN_USAGE_TIMER_RETURN_SUCCESS:
             {
+              unsigned int timeout = stun_timer_remainder (&p->timer);
+
               /* note: convert from milli to microseconds for g_time_val_add() */
               p->next_tick = *now;
               g_time_val_add (&p->next_tick, timeout * 1000);
@@ -522,13 +523,12 @@ static gboolean priv_turn_allocate_refresh_retransmissions_tick (gpointer pointe
   g_source_unref (cand->tick_source);
   cand->tick_source = NULL;
 
-  timeout = stun_timer_refresh (&cand->timer);
-  switch (timeout) {
-    case -1:
+  switch (stun_timer_refresh (&cand->timer)) {
+    case STUN_USAGE_TIMER_RETURN_TIMEOUT:
       /* Time out */
       refresh_cancel (cand);
       break;
-    case 0:
+    case STUN_USAGE_TIMER_RETURN_RETRANSMIT:
       /* Retransmit */
       nice_socket_send (cand->nicesock, &cand->server,
           stun_message_length (&cand->stun_message), (gchar *)cand->stun_buffer);
@@ -537,7 +537,8 @@ static gboolean priv_turn_allocate_refresh_retransmissions_tick (gpointer pointe
       cand->tick_source = agent_timeout_add_with_context (cand->agent, timeout,
           priv_turn_allocate_refresh_retransmissions_tick, cand);
       break;
-    default:
+    case STUN_USAGE_TIMER_RETURN_SUCCESS:
+      timeout = stun_timer_remainder (&cand->timer);
       cand->tick_source = agent_timeout_add_with_context (cand->agent, timeout,
           priv_turn_allocate_refresh_retransmissions_tick, cand);
       break;

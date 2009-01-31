@@ -885,16 +885,15 @@ static gboolean priv_discovery_tick_unlocked (gpointer pointer)
 	cand->done = TRUE;
       }
       else if (priv_timer_expired (&cand->next_tick, &now)) {
-        int timeout = stun_timer_refresh (&cand->timer);
-        switch (timeout) {
-          case -1:
+        switch (stun_timer_refresh (&cand->timer)) {
+          case STUN_USAGE_TIMER_RETURN_TIMEOUT:
             /* case: error, abort processing */
             cand->done = TRUE;
             cand->stun_message.buffer = NULL;
             cand->stun_message.buffer_len = 0;
             nice_debug ("Agent %p : bind discovery timed out, aborting discovery item.", agent);
             break;
-          case 0:
+          case STUN_USAGE_TIMER_RETURN_RETRANSMIT:
             {
               /* case: not ready complete, so schedule next timeout */
               unsigned int timeout = stun_timer_remainder (&cand->timer);
@@ -914,8 +913,10 @@ static gboolean priv_discovery_tick_unlocked (gpointer pointer)
               ++not_done; /* note: retry later */
               break;
             }
-          default:
+          case STUN_USAGE_TIMER_RETURN_SUCCESS:
             {
+              unsigned int timeout = stun_timer_remainder (&cand->timer);
+
               cand->next_tick = now;
               g_time_val_add (&cand->next_tick, timeout * 1000);
 

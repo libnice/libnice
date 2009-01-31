@@ -509,9 +509,8 @@ static gboolean
 priv_retransmissions_tick_unlocked (TurnPriv *priv)
 {
   if (priv->current_binding_msg) {
-    guint timeout = stun_timer_refresh (&priv->current_binding_msg->timer);
-    switch (timeout) {
-      case -1:
+    switch (stun_timer_refresh (&priv->current_binding_msg->timer)) {
+      case STUN_USAGE_TIMER_RETURN_TIMEOUT:
         /* Time out */
         g_free (priv->current_binding);
         priv->current_binding = NULL;
@@ -519,13 +518,13 @@ priv_retransmissions_tick_unlocked (TurnPriv *priv)
         priv->current_binding_msg = NULL;
         priv_process_pending_bindings (priv);
         break;
-      case 0:
+      case STUN_USAGE_TIMER_RETURN_RETRANSMIT:
         /* Retransmit */
         nice_socket_send (priv->base_socket, &priv->server_addr,
             stun_message_length (&priv->current_binding_msg->message),
             (gchar *)priv->current_binding_msg->buffer);
         break;
-      default:
+      case STUN_USAGE_TIMER_RETURN_SUCCESS:
         break;
     }
   }
