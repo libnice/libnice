@@ -35,24 +35,27 @@
 
 static void MD5Transform(uint32_t buf[4], uint32_t const in[16]);
 
+static int am_big_endian(void)
+{
+  long one= 1;
+  return !(*((char *)(&one)));
+}
 
-#if defined(_WIN32) || __BYTE_ORDER != __BIG_ENDIAN
-#define byteReverse(buf, len)	/* Nothing */
-#else
 /*
  * Note: this code is harmless on little-endian machines.
  */
 static void byteReverse(unsigned char *buf, unsigned longs)
 {
   uint32_t t;
-  do {
-    t = (uint32_t) ((unsigned) buf[3] << 8 | buf[2]) << 16 |
-        ((unsigned) buf[1] << 8 | buf[0]);
-    *(uint32_t *) buf = t;
-    buf += 4;
-  } while (--longs);
+  if (am_big_endian ()) {
+    do {
+      t = (uint32_t) ((unsigned) buf[3] << 8 | buf[2]) << 16 |
+          ((unsigned) buf[1] << 8 | buf[0]);
+      *(uint32_t *) buf = t;
+      buf += 4;
+    } while (--longs);
+  }
 }
-#endif
 
 /*
  * Start MD5 accumulation.  Set bit count to 0 and buffer to mysterious

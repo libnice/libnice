@@ -101,12 +101,8 @@ A million repetitions of "a"
 
 /* blk0() and blk() perform the initial expand. */
 /* I got the idea of expanding during the round function from SSLeay */
-#if defined(_WIN32) || __BYTE_ORDER != __BIG_ENDIAN
-#define blk0(i) (block->l[i] = (rol(block->l[i], 24) & 0xFF00FF00) | \
-	(rol(block->l[i], 8) & 0x00FF00FF))
-#else
-#define blk0(i) block->l[i]
-#endif
+#define blk0(i) (block->l[i] = blk0_endiansafe (block->l[i]))
+
 #define blk(i) (block->l[i & 15] = rol(block->l[(i + 13) & 15] ^ \
 	block->l[(i + 8) & 15] ^ block->l[(i + 2) & 15] ^ block->l[i & 15], 1))
 
@@ -129,6 +125,19 @@ A million repetitions of "a"
 static void SHA1Transform(uint32_t state[5], const unsigned char buffer[64]);
 /* Hash a single 512-bit block. This is the core of the algorithm. */
 
+static int am_big_endian(void)
+{
+  long one= 1;
+  return !(*((char *)(&one)));
+}
+
+static uint32_t blk0_endiansafe (uint32_t l)
+{
+  if (am_big_endian ())
+    return l;
+  else
+    return (rol(l, 24) & 0xFF00FF00) | (rol(l, 8) & 0x00FF00FF);
+}
 
 static void SHA1Transform(uint32_t state[5], const unsigned char buffer[64])
 {
