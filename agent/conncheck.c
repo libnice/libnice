@@ -244,7 +244,8 @@ static void priv_conn_check_unfreeze_related (NiceAgent *agent, Stream *stream, 
 static gboolean priv_conn_check_tick_stream (Stream *stream, NiceAgent *agent, GTimeVal *now)
 {
   gboolean keep_timer_going = FALSE;
-  guint s_inprogress = 0, s_succeeded = 0, s_nominated = 0, s_waiting_for_nomination = 0;
+  guint s_inprogress = 0, s_succeeded = 0, s_discovered = 0,
+      s_nominated = 0, s_waiting_for_nomination = 0;
   guint frozen = 0, waiting = 0;
   GSList *i, *k;
 
@@ -308,10 +309,14 @@ static gboolean priv_conn_check_tick_stream (Stream *stream, NiceAgent *agent, G
       ++waiting;
     else if (p->state == NICE_CHECK_SUCCEEDED)
       ++s_succeeded;
+    else if (p->state == NICE_CHECK_DISCOVERED)
+      ++s_discovered;
 
-    if (p->state == NICE_CHECK_SUCCEEDED && p->nominated)
+    if ((p->state == NICE_CHECK_SUCCEEDED || p->state == NICE_CHECK_DISCOVERED)
+        && p->nominated)
       ++s_nominated;
-    else if (p->state == NICE_CHECK_SUCCEEDED && !p->nominated)
+    else if ((p->state == NICE_CHECK_SUCCEEDED ||
+            p->state == NICE_CHECK_DISCOVERED) && !p->nominated)
       ++s_waiting_for_nomination;
   }
 
@@ -334,7 +339,7 @@ static gboolean priv_conn_check_tick_stream (Stream *stream, NiceAgent *agent, G
 	      p->state == NICE_CHECK_DISCOVERED) {
 	    nice_debug ("Agent %p : restarting check %p as the nominated pair.", agent, p);
 	    p->nominated = TRUE;
-	    priv_conn_check_initiate (agent, p);	
+	    priv_conn_check_initiate (agent, p);
 	    break; /* move to the next component */
 	  }
 	}
@@ -344,8 +349,11 @@ static gboolean priv_conn_check_tick_stream (Stream *stream, NiceAgent *agent, G
     {
     static int tick_counter = 0;
     if (tick_counter++ % 50 == 0 || keep_timer_going != TRUE)
-      nice_debug ("Agent %p : timer(%p) tick #%u: %u frozen, %u in-progress, %u waiting, %u succeeded, %u nominated, %u waiting-for-nom.", agent, 
-	       agent, tick_counter, frozen, s_inprogress, waiting, s_succeeded, s_nominated, s_waiting_for_nomination);
+      nice_debug ("Agent %p : timer tick #%u: %u frozen, %u in-progress, "
+          "%u waiting, %u succeeded, %u discovered, %u nominated, "
+          "%u waiting-for-nom.", agent,
+          tick_counter, frozen, s_inprogress, waiting, s_succeeded,
+          s_discovered, s_nominated, s_waiting_for_nomination);
   }
 
   return keep_timer_going;

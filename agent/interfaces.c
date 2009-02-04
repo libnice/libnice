@@ -1,7 +1,6 @@
 /*
  * interfaces.c - Source for interface discovery code
  *
- * Farsight Helper functions
  * Copyright (C) 2006 Youness Alaoui <kakaroto@kakaroto.homelinux.net>
  * Copyright (C) 2007 Collabora, Nokia
  * Copyright (C) 2008 Haakon Sporsheim <haakon.sporsheim@tandberg.com>
