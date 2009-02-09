@@ -1020,7 +1020,8 @@ int conn_check_add_for_candidate (NiceAgent *agent, guint stream_id, Component *
 
       /* note: do not create pairs where local candidate is 
        *       a srv-reflexive (ICE 5.7.3. "Pruning the Pairs" ID-19) */
-      if (agent->compatibility == NICE_COMPATIBILITY_DRAFT19 &&
+      if ((agent->compatibility == NICE_COMPATIBILITY_DRAFT19 ||
+              agent->compatibility == NICE_COMPATIBILITY_WLM2009) &&
           local->type == NICE_CANDIDATE_TYPE_SERVER_REFLEXIVE)
 	continue;
 
@@ -1433,10 +1434,11 @@ static gboolean priv_schedule_triggered_check (NiceAgent *agent, Stream *stream,
 	     same state update as for processing responses to our own checks */
 	  priv_update_check_list_state_for_ready (agent, stream, component);
 
-	  /* note: to take care of the controlling-controlling case in 
+	  /* note: to take care of the controlling-controlling case in
 	   *       aggressive nomination mode, send a new triggered
 	   *       check to nominate the pair */
-	  if (agent->compatibility == NICE_COMPATIBILITY_DRAFT19 &&
+	  if ((agent->compatibility == NICE_COMPATIBILITY_DRAFT19 ||
+                  agent->compatibility == NICE_COMPATIBILITY_WLM2009) &&
               agent->controlling_mode)
 	    priv_conn_check_initiate (agent, p);
 	}

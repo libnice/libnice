@@ -119,34 +119,33 @@ static void priv_detach_stream_component (Stream *stream, Component *component);
 StunUsageIceCompatibility
 agent_to_ice_compatibility (NiceAgent *agent)
 {
-  return agent->compatibility == NICE_COMPATIBILITY_DRAFT19 ?
-      STUN_USAGE_ICE_COMPATIBILITY_DRAFT19 :
-      agent->compatibility == NICE_COMPATIBILITY_GOOGLE ?
+  return agent->compatibility == NICE_COMPATIBILITY_GOOGLE ?
       STUN_USAGE_ICE_COMPATIBILITY_GOOGLE :
       agent->compatibility == NICE_COMPATIBILITY_MSN ?
-      STUN_USAGE_ICE_COMPATIBILITY_MSN : STUN_USAGE_ICE_COMPATIBILITY_DRAFT19;
+      STUN_USAGE_ICE_COMPATIBILITY_MSN :
+      STUN_USAGE_ICE_COMPATIBILITY_DRAFT19;
 }
 
 
 StunUsageTurnCompatibility
 agent_to_turn_compatibility (NiceAgent *agent)
 {
-  return agent->compatibility == NICE_COMPATIBILITY_DRAFT19 ?
-      STUN_USAGE_TURN_COMPATIBILITY_DRAFT9 :
-      agent->compatibility == NICE_COMPATIBILITY_GOOGLE ?
+  return agent->compatibility == NICE_COMPATIBILITY_GOOGLE ?
       STUN_USAGE_TURN_COMPATIBILITY_GOOGLE :
       agent->compatibility == NICE_COMPATIBILITY_MSN ?
+      STUN_USAGE_TURN_COMPATIBILITY_MSN :
+      agent->compatibility == NICE_COMPATIBILITY_WLM2009 ?
       STUN_USAGE_TURN_COMPATIBILITY_MSN : STUN_USAGE_TURN_COMPATIBILITY_DRAFT9;
 }
 
 NiceTurnSocketCompatibility
 agent_to_turn_socket_compatibility (NiceAgent *agent)
 {
-  return agent->compatibility == NICE_COMPATIBILITY_DRAFT19 ?
-      NICE_TURN_SOCKET_COMPATIBILITY_DRAFT9 :
-      agent->compatibility == NICE_COMPATIBILITY_GOOGLE ?
+  return agent->compatibility == NICE_COMPATIBILITY_GOOGLE ?
       NICE_TURN_SOCKET_COMPATIBILITY_GOOGLE :
       agent->compatibility == NICE_COMPATIBILITY_MSN ?
+      NICE_TURN_SOCKET_COMPATIBILITY_MSN :
+      agent->compatibility == NICE_COMPATIBILITY_WLM2009 ?
       NICE_TURN_SOCKET_COMPATIBILITY_MSN :
       NICE_TURN_SOCKET_COMPATIBILITY_DRAFT9;
 }
@@ -631,12 +630,7 @@ nice_agent_set_property (
 
     case PROP_COMPATIBILITY:
       agent->compatibility = g_value_get_uint (value);
-      if (agent->compatibility == NICE_COMPATIBILITY_DRAFT19) {
-        stun_agent_init (&agent->stun_agent, STUN_ALL_KNOWN_ATTRIBUTES,
-            STUN_COMPATIBILITY_RFC5389,
-            STUN_AGENT_USAGE_SHORT_TERM_CREDENTIALS |
-            STUN_AGENT_USAGE_USE_FINGERPRINT);
-      } else if (agent->compatibility == NICE_COMPATIBILITY_GOOGLE) {
+      if (agent->compatibility == NICE_COMPATIBILITY_GOOGLE) {
         stun_agent_init (&agent->stun_agent, STUN_ALL_KNOWN_ATTRIBUTES,
             STUN_COMPATIBILITY_RFC3489,
             STUN_AGENT_USAGE_SHORT_TERM_CREDENTIALS |
@@ -646,6 +640,16 @@ nice_agent_set_property (
             STUN_COMPATIBILITY_RFC3489,
             STUN_AGENT_USAGE_SHORT_TERM_CREDENTIALS |
             STUN_AGENT_USAGE_FORCE_VALIDATER);
+      } else if (agent->compatibility == NICE_COMPATIBILITY_WLM2009) {
+        stun_agent_init (&agent->stun_agent, STUN_ALL_KNOWN_ATTRIBUTES,
+            STUN_COMPATIBILITY_WLM2009,
+            STUN_AGENT_USAGE_SHORT_TERM_CREDENTIALS |
+            STUN_AGENT_USAGE_USE_FINGERPRINT);
+      } else {
+        stun_agent_init (&agent->stun_agent, STUN_ALL_KNOWN_ATTRIBUTES,
+            STUN_COMPATIBILITY_RFC5389,
+            STUN_AGENT_USAGE_SHORT_TERM_CREDENTIALS |
+            STUN_AGENT_USAGE_USE_FINGERPRINT);
       }
 
       break;
@@ -965,20 +969,21 @@ priv_add_new_candidate_discovery_turn (NiceAgent *agent,
       cdisco->component = stream_find_component_by_id (stream, component_id);
       cdisco->agent = agent;
 
-      if (agent->compatibility == NICE_COMPATIBILITY_DRAFT19) {
-        stun_agent_init (&cdisco->stun_agent, STUN_ALL_KNOWN_ATTRIBUTES,
-            STUN_COMPATIBILITY_RFC5389,
-            STUN_AGENT_USAGE_ADD_SOFTWARE |
-            STUN_AGENT_USAGE_LONG_TERM_CREDENTIALS);
-      } else if (agent->compatibility == NICE_COMPATIBILITY_MSN) {
-        stun_agent_init (&cdisco->stun_agent, STUN_ALL_KNOWN_ATTRIBUTES,
-            STUN_COMPATIBILITY_RFC3489,
-            STUN_AGENT_USAGE_SHORT_TERM_CREDENTIALS);
-      } else if (agent->compatibility == NICE_COMPATIBILITY_GOOGLE) {
+      if (agent->compatibility == NICE_COMPATIBILITY_GOOGLE) {
         stun_agent_init (&cdisco->stun_agent, STUN_ALL_KNOWN_ATTRIBUTES,
             STUN_COMPATIBILITY_RFC3489,
             STUN_AGENT_USAGE_SHORT_TERM_CREDENTIALS |
             STUN_AGENT_USAGE_IGNORE_CREDENTIALS);
+      } else if (agent->compatibility == NICE_COMPATIBILITY_MSN ||
+                 agent->compatibility == NICE_COMPATIBILITY_WLM2009) {
+        stun_agent_init (&cdisco->stun_agent, STUN_ALL_KNOWN_ATTRIBUTES,
+            STUN_COMPATIBILITY_RFC3489,
+            STUN_AGENT_USAGE_SHORT_TERM_CREDENTIALS);
+      } else {
+        stun_agent_init (&cdisco->stun_agent, STUN_ALL_KNOWN_ATTRIBUTES,
+            STUN_COMPATIBILITY_RFC5389,
+            STUN_AGENT_USAGE_ADD_SOFTWARE |
+            STUN_AGENT_USAGE_LONG_TERM_CREDENTIALS);
       }
 
       nice_debug ("Agent %p : Adding new relay-rflx candidate discovery %p\n",
