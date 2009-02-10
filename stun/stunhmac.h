@@ -48,7 +48,7 @@
  *
  * @return fingerprint value in <b>host</b> byte order.
  */
-void stun_sha1 (const uint8_t *msg, size_t len,
+void stun_sha1 (const uint8_t *msg, size_t len, size_t msg_len,
     uint8_t *sha, const void *key, size_t keylen, int padding);
 
 /**

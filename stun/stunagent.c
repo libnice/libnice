@@ -252,11 +252,27 @@ StunValidationStatus stun_agent_validate (StunAgent *agent, StunMessage *msg,
         memcpy (msg->long_term_key, md5, sizeof(md5));
         msg->long_term_valid = TRUE;
 
-        stun_sha1 (msg->buffer, hash + 20 - msg->buffer, sha, md5, sizeof(md5),
-            agent->compatibility == STUN_COMPATIBILITY_RFC3489 ? TRUE : FALSE);
+        if (agent->compatibility == STUN_COMPATIBILITY_RFC3489) {
+          stun_sha1 (msg->buffer, hash + 20 - msg->buffer, hash - msg->buffer,
+              sha, md5, sizeof(md5), TRUE);
+        } else if (agent->compatibility == STUN_COMPATIBILITY_WLM2009) {
+          stun_sha1 (msg->buffer, hash + 20 - msg->buffer,
+              stun_message_length (msg) - 20, sha, md5, sizeof(md5), TRUE);
+        } else {
+          stun_sha1 (msg->buffer, hash + 20 - msg->buffer,
+              hash - msg->buffer, sha, md5, sizeof(md5), FALSE);
+        }
       } else {
-        stun_sha1 (msg->buffer, hash + 20 - msg->buffer, sha, key, key_len,
-            agent->compatibility == STUN_COMPATIBILITY_RFC3489 ? TRUE : FALSE);
+        if (agent->compatibility == STUN_COMPATIBILITY_RFC3489) {
+          stun_sha1 (msg->buffer, hash + 20 - msg->buffer, hash - msg->buffer,
+              sha, key, key_len, TRUE);
+        } else if (agent->compatibility == STUN_COMPATIBILITY_WLM2009) {
+          stun_sha1 (msg->buffer, hash + 20 - msg->buffer,
+              stun_message_length (msg) - 20, sha, key, key_len, TRUE);
+        } else {
+          stun_sha1 (msg->buffer, hash + 20 - msg->buffer,
+              hash - msg->buffer, sha, key, key_len, FALSE);
+        }
       }
 
       stun_debug (" Message HMAC-SHA1 fingerprint:");
@@ -509,11 +525,35 @@ size_t stun_agent_finish_message (StunAgent *agent, StunMessage *msg,
         return 0;
       }
       if (agent->usage_flags & STUN_AGENT_USAGE_LONG_TERM_CREDENTIALS) {
-        stun_sha1 (msg->buffer, stun_message_length (msg), ptr, md5, sizeof(md5),
-            agent->compatibility == STUN_COMPATIBILITY_RFC3489 ? TRUE : FALSE);
+        if (agent->compatibility == STUN_COMPATIBILITY_RFC3489) {
+          stun_sha1 (msg->buffer, stun_message_length (msg),
+              stun_message_length (msg) - 20, ptr, md5, sizeof(md5), TRUE);
+        } else if (agent->compatibility == STUN_COMPATIBILITY_WLM2009) {
+          size_t minus = 20;
+          if (agent->usage_flags & STUN_AGENT_USAGE_USE_FINGERPRINT)
+            minus -= 8;
+
+          stun_sha1 (msg->buffer, stun_message_length (msg),
+              stun_message_length (msg) - minus, ptr, md5, sizeof(md5), TRUE);
+        } else {
+          stun_sha1 (msg->buffer, stun_message_length (msg),
+              stun_message_length (msg) - 20, ptr, md5, sizeof(md5), FALSE);
+        }
       } else {
-        stun_sha1 (msg->buffer, stun_message_length (msg), ptr, key, key_len,
-            agent->compatibility == STUN_COMPATIBILITY_RFC3489 ? TRUE : FALSE);
+        if (agent->compatibility == STUN_COMPATIBILITY_RFC3489) {
+          stun_sha1 (msg->buffer, stun_message_length (msg),
+              stun_message_length (msg) - 20, ptr, key, key_len, TRUE);
+        } else if (agent->compatibility == STUN_COMPATIBILITY_WLM2009) {
+          size_t minus = 20;
+          if (agent->usage_flags & STUN_AGENT_USAGE_USE_FINGERPRINT)
+            minus -= 8;
+
+          stun_sha1 (msg->buffer, stun_message_length (msg),
+              stun_message_length (msg) - minus, ptr, key, key_len, TRUE);
+        } else {
+          stun_sha1 (msg->buffer, stun_message_length (msg),
+              stun_message_length (msg) - 20, ptr, key, key_len, FALSE);
+        }
       }
 
       stun_debug (" Message HMAC-SHA1 message integrity:"

@@ -47,10 +47,10 @@
 #include <string.h>
 #include <assert.h>
 
-void stun_sha1 (const uint8_t *msg, size_t len, uint8_t *sha,
+void stun_sha1 (const uint8_t *msg, size_t len, size_t msg_len, uint8_t *sha,
     const void *key, size_t keylen, int padding)
 {
-  uint16_t fakelen = htons (len - 20u);
+  uint16_t fakelen = htons (msg_len);
   const uint8_t *vector[4];
   size_t lengths[4];
   uint8_t pad_char[64] = {0};
