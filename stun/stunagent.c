@@ -152,7 +152,8 @@ StunValidationStatus stun_agent_validate (StunAgent *agent, StunMessage *msg,
     if (fpr != crc32) {
       stun_debug ("STUN demux error: bad fingerprint: 0x%08x,"
           " expected: 0x%08x!\n", fpr, crc32);
-      return STUN_VALIDATION_BAD_REQUEST;
+      if (agent->compatibility != STUN_COMPATIBILITY_WLM2009)
+        return STUN_VALIDATION_BAD_REQUEST;
     }
 
     stun_debug ("STUN demux: OK!\n");
