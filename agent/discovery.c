@@ -647,6 +647,12 @@ discovery_add_peer_reflexive_candidate (
       g_free(decoded_remote);
 
       candidate->password = g_strdup(local->password);
+    } else if (local) {
+      g_free(candidate->username);
+      g_free(candidate->password);
+
+      candidate->username = g_strdup(local->username);
+      candidate->password = g_strdup(local->password);
     }
 
     /* step: link to the base candidate+socket */
@@ -746,7 +752,7 @@ NiceCandidate *discovery_learn_remote_peer_reflexive_candidate (
       g_free(decoded_remote);
 
       candidate->password = g_strdup(remote->password);
-    } else if (agent->compatibility == NICE_COMPATIBILITY_GOOGLE) {
+    } else if (remote) {
       g_free (candidate->username);
       g_free (candidate->password);
       candidate->username = g_strdup(remote->username);
