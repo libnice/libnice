@@ -1147,6 +1147,18 @@ size_t priv_gen_username (NiceAgent *agent, guint component_id,
       len++;
       memcpy (dest + len, local, local_len);
       len += local_len;
+    } else if (agent->compatibility == NICE_COMPATIBILITY_WLM2009 &&
+        dest_len >= remote_len + local_len + 4 ) {
+      memcpy (dest, remote, remote_len);
+      len += remote_len;
+      memcpy (dest + len, ":", 1);
+      len++;
+      memcpy (dest + len, local, local_len);
+      len += local_len;
+      if (len % 4 != 0) {
+        memset (dest + len, 0, 4 - (len % 4));
+        len += 4 - (len % 4);
+      }
     } else if (agent->compatibility == NICE_COMPATIBILITY_GOOGLE &&
         dest_len >= remote_len + local_len) {
       memcpy (dest, remote, remote_len);
