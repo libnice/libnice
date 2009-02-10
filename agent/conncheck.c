@@ -2358,41 +2358,44 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, Stream *stream,
     }
   }
 
-  /* We need to find which local candidate was used */
-  for (i = component->remote_candidates; i; i = i->next) {
-    for (j = component->local_candidates; j; j = j->next) {
-      gboolean inbound = TRUE;
-      NiceCandidate *rcand = i->data;
-      NiceCandidate *lcand = j->data;
+  if (agent->compatibility == NICE_COMPATIBILITY_GOOGLE ||
+      agent->compatibility == NICE_COMPATIBILITY_MSN) {
+    /* We need to find which local candidate was used */
+    for (i = component->remote_candidates; i; i = i->next) {
+      for (j = component->local_candidates; j; j = j->next) {
+        gboolean inbound = TRUE;
+        NiceCandidate *rcand = i->data;
+        NiceCandidate *lcand = j->data;
 
-      /* If we receive a response, then the username is local:remote */
-      if (agent->compatibility != NICE_COMPATIBILITY_MSN) {
-        if (stun_message_get_class (&req) == STUN_REQUEST ||
-            stun_message_get_class (&req) == STUN_INDICATION) {
-          inbound = TRUE;
-        } else {
-          inbound = FALSE;
+        /* If we receive a response, then the username is local:remote */
+        if (agent->compatibility != NICE_COMPATIBILITY_MSN) {
+          if (stun_message_get_class (&req) == STUN_REQUEST ||
+              stun_message_get_class (&req) == STUN_INDICATION) {
+            inbound = TRUE;
+          } else {
+            inbound = FALSE;
+          }
         }
-      }
 
-      uname_len = priv_create_username (agent, stream,
-          component->id,  rcand, lcand,
-          uname, sizeof (uname), inbound);
+        uname_len = priv_create_username (agent, stream,
+            component->id,  rcand, lcand,
+            uname, sizeof (uname), inbound);
 
-      stun_debug ("Comparing username '");
-      stun_debug_bytes (username, username? username_len : 0);
-      stun_debug ("' (%d) with '", username_len);
-      stun_debug_bytes (uname, uname_len);
-      stun_debug ("' (%d) : %d\n",
-          uname_len, username && uname_len == username_len &&
-          memcmp (username, uname, uname_len) == 0);
+        stun_debug ("Comparing username '");
+        stun_debug_bytes (username, username? username_len : 0);
+        stun_debug ("' (%d) with '", username_len);
+        stun_debug_bytes (uname, uname_len);
+        stun_debug ("' (%d) : %d\n",
+            uname_len, username && uname_len == username_len &&
+            memcmp (username, uname, uname_len) == 0);
 
-      if (username &&
-          uname_len == username_len &&
-          memcmp (uname, username, username_len) == 0) {
-        local_candidate = lcand;
-        remote_candidate2 = rcand;
-        break;
+        if (username &&
+            uname_len == username_len &&
+            memcmp (uname, username, username_len) == 0) {
+          local_candidate = lcand;
+          remote_candidate2 = rcand;
+          break;
+        }
       }
     }
   }
@@ -2465,7 +2468,8 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, Stream *stream,
             "peer-reflexive candidate.", agent);
 	remote_candidate = discovery_learn_remote_peer_reflexive_candidate (
             agent, stream, component, priority, from, socket,
-            local_candidate, remote_candidate2);
+            local_candidate,
+            remote_candidate2 ? remote_candidate2 : remote_candidate);
       }
 
       priv_reply_to_conn_check (agent, stream, component, remote_candidate,
