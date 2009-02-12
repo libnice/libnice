@@ -146,6 +146,11 @@ StunValidationStatus stun_agent_validate (StunAgent *agent, StunMessage *msg,
       return STUN_VALIDATION_BAD_REQUEST;
     }
 
+    if (agent->compatibility == STUN_COMPATIBILITY_WLM2009)
+      wlm2009_stupid_crc32_typo = 1;
+    else
+      wlm2009_stupid_crc32_typo = 0;
+
     /* Checks FINGERPRINT */
     crc32 = stun_fingerprint (msg->buffer, stun_message_length (msg));
     fpr = ntohl (fpr);
@@ -575,6 +580,10 @@ size_t stun_agent_finish_message (StunAgent *agent, StunMessage *msg,
     }
 
 
+    if (agent->compatibility == STUN_COMPATIBILITY_WLM2009)
+      wlm2009_stupid_crc32_typo = 1;
+    else
+      wlm2009_stupid_crc32_typo = 0;
     fpr = stun_fingerprint (msg->buffer, stun_message_length (msg));
     memcpy (ptr, &fpr, sizeof (fpr));
 

@@ -53,6 +53,7 @@ typedef struct {
 } crc_data;
 
 
+int wlm2009_stupid_crc32_typo;
 uint32_t crc32 (const crc_data *data, size_t n);
 
 #endif /* _CRC32_H */
