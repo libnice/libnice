@@ -213,10 +213,15 @@ gst_nice_src_unlock_idler (gpointer data)
 {
   GstNiceSrc *nicesrc = GST_NICE_SRC (data);
 
-  g_main_loop_quit (nicesrc->mainloop);
+  GST_OBJECT_LOCK (nicesrc);
+  if (nicesrc->unlocked)
+    g_main_loop_quit (nicesrc->mainloop);
 
-  g_source_unref (nicesrc->idle_source);
-  nicesrc->idle_source = NULL;
+  if (nicesrc->idle_source) {
+    g_source_unref (nicesrc->idle_source);
+    nicesrc->idle_source = NULL;
+  }
+  GST_OBJECT_UNLOCK (nicesrc);
 
   return FALSE;
 }
