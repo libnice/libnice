@@ -122,7 +122,6 @@ typedef enum
 
 /**
  * StunAttribute:
- *
  * @STUN_ATTRIBUTE_MAPPED_ADDRESS: The MAPPED-ADDRESS attribute as defined
  * by RFC5389
  * @STUN_ATTRIBUTE_RESPONSE_ADDRESS: The RESPONSE-ADDRESS attribute as defined
@@ -195,7 +194,8 @@ typedef enum
  * @STUN_ATTRIBUTE_SOFTWARE: The SOFTWARE optional attribute as defined by RFC5389
  * @STUN_ATTRIBUTE_ALTERNATE_SERVER: The ALTERNATE-SERVER optional attribute as
  * defined by RFC5389
- * @STUN_ATTRIBUTE_FINGERPRINT: The FINGERPRINT optional attribute as defined by RFC5389
+ * @STUN_ATTRIBUTE_FINGERPRINT: The FINGERPRINT optional attribute as defined
+ * by RFC5389
  * @STUN_ATTRIBUTE_ICE_CONTROLLED: The ICE-CONTROLLED optional attribute as
  * defined by ICE draft 19
  * @STUN_ATTRIBUTE_ICE_CONTROLLING: The ICE-CONTROLLING optional attribute as
@@ -326,6 +326,7 @@ static const uint16_t STUN_ALL_KNOWN_ATTRIBUTES[] =
 
 /**
  * StunTransactionId:
+ *
  * A type that holds a STUN transaction id.
  */
 typedef uint8_t StunTransactionId[STUN_MESSAGE_TRANS_ID_LEN];

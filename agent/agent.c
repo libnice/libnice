@@ -1820,7 +1820,7 @@ agent_attach_stream_component_socket (NiceAgent *agent,
 }
 
 
-/**
+/*
  * Attaches socket handles of 'stream' to the main eventloop
  * context.
  *
@@ -1838,7 +1838,7 @@ priv_attach_stream_component (NiceAgent *agent,
   return TRUE;
 }
 
-/**
+/*
  * Detaches socket handles of 'stream' from the main eventloop
  * context.
  *

@@ -55,7 +55,7 @@ G_BEGIN_DECLS
 #define NICE_STREAM_DEF_UFRAG   4 + 1    /* ufrag + NULL */
 #define NICE_STREAM_DEF_PWD     22 + 1   /* pwd + NULL */
 
-/**
+/*
  * Checklist states. These match the definition given in
  * the ICE spec sect 5.7.4. "Computing States" (ID-19).
  */
@@ -76,8 +76,8 @@ struct _Stream
   guint n_components;
   gboolean initial_binding_request_received;
   GSList *components; /* list of 'Component' structs */
-  GSList *conncheck_list;         /**< list of CandidatePair items */
-  NiceCheckListState conncheck_state; /**< checklist state */
+  GSList *conncheck_list;         /* list of CandidatePair items */
+  NiceCheckListState conncheck_state; /* checklist state */
   gchar local_ufrag[NICE_STREAM_MAX_UFRAG];
   gchar local_password[NICE_STREAM_MAX_PWD];
   gchar remote_ufrag[NICE_STREAM_MAX_UFRAG];

@@ -42,7 +42,7 @@
 
 #include "stream.h"
 
-/**
+/*
  * @file stream.c
  * @brief ICE stream functionality
  */
@@ -108,7 +108,7 @@ stream_find_component_by_id (const Stream *stream, guint id)
   return NULL;
 }
 
-/**
+/*
  * Returns true if all components of the stream are either
  * 'CONNECTED' or 'READY' (connected plus nominated).
  */
@@ -129,7 +129,7 @@ stream_all_components_ready (const Stream *stream)
 }
 
 
-/**
+/*
  * Initialized the local crendentials for the stream.
  */
 void stream_initialize_credentials (Stream *stream, NiceRNG *rng)
@@ -140,7 +140,7 @@ void stream_initialize_credentials (Stream *stream, NiceRNG *rng)
   nice_rng_generate_bytes_print (rng, NICE_STREAM_DEF_PWD - 1, stream->local_password);
 }
 
-/**
+/*
  * Resets the stream state to that of a ICE restarted
  * session.
  */

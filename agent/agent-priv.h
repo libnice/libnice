@@ -62,41 +62,41 @@
 #define NICE_AGENT_MAX_CONNECTIVITY_CHECKS_DEFAULT 100 /* see spec 5.7.3 (ID-19) */
 
 
-/** An upper limit to size of STUN packets handled (based on Ethernet
+/* An upper limit to size of STUN packets handled (based on Ethernet
  * MTU and estimated typical sizes of ICE STUN packet */
 #define MAX_STUN_DATAGRAM_PAYLOAD    1300
 
 struct _NiceAgent
 {
-  GObject parent;                 /**< gobject pointer */
+  GObject parent;                 /* gobject pointer */
 
-  gboolean full_mode;             /**< property: full-mode */
-  GTimeVal next_check_tv;         /**< property: next conncheck timestamp */
-  gchar *stun_server_ip;          /**< property: STUN server IP */
-  guint stun_server_port;         /**< property: STUN server port */
-  gchar *proxy_ip;                /**< property: Proxy server IP */
-  guint proxy_port;               /**< property: Proxy server port */
-  NiceProxyType proxy_type;       /**< property: Proxy type */
-  gchar *proxy_username;          /**< property: Proxy username */
-  gchar *proxy_password;          /**< property: Proxy password */
-  gboolean controlling_mode;      /**< property: controlling-mode */
-  guint timer_ta;                 /**< property: timer Ta */
-  guint max_conn_checks;          /**< property: max connectivity checks */
+  gboolean full_mode;             /* property: full-mode */
+  GTimeVal next_check_tv;         /* property: next conncheck timestamp */
+  gchar *stun_server_ip;          /* property: STUN server IP */
+  guint stun_server_port;         /* property: STUN server port */
+  gchar *proxy_ip;                /* property: Proxy server IP */
+  guint proxy_port;               /* property: Proxy server port */
+  NiceProxyType proxy_type;       /* property: Proxy type */
+  gchar *proxy_username;          /* property: Proxy username */
+  gchar *proxy_password;          /* property: Proxy password */
+  gboolean controlling_mode;      /* property: controlling-mode */
+  guint timer_ta;                 /* property: timer Ta */
+  guint max_conn_checks;          /* property: max connectivity checks */
 
-  GSList *local_addresses;        /**< list of NiceAddresses for local
+  GSList *local_addresses;        /* list of NiceAddresses for local
 				     interfaces */
-  GSList *streams;                /**< list of Stream objects */
-  GMainContext *main_context;     /**< main context pointer */
-  guint next_candidate_id;        /**< id of next created candidate */
-  guint next_stream_id;           /**< id of next created candidate */
-  NiceRNG *rng;                   /**< random number generator */
-  GSList *discovery_list;         /**< list of CandidateDiscovery items */
-  guint discovery_unsched_items;  /**< number of discovery items unscheduled */
-  GSource *discovery_timer_source; /**< source of discovery timer */
-  GSource *conncheck_timer_source; /**< source of conncheck timer */
-  GSource *keepalive_timer_source; /**< source of keepalive timer */
-  GSList *refresh_list;         /**< list of CandidateRefresh items */
-  guint64 tie_breaker;            /**< tie breaker (ICE sect 5.2
+  GSList *streams;                /* list of Stream objects */
+  GMainContext *main_context;     /* main context pointer */
+  guint next_candidate_id;        /* id of next created candidate */
+  guint next_stream_id;           /* id of next created candidate */
+  NiceRNG *rng;                   /* random number generator */
+  GSList *discovery_list;         /* list of CandidateDiscovery items */
+  guint discovery_unsched_items;  /* number of discovery items unscheduled */
+  GSource *discovery_timer_source; /* source of discovery timer */
+  GSource *conncheck_timer_source; /* source of conncheck timer */
+  GSource *keepalive_timer_source; /* source of keepalive timer */
+  GSList *refresh_list;         /* list of CandidateRefresh items */
+  guint64 tie_breaker;            /* tie breaker (ICE sect 5.2
 				     "Determining Role" ID-19) */
   GStaticRecMutex mutex;                 /* Mutex used for thread-safe lib */
   NiceCompatibility compatibility; /* property: Compatibility mode */

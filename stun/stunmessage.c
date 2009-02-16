@@ -306,17 +306,6 @@ stun_message_find_error (const StunMessage *msg, int *code)
   return STUN_MESSAGE_RETURN_SUCCESS;
 }
 
-/**
- * Reserves room for appending an attribute to an unfinished STUN message.
- * @param msg STUN message buffer
- * @param msize STUN message buffer size
- * @param type message type (host byte order)
- * @param length attribute payload byte length
- * @return a pointer to an unitialized buffer of <length> bytes to
- * where the attribute payload must be written, or NULL if there is not
- * enough room in the STUN message buffer. Return value is always on a
- * 32-bits boundary.
- */
 void *
 stun_message_append (StunMessage *msg, StunAttribute type, size_t length)
 {
@@ -343,15 +332,6 @@ stun_message_append (StunMessage *msg, StunAttribute type, size_t length)
 }
 
 
-/**
- * Appends an attribute from memory.
- * @param msg STUN message buffer
- * @param msize STUN message buffer size
- * @param type attribute type (host byte order)
- * @param data memory address to copy payload from
- * @param len attribute payload length
- * @return 0 on success, ENOBUFS on error.
- */
 StunMessageReturn
 stun_message_append_bytes (StunMessage *msg, StunAttribute type,
     const void *data, size_t len)
@@ -496,13 +476,6 @@ stun_message_append_xor_addr_full (StunMessage *msg, StunAttribute type,
 
 
 
-/**
- * Appends an ERROR-CODE attribute.
- * @param msg STUN message buffer
- * @param msize STUN message buffer size
- * @param code STUN host-byte order integer error code
- * @return 0 on success, or ENOBUFS otherwise
- */
 StunMessageReturn
 stun_message_append_error (StunMessage *msg, StunError code)
 {
@@ -586,17 +559,11 @@ int stun_message_validate_buffer_length (const uint8_t *msg, size_t length)
   return mlen;
 }
 
-/**
- * copies STUN message transaction ID
- */
 void stun_message_id (const StunMessage *msg, StunTransactionId id)
 {
   memcpy (id, msg->buffer + STUN_MESSAGE_TRANS_ID_POS, STUN_MESSAGE_TRANS_ID_LEN);
 }
 
-/**
- * @return STUN message method (value from 0 to 0xfff)
- */
 StunMethod stun_message_get_method (const StunMessage *msg)
 {
   uint16_t t = stun_getw (msg->buffer);
@@ -615,9 +582,6 @@ StunMethod stun_message_get_method (const StunMessage *msg)
 }
 
 
-/**
- * @return STUN message class in host byte order (value from 0 to 3)
- */
 StunClass stun_message_get_class (const StunMessage *msg)
 {
   uint16_t t = stun_getw (msg->buffer);
@@ -634,14 +598,6 @@ StunClass stun_message_get_class (const StunMessage *msg)
   return (StunClass)(((t & 0x0100) >> 7) | ((t & 0x0010) >> 4));
 }
 
-/**
- * Checks if an attribute is present within a STUN message.
- *
- * @param msg valid STUN message
- * @param type STUN attribute type (host byte order)
- *
- * @return whether there is a MESSAGE-INTEGRITY attribute
- */
 bool stun_message_has_attribute (const StunMessage *msg, StunAttribute type)
 {
   uint16_t dummy;

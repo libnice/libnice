@@ -36,7 +36,7 @@
  * file under either the MPL or the LGPL.
  */
 
-/**
+/*
  * @file candidate.c
  * @brief ICE candidate functions
  */
@@ -114,7 +114,7 @@ nice_candidate_msn_priority (NiceCandidate *candidate)
 }
 
 
-/**
+/*
  * ICE 4.1.2.1. "Recommended Formula" (ID-19):
  * returns number between 1 and 0x7effffff 
  */
@@ -155,7 +155,7 @@ nice_candidate_ice_priority (const NiceCandidate *candidate)
   return nice_candidate_ice_priority_full (type_preference, 1, candidate->component_id);
 }
 
-/**
+/*
  * Calculates the pair priority as specified in ICE
  * sect 5.7.2. "Computing Pair Priority and Ordering Pairs" (ID-19).
  */
@@ -168,7 +168,7 @@ nice_candidate_pair_priority (guint32 o_prio, guint32 a_prio)
   return ((guint64)1 << 32) * min + 2 * max + (o_prio > a_prio ? 1 : 0);
 }
 
-/**
+/*
  * Copies a candidate
  */
 NICEAPI_EXPORT NiceCandidate *

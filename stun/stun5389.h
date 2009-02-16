@@ -49,7 +49,7 @@
 # include <sys/types.h>
 
 
-/**
+/*
  * Computes the FINGERPRINT checksum of a STUN message.
  * @param msg pointer to the STUN message
  * @param len size of the message from header (inclusive) and up to

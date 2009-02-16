@@ -33,7 +33,7 @@
  * file under either the MPL or the LGPL.
  */
 
-/**
+/*
  * @file discovery.c
  * @brief ICE candidate discovery functions
  */
@@ -66,7 +66,7 @@ static inline int priv_timer_expired (GTimeVal *timer, GTimeVal *now)
     now->tv_sec >= timer->tv_sec;
 }
 
-/**
+/*
  * Frees the CandidateDiscovery structure pointed to
  * by 'user data'. Compatible with g_slist_foreach().
  */
@@ -79,7 +79,7 @@ void discovery_free_item (gpointer data, gpointer user_data)
   g_slice_free (CandidateDiscovery, cand);
 }
 
-/**
+/*
  * Frees all discovery related resources for the agent.
  */
 void discovery_free (NiceAgent *agent)
@@ -100,7 +100,7 @@ void discovery_free (NiceAgent *agent)
   }
 }
 
-/**
+/*
  * Prunes the list of discovery processes for items related
  * to stream 'stream_id'. 
  *
@@ -128,7 +128,7 @@ void discovery_prune_stream (NiceAgent *agent, guint stream_id)
 }
 
 
-/**
+/*
  * Frees the CandidateDiscovery structure pointed to
  * by 'user data'. Compatible with g_slist_foreach().
  */
@@ -189,7 +189,7 @@ void refresh_free_item (gpointer data, gpointer user_data)
   g_slice_free (CandidateRefresh, cand);
 }
 
-/**
+/*
  * Frees all discovery related resources for the agent.
  */
 void refresh_free (NiceAgent *agent)
@@ -204,7 +204,7 @@ void refresh_free (NiceAgent *agent)
   }
 }
 
-/**
+/*
  * Prunes the list of discovery processes for items related
  * to stream 'stream_id'. 
  *
@@ -235,7 +235,7 @@ void refresh_cancel (CandidateRefresh *refresh)
   refresh_free_item (refresh, NULL);
 }
 
-/**
+/*
  * Adds a new local candidate. Implements the candidate pruning
  * defined in ICE spec section 4.1.3 "Eliminating Redundant
  * Candidates" (ID-19).
@@ -263,7 +263,7 @@ static gboolean priv_add_local_candidate_pruned (Component *component, NiceCandi
   return TRUE;
 }
 
-/**
+/*
  * Assings a foundation to the candidate.
  *
  * Implements the mechanism described in ICE sect 
@@ -350,7 +350,7 @@ void priv_generate_candidate_credentials (NiceAgent *agent,
 
 }
 
-/**
+/*
  * Creates a local host candidate for 'component_id' of stream
  * 'stream_id'.
  *
@@ -433,7 +433,7 @@ NiceCandidate *discovery_add_local_host_candidate (
   return candidate;
 }
 
-/**
+/*
  * Creates a server reflexive candidate for 'component_id' of stream
  * 'stream_id'.
  *
@@ -490,7 +490,7 @@ discovery_add_server_reflexive_candidate (
 }
 
 
-/**
+/*
  * Creates a server reflexive candidate for 'component_id' of stream
  * 'stream_id'.
  *
@@ -580,7 +580,7 @@ discovery_add_relay_candidate (
   return candidate;
 }
 
-/**
+/*
  * Creates a peer reflexive candidate for 'component_id' of stream
  * 'stream_id'.
  *
@@ -689,7 +689,7 @@ static guint priv_highest_remote_foundation (Component *component)
   return highest;
 }
 
-/**
+/*
  * Adds a new peer reflexive candidate to the list of known
  * remote candidates. The candidate is however not paired with
  * existing local candidates.
@@ -778,7 +778,7 @@ NiceCandidate *discovery_learn_remote_peer_reflexive_candidate (
   return candidate;
 }
 
-/** 
+/* 
  * Timer callback that handles scheduling new candidate discovery
  * processes (paced by the Ta timer), and handles running of the 
  * existing discovery processes.
@@ -963,7 +963,7 @@ static gboolean priv_discovery_tick (gpointer pointer)
   return ret;
 }
 
-/**
+/*
  * Initiates the candidate discovery process by starting
  * the necessary timers.
  *

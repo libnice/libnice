@@ -36,7 +36,7 @@
  * file under either the MPL or the LGPL.
  */
 
-/**
+/*
  * @file conncheck.c
  * @brief ICE connectivity checks
  */
@@ -73,7 +73,7 @@ static int priv_timer_expired (GTimeVal *timer, GTimeVal *now)
     now->tv_sec >= timer->tv_sec;
 }
 
-/**
+/*
  * Finds the next connectivity check in WAITING state.
  */
 static CandidateCheckPair *priv_conn_check_find_next_waiting (GSList *conn_check_list)
@@ -92,7 +92,7 @@ static CandidateCheckPair *priv_conn_check_find_next_waiting (GSList *conn_check
   return NULL;
 }
 
-/**
+/*
  * Initiates a new connectivity check for a ICE candidate pair.
  *
  * @return TRUE on success, FALSE on error
@@ -111,7 +111,7 @@ static gboolean priv_conn_check_initiate (NiceAgent *agent, CandidateCheckPair *
   return TRUE;
 }
 
-/**
+/*
  * Unfreezes the next connectivity check in the list. Follows the
  * algorithm (2.) defined in 5.7.4 (Computing States) of the ICE spec
  * (ID-19), with some exceptions (see comments in code).
@@ -166,7 +166,7 @@ static gboolean priv_conn_check_unfreeze_next (NiceAgent *agent)
   return FALSE;
 }
 
-/**
+/*
  * Unfreezes the next next connectivity check in the list after
  * check 'success_check' has succesfully completed.
  *
@@ -233,7 +233,7 @@ static void priv_conn_check_unfreeze_related (NiceAgent *agent, Stream *stream, 
     priv_conn_check_unfreeze_next (agent);
 }
 
-/**
+/*
  * Helper function for connectivity check timer callback that
  * runs through the stream specific part of the state machine. 
  *
@@ -361,7 +361,7 @@ static gboolean priv_conn_check_tick_stream (Stream *stream, NiceAgent *agent, G
 }
 
 
-/**
+/*
  * Timer callback that handles initiating and managing connectivity
  * checks (paced by the Ta timer).
  *
@@ -445,7 +445,7 @@ static gboolean priv_conn_check_tick (gpointer pointer)
   return ret;
 }
 
-/**
+/*
  * Timer callback that handles initiating and managing connectivity
  * checks (paced by the Ta timer).
  *
@@ -612,7 +612,7 @@ static void priv_turn_allocate_refresh_tick_unlocked (CandidateRefresh *cand)
 }
 
 
-/**
+/*
  * Timer callback that handles refreshing TURN allocations
  *
  * This function is designed for the g_timeout_add() interface.
@@ -631,7 +631,7 @@ static gboolean priv_turn_allocate_refresh_tick (gpointer pointer)
 }
 
 
-/**
+/*
  * Initiates the next pending connectivity check.
  * 
  * @return TRUE if a pending check was scheduled
@@ -665,7 +665,7 @@ gboolean conn_check_schedule_next (NiceAgent *agent)
   return res;
 }
 
-/** 
+/*
  * Compares two connectivity check items. Checkpairs are sorted
  * in descending priority order, with highest priority item at
  * the start of the list.
@@ -679,7 +679,7 @@ gint conn_check_compare (const CandidateCheckPair *a, const CandidateCheckPair *
   return 0;
 }
 
-/**
+/*
  * Preprocesses a new connectivity check by going through list 
  * of a any stored early incoming connectivity checks from 
  * the remote peer. If a matching incoming check has been already
@@ -705,7 +705,7 @@ static void priv_preprocess_conn_check_pending_data (NiceAgent *agent, Stream *s
   }
 }
 
-/**
+/*
  * Handle any processing steps for connectivity checks after
  * remote candidates have been set. This function handles
  * the special case where answerer has sent us connectivity
@@ -758,7 +758,7 @@ void conn_check_remote_candidates_set(NiceAgent *agent)
   }
 }
 
-/** 
+/*
  * Enforces the upper limit for connectivity checks as described
  * in ICE spec section 5.7.3 (ID-19). See also 
  * conn_check_add_for_candidate().
@@ -798,7 +798,7 @@ static GSList *priv_limit_conn_check_list_size (GSList *conncheck_list, guint up
   return result;
 }
 
-/**
+/*
  * Changes the selected pair for the component if 'pair' is nominated
  * and has higher priority than the currently selected pair. See
  * ICE sect 11.1.1. "Procedures for Full Implementations" (ID-19).
@@ -821,7 +821,7 @@ static gboolean priv_update_selected_pair (NiceAgent *agent, Component *componen
   return TRUE;
 }
 
-/**
+/*
  * Updates the check list state.
  *
  * Implements parts of the algorithm described in 
@@ -865,7 +865,7 @@ static void priv_update_check_list_failed_components (NiceAgent *agent, Stream *
   }
 }
 
-/**
+/*
  * Updates the check list state for a stream component.
  *
  * Implements the algorithm described in ICE sect 8.1.2 
@@ -905,7 +905,7 @@ static void priv_update_check_list_state_for_ready (NiceAgent *agent, Stream *st
   nice_debug ("Agent %p : conn.check list status: %u nominated, %u succeeded, c-id %u.", agent, nominated, succeeded, component->id);
 }
 
-/**
+/*
  * The remote party has signalled that the candidate pair
  * described by 'component' and 'remotecand' is nominated
  * for use.
@@ -933,7 +933,7 @@ static void priv_mark_pair_nominated (NiceAgent *agent, Stream *stream, Componen
   }
 }
 
-/**
+/*
  * Creates a new connectivity check pair and adds it to
  * the agent's list of checks.
  */
@@ -991,7 +991,7 @@ static gboolean priv_add_new_check_pair (NiceAgent *agent, guint stream_id, Comp
   return result;
 }
 
-/**
+/*
  * Forms new candidate pairs by matching the new remote candidate
  * 'remote_cand' with all existing local candidates of 'component'.
  * Implements the logic described in ICE sect 5.7.1. "Forming Candidate
@@ -1050,7 +1050,7 @@ int conn_check_add_for_candidate (NiceAgent *agent, guint stream_id, Component *
   return added;
 }
 
-/**
+/*
  * Frees the CandidateCheckPair structure pointer to 
  * by 'user data'. Compatible with g_slist_foreach().
  */
@@ -1063,7 +1063,7 @@ void conn_check_free_item (gpointer data, gpointer user_data)
   g_slice_free (CandidateCheckPair, pair);
 }
 
-/**
+/*
  * Frees all resources of all connectivity checks.
  */
 void conn_check_free (NiceAgent *agent)
@@ -1088,7 +1088,7 @@ void conn_check_free (NiceAgent *agent)
   }
 }
 
-/**
+/*
  * Prunes the list of connectivity checks for items related
  * to stream 'stream_id'. 
  *
@@ -1125,7 +1125,7 @@ gboolean conn_check_prune_stream (NiceAgent *agent, Stream *stream)
   return TRUE;
 }
 
-/**
+/*
  * Fills 'dest' with a username string for use in an outbound connectivity
  * checks. No more than 'dest_len' characters (including terminating
  * NULL) is ever written to the 'dest'.
@@ -1217,7 +1217,7 @@ size_t priv_gen_username (NiceAgent *agent, guint component_id,
   return len;
 }
 
-/**
+/*
  * Fills 'dest' with a username string for use in an outbound connectivity
  * checks. No more than 'dest_len' characters (including terminating
  * NULL) is ever written to the 'dest'.
@@ -1261,7 +1261,7 @@ size_t priv_create_username (NiceAgent *agent, Stream *stream,
   return 0;
 }
 
-/**
+/*
  * Returns a password string for use in an outbound connectivity
  * check.
  */
@@ -1285,7 +1285,7 @@ size_t priv_get_password (NiceAgent *agent, Stream *stream,
   return 0;
 }
 
-/**
+/*
  * Sends a connectivity check over candidate pair 'pair'.
  *
  * @return zero on success, non-zero on error
@@ -1377,7 +1377,7 @@ int conn_check_send (NiceAgent *agent, CandidateCheckPair *pair)
   return 0;
 }
 
-/**
+/*
  * Implemented the pruning steps described in ICE sect 8.1.2
  * "Updating States" (ID-19) after a pair has been nominated.
  *
@@ -1408,7 +1408,7 @@ static void priv_prune_pending_checks (Stream *stream, guint component_id)
   }
 }
 
-/**
+/*
  * Schedules a triggered check after a succesfully inbound 
  * connectivity check. Implements ICE sect 7.2.1.4 "Triggered Checks" (ID-19).
  * 
@@ -1482,7 +1482,7 @@ static gboolean priv_schedule_triggered_check (NiceAgent *agent, Stream *stream,
 }
 
 
-/**
+/*
  * Sends a reply to an succesfully received STUN connectivity 
  * check request. Implements parts of the ICE spec section 7.2 (STUN
  * Server Procedures).
@@ -1527,7 +1527,7 @@ static void priv_reply_to_conn_check (NiceAgent *agent, Stream *stream, Componen
   }
 }
 
-/**
+/*
  * Stores information of an incoming STUN connectivity check
  * for later use. This is only needed when a check is received
  * before we get information about the remote candidates (via
@@ -1563,7 +1563,7 @@ static int priv_store_pending_check (NiceAgent *agent, Component *component, con
   return -1;
 }
 
-/**
+/*
  * Adds a new pair, discovered from an incoming STUN response, to 
  * the connectivity check list.
  *
@@ -1599,7 +1599,7 @@ static CandidateCheckPair *priv_add_peer_reflexive_pair (NiceAgent *agent, guint
   return NULL;
 }
 
-/**
+/*
  * Recalculates priorities of all candidate pairs. This
  * is required after a conflict in ICE roles.
  */
@@ -1616,7 +1616,7 @@ static void priv_recalculate_pair_priorities (NiceAgent *agent)
   }
 }
 
-/**
+/*
  * Change the agent role if different from 'control'. Can be
  * initiated both by handling of incoming connectivity checks,
  * and by processing the responses to checks sent by us.
@@ -1635,7 +1635,7 @@ static void priv_check_for_role_conflict (NiceAgent *agent, gboolean control)
     nice_debug ("Agent %p : Role conflict, agent role already changed to %d.", agent, control);
 }
 
-/** 
+/*
  * Checks whether the mapped address in connectivity check response 
  * matches any of the known local candidates. If not, apply the
  * mechanism for "Discovering Peer Reflexive Candidates" ICE ID-19)
@@ -1694,7 +1694,7 @@ static CandidateCheckPair *priv_process_response_check_for_peer_reflexive(NiceAg
   return new_pair;
 }
 
-/**
+/*
  * Tries to match STUN reply in 'buf' to an existing STUN connectivity
  * check transaction. If found, the reply is processed. Implements
  * section 7.1.2 "Processing the Response" of ICE spec (ID-19).
@@ -1813,7 +1813,7 @@ static gboolean priv_map_reply_to_conn_check_request (NiceAgent *agent, Stream *
   return trans_found;
 }
 
-/**
+/*
  * Tries to match STUN reply in 'buf' to an existing STUN discovery
  * transaction. If found, a reply is sent.
  * 
@@ -1921,7 +1921,7 @@ priv_add_new_turn_refresh (CandidateDiscovery *cdisco, NiceCandidate *relay_cand
   return cand;
 }
 
-/**
+/*
  * Tries to match STUN reply in 'buf' to an existing STUN discovery
  * transaction. If found, a reply is sent.
  * 
@@ -2050,7 +2050,7 @@ static gboolean priv_map_reply_to_relay_request (NiceAgent *agent, StunMessage *
 }
 
 
-/**
+/*
  * Tries to match STUN reply in 'buf' to an existing STUN discovery
  * transaction. If found, a reply is sent.
  * 
@@ -2204,7 +2204,7 @@ static bool conncheck_stun_validater (StunAgent *agent,
 }
 
 
-/**
+/*
  * Processing an incoming STUN message.
  *
  * @param agent self pointer

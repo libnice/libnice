@@ -36,7 +36,7 @@
  * file under either the MPL or the LGPL.
  */
 
-/**
+/*
  * @file component.c
  * @brief ICE component functions
  */
@@ -120,7 +120,7 @@ component_free (Component *cmp)
   g_slice_free (Component, cmp);
 }
 
-/**
+/*
  * Finds a candidate pair that has matching foundation ids.
  *
  * @return TRUE if pair found, pointer to pair stored at 'pair'
@@ -157,7 +157,7 @@ component_find_pair (Component *cmp, NiceAgent *agent, const gchar *lfoundation,
   return FALSE;
 }
 
-/**
+/*
  * Resets the component state to that of a ICE restarted
  * session.
  */
@@ -193,7 +193,7 @@ component_restart (Component *cmp)
   return TRUE;
 }
 
-/**
+/*
  * Changes the selected pair for the component to 'pair'. Does not
  * emit the "selected-pair-changed" signal.
  */ 
@@ -208,7 +208,7 @@ void component_update_selected_pair (Component *component, const CandidatePair *
   component->selected_pair.priority = pair->priority;
 }
 
-/**
+/*
  * Finds a remote candidate with matching address and 
  * transport.
  *
