@@ -200,7 +200,7 @@ void *stun_setw (uint8_t *ptr, uint16_t value)
 }
 
 
-void stun_set_type (uint8_t *h, stun_class_t c, stun_method_t m)
+void stun_set_type (uint8_t *h, StunClass c, StunMethod m)
 {
 /*   assert (c < 4); */
 /*   assert (m < (1 << 12)); */
@@ -218,11 +218,11 @@ void stun_set_type (uint8_t *h, stun_class_t c, stun_method_t m)
  * @param code host-byte order error code
  * @return a static pointer to a nul-terminated error message string.
  */
-const char *stun_strerror (stun_error_t code)
+const char *stun_strerror (StunError code)
 {
   static const struct
   {
-    stun_error_t code;
+    StunError code;
     char     phrase[32];
   } tab[] =
   {

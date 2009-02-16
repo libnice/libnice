@@ -56,7 +56,7 @@
 typedef struct {
   StunMessage message;
   uint8_t buffer[STUN_MAX_MESSAGE_SIZE];
-  stun_timer_t timer;
+  StunTimer timer;
 } TURNMessage;
 
 
@@ -339,12 +339,12 @@ nice_turn_socket_parse_recv (NiceSocket *sock, NiceSocket **from_sock,
         }
         return 0;
       } else if (stun_message_get_method (&msg) == STUN_OLD_SET_ACTIVE_DST) {
-        stun_transid_t request_id;
-        stun_transid_t response_id;
+        StunTransactionId request_id;
+        StunTransactionId response_id;
         if (priv->current_binding && priv->current_binding_msg) {
           stun_message_id (&msg, response_id);
           stun_message_id (&priv->current_binding_msg->message, request_id);
-          if (memcmp (request_id, response_id, sizeof(stun_transid_t)) == 0) {
+          if (memcmp (request_id, response_id, sizeof(StunTransactionId)) == 0) {
             g_free (priv->current_binding_msg);
             priv->current_binding_msg = NULL;
 
@@ -360,12 +360,12 @@ nice_turn_socket_parse_recv (NiceSocket *sock, NiceSocket **from_sock,
 
         return 0;
       } else if (stun_message_get_method (&msg) == STUN_CHANNELBIND) {
-        stun_transid_t request_id;
-        stun_transid_t response_id;
+        StunTransactionId request_id;
+        StunTransactionId response_id;
         if (priv->current_binding && priv->current_binding_msg) {
           stun_message_id (&msg, response_id);
           stun_message_id (&priv->current_binding_msg->message, request_id);
-          if (memcmp (request_id, response_id, sizeof(stun_transid_t)) == 0) {
+          if (memcmp (request_id, response_id, sizeof(StunTransactionId)) == 0) {
             if (stun_message_get_class (&msg) == STUN_ERROR) {
               int code = -1;
               uint8_t *sent_realm = NULL;

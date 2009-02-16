@@ -97,8 +97,8 @@ typedef enum {
 
 
 typedef struct {
-  stun_transid_t id;
-  stun_method_t method;
+  StunTransactionId id;
+  StunMethod method;
   uint8_t *key;
   size_t key_len;
   uint8_t long_term_key[16];
@@ -135,14 +135,14 @@ StunValidationStatus stun_agent_validate (StunAgent *agent, StunMessage *msg,
     const uint8_t *buffer, size_t buffer_len,
     StunMessageIntegrityValidate validater, void * validater_data);
 bool stun_agent_init_request (StunAgent *agent, StunMessage *msg,
-    uint8_t *buffer, size_t buffer_len, stun_method_t m);
+    uint8_t *buffer, size_t buffer_len, StunMethod m);
 bool stun_agent_init_indication (StunAgent *agent, StunMessage *msg,
-    uint8_t *buffer, size_t buffer_len, stun_method_t m);
+    uint8_t *buffer, size_t buffer_len, StunMethod m);
 bool stun_agent_init_response (StunAgent *agent, StunMessage *msg,
     uint8_t *buffer, size_t buffer_len, const StunMessage *request);
 bool stun_agent_init_error (StunAgent *agent, StunMessage *msg,
     uint8_t *buffer, size_t buffer_len, const StunMessage *request,
-    stun_error_t err);
+    StunError err);
 size_t stun_agent_build_unknown_attributes_error (StunAgent *agent,
     StunMessage *msg, uint8_t *buffer, size_t buffer_len,
     const StunMessage *request);

@@ -77,9 +77,9 @@ StunMessageReturn stun_xor_address (const StunMessage *msg,
 
 void *stun_setw (uint8_t *ptr, uint16_t value);
 
-void stun_set_type (uint8_t *h, stun_class_t c, stun_method_t m);
+void stun_set_type (uint8_t *h, StunClass c, StunMethod m);
 
-const char *stun_strerror (stun_error_t code);
+const char *stun_strerror (StunError code);
 
 # ifdef __cplusplus
 }

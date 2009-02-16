@@ -118,14 +118,14 @@ static void add_delay (struct timeval *ts, unsigned delay)
 }
 
 
-void stun_timer_start (stun_timer_t *timer)
+void stun_timer_start (StunTimer *timer)
 {
   stun_gettime (&timer->deadline);
   add_delay (&timer->deadline, timer->delay = STUN_INIT_TIMEOUT);
 }
 
 
-void stun_timer_start_reliable (stun_timer_t *timer)
+void stun_timer_start_reliable (StunTimer *timer)
 {
   stun_gettime (&timer->deadline);
   add_delay (&timer->deadline, timer->delay = STUN_RELIABLE_TIMEOUT);
@@ -133,7 +133,7 @@ void stun_timer_start_reliable (stun_timer_t *timer)
 
 
 
-unsigned stun_timer_remainder (const stun_timer_t *timer)
+unsigned stun_timer_remainder (const StunTimer *timer)
 {
   unsigned delay;
   struct timeval now;
@@ -152,7 +152,7 @@ unsigned stun_timer_remainder (const stun_timer_t *timer)
 }
 
 
-StunUsageTimerReturn stun_timer_refresh (stun_timer_t *timer)
+StunUsageTimerReturn stun_timer_refresh (StunTimer *timer)
 {
   unsigned delay = stun_timer_remainder (timer);
   if (delay == 0)

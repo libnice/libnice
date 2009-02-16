@@ -74,7 +74,7 @@ struct _CandidateCheckPair
   gboolean controlling;
   guint64 priority;
   GTimeVal next_tick;       /* next tick timestamp */
-  stun_timer_t timer;
+  StunTimer timer;
   uint8_t stun_buffer[STUN_MAX_MESSAGE_SIZE];
   StunMessage stun_message;
 };

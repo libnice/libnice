@@ -62,7 +62,7 @@ typedef struct stun_trans_s
   int own_fd;
   socklen_t dstlen;
   struct sockaddr_storage dst;
-} stun_trans_t;
+} StunTransport;
 
 
 typedef enum {
@@ -85,7 +85,7 @@ extern "C" {
  * @param srv STUN server socket address (ignored if @a srvlen is 0)
  * @param srvlen STUN server socket address length (or 0 @a fd is connected)
  */
-StunUsageTransReturn stun_trans_init (stun_trans_t *tr, int fd,
+StunUsageTransReturn stun_trans_init (StunTransport *tr, int fd,
                      const struct sockaddr *srv, socklen_t srvlen);
 
 /**
@@ -97,14 +97,14 @@ StunUsageTransReturn stun_trans_init (stun_trans_t *tr, int fd,
  * @param srv STUN server socket address (ignored if @a srvlen is 0)
  * @param srvlen STUN server socket address length (or 0 @a fd is connected)
  */
-StunUsageTransReturn stun_trans_create (stun_trans_t *tr, int sotype, int proto,
+StunUsageTransReturn stun_trans_create (StunTransport *tr, int sotype, int proto,
                        const struct sockaddr *srv, socklen_t srvlen);
 
 /**
  * Releases resources allocated by stun_trans_init() or stun_trans_create(),
  * and cancel the transaction if still pending.
  */
-void stun_trans_deinit (stun_trans_t *tr);
+void stun_trans_deinit (StunTransport *tr);
 
 /**
  * This is meant to integrate with I/O polling loops and event frameworks.
@@ -112,8 +112,8 @@ void stun_trans_deinit (stun_trans_t *tr);
  * @return file descriptor the transaction is waiting for.
  * Always succeeds.
  */
-int stun_trans_fd (const stun_trans_t *tr);
-StunUsageTransReturn stun_trans_poll (stun_trans_t *tr, unsigned int delay);
+int stun_trans_fd (const StunTransport *tr);
+StunUsageTransReturn stun_trans_poll (StunTransport *tr, unsigned int delay);
 
 /**
  * Safe wrapper around sendto()
@@ -125,16 +125,16 @@ StunUsageTransReturn stun_trans_poll (stun_trans_t *tr, unsigned int delay);
  * This can be used to send non-requests message, i.e. whenever the
  * transaction is not used.
  */
-ssize_t stun_trans_sendto (stun_trans_t *tr, const uint8_t *buf, size_t len,
+ssize_t stun_trans_sendto (StunTransport *tr, const uint8_t *buf, size_t len,
                      const struct sockaddr *dst, socklen_t dstlen);
 
-ssize_t stun_trans_recvfrom (stun_trans_t *tr, uint8_t *buf, size_t maxlen,
+ssize_t stun_trans_recvfrom (StunTransport *tr, uint8_t *buf, size_t maxlen,
                        struct sockaddr *src,
                        socklen_t *srclen);
 
-ssize_t stun_trans_send (stun_trans_t *tr, const uint8_t *buf, size_t len);
+ssize_t stun_trans_send (StunTransport *tr, const uint8_t *buf, size_t len);
 
-ssize_t stun_trans_recv (stun_trans_t *tr, uint8_t *buf, size_t maxlen);
+ssize_t stun_trans_recv (StunTransport *tr, uint8_t *buf, size_t maxlen);
 
 # ifdef __cplusplus
 }

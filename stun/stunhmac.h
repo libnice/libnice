@@ -62,7 +62,7 @@ void stun_hash_creds (const uint8_t *realm, size_t realm_len,
 /**
  * Generates a pseudo-random secure STUN transaction ID.
  */
-void stun_make_transid (stun_transid_t id);
+void stun_make_transid (StunTransactionId id);
 
 
 #endif /* _STUN_HMAC_H */

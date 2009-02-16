@@ -137,7 +137,7 @@ StunUsageIceReturn stun_usage_ice_conncheck_process (StunMessage *msg,
   stun_debug ("Received %u-bytes STUN message\n", stun_message_length (msg));
 
   if (compatibility == STUN_USAGE_ICE_COMPATIBILITY_MSN) {
-    stun_transid_t transid;
+    StunTransactionId transid;
     uint32_t magic_cookie;
     stun_message_id (msg, transid);
     magic_cookie = *((uint32_t *) transid);
@@ -167,7 +167,7 @@ StunUsageIceReturn stun_usage_ice_conncheck_process (StunMessage *msg,
 static int
 stun_bind_error (StunAgent *agent, StunMessage *msg,
     uint8_t *buf, size_t *plen, const StunMessage *req,
-    stun_error_t code)
+    StunError code)
 {
   size_t len = *plen;
   int val;
@@ -256,7 +256,7 @@ stun_usage_ice_conncheck_create_reply (StunAgent *agent, StunMessage *req,
     goto failure;
   }
   if (compatibility == STUN_USAGE_ICE_COMPATIBILITY_MSN) {
-    stun_transid_t transid;
+    StunTransactionId transid;
     uint32_t magic_cookie;
     stun_message_id (msg, transid);
     magic_cookie = *((uint32_t *) transid);

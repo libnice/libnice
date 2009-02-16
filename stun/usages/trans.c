@@ -56,7 +56,7 @@
 
 #include "trans.h"
 
-StunUsageTransReturn stun_trans_init (stun_trans_t *tr, int fd,
+StunUsageTransReturn stun_trans_init (StunTransport *tr, int fd,
                      const struct sockaddr *srv, socklen_t srvlen)
 {
   assert (fd != -1);
@@ -112,7 +112,7 @@ static int stun_socket (int family, int type, int proto)
 }
 
 
-StunUsageTransReturn stun_trans_create (stun_trans_t *tr, int type, int proto,
+StunUsageTransReturn stun_trans_create (StunTransport *tr, int type, int proto,
                        const struct sockaddr *srv, socklen_t srvlen)
 {
   StunUsageTransReturn val = STUN_USAGE_TRANS_RETURN_ERROR;
@@ -147,7 +147,7 @@ error:
 }
 
 
-void stun_trans_deinit (stun_trans_t *tr)
+void stun_trans_deinit (StunTransport *tr)
 {
   int saved = errno;
 
@@ -187,19 +187,19 @@ static int stun_err_dequeue (int fd)
 }
 
 
-ssize_t stun_trans_send (stun_trans_t *tr, const uint8_t *buf, size_t len)
+ssize_t stun_trans_send (StunTransport *tr, const uint8_t *buf, size_t len)
 {
   return stun_trans_sendto (tr, buf, len,
       (struct sockaddr *)&tr->dst, tr->dstlen);
 }
 
-ssize_t stun_trans_recv (stun_trans_t *tr, uint8_t *buf, size_t maxlen)
+ssize_t stun_trans_recv (StunTransport *tr, uint8_t *buf, size_t maxlen)
 {
   return stun_trans_recvfrom (tr, buf, maxlen, NULL, NULL);
 }
 
 
-ssize_t stun_trans_sendto (stun_trans_t *tr, const uint8_t *buf, size_t len,
+ssize_t stun_trans_sendto (StunTransport *tr, const uint8_t *buf, size_t len,
                      const struct sockaddr *dst, socklen_t dstlen)
 {
   static const int flags = MSG_DONTWAIT | MSG_NOSIGNAL;
@@ -218,7 +218,7 @@ ssize_t stun_trans_sendto (stun_trans_t *tr, const uint8_t *buf, size_t len,
 }
 
 
-ssize_t stun_trans_recvfrom (stun_trans_t *tr, uint8_t *buf, size_t maxlen,
+ssize_t stun_trans_recvfrom (StunTransport *tr, uint8_t *buf, size_t maxlen,
                        struct sockaddr * dst,
                        socklen_t * dstlen)
 {
@@ -238,7 +238,7 @@ ssize_t stun_trans_recvfrom (stun_trans_t *tr, uint8_t *buf, size_t maxlen,
 
 
 
-int stun_trans_fd (const stun_trans_t *tr)
+int stun_trans_fd (const StunTransport *tr)
 {
   assert (tr != NULL);
   return tr->fd;
@@ -251,7 +251,7 @@ int stun_trans_fd (const stun_trans_t *tr)
  * @return ETIMEDOUT if the transaction has timed out, or 0 if an incoming
  * message needs to be processed.
  */
-StunUsageTransReturn stun_trans_poll (stun_trans_t *tr, unsigned int delay)
+StunUsageTransReturn stun_trans_poll (StunTransport *tr, unsigned int delay)
 {
 #ifdef HAVE_POLL
   struct pollfd ufd;

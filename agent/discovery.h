@@ -56,7 +56,7 @@ typedef struct
   StunAgent stun_agent;
   uint8_t *msn_turn_username;
   uint8_t *msn_turn_password;
-  stun_timer_t timer;
+  StunTimer timer;
   uint8_t stun_buffer[STUN_MAX_MESSAGE_SIZE];
   StunMessage stun_message;
   uint8_t stun_resp_buffer[STUN_MAX_MESSAGE_SIZE];
@@ -77,7 +77,7 @@ typedef struct
   GSource *tick_source;
   uint8_t *msn_turn_username;
   uint8_t *msn_turn_password;
-  stun_timer_t timer;
+  StunTimer timer;
   uint8_t stun_buffer[STUN_MAX_MESSAGE_SIZE];
   StunMessage stun_message;
   uint8_t stun_resp_buffer[STUN_MAX_MESSAGE_SIZE];

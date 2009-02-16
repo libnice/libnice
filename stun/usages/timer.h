@@ -52,7 +52,7 @@ typedef struct stun_timer_s
 {
   struct timeval deadline;
   unsigned delay;
-} stun_timer_t;
+} StunTimer;
 
 typedef enum {
   STUN_USAGE_TIMER_RETURN_SUCCESS,
@@ -68,8 +68,8 @@ extern "C" {
  * Starts a STUN transaction retransmission timer.
  * @param timer structure for internal timer state
  */
-void stun_timer_start (stun_timer_t *timer);
-void stun_timer_start_reliable (stun_timer_t *timer);
+void stun_timer_start (StunTimer *timer);
+void stun_timer_start_reliable (StunTimer *timer);
 
 /**
  * Updates a STUN transaction retransmission timer.
@@ -78,8 +78,8 @@ void stun_timer_start_reliable (stun_timer_t *timer);
  * 0 if the transaction should be retransmitted,
  * otherwise milliseconds left until next time out or retransmit.
  */
-StunUsageTimerReturn stun_timer_refresh (stun_timer_t *timer);
-unsigned stun_timer_remainder (const stun_timer_t *timer);
+StunUsageTimerReturn stun_timer_refresh (StunTimer *timer);
+unsigned stun_timer_remainder (const StunTimer *timer);
 
 # ifdef __cplusplus
 }

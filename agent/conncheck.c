@@ -1708,8 +1708,8 @@ static gboolean priv_map_reply_to_conn_check_request (NiceAgent *agent, Stream *
   GSList *i;
   StunUsageIceReturn res;
   gboolean trans_found = FALSE;
-  stun_transid_t discovery_id;
-  stun_transid_t response_id;
+  StunTransactionId discovery_id;
+  StunTransactionId response_id;
   stun_message_id (resp, response_id);
 
   for (i = stream->conncheck_list; i && trans_found != TRUE; i = i->next) {
@@ -1718,7 +1718,7 @@ static gboolean priv_map_reply_to_conn_check_request (NiceAgent *agent, Stream *
     if (p->stun_message.buffer) {
       stun_message_id (&p->stun_message, discovery_id);
 
-      if (memcmp (discovery_id, response_id, sizeof(stun_transid_t)) == 0) {
+      if (memcmp (discovery_id, response_id, sizeof(StunTransactionId)) == 0) {
         res = stun_usage_ice_conncheck_process (resp, &sockaddr, &socklen,
             agent_to_ice_compatibility (agent));
         nice_debug ("Agent %p : stun_bind_process/conncheck for %p res %d "
@@ -1828,8 +1828,8 @@ static gboolean priv_map_reply_to_discovery_request (NiceAgent *agent, StunMessa
   GSList *i;
   StunUsageBindReturn res;
   gboolean trans_found = FALSE;
-  stun_transid_t discovery_id;
-  stun_transid_t response_id;
+  StunTransactionId discovery_id;
+  StunTransactionId response_id;
   stun_message_id (resp, response_id);
 
   for (i = agent->discovery_list; i && trans_found != TRUE; i = i->next) {
@@ -1839,7 +1839,7 @@ static gboolean priv_map_reply_to_discovery_request (NiceAgent *agent, StunMessa
         d->stun_message.buffer) {
       stun_message_id (&d->stun_message, discovery_id);
 
-      if (memcmp (discovery_id, response_id, sizeof(stun_transid_t)) == 0) {
+      if (memcmp (discovery_id, response_id, sizeof(StunTransactionId)) == 0) {
         res = stun_usage_bind_process (resp, &sockaddr, &socklen,
             &alternate, &alternatelen);
         nice_debug ("Agent %p : stun_bind_process/disc for %p res %d.",
@@ -1940,8 +1940,8 @@ static gboolean priv_map_reply_to_relay_request (NiceAgent *agent, StunMessage *
   GSList *i;
   StunUsageTurnReturn res;
   gboolean trans_found = FALSE;
-  stun_transid_t discovery_id;
-  stun_transid_t response_id;
+  StunTransactionId discovery_id;
+  StunTransactionId response_id;
   stun_message_id (resp, response_id);
 
   for (i = agent->discovery_list; i && trans_found != TRUE; i = i->next) {
@@ -1951,7 +1951,7 @@ static gboolean priv_map_reply_to_relay_request (NiceAgent *agent, StunMessage *
         d->stun_message.buffer) {
       stun_message_id (&d->stun_message, discovery_id);
 
-      if (memcmp (discovery_id, response_id, sizeof(stun_transid_t)) == 0) {
+      if (memcmp (discovery_id, response_id, sizeof(StunTransactionId)) == 0) {
         res = stun_usage_turn_process (resp,
             &relayaddr, &relayaddrlen, &sockaddr, &socklen, &alternate, &alternatelen,
             &bandwidth, &lifetime, agent_to_turn_compatibility (agent));
@@ -2062,8 +2062,8 @@ static gboolean priv_map_reply_to_relay_refresh (NiceAgent *agent, StunMessage *
   GSList *i;
   StunUsageTurnReturn res;
   gboolean trans_found = FALSE;
-  stun_transid_t refresh_id;
-  stun_transid_t response_id;
+  StunTransactionId refresh_id;
+  StunTransactionId response_id;
   stun_message_id (resp, response_id);
 
   for (i = agent->refresh_list; i && trans_found != TRUE; i = i->next) {
@@ -2072,7 +2072,7 @@ static gboolean priv_map_reply_to_relay_refresh (NiceAgent *agent, StunMessage *
     if (cand->stun_message.buffer) {
       stun_message_id (&cand->stun_message, refresh_id);
 
-      if (memcmp (refresh_id, response_id, sizeof(stun_transid_t)) == 0) {
+      if (memcmp (refresh_id, response_id, sizeof(StunTransactionId)) == 0) {
         res = stun_usage_turn_refresh_process (resp,
             &lifetime, agent_to_turn_compatibility (cand->agent));
         nice_debug ("Agent %p : stun_turn_refresh_process for %p res %d.",

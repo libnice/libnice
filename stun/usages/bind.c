@@ -161,8 +161,8 @@ stun_usage_bind_keepalive (StunAgent *agent, StunMessage *msg,
 StunUsageBindReturn stun_usage_bind_run (const struct sockaddr *srv,
     socklen_t srvlen, struct sockaddr *addr, socklen_t *addrlen)
 {
-  stun_timer_t timer;
-  stun_trans_t trans;
+  StunTimer timer;
+  StunTransport trans;
   StunAgent agent;
   StunMessage req;
   uint8_t req_buf[STUN_MAX_MESSAGE_SIZE];

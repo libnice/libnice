@@ -94,7 +94,7 @@ StunValidationStatus stun_agent_validate (StunAgent *agent, StunMessage *msg,
     const uint8_t *buffer, size_t buffer_len,
     StunMessageIntegrityValidate validater, void * validater_data)
 {
-  stun_transid_t msg_id;
+  StunTransactionId msg_id;
   uint32_t fpr;
   uint32_t crc32;
   int len;
@@ -170,7 +170,7 @@ StunValidationStatus stun_agent_validate (StunAgent *agent, StunMessage *msg,
       if (agent->sent_ids[sent_id_idx].valid == TRUE &&
           agent->sent_ids[sent_id_idx].method == stun_message_get_method (msg) &&
           memcmp (msg_id, agent->sent_ids[sent_id_idx].id,
-              sizeof(stun_transid_t)) == 0) {
+              sizeof(StunTransactionId)) == 0) {
 
         key = agent->sent_ids[sent_id_idx].key;
         key_len = agent->sent_ids[sent_id_idx].key_len;
@@ -323,10 +323,10 @@ StunValidationStatus stun_agent_validate (StunAgent *agent, StunMessage *msg,
 
 
 bool stun_agent_init_request (StunAgent *agent, StunMessage *msg,
-    uint8_t *buffer, size_t buffer_len, stun_method_t m)
+    uint8_t *buffer, size_t buffer_len, StunMethod m)
 {
   bool ret;
-  stun_transid_t id;
+  StunTransactionId id;
 
   msg->buffer = buffer;
   msg->buffer_len = buffer_len;
@@ -352,10 +352,10 @@ bool stun_agent_init_request (StunAgent *agent, StunMessage *msg,
 
 
 bool stun_agent_init_indication (StunAgent *agent, StunMessage *msg,
-    uint8_t *buffer, size_t buffer_len, stun_method_t m)
+    uint8_t *buffer, size_t buffer_len, StunMethod m)
 {
   bool ret;
-  stun_transid_t id;
+  StunTransactionId id;
 
   msg->buffer = buffer;
   msg->buffer_len = buffer_len;
@@ -383,7 +383,7 @@ bool stun_agent_init_response (StunAgent *agent, StunMessage *msg,
     uint8_t *buffer, size_t buffer_len, const StunMessage *request)
 {
 
-  stun_transid_t id;
+  StunTransactionId id;
 
   if (stun_message_get_class (request) != STUN_REQUEST) {
     return FALSE;
@@ -416,9 +416,9 @@ bool stun_agent_init_response (StunAgent *agent, StunMessage *msg,
 
 bool stun_agent_init_error (StunAgent *agent, StunMessage *msg,
     uint8_t *buffer, size_t buffer_len, const StunMessage *request,
-    stun_error_t err)
+    StunError err)
 {
-  stun_transid_t id;
+  StunTransactionId id;
 
   if (stun_message_get_class (request) != STUN_REQUEST) {
     return FALSE;
@@ -488,7 +488,7 @@ size_t stun_agent_finish_message (StunAgent *agent, StunMessage *msg,
   uint8_t *ptr;
   uint32_t fpr;
   int i;
-  stun_transid_t id;
+  StunTransactionId id;
   uint8_t md5[16];
 
   if (msg->key != NULL) {
@@ -596,7 +596,7 @@ size_t stun_agent_finish_message (StunAgent *agent, StunMessage *msg,
     for (i = 0; i < STUN_AGENT_MAX_SAVED_IDS; i++) {
       if (agent->sent_ids[i].valid == FALSE) {
         stun_message_id (msg, id);
-        memcpy (agent->sent_ids[i].id, id, sizeof(stun_transid_t));
+        memcpy (agent->sent_ids[i].id, id, sizeof(StunTransactionId));
         agent->sent_ids[i].method = stun_message_get_method (msg);
         agent->sent_ids[i].key = (uint8_t *) key;
         agent->sent_ids[i].key_len = key_len;

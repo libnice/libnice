@@ -51,8 +51,8 @@
 #include <string.h>
 #include <stdlib.h>
 
-bool stun_message_init (StunMessage *msg, stun_class_t c, stun_method_t m,
-    const stun_transid_t id)
+bool stun_message_init (StunMessage *msg, StunClass c, StunMethod m,
+    const StunTransactionId id)
 {
 
   if (msg->buffer_len < STUN_MESSAGE_HEADER_LENGTH)
@@ -77,7 +77,7 @@ uint16_t stun_message_length (const StunMessage *msg)
 
 
 const void *
-stun_message_find (const StunMessage *msg, stun_attr_type_t type,
+stun_message_find (const StunMessage *msg, StunAttribute type,
     uint16_t *palen)
 {
   size_t length = stun_message_length (msg);
@@ -122,7 +122,7 @@ stun_message_find (const StunMessage *msg, stun_attr_type_t type,
 
 
 StunMessageReturn
-stun_message_find_flag (const StunMessage *msg, stun_attr_type_t type)
+stun_message_find_flag (const StunMessage *msg, StunAttribute type)
 {
   const void *ptr;
   uint16_t len;
@@ -136,7 +136,7 @@ stun_message_find_flag (const StunMessage *msg, stun_attr_type_t type)
 
 
 StunMessageReturn
-stun_message_find32 (const StunMessage *msg, stun_attr_type_t type,
+stun_message_find32 (const StunMessage *msg, StunAttribute type,
     uint32_t *pval)
 {
   const void *ptr;
@@ -159,7 +159,7 @@ stun_message_find32 (const StunMessage *msg, stun_attr_type_t type,
 
 
 StunMessageReturn
-stun_message_find64 (const StunMessage *msg, stun_attr_type_t type,
+stun_message_find64 (const StunMessage *msg, StunAttribute type,
     uint64_t *pval)
 {
   const void *ptr;
@@ -182,7 +182,7 @@ stun_message_find64 (const StunMessage *msg, stun_attr_type_t type,
 
 
 StunMessageReturn
-stun_message_find_string (const StunMessage *msg, stun_attr_type_t type,
+stun_message_find_string (const StunMessage *msg, StunAttribute type,
     char *buf, size_t buflen)
 {
   const unsigned char *ptr;
@@ -202,7 +202,7 @@ stun_message_find_string (const StunMessage *msg, stun_attr_type_t type,
 
 
 StunMessageReturn
-stun_message_find_addr (const StunMessage *msg, stun_attr_type_t type,
+stun_message_find_addr (const StunMessage *msg, StunAttribute type,
     struct sockaddr *addr, socklen_t *addrlen)
 {
   const uint8_t *ptr;
@@ -262,7 +262,7 @@ stun_message_find_addr (const StunMessage *msg, stun_attr_type_t type,
 }
 
 StunMessageReturn
-stun_message_find_xor_addr (const StunMessage *msg, stun_attr_type_t type,
+stun_message_find_xor_addr (const StunMessage *msg, StunAttribute type,
     struct sockaddr *addr,
     socklen_t *addrlen)
 {
@@ -274,7 +274,7 @@ stun_message_find_xor_addr (const StunMessage *msg, stun_attr_type_t type,
 }
 
 StunMessageReturn
-stun_message_find_xor_addr_full (const StunMessage *msg, stun_attr_type_t type,
+stun_message_find_xor_addr_full (const StunMessage *msg, StunAttribute type,
     struct sockaddr *addr,  socklen_t *addrlen,
     uint32_t magic_cookie)
 {
@@ -318,7 +318,7 @@ stun_message_find_error (const StunMessage *msg, int *code)
  * 32-bits boundary.
  */
 void *
-stun_message_append (StunMessage *msg, stun_attr_type_t type, size_t length)
+stun_message_append (StunMessage *msg, StunAttribute type, size_t length)
 {
   uint8_t *a;
   uint16_t mlen = stun_message_length (msg);
@@ -353,7 +353,7 @@ stun_message_append (StunMessage *msg, stun_attr_type_t type, size_t length)
  * @return 0 on success, ENOBUFS on error.
  */
 StunMessageReturn
-stun_message_append_bytes (StunMessage *msg, stun_attr_type_t type,
+stun_message_append_bytes (StunMessage *msg, StunAttribute type,
     const void *data, size_t len)
 {
   void *ptr = stun_message_append (msg, type, len);
@@ -366,14 +366,14 @@ stun_message_append_bytes (StunMessage *msg, stun_attr_type_t type,
 
 
 StunMessageReturn
-stun_message_append_flag (StunMessage *msg, stun_attr_type_t type)
+stun_message_append_flag (StunMessage *msg, StunAttribute type)
 {
   return stun_message_append_bytes (msg, type, NULL, 0);
 }
 
 
 StunMessageReturn
-stun_message_append32 (StunMessage *msg, stun_attr_type_t type,
+stun_message_append32 (StunMessage *msg, StunAttribute type,
     uint32_t value)
 {
   value = htonl (value);
@@ -382,7 +382,7 @@ stun_message_append32 (StunMessage *msg, stun_attr_type_t type,
 
 
 StunMessageReturn
-stun_message_append64 (StunMessage *msg, stun_attr_type_t type,
+stun_message_append64 (StunMessage *msg, StunAttribute type,
     uint64_t value)
 {
   uint32_t tab[2];
@@ -393,14 +393,14 @@ stun_message_append64 (StunMessage *msg, stun_attr_type_t type,
 
 
 StunMessageReturn
-stun_message_append_string (StunMessage * msg, stun_attr_type_t type,
+stun_message_append_string (StunMessage * msg, StunAttribute type,
     const char *str)
 {
   return stun_message_append_bytes (msg, type, str, strlen (str));
 }
 
 StunMessageReturn
-stun_message_append_addr (StunMessage *msg, stun_attr_type_t type,
+stun_message_append_addr (StunMessage *msg, StunAttribute type,
     const struct sockaddr *addr, socklen_t addrlen)
 {
   const void *pa;
@@ -453,7 +453,7 @@ stun_message_append_addr (StunMessage *msg, stun_attr_type_t type,
 
 
 StunMessageReturn
-stun_message_append_xor_addr (StunMessage *msg, stun_attr_type_t type,
+stun_message_append_xor_addr (StunMessage *msg, StunAttribute type,
     const struct sockaddr *addr, socklen_t addrlen)
 {
   StunMessageReturn val;
@@ -474,7 +474,7 @@ stun_message_append_xor_addr (StunMessage *msg, stun_attr_type_t type,
 }
 
 StunMessageReturn
-stun_message_append_xor_addr_full (StunMessage *msg, stun_attr_type_t type,
+stun_message_append_xor_addr_full (StunMessage *msg, StunAttribute type,
     const struct sockaddr *addr, socklen_t addrlen,
     uint32_t magic_cookie)
 {
@@ -504,7 +504,7 @@ stun_message_append_xor_addr_full (StunMessage *msg, stun_attr_type_t type,
  * @return 0 on success, or ENOBUFS otherwise
  */
 StunMessageReturn
-stun_message_append_error (StunMessage *msg, stun_error_t code)
+stun_message_append_error (StunMessage *msg, StunError code)
 {
   const char *str = stun_strerror (code);
   size_t len = strlen (str);
@@ -589,7 +589,7 @@ int stun_message_validate_buffer_length (const uint8_t *msg, size_t length)
 /**
  * copies STUN message transaction ID
  */
-void stun_message_id (const StunMessage *msg, stun_transid_t id)
+void stun_message_id (const StunMessage *msg, StunTransactionId id)
 {
   memcpy (id, msg->buffer + STUN_MESSAGE_TRANS_ID_POS, STUN_MESSAGE_TRANS_ID_LEN);
 }
@@ -597,7 +597,7 @@ void stun_message_id (const StunMessage *msg, stun_transid_t id)
 /**
  * @return STUN message method (value from 0 to 0xfff)
  */
-stun_method_t stun_message_get_method (const StunMessage *msg)
+StunMethod stun_message_get_method (const StunMessage *msg)
 {
   uint16_t t = stun_getw (msg->buffer);
   /* HACK HACK HACK
@@ -610,7 +610,7 @@ stun_method_t stun_message_get_method (const StunMessage *msg)
      method doesn't exist anymore */
   if (t == 0x0115)
     t = 0x0017;
-  return (stun_method_t)(((t & 0x3e00) >> 2) | ((t & 0x00e0) >> 1) |
+  return (StunMethod)(((t & 0x3e00) >> 2) | ((t & 0x00e0) >> 1) |
                           (t & 0x000f));
 }
 
@@ -618,7 +618,7 @@ stun_method_t stun_message_get_method (const StunMessage *msg)
 /**
  * @return STUN message class in host byte order (value from 0 to 3)
  */
-stun_class_t stun_message_get_class (const StunMessage *msg)
+StunClass stun_message_get_class (const StunMessage *msg)
 {
   uint16_t t = stun_getw (msg->buffer);
   /* HACK HACK HACK
@@ -631,7 +631,7 @@ stun_class_t stun_message_get_class (const StunMessage *msg)
      method doesn't exist anymore */
   if (t == 0x0115)
     t = 0x0017;
-  return (stun_class_t)(((t & 0x0100) >> 7) | ((t & 0x0010) >> 4));
+  return (StunClass)(((t & 0x0100) >> 7) | ((t & 0x0010) >> 4));
 }
 
 /**
@@ -642,7 +642,7 @@ stun_class_t stun_message_get_class (const StunMessage *msg)
  *
  * @return whether there is a MESSAGE-INTEGRITY attribute
  */
-bool stun_message_has_attribute (const StunMessage *msg, stun_attr_type_t type)
+bool stun_message_has_attribute (const StunMessage *msg, StunAttribute type)
 {
   uint16_t dummy;
   return stun_message_find (msg, type, &dummy) != NULL;
