@@ -124,25 +124,4 @@ docs/reference/libnice/libnice.types
 docs/reference/libnice/html
 docs/reference/libnice/tmpl
 docs/reference/libnice/xml
-docs/reference/libnice/.args
-docs/reference/libnice/.hierarchy
-docs/reference/libnice/.interfaces
-docs/reference/libnice/.prerequisites
-docs/reference/libnice/.signals
-
-docs/reference/libstun/libstun*.txt
-docs/reference/libstun/libstun.args
-docs/reference/libstun/libstun.hierarchy
-docs/reference/libstun/libstun.interfaces
-docs/reference/libstun/libstun.prerequisites
-docs/reference/libstun/libstun.signals
-docs/reference/libstun/libstun.types
-docs/reference/libstun/html
-docs/reference/libstun/tmpl
-docs/reference/libstun/xml
-docs/reference/libstun/.args
-docs/reference/libstun/.hierarchy
-docs/reference/libstun/.interfaces
-docs/reference/libstun/.prerequisites
-docs/reference/libstun/.signals
 
