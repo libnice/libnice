@@ -44,46 +44,6 @@
 
 #include "utils.h"
 
-/** Compares two socket addresses
- * @return 0 if the addresses are equal, non-zero otherwise
- */
-int sockaddrcmp (const struct sockaddr *a, const struct sockaddr *b)
-{
-  int res;
-
-  res = a->sa_family - b->sa_family;
-  if (res)
-    return res;
-
-  switch (a->sa_family)
-  {
-    case AF_INET:
-    {
-      const struct sockaddr_in *a4 = (const struct sockaddr_in *)a;
-      const struct sockaddr_in *b4 = (const struct sockaddr_in *)b;
-      res = memcmp (&a4->sin_addr, &b4->sin_addr, 4);
-      if (res == 0)
-        res = memcmp (&a4->sin_port, &b4->sin_port, 2);
-      break;
-    }
-
-    case AF_INET6:
-    {
-      const struct sockaddr_in6 *a6 = (const struct sockaddr_in6 *)a;
-      const struct sockaddr_in6 *b6 = (const struct sockaddr_in6 *)b;
-      res = memcmp (&a6->sin6_addr, &b6->sin6_addr, 16);
-      if (res == 0)
-        res = a6->sin6_scope_id - b6->sin6_scope_id;
-      if (res == 0)
-        res = memcmp (&a6->sin6_port, &b6->sin6_port, 2);
-      break;
-    }
-  }
-
-  return res;
-}
-
-
 
 bool stun_optional (uint16_t t)
 {

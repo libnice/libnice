@@ -56,8 +56,6 @@ extern "C" {
 # endif
 
 
-int sockaddrcmp (const struct sockaddr *a, const struct sockaddr *b);
-
 bool stun_optional (uint16_t t);
 
 size_t stun_padding (size_t l);
