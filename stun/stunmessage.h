@@ -401,6 +401,21 @@ typedef enum
 } StunError;
 
 
+/**
+ * StunMessageReturn:
+ * @STUN_MESSAGE_RETURN_SUCCESS: The operation was successful
+ * @STUN_MESSAGE_RETURN_NOT_FOUND: The attribute was not found
+ * @STUN_MESSAGE_RETURN_INVALID: The argument or data is invalid
+ * @STUN_MESSAGE_RETURN_NOT_ENOUGH_SPACE: There is not enough space in the
+ * message to append data to it, or not enough in an argument to fill it with
+ * the data requested.
+ * @STUN_MESSAGE_RETURN_UNSUPPORTED_ADDRESS: The address in the arguments or in
+ * the STUN message is not supported.
+ *
+ * The return value of most stun_message_* functions.
+ * This enum will report on whether an operation was successful or not
+ * and what error occured if any.
+ */
 typedef enum
 {
   STUN_MESSAGE_RETURN_SUCCESS,
@@ -416,6 +431,21 @@ typedef enum
 #include "utils.h"
 #include "stun5389.h"
 
+/**
+ * StunMessage:
+ * @agent: The agent that created or validated this message
+ * @buffer: The buffer containing the STUN message
+ * @buffer_len: The length of the buffer (not the size of the message)
+ * @key: The short term credentials key to use for authentication validation
+ * or that was used to finalize this message
+ * @key_len: The length of the associated key
+ * @long_term_key: The long term credential key to use for authentication
+ * validation or that was used to finalize this message
+ * @long_term_valid: Whether or not the #long_term_key variable contains valid
+ * data
+ *
+ * This structure represents a STUN message
+ */
 struct stun_message_t {
   StunAgent *agent;
   uint8_t *buffer;
@@ -427,27 +457,37 @@ struct stun_message_t {
 };
 
 /**
+ * stun_message_init:
+ * @msg: The #StunMessage to initialize
+ * @c: STUN message class (host byte order)
+ * @m: STUN message method (host byte order)
+ * @id: 16-bytes transaction ID
+ *
  * Initializes a STUN message buffer, with no attributes.
- * @param c STUN message class (host byte order)
- * @param m STUN message method (host byte order)
- * @param id 16-bytes transaction ID
- * @return TRUE if the initialization was successful
+ * Returns: %TRUE if the initialization was successful
  */
 bool stun_message_init (StunMessage *msg, StunClass c, StunMethod m,
     const StunTransactionId id);
 
 /**
- * Returns the length of the stun message
- * @param msg the STUN message
+ * stun_message_length:
+ * @msg: The #StunMessage
+ *
+ * Get the length of the message (including the header)
+ *
+ * Returns: The length of the message
  */
 uint16_t stun_message_length (const StunMessage *msg);
 
 /**
- * Looks for an attribute in a *valid* STUN message.
- * @param msg message buffer
- * @param type STUN attribute type (host byte order)
- * @param palen [OUT] pointer to store the byte length of the attribute
- * @return a pointer to the start of the attribute payload if found,
+ * stun_message_find:
+ * @msg: The #StunMessage
+ * @type: The #StunAttribute to find
+ * @palen: A pointer to store the length of the attribute
+ *
+ * Finds an attribute in a STUN message and fetches its content
+ *
+ * Returns: A pointer to the start of the attribute payload if found,
  * otherwise NULL.
  */
 const void * stun_message_find (const StunMessage * msg, StunAttribute type,
@@ -455,194 +495,356 @@ const void * stun_message_find (const StunMessage * msg, StunAttribute type,
 
 
 /**
+ * stun_message_find_flag:
+ * @msg: The #StunMessage
+ * @type: The #StunAttribute to find
+ *
  * Looks for a flag attribute within a valid STUN message.
- * @param msg valid STUN message buffer
- * @param type STUN attribute type (host byte order)
- * @return 0 if flag is present, ENOENT if it is not, EINVAL if flag payload
- * size is not zero.
+ *
+ * Returns: A #StunMessageReturn value.
+ * %STUN_MESSAGE_RETURN_INVALID is returned if the attribute's size is not zero.
  */
 StunMessageReturn stun_message_find_flag (const StunMessage *msg,
     StunAttribute type);
 
 /**
- * Extracts a 32-bits attribute from a valid STUN message.
- * @param msg valid STUN message buffer
- * @param type STUN attribute type (host byte order)
- * @param pval [OUT] where to store the host byte ordered value
+ * stun_message_find32:
+ * @msg: The #StunMessage
+ * @type: The #StunAttribute to find
+ * @pval: A pointer where to store the value (host byte order)
  *
- * @return 0 on success, ENOENT if attribute not found,
- * EINVAL if attribute payload was not 32-bits.
- * In case of error, @a *pval is not modified.
+ * Extracts a 32-bits attribute from a STUN message.
+ *
+ * Returns:  A #StunMessageReturn value.
+ * %STUN_MESSAGE_RETURN_INVALID is returned if the attribute's size is not
+ * 4 bytes.
  */
 StunMessageReturn stun_message_find32 (const StunMessage *msg,
     StunAttribute type, uint32_t *pval);
 
 /**
- * Extracts a 64-bits attribute from a valid STUN message.
- * @param msg valid STUN message buffer
- * @param type STUN attribute type (host byte order)
- * @param pval [OUT] where to store the host byte ordered value
- * @return 0 on success, ENOENT if attribute not found,
- * EINVAL if attribute payload was not 64-bits.
- * In case of error, @a *pval is not modified.
+ * stun_message_find64:
+ * @msg: The #StunMessage
+ * @type: The #StunAttribute to find
+ * @pval: A pointer where to store the value (host byte order)
+ *
+ * Extracts a 64-bits attribute from a STUN message.
+ *
+ * Returns:  A #StunMessageReturn value.
+ * %STUN_MESSAGE_RETURN_INVALID is returned if the attribute's size is not
+ * 8 bytes.
  */
 StunMessageReturn stun_message_find64 (const StunMessage *msg,
     StunAttribute type, uint64_t *pval);
 
 /**
+ * stun_message_find_string:
+ * @msg: The #StunMessage
+ * @type: The #StunAttribute to find
+ * @buf: A pointer where to store the data
+ * @buflen: The length of the buffer
+ *
  * Extracts an UTF-8 string from a valid STUN message.
- * @param msg valid STUN message buffer
- * @param type STUN attribute type (host byte order)
- * @param buf buffer to store the extracted string
- * @param maxcp maximum number of code points allowed
- *  (@a buf should be (6*maxcp+1) bytes long)
  *
- * @return 0 on success, ENOENT if attribute not found, EINVAL if attribute
- * improperly encoded, ENOBUFS if the buffer size was too small.
+ * Returns: A #StunMessageReturn value.
+ * %STUN_MESSAGE_RETURN_INVALID is returned if the attribute is improperly
+ * encoded
+ * %STUN_MESSAGE_RETURN_NOT_ENOUGH_SPACE is return if the buffer size is too
+ * small to hold the string
  *
- * @note A nul-byte is appended at the end.
+ <note>
+   <para>
+    The string will be NULL-terminated.
+   </para>
+ </note>
+ *
  */
 StunMessageReturn stun_message_find_string (const StunMessage *msg,
     StunAttribute type, char *buf, size_t buflen);
 
 /**
- * Extracts a network address attribute from a valid STUN message.
- * @param msg valid STUN message buffer
- * @param type STUN attribute type (host byte order)
- * @param addr [OUT] where to store the socket address
- * @param addrlen [IN/OUT] pointer to the size of the socket address
- * buffer upon entry, set to the length of the extracted socket
- * address upon return,
- * @return 0 on success, ENOENT if attribute not found,
- * EINVAL if attribute payload size was wrong or addrlen too small,
- * EAFNOSUPPORT if address family is unknown.
+ * stun_message_find_addr:
+ * @msg: The #StunMessage
+ * @type: The #StunAttribute to find
+ * @addr: The #sockaddr to be filled
+ * @addrlen: The size of the @addr variable. Will be set to the size of the
+ * extracted socket address.
+ *
+ * Extracts a network address attribute from a STUN message.
+ *
+ * Returns: A #StunMessageReturn value.
+ * %STUN_MESSAGE_RETURN_INVALID is returned if the attribute payload size is
+ * wrong or if the @addrlen is too small
+ * %STUN_MESSAGE_RETURN_UNSUPPORTED_ADDRESSS if the address family is unknown.
  */
 StunMessageReturn stun_message_find_addr (const StunMessage *msg,
     StunAttribute type, struct sockaddr *addr, socklen_t *addrlen);
 
 /**
- * Extracts an obfuscated network address attribute from a valid STUN message.
- * @param msg valid STUN message buffer
- * @param type STUN attribute type (host byte order)
- * @param addr [OUT] where to store the socket address
- * @param addrlen [IN/OUT] pointer to the size of the socket address
- * buffer upon entry, set to the length of the extracted socket
- * address upon return,
- * @return 0 on success, ENOENT if attribute not found,
- * EINVAL if attribute payload size was wrong or addrlen too small,
- * EAFNOSUPPORT if address family is unknown.
+ * stun_message_find_xor_addr:
+ * @msg: The #StunMessage
+ * @type: The #StunAttribute to find
+ * @addr: The #sockaddr to be filled
+ * @addrlen: The size of the @addr variable. Will be set to the size of the
+ * extracted socket address.
+ *
+ * Extracts an obfuscated network address attribute from a STUN message.
+ *
+ * Returns: A #StunMessageReturn value.
+ * %STUN_MESSAGE_RETURN_INVALID is returned if the attribute payload size is
+ * wrong or if the @addrlen is too small
+ * %STUN_MESSAGE_RETURN_UNSUPPORTED_ADDRESSS if the address family is unknown.
  */
 StunMessageReturn stun_message_find_xor_addr (const StunMessage *msg,
     StunAttribute type, struct sockaddr *addr, socklen_t *addrlen);
 
+/**
+ * stun_message_find_xor_addr_full:
+ * @msg: The #StunMessage
+ * @type: The #StunAttribute to find
+ * @addr: The #sockaddr to be filled
+ * @addrlen: The size of the @addr variable. Will be set to the size of the
+ * extracted socket address.
+ * @magic_cookie: The magic cookie to use to XOR the address.
+ *
+ * Extracts an obfuscated network address attribute from a STUN message.
+ *
+ * Returns: A #StunMessageReturn value.
+ * %STUN_MESSAGE_RETURN_INVALID is returned if the attribute payload size is
+ * wrong or if the @addrlen is too small
+ * %STUN_MESSAGE_RETURN_UNSUPPORTED_ADDRESSS if the address family is unknown.
+ */
 StunMessageReturn stun_message_find_xor_addr_full (const StunMessage *msg,
     StunAttribute type, struct sockaddr *addr,
     socklen_t *addrlen, uint32_t magic_cookie);
 
 
+/**
+ * stun_message_find_error:
+ * @msg: The #StunMessage
+ * @code: A  pointer where to store the value
+ *
+ * Extract the error response code from a STUN message
+ *
+ * Returns: A #StunMessageReturn value.
+ * %STUN_MESSAGE_RETURN_INVALID is returned if the value is invalid
+ */
 StunMessageReturn stun_message_find_error (const StunMessage *msg, int *code);
 
+
+/**
+ * stun_message_append:
+ * @msg: The #StunMessage
+ * @type: The #StunAttribute to append
+ * @length: The length of the attribute
+ *
+ * Reserves room for appending an attribute to an unfinished STUN message.
+ *
+ * Returns: A pointer to an unitialized buffer of @length bytes to
+ * where the attribute payload must be written, or NULL if there is not
+ * enough room in the STUN message buffer.
+ */
 void *stun_message_append (StunMessage *msg, StunAttribute type,
     size_t length);
 
+/**
+ * stun_message_append_bytes:
+ * @msg: The #StunMessage
+ * @type: The #StunAttribute to append
+ * @data: The data to append
+ * @len: The length of the attribute
+ *
+ * Appends a binary value to a STUN message
+ *
+ * Returns: A #StunMessageReturn value.
+ */
 StunMessageReturn stun_message_append_bytes (StunMessage *msg,
     StunAttribute type, const void *data, size_t len);
 
 /**
- * Appends an empty ("flag") attribute to a STUN message.
- * @param msg STUN message buffer
- * @param msize STUN message buffer size
- * @param type attribute type (host byte order)
- * @return 0 on success, ENOBUFS on error.
+ * stun_message_append_flag:
+ * @msg: The #StunMessage
+ * @type: The #StunAttribute to append
+ *
+ * Appends an empty flag attribute to a STUN message
+ *
+ * Returns: A #StunMessageReturn value.
  */
 StunMessageReturn stun_message_append_flag (StunMessage *msg,
     StunAttribute type);
 
 /**
- * Appends an attribute consisting of a 32-bits value to a STUN message.
- * @param msg STUN message buffer
- * @param msize STUN message buffer size
- * @param type attribute type (host byte order)
- * @param value payload (host byte order)
- * @return 0 on success, ENOBUFS on error.
+ * stun_message_append32:
+ * @msg: The #StunMessage
+ * @type: The #StunAttribute to append
+ * @value: The value to append (host byte order)
+ *
+ * Appends a 32-bits value attribute to a STUN message
+ *
+ * Returns: A #StunMessageReturn value.
  */
 StunMessageReturn stun_message_append32 (StunMessage *msg,
     StunAttribute type, uint32_t value);
 
 /**
- * Appends an attribute consisting of a 64-bits value to a STUN message.
- * @param msg STUN message buffer
- * @param msize STUN message buffer size
- * @param type attribute type (host byte order)
- * @param value payload (host byte order)
- * @return 0 on success, ENOBUFS on error.
+ * stun_message_append64:
+ * @msg: The #StunMessage
+ * @type: The #StunAttribute to append
+ * @value: The value to append (host byte order)
+ *
+ * Appends a 64-bits value attribute to a STUN message
+ *
+ * Returns: A #StunMessageReturn value.
  */
 StunMessageReturn stun_message_append64 (StunMessage *msg,
     StunAttribute type, uint64_t value);
 
 /**
- * Appends an attribute from a nul-terminated string.
- * @param msg STUN message buffer
- * @param msize STUN message buffer size
- * @param type attribute type (host byte order)
- * @param str nul-terminated string
- * @return 0 on success, ENOBUFS on error.
+ * stun_message_append_string:
+ * @msg: The #StunMessage
+ * @type: The #StunAttribute to append
+ * @str: The string to append
+ *
+ * Adds an attribute from a NULL-terminated string to a STUN message
+ *
+ * Returns: A #StunMessageReturn value.
  */
 StunMessageReturn stun_message_append_string (StunMessage *msg,
     StunAttribute type, const char *str);
 
 /**
- * Appends an attribute consisting of a network address to a STUN message.
- * @param msg STUN message buffer
- * @param msize STUN message buffer size
- * @param type attribyte type (host byte order)
- * @param addr socket address to convert into an attribute
- * @param addrlen byte length of socket address
- * @return 0 on success, ENOBUFS if the message buffer overflowed,
- * EAFNOSUPPORT is the socket address family is not supported,
- * EINVAL if the socket address length is too small w.r.t. the address family.
+ * stun_message_append_addr:
+ * @msg: The #StunMessage
+ * @type: The #StunAttribute to append
+ * @addr: The #sockaddr to be append
+ * @addrlen: The size of the @addr variable.
+ *
+ * Append a network address attribute to a STUN message
+ *
+ * Returns: A #StunMessageReturn value.
+ * %STUN_MESSAGE_RETURN_INVALID is returned if the @addrlen is too small
+ * %STUN_MESSAGE_RETURN_UNSUPPORTED_ADDRESSS if the address family is unknown.
  */
 StunMessageReturn stun_message_append_addr (StunMessage * msg,
     StunAttribute type, const struct sockaddr *addr, socklen_t addrlen);
 
 /**
- * Appends an attribute consisting of a xor'ed network address.
- * @param msg STUN message buffer
- * @param msize STUN message buffer size
- * @param type attribyte type (host byte order)
- * @param addr socket address to convert into an attribute
- * @param addrlen byte length of socket address
- * @return 0 on success, ENOBUFS if the message buffer overflowed,
- * EAFNOSUPPORT is the socket address family is not supported,
- * EINVAL if the socket address length is too small w.r.t. the address family.
+ * stun_message_append_xor_addr:
+ * @msg: The #StunMessage
+ * @type: The #StunAttribute to append
+ * @addr: The #sockaddr to be append
+ * @addrlen: The size of the @addr variable.
+ *
+ * Append an obfuscated network address attribute to a STUN message
+ *
+ * Returns: A #StunMessageReturn value.
+ * %STUN_MESSAGE_RETURN_INVALID is returned if the @addrlen is too small
+ * %STUN_MESSAGE_RETURN_UNSUPPORTED_ADDRESSS if the address family is unknown.
  */
 StunMessageReturn stun_message_append_xor_addr (StunMessage * msg,
     StunAttribute type, const struct sockaddr *addr, socklen_t addrlen);
 
+/**
+ * stun_message_append_xor_addr_full:
+ * @msg: The #StunMessage
+ * @type: The #StunAttribute to append
+ * @addr: The #sockaddr to be append
+ * @addrlen: The size of the @addr variable.
+ * @magic_cookie: The magic cookie to use to XOR the address.
+ *
+ * Append an obfuscated network address attribute from a STUN message.
+ *
+ * Returns: A #StunMessageReturn value.
+ * %STUN_MESSAGE_RETURN_INVALID is returned if the @addrlen is too small
+ * %STUN_MESSAGE_RETURN_UNSUPPORTED_ADDRESSS if the address family is unknown.
+ */
 StunMessageReturn stun_message_append_xor_addr_full (StunMessage * msg,
     StunAttribute type, const struct sockaddr *addr, socklen_t addrlen,
     uint32_t magic_cookie);
 
 /**
- * Appends an ERROR-CODE attribute.
- * @param msg STUN message buffer
- * @param msize STUN message buffer size
- * @param code STUN host-byte order integer error code
- * @return 0 on success, or ENOBUFS otherwise
+ * stun_message_append_error:
+ * @msg: The #StunMessage
+ * @code: The error code value
+ *
+ * Appends the ERROR-CODE attribute to the STUN message and fills it according
+ * to #code
+ *
+ * Returns: A #StunMessageReturn value.
  */
 StunMessageReturn stun_message_append_error (StunMessage * msg,
     StunError code);
 
+/**
+ * STUN_MESSAGE_BUFFER_INCOMPLETE:
+ *
+ * Convenience macro for stun_message_validate_buffer_length() meaning that the
+ * data to validate does not hold a complete STUN message
+ */
 #define STUN_MESSAGE_BUFFER_INCOMPLETE 0
+
+/**
+ * STUN_MESSAGE_BUFFER_INVALID:
+ *
+ * Convenience macro for stun_message_validate_buffer_length() meaning that the
+ * data to validate is not a valid STUN message
+ */
 #define STUN_MESSAGE_BUFFER_INVALID -1
 
 
+/**
+ * stun_message_validate_buffer_length:
+ * @msg: The buffer to validate
+ * @length: The length of the buffer
+ *
+ * This function will take a data buffer and will try to validate whether it is
+ * a STUN message or if it's not or if it's an incomplete STUN message and will
+ * provide us with the length of the STUN message.
+ *
+ * Returns: The length of the valid STUN message in the buffer.
+ * See #STUN_MESSAGE_BUFFER_INCOMPLETE
+ * See #STUN_MESSAGE_BUFFER_INVALID
+ */
 int stun_message_validate_buffer_length (const uint8_t *msg, size_t length);
 
+/**
+ * stun_message_id:
+ * @msg: The #StunMessage
+ * @id: The #StunTransactionId to fill
+ *
+ * Retreive the STUN transaction id from a STUN message
+ */
 void stun_message_id (const StunMessage *msg, StunTransactionId id);
 
+/**
+ * stun_message_get_class:
+ * @msg: The #StunMessage
+ *
+ * Retreive the STUN class from a STUN message
+ *
+ * Returns: The #StunClass
+ */
 StunClass stun_message_get_class (const StunMessage *msg);
+
+/**
+ * stun_message_get_method:
+ * @msg: The #StunMessage
+ *
+ * Retreive the STUN method from a STUN message
+ *
+ * Returns: The #StunMethod
+ */
 StunMethod stun_message_get_method (const StunMessage *msg);
+
+/**
+ * stun_message_has_attribute:
+ * @msg: The #StunMessage
+ * @type: The #StunAttribute to look for
+ *
+ * Checks if an attribute is present within a STUN message.
+ *
+ * Returns: %TRUE if the attribute is found, %FALSE otherwise
+ */
 bool stun_message_has_attribute (const StunMessage *msg, StunAttribute type);
 
 #endif /* _STUN_MESSAGE_H */
