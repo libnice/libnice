@@ -218,13 +218,13 @@ StunUsageTurnReturn stun_usage_turn_process (StunMessage *msg,
   StunUsageTurnReturn ret = STUN_USAGE_TURN_RETURN_RELAY_SUCCESS;
 
   if (stun_message_get_method (msg) != STUN_ALLOCATE)
-    return STUN_USAGE_TURN_RETURN_RETRY;
+    return STUN_USAGE_TURN_RETURN_INVALID;
 
   switch (stun_message_get_class (msg))
   {
     case STUN_REQUEST:
     case STUN_INDICATION:
-      return STUN_USAGE_TURN_RETURN_RETRY;
+      return STUN_USAGE_TURN_RETURN_INVALID;
 
     case STUN_RESPONSE:
       break;
@@ -232,7 +232,7 @@ StunUsageTurnReturn stun_usage_turn_process (StunMessage *msg,
     case STUN_ERROR:
       if (stun_message_find_error (msg, &code) != STUN_MESSAGE_RETURN_SUCCESS) {
         /* missing ERROR-CODE: ignore message */
-        return STUN_USAGE_TURN_RETURN_RETRY;
+        return STUN_USAGE_TURN_RETURN_INVALID;
       }
 
       /* NOTE: currently we ignore unauthenticated messages if the context
@@ -317,17 +317,17 @@ StunUsageTurnReturn stun_usage_turn_refresh_process (StunMessage *msg,
 
   if (compatibility == STUN_USAGE_TURN_COMPATIBILITY_DRAFT9) {
     if (stun_message_get_method (msg) != STUN_REFRESH)
-      return STUN_USAGE_TURN_RETURN_RETRY;
+      return STUN_USAGE_TURN_RETURN_INVALID;
   } else {
     if (stun_message_get_method (msg) != STUN_ALLOCATE)
-      return STUN_USAGE_TURN_RETURN_RETRY;
+      return STUN_USAGE_TURN_RETURN_INVALID;
   }
 
   switch (stun_message_get_class (msg))
   {
     case STUN_REQUEST:
     case STUN_INDICATION:
-      return STUN_USAGE_TURN_RETURN_RETRY;
+      return STUN_USAGE_TURN_RETURN_INVALID;
 
     case STUN_RESPONSE:
       break;
@@ -335,7 +335,7 @@ StunUsageTurnReturn stun_usage_turn_refresh_process (StunMessage *msg,
     case STUN_ERROR:
       if (stun_message_find_error (msg, &code) != STUN_MESSAGE_RETURN_SUCCESS) {
         /* missing ERROR-CODE: ignore message */
-        return STUN_USAGE_TURN_RETURN_RETRY;
+        return STUN_USAGE_TURN_RETURN_INVALID;
       }
 
       return STUN_USAGE_TURN_RETURN_ERROR;
