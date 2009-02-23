@@ -230,7 +230,7 @@ static void bad_responses (void)
 
   val = stun_usage_bind_process (&msg,
       (struct sockaddr *)&addr, &addrlen, (struct sockaddr *)&addr, &addrlen);
-  assert (val == STUN_USAGE_BIND_RETURN_RETRY);
+  assert (val == STUN_USAGE_BIND_RETURN_INVALID);
 
   /* Send response with wrong request type */
   buf[0] |= 0x03;
@@ -240,7 +240,7 @@ static void bad_responses (void)
   buf[1] |= 0x10;
   val = stun_usage_bind_process (&msg,
       (struct sockaddr *)&addr, &addrlen, (struct sockaddr *)&addr, &addrlen);
-  assert (val == STUN_USAGE_BIND_RETURN_RETRY);
+  assert (val == STUN_USAGE_BIND_RETURN_INVALID);
 
   close (fd);
   close (servfd);

@@ -91,13 +91,13 @@ StunUsageBindReturn stun_usage_bind_process (StunMessage *msg,
   StunMessageReturn val;
 
   if (stun_message_get_method (msg) != STUN_BINDING)
-    return STUN_USAGE_BIND_RETURN_RETRY;
+    return STUN_USAGE_BIND_RETURN_INVALID;
 
   switch (stun_message_get_class (msg))
   {
     case STUN_REQUEST:
     case STUN_INDICATION:
-      return STUN_USAGE_BIND_RETURN_RETRY;
+      return STUN_USAGE_BIND_RETURN_INVALID;
 
     case STUN_RESPONSE:
       break;
@@ -105,7 +105,7 @@ StunUsageBindReturn stun_usage_bind_process (StunMessage *msg,
     case STUN_ERROR:
       if (stun_message_find_error (msg, &code) != STUN_MESSAGE_RETURN_SUCCESS) {
         /* missing ERROR-CODE: ignore message */
-        return STUN_USAGE_BIND_RETURN_RETRY;
+        return STUN_USAGE_BIND_RETURN_INVALID;
       }
 
       /* NOTE: currently we ignore unauthenticated messages if the context
@@ -510,7 +510,7 @@ StunUsageBindReturn stun_usage_bind_run (const struct sockaddr *srv,
 
         stun_timer_start (&timer);
         ret = STUN_USAGE_TRANS_RETURN_RETRY;
-      } else if (bind_ret ==  STUN_USAGE_BIND_RETURN_RETRY) {
+      } else if (bind_ret ==  STUN_USAGE_BIND_RETURN_INVALID) {
         ret = STUN_USAGE_TRANS_RETURN_RETRY;
       } else {
         return bind_ret;
