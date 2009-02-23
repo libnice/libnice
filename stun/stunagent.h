@@ -86,14 +86,44 @@ typedef enum {
   STUN_VALIDATION_UNKNOWN_ATTRIBUTE,
 } StunValidationStatus;
 
-
-#define STUN_AGENT_USAGE_SHORT_TERM_CREDENTIALS 	0x0001
-#define STUN_AGENT_USAGE_LONG_TERM_CREDENTIALS 		0x0002
-#define STUN_AGENT_USAGE_USE_FINGERPRINT 		0x0004
-#define STUN_AGENT_USAGE_ADD_SOFTWARE 			0x0008
-#define STUN_AGENT_USAGE_IGNORE_CREDENTIALS		0x0010
-#define STUN_AGENT_USAGE_NO_INDICATION_AUTH		0x0020
-#define STUN_AGENT_USAGE_FORCE_VALIDATER		0x0040
+/**
+ * StunAgentUsageFlags:
+ * @STUN_AGENT_USAGE_SHORT_TERM_CREDENTIALS: The agent should be using the short
+ * term credentials mechanism for authenticating STUN messages
+ * @STUN_AGENT_USAGE_LONG_TERM_CREDENTIALS: The agent should be using the long
+ * term credentials mechanism for authenticating STUN messages
+ * @STUN_AGENT_USAGE_USE_FINGERPRINT: The agent should add the FINGERPRINT
+ * attribute to the STUN messages it creates.
+ * @STUN_AGENT_USAGE_ADD_SOFTWARE: The agent should add the SOFTWARE attribute
+ * to the STUN messages it creates
+ * @STUN_AGENT_USAGE_IGNORE_CREDENTIALS: The agent should ignore any credentials
+ * in the STUN messages it receives (the MESSAGE-INTEGRITY attribute
+ * will never be validated by stun_agent_validate())
+ * @STUN_AGENT_USAGE_NO_INDICATION_AUTH: The agent should ignore credentials
+ * in the STUN messages it receives if the #StunClass of the message is
+ * #STUN_INDICATION (some implementation require #STUN_INDICATION messages to
+ * be authenticated, while others never add a MESSAGE-INTEGRITY attribute to a
+ * #STUN_INDICATION message)
+ * @STUN_AGENT_USAGE_FORCE_VALIDATER: The agent should always try to validate
+ * the password of a STUN message, even if it already knows what the password
+ * should be (a response to a previously created request). This means that the
+ * #StunMessageIntegrityValidate callback will always be called when there is
+ * a MESSAGE-INTEGRITY attribute.
+ *
+ * This enum defines a bitflag usages for a #StunAgent and they will define how
+ * the agent should behave, independently of the compatibility mode it uses.
+ * <para> See also: stun_agent_init() </para>
+ * <para> See also: stun_agent_validate() </para>
+ */
+typedef enum {
+  STUN_AGENT_USAGE_SHORT_TERM_CREDENTIALS    = (1 << 0),
+  STUN_AGENT_USAGE_LONG_TERM_CREDENTIALS     = (1 << 1),
+  STUN_AGENT_USAGE_USE_FINGERPRINT           = (1 << 2),
+  STUN_AGENT_USAGE_ADD_SOFTWARE              = (1 << 3),
+  STUN_AGENT_USAGE_IGNORE_CREDENTIALS        = (1 << 4),
+  STUN_AGENT_USAGE_NO_INDICATION_AUTH        = (1 << 5),
+  STUN_AGENT_USAGE_FORCE_VALIDATER           = (1 << 6),
+} StunAgentUsageFlags;
 
 
 typedef struct {
@@ -110,7 +140,7 @@ struct stun_agent_t {
   StunCompatibility compatibility;
   StunAgentSavedIds sent_ids[STUN_AGENT_MAX_SAVED_IDS];
   uint16_t *known_attributes;
-  uint32_t usage_flags;
+  StunAgentUsageFlags usage_flags;
 };
 
 typedef struct {

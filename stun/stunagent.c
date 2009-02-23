@@ -49,7 +49,7 @@ static unsigned stun_agent_find_unknowns (StunAgent *agent,
     const StunMessage * msg, uint16_t *list, unsigned max);
 
 void stun_agent_init (StunAgent *agent, const uint16_t *known_attributes,
-    StunCompatibility compatibility, uint32_t usage_flags)
+    StunCompatibility compatibility, StunAgentUsageFlags usage_flags)
 {
   int i;
 
