@@ -82,7 +82,7 @@ int main (void)
   StunAgent agent;
   StunMessage req;
   StunMessage resp;
-  stun_validater_data validater_data[] = {
+  StunDefaultValidaterData validater_data[] = {
     {ufrag, strlen (ufrag), pass, strlen (pass)},
     {username, strlen (username), pass, strlen (pass)},
     {NULL, 0, NULL, 0}};

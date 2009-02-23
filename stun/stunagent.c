@@ -67,7 +67,7 @@ bool stun_agent_default_validater (StunAgent *agent,
     StunMessage *message, uint8_t *username, uint16_t username_len,
     uint8_t **password, size_t *password_len, void *user_data)
 {
-  stun_validater_data* val = (stun_validater_data*) user_data;
+  StunDefaultValidaterData* val = (StunDefaultValidaterData *) user_data;
   int i;
 
   for (i = 0; val && val[i].username ; i++) {

@@ -224,7 +224,7 @@ static void test_message (void)
   uint8_t password_v[]  = {0x77, 0xd9, 0x7a, 0xe9, 0xcf, 0xe0, 0x3e, 0xa2,
                            0x28, 0xa0, 0x5d, 0xec, 0xcf, 0x36, 0xe8, 0x49};
 
-  stun_validater_data v = {username_v, 72, password_v, 16};
+  StunDefaultValidaterData v = {username_v, 72, password_v, 16};
 
   stun_agent_init (&agent, known_attributes,
       STUN_COMPATIBILITY_RFC5389, STUN_AGENT_USAGE_USE_FINGERPRINT);
