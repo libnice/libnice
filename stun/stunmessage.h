@@ -36,6 +36,18 @@
 #define _STUN_MESSAGE_H
 
 
+/**
+ * SECTION:stunmessage
+ * @short_description: STUN messages parsing and formatting functions
+ * @see_also: #StunAgent
+ * @stability: Stable
+ *
+ * The STUN Messages API allows you to create STUN messages easily as well as to
+ * parse existing messages.
+ *
+ */
+
+
 #ifdef _WIN32
 #include "win32_common.h"
 #else
@@ -351,6 +363,8 @@ typedef uint8_t StunTransactionId[STUN_MESSAGE_TRANS_ID_LEN];
  * "Active Destination Already Set" error as defined in TURN draft 04.
  * @STUN_ERROR_UNSUPPORTED_FAMILY: The ERROR-CODE value for the
  * "Address Family not Supported" error as defined in TURN IPV6 Draft 05.
+ * @STUN_ERROR_WRONG_CREDENTIALS: The ERROR-CODE value for the
+ * "Wrong Credentials" error as defined in TURN Draft 12.
  * @STUN_ERROR_UNSUPPORTED_TRANSPORT:he ERROR-CODE value for the
  * "Unsupported Transport Protocol" error as defined in TURN Draft 12.
  * @STUN_ERROR_INVALID_IP: The ERROR-CODE value for the
@@ -802,8 +816,8 @@ StunMessageReturn stun_message_append_error (StunMessage * msg,
  * provide us with the length of the STUN message.
  *
  * Returns: The length of the valid STUN message in the buffer.
- * See #STUN_MESSAGE_BUFFER_INCOMPLETE
- * See #STUN_MESSAGE_BUFFER_INVALID
+ * <para> See also: #STUN_MESSAGE_BUFFER_INCOMPLETE </para>
+ * <para> See also: #STUN_MESSAGE_BUFFER_INVALID </para>
  */
 int stun_message_validate_buffer_length (const uint8_t *msg, size_t length);
 

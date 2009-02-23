@@ -17,5 +17,11 @@
     <xi:include href="xml/debug.xml"/>
     <xi:include href="xml/candidate.xml"/>
     <xi:include href="xml/interfaces.xml"/>
+    <xi:include href="xml/stunagent.xml"/>
+    <xi:include href="xml/stunmessage.xml"/>
+    <xi:include href="xml/turn.xml"/>
+    <xi:include href="xml/bind.xml"/>
+    <xi:include href="xml/ice.xml"/>
+    <xi:include href="xml/timer.xml"/>
   </chapter>
 </book>

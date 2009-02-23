@@ -86,6 +86,21 @@ typedef enum {
   STUN_USAGE_TURN_COMPATIBILITY_MSN,
 } StunUsageTurnCompatibility;
 
+/**
+ * StunUsageTurnReturn:
+ * @STUN_USAGE_TURN_RETURN_RELAY_SUCCESS: The response was successful and a relay
+ * address is provided
+ * @STUN_USAGE_TURN_RETURN_MAPPED_SUCCESS: The response was successful and a
+ * relay address as well as a mapped address are provided
+ * @STUN_USAGE_TURN_RETURN_ERROR: The response resulted in an error
+ * @STUN_USAGE_TURN_RETURN_INVALID: The response is not a valid response
+ * @STUN_USAGE_TURN_RETURN_ALTERNATE_SERVER: The server requests the message
+ * to be sent to an alternate server
+ *
+ * Return value of stun_usage_turn_process() and
+ * stun_usage_turn_refresh_process() which allows you to see what status the
+ * function call returned.
+ */
 typedef enum {
   STUN_USAGE_TURN_RETURN_RELAY_SUCCESS,
   STUN_USAGE_TURN_RETURN_MAPPED_SUCCESS,
@@ -95,6 +110,40 @@ typedef enum {
 } StunUsageTurnReturn;
 
 
+/**
+ * stun_usage_turn_create:
+ * @agent: The #StunAgent to use to build the request
+ * @msg: The #StunMessage to build
+ * @buffer: The buffer to use for creating the #StunMessage
+ * @buffer_len: The size of the @buffer
+ * @previous_response: If this is the first request you are sending, set this
+ * argument to NULL, if it's a subsequent request you are building, then set this
+ * argument to the response you have received. This argument is used for building
+ * long term credentials (using the REALM and NONCE attributes) as well as for
+ * getting the RESERVATION-TOKEN attribute when you previously requested an
+ * allocation which reserved two ports
+ * @request_ports: Specify how you want to request the allocated port(s).
+ * This is only used if the compatibility is set to
+ * #STUN_USAGE_TURN_COMPATIBILITY_DRAFT9
+ * <para>See #StunUsageTurnRequestPorts </para>
+ * @bandwidth: The bandwidth to request from the server for the allocation. If
+ * this value is negative, then no BANDWIDTH attribute is added to the request.
+ * This is only used if the compatibility is set to
+ * #STUN_USAGE_TURN_COMPATIBILITY_DRAFT9
+ * @lifetime: The lifetime of the allocation to request from the server. If
+ * this value is negative, then no LIFETIME attribute is added to the request.
+ * This is only used if the compatibility is set to
+ * #STUN_USAGE_TURN_COMPATIBILITY_DRAFT9
+ * @username: The username to use in the request
+ * @username_len: The length of @username
+ * @password: The key to use for building the MESSAGE-INTEGRITY
+ * @password_len: The length of @password
+ * @compatibility: The compatibility mode to use for building the Allocation
+ * request
+ *
+ * Create a new TURN Allocation request
+ * Returns: The length of the message to send
+ */
 size_t stun_usage_turn_create (StunAgent *agent, StunMessage *msg,
     uint8_t *buffer, size_t buffer_len,
     StunMessage *previous_response,
@@ -104,6 +153,30 @@ size_t stun_usage_turn_create (StunAgent *agent, StunMessage *msg,
     uint8_t *password, size_t password_len,
     StunUsageTurnCompatibility compatibility);
 
+/**
+ * stun_usage_turn_create_refresh:
+ * @agent: The #StunAgent to use to build the request
+ * @msg: The #StunMessage to build
+ * @buffer: The buffer to use for creating the #StunMessage
+ * @buffer_len: The size of the @buffer
+ * @previous_response: If this is the first request you are sending, set this
+ * argument to NULL, if it's a subsequent request you are building, then set this
+ * argument to the response you have received. This argument is used for building
+ * long term credentials (using the REALM and NONCE attributes)
+ * @lifetime: The lifetime of the allocation to request from the server. If
+ * this value is negative, then no LIFETIME attribute is added to the request.
+ * This is only used if the compatibility is set to
+ * #STUN_USAGE_TURN_COMPATIBILITY_DRAFT9
+ * @username: The username to use in the request
+ * @username_len: The length of @username
+ * @password: The key to use for building the MESSAGE-INTEGRITY
+ * @password_len: The length of @password
+ * @compatibility: The compatibility mode to use for building the Allocation
+ * request
+ *
+ * Create a new TURN Refresh request
+ * Returns: The length of the message to send
+ */
 size_t stun_usage_turn_create_refresh (StunAgent *agent, StunMessage *msg,
     uint8_t *buffer, size_t buffer_len,
     StunMessage *previous_response, int32_t lifetime,
@@ -111,6 +184,32 @@ size_t stun_usage_turn_create_refresh (StunAgent *agent, StunMessage *msg,
     uint8_t *password, size_t password_len,
     StunUsageTurnCompatibility compatibility);
 
+/**
+ * stun_usage_turn_process:
+ * @msg: The message containing the response
+ * @relay_addr: A pointer to a #sockaddr structure to fill with the relay address
+ * that the TURN server allocated for us
+ * @relay_addrlen: The length of @relay_addr
+ * @addr: A pointer to a #sockaddr structure to fill with the mapped address
+ * that the STUN response contains.
+ * This argument will only be filled if the return value
+ * of the function is #STUN_USAGE_TURN_RETURN_MAPPED_SUCCESS
+ * @addrlen: The length of @addr
+ * @alternate_server: A pointer to a #sockaddr structure to fill with the
+ * address of an alternate server to which we should send our new STUN
+ * Allocate request, in case the currently used TURN server is requesting the use
+ * of an alternate server. This argument will only be filled if the return value
+ * of the function is #STUN_USAGE_TURN_RETURN_ALTERNATE_SERVER
+ * @alternate_server_len: The length of @alternate_server
+ * @bandwidth: A pointer to fill with the bandwidth the TURN server allocated us
+ * @lifetime: A pointer to fill with the lifetime of the allocation
+ * @compatibility: The compatibility mode to use for processing the Allocation
+ * response
+ *
+ * Process a TURN Allocate response and extract the necessary information from
+ * the message
+ * Returns: A #StunUsageTurnReturn value
+ */
 StunUsageTurnReturn stun_usage_turn_process (StunMessage *msg,
     struct sockaddr *relay_addr, socklen_t *relay_addrlen,
     struct sockaddr *addr, socklen_t *addrlen,
@@ -118,6 +217,19 @@ StunUsageTurnReturn stun_usage_turn_process (StunMessage *msg,
     uint32_t *bandwidth, uint32_t *lifetime,
     StunUsageTurnCompatibility compatibility);
 
+/**
+ * stun_usage_turn_refresh_process:
+ * @msg: The message containing the response
+ * @lifetime: A pointer to fill with the lifetime of the allocation
+ * @compatibility: The compatibility mode to use for processing the Refresh
+ * response
+ *
+ * Process a TURN Refresh response and extract the necessary information from
+ * the message
+ * Returns: A #StunUsageTurnReturn value. A #STUN_USAGE_TURN_RETURN_RELAY_SUCCESS
+ * means the Refresh was successful, but no relay address is given (kept the same
+ * as for the original allocation)
+ */
 StunUsageTurnReturn stun_usage_turn_refresh_process (StunMessage *msg,
     uint32_t *lifetime, StunUsageTurnCompatibility compatibility);
 

@@ -47,12 +47,40 @@
 extern "C" {
 # endif
 
+/**
+ * StunUsageIceCompatibility:
+ * @STUN_USAGE_ICE_COMPATIBILITY_DRAFT19: The ICE compatibility with draft 19
+ * @STUN_USAGE_ICE_COMPATIBILITY_GOOGLE: The ICE compatibility with Google's
+ * implementation of ICE
+ * @STUN_USAGE_ICE_COMPATIBILITY_MSN: The ICE compatibility with MSN's
+ * implementation of ICE
+ *
+ * This enum defines which compatibility modes this ICE usage can use
+ */
 typedef enum {
   STUN_USAGE_ICE_COMPATIBILITY_DRAFT19,
   STUN_USAGE_ICE_COMPATIBILITY_GOOGLE,
   STUN_USAGE_ICE_COMPATIBILITY_MSN,
 } StunUsageIceCompatibility;
 
+
+/**
+ * StunUsageIceReturn:
+ * @STUN_USAGE_ICE_RETURN_SUCCESS: The function succeeded
+ * @STUN_USAGE_ICE_RETURN_ERROR: There was an unspecified error
+ * @STUN_USAGE_ICE_RETURN_INVALID: The message is invalid for processing
+ * @STUN_USAGE_ICE_RETURN_ROLE_CONFLICT: A role conflict was detected
+ * @STUN_USAGE_ICE_RETURN_INVALID_REQUEST: The message is an not a request
+ * @STUN_USAGE_ICE_RETURN_INVALID_METHOD: The method of the request is invalid
+ * @STUN_USAGE_ICE_RETURN_MEMORY_ERROR: The buffer size is too small to hold
+ * the STUN reply
+ * @STUN_USAGE_ICE_RETURN_INVALID_ADDRESS: The mapped address argument has
+ * an invalid address family
+ *
+ * Return value of stun_usage_ice_conncheck_process() and
+ * stun_usage_ice_conncheck_create_reply() which allows you to see what
+ * status the function call returned.
+ */
 typedef enum {
   STUN_USAGE_ICE_RETURN_SUCCESS,
   STUN_USAGE_ICE_RETURN_ERROR,
@@ -65,7 +93,30 @@ typedef enum {
 } StunUsageIceReturn;
 
 
-
+/**
+ * stun_usage_ice_conncheck_create:
+ * @agent: The #StunAgent to use to build the request
+ * @msg: The #StunMessage to build
+ * @buffer: The buffer to use for creating the #StunMessage
+ * @buffer_len: The size of the @buffer
+ * @username: The username to use in the request
+ * @username_len: The length of @username
+ * @password: The key to use for building the MESSAGE-INTEGRITY
+ * @password_len: The length of @password
+ * @cand_use: Set to %TRUE to append the USE-CANDIDATE flag to the request
+ * @controlling: Set to %TRUE if you are the controlling agent or set to
+ * %FALSE if you are the controlled agent.
+ * @priority: The value of the PRIORITY attribute
+ * @tie: The value of the tie-breaker to put in the ICE-CONTROLLED or
+ * ICE-CONTROLLING attribute
+ * @compatibility: The compatibility mode to use for building the conncheck
+ * request
+ *
+ * Builds an ICE connectivity check STUN message.
+ * If the compatibility is not #STUN_USAGE_ICE_COMPATIBILITY_DRAFT19, the
+ * @cand_use, @controlling, @priority and @tie arguments are not used.
+ * Returns: The length of the message built.
+ */
 size_t
 stun_usage_ice_conncheck_create (StunAgent *agent, StunMessage *msg,
     uint8_t *buffer, size_t buffer_len,
@@ -75,34 +126,54 @@ stun_usage_ice_conncheck_create (StunAgent *agent, StunMessage *msg,
     uint64_t tie, StunUsageIceCompatibility compatibility);
 
 
+/**
+ * stun_usage_ice_conncheck_process:
+ * @msg: The #StunMessage to process
+ * @addr: A pointer to a #sockaddr structure to fill with the mapped address
+ * that the STUN connectivity check response contains
+ * @addrlen: The length of @addr
+ * @compatibility: The compatibility mode to use for processing the conncheck
+ * response
+ *
+ * Process an ICE connectivity check STUN message and retreive the
+ * mapped address from the message
+ * <para> See also stun_usage_ice_conncheck_priority() and
+ * stun_usage_ice_conncheck_use_candidate() </para>
+ * Returns: A #StunUsageIceReturn value
+ */
 StunUsageIceReturn stun_usage_ice_conncheck_process (StunMessage *msg,
     struct sockaddr *addr, socklen_t *addrlen,
     StunUsageIceCompatibility compatibility);
 
 /**
- * Tries to parse a STUN connectivity check (Binding request) and format a
+ * stun_usage_ice_conncheck_create_reply:
+ * @agent: The #StunAgent to use to build the response
+ * @req: The original STUN request to reply to
+ * @msg: The #StunMessage to build
+ * @buf: The buffer to use for creating the #StunMessage
+ * @plen: A pointer containing the size of the @buffer on input.
+ * Will contain the length of the message built on output.
+ * @src: A pointer to a #sockaddr structure containing the source address from
+ * which the request was received. Will be used as the mapped address in the
+ * response
+ * @srclen: The length of @addr
+ * @control: Set to %TRUE if you are the controlling agent or set to
+ * %FALSE if you are the controlled agent.
+ * @tie: The value of the tie-breaker to put in the ICE-CONTROLLED or
+ * ICE-CONTROLLING attribute
+ * @compatibility: The compatibility mode to use for building the conncheck
+ * response
+ *
+ * Tries to parse a STUN connectivity check request and builds a
  * response accordingly.
- *
- * @param buf [OUT] output buffer to write a Binding response to. May refer
- * to the same buffer space as the request message.
- * @param plen [IN/OUT] output buffer size on entry, response length on exit
- * @param msg pointer to the first byte of the binding request
- * @param src socket address the message was received from
- * @param srclen byte length of the socket address
- * @param username STUN username
- * @param password HMAC secret password
- * @param control [IN/OUT] whether we are controlling ICE or not
- * @param tie tie breaker value for ICE role determination
- *
- * @return 0 if successful (@a rbuf contains a <b>non-error</b> response),
- * EINVAL: malformatted request message or socket address,
- * EAFNOSUPPORT: unsupported socket address family,
- * EPROTO: unsupported request message type or parameter,
- * ENOBUFS: insufficient response buffer space.
- * EACCES: ICE role conflict occurred, please recheck the flag at @a control
- *
- * In case of error, the value at @a plen is set to the size of an error
- * response, or 0 if no error response should be sent.
+ <note>
+   <para>
+     In case of error, the @msg is filled with the appropriate error response
+     to be sent and the value of @plen is set to the size of that message.
+     If @plen has a size of 0, then no error response should be sent.
+   </para>
+ </note>
+ * Returns: A #StunUsageIceReturn value
  */
 StunUsageIceReturn
 stun_usage_ice_conncheck_create_reply (StunAgent *agent, StunMessage *req,
@@ -112,16 +183,20 @@ stun_usage_ice_conncheck_create_reply (StunAgent *agent, StunMessage *req,
     StunUsageIceCompatibility compatibility);
 
 /**
+ * stun_usage_ice_conncheck_priority:
+ * @msg: The #StunMessage to parse
+ *
  * Extracts the priority from a STUN message.
- * @param msg valid STUN message.
- * @return host byte order priority, or 0 if not specified.
+ * Returns: host byte order priority, or 0 if not specified.
  */
 uint32_t stun_usage_ice_conncheck_priority (const StunMessage *msg);
 
 /**
- * Extracts the "use candidate" flag from a STUN message.
- * @param msg valid STUN message.
- * @return true if the flag is set, false if not.
+ * stun_usage_ice_conncheck_use_candidate:
+ * @msg: The #StunMessage to parse
+ *
+ * Extracts the USE-CANDIDATE attribute flag from a STUN message.
+ * Returns: %TRUE if the flag is set, %FALSE if not.
  */
 bool stun_usage_ice_conncheck_use_candidate (const StunMessage *msg);
 

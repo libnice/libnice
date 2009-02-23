@@ -48,12 +48,31 @@
 # include <time.h>
 #endif
 
-typedef struct stun_timer_s
-{
+/**
+ * StunTimer:
+ *
+ * An opaque structure representing a STUN transaction retransmission timer
+ */
+typedef struct stun_timer_s StunTimer;
+
+struct stun_timer_s {
   struct timeval deadline;
   unsigned delay;
-} StunTimer;
+};
 
+
+/**
+ * StunUsageTimerReturn:
+ * @STUN_USAGE_TIMER_RETURN_SUCCESS: The timer was refreshed successfully
+ * and there is nothing to be done
+ * @STUN_USAGE_TIMER_RETURN_RETRANSMIT: The timer expired and the message
+ * should be retransmitted now.
+ * @STUN_USAGE_TIMER_RETURN_TIMEOUT: The timer expired as well as all the
+ * retransmissions, the transaction timed out
+ *
+ * Return value of stun_usage_timer_refresh() which provides you with status
+ * information on the timer.
+ */
 typedef enum {
   STUN_USAGE_TIMER_RETURN_SUCCESS,
   STUN_USAGE_TIMER_RETURN_RETRANSMIT,
@@ -65,20 +84,41 @@ extern "C" {
 # endif
 
 /**
+ * stun_timer_start:
+ * @timer: The #StunTimer to start
+ *
  * Starts a STUN transaction retransmission timer.
- * @param timer structure for internal timer state
+ * This should be called as soon as you send the message for the first time on
+ * a UDP socket
  */
 void stun_timer_start (StunTimer *timer);
+
+/**
+ * stun_timer_start_reliable:
+ * @timer: The #StunTimer to start
+ *
+ * Starts a STUN transaction retransmission timer for a reliable transport.
+ * This should be called as soon as you send the message for the first time on
+ * a TCP socket
+ */
 void stun_timer_start_reliable (StunTimer *timer);
 
 /**
+ * stun_timer_refresh:
+ * @timer: The #StunTimer to refresh
+ *
  * Updates a STUN transaction retransmission timer.
- * @param timer internal timer state
- * @return -1 if the transaction timed out,
- * 0 if the transaction should be retransmitted,
- * otherwise milliseconds left until next time out or retransmit.
+ * Returns: A #StunUsageTimerReturn telling you what to do next
  */
 StunUsageTimerReturn stun_timer_refresh (StunTimer *timer);
+
+/**
+ * stun_timer_remainder:
+ * @timer: The #StunTimer to query
+ *
+ * Query the timer on the time left before the next refresh should be done
+ * Returns: The time remaining for the timer to expire in milliseconds
+ */
 unsigned stun_timer_remainder (const StunTimer *timer);
 
 # ifdef __cplusplus

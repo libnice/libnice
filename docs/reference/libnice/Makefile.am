@@ -13,7 +13,7 @@ DOC_MAIN_SGML_FILE=$(DOC_MODULE)-docs.sgml
 # gtk-doc will search all .c & .h files beneath here for inline comments
 # documenting the functions and macros.
 # e.g. DOC_SOURCE_DIR=../../../gtk
-DOC_SOURCE_DIR=$(top_srcdir)/agent
+DOC_SOURCE_DIR=$(top_srcdir)
 
 # Extra options to pass to gtkdoc-scangobj. Not normally needed.
 SCANGOBJ_OPTIONS=
@@ -37,12 +37,20 @@ FIXXREF_OPTIONS=
 # Used for dependencies. The docs will be rebuilt if any of these change.
 # e.g. HFILE_GLOB=$(top_srcdir)/gtk/*.h
 # e.g. CFILE_GLOB=$(top_srcdir)/gtk/*.c
-HFILE_GLOB=$(DOC_SOURCE_DIR)/agent.h $(DOC_SOURCE_DIR)/address.h $(DOC_SOURCE_DIR)/debug.h $(DOC_SOURCE_DIR)/candidate.h $(DOC_SOURCE_DIR)/interfaces.h
-CFILE_GLOB=$(DOC_SOURCE_DIR)/agent.c
+HFILE_GLOB=$(DOC_SOURCE_DIR)/agent/agent.h $(DOC_SOURCE_DIR)/agent/address.h \
+	$(DOC_SOURCE_DIR)/agent/debug.h $(DOC_SOURCE_DIR)/agent/candidate.h \
+	$(DOC_SOURCE_DIR)/agent/interfaces.h \
+	$(DOC_SOURCE_DIR)/stun/stunmessage.h $(DOC_SOURCE_DIR)/stun/stun5389.h \
+	$(DOC_SOURCE_DIR)/stun/utils.h 	$(DOC_SOURCE_DIR)/stun/stunagent.h  \
+	$(DOC_SOURCE_DIR)/stun/usages/bind.h \
+	$(DOC_SOURCE_DIR)/stun/usages/ice.h \
+	$(DOC_SOURCE_DIR)/stun/usages/timer.h \
+	$(DOC_SOURCE_DIR)/stun/usages/turn.h
+CFILE_GLOB=$(DOC_SOURCE_DIR)/agent/agent.c
 
 # Header files to ignore when scanning.
 # e.g. IGNORE_HFILES=gtkdebug.h gtkintl.h
-IGNORE_HFILES= conncheck.h discovery.h stream.h
+IGNORE_HFILES= conncheck.h discovery.h stream.h gstnice.h gstnicesrc.h gstnicesink.h
 
 # Images to copy into HTML directory.
 # e.g. HTML_IMAGES=$(top_srcdir)/gtk/stock-icons/stock_about_24.png
@@ -69,7 +77,7 @@ AM_CFLAGS =  $(ERROR_CFLAGS) \
         -I $(top_srcdir)/socket \
         -I $(top_srcdir)/stun
 
-GTKDOC_LIBS= $(top_builddir)/agent/libagent.la $(GLIB_LIBS)
+GTKDOC_LIBS= $(top_builddir)/agent/libagent.la $(GLIB_LIBS) $(top_builddir)/stun/libstun.la
 
 
 # This includes the standard gtk-doc make rules, copied by gtkdocize.
