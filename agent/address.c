@@ -184,11 +184,6 @@ nice_address_get_port (const NiceAddress *addr)
 }
 
 
-/**
- * address_set_from_string ()
- *
- * Returns FALSE on error.
- */
 NICEAPI_EXPORT gboolean
 nice_address_set_from_string (NiceAddress *addr, const gchar *str)
 {
@@ -209,9 +204,6 @@ nice_address_set_from_string (NiceAddress *addr, const gchar *str)
 }
 
 
-/**
- * Sets address to match socket address struct 'sin'.
- */
 NICEAPI_EXPORT void
 nice_address_set_from_sockaddr (NiceAddress *addr,
                                 const struct sockaddr *sa)
@@ -230,9 +222,6 @@ nice_address_set_from_sockaddr (NiceAddress *addr,
 }
 
 
-/**
- * Copies NiceAddress to socket address struct 'sin'.
- */
 NICEAPI_EXPORT void
 nice_address_copy_to_sockaddr (const NiceAddress *addr,
                                struct sockaddr *sa)

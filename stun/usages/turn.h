@@ -36,7 +36,7 @@
 #ifndef STUN_TURN_H
 # define STUN_TURN_H 1
 
-/**
+/*
  * @file bind.h
  * @brief STUN binding discovery
  */

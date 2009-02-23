@@ -53,7 +53,7 @@
 #include <sys/types.h>
 
 
-/**
+/*
  * Initial STUN timeout (milliseconds). The spec says it should be 100ms,
  * but that's way too short for most types of wireless Internet access.
  */
@@ -69,7 +69,7 @@
 #endif
 
 
-/**
+/*
  * Clock used throughout the STUN code.
  * STUN requires a monotonic 1kHz clock to operate properly.
  */

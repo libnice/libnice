@@ -156,7 +156,7 @@ GType nice_agent_get_type (void);
 /**
  * NICE_AGENT_MAX_REMOTE_CANDIDATES:
  *
- * A hard limit for number for remote candidates. This
+ * A hard limit for the number of remote candidates. This
  * limit is enforced to protect against malevolent remote
  * clients.
  */
@@ -175,7 +175,7 @@ GType nice_agent_get_type (void);
  * @NICE_COMPONENT_STATE_LAST: Dummy state
  *
  * An enum representing the state of a component.
- * See #NiceAgent::component-state-changed
+ * <para> See also: #NiceAgent::component-state-changed </para>
  */
 typedef enum
 {
@@ -238,7 +238,7 @@ typedef enum
  *
  * An enum to specify which proxy type to use for relaying.
  * Note that the proxies will only be used with TCP TURN relaying.
- * See #NiceAgent:proxy-type
+ * <para> See also: #NiceAgent:proxy-type </para>
  */
 typedef enum
 {

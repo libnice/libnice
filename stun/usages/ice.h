@@ -36,7 +36,7 @@
 #ifndef STUN_CONNCHECK_H
 # define STUN_CONNCHECK_H 1
 
-/**
+/*
  * @file ice.h
  * @brief STUN/ICE connectivity checks
  */

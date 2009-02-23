@@ -472,7 +472,7 @@ static int run_full_test (NiceAgent *lagent, NiceAgent *ragent, NiceAddress *bas
   return 0;
 }
 
-/**
+/*
  * Simulate the case where answer to the offer is delayed and
  * some STUN connectivity checks reach the offering party
  * before it gets the remote SDP information.

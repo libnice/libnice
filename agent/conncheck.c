@@ -1778,7 +1778,7 @@ static gboolean priv_map_reply_to_conn_check_request (NiceAgent *agent, Stream *
 
           /* step: updating nominated flag (ICE 7.1.2.2.4 "Updating the
              Nominated Flag" (ID-19) */
-          if (ok_pair->nominated == TRUE) 
+          if (ok_pair->nominated == TRUE)
             priv_update_selected_pair (agent, component, ok_pair);
 
           /* step: update pair states (ICE 7.1.2.2.3 "Updating pair

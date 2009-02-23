@@ -36,7 +36,7 @@
 #ifndef STUN_TIMER_H
 # define STUN_TIMER_H 1
 
-/**
+/*
  * @file timer.h
  * @brief STUN retransmission timer
  */

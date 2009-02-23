@@ -35,6 +35,20 @@
 #ifndef _STUN_AGENT_H
 #define _STUN_AGENT_H
 
+/**
+ * SECTION:stunagent
+ * @short_description: STUN agent for building and validating STUN messages
+ * @see_also: #StunMessage
+ * @stability: Stable
+ *
+ * The STUN Agent allows you to create and validate STUN messages easily.
+ * It's main purpose is to make sure the building and validation methods used
+ * are compatible with the RFC you create it with. It also tracks the transaction
+ * ids of the requests you send, so you can validate if a STUN response you
+ * received should be processed by that agent or not.
+ *
+ */
+
 
 #ifdef _WIN32
 #include "win32_common.h"
