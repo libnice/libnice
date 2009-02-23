@@ -107,13 +107,13 @@ StunUsageIceReturn stun_usage_ice_conncheck_process (StunMessage *msg,
   StunMessageReturn val;
 
   if (stun_message_get_method (msg) != STUN_BINDING)
-    return STUN_USAGE_ICE_RETURN_RETRY;
+    return STUN_USAGE_ICE_RETURN_INVALID;
 
   switch (stun_message_get_class (msg))
   {
     case STUN_REQUEST:
     case STUN_INDICATION:
-      return STUN_USAGE_ICE_RETURN_RETRY;
+      return STUN_USAGE_ICE_RETURN_INVALID;
 
     case STUN_RESPONSE:
       break;
@@ -121,7 +121,7 @@ StunUsageIceReturn stun_usage_ice_conncheck_process (StunMessage *msg,
     case STUN_ERROR:
       if (stun_message_find_error (msg, &code) != STUN_MESSAGE_RETURN_SUCCESS) {
         /* missing ERROR-CODE: ignore message */
-        return STUN_USAGE_ICE_RETURN_RETRY;
+        return STUN_USAGE_ICE_RETURN_INVALID;
       }
 
       if (code  == STUN_ERROR_ROLE_CONFLICT)
