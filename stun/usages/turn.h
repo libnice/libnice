@@ -53,12 +53,33 @@
 extern "C" {
 # endif
 
+/**
+ * StunUsageTurnRequestPorts:
+ * @STUN_USAGE_TURN_REQUEST_PORT_NORMAL: Request a normal port
+ * @STUN_USAGE_TURN_REQUEST_PORT_EVEN: Request an even port
+ * @STUN_USAGE_TURN_REQUEST_PORT_EVEN_AND_RESERVE: Request an even port and
+ * reserve the next higher port
+ *
+ * This enum is used to specify which port configuration you want when creating
+ * a new Allocation
+ */
+typedef enum {
+  STUN_USAGE_TURN_REQUEST_PORT_NORMAL = 0,
+  STUN_USAGE_TURN_REQUEST_PORT_EVEN = 1,
+  STUN_USAGE_TURN_REQUEST_PORT_EVEN_AND_RESERVE = 2
+} StunUsageTurnRequestPorts;
 
-#define STUN_USAGE_TURN_REQUEST_PORT_NORMAL             (0)
-#define STUN_USAGE_TURN_REQUEST_PORT_EVEN               (1)
-#define STUN_USAGE_TURN_REQUEST_PORT_EVEN_AND_RESERVE   (1<<1)
-#define STUN_USAGE_TURN_REQUEST_PORT_PRESERVING         (1<<2)
-
+/**
+ * StunUsageTurnCompatibility:
+ * @STUN_USAGE_TURN_COMPATIBILITY_DRAFT9: Use the specification compatible with
+ * TURN Draft 09
+ * @STUN_USAGE_TURN_COMPATIBILITY_GOOGLE: Use the specification compatible with
+ * Google Talk's relay server
+ * @STUN_USAGE_TURN_COMPATIBILITY_MSN: Use the specification compatible with
+ * MSN TURN servers
+ *
+ * Specifies which TURN specification compatibility to use
+ */
 typedef enum {
   STUN_USAGE_TURN_COMPATIBILITY_DRAFT9,
   STUN_USAGE_TURN_COMPATIBILITY_GOOGLE,
@@ -76,8 +97,8 @@ typedef enum {
 
 size_t stun_usage_turn_create (StunAgent *agent, StunMessage *msg,
     uint8_t *buffer, size_t buffer_len,
-    StunMessage *previous_request,
-    uint32_t request_ports,
+    StunMessage *previous_response,
+    StunUsageTurnRequestPorts request_ports,
     int32_t bandwidth, int32_t lifetime,
     uint8_t *username, size_t username_len,
     uint8_t *password, size_t password_len,

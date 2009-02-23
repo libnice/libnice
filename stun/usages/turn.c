@@ -68,7 +68,7 @@
 size_t stun_usage_turn_create (StunAgent *agent, StunMessage *msg,
     uint8_t *buffer, size_t buffer_len,
     StunMessage *previous_response,
-    uint32_t request_props,
+    StunUsageTurnRequestPorts request_props,
     int32_t bandwidth, int32_t lifetime,
     uint8_t *username, size_t username_len,
     uint8_t *password, size_t password_len,
@@ -107,9 +107,6 @@ size_t stun_usage_turn_create (StunAgent *agent, StunMessage *msg,
       req |= REQUESTED_PROPS_E;
     } else if (request_props & STUN_USAGE_TURN_REQUEST_PORT_EVEN) {
       req |= REQUESTED_PROPS_E;
-    }
-    if (request_props & STUN_USAGE_TURN_REQUEST_PORT_PRESERVING) {
-      req |= REQUESTED_PROPS_P;
     }
 
     if (stun_message_append32 (msg, STUN_ATTRIBUTE_REQUESTED_PORT_PROPS,
