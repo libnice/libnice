@@ -36,7 +36,7 @@
 #ifndef STUN_UTILS_H
 # define STUN_UTILS_H 1
 
-/**
+/*
  * @file utils.h
  * @brief STUN client generic utility functions
  */
@@ -56,28 +56,60 @@ extern "C" {
 # endif
 
 
+/**
+ * stun_optional:
+ * @t: An attribute type
+ *
+ * Helper function that checks whether a STUN attribute is a mandatory
+ * or an optional attribute
+ *
+ * Returns: %TRUE if the attribute is an optional one
+ */
 bool stun_optional (uint16_t t);
 
 size_t stun_padding (size_t l);
+
 
 size_t stun_align (size_t l);
 
 uint16_t stun_getw (const uint8_t *ptr);
 
-void stun_debug_enable (void);
-void stun_debug_disable (void);
-void stun_debug (const char *fmt, ...);
-void stun_debug_bytes (const void *data, size_t len);
+void *stun_setw (uint8_t *ptr, uint16_t value);
+
+void stun_set_type (uint8_t *h, StunClass c, StunMethod m);
 
 StunMessageReturn stun_xor_address (const StunMessage *msg,
     struct sockaddr *addr, socklen_t addrlen,
     uint32_t magic_cookie);
 
-void *stun_setw (uint8_t *ptr, uint16_t value);
-
-void stun_set_type (uint8_t *h, StunClass c, StunMethod m);
-
+/**
+ * stun_strerror:
+ * @code: host-byte order error code
+ *
+ * Transforms a STUN error-code into a human readable string
+ *
+ * Returns: A static pointer to a NULL-terminated error message string.
+ */
 const char *stun_strerror (StunError code);
+
+/**
+ * stun_debug_enable:
+ *
+ * Enable debug messages to stderr
+ */
+void stun_debug_enable (void);
+
+/**
+ * stun_debug_disable:
+ *
+ * Disable debug messages to stderr
+ */
+void stun_debug_disable (void);
+
+
+void stun_debug (const char *fmt, ...);
+void stun_debug_bytes (const void *data, size_t len);
+
 
 # ifdef __cplusplus
 }

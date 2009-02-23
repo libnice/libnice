@@ -50,107 +50,22 @@ bool stun_optional (uint16_t t)
   return (t >> 15) == 1;
 }
 
-
-/**
- * @return complement to the next multiple of 4.
- */
 size_t stun_padding (size_t l)
 {
   return (4 - (l & 3)) & 3;
 }
 
-
-/**
- * Rounds up an integer to the next multiple of 4.
- */
 size_t stun_align (size_t l)
 {
   return (l + 3) & ~3;
 }
 
 
-/**
- * Reads a word from a non-aligned buffer.
- * @return host byte order word value.
- */
 uint16_t stun_getw (const uint8_t *ptr)
 {
   return ((ptr)[0] << 8) | ptr[1];
 }
 
-
-
-/* /\** */
-/*  * @param msg valid STUN message */
-/*  * @return true if there is at least one unknown mandatory attribute. */
-/*  *\/ */
-/* bool stun_has_unknown (const void *msg) */
-/* { */
-/*   uint16_t dummy; */
-/*   return stun_find_unknown (msg, &dummy, 1); */
-/* } */
-
-static int debug_enabled = 1;
-
-void stun_debug_enable (void) {
-  debug_enabled = 1;
-}
-void stun_debug_disable (void) {
-  debug_enabled = 0;
-}
-
-void stun_debug (const char *fmt, ...)
-{
-  va_list ap;
-  if (debug_enabled) {
-    va_start (ap, fmt);
-    vfprintf (stderr, fmt, ap);
-    va_end (ap);
-  }
-}
-
-void stun_debug_bytes (const void *data, size_t len)
-{
-  size_t i;
-
-  stun_debug ("0x");
-  for (i = 0; i < len; i++)
-    stun_debug ("%02x", ((const unsigned char *)data)[i]);
-}
-
-StunMessageReturn stun_xor_address (const StunMessage *msg,
-    struct sockaddr *addr, socklen_t addrlen,
-    uint32_t magic_cookie)
-{
-  switch (addr->sa_family)
-  {
-    case AF_INET:
-    {
-      struct sockaddr_in *ip4 = (struct sockaddr_in *)addr;
-      if ((size_t) addrlen < sizeof (*ip4))
-        return STUN_MESSAGE_RETURN_INVALID;
-
-      ip4->sin_port ^= htons (magic_cookie >> 16);
-      ip4->sin_addr.s_addr ^= htonl (magic_cookie);
-      return STUN_MESSAGE_RETURN_SUCCESS;
-    }
-
-    case AF_INET6:
-    {
-      struct sockaddr_in6 *ip6 = (struct sockaddr_in6 *)addr;
-      unsigned short i;
-
-      if ((size_t) addrlen < sizeof (*ip6))
-        return STUN_MESSAGE_RETURN_INVALID;
-
-      ip6->sin6_port ^= htons (magic_cookie >> 16);
-      for (i = 0; i < 16; i++)
-        ip6->sin6_addr.s6_addr[i] ^= msg->buffer[4 + i];
-      return STUN_MESSAGE_RETURN_SUCCESS;
-    }
-  }
-  return STUN_MESSAGE_RETURN_UNSUPPORTED_ADDRESS;
-}
 
 void *stun_setw (uint8_t *ptr, uint16_t value)
 {
@@ -173,11 +88,6 @@ void stun_set_type (uint8_t *h, StunClass c, StunMethod m)
 /*   assert (stun_get_method (h) == m); */
 }
 
-
-/**
- * @param code host-byte order error code
- * @return a static pointer to a nul-terminated error message string.
- */
 const char *stun_strerror (StunError code)
 {
   static const struct
@@ -221,3 +131,66 @@ const char *stun_strerror (StunError code)
   //  assert (strlen (str) < 128);
   return str;
 }
+
+StunMessageReturn stun_xor_address (const StunMessage *msg,
+    struct sockaddr *addr, socklen_t addrlen,
+    uint32_t magic_cookie)
+{
+  switch (addr->sa_family)
+  {
+    case AF_INET:
+    {
+      struct sockaddr_in *ip4 = (struct sockaddr_in *)addr;
+      if ((size_t) addrlen < sizeof (*ip4))
+        return STUN_MESSAGE_RETURN_INVALID;
+
+      ip4->sin_port ^= htons (magic_cookie >> 16);
+      ip4->sin_addr.s_addr ^= htonl (magic_cookie);
+      return STUN_MESSAGE_RETURN_SUCCESS;
+    }
+
+    case AF_INET6:
+    {
+      struct sockaddr_in6 *ip6 = (struct sockaddr_in6 *)addr;
+      unsigned short i;
+
+      if ((size_t) addrlen < sizeof (*ip6))
+        return STUN_MESSAGE_RETURN_INVALID;
+
+      ip6->sin6_port ^= htons (magic_cookie >> 16);
+      for (i = 0; i < 16; i++)
+        ip6->sin6_addr.s6_addr[i] ^= msg->buffer[4 + i];
+      return STUN_MESSAGE_RETURN_SUCCESS;
+    }
+  }
+  return STUN_MESSAGE_RETURN_UNSUPPORTED_ADDRESS;
+}
+
+static int debug_enabled = 1;
+
+void stun_debug_enable (void) {
+  debug_enabled = 1;
+}
+void stun_debug_disable (void) {
+  debug_enabled = 0;
+}
+
+void stun_debug (const char *fmt, ...)
+{
+  va_list ap;
+  if (debug_enabled) {
+    va_start (ap, fmt);
+    vfprintf (stderr, fmt, ap);
+    va_end (ap);
+  }
+}
+
+void stun_debug_bytes (const void *data, size_t len)
+{
+  size_t i;
+
+  stun_debug ("0x");
+  for (i = 0; i < len; i++)
+    stun_debug ("%02x", ((const unsigned char *)data)[i]);
+}
+
