@@ -215,6 +215,8 @@ typedef enum
  * @NICE_COMPATIBILITY_DRAFT19: Use compatibility for ICE Draft 19 specs
  * @NICE_COMPATIBILITY_GOOGLE: Use compatibility for Google Talk specs
  * @NICE_COMPATIBILITY_MSN: Use compatibility for MSN Messenger specs
+ * @NICE_COMPATIBILITY_WLM2009: Use compatibility with Windows Live Messenger
+ * 2009
  * @NICE_COMPATIBILITY_LAST: Dummy last compatibility mode
  *
  * An enum to specify which compatible specifications the #NiceAgent should use.
