@@ -66,7 +66,7 @@
 #include <arpa/inet.h>
 #endif
 
-typedef struct stun_message_t StunMessage;
+typedef struct _StunMessage StunMessage;
 
 /**
  * StunClass:
@@ -460,7 +460,7 @@ typedef enum
  *
  * This structure represents a STUN message
  */
-struct stun_message_t {
+struct _StunMessage {
   StunAgent *agent;
   uint8_t *buffer;
   size_t buffer_len;
