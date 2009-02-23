@@ -250,7 +250,7 @@ static int dgram_process (int sock, StunAgent *oldagent, StunAgent *newagent)
   {
     case STUN_BINDING:
       stun_agent_init_response (agent, &response, buf, sizeof (buf), &request);
-      if (stun_has_cookie (&request))
+      if (stun_message_has_cookie (&request))
         stun_message_append_xor_addr (&response,
                               STUN_ATTRIBUTE_XOR_MAPPED_ADDRESS,
                               mh.msg_name, mh.msg_namelen);

@@ -60,14 +60,14 @@
 uint32_t stun_fingerprint (const uint8_t *msg, size_t len);
 
 /**
- * stun_has_cookie:
+ * stun_message_has_cookie:
  * @msg: The #StunMessage
  *
  * Checks if the STUN message has a RFC5389 compatible cookie
  *
  * Returns: %TRUE if the cookie is present, %FALSE otherwise
  */
-bool stun_has_cookie (const StunMessage *msg);
+bool stun_message_has_cookie (const StunMessage *msg);
 
 StunMessageReturn stun_message_append_software (StunMessage *msg);
 

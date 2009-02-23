@@ -320,7 +320,7 @@ stun_message_append (StunMessage *msg, StunAttribute type, size_t length)
   a = stun_setw (a, type);
   /* NOTE: If cookie is not present, we need to force the attribute length
    * to a multiple of 4 for compatibility with old RFC3489 */
-  a = stun_setw (a, stun_has_cookie (msg) ? length : stun_align (length));
+  a = stun_setw (a, stun_message_has_cookie (msg) ? length : stun_align (length));
 
   mlen +=  4 + length;
   /* Add padding if needed */

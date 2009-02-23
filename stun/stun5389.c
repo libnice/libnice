@@ -70,7 +70,7 @@ uint32_t stun_fingerprint (const uint8_t *msg, size_t len)
   return htonl (crc32 (data, 3) ^ 0x5354554e);
 }
 
-bool stun_has_cookie (const StunMessage *msg)
+bool stun_message_has_cookie (const StunMessage *msg)
 {
   StunTransactionId id;
   uint32_t cookie = htonl (STUN_MAGIC_COOKIE);

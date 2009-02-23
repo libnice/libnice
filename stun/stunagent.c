@@ -131,7 +131,7 @@ StunValidationStatus stun_agent_validate (StunAgent *agent, StunMessage *msg,
   /* TODO: reject it or not ? */
   if ((agent->compatibility == STUN_COMPATIBILITY_RFC5389 ||
           agent->compatibility == STUN_COMPATIBILITY_WLM2009) &&
-      !stun_has_cookie (msg)) {
+      !stun_message_has_cookie (msg)) {
       stun_debug ("STUN demux error: no cookie!\n");
       return STUN_VALIDATION_BAD_REQUEST;
   }
@@ -470,7 +470,7 @@ size_t stun_agent_build_unknown_attributes_error (StunAgent *agent,
 
   /* NOTE: Old RFC3489 compatibility:
    * When counter is odd, duplicate one value for 32-bits padding. */
-  if (!stun_has_cookie (request) && (counter & 1))
+  if (!stun_message_has_cookie (request) && (counter & 1))
     ids[counter++] = ids[0];
 
   if (stun_message_append_bytes (msg, STUN_ATTRIBUTE_UNKNOWN_ATTRIBUTES,
