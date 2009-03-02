@@ -36,9 +36,66 @@
 #ifndef STUN_TIMER_H
 # define STUN_TIMER_H 1
 
-/*
- * @file timer.h
- * @brief STUN retransmission timer
+/**
+ * SECTION:timer
+ * @short_description: STUN timer Usage
+ * @include: stun/usages/timer.h
+ * @stability: Stable
+ *
+ * The STUN timer usage is a set of helpful utility functions that allows you
+ * to easily track when a STUN message should be retransmitted or considered
+ * as timed out.
+ *
+ *
+ <example>
+   <title>Simple example on how to use the timer usage</title>
+   <programlisting>
+   StunTimer timer;
+   unsigned remainder;
+   StunUsageTimerReturn ret;
+
+   // Build the message, etc..
+   ...
+
+   // Send the message and start the timer
+   send(socket, request, sizeof(request));
+   stun_timer_start(&timer);
+
+   // Loop until we get the response
+   for (;;) {
+     remainder = stun_timer_remainder(&timer);
+
+     // Poll the socket until data is received or the timer expires
+     if (poll (&pollfd, 1, delay) <= 0) {
+       // Time out and no response was received
+       ret = stun_timer_refresh (&timer);
+       if (ret == STUN_USAGE_TIMER_RETURN_TIMEOUT) {
+         // Transaction timed out
+         break;
+       } else if (ret == STUN_USAGE_TIMER_RETURN_RETRANSMIT) {
+         // A retransmission is necessary
+         send(socket, request, sizeof(request));
+         continue;
+       } else if (ret == STUN_USAGE_TIMER_RETURN_SUCCESS) {
+         // The refresh succeeded and nothing has to be done, continue polling
+         continue;
+       }
+     } else {
+       // We received a response, read it
+       recv(socket, response, sizeof(response));
+       break;
+     }
+   }
+
+   // Check if the transaction timed out or not
+   if (ret == STUN_USAGE_TIMER_RETURN_TIMEOUT) {
+     // do whatever needs to be done in that case
+   } else {
+     // Parse the response
+   }
+
+   </programlisting>
+ </example>
  */
 
 #ifdef _WIN32

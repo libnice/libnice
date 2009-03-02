@@ -36,9 +36,15 @@
 #ifndef STUN_BIND_H
 # define STUN_BIND_H 1
 
-/*
- * @file bind.h
- * @brief STUN binding discovery
+/**
+ * SECTION:bind
+ * @short_description: STUN Binding Usage
+ * @include: stun/usages/bind.h
+ * @stability: Stable
+ *
+ * The STUN Binding usage allows for easily creating and parsing STUN Binding
+ * requests and responses. It offers both an asynchronous and a synchronous API
+ * that uses the STUN timer usage.
  */
 
 

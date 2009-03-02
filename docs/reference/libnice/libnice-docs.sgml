@@ -10,18 +10,37 @@
     </releaseinfo>
   </bookinfo>
 
-  <chapter>
-    <title>libnice's public API</title>
-    <xi:include href="xml/agent.xml"/>
-    <xi:include href="xml/address.xml"/>
-    <xi:include href="xml/debug.xml"/>
-    <xi:include href="xml/candidate.xml"/>
-    <xi:include href="xml/interfaces.xml"/>
-    <xi:include href="xml/stunagent.xml"/>
-    <xi:include href="xml/stunmessage.xml"/>
-    <xi:include href="xml/turn.xml"/>
-    <xi:include href="xml/bind.xml"/>
-    <xi:include href="xml/ice.xml"/>
-    <xi:include href="xml/timer.xml"/>
-  </chapter>
+
+  <part>
+    <title>ICE Library</title>
+    <chapter>
+      <xi:include href="xml/agent.xml"/>
+      <xi:include href="xml/address.xml"/>
+      <xi:include href="xml/candidate.xml"/>
+    </chapter>
+    <chapter>
+      <title>Libnice helper functions </title>
+      <xi:include href="xml/debug.xml"/>
+      <xi:include href="xml/interfaces.xml"/>
+    </chapter>
+  </part>
+  <part>
+    <title>STUN Library</title>
+    <chapter>
+      <xi:include href="xml/stunagent.xml"/>
+      <xi:include href="xml/stunmessage.xml"/>
+    </chapter>
+    <chapter>
+      <title>STUN usages</title>
+      <xi:include href="xml/bind.xml"/>
+      <xi:include href="xml/ice.xml"/>
+      <xi:include href="xml/turn.xml"/>
+      <xi:include href="xml/timer.xml"/>
+    </chapter>
+  </part>
+
+
+  <para>The libnice library contains both the ICE library and the
+    STUN library.
+  </para>
 </book>

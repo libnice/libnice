@@ -36,9 +36,16 @@
 #ifndef STUN_CONNCHECK_H
 # define STUN_CONNCHECK_H 1
 
-/*
- * @file ice.h
- * @brief STUN/ICE connectivity checks
+/**
+ * SECTION:ice
+ * @short_description: STUN ICE Usage
+ * @include: stun/usages/ice.h
+ * @stability: Stable
+ *
+ * The STUN ICE usage allows for easily creating and parsing STUN Binding
+ * requests and responses used for ICE connectivity checks. The API allows you
+ * to create a connectivity check message, parse a response or create a reply
+ * to an incoming connectivity check request.
  */
 
 # include "stun/stunagent.h"

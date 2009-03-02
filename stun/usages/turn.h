@@ -36,10 +36,19 @@
 #ifndef STUN_TURN_H
 # define STUN_TURN_H 1
 
-/*
- * @file bind.h
- * @brief STUN binding discovery
+/**
+ * SECTION:turn
+ * @short_description: TURN Allocation Usage
+ * @include: stun/usages/turn.h
+ * @stability: Stable
+ *
+ * The STUN TURN usage allows for easily creating and parsing STUN Allocate
+ * requests and responses used for TURN. The API allows you to create a new
+ * allocation or refresh an existing one as well as to parse a response to
+ * an allocate or refresh request.
  */
+
+
 #ifdef _WIN32
 #include "win32_common.h"
 #else

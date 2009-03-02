@@ -63,10 +63,6 @@
    // Create a nice agent
    NiceAgent *agent = nice_agent_new (NULL, NICE_COMPATIBILITY_DRAFT19);
 
-   // Specify which local interface to use
-   nice_address_set_from_string (&base_addr, "127.0.0.1");
-   nice_agent_add_local_address (agent, &base_addr);
-
    // Connect the signals
    g_signal_connect (G_OBJECT (agent), "candidate-gathering-done",
                      G_CALLBACK (cb_candidate_gathering_done), NULL);
@@ -359,7 +355,11 @@ gboolean nice_agent_set_relay_info(
  *
  <note>
    <para>
-    Local addresses must be previously set with nice_agent_add_local_address()
+    Local addresses can be previously set with nice_agent_add_local_address()
+  </para>
+  <para>
+    If no local address was previously added, then the nice agent will
+    automatically detect the local address using nice_interfaces_get_local_ips()
    </para>
  </note>
  */

@@ -1684,7 +1684,7 @@ static CandidateCheckPair *priv_process_response_check_for_peer_reflexive(NiceAg
 					      remote_candidate);
     p->state = NICE_CHECK_FAILED;
     nice_debug ("Agent %p : pair %p state FAILED", agent, p);
-	    
+
     /* step: add a new discovered pair (see ICE 7.1.2.2.2
 	       "Constructing a Valid Pair" (ID-19)) */
     new_pair = priv_add_peer_reflexive_pair (agent, stream->id, component->id, cand, p);
@@ -1698,7 +1698,7 @@ static CandidateCheckPair *priv_process_response_check_for_peer_reflexive(NiceAg
  * Tries to match STUN reply in 'buf' to an existing STUN connectivity
  * check transaction. If found, the reply is processed. Implements
  * section 7.1.2 "Processing the Response" of ICE spec (ID-19).
- * 
+ *
  * @return TRUE if a matching transaction is found
  */
 static gboolean priv_map_reply_to_conn_check_request (NiceAgent *agent, Stream *stream, Component *component, NiceSocket *sockptr, const NiceAddress *from, NiceCandidate *local_candidate, NiceCandidate *remote_candidate, StunMessage *resp)
@@ -1816,7 +1816,7 @@ static gboolean priv_map_reply_to_conn_check_request (NiceAgent *agent, Stream *
 /*
  * Tries to match STUN reply in 'buf' to an existing STUN discovery
  * transaction. If found, a reply is sent.
- * 
+ *
  * @return TRUE if a matching transaction is found
  */
 static gboolean priv_map_reply_to_discovery_request (NiceAgent *agent, StunMessage *resp)
