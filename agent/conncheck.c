@@ -913,14 +913,23 @@ static GSList *priv_limit_conn_check_list_size (GSList *conncheck_list, guint up
  * Changes the selected pair for the component if 'pair' is nominated
  * and has higher priority than the currently selected pair. See
  * ICE sect 11.1.1. "Procedures for Full Implementations" (ID-19).
- */ 
+ */
 static gboolean priv_update_selected_pair (NiceAgent *agent, Component *component, CandidateCheckPair *pair)
 {
   g_assert (component);
   g_assert (pair);
   if (pair->priority > component->selected_pair.priority) {
-    nice_debug ("Agent %p : changing SELECTED PAIR for component %u: %s:%s (prio:%lu).", agent, 
-	     component->id, pair->local->foundation, pair->remote->foundation, (long unsigned)pair->priority);
+    nice_debug ("Agent %p : changing SELECTED PAIR for component %u: %s:%s "
+        "(prio:%lu).", agent, component->id, pair->local->foundation,
+        pair->remote->foundation, (long unsigned)pair->priority);
+
+    if (component->selected_pair.keepalive.tick_source != NULL) {
+      g_source_destroy (component->selected_pair.keepalive.tick_source);
+      g_source_unref (component->selected_pair.keepalive.tick_source);
+      component->selected_pair.keepalive.tick_source = NULL;
+    }
+
+    memset (&component->selected_pair, 0, sizeof(CandidatePair));
     component->selected_pair.local = pair->local;
     component->selected_pair.remote = pair->remote;
     component->selected_pair.priority = pair->priority;
