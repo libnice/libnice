@@ -634,7 +634,6 @@ static gboolean priv_conn_keepalive_tick (gpointer pointer)
 static gboolean priv_turn_allocate_refresh_retransmissions_tick (gpointer pointer)
 {
   CandidateRefresh *cand = (CandidateRefresh *) pointer;
-  guint timeout;
 
   g_static_rec_mutex_lock (&cand->agent->mutex);
 
@@ -652,13 +651,13 @@ static gboolean priv_turn_allocate_refresh_retransmissions_tick (gpointer pointe
       nice_socket_send (cand->nicesock, &cand->server,
           stun_message_length (&cand->stun_message), (gchar *)cand->stun_buffer);
 
-      timeout = stun_timer_remainder (&cand->timer);
-      cand->tick_source = agent_timeout_add_with_context (cand->agent, timeout,
+      cand->tick_source = agent_timeout_add_with_context (cand->agent,
+          stun_timer_remainder (&cand->timer),
           priv_turn_allocate_refresh_retransmissions_tick, cand);
       break;
     case STUN_USAGE_TIMER_RETURN_SUCCESS:
-      timeout = stun_timer_remainder (&cand->timer);
-      cand->tick_source = agent_timeout_add_with_context (cand->agent, timeout,
+      cand->tick_source = agent_timeout_add_with_context (cand->agent,
+          stun_timer_remainder (&cand->timer),
           priv_turn_allocate_refresh_retransmissions_tick, cand);
       break;
   }
@@ -2028,7 +2027,7 @@ priv_add_new_turn_refresh (CandidateDiscovery *cdisco, NiceCandidate *relay_cand
           agent, cand, (lifetime - 60) * 1000);
       agent->refresh_list = modified_list;
 
-      /* step: also start the keepalive timer */
+      /* step: also start the refresh timer */
       /* refresh should be sent 1 minute before it expires */
       cand->timer_source =
           agent_timeout_add_with_context (agent, (lifetime - 60) * 1000,
