@@ -463,8 +463,11 @@ static gboolean priv_conn_keepalive_retransmissions_tick (gpointer pointer)
   switch (stun_timer_refresh (&pair->keepalive.timer)) {
     case STUN_USAGE_TIMER_RETURN_TIMEOUT:
       /* Time out */
-      nice_debug ("Agent %p : Keepalive conncheck Timed out!! "
-          "peer probably lost connection");
+      nice_debug ("Agent %p : Keepalive conncheck timed out!! "
+          "peer probably lost connection", pair->keepalive.agent);
+      agent_signal_component_state_change (pair->keepalive.agent,
+          pair->keepalive.stream_id, pair->keepalive.component_id,
+          NICE_COMPONENT_STATE_FAILED);
       break;
     case STUN_USAGE_TIMER_RETURN_RETRANSMIT:
       /* Retransmit */
@@ -472,7 +475,8 @@ static gboolean priv_conn_keepalive_retransmissions_tick (gpointer pointer)
           stun_message_length (&pair->keepalive.stun_message),
           (gchar *)pair->keepalive.stun_buffer);
 
-      nice_debug ("Agent %p : Retransmitting keepalive conncheck");
+      nice_debug ("Agent %p : Retransmitting keepalive conncheck",
+          pair->keepalive.agent);
       pair->keepalive.tick_source =
           agent_timeout_add_with_context (pair->keepalive.agent,
           stun_timer_remainder (&pair->keepalive.timer),
@@ -2257,6 +2261,33 @@ static gboolean priv_map_reply_to_relay_refresh (NiceAgent *agent, StunMessage *
 }
 
 
+static gboolean priv_map_reply_to_keepalive_conncheck (NiceAgent *agent,
+    Component *component, StunMessage *resp)
+{
+  StunTransactionId conncheck_id;
+  StunTransactionId response_id;
+  stun_message_id (resp, response_id);
+
+  if (component->selected_pair.keepalive.stun_message.buffer) {
+      stun_message_id (&component->selected_pair.keepalive.stun_message,
+          conncheck_id);
+      if (memcmp (conncheck_id, response_id, sizeof(StunTransactionId)) == 0) {
+        nice_debug ("Agent %p : Keepalive for selected pair received.",
+            agent);
+        if (component->selected_pair.keepalive.tick_source) {
+          g_source_destroy (component->selected_pair.keepalive.tick_source);
+          g_source_unref (component->selected_pair.keepalive.tick_source);
+          component->selected_pair.keepalive.tick_source = NULL;
+        }
+        component->selected_pair.keepalive.stun_message.buffer = NULL;
+        return TRUE;
+      }
+  }
+
+  return FALSE;
+}
+
+
 typedef struct {
   NiceAgent *agent;
   Stream *stream;
@@ -2636,6 +2667,11 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, Stream *stream,
       /* step: let's try to match the response to an existing turn refresh */
       if (trans_found != TRUE)
         trans_found = priv_map_reply_to_relay_refresh (agent, &req);
+
+      /* step: let's try to match the response to an existing keepalive conncheck */
+      if (trans_found != TRUE)
+        trans_found = priv_map_reply_to_keepalive_conncheck (agent, component,
+            &req);
 
       if (trans_found != TRUE)
         nice_debug ("Agent %p : Unable to match to an existing transaction, "
