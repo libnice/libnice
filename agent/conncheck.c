@@ -579,6 +579,10 @@ static gboolean priv_conn_keepalive_tick (gpointer pointer)
               p->keepalive.tick_source = NULL;
             }
 
+            p->keepalive.stream_id = stream->id;
+            p->keepalive.component_id = component->id;
+            p->keepalive.agent = agent;
+
             p->keepalive.tick_source =
                 agent_timeout_add_with_context (p->keepalive.agent,
                 stun_timer_remainder (&p->keepalive.timer),

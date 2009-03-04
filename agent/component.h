@@ -64,6 +64,8 @@ struct _CandidatePairKeepalive
 {
   NiceAgent *agent;
   GSource *tick_source;
+  guint stream_id;
+  guint component_id;
   StunTimer timer;
   uint8_t stun_buffer[STUN_MAX_MESSAGE_SIZE];
   StunMessage stun_message;
