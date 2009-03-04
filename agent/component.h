@@ -43,6 +43,8 @@
 
 #include "agent.h"
 #include "candidate.h"
+#include "stun/stunagent.h"
+#include "stun/usages/timer.h"
 
 G_BEGIN_DECLS
 
@@ -55,13 +57,24 @@ G_BEGIN_DECLS
 
 typedef struct _Component Component;
 typedef struct _CandidatePair CandidatePair;
+typedef struct _CandidatePairKeepalive CandidatePairKeepalive;
 typedef struct _IncomingCheck IncomingCheck;
+
+struct _CandidatePairKeepalive
+{
+  NiceAgent *agent;
+  GSource *tick_source;
+  StunTimer timer;
+  uint8_t stun_buffer[STUN_MAX_MESSAGE_SIZE];
+  StunMessage stun_message;
+};
 
 struct _CandidatePair
 {
   NiceCandidate *local;
   NiceCandidate *remote;
-  guint64 priority;           /**< candidate pair priority */  
+  guint64 priority;           /**< candidate pair priority */
+  CandidatePairKeepalive keepalive;
 };
 
 struct _IncomingCheck

@@ -65,6 +65,11 @@ static void priv_update_check_list_state_for_ready (NiceAgent *agent, Stream *st
 static void priv_prune_pending_checks (Stream *stream, guint component_id);
 static gboolean priv_schedule_triggered_check (NiceAgent *agent, Stream *stream, Component *component, NiceSocket *local_socket, NiceCandidate *remote_cand, gboolean use_candidate);
 static void priv_mark_pair_nominated (NiceAgent *agent, Stream *stream, Component *component, NiceCandidate *remotecand);
+static size_t priv_create_username (NiceAgent *agent, Stream *stream,
+    guint component_id, NiceCandidate *remote, NiceCandidate *local,
+    uint8_t *dest, guint dest_len, gboolean inbound);
+static size_t priv_get_password (NiceAgent *agent, Stream *stream,
+    NiceCandidate *remote, uint8_t **password);
 
 static int priv_timer_expired (GTimeVal *timer, GTimeVal *now)
 {
@@ -445,6 +450,48 @@ static gboolean priv_conn_check_tick (gpointer pointer)
   return ret;
 }
 
+static gboolean priv_conn_keepalive_retransmissions_tick (gpointer pointer)
+{
+  CandidatePair *pair = (CandidatePair *) pointer;
+
+  g_static_rec_mutex_lock (&pair->keepalive.agent->mutex);
+
+  g_source_destroy (pair->keepalive.tick_source);
+  g_source_unref (pair->keepalive.tick_source);
+  pair->keepalive.tick_source = NULL;
+
+  switch (stun_timer_refresh (&pair->keepalive.timer)) {
+    case STUN_USAGE_TIMER_RETURN_TIMEOUT:
+      /* Time out */
+      nice_debug ("Agent %p : Keepalive conncheck Timed out!! "
+          "peer probably lost connection");
+      break;
+    case STUN_USAGE_TIMER_RETURN_RETRANSMIT:
+      /* Retransmit */
+      nice_socket_send (pair->local->sockptr, &pair->remote->addr,
+          stun_message_length (&pair->keepalive.stun_message),
+          (gchar *)pair->keepalive.stun_buffer);
+
+      nice_debug ("Agent %p : Retransmitting keepalive conncheck");
+      pair->keepalive.tick_source =
+          agent_timeout_add_with_context (pair->keepalive.agent,
+          stun_timer_remainder (&pair->keepalive.timer),
+          priv_conn_keepalive_retransmissions_tick, pair);
+      break;
+    case STUN_USAGE_TIMER_RETURN_SUCCESS:
+      pair->keepalive.tick_source =
+          agent_timeout_add_with_context (pair->keepalive.agent,
+          stun_timer_remainder (&pair->keepalive.timer),
+          priv_conn_keepalive_retransmissions_tick, pair);
+      break;
+  }
+
+
+  g_static_rec_mutex_unlock (&pair->keepalive.agent->mutex);
+  return FALSE;
+}
+
+
 /*
  * Timer callback that handles initiating and managing connectivity
  * checks (paced by the Ta timer).
@@ -459,9 +506,7 @@ static gboolean priv_conn_keepalive_tick (gpointer pointer)
   GSList *i, *j;
   int errors = 0;
   gboolean ret = FALSE;
-  StunMessage msg;
-  uint8_t buf[STUN_MAX_MESSAGE_SIZE];
-  size_t buf_len;
+  size_t buf_len = 0;
 
   g_static_rec_mutex_lock (&agent->mutex);
 
@@ -480,15 +525,81 @@ static gboolean priv_conn_keepalive_tick (gpointer pointer)
 	memset (&sockaddr, 0, sizeof (sockaddr));
 	nice_address_copy_to_sockaddr (&p->remote->addr, &sockaddr);
 
-        buf_len = stun_usage_bind_keepalive (&agent->stun_agent, &msg,
-            buf, sizeof(buf));
+        if (agent->compatibility != NICE_COMPATIBILITY_DRAFT19) {
+          guint32 priority = nice_candidate_ice_priority_full (
+                  NICE_CANDIDATE_TYPE_PREF_PEER_REFLEXIVE, 1,
+                  p->local->component_id);
+          uint8_t uname[NICE_STREAM_MAX_UNAME];
+          size_t uname_len =
+              priv_create_username (agent, agent_find_stream (agent, stream->id),
+                  component->id, p->remote, p->local, uname, sizeof (uname),
+                  FALSE);
+          uint8_t *password = NULL;
+          size_t password_len = priv_get_password (agent,
+              agent_find_stream (agent, stream->id), p->remote, &password);
+          gchar tmpbuf[INET6_ADDRSTRLEN];
 
-        nice_socket_send (p->local->sockptr, &p->remote->addr, buf_len, (gchar *)buf);
+          if (agent->compatibility == NICE_COMPATIBILITY_MSN) {
+            password = g_base64_decode ((gchar *) password, &password_len);
+          }
 
-	nice_debug ("Agent %p : stun_bind_keepalive for pair %p res %d.",
-            agent, p, (int) buf_len);
-	if (buf_len == 0)
-	  ++errors;
+          nice_address_to_string (&p->remote->addr, tmpbuf);
+          nice_debug ("Agent %p : Keepalive STUN-CC REQ to '%s:%u', "
+              "socket=%u (c-id:%u), username='%s' (%d), "
+              "password='%s' (%d), priority=%u.", agent,
+              tmpbuf, ntohs(((struct sockaddr_in*)(&sockaddr))->sin_port),
+              p->local->sockptr->fileno, component->id,
+              uname, uname_len, password, password_len, priority);
+
+          if (uname_len > 0) {
+            buf_len = stun_usage_ice_conncheck_create (&agent->stun_agent,
+                &p->keepalive.stun_message, p->keepalive.stun_buffer,
+                sizeof(p->keepalive.stun_buffer),
+                uname, uname_len, password, password_len,
+                agent->controlling_mode, agent->controlling_mode, priority,
+                agent->tie_breaker,
+                agent_to_ice_compatibility (agent));
+
+            nice_debug ("Agent %p: conncheck created %d - %p",
+                agent, buf_len, p->keepalive.stun_message.buffer);
+
+            if (agent->compatibility == NICE_COMPATIBILITY_MSN) {
+              g_free (password);
+            }
+
+            stun_timer_start (&p->keepalive.timer);
+
+            /* send the conncheck */
+            nice_socket_send (p->local->sockptr, &p->remote->addr,
+                buf_len, (gchar *)p->keepalive.stun_buffer);
+
+            if (p->keepalive.tick_source != NULL) {
+              g_source_destroy (p->keepalive.tick_source);
+              g_source_unref (p->keepalive.tick_source);
+              p->keepalive.tick_source = NULL;
+            }
+
+            p->keepalive.tick_source =
+                agent_timeout_add_with_context (p->keepalive.agent,
+                stun_timer_remainder (&p->keepalive.timer),
+                priv_conn_keepalive_retransmissions_tick, p);
+          }
+          if (buf_len == 0)
+            ++errors;
+
+        } else {
+          buf_len = stun_usage_bind_keepalive (&agent->stun_agent,
+              &p->keepalive.stun_message, p->keepalive.stun_buffer,
+              sizeof(p->keepalive.stun_buffer));
+
+          nice_socket_send (p->local->sockptr, &p->remote->addr, buf_len,
+              (gchar *)p->keepalive.stun_buffer);
+
+          nice_debug ("Agent %p : stun_bind_keepalive for pair %p res %d.",
+              agent, p, (int) buf_len);
+          if (buf_len == 0)
+            ++errors;
+        }
       }
       component->media_after_tick = FALSE;
     }
