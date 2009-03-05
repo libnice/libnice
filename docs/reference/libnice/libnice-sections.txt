@@ -173,6 +173,7 @@ stun_strerror
 
 <SECTION>
 <FILE>turn</FILE>
+<TITLE>TURN</TITLE>
 StunUsageTurnCompatibility
 StunUsageTurnRequestPorts
 StunUsageTurnReturn
@@ -184,6 +185,7 @@ stun_usage_turn_refresh_process
 
 <SECTION>
 <FILE>ice</FILE>
+<TITLE>ICE</TITLE>
 StunUsageIceCompatibility
 StunUsageIceReturn
 stun_usage_ice_conncheck_create
@@ -195,6 +197,7 @@ stun_usage_ice_conncheck_use_candidate
 
 <SECTION>
 <FILE>timer</FILE>
+<TITLE>Timer</TITLE>
 StunTimer
 StunUsageTimerReturn
 stun_timer_start
@@ -205,6 +208,7 @@ stun_timer_remainder
 
 <SECTION>
 <FILE>bind</FILE>
+<TITLE>Bind</TITLE>
 StunUsageBindReturn
 stun_usage_bind_create
 stun_usage_bind_process
