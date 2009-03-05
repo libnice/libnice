@@ -3,8 +3,8 @@ AC_PREREQ(2.59c)
 
 dnl releases only do -Wall, cvs and prerelease does -Werror too
 dnl use a three digit version number for releases, and four for cvs/prerelease
-AC_INIT(libnice, 0.0.4.1)
-LIBNICE_RELEASE="no"
+AC_INIT(libnice, 0.0.5)
+LIBNICE_RELEASE="yes"
 
 AC_CONFIG_SRCDIR([agent/agent.c])
 AC_CONFIG_HEADER([config.h])
@@ -27,9 +27,9 @@ AC_CONFIG_FILES([
 	])
 
 # Set the libtool C/A/R version info
-LIBNICE_CURRENT=2
+LIBNICE_CURRENT=3
 LIBNICE_REVISION=0
-LIBNICE_AGE=2
+LIBNICE_AGE=3
 LIBNICE_LIBVERSION=${LIBNICE_CURRENT}:${LIBNICE_REVISION}:${LIBNICE_AGE}
 LIBNICE_LT_LDFLAGS="-version-info ${LIBNICE_LIBVERSION}"
 AC_SUBST(LIBNICE_LT_LDFLAGS)
