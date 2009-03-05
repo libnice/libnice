@@ -1,3 +1,18 @@
+libnice 0.0.5 (2009-03-04)
+===========================
+
+Name change from nice to libnice
+Added support for HTTP proxies
+Added a nice_interfaces API to query the local interfaces/ips
+Fixed libnice when used in dribble mode
+Fix a data corruption issue with the SHA1 algorithm
+Endianness gets checked at runtime so libnice should compile and work everywhere
+Add compatiblity for WLM2009 ICE
+Export libstun API and add documentation for libstun
+Add connectivity checks during the connection to detect when the peer gets disconnected
+Bug fixes and code cleaning
+
+
 nice 0.0.4 (2008-12-17)
 ========================
 
