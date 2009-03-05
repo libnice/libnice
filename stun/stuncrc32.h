@@ -43,6 +43,7 @@
 #include "win32_common.h"
 #else
 #include <stdint.h>
+#include <stdbool.h>
 #endif
 
 #include <stdlib.h>
@@ -53,7 +54,6 @@ typedef struct {
 } crc_data;
 
 
-int wlm2009_stupid_crc32_typo;
-uint32_t crc32 (const crc_data *data, size_t n);
+uint32_t crc32 (const crc_data *data, size_t n, bool wlm2009_stupid_crc32_typo);
 
 #endif /* _CRC32_H */

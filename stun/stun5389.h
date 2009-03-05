@@ -57,7 +57,8 @@
  *
  * @return fingerprint value in <b>host</b> byte order.
  */
-uint32_t stun_fingerprint (const uint8_t *msg, size_t len);
+uint32_t stun_fingerprint (const uint8_t *msg, size_t len,
+    bool wlm2009_stupid_crc32_typo);
 
 /**
  * stun_message_has_cookie:
