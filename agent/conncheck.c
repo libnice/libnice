@@ -688,7 +688,8 @@ static void priv_turn_allocate_refresh_tick_unlocked (CandidateRefresh *cand)
   password = (uint8_t *)cand->turn->password;
   password_len = (size_t) strlen (cand->turn->password);
 
-  if (cand->agent->compatibility == NICE_COMPATIBILITY_MSN) {
+  if (agent_to_turn_compatibility (cand->agent) ==
+      STUN_USAGE_TURN_COMPATIBILITY_MSN) {
     username = g_base64_decode ((gchar *)username, &username_len);
     password = g_base64_decode ((gchar *)password, &password_len);
   }
@@ -700,7 +701,8 @@ static void priv_turn_allocate_refresh_tick_unlocked (CandidateRefresh *cand)
       password, password_len,
       agent_to_turn_compatibility (cand->agent));
 
-  if (cand->agent->compatibility == NICE_COMPATIBILITY_MSN) {
+  if (agent_to_turn_compatibility (cand->agent) ==
+      STUN_USAGE_TURN_COMPATIBILITY_MSN) {
     g_free (cand->msn_turn_username);
     g_free (cand->msn_turn_password);
     cand->msn_turn_username = username;

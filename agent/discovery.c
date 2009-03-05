@@ -160,7 +160,7 @@ void refresh_free_item (gpointer data, gpointer user_data)
   password = (uint8_t *)cand->turn->password;
   password_len = (size_t) strlen (cand->turn->password);
 
-  if (agent->compatibility == NICE_COMPATIBILITY_MSN) {
+  if (agent_to_turn_compatibility (agent) == STUN_USAGE_TURN_COMPATIBILITY_MSN) {
     username = g_base64_decode ((gchar *)username, &username_len);
     password = g_base64_decode ((gchar *)password, &password_len);
   }
@@ -181,7 +181,7 @@ void refresh_free_item (gpointer data, gpointer user_data)
 
   }
 
-  if (agent->compatibility == NICE_COMPATIBILITY_MSN) {
+  if (agent_to_turn_compatibility (agent) == STUN_USAGE_TURN_COMPATIBILITY_MSN) {
     g_free (username);
     g_free (password);
   }
@@ -834,7 +834,8 @@ static gboolean priv_discovery_tick_unlocked (gpointer pointer)
           uint8_t *password = (uint8_t *)cand->turn->password;
           size_t password_len = (size_t) strlen (cand->turn->password);
 
-          if (agent->compatibility == NICE_COMPATIBILITY_MSN) {
+          if (agent_to_turn_compatibility (agent) ==
+              STUN_USAGE_TURN_COMPATIBILITY_MSN) {
             username = g_base64_decode ((gchar *)username, &username_len);
             password = g_base64_decode ((gchar *)password, &password_len);
           }
@@ -848,7 +849,8 @@ static gboolean priv_discovery_tick_unlocked (gpointer pointer)
               password, password_len,
               agent_to_turn_compatibility (agent));
 
-          if (agent->compatibility == NICE_COMPATIBILITY_MSN) {
+          if (agent_to_turn_compatibility (agent) ==
+              STUN_USAGE_TURN_COMPATIBILITY_MSN) {
             g_free (cand->msn_turn_username);
             g_free (cand->msn_turn_password);
             cand->msn_turn_username = username;
