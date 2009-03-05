@@ -38,6 +38,7 @@
 /**
  * SECTION:stunagent
  * @short_description: STUN agent for building and validating STUN messages
+ * @include: stun/stunagent.h
  * @see_also: #StunMessage
  * @stability: Stable
  *

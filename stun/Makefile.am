@@ -34,3 +34,9 @@ libstun_la_SOURCES = constants.h \
 libstun_la_LIBADD = $(LIBRT)
 
 EXTRA_DIST = win32_common.h
+
+libstun_la_includedir=$(includedir)/stun
+libstun_la_include_HEADERS = stunagent.h stunmessage.h win32_common.h debug.h constants.h
+
+libstun_usage_includedir=$(includedir)/stun/usages
+libstun_usage_include_HEADERS = usages/bind.h usages/ice.h usages/turn.h usages/timer.h

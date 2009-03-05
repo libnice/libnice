@@ -39,6 +39,7 @@
 /**
  * SECTION:stunmessage
  * @short_description: STUN messages parsing and formatting functions
+ * @include: stun/stunmessage.h
  * @see_also: #StunAgent
  * @stability: Stable
  *
