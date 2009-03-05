@@ -56,7 +56,6 @@
 #endif
 
 #include <sys/types.h>
-#include "constants.h"
 
 #ifdef _WIN32
 #include <winsock2.h>
@@ -65,6 +64,8 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #endif
+
+#include "constants.h"
 
 typedef struct _StunMessage StunMessage;
 
@@ -440,10 +441,12 @@ typedef enum
 } StunMessageReturn;
 
 #include "stunagent.h"
-#include "stunhmac.h"
-#include "stuncrc32.h"
-#include "utils.h"
-#include "stun5389.h"
+
+/**
+ * STUN_MAX_MESSAGE_SIZE:
+ * The Maximum size of a STUN message
+ */
+#define STUN_MAX_MESSAGE_SIZE 65552
 
 /**
  * StunMessage:

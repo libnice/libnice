@@ -39,6 +39,9 @@
 
 #include "stunmessage.h"
 #include "stunagent.h"
+#include "stunhmac.h"
+#include "stun5389.h"
+#include "utils.h"
 
 #include <string.h>
 #include <stdlib.h>

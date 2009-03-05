@@ -68,6 +68,7 @@
 typedef struct stun_agent_t StunAgent;
 
 #include "stunmessage.h"
+#include "debug.h"
 
 /**
  * StunCompatibility:

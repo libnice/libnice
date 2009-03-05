@@ -25,6 +25,7 @@ libstun_la_SOURCES = constants.h \
 	rand.c rand.h \
 	stunhmac.c stunhmac.h \
 	utils.c  utils.h \
+	debug.c  debug.h \
 	usages/ice.c usages/ice.h \
 	usages/bind.c usages/bind.h \
 	usages/turn.c usages/turn.h \

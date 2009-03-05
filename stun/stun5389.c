@@ -49,6 +49,7 @@
 #include <string.h>
 #include <stdlib.h>
 
+#include "stun5389.h"
 #include "stuncrc32.h"
 #include "stunmessage.h"
 

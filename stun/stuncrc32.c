@@ -3,7 +3,7 @@
  *
  * (C) 2007 Nokia Corporation. All rights reserved.
  *  Contact: Rémi Denis-Courmont
- * COPYRIGHT (C) 1986 Gary S. Brown 
+ * COPYRIGHT (C) 1986 Gary S. Brown
  *  See documentation of the function crc32() below.
  *
  * The contents of this file are subject to the Mozilla Public License Version

@@ -38,6 +38,7 @@
 #endif
 
 #include "stunmessage.h"
+#include "utils.h"
 
 #ifdef _WIN32
 #include <winsock2.h>

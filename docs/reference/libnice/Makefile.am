@@ -40,8 +40,9 @@ FIXXREF_OPTIONS=
 HFILE_GLOB=$(DOC_SOURCE_DIR)/agent/agent.h $(DOC_SOURCE_DIR)/agent/address.h \
 	$(DOC_SOURCE_DIR)/agent/debug.h $(DOC_SOURCE_DIR)/agent/candidate.h \
 	$(DOC_SOURCE_DIR)/agent/interfaces.h \
-	$(DOC_SOURCE_DIR)/stun/stunmessage.h $(DOC_SOURCE_DIR)/stun/stun5389.h \
-	$(DOC_SOURCE_DIR)/stun/utils.h 	$(DOC_SOURCE_DIR)/stun/stunagent.h  \
+  	$(DOC_SOURCE_DIR)/stun/stunagent.h  \
+	$(DOC_SOURCE_DIR)/stun/stunmessage.h 
+	$(DOC_SOURCE_DIR)/stun/debug.h \
 	$(DOC_SOURCE_DIR)/stun/usages/bind.h \
 	$(DOC_SOURCE_DIR)/stun/usages/ice.h \
 	$(DOC_SOURCE_DIR)/stun/usages/timer.h \

@@ -1,9 +1,7 @@
 /*
  * This file is part of the Nice GLib ICE library.
  *
- * (C) 2006, 2007 Collabora Ltd.
- *  Contact: Dafydd Harries
- * (C) 2006, 2007 Nokia Corporation. All rights reserved.
+ * (C) 2007 Nokia Corporation. All rights reserved.
  *  Contact: Rémi Denis-Courmont
  *
  * The contents of this file are subject to the Mozilla Public License Version
@@ -35,43 +33,35 @@
  * file under either the MPL or the LGPL.
  */
 
+#ifndef STUN_DEBUG_H
+#define STUN_DEBUG_H
 
-#ifndef _STUN_5389_H
-#define _STUN_5389_H
-
-
-#ifdef _WIN32
-#include "win32_common.h"
-#else
-# include <stdint.h>
-# include <stdbool.h>
+#ifdef __cplusplus
+extern "C" {
 #endif
-# include <sys/types.h>
 
-#include "stunmessage.h"
-/*
- * Computes the FINGERPRINT checksum of a STUN message.
- * @param msg pointer to the STUN message
- * @param len size of the message from header (inclusive) and up to
- *            FINGERPRINT attribute (inclusive)
- *
- * @return fingerprint value in <b>host</b> byte order.
- */
-uint32_t stun_fingerprint (const uint8_t *msg, size_t len,
-    bool wlm2009_stupid_crc32_typo);
 
 /**
- * stun_message_has_cookie:
- * @msg: The #StunMessage
+ * stun_debug_enable:
  *
- * Checks if the STUN message has a RFC5389 compatible cookie
- *
- * Returns: %TRUE if the cookie is present, %FALSE otherwise
+ * Enable debug messages to stderr
  */
-bool stun_message_has_cookie (const StunMessage *msg);
+void stun_debug_enable (void);
 
-StunMessageReturn stun_message_append_software (StunMessage *msg);
+/**
+ * stun_debug_disable:
+ *
+ * Disable debug messages to stderr
+ */
+void stun_debug_disable (void);
 
 
-#endif /* _STUN_5389_H */
+void stun_debug (const char *fmt, ...);
+void stun_debug_bytes (const void *data, size_t len);
 
+
+# ifdef __cplusplus
+}
+# endif
+
+#endif /* STUN_DEBUG_H */
