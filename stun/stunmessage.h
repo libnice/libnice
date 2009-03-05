@@ -864,4 +864,39 @@ StunMethod stun_message_get_method (const StunMessage *msg);
  */
 bool stun_message_has_attribute (const StunMessage *msg, StunAttribute type);
 
+
+/* Defined in stun5389.c */
+/**
+ * stun_message_has_cookie:
+ * @msg: The #StunMessage
+ *
+ * Checks if the STUN message has a RFC5389 compatible cookie
+ *
+ * Returns: %TRUE if the cookie is present, %FALSE otherwise
+ */
+bool stun_message_has_cookie (const StunMessage *msg);
+
+
+/**
+ * stun_optional:
+ * @t: An attribute type
+ *
+ * Helper function that checks whether a STUN attribute is a mandatory
+ * or an optional attribute
+ *
+ * Returns: %TRUE if the attribute is an optional one
+ */
+bool stun_optional (uint16_t t);
+
+/**
+ * stun_strerror:
+ * @code: host-byte order error code
+ *
+ * Transforms a STUN error-code into a human readable string
+ *
+ * Returns: A static pointer to a NULL-terminated error message string.
+ */
+const char *stun_strerror (StunError code);
+
+
 #endif /* _STUN_MESSAGE_H */
