@@ -65,8 +65,8 @@ stun/stunbdc
 stun/stund
 stun/unknown.c
 stun/libstun.la
-stun/stun-client
-stun/stun-server
+stun/tools/stunbdc
+stun/tools/stund
 stun/test-attribute-dump
 stun/test-attribute-dump-unknown
 stun/test-attribute-pack
