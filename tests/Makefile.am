@@ -16,7 +16,7 @@ AM_CFLAGS = \
 	-I $(top_srcdir)/socket \
 	-I $(top_srcdir)/stun
 
-COMMON_LDADD = $(top_srcdir)/agent/libagent.la $(top_srcdir)/socket/libsocket.la $(GLIB_LIBS)
+COMMON_LDADD = $(top_builddir)/agent/libagent.la $(top_builddir)/socket/libsocket.la $(GLIB_LIBS)
 
 check_PROGRAMS = \
 	test-bsd \

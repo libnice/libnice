@@ -12,12 +12,12 @@ lib_LTLIBRARIES = libnice.la
 
 libnice_la_SOURCES =
 libnice_la_DEPENDENCIES = \
-	../agent/libagent.la \
+	$(top_builddir)/agent/libagent.la \
 	libnice.sym
 
 libnice_la_LIBADD = \
 	$(GLIB_LIBS) \
-	../agent/libagent.la
+	$(top_builddir)/agent/libagent.la
 
 libnice_la_LDFLAGS = \
 	-export-symbols $(srcdir)/libnice.sym \

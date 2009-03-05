@@ -58,12 +58,12 @@ libagent_la_SOURCES = \
 	$(BUILT_SOURCES)
 
 libagent_la_LIBADD = \
-	../random/librandom.la \
-	../socket/libsocket.la \
-	../stun/libstun.la
+	$(top_builddir)/random/librandom.la \
+	$(top_builddir)/socket/libsocket.la \
+	$(top_builddir)/stun/libstun.la
 libagent_la_DEPENDENCIES = \
-	../random/librandom.la \
-	../socket/libsocket.la \
-	../stun/libstun.la
+	$(top_builddir)/random/librandom.la \
+	$(top_builddir)/socket/libsocket.la \
+	$(top_builddir)/stun/libstun.la
 
 pkginclude_HEADERS = agent.h candidate.h debug.h address.h interfaces.h

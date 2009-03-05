@@ -8,7 +8,7 @@
 include $(top_srcdir)/common.mk
 AM_CPPFLAGS = -I$(top_srcdir)
 AM_CFLAGS = -std=gnu99
-LDADD = ../libstun.la
+LDADD = $(top_builddir)/stun/libstun.la
 
 check_PROGRAMS = \
 	test-parse \
