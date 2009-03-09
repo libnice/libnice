@@ -504,15 +504,12 @@ static gboolean priv_conn_keepalive_retransmissions_tick (gpointer pointer)
  *
  * @return will return FALSE when no more pending timers.
  */
-static gboolean priv_conn_keepalive_tick (gpointer pointer)
+static gboolean priv_conn_keepalive_tick_unlocked (NiceAgent *agent)
 {
-  NiceAgent *agent = pointer;
   GSList *i, *j;
   int errors = 0;
   gboolean ret = FALSE;
   size_t buf_len = 0;
-
-  g_static_rec_mutex_lock (&agent->mutex);
 
   /* case 1: session established and media flowing
    *         (ref ICE sect 10 "Keepalives" ID-19)  */
@@ -633,9 +630,21 @@ static gboolean priv_conn_keepalive_tick (gpointer pointer)
   ret = TRUE;
 
  done:
-  g_static_rec_mutex_unlock (&agent->mutex);
   return ret;
 }
+
+static gboolean priv_conn_keepalive_tick (gpointer pointer)
+{
+  NiceAgent *agent = pointer;
+  gboolean ret;
+
+  g_static_rec_mutex_lock (&agent->mutex);
+  ret = priv_conn_keepalive_tick_unlocked (agent);
+  g_static_rec_mutex_unlock (&agent->mutex);
+
+  return ret;
+}
+
 
 static gboolean priv_turn_allocate_refresh_retransmissions_tick (gpointer pointer)
 {
@@ -940,6 +949,8 @@ static gboolean priv_update_selected_pair (NiceAgent *agent, Component *componen
     component->selected_pair.local = pair->local;
     component->selected_pair.remote = pair->remote;
     component->selected_pair.priority = pair->priority;
+
+    priv_conn_keepalive_tick_unlocked (agent);
 
     agent_signal_new_selected_pair (agent, pair->stream_id, component->id, pair->local->foundation, pair->remote->foundation);
 

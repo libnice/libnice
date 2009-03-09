@@ -218,7 +218,6 @@ void component_update_selected_pair (Component *component, const CandidatePair *
   component->selected_pair.remote = pair->remote;
   component->selected_pair.priority = pair->priority;
 
-
 }
 
 /*
