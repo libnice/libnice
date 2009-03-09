@@ -100,8 +100,6 @@ struct _Component
   GList *turn_servers;             /**< List of TURN servers */
   CandidatePair selected_pair; /**< independent from checklists, 
 				    see ICE 11.1. "Sending Media" (ID-19) */
-  gboolean media_after_tick;   /**< true if media received since last
-				    keepalive tick */
   NiceCandidate *restart_candidate; /**< for storing active remote candidate during a restart */
   NiceAgentRecvFunc g_source_io_cb; /**< function called on io cb */
   gpointer data;                    /**< data passed to the io function */

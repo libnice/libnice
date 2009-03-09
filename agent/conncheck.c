@@ -521,8 +521,7 @@ static gboolean priv_conn_keepalive_tick (gpointer pointer)
     Stream *stream = i->data;
     for (j = stream->components; j; j = j->next) {
       Component *component = j->data;
-      if (component->selected_pair.local != NULL &&
-	  component->media_after_tick != TRUE) {
+      if (component->selected_pair.local != NULL) {
 	CandidatePair *p = &component->selected_pair;
 	struct sockaddr sockaddr;
 
@@ -609,7 +608,6 @@ static gboolean priv_conn_keepalive_tick (gpointer pointer)
             ++errors;
         }
       }
-      component->media_after_tick = FALSE;
     }
   }
 
