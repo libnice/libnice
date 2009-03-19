@@ -456,6 +456,15 @@ static gboolean priv_conn_keepalive_retransmissions_tick (gpointer pointer)
 
   g_static_rec_mutex_lock (&pair->keepalive.agent->mutex);
 
+  /* A race condition might happen where the mutex above waits for the lock
+   * and in the meantime another thread destroys the source.
+   * In that case, we don't need to run our retransmission tick since it should
+   * have been cancelled */
+  if (pair->keepalive.tick_source == NULL) {
+    g_static_rec_mutex_unlock (&pair->keepalive.agent->mutex);
+    return FALSE;
+  }
+
   g_source_destroy (pair->keepalive.tick_source);
   g_source_unref (pair->keepalive.tick_source);
   pair->keepalive.tick_source = NULL;
@@ -651,6 +660,15 @@ static gboolean priv_turn_allocate_refresh_retransmissions_tick (gpointer pointe
   CandidateRefresh *cand = (CandidateRefresh *) pointer;
 
   g_static_rec_mutex_lock (&cand->agent->mutex);
+
+  /* A race condition might happen where the mutex above waits for the lock
+   * and in the meantime another thread destroys the source.
+   * In that case, we don't need to run our retransmission tick since it should
+   * have been cancelled */
+  if (cand->tick_source == NULL) {
+    g_static_rec_mutex_unlock (&cand->agent->mutex);
+    return FALSE;
+  }
 
   g_source_destroy (cand->tick_source);
   g_source_unref (cand->tick_source);
