@@ -173,6 +173,13 @@ void refresh_free_item (gpointer data, gpointer user_data)
       agent_to_turn_compatibility (agent));
 
   if (buffer_len > 0) {
+    StunTransactionId id;
+
+    /* forget the transaction since we don't care about the result and
+     * we don't implement retransmissions/timeout */
+    stun_message_id (&cand->stun_message, id);
+    stun_agent_forget_transaction (&cand->stun_agent, id);
+
     /* send the refresh twice since we won't do retransmissions */
     nice_socket_send (cand->nicesock, &cand->server,
         buffer_len, (gchar *)cand->stun_buffer);
@@ -895,12 +902,20 @@ static gboolean priv_discovery_tick_unlocked (gpointer pointer)
       else if (priv_timer_expired (&cand->next_tick, &now)) {
         switch (stun_timer_refresh (&cand->timer)) {
           case STUN_USAGE_TIMER_RETURN_TIMEOUT:
-            /* case: error, abort processing */
-            cand->done = TRUE;
-            cand->stun_message.buffer = NULL;
-            cand->stun_message.buffer_len = 0;
-            nice_debug ("Agent %p : bind discovery timed out, aborting discovery item.", agent);
-            break;
+            {
+              /* Time out */
+              /* case: error, abort processing */
+              StunTransactionId id;
+
+              stun_message_id (&cand->stun_message, id);
+              stun_agent_forget_transaction (&cand->stun_agent, id);
+
+              cand->done = TRUE;
+              cand->stun_message.buffer = NULL;
+              cand->stun_message.buffer_len = 0;
+              nice_debug ("Agent %p : bind discovery timed out, aborting discovery item.", agent);
+              break;
+            }
           case STUN_USAGE_TIMER_RETURN_RETRANSMIT:
             {
               /* case: not ready complete, so schedule next timeout */

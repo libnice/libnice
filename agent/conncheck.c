@@ -265,13 +265,23 @@ static gboolean priv_conn_check_tick_stream (Stream *stream, NiceAgent *agent, G
       } else if (priv_timer_expired (&p->next_tick, now)) {
         switch (stun_timer_refresh (&p->timer)) {
           case STUN_USAGE_TIMER_RETURN_TIMEOUT:
-            /* case: error, abort processing */
-            nice_debug ("Agent %p : Retransmissions failed, giving up on connectivity check %p", agent, p);
-            p->state = NICE_CHECK_FAILED;
-            nice_debug ("Agent %p : pair %p state FAILED", agent, p);
-            p->stun_message.buffer = NULL;
-            p->stun_message.buffer_len = 0;
-            break;
+            {
+              /* case: error, abort processing */
+              StunTransactionId id;
+
+              nice_debug ("Agent %p : Retransmissions failed, giving up on connectivity check %p", agent, p);
+              p->state = NICE_CHECK_FAILED;
+              nice_debug ("Agent %p : pair %p state FAILED", agent, p);
+
+              stun_message_id (&p->stun_message, id);
+              stun_agent_forget_transaction (&agent->stun_agent, id);
+
+              p->stun_message.buffer = NULL;
+              p->stun_message.buffer_len = 0;
+
+
+              break;
+            }
           case STUN_USAGE_TIMER_RETURN_RETRANSMIT:
             {
               /* case: not ready, so schedule a new timeout */
@@ -471,13 +481,21 @@ static gboolean priv_conn_keepalive_retransmissions_tick (gpointer pointer)
 
   switch (stun_timer_refresh (&pair->keepalive.timer)) {
     case STUN_USAGE_TIMER_RETURN_TIMEOUT:
-      /* Time out */
-      nice_debug ("Agent %p : Keepalive conncheck timed out!! "
-          "peer probably lost connection", pair->keepalive.agent);
-      agent_signal_component_state_change (pair->keepalive.agent,
-          pair->keepalive.stream_id, pair->keepalive.component_id,
-          NICE_COMPONENT_STATE_FAILED);
-      break;
+      {
+        /* Time out */
+        StunTransactionId id;
+
+
+        stun_message_id (&pair->keepalive.stun_message, id);
+        stun_agent_forget_transaction (&pair->keepalive.agent->stun_agent, id);
+
+        nice_debug ("Agent %p : Keepalive conncheck timed out!! "
+            "peer probably lost connection", pair->keepalive.agent);
+        agent_signal_component_state_change (pair->keepalive.agent,
+            pair->keepalive.stream_id, pair->keepalive.component_id,
+            NICE_COMPONENT_STATE_FAILED);
+        break;
+      }
     case STUN_USAGE_TIMER_RETURN_RETRANSMIT:
       /* Retransmit */
       nice_socket_send (pair->local->sockptr, &pair->remote->addr,
@@ -676,9 +694,16 @@ static gboolean priv_turn_allocate_refresh_retransmissions_tick (gpointer pointe
 
   switch (stun_timer_refresh (&cand->timer)) {
     case STUN_USAGE_TIMER_RETURN_TIMEOUT:
-      /* Time out */
-      refresh_cancel (cand);
-      break;
+      {
+        /* Time out */
+        StunTransactionId id;
+
+        stun_message_id (&cand->stun_message, id);
+        stun_agent_forget_transaction (&cand->stun_agent, id);
+
+        refresh_cancel (cand);
+        break;
+      }
     case STUN_USAGE_TIMER_RETURN_RETRANSMIT:
       /* Retransmit */
       nice_socket_send (cand->nicesock, &cand->server,

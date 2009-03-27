@@ -517,13 +517,21 @@ priv_retransmissions_tick_unlocked (TurnPriv *priv)
   if (priv->current_binding_msg) {
     switch (stun_timer_refresh (&priv->current_binding_msg->timer)) {
       case STUN_USAGE_TIMER_RETURN_TIMEOUT:
-        /* Time out */
-        g_free (priv->current_binding);
-        priv->current_binding = NULL;
-        g_free (priv->current_binding_msg);
-        priv->current_binding_msg = NULL;
-        priv_process_pending_bindings (priv);
-        break;
+        {
+          /* Time out */
+          StunTransactionId id;
+
+          g_free (priv->current_binding);
+          priv->current_binding = NULL;
+          g_free (priv->current_binding_msg);
+          priv->current_binding_msg = NULL;
+
+          stun_message_id (&priv->current_binding_msg->message, id);
+          stun_agent_forget_transaction (&priv->agent, id);
+
+          priv_process_pending_bindings (priv);
+          break;
+        }
       case STUN_USAGE_TIMER_RETURN_RETRANSMIT:
         /* Retransmit */
         nice_socket_send (priv->base_socket, &priv->server_addr,
