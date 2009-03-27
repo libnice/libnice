@@ -594,42 +594,45 @@ static gboolean priv_conn_keepalive_tick_unlocked (NiceAgent *agent)
               g_free (password);
             }
 
-            stun_timer_start (&p->keepalive.timer);
+            if (buf_len > 0) {
+              stun_timer_start (&p->keepalive.timer);
 
-            /* send the conncheck */
-            nice_socket_send (p->local->sockptr, &p->remote->addr,
-                buf_len, (gchar *)p->keepalive.stun_buffer);
+              /* send the conncheck */
+              nice_socket_send (p->local->sockptr, &p->remote->addr,
+                  buf_len, (gchar *)p->keepalive.stun_buffer);
 
-            if (p->keepalive.tick_source != NULL) {
-              g_source_destroy (p->keepalive.tick_source);
-              g_source_unref (p->keepalive.tick_source);
-              p->keepalive.tick_source = NULL;
+              if (p->keepalive.tick_source != NULL) {
+                g_source_destroy (p->keepalive.tick_source);
+                g_source_unref (p->keepalive.tick_source);
+                p->keepalive.tick_source = NULL;
+              }
+
+              p->keepalive.stream_id = stream->id;
+              p->keepalive.component_id = component->id;
+              p->keepalive.agent = agent;
+
+              p->keepalive.tick_source =
+                  agent_timeout_add_with_context (p->keepalive.agent,
+                      stun_timer_remainder (&p->keepalive.timer),
+                      priv_conn_keepalive_retransmissions_tick, p);
+            } else {
+              ++errors;
             }
-
-            p->keepalive.stream_id = stream->id;
-            p->keepalive.component_id = component->id;
-            p->keepalive.agent = agent;
-
-            p->keepalive.tick_source =
-                agent_timeout_add_with_context (p->keepalive.agent,
-                stun_timer_remainder (&p->keepalive.timer),
-                priv_conn_keepalive_retransmissions_tick, p);
           }
-          if (buf_len == 0)
-            ++errors;
-
         } else {
           buf_len = stun_usage_bind_keepalive (&agent->stun_agent,
               &p->keepalive.stun_message, p->keepalive.stun_buffer,
               sizeof(p->keepalive.stun_buffer));
 
-          nice_socket_send (p->local->sockptr, &p->remote->addr, buf_len,
-              (gchar *)p->keepalive.stun_buffer);
+          if (buf_len > 0) {
+            nice_socket_send (p->local->sockptr, &p->remote->addr, buf_len,
+                (gchar *)p->keepalive.stun_buffer);
 
-          nice_debug ("Agent %p : stun_bind_keepalive for pair %p res %d.",
-              agent, p, (int) buf_len);
-          if (buf_len == 0)
+            nice_debug ("Agent %p : stun_bind_keepalive for pair %p res %d.",
+                agent, p, (int) buf_len);
+          } else {
             ++errors;
+          }
         }
       }
     }
@@ -1543,16 +1546,22 @@ int conn_check_send (NiceAgent *agent, CandidateCheckPair *pair)
       g_free (password);
     }
 
-    stun_timer_start (&pair->timer);
+    if (buffer_len > 0) {
+      stun_timer_start (&pair->timer);
 
-    /* send the conncheck */
-    nice_socket_send (pair->local->sockptr, &pair->remote->addr,
-        buffer_len, (gchar *)pair->stun_buffer);
+      /* send the conncheck */
+      nice_socket_send (pair->local->sockptr, &pair->remote->addr,
+          buffer_len, (gchar *)pair->stun_buffer);
 
-    timeout = stun_timer_remainder (&pair->timer);
-    /* note: convert from milli to microseconds for g_time_val_add() */
-    g_get_current_time (&pair->next_tick);
-    g_time_val_add (&pair->next_tick, timeout * 1000);
+      timeout = stun_timer_remainder (&pair->timer);
+      /* note: convert from milli to microseconds for g_time_val_add() */
+      g_get_current_time (&pair->next_tick);
+      g_time_val_add (&pair->next_tick, timeout * 1000);
+    } else {
+      pair->stun_message.buffer = NULL;
+      pair->stun_message.buffer_len = 0;
+      return -1;
+    }
   }
     
   return 0;
