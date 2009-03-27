@@ -421,13 +421,6 @@ static void keepalive (void)
       (struct sockaddr *)&addr, addrlen);
   assert (val >= 0);
 
-
-  /* Wrong address family test */
-  addr.ss_family = addr.ss_family == AF_INET ? AF_INET6 : AF_INET;
-  val = sendto (fd, buf, len, MSG_DONTWAIT | MSG_NOSIGNAL,
-      (struct sockaddr *)&addr, addrlen);
-  assert (val < 0);
-
   /* End */
   close (servfd);
 
