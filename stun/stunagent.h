@@ -331,6 +331,24 @@ StunValidationStatus stun_agent_validate (StunAgent *agent, StunMessage *msg,
     StunMessageIntegrityValidate validater, void * validater_data);
 
 /**
+ * stun_agent_forget_transaction:
+ * @agent: The #StunAgent
+ * @id: The #StunTransactionId of the transaction to forget
+ *
+ * This function is used to make the #StunAgent forget about a previously
+ * created transaction. <br/>
+ * This function should be called when a STUN request was previously
+ * created with stun_agent_finish_message() and for which no response was ever
+ * received (timed out). The #StunAgent keeps a list of the sent transactions
+ * in order to validate the responses received. If the response is never received
+ * this will allow the #StunAgent to forget about the timed out transaction and
+ * free its slot for future transactions.
+ * Returns: %TRUE if the transaction was found, %FALSE otherwise
+ */
+bool stun_agent_forget_transaction (StunAgent *agent, StunTransactionId id);
+
+
+/**
  * stun_agent_init_request:
  * @agent: The #StunAgent
  * @msg: The #StunMessage to build

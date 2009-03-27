@@ -319,6 +319,21 @@ StunValidationStatus stun_agent_validate (StunAgent *agent, StunMessage *msg,
 
 }
 
+bool stun_agent_forget_transaction (StunAgent *agent, StunTransactionId id)
+{
+  int i;
+
+  for (i = 0; i < STUN_AGENT_MAX_SAVED_IDS; i++) {
+    if (agent->sent_ids[i].valid == TRUE &&
+        memcmp (id, agent->sent_ids[i].id,
+            sizeof(StunTransactionId)) == 0) {
+      agent->sent_ids[i].valid = FALSE;
+      return TRUE;
+    }
+  }
+
+  return FALSE;
+}
 
 bool stun_agent_init_request (StunAgent *agent, StunMessage *msg,
     uint8_t *buffer, size_t buffer_len, StunMethod m)

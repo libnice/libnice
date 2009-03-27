@@ -40,6 +40,7 @@ nice_interfaces_get_local_ips
 stun_agent_build_unknown_attributes_error
 stun_agent_default_validater
 stun_agent_finish_message
+stun_agent_forget_transaction
 stun_agent_init
 stun_agent_init_error
 stun_agent_init_indication
