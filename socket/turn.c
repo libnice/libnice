@@ -204,8 +204,11 @@ socket_recv (NiceSocket *sock, NiceAddress *from, guint len, gchar *buf)
   recv_len = nice_socket_recv (priv->base_socket, &recv_from,
       sizeof(recv_buf), (gchar *) recv_buf);
 
-  return nice_turn_socket_parse_recv (sock, &dummy, from, len, buf,
-      &recv_from, (gchar *) recv_buf, (guint) recv_len);
+  if (recv_len > 0)
+    return nice_turn_socket_parse_recv (sock, &dummy, from, len, buf,
+        &recv_from, (gchar *) recv_buf, (guint) recv_len);
+  else
+    return recv_len;
 }
 
 static gboolean
