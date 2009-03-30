@@ -117,6 +117,12 @@ component_free (Component *cmp)
   }
   g_list_free (cmp->turn_servers);
 
+  if (cmp->selected_pair.keepalive.tick_source != NULL) {
+    g_source_destroy (cmp->selected_pair.keepalive.tick_source);
+    g_source_unref (cmp->selected_pair.keepalive.tick_source);
+    cmp->selected_pair.keepalive.tick_source = NULL;
+  }
+
   g_slice_free (Component, cmp);
 }
 
