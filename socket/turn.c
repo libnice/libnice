@@ -234,14 +234,17 @@ socket_send (NiceSocket *sock, const NiceAddress *to,
   nice_address_copy_to_sockaddr (to, (struct sockaddr *)&sa);
 
   if (binding) {
-    if (priv->compatibility == NICE_TURN_SOCKET_COMPATIBILITY_DRAFT9 &&
-        len + sizeof(uint32_t) <= sizeof(buffer)) {
-      uint16_t len16 = htons ((uint16_t) len);
-      uint16_t channel16 = htons (binding->channel);
-      memcpy (buffer, &channel16, sizeof(uint16_t));
-      memcpy (buffer + sizeof(uint16_t), &len16,sizeof(uint16_t));
-      memcpy (buffer + sizeof(uint32_t), buf, len);
-      msg_len = len + sizeof(uint32_t);
+    if (priv->compatibility == NICE_TURN_SOCKET_COMPATIBILITY_DRAFT9) {
+      if (len + sizeof(uint32_t) <= sizeof(buffer)) {
+        uint16_t len16 = htons ((uint16_t) len);
+        uint16_t channel16 = htons (binding->channel);
+        memcpy (buffer, &channel16, sizeof(uint16_t));
+        memcpy (buffer + sizeof(uint16_t), &len16,sizeof(uint16_t));
+        memcpy (buffer + sizeof(uint32_t), buf, len);
+        msg_len = len + sizeof(uint32_t);
+      } else {
+        return 0;
+      }
     } else {
       return nice_socket_send (priv->base_socket, &priv->server_addr, len, buf);
     }
