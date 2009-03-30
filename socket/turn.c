@@ -90,6 +90,7 @@ typedef struct {
   StunTransactionId id;
   GSource *source;
   TurnPriv *priv;
+  gint ref;
 } SendRequest;
 
 static void socket_close (NiceSocket *sock);
@@ -313,6 +314,7 @@ socket_send (NiceSocket *sock, const NiceAddress *to,
       req->source = agent_timeout_add_with_context (priv->nice, STUN_END_TIMEOUT,
           priv_forget_send_request, req);
       priv->send_requests = g_list_append (priv->send_requests, req);
+      g_atomic_int_inc (&req->ref);
     }
   }
 
@@ -336,6 +338,8 @@ priv_forget_send_request (gpointer pointer)
 {
   SendRequest *req = pointer;
 
+  g_atomic_int_inc (&req->ref);
+
   g_static_rec_mutex_lock (&req->priv->nice->mutex);
 
   stun_agent_forget_transaction (&req->priv->agent, req->id);
@@ -347,7 +351,9 @@ priv_forget_send_request (gpointer pointer)
 
   g_static_rec_mutex_unlock (&req->priv->nice->mutex);
 
-  g_slice_free (SendRequest, req);
+  if (g_atomic_int_dec_and_test (&req->ref))
+      g_slice_free (SendRequest, req);
+
   return FALSE;
 }
 
@@ -402,7 +408,8 @@ nice_turn_socket_parse_recv (NiceSocket *sock, NiceSocket **from_sock,
 
             priv->send_requests = g_list_remove (priv->send_requests, req);
 
-            g_slice_free (SendRequest, req);
+            if (g_atomic_int_dec_and_test (&req->ref))
+              g_slice_free (SendRequest, req);
           }
 
           if (priv->compatibility == NICE_TURN_SOCKET_COMPATIBILITY_GOOGLE) {
