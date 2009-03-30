@@ -53,12 +53,14 @@
 #include "stun/usages/timer.h"
 #include "agent-priv.h"
 
+#define STUN_END_TIMEOUT 8000
+
+
 typedef struct {
   StunMessage message;
   uint8_t buffer[STUN_MAX_MESSAGE_SIZE];
   StunTimer timer;
 } TURNMessage;
-
 
 typedef struct {
   NiceAddress peer;
@@ -80,9 +82,15 @@ typedef struct {
   uint8_t *password;
   size_t password_len;
   NiceTurnSocketCompatibility compatibility;
+  GList *send_requests;
 } TurnPriv;
 
 
+typedef struct {
+  StunTransactionId id;
+  GSource *source;
+  TurnPriv *priv;
+} SendRequest;
 
 static void socket_close (NiceSocket *sock);
 static gint socket_recv (NiceSocket *sock, NiceAddress *from,
@@ -99,7 +107,7 @@ static void priv_send_turn_message (TurnPriv *priv, TURNMessage *msg);
 static gboolean priv_send_channel_bind (TurnPriv *priv,  StunMessage *resp,
     uint16_t channel, NiceAddress *peer);
 static gboolean priv_add_channel_binding (TurnPriv *priv, NiceAddress *peer);
-
+static gboolean priv_forget_send_request (gpointer pointer);
 
 
 NiceSocket *
@@ -184,6 +192,15 @@ socket_close (NiceSocket *sock)
     g_source_unref (priv->tick_source);
     priv->tick_source = NULL;
   }
+
+  for (i = priv->send_requests; i; i = i->next) {
+    SendRequest *r = i->data;
+    g_source_destroy (r->source);
+    g_source_unref (r->source);
+    g_slice_free (SendRequest, r);
+  }
+  g_list_free (priv->send_requests);
+
 
   g_free (priv->current_binding);
   g_free (priv->current_binding_msg);
@@ -288,6 +305,15 @@ socket_send (NiceSocket *sock, const NiceAddress *to,
 
     msg_len = stun_agent_finish_message (&priv->agent, &msg,
         priv->password, priv->password_len);
+    if (msg_len > 0 && stun_message_get_class (&msg) == STUN_REQUEST) {
+      SendRequest *req = g_slice_new0 (SendRequest);
+
+      req->priv = priv;
+      stun_message_id (&msg, req->id);
+      req->source = agent_timeout_add_with_context (priv->nice, STUN_END_TIMEOUT,
+          priv_forget_send_request, req);
+      priv->send_requests = g_list_append (priv->send_requests, req);
+    }
   }
 
   if (msg_len > 0) {
@@ -305,6 +331,25 @@ socket_is_reliable (NiceSocket *sock)
   return nice_socket_is_reliable (priv->base_socket);
 }
 
+static gboolean
+priv_forget_send_request (gpointer pointer)
+{
+  SendRequest *req = pointer;
+
+  g_static_rec_mutex_lock (&req->priv->nice->mutex);
+
+  stun_agent_forget_transaction (&req->priv->agent, req->id);
+
+  g_source_destroy (req->source);
+  g_source_unref (req->source);
+
+  req->priv->send_requests = g_list_remove (req->priv->send_requests, req);
+
+  g_static_rec_mutex_unlock (&req->priv->nice->mutex);
+
+  g_slice_free (SendRequest, req);
+  return FALSE;
+}
 
 
 gint
@@ -336,12 +381,36 @@ nice_turn_socket_parse_recv (NiceSocket *sock, NiceSocket **from_sock,
       }
 
       if (stun_message_get_method (&msg) == STUN_SEND) {
-        if (stun_message_get_class (&msg) == STUN_RESPONSE &&
-            priv->compatibility == NICE_TURN_SOCKET_COMPATIBILITY_GOOGLE) {
-          uint32_t opts = 0;
-          if (stun_message_find32 (&msg, STUN_ATTRIBUTE_OPTIONS, &opts) ==
-              STUN_MESSAGE_RETURN_SUCCESS && opts & 0x1)
-            goto msn_google_lock;
+        if (stun_message_get_class (&msg) == STUN_RESPONSE) {
+          SendRequest *req = NULL;
+          GList *i = priv->send_requests;
+          StunTransactionId msg_id;
+
+          stun_message_id (&msg, msg_id);
+
+          for (; i; i = i->next) {
+            SendRequest *r = i->data;
+            if (memcmp (&r->id, msg_id, sizeof(StunTransactionId)) == 0) {
+              req = r;
+              break;
+            }
+          }
+
+          if (req) {
+            g_source_destroy (req->source);
+            g_source_unref (req->source);
+
+            priv->send_requests = g_list_remove (priv->send_requests, req);
+
+            g_slice_free (SendRequest, req);
+          }
+
+          if (priv->compatibility == NICE_TURN_SOCKET_COMPATIBILITY_GOOGLE) {
+            uint32_t opts = 0;
+            if (stun_message_find32 (&msg, STUN_ATTRIBUTE_OPTIONS, &opts) ==
+                STUN_MESSAGE_RETURN_SUCCESS && opts & 0x1)
+              goto msn_google_lock;
+          }
         }
         return 0;
       } else if (stun_message_get_method (&msg) == STUN_OLD_SET_ACTIVE_DST) {
