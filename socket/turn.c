@@ -347,7 +347,10 @@ priv_forget_send_request (gpointer pointer)
   g_source_destroy (req->source);
   g_source_unref (req->source);
 
-  req->priv->send_requests = g_list_remove (req->priv->send_requests, req);
+  if (g_list_index (req->priv->send_requests, req) != -1) {
+    req->priv->send_requests = g_list_remove (req->priv->send_requests, req);
+    (void)g_atomic_int_dec_and_test (&req->ref);
+  }
 
   g_static_rec_mutex_unlock (&req->priv->nice->mutex);
 

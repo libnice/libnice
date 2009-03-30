@@ -398,7 +398,7 @@ static gboolean priv_conn_check_tick_unlocked (gpointer pointer)
   /* step: find the highest priority waiting check and send it */
   for (i = agent->streams; i ; i = i->next) {
     Stream *stream = i->data;
-  
+
     pair = priv_conn_check_find_next_waiting (stream->conncheck_list);
     if (pair)
       break;
