@@ -82,7 +82,7 @@ typedef struct {
   uint8_t *password;
   size_t password_len;
   NiceTurnSocketCompatibility compatibility;
-  GList *send_requests;
+  GQueue *send_requests;
 } TurnPriv;
 
 
@@ -160,6 +160,7 @@ nice_turn_socket_new (NiceAgent *agent, NiceAddress *addr,
   }
   priv->server_addr = *server_addr;
   priv->compatibility = compatibility;
+  priv->send_requests = g_queue_new ();
   sock->addr = *addr;
   sock->fileno = base_socket->fileno;
   sock->send = socket_send;
@@ -176,6 +177,7 @@ socket_close (NiceSocket *sock)
 {
   TurnPriv *priv = (TurnPriv *) sock->priv;
   GList *i = NULL;
+
   for (i = priv->channels; i; i = i->next) {
     ChannelBinding *b = i->data;
     g_free (b);
@@ -194,13 +196,13 @@ socket_close (NiceSocket *sock)
     priv->tick_source = NULL;
   }
 
-  for (i = priv->send_requests; i; i = i->next) {
+  for (i = g_queue_peek_head_link (priv->send_requests); i; i = i->next) {
     SendRequest *r = i->data;
     g_source_destroy (r->source);
     g_source_unref (r->source);
     g_slice_free (SendRequest, r);
   }
-  g_list_free (priv->send_requests);
+  g_queue_free (priv->send_requests);
 
 
   g_free (priv->current_binding);
@@ -313,7 +315,7 @@ socket_send (NiceSocket *sock, const NiceAddress *to,
       stun_message_id (&msg, req->id);
       req->source = agent_timeout_add_with_context (priv->nice, STUN_END_TIMEOUT,
           priv_forget_send_request, req);
-      priv->send_requests = g_list_append (priv->send_requests, req);
+      g_queue_push_tail (priv->send_requests, req);
       g_atomic_int_inc (&req->ref);
     }
   }
@@ -347,8 +349,8 @@ priv_forget_send_request (gpointer pointer)
   g_source_destroy (req->source);
   g_source_unref (req->source);
 
-  if (g_list_index (req->priv->send_requests, req) != -1) {
-    req->priv->send_requests = g_list_remove (req->priv->send_requests, req);
+  if (g_queue_index (req->priv->send_requests, req) != -1) {
+    g_queue_remove (req->priv->send_requests, req);
     (void)g_atomic_int_dec_and_test (&req->ref);
   }
 
@@ -392,7 +394,7 @@ nice_turn_socket_parse_recv (NiceSocket *sock, NiceSocket **from_sock,
       if (stun_message_get_method (&msg) == STUN_SEND) {
         if (stun_message_get_class (&msg) == STUN_RESPONSE) {
           SendRequest *req = NULL;
-          GList *i = priv->send_requests;
+          GList *i = g_queue_peek_head_link (priv->send_requests);
           StunTransactionId msg_id;
 
           stun_message_id (&msg, msg_id);
@@ -409,7 +411,7 @@ nice_turn_socket_parse_recv (NiceSocket *sock, NiceSocket **from_sock,
             g_source_destroy (req->source);
             g_source_unref (req->source);
 
-            priv->send_requests = g_list_remove (priv->send_requests, req);
+            g_queue_remove (priv->send_requests, req);
 
             if (g_atomic_int_dec_and_test (&req->ref))
               g_slice_free (SendRequest, req);
