@@ -2636,20 +2636,20 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, Stream *stream,
 
 
   if (stun_message_get_class (&req) == STUN_REQUEST) {
-    if (agent->compatibility == NICE_COMPATIBILITY_MSN) {
+    if (agent->compatibility == NICE_COMPATIBILITY_MSN &&
+        local_candidate && remote_candidate2) {
       username = (uint8_t *) stun_message_find (&req,
           STUN_ATTRIBUTE_USERNAME, &username_len);
       uname_len = priv_create_username (agent, stream,
           component->id,  remote_candidate2, local_candidate,
           uname, sizeof (uname), FALSE);
       memcpy (username, uname, username_len);
-      if (remote_candidate2) {
-        req.key = g_base64_decode ((gchar *) remote_candidate2->password,
-            &req.key_len);
-      } else {
-        req.key = NULL;
-        req.key_len = 0;
-      }
+      req.key = g_base64_decode ((gchar *) remote_candidate2->password,
+          &req.key_len);
+    } else {
+      nice_debug ("Agent %p : received MSN incoming check from unknown remote candidate. "
+          "Ignoring request", agent);
+      return TRUE;
     }
 
     rbuf_len = sizeof (rbuf);
