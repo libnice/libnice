@@ -552,7 +552,7 @@ static gboolean priv_conn_keepalive_tick_unlocked (NiceAgent *agent)
 	memset (&sockaddr, 0, sizeof (sockaddr));
 	nice_address_copy_to_sockaddr (&p->remote->addr, &sockaddr);
 
-        if (agent->compatibility != NICE_COMPATIBILITY_DRAFT19) {
+        if (agent->compatibility == NICE_COMPATIBILITY_GOOGLE) {
           guint32 priority = nice_candidate_ice_priority_full (
                   NICE_CANDIDATE_TYPE_PREF_PEER_REFLEXIVE, 1,
                   p->local->component_id);
@@ -565,10 +565,6 @@ static gboolean priv_conn_keepalive_tick_unlocked (NiceAgent *agent)
           size_t password_len = priv_get_password (agent,
               agent_find_stream (agent, stream->id), p->remote, &password);
           gchar tmpbuf[INET6_ADDRSTRLEN];
-
-          if (agent->compatibility == NICE_COMPATIBILITY_MSN) {
-            password = g_base64_decode ((gchar *) password, &password_len);
-          }
 
           nice_address_to_string (&p->remote->addr, tmpbuf);
           nice_debug ("Agent %p : Keepalive STUN-CC REQ to '%s:%u', "
@@ -589,10 +585,6 @@ static gboolean priv_conn_keepalive_tick_unlocked (NiceAgent *agent)
 
             nice_debug ("Agent %p: conncheck created %d - %p",
                 agent, buf_len, p->keepalive.stun_message.buffer);
-
-            if (agent->compatibility == NICE_COMPATIBILITY_MSN) {
-              g_free (password);
-            }
 
             if (buf_len > 0) {
               stun_timer_start (&p->keepalive.timer);
