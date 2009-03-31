@@ -1,3 +1,16 @@
+libnice 0.0.6 (2009-03-31)
+===========================
+
+Fix connectivity checks for detecting when we loose the connection
+Fix a race condition with gtalk that made the call silent after 30 seconds
+Robustness checks with regards to relay information
+Fix a race condition crash with retransmission ticks
+Added a new STUN API : stun_agent_forget_transaction
+Fix a possible crash if tcp-turn is shutdown early in the process
+Fix a crash when a stream is removed
+Fix MSN support by disable keepalive connchecks
+
+
 libnice 0.0.5 (2009-03-04)
 ===========================
 
