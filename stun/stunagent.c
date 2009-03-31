@@ -500,9 +500,20 @@ size_t stun_agent_finish_message (StunAgent *agent, StunMessage *msg,
 {
   uint8_t *ptr;
   uint32_t fpr;
-  int i;
-  StunTransactionId id;
+  int saved_id_idx = 0;
   uint8_t md5[16];
+
+  if (stun_message_get_class (msg) == STUN_REQUEST) {
+    for (saved_id_idx = 0; saved_id_idx < STUN_AGENT_MAX_SAVED_IDS; saved_id_idx++) {
+      if (agent->sent_ids[saved_id_idx].valid == FALSE) {
+        break;
+      }
+    }
+  }
+  if (saved_id_idx == STUN_AGENT_MAX_SAVED_IDS) {
+    stun_debug ("Saved ids full");
+    return 0;
+  }
 
   if (msg->key != NULL) {
     key = msg->key;
@@ -602,20 +613,14 @@ size_t stun_agent_finish_message (StunAgent *agent, StunMessage *msg,
 
 
   if (stun_message_get_class (msg) == STUN_REQUEST) {
-    for (i = 0; i < STUN_AGENT_MAX_SAVED_IDS; i++) {
-      if (agent->sent_ids[i].valid == FALSE) {
-        stun_message_id (msg, id);
-        memcpy (agent->sent_ids[i].id, id, sizeof(StunTransactionId));
-        agent->sent_ids[i].method = stun_message_get_method (msg);
-        agent->sent_ids[i].key = (uint8_t *) key;
-        agent->sent_ids[i].key_len = key_len;
-        memcpy (agent->sent_ids[i].long_term_key, msg->long_term_key,
-            sizeof(msg->long_term_key));
-        agent->sent_ids[i].long_term_valid = msg->long_term_valid;
-        agent->sent_ids[i].valid = TRUE;
-        break;
-      }
-    }
+    stun_message_id (msg, agent->sent_ids[saved_id_idx].id);
+    agent->sent_ids[saved_id_idx].method = stun_message_get_method (msg);
+    agent->sent_ids[saved_id_idx].key = (uint8_t *) key;
+    agent->sent_ids[saved_id_idx].key_len = key_len;
+    memcpy (agent->sent_ids[saved_id_idx].long_term_key, msg->long_term_key,
+        sizeof(msg->long_term_key));
+    agent->sent_ids[saved_id_idx].long_term_valid = msg->long_term_valid;
+    agent->sent_ids[saved_id_idx].valid = TRUE;
   }
 
   msg->key = (uint8_t *) key;
