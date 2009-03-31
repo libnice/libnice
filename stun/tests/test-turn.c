@@ -115,7 +115,7 @@ printaddr (const char *str, const struct sockaddr *addr, socklen_t addrlen)
 
 
 /** Various responses test */
-static void turnserver (void)
+static void test_turn (char *username, char *password, char *hostname, int port)
 {
   struct sockaddr_storage addr;
   socklen_t addrlen = sizeof (addr);
@@ -135,8 +135,6 @@ static void turnserver (void)
   StunMessage req_msg;
   StunMessage refresh_msg;
   uint32_t bandwidth, lifetime;
-  char username[] = "toto";
-  char password[] = "password";
   struct addrinfo hints, *res;
   int ret = -1;
 
@@ -145,7 +143,7 @@ static void turnserver (void)
   hints.ai_socktype = SOCK_DGRAM;
   hints.ai_flags = 0;
 
-  ret = getaddrinfo ("127.0.0.1", "3478", &hints, &res);
+  ret = getaddrinfo (hostname, port, &hints, &res);
   assert (ret == 0);
 
   stun_agent_init (&agent, STUN_ALL_KNOWN_ATTRIBUTES,
@@ -238,6 +236,16 @@ static void turnserver (void)
   assert (val == 0);
 }
 
+static void turnserver (void)
+{
+  test_turn ("toto", "password", "127.0.0.1", "3478");
+}
+
+static void numb (void)
+{
+  test_turn ("youness.alaoui@collabora.co.uk", "badger", "numb.viagenie.ca", "3478");
+}
+
 static void test (void (*func) (void), const char *name)
 {
   alarm (10);
@@ -251,5 +259,6 @@ static void test (void (*func) (void), const char *name)
 int main (void)
 {
   test (turnserver, "Testing TURN");
+  test (numb, "Testing numb");
   return 0;
 }
