@@ -445,6 +445,7 @@ typedef enum
 
 /**
  * STUN_MAX_MESSAGE_SIZE:
+ *
  * The Maximum size of a STUN message
  */
 #define STUN_MAX_MESSAGE_SIZE 65552

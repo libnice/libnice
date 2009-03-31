@@ -119,6 +119,7 @@ stun_agent_init_response
 stun_agent_init_error
 stun_agent_build_unknown_attributes_error
 stun_agent_finish_message
+stun_agent_forget_transaction
 stun_debug_enable
 stun_debug_disable
 <SUBSECTION Private>
