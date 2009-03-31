@@ -14,7 +14,6 @@ check_PROGRAMS = \
 	test-parse \
 	test-format \
 	test-bind \
-	test-turn \
 	test-conncheck \
 	test-hmac
 
