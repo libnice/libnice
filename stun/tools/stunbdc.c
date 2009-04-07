@@ -149,8 +149,9 @@ int main (int argc, char *argv[])
         printf ("Usage: %s [-4|-6] <server> [port number]\n"
                 "Performs STUN Binding Discovery\n"
                 "\n"
-                "  -4, --ipv4 Force IP version 4\n"
-                "  -6, --ipv6 Force IP version 6\n"
+                "  -4, --ipv4    Force IP version 4\n"
+                "  -6, --ipv6    Force IP version 6\n"
+                "  -n, --numeric Server in numeric form\n"
             "\n", argv[0]);
         return 0;
 
