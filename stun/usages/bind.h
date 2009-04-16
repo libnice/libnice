@@ -101,13 +101,16 @@ size_t stun_usage_bind_create (StunAgent *agent, StunMessage *msg,
  * @msg: The #StunMessage to process
  * @addr: A pointer to a #sockaddr structure to fill with the mapped address
  * that the STUN server gives us
- * @addrlen: The length of @addr
+ * @addrlen: The length of @add. rMust be set to the size of the @addr socket
+ * address and will be set to the actual length of the socket address.
  * @alternate_server: A pointer to a #sockaddr structure to fill with the
  * address of an alternate server to which we should send our new STUN
  * binding request, in case the currently used STUN server is requesting the use
  * of an alternate server. This argument will only be filled if the return value
  * of the function is #STUN_USAGE_BIND_RETURN_ALTERNATE_SERVER
- * @alternate_server_len: The length of @alternate_server
+ * @alternate_server_len: The length of @alternate_server. Must be set to
+ * the size of the @alternate_server socket address and will be set to the
+ * actual length of the socket address.
  *
  * Process a STUN binding response and extracts the mapped address from the STUN
  * message. Also checks for the ALTERNATE-SERVER attribute.

@@ -586,8 +586,9 @@ StunMessageReturn stun_message_find_string (const StunMessage *msg,
  * @msg: The #StunMessage
  * @type: The #StunAttribute to find
  * @addr: The #sockaddr to be filled
- * @addrlen: The size of the @addr variable. Will be set to the size of the
- * extracted socket address.
+ * @addrlen: The size of the @addr variable. Must be set to the size of the
+ * @addr socket address and will be set to the size of the extracted socket
+ * address.
  *
  * Extracts a network address attribute from a STUN message.
  *
@@ -604,7 +605,8 @@ StunMessageReturn stun_message_find_addr (const StunMessage *msg,
  * @msg: The #StunMessage
  * @type: The #StunAttribute to find
  * @addr: The #sockaddr to be filled
- * @addrlen: The size of the @addr variable. Will be set to the size of the
+ * @addrlen: The size of the @addr variable. Must be set to the size of the
+ * @addr socket address and will be set to the size of the
  * extracted socket address.
  *
  * Extracts an obfuscated network address attribute from a STUN message.
@@ -622,7 +624,8 @@ StunMessageReturn stun_message_find_xor_addr (const StunMessage *msg,
  * @msg: The #StunMessage
  * @type: The #StunAttribute to find
  * @addr: The #sockaddr to be filled
- * @addrlen: The size of the @addr variable. Will be set to the size of the
+ * @addrlen: The size of the @addr variable. Must be set to the size of the
+ * @addr socket address and will be set to the size of the
  * extracted socket address.
  * @magic_cookie: The magic cookie to use to XOR the address.
  *
