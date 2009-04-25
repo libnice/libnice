@@ -936,11 +936,6 @@ int main (void)
     g_assert_not_reached ();
   nice_agent_add_local_address (lagent, &baseaddr);
   nice_agent_add_local_address (ragent, &baseaddr);
-#else
-  if (!nice_address_set_from_string (&baseaddr, "192.168.1.110"))
-    g_assert_not_reached ();
-  nice_agent_add_local_address (lagent, &baseaddr);
-  nice_agent_add_local_address (ragent, &baseaddr);
 #endif
 
   g_signal_connect (G_OBJECT (lagent), "candidate-gathering-done",
