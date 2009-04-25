@@ -12,6 +12,7 @@ AM_CFLAGS = \
 	-DG_LOG_DOMAIN=\"libnice-socket\" \
 	$(ERROR_CFLAGS) \
 	$(GLIB_CFLAGS) \
+	$(GUPNP_CFLAGS) \
 	-I $(top_srcdir)/random \
 	-I $(top_srcdir)/agent \
 	-I $(top_srcdir)/

@@ -102,7 +102,7 @@ void discovery_free (NiceAgent *agent)
 
 /*
  * Prunes the list of discovery processes for items related
- * to stream 'stream_id'. 
+ * to stream 'stream_id'.
  *
  * @return TRUE on success, FALSE on a fatal error
  */
@@ -316,7 +316,7 @@ static void priv_assign_foundation (NiceAgent *agent, NiceCandidate *candidate)
       }
     }
   }
-      
+
   g_snprintf (candidate->foundation, NICE_CANDIDATE_MAX_FOUNDATION, "%u", agent->next_candidate_id++);
 }
 
@@ -436,7 +436,7 @@ NiceCandidate *discovery_add_local_host_candidate (
     if (udp_socket)
       nice_socket_free (udp_socket);
   }
-  
+
   return candidate;
 }
 
@@ -446,7 +446,7 @@ NiceCandidate *discovery_add_local_host_candidate (
  *
  * @return pointer to the created candidate, or NULL on error
  */
-NiceCandidate* 
+NiceCandidate*
 discovery_add_server_reflexive_candidate (
   NiceAgent *agent,
   guint stream_id,

@@ -94,7 +94,11 @@ enum
   PROP_PROXY_IP,
   PROP_PROXY_PORT,
   PROP_PROXY_USERNAME,
-  PROP_PROXY_PASSWORD
+  PROP_PROXY_PASSWORD,
+#ifdef HAVE_GUPNP
+  PROP_UPNP,
+  PROP_UPNP_TIMEOUT
+#endif
 };
 
 
@@ -115,6 +119,8 @@ static gboolean priv_attach_stream_component (NiceAgent *agent,
     Stream *stream,
     Component *component);
 static void priv_detach_stream_component (Stream *stream, Component *component);
+
+static void priv_free_upnp (NiceAgent *agent);
 
 StunUsageIceCompatibility
 agent_to_ice_compatibility (NiceAgent *agent)
@@ -292,7 +298,7 @@ nice_agent_class_init (NiceAgentClass *klass)
         "stun-pacing-timer",
         "STUN pacing timer",
         "Timer 'Ta' (msecs) used in the IETF ICE specification for pacing candidate gathering and sending of connectivity checks",
-        1, 0xffffffff, 
+        1, 0xffffffff,
 	NICE_AGENT_TIMER_TA_DEFAULT,
         G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY));
 
@@ -302,7 +308,7 @@ nice_agent_class_init (NiceAgentClass *klass)
         "max-connectivity-checks",
         "Maximum number of connectivity checks",
         "Upper limit for the total number of connectivity checks performed",
-        0, 0xffffffff, 
+        0, 0xffffffff,
 	0, /* default set in init */
         G_PARAM_READWRITE));
 
@@ -347,6 +353,27 @@ nice_agent_class_init (NiceAgentClass *klass)
         "The password used to authenticate with the proxy",
         NULL,
         G_PARAM_READWRITE));
+
+#ifdef HAVE_GUPNP
+   g_object_class_install_property (gobject_class, PROP_UPNP,
+      g_param_spec_boolean (
+        "upnp",
+        "Use UPnP",
+        "Whether the agent should use UPnP to open a port in the router and "
+        "get the external IP",
+	TRUE, /* enable UPnP by default */
+        G_PARAM_READWRITE| G_PARAM_CONSTRUCT));
+
+  g_object_class_install_property (gobject_class, PROP_UPNP_TIMEOUT,
+      g_param_spec_uint (
+        "upnp-timeout",
+        "Timeout for UPnP discovery",
+        "The maximum amount of time to wait for UPnP discovery to finish before "
+        "signaling the candidate-gathering-done signal",
+        100, 60000,
+	2000,
+        G_PARAM_READWRITE | G_PARAM_CONSTRUCT));
+#endif
 
   /* install signals */
 
@@ -603,6 +630,16 @@ nice_agent_get_property (
       g_value_set_string (value, agent->proxy_password);
       break;
 
+#ifdef HAVE_GUPNP
+    case PROP_UPNP:
+      g_value_set_boolean (value, agent->upnp_enabled);
+      break;
+
+    case PROP_UPNP_TIMEOUT:
+      g_value_set_uint (value, agent->upnp_timeout);
+      break;
+#endif
+
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
     }
@@ -698,6 +735,15 @@ nice_agent_set_property (
       agent->proxy_password = g_value_dup_string (value);
       break;
 
+#ifdef HAVE_GUPNP
+    case PROP_UPNP_TIMEOUT:
+      agent->upnp_timeout = g_value_get_uint (value);
+      break;
+
+    case PROP_UPNP:
+      agent->upnp_enabled = g_value_get_boolean (value);
+      break;
+#endif
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
     }
@@ -744,7 +790,10 @@ void agent_gathering_done (NiceAgent *agent)
     }
   }
 
-  agent_signal_gathering_done (agent);
+  if (agent->discovery_timer_source == NULL &&
+      agent->upnp_timer_source == NULL) {
+    agent_signal_gathering_done (agent);
+  }
 }
 
 void agent_signal_gathering_done (NiceAgent *agent)
@@ -932,7 +981,6 @@ priv_add_new_candidate_discovery_turn (NiceAgent *agent,
               socket = nice_http_socket_new (socket, &turn->server,
                   agent->proxy_username, agent->proxy_password);
             } else {
-              /* TODO add HTTP support */
               nice_socket_free (socket);
               socket = NULL;
             }
@@ -1077,6 +1125,136 @@ nice_agent_set_relay_info(NiceAgent *agent,
   return TRUE;
 }
 
+#ifdef HAVE_GUPNP
+
+static gboolean priv_upnp_timeout_cb (gpointer user_data)
+{
+  NiceAgent *agent = (NiceAgent*)user_data;
+  GSList *i;
+
+  g_static_rec_mutex_lock (&agent->mutex);
+
+  nice_debug ("Agent %p : UPnP port mapping timed out", agent);
+
+  for (i = agent->upnp_mapping; i; i = i->next) {
+    NiceAddress *a = i->data;
+    nice_address_free (a);
+  }
+  g_slist_free (agent->upnp_mapping);
+  agent->upnp_mapping = NULL;
+
+  if (agent->upnp_timer_source != NULL) {
+    g_source_destroy (agent->upnp_timer_source);
+    g_source_unref (agent->upnp_timer_source);
+    agent->upnp_timer_source = NULL;
+  }
+
+  agent_gathering_done (agent);
+
+  g_static_rec_mutex_unlock (&agent->mutex);
+  return FALSE;
+}
+
+static void _upnp_mapped_external_port (GUPnPSimpleIgd *self, gchar *proto,
+    gchar *external_ip, gchar *replaces_external_ip, guint external_port,
+    gchar *local_ip, guint local_port, gchar *description, gpointer user_data)
+{
+  NiceAgent *agent = (NiceAgent*)user_data;
+  NiceAddress localaddr;
+  NiceAddress externaddr;
+
+  GSList *i, *j, *k;
+
+  g_static_rec_mutex_lock (&agent->mutex);
+
+  nice_debug ("Agent %p : Sucessfully mapped %s:%d to %s:%d", agent, local_ip,
+      local_port, external_ip, external_port);
+
+  nice_address_set_from_string (&localaddr, local_ip);
+  nice_address_set_port (&localaddr, local_port);
+  nice_address_set_from_string (&externaddr, external_ip);
+  nice_address_set_port (&externaddr, external_port);
+
+  for (i = agent->upnp_mapping; i; i = i->next) {
+    NiceAddress *addr = i->data;
+    if (nice_address_equal (&localaddr, addr)) {
+      agent->upnp_mapping = g_slist_remove (agent->upnp_mapping, addr);
+      nice_address_free (addr);
+      break;
+    }
+  }
+
+
+  for (i = agent->streams; i; i = i->next) {
+    Stream *stream = i->data;
+    for (j = stream->components; j; j = j->next) {
+      Component *component = j->data;
+      for (k = component->local_candidates; k; k = k->next) {
+        NiceCandidate *local_candidate = k->data;
+
+        if (nice_address_equal (&localaddr, &local_candidate->base_addr)) {
+          discovery_add_server_reflexive_candidate (
+              agent,
+              stream->id,
+              component->id,
+              &externaddr,
+              local_candidate->sockptr);
+          goto end;
+        }
+      }
+    }
+  }
+
+ end:
+  if (g_slist_length (agent->upnp_mapping)) {
+    if (agent->upnp_timer_source != NULL) {
+      g_source_destroy (agent->upnp_timer_source);
+      g_source_unref (agent->upnp_timer_source);
+      agent->upnp_timer_source = NULL;
+    }
+    agent_gathering_done (agent);
+  }
+
+  g_static_rec_mutex_unlock (&agent->mutex);
+}
+
+static void _upnp_error_mapping_port (GUPnPSimpleIgd *self, GError *error,
+    gchar *proto, guint external_port, gchar *local_ip, guint local_port,
+    gchar *description, gpointer user_data)
+{
+  NiceAgent *agent = (NiceAgent*)user_data;
+  NiceAddress localaddr;
+  GSList *i;
+
+  g_static_rec_mutex_lock (&agent->mutex);
+
+  nice_debug ("Agent %p : Error mapping %s:%d to %d (%d) : %s", agent, local_ip,
+      local_port, external_port, error->domain, error->message);
+  nice_address_set_from_string (&localaddr, local_ip);
+  nice_address_set_port (&localaddr, local_port);
+
+  for (i = agent->upnp_mapping; i; i = i->next) {
+    NiceAddress *addr = i->data;
+    if (nice_address_equal (&localaddr, addr)) {
+      agent->upnp_mapping = g_slist_remove (agent->upnp_mapping, addr);
+      nice_address_free (addr);
+      break;
+    }
+  }
+
+  if (g_slist_length (agent->upnp_mapping)) {
+    if (agent->upnp_timer_source != NULL) {
+      g_source_destroy (agent->upnp_timer_source);
+      g_source_unref (agent->upnp_timer_source);
+      agent->upnp_timer_source = NULL;
+    }
+    agent_gathering_done (agent);
+  }
+
+  g_static_rec_mutex_unlock (&agent->mutex);
+}
+
+#endif
 
 NICEAPI_EXPORT void
 nice_agent_gather_candidates (
@@ -1096,6 +1274,31 @@ nice_agent_gather_candidates (
 
   nice_debug ("Agent %p : In %s mode, starting candidate gathering.", agent,
       agent->full_mode ? "ICE-FULL" : "ICE-LITE");
+
+#ifdef HAVE_GUPNP
+  priv_free_upnp (agent);
+
+  if (agent->upnp_enabled) {
+    agent->upnp = gupnp_simple_igd_new (agent->main_context);
+
+    agent->upnp_timer_source = agent_timeout_add_with_context (agent,
+        agent->upnp_timeout, priv_upnp_timeout_cb, agent);
+
+    g_object_set (agent->upnp, "request-timeout", 1, NULL);
+    if (agent->upnp) {
+      g_signal_connect (agent->upnp, "mapped-external-port",
+          G_CALLBACK (_upnp_mapped_external_port), agent);
+      g_signal_connect (agent->upnp, "error-mapping-port",
+          G_CALLBACK (_upnp_error_mapping_port), agent);
+    } else {
+      nice_debug ("Agent %p : Error creating UPnP Simple IGD agent", agent);
+    }
+  } else {
+    nice_debug ("Agent %p : UPnP property Disabled", agent);
+  }
+#else
+  nice_debug ("Agent %p : libnice compiled without UPnP support", agent);
+#endif
 
   /* if no local addresses added, generate them ourselves */
   if (agent->local_addresses == NULL) {
@@ -1120,6 +1323,11 @@ nice_agent_gather_candidates (
     NiceAddress *addr = i->data;
     NiceCandidate *host_candidate;
 
+#ifdef HAVE_GUPNP
+    gchar local_ip[NICE_ADDRESS_STRING_LEN];
+    nice_address_to_string (addr, local_ip);
+#endif
+
     for (n = 0; n < stream->n_components; n++) {
       Component *component = stream_find_component_by_id (stream, n + 1);
       host_candidate = discovery_add_local_host_candidate (agent, stream->id,
@@ -1130,11 +1338,23 @@ nice_agent_gather_candidates (
         break;
       }
 
+#ifdef HAVE_GUPNP
+      if (agent->upnp_enabled) {
+        NiceAddress *addr = nice_address_dup (&host_candidate->base_addr);
+        nice_debug ("Agent %p: Adding UPnP port %s:%d", agent, local_ip,
+            nice_address_get_port (&host_candidate->base_addr));
+        gupnp_simple_igd_add_port (agent->upnp, "UDP",
+            nice_address_get_port (&host_candidate->base_addr),
+            local_ip, 0, 6000, PACKAGE_STRING);
+        agent->upnp_mapping = g_slist_prepend (agent->upnp_mapping, addr);
+      }
+#endif
+
       if (agent->full_mode &&
           agent->stun_server_ip) {
         NiceAddress stun_server;
         if (nice_address_set_from_string (&stun_server, agent->stun_server_ip)) {
-		  gboolean res;
+          gboolean res;
           nice_address_set_port (&stun_server, agent->stun_server_port);
 
           res =
@@ -1189,6 +1409,31 @@ nice_agent_gather_candidates (
  done:
 
   g_static_rec_mutex_unlock (&agent->mutex);
+}
+
+static void priv_free_upnp (NiceAgent *agent)
+{
+  GSList *i;
+
+#ifdef HAVE_GUPNP
+  if (agent->upnp) {
+    g_object_unref (agent->upnp);
+    agent->upnp = NULL;
+  }
+
+  for (i = agent->upnp_mapping; i; i = i->next) {
+    NiceAddress *a = i->data;
+    nice_address_free (a);
+  }
+  g_slist_free (agent->upnp_mapping);
+  agent->upnp_mapping = NULL;
+
+  if (agent->upnp_timer_source != NULL) {
+    g_source_destroy (agent->upnp_timer_source);
+    g_source_unref (agent->upnp_timer_source);
+    agent->upnp_timer_source = NULL;
+  }
+#endif
 }
 
 static void priv_remove_keepalive_timer (NiceAgent *agent)
@@ -1660,6 +1905,7 @@ nice_agent_restart (
   return res;
 }
 
+
 static void
 nice_agent_dispose (GObject *object)
 {
@@ -1702,6 +1948,8 @@ nice_agent_dispose (GObject *object)
 
   nice_rng_free (agent->rng);
   agent->rng = NULL;
+
+  priv_free_upnp (agent);
 
   if (G_OBJECT_CLASS (nice_agent_parent_class)->dispose)
     G_OBJECT_CLASS (nice_agent_parent_class)->dispose (object);

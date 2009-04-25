@@ -12,12 +12,13 @@ AM_CFLAGS = \
 	-DG_LOG_DOMAIN=\"libnice\" \
 	$(ERROR_CFLAGS) \
 	$(GLIB_CFLAGS) \
+	$(GUPNP_CFLAGS) \
 	-I $(top_srcdir) \
 	-I $(top_srcdir)/random \
 	-I $(top_srcdir)/socket \
 	-I $(top_srcdir)/stun
 
-COMMON_LDADD = libagent.la $(GLIB_LIBS)
+COMMON_LDADD = libagent.la $(GLIB_LIBS) (GUPNP_LIBS)
 
 dist_noinst_DATA = agent-signals-marshal.list
 noinst_LTLIBRARIES = libagent.la

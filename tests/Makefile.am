@@ -11,13 +11,14 @@ include $(top_srcdir)/common.mk
 AM_CFLAGS = \
 	$(ERROR_CFLAGS) \
 	$(GLIB_CFLAGS) \
+        $(GUPNP_CFLAGS) \
 	-I $(top_srcdir) \
 	-I $(top_srcdir)/agent \
 	-I $(top_srcdir)/random \
 	-I $(top_srcdir)/socket \
 	-I $(top_srcdir)/stun
 
-COMMON_LDADD = $(top_builddir)/agent/libagent.la $(top_builddir)/socket/libsocket.la $(GLIB_LIBS)
+COMMON_LDADD = $(top_builddir)/agent/libagent.la $(top_builddir)/socket/libsocket.la $(GLIB_LIBS) $(GUPNP_LIBS)
 
 check_PROGRAMS = \
 	test-bsd \

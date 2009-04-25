@@ -66,7 +66,6 @@ AC_CHECK_LIB(rt, clock_gettime, [LIBRT="-lrt"], [LIBRT=""])
 AC_CHECK_FUNCS([poll])
 AC_SUBST(LIBRT)
 
-
 PKG_CHECK_MODULES(GLIB, [dnl
 	glib-2.0 >= 2.10 dnl
 	gobject-2.0 >= 2.10 dnl
@@ -101,6 +100,31 @@ AS_IF([test "$with_gstreamer" != no], [
 AC_SUBST(gstplugindir)
 
 AM_CONDITIONAL(WITH_GSTREAMER, test "$with_gstreamer" = yes)
+
+AC_ARG_ENABLE([gupnp],
+        AC_HELP_STRING([--disable-gupnp], [Disable GUPnP IGD support]),
+        [case "${enableval}" in
+            yes) WANT_GUPNP=yes ;;
+            no)  WANT_GUPNP=no ;;
+            *) AC_MSG_ERROR(bad value ${enableval} for --enable-gupnp) ;;
+        esac],
+        WANT_GUPNP=test)
+
+HAVE_GUPNP=no
+if test "x$WANT_GUPNP" != "xno"; then
+   PKG_CHECK_MODULES(GUPNP, [ gupnp-igd-1.0 ],
+    [ HAVE_GUPNP=yes ],
+    [ HAVE_GUPNP=no ])
+fi
+if test "x$WANT_GUPNP" = "xyes" && test "x$HAVE_GUPNP" = "xno"; then
+   AC_ERROR([Requested GUPnP IGD, but it is not available])
+fi
+
+if test "x$HAVE_GUPNP" = "xyes"; then
+   AC_DEFINE(HAVE_GUPNP,,[Have the GUPnP IGD library])
+fi
+
+AC_SUBST(HAVE_GUPNP)
 
 dnl Test coverage
 AC_ARG_ENABLE([coverage],
