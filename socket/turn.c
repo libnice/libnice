@@ -200,7 +200,14 @@ socket_close (NiceSocket *sock)
     SendRequest *r = i->data;
     g_source_destroy (r->source);
     g_source_unref (r->source);
-    g_slice_free (SendRequest, r);
+    r->source = NULL;
+
+    stun_agent_forget_transaction (&priv->agent, r->id);
+
+    r->priv = NULL;
+    if (g_atomic_int_dec_and_test (&r->ref))
+      g_slice_free (SendRequest, r);
+
   }
   g_queue_free (priv->send_requests);
 
@@ -339,25 +346,34 @@ static gboolean
 priv_forget_send_request (gpointer pointer)
 {
   SendRequest *req = pointer;
+  GStaticRecMutex *mutex = NULL;
+
+  if (req->priv == NULL)
+    return FALSE;
 
   g_atomic_int_inc (&req->ref);
 
-  g_static_rec_mutex_lock (&req->priv->nice->mutex);
+  mutex = &req->priv->nice->mutex;
 
-  stun_agent_forget_transaction (&req->priv->agent, req->id);
+  g_static_rec_mutex_lock (mutex);
 
-  g_source_destroy (req->source);
-  g_source_unref (req->source);
+  if (req->source) {
+    stun_agent_forget_transaction (&req->priv->agent, req->id);
 
-  if (g_queue_index (req->priv->send_requests, req) != -1) {
-    g_queue_remove (req->priv->send_requests, req);
-    (void)g_atomic_int_dec_and_test (&req->ref);
+    if (g_queue_index (req->priv->send_requests, req) != -1) {
+      g_queue_remove (req->priv->send_requests, req);
+      (void)g_atomic_int_dec_and_test (&req->ref);
+    }
+
+    g_source_destroy (req->source);
+    g_source_unref (req->source);
+    req->source = NULL;
   }
 
-  g_static_rec_mutex_unlock (&req->priv->nice->mutex);
+  g_static_rec_mutex_unlock (mutex);
 
   if (g_atomic_int_dec_and_test (&req->ref))
-      g_slice_free (SendRequest, req);
+    g_slice_free (SendRequest, req);
 
   return FALSE;
 }
@@ -410,6 +426,7 @@ nice_turn_socket_parse_recv (NiceSocket *sock, NiceSocket **from_sock,
           if (req) {
             g_source_destroy (req->source);
             g_source_unref (req->source);
+            req->source = NULL;
 
             g_queue_remove (priv->send_requests, req);
 
