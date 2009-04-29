@@ -790,10 +790,14 @@ void agent_gathering_done (NiceAgent *agent)
     }
   }
 
+#ifdef HAVE_GUPNP
   if (agent->discovery_timer_source == NULL &&
       agent->upnp_timer_source == NULL) {
     agent_signal_gathering_done (agent);
   }
+#else
+  agent_signal_gathering_done (agent);
+#endif
 }
 
 void agent_signal_gathering_done (NiceAgent *agent)
@@ -1413,9 +1417,9 @@ nice_agent_gather_candidates (
 
 static void priv_free_upnp (NiceAgent *agent)
 {
+#ifdef HAVE_GUPNP
   GSList *i;
 
-#ifdef HAVE_GUPNP
   if (agent->upnp) {
     g_object_unref (agent->upnp);
     agent->upnp = NULL;
