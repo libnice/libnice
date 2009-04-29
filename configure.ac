@@ -101,6 +101,8 @@ AC_SUBST(gstplugindir)
 
 AM_CONDITIONAL(WITH_GSTREAMER, test "$with_gstreamer" = yes)
 
+GUPNP_IGD_REQUIRED=0.1.2
+
 AC_ARG_ENABLE([gupnp],
         AC_HELP_STRING([--disable-gupnp], [Disable GUPnP IGD support]),
         [case "${enableval}" in
@@ -112,7 +114,7 @@ AC_ARG_ENABLE([gupnp],
 
 HAVE_GUPNP=no
 if test "x$WANT_GUPNP" != "xno"; then
-   PKG_CHECK_MODULES(GUPNP, [ gupnp-igd-1.0 ],
+   PKG_CHECK_MODULES(GUPNP, gupnp-igd-1.0 >= $GUPNP_IGD_REQUIRED,
     [ HAVE_GUPNP=yes ],
     [ HAVE_GUPNP=no ])
 fi
