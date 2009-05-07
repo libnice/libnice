@@ -78,7 +78,8 @@ AM_CFLAGS =  $(ERROR_CFLAGS) \
         -I $(top_srcdir)/socket \
         -I $(top_srcdir)/stun
 
-GTKDOC_LIBS= $(top_builddir)/agent/libagent.la $(GLIB_LIBS) $(top_builddir)/stun/libstun.la
+GTKDOC_LIBS= $(top_builddir)/agent/libagent.la $(GLIB_LIBS) $(top_builddir)/stun/libstun.la \
+	 $(GUPNP_LIBS)
 
 
 # This includes the standard gtk-doc make rules, copied by gtkdocize.
