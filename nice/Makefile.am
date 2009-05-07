@@ -17,6 +17,7 @@ libnice_la_DEPENDENCIES = \
 
 libnice_la_LIBADD = \
 	$(GLIB_LIBS) \
+	$(GUPNP_LIBS) \
 	$(top_builddir)/agent/libagent.la
 
 libnice_la_LDFLAGS = \
