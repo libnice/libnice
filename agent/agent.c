@@ -1174,9 +1174,11 @@ static void _upnp_mapped_external_port (GUPnPSimpleIgd *self, gchar *proto,
   nice_debug ("Agent %p : Sucessfully mapped %s:%d to %s:%d", agent, local_ip,
       local_port, external_ip, external_port);
 
-  nice_address_set_from_string (&localaddr, local_ip);
+  if (!nice_address_set_from_string (&localaddr, local_ip))
+    goto end;
   nice_address_set_port (&localaddr, local_port);
-  nice_address_set_from_string (&externaddr, external_ip);
+  if (!nice_address_set_from_string (&externaddr, external_ip))
+    goto end;
   nice_address_set_port (&externaddr, external_port);
 
   for (i = agent->upnp_mapping; i; i = i->next) {
@@ -1234,25 +1236,26 @@ static void _upnp_error_mapping_port (GUPnPSimpleIgd *self, GError *error,
 
   nice_debug ("Agent %p : Error mapping %s:%d to %d (%d) : %s", agent, local_ip,
       local_port, external_port, error->domain, error->message);
-  nice_address_set_from_string (&localaddr, local_ip);
-  nice_address_set_port (&localaddr, local_port);
+  if (nice_address_set_from_string (&localaddr, local_ip)) {
+    nice_address_set_port (&localaddr, local_port);
 
-  for (i = agent->upnp_mapping; i; i = i->next) {
-    NiceAddress *addr = i->data;
-    if (nice_address_equal (&localaddr, addr)) {
-      agent->upnp_mapping = g_slist_remove (agent->upnp_mapping, addr);
-      nice_address_free (addr);
-      break;
+    for (i = agent->upnp_mapping; i; i = i->next) {
+      NiceAddress *addr = i->data;
+      if (nice_address_equal (&localaddr, addr)) {
+        agent->upnp_mapping = g_slist_remove (agent->upnp_mapping, addr);
+        nice_address_free (addr);
+        break;
+      }
     }
-  }
 
-  if (g_slist_length (agent->upnp_mapping)) {
-    if (agent->upnp_timer_source != NULL) {
-      g_source_destroy (agent->upnp_timer_source);
-      g_source_unref (agent->upnp_timer_source);
-      agent->upnp_timer_source = NULL;
+    if (g_slist_length (agent->upnp_mapping)) {
+      if (agent->upnp_timer_source != NULL) {
+        g_source_destroy (agent->upnp_timer_source);
+        g_source_unref (agent->upnp_timer_source);
+        agent->upnp_timer_source = NULL;
+      }
+      agent_gathering_done (agent);
     }
-    agent_gathering_done (agent);
   }
 
   g_static_rec_mutex_unlock (&agent->mutex);
