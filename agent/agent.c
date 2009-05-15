@@ -371,7 +371,7 @@ nice_agent_class_init (NiceAgentClass *klass)
         "The maximum amount of time to wait for UPnP discovery to finish before "
         "signaling the candidate-gathering-done signal",
         100, 60000,
-	2000,
+	200,
         G_PARAM_READWRITE | G_PARAM_CONSTRUCT));
 #endif
 
