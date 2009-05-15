@@ -1350,8 +1350,8 @@ nice_agent_gather_candidates (
         nice_debug ("Agent %p: Adding UPnP port %s:%d", agent, local_ip,
             nice_address_get_port (&host_candidate->base_addr));
         gupnp_simple_igd_add_port (agent->upnp, "UDP",
-            nice_address_get_port (&host_candidate->base_addr),
-            local_ip, 0, 6000, PACKAGE_STRING);
+            0, local_ip, nice_address_get_port (&host_candidate->base_addr),
+            0, PACKAGE_STRING);
         agent->upnp_mapping = g_slist_prepend (agent->upnp_mapping, addr);
       }
 #endif
