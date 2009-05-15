@@ -1291,7 +1291,6 @@ nice_agent_gather_candidates (
     agent->upnp_timer_source = agent_timeout_add_with_context (agent,
         agent->upnp_timeout, priv_upnp_timeout_cb, agent);
 
-    g_object_set (agent->upnp, "request-timeout", 1, NULL);
     if (agent->upnp) {
       g_signal_connect (agent->upnp, "mapped-external-port",
           G_CALLBACK (_upnp_mapped_external_port), agent);
