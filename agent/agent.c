@@ -1177,9 +1177,6 @@ static void _upnp_mapped_external_port (GUPnPSimpleIgd *self, gchar *proto,
   if (!nice_address_set_from_string (&localaddr, local_ip))
     goto end;
   nice_address_set_port (&localaddr, local_port);
-  if (!nice_address_set_from_string (&externaddr, external_ip))
-    goto end;
-  nice_address_set_port (&externaddr, external_port);
 
   for (i = agent->upnp_mapping; i; i = i->next) {
     NiceAddress *addr = i->data;
@@ -1190,6 +1187,9 @@ static void _upnp_mapped_external_port (GUPnPSimpleIgd *self, gchar *proto,
     }
   }
 
+  if (!nice_address_set_from_string (&externaddr, external_ip))
+    goto end;
+  nice_address_set_port (&externaddr, external_port);
 
   for (i = agent->streams; i; i = i->next) {
     Stream *stream = i->data;
