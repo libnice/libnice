@@ -975,6 +975,13 @@ static gboolean priv_discovery_tick (gpointer pointer)
 
   g_static_rec_mutex_lock (&agent->mutex);
   ret = priv_discovery_tick_unlocked (pointer);
+  if (ret == FALSE) {
+    if (agent->discovery_timer_source != NULL) {
+      g_source_destroy (agent->discovery_timer_source);
+      g_source_unref (agent->discovery_timer_source);
+      agent->discovery_timer_source = NULL;
+    }
+  }
   g_static_rec_mutex_unlock (&agent->mutex);
 
   return ret;

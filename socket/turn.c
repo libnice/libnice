@@ -660,6 +660,13 @@ priv_retransmissions_tick (gpointer pointer)
 
   g_static_rec_mutex_lock (&priv->nice->mutex);
   ret = priv_retransmissions_tick_unlocked (priv);
+  if (ret == FALSE) {
+    if (priv->tick_source != NULL) {
+      g_source_destroy (priv->tick_source);
+      g_source_unref (priv->tick_source);
+      priv->tick_source = NULL;
+    }
+  }
   g_static_rec_mutex_unlock (&priv->nice->mutex);
 
   return ret;

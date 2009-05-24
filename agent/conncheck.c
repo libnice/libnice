@@ -256,7 +256,7 @@ static gboolean priv_conn_check_tick_stream (Stream *stream, NiceAgent *agent, G
 
   for (i = stream->conncheck_list; i ; i = i->next) {
     CandidateCheckPair *p = i->data;
-      
+
     if (p->state == NICE_CHECK_IN_PROGRESS) {
       if (p->stun_message.buffer == NULL) {
 	nice_debug ("Agent %p : STUN connectivity check was cancelled, marking as done.", agent);
@@ -662,8 +662,14 @@ static gboolean priv_conn_keepalive_tick (gpointer pointer)
 
   g_static_rec_mutex_lock (&agent->mutex);
   ret = priv_conn_keepalive_tick_unlocked (agent);
+  if (ret == FALSE) {
+    if (agent->keepalive_timer_source) {
+      g_source_destroy (agent->keepalive_timer_source);
+      g_source_unref (agent->keepalive_timer_source);
+      agent->keepalive_timer_source = NULL;
+    }
+  }
   g_static_rec_mutex_unlock (&agent->mutex);
-
   return ret;
 }
 
@@ -756,18 +762,18 @@ static void priv_turn_allocate_refresh_tick_unlocked (CandidateRefresh *cand)
 
   nice_debug ("Agent %p : Sending allocate Refresh %d", cand->agent, buffer_len);
 
+  if (cand->tick_source != NULL) {
+    g_source_destroy (cand->tick_source);
+    g_source_unref (cand->tick_source);
+    cand->tick_source = NULL;
+  }
+
   if (buffer_len > 0) {
     stun_timer_start (&cand->timer);
 
     /* send the refresh */
     nice_socket_send (cand->nicesock, &cand->server,
         buffer_len, (gchar *)cand->stun_buffer);
-
-    if (cand->tick_source != NULL) {
-      g_source_destroy (cand->tick_source);
-      g_source_unref (cand->tick_source);
-      cand->tick_source = NULL;
-    }
 
     cand->tick_source = agent_timeout_add_with_context (cand->agent,
         stun_timer_remainder (&cand->timer),

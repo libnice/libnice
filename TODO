@@ -1,5 +1,4 @@
 check for the cookie and act accordingly for incoming messages.
-unset the timer's source if they return FALSE
 channel bind have a 10 minutes expiration :@
 nice_socket_recv returns -1 means we must close the nice_socket and stop all connchecks/candidates and reelect if was eleected...
 Add HTTP Digest support
