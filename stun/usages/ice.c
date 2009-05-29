@@ -156,7 +156,7 @@ StunUsageIceReturn stun_usage_ice_conncheck_process (StunMessage *msg,
     if (val != STUN_MESSAGE_RETURN_SUCCESS)
     {
       stun_debug (" No MAPPED-ADDRESS: %d\n", val);
-      return STUN_USAGE_ICE_RETURN_ERROR;
+      return STUN_USAGE_ICE_RETURN_NO_MAPPED_ADDRESS;
     }
   }
 

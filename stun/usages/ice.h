@@ -1,3 +1,4 @@
+
 /*
  * This file is part of the Nice GLib ICE library.
  *
@@ -83,6 +84,8 @@ typedef enum {
  * the STUN reply
  * @STUN_USAGE_ICE_RETURN_INVALID_ADDRESS: The mapped address argument has
  * an invalid address family
+ * @STUN_USAGE_ICE_RETURN_NO_MAPPED_ADDRESS: The response is valid but no
+ * MAPPED-ADDRESS or XOR-MAPPED-ADDRESS attribute was found
  *
  * Return value of stun_usage_ice_conncheck_process() and
  * stun_usage_ice_conncheck_create_reply() which allows you to see what
@@ -97,6 +100,7 @@ typedef enum {
   STUN_USAGE_ICE_RETURN_INVALID_METHOD,
   STUN_USAGE_ICE_RETURN_MEMORY_ERROR,
   STUN_USAGE_ICE_RETURN_INVALID_ADDRESS,
+  STUN_USAGE_ICE_RETURN_NO_MAPPED_ADDRESS,
 } StunUsageIceReturn;
 
 

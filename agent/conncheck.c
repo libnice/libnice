@@ -1912,8 +1912,8 @@ static gboolean priv_map_reply_to_conn_check_request (NiceAgent *agent, Stream *
         nice_debug ("Agent %p : stun_bind_process/conncheck for %p res %d "
             "(controlling=%d).", agent, p, (int)res, agent->controlling_mode);
 
-
-        if (res == STUN_USAGE_ICE_RETURN_SUCCESS) {
+        if (res == STUN_USAGE_ICE_RETURN_SUCCESS ||
+            res == STUN_USAGE_ICE_RETURN_NO_MAPPED_ADDRESS) {
           /* case: found a matching connectivity check request */
 
           CandidateCheckPair *ok_pair = NULL;
@@ -1949,8 +1949,19 @@ static gboolean priv_map_reply_to_conn_check_request (NiceAgent *agent, Stream *
            *       not match any local candidate, see 7.1.2.2.1
            *       "Discovering Peer Reflexive Candidates" ICE ID-19) */
 
-          ok_pair = priv_process_response_check_for_peer_reflexive(agent, stream, component,
-              p, sockptr, &sockaddr, local_candidate, remote_candidate);
+          if (res == STUN_USAGE_ICE_RETURN_NO_MAPPED_ADDRESS) {
+            /* note: this is same as "adding to VALID LIST" in the spec
+               text */
+            p->state = NICE_CHECK_SUCCEEDED;
+            nice_debug ("Agent %p : Mapped address not found."
+                " conncheck %p SUCCEEDED.", agent, p);
+            priv_conn_check_unfreeze_related (agent, stream, p);
+          } else {
+            ok_pair = priv_process_response_check_for_peer_reflexive(agent,
+                stream, component, p, sockptr, &sockaddr,
+                local_candidate, remote_candidate);
+          }
+
 
           if (!ok_pair)
             ok_pair = p;
