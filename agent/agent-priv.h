@@ -61,7 +61,7 @@
 #include "stun/usages/ice.h"
 
 #ifdef HAVE_GUPNP
-#include <libgupnp-igd/gupnp-simple-igd.h>
+#include <libgupnp-igd/gupnp-simple-igd-thread.h>
 #endif
 
 /* XXX: starting from ICE ID-18, Ta SHOULD now be set according
@@ -113,7 +113,7 @@ struct _NiceAgent
   NiceCompatibility compatibility; /* property: Compatibility mode */
   StunAgent stun_agent;            /* STUN agent */
 #ifdef HAVE_GUPNP
-  GUPnPSimpleIgd* upnp;		   /* GUPnP Single IGD agent */
+  GUPnPSimpleIgdThread* upnp;	   /* GUPnP Single IGD agent */
   gboolean upnp_enabled;           /* whether UPnP discovery is enabled */
   guint upnp_timeout;              /* UPnP discovery timeout */
   GSList *upnp_mapping;            /* list of Candidates being mapped */

@@ -1286,7 +1286,7 @@ nice_agent_gather_candidates (
   priv_free_upnp (agent);
 
   if (agent->upnp_enabled) {
-    agent->upnp = gupnp_simple_igd_new (agent->main_context);
+    agent->upnp = gupnp_simple_igd_thread_new ();
 
     agent->upnp_timer_source = agent_timeout_add_with_context (agent,
         agent->upnp_timeout, priv_upnp_timeout_cb, agent);
@@ -1349,7 +1349,7 @@ nice_agent_gather_candidates (
         NiceAddress *addr = nice_address_dup (&host_candidate->base_addr);
         nice_debug ("Agent %p: Adding UPnP port %s:%d", agent, local_ip,
             nice_address_get_port (&host_candidate->base_addr));
-        gupnp_simple_igd_add_port (agent->upnp, "UDP",
+        gupnp_simple_igd_add_port (GUPNP_SIMPLE_IGD (agent->upnp), "UDP",
             0, local_ip, nice_address_get_port (&host_candidate->base_addr),
             0, PACKAGE_STRING);
         agent->upnp_mapping = g_slist_prepend (agent->upnp_mapping, addr);
