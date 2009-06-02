@@ -1545,6 +1545,22 @@ static gboolean priv_add_remote_candidate (
       strncpy(candidate->foundation, foundation, NICE_CANDIDATE_MAX_FOUNDATION);
     /* note: username and password must remain the same during
      *       a session; see sect 9.1.2 in ICE ID-19 */
+
+    /* note: however, the user/pass in ID-19 is global, if the user/pass
+     * are set in the candidate here, it means they need to be updated...
+     * this is essential to overcome a race condition where we might receive
+     * a valid binding request from a valid candidate that wasn't yet added to
+     * our list of candidates.. this 'update' will make the peer-rflx a
+     * server-rflx/host candidate again and restore that user/pass it needed
+     * to have in the first place */
+    if (username) {
+      g_free (candidate->username);
+      candidate->username = g_strdup (username);
+    }
+    if (password) {
+      g_free (candidate->password);
+      candidate->password = g_strdup (password);
+    }
     if (conn_check_add_for_candidate (agent, stream_id, component, candidate) < 0)
       error_flag = TRUE;
   }
