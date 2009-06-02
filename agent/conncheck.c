@@ -2626,7 +2626,8 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, Stream *stream,
     }
   }
 
-  if (agent->compatibility == NICE_COMPATIBILITY_GOOGLE &&
+  if (component->remote_candidates &&
+      agent->compatibility == NICE_COMPATIBILITY_GOOGLE &&
       local_candidate == NULL &&
       discovery_msg == FALSE) {
     /* if we couldn't match the username and the stun agent has

@@ -576,12 +576,16 @@ static int run_full_test_delayed_answer (NiceAgent *lagent, NiceAgent *ragent, N
       g_free (password);
   }
   /* step: set remote candidates for agent R (answering party) */
+  /*
   cands = g_slist_append (NULL, &cdes);
   cdes.component_id = NICE_COMPONENT_TYPE_RTP;
-  cdes.addr = laddr;
+  cdes.addr = laddr;*/
+  cands = priv_get_local_candidate (lagent, ls_id, NICE_COMPONENT_TYPE_RTP);
   nice_agent_set_remote_candidates (ragent, rs_id, NICE_COMPONENT_TYPE_RTP, cands);
-  cdes.component_id = NICE_COMPONENT_TYPE_RTCP;
-  cdes.addr = laddr_rtcp;
+
+  /*cdes.component_id = NICE_COMPONENT_TYPE_RTCP;
+  cdes.addr = laddr_rtcp;*/
+  cands = priv_get_local_candidate (lagent, ls_id, NICE_COMPONENT_TYPE_RTCP);
   nice_agent_set_remote_candidates (ragent, rs_id, NICE_COMPONENT_TYPE_RTCP, cands);
 
   g_debug ("test-fullmode: Set properties, next running mainloop until first check is received...");
@@ -611,11 +615,10 @@ static int run_full_test_delayed_answer (NiceAgent *lagent, NiceAgent *ragent, N
   }
 
   /* step: pass remove candidates to agent L (offering party) */
-  cdes.component_id = NICE_COMPONENT_TYPE_RTP;
-  cdes.addr = raddr;
+  cands = priv_get_local_candidate (ragent, rs_id, NICE_COMPONENT_TYPE_RTP);
   nice_agent_set_remote_candidates (lagent, ls_id, NICE_COMPONENT_TYPE_RTP, cands);
-  cdes.component_id = NICE_COMPONENT_TYPE_RTCP;
-  cdes.addr = raddr_rtcp;
+
+  cands = priv_get_local_candidate (ragent, rs_id, NICE_COMPONENT_TYPE_RTCP);
   nice_agent_set_remote_candidates (lagent, ls_id, NICE_COMPONENT_TYPE_RTCP, cands);
 
   g_debug ("test-fullmode: Running mainloop until connectivity checks succeeed.");
@@ -1031,9 +1034,6 @@ int main (void)
   g_assert (global_lagent_cands == 2);
   g_assert (global_ragent_cands == 2);
 
-#if TEST_GOOGLE
-  return result;
-#endif
 
   /* step: run test simulating delayed SDP answer */
   g_debug ("test-fullmode: TEST STARTS / delayed SDP answer");
@@ -1048,6 +1048,9 @@ int main (void)
   g_assert (global_lagent_cands == 2);
   g_assert (global_ragent_cands == 2);
 
+#if TEST_GOOGLE
+  return result;
+#endif
 
   /* run test with incorrect credentials (make sure process fails) */
   g_debug ("test-fullmode: TEST STARTS / incorrect credentials");
