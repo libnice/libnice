@@ -5,3 +5,5 @@ Add HTTP Digest support
 tcp turn must drop packets if the queue fills too fast
 make sure the timers don't race condition with frees, and have some kind of refcounting (like in turn send requests) for timers
 Add support for TURN-13
+Do not cancel connchecks in case a high priority packet is lost and a low priority one succeeds.. we must let retransmissions do their work to select a better candidate...
+
