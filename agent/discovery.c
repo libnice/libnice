@@ -729,7 +729,19 @@ NiceCandidate *discovery_learn_remote_peer_reflexive_candidate (
     candidate->transport = NICE_CANDIDATE_TRANSPORT_UDP;
     candidate->addr = *remote_address;
     candidate->base_addr = *remote_address;
-    candidate->priority = priority;
+
+    /* if the check didn't contain the PRIORITY attribute, then the priority will
+     * be 0, which is invalid... */
+    if (priority != 0) {
+      candidate->priority = priority;
+    } else if (agent->compatibility == NICE_COMPATIBILITY_GOOGLE) {
+      candidate->priority = nice_candidate_jingle_priority (candidate);
+    } else if (agent->compatibility == NICE_COMPATIBILITY_MSN)  {
+      candidate->priority = nice_candidate_msn_priority (candidate);
+    } else {
+      candidate->priority = nice_candidate_ice_priority_full
+        (NICE_CANDIDATE_TYPE_PREF_PEER_REFLEXIVE, 0, component->id);
+    }
     candidate->stream_id = stream->id;
     candidate->component_id = component->id;
 
