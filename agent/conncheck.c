@@ -489,11 +489,25 @@ static gboolean priv_conn_keepalive_retransmissions_tick (gpointer pointer)
         stun_message_id (&pair->keepalive.stun_message, id);
         stun_agent_forget_transaction (&pair->keepalive.agent->stun_agent, id);
 
-        nice_debug ("Agent %p : Keepalive conncheck timed out!! "
-            "peer probably lost connection", pair->keepalive.agent);
-        agent_signal_component_state_change (pair->keepalive.agent,
-            pair->keepalive.stream_id, pair->keepalive.component_id,
-            NICE_COMPONENT_STATE_FAILED);
+        if (pair->keepalive.agent->media_after_tick) {
+          nice_debug ("Agent %p : Keepalive conncheck timed out!! "
+              "but media was received. Suspecting keepalive lost because of "
+              "network bottleneck", pair->keepalive.agent);
+
+          if (pair->keepalive.tick_source) {
+            g_source_destroy (pair->keepalive.tick_source);
+            g_source_unref (pair->keepalive.tick_source);
+            pair->keepalive.tick_source = NULL;
+          }
+          pair->keepalive.stun_message.buffer = NULL;
+
+        } else {
+          nice_debug ("Agent %p : Keepalive conncheck timed out!! "
+              "peer probably lost connection", pair->keepalive.agent);
+          agent_signal_component_state_change (pair->keepalive.agent,
+              pair->keepalive.stream_id, pair->keepalive.component_id,
+              NICE_COMPONENT_STATE_FAILED);
+        }
         break;
       }
     case STUN_USAGE_TIMER_RETURN_RETRANSMIT:
@@ -588,6 +602,8 @@ static gboolean priv_conn_keepalive_tick_unlocked (NiceAgent *agent)
 
             if (buf_len > 0) {
               stun_timer_start (&p->keepalive.timer);
+
+              agent->media_after_tick = FALSE;
 
               /* send the conncheck */
               nice_socket_send (p->local->sockptr, &p->remote->addr,

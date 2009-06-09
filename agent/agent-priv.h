@@ -112,6 +112,7 @@ struct _NiceAgent
   GStaticRecMutex mutex;                 /* Mutex used for thread-safe lib */
   NiceCompatibility compatibility; /* property: Compatibility mode */
   StunAgent stun_agent;            /* STUN agent */
+  gboolean media_after_tick;       /* Received media after keepalive tick */
 #ifdef HAVE_GUPNP
   GUPnPSimpleIgdThread* upnp;	   /* GUPnP Single IGD agent */
   gboolean upnp_enabled;           /* whether UPnP discovery is enabled */

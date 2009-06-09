@@ -537,6 +537,7 @@ nice_agent_init (NiceAgent *agent)
   agent->conncheck_timer_source = NULL;
   agent->keepalive_timer_source = NULL;
   agent->refresh_list = NULL;
+  agent->media_after_tick = FALSE;
 
   agent->compatibility = NICE_COMPATIBILITY_DRAFT19;
 
@@ -1789,6 +1790,8 @@ _nice_agent_recv (
       break;
     }
   }
+
+  agent->media_after_tick = TRUE;
 
   if (stun_message_validate_buffer_length ((uint8_t *) buf, (size_t) len) != len)
     /* If the retval is no 0, its not a valid stun packet, probably data */
