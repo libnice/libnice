@@ -679,21 +679,26 @@ discovery_add_peer_reflexive_candidate (
 static guint priv_highest_remote_foundation (Component *component)
 {
   GSList *i;
-  guint highest = 0;
+  guint highest = 1;
   gchar foundation[NICE_CANDIDATE_MAX_FOUNDATION];
 
-  for (;;) {
+  for (highest = 1;; highest++) {
+    gboolean taken = FALSE;
+
     g_snprintf (foundation, NICE_CANDIDATE_MAX_FOUNDATION, "%u", highest);
     for (i = component->remote_candidates; i; i = i->next) {
       NiceCandidate *cand = i->data;
       if (strncmp (foundation, cand->foundation,
-              NICE_CANDIDATE_MAX_FOUNDATION) != 0) {
-        return highest;
+              NICE_CANDIDATE_MAX_FOUNDATION) == 0) {
+        taken = TRUE;
+        break;
       }
     }
+    if (!taken)
+      return highest;
   }
 
-  return highest;
+  g_return_val_if_reached (highest);
 }
 
 /*
