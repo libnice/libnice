@@ -270,10 +270,35 @@ static gboolean priv_add_local_candidate_pruned (Component *component, NiceCandi
   return TRUE;
 }
 
+static guint priv_highest_remote_foundation (Component *component)
+{
+  GSList *i;
+  guint highest = 1;
+  gchar foundation[NICE_CANDIDATE_MAX_FOUNDATION];
+
+  for (highest = 1;; highest++) {
+    gboolean taken = FALSE;
+
+    g_snprintf (foundation, NICE_CANDIDATE_MAX_FOUNDATION, "%u", highest);
+    for (i = component->remote_candidates; i; i = i->next) {
+      NiceCandidate *cand = i->data;
+      if (strncmp (foundation, cand->foundation,
+              NICE_CANDIDATE_MAX_FOUNDATION) == 0) {
+        taken = TRUE;
+        break;
+      }
+    }
+    if (!taken)
+      return highest;
+  }
+
+  g_return_val_if_reached (highest);
+}
+
 /*
  * Assings a foundation to the candidate.
  *
- * Implements the mechanism described in ICE sect 
+ * Implements the mechanism described in ICE sect
  * 4.1.1.3 "Computing Foundations" (ID-19).
  */
 static void priv_assign_foundation (NiceAgent *agent, NiceCandidate *candidate)
@@ -294,7 +319,7 @@ static void priv_assign_foundation (NiceAgent *agent, NiceCandidate *candidate)
 	/* note: ports are not to be compared */
 	nice_address_set_port (&temp,
                nice_address_get_port (&candidate->base_addr));
-	
+
 	if (candidate->type == n->type &&
             candidate->stream_id == n->stream_id &&
 	    nice_address_equal (&candidate->base_addr, &temp)) {
@@ -319,6 +344,61 @@ static void priv_assign_foundation (NiceAgent *agent, NiceCandidate *candidate)
 
   g_snprintf (candidate->foundation, NICE_CANDIDATE_MAX_FOUNDATION, "%u", agent->next_candidate_id++);
 }
+
+static void priv_assign_remote_foundation (NiceAgent *agent, NiceCandidate *candidate)
+{
+  GSList *i, *j, *k;
+  guint next_remote_id;
+  Component *component = NULL;
+
+  for (i = agent->streams; i; i = i->next) {
+    Stream *stream = i->data;
+    for (j = stream->components; j; j = j->next) {
+      Component *c = j->data;
+
+      if (c->id == candidate->component_id)
+        component = c;
+
+      for (k = c->remote_candidates; k; k = k->next) {
+	NiceCandidate *n = k->data;
+	NiceAddress temp = n->base_addr;
+
+	/* note: candidate must not on the remote candidate list */
+	g_assert (candidate != n);
+
+	/* note: ports are not to be compared */
+	nice_address_set_port (&temp,
+               nice_address_get_port (&candidate->base_addr));
+
+	if (candidate->type == n->type &&
+            candidate->stream_id == n->stream_id &&
+	    nice_address_equal (&candidate->base_addr, &temp)) {
+	  /* note: currently only one STUN/TURN server per stream at a
+	   *       time is supported, so there is no need to check
+	   *       for candidates that would otherwise share the
+	   *       foundation, but have different STUN/TURN servers */
+	  memcpy (candidate->foundation, n->foundation, NICE_CANDIDATE_MAX_FOUNDATION);
+          if (n->username) {
+            g_free (candidate->username);
+            candidate->username = g_strdup (n->username);
+          }
+          if (n->password) {
+            g_free (candidate->password);
+            candidate->password = g_strdup (n->password);
+          }
+	  return;
+	}
+      }
+    }
+  }
+
+  if (component) {
+    next_remote_id = priv_highest_remote_foundation (component);
+    g_snprintf (candidate->foundation, NICE_CANDIDATE_MAX_FOUNDATION,
+        "%u", next_remote_id);
+  }
+}
+
 
 static
 void priv_generate_candidate_credentials (NiceAgent *agent,
@@ -676,30 +756,6 @@ discovery_add_peer_reflexive_candidate (
   return candidate;
 }
 
-static guint priv_highest_remote_foundation (Component *component)
-{
-  GSList *i;
-  guint highest = 1;
-  gchar foundation[NICE_CANDIDATE_MAX_FOUNDATION];
-
-  for (highest = 1;; highest++) {
-    gboolean taken = FALSE;
-
-    g_snprintf (foundation, NICE_CANDIDATE_MAX_FOUNDATION, "%u", highest);
-    for (i = component->remote_candidates; i; i = i->next) {
-      NiceCandidate *cand = i->data;
-      if (strncmp (foundation, cand->foundation,
-              NICE_CANDIDATE_MAX_FOUNDATION) == 0) {
-        taken = TRUE;
-        break;
-      }
-    }
-    if (!taken)
-      return highest;
-  }
-
-  g_return_val_if_reached (highest);
-}
 
 /*
  * Adds a new peer reflexive candidate to the list of known
@@ -729,8 +785,6 @@ NiceCandidate *discovery_learn_remote_peer_reflexive_candidate (
   if (candidate) {
     GSList *modified_list;
 
-    guint next_remote_id = priv_highest_remote_foundation (component);
-
     candidate->transport = NICE_CANDIDATE_TRANSPORT_UDP;
     candidate->addr = *remote_address;
     candidate->base_addr = *remote_address;
@@ -750,8 +804,8 @@ NiceCandidate *discovery_learn_remote_peer_reflexive_candidate (
     candidate->stream_id = stream->id;
     candidate->component_id = component->id;
 
-    g_snprintf (candidate->foundation, NICE_CANDIDATE_MAX_FOUNDATION,
-        "%u", next_remote_id);
+
+    priv_assign_remote_foundation (agent, candidate);
 
     if (agent->compatibility == NICE_COMPATIBILITY_MSN &&
 	remote && local) {
