@@ -70,8 +70,10 @@ typedef struct {
 struct to_be_sent {
   guint length;
   gchar *buf;
+  gboolean can_drop;
 };
 
+#define MAX_QUEUE_LENGTH 20
 
 static void socket_close (NiceSocket *sock);
 static gint socket_recv (NiceSocket *sock, NiceAddress *from,
@@ -222,7 +224,9 @@ socket_recv (NiceSocket *sock, NiceAddress *from, guint len, gchar *buf)
   return ret;
 }
 
-
+/* Data sent to this function must be a single entity because buffers can be
+ * dropped if the bandwidth isn't fast enough. So do not send a message in
+ * multiple chunks. */
 static gboolean
 socket_send (NiceSocket *sock, const NiceAddress *to,
     guint len, const gchar *buf)
@@ -247,10 +251,24 @@ socket_send (NiceSocket *sock, const NiceAddress *to,
         return FALSE;
       }
     } else if ((guint)ret < len) {
-      add_to_be_sent (sock, buf + ret, len - ret, FALSE);
+      add_to_be_sent (sock, buf + ret, len - ret, TRUE);
       return TRUE;
     }
   } else {
+    if (g_queue_get_length(&priv->send_queue) >= MAX_QUEUE_LENGTH) {
+      int peek_idx = 0;
+      struct to_be_sent *tbs = NULL;
+      while ((tbs = g_queue_peek_nth (&priv->send_queue, peek_idx)) != NULL) {
+        if (tbs->can_drop) {
+          tbs = g_queue_pop_nth (&priv->send_queue, peek_idx);
+          g_free (tbs->buf);
+          g_slice_free (struct to_be_sent, tbs);
+          break;
+        } else {
+          peek_idx++;
+        }
+      }
+    }
     add_to_be_sent (sock, buf, len, FALSE);
   }
 
@@ -283,7 +301,7 @@ socket_send_more (
 
   g_static_rec_mutex_lock (&priv->agent->mutex);
 
-  while ((tbs = g_queue_pop_head (&priv->send_queue))) {
+  while ((tbs = g_queue_pop_head (&priv->send_queue)) != NULL) {
     int ret;
 
     ret = send (sock->fileno, tbs->buf, tbs->length, 0);
@@ -338,6 +356,7 @@ add_to_be_sent (NiceSocket *sock, const gchar *buf, guint len, gboolean head)
   tbs = g_slice_new0 (struct to_be_sent);
   tbs->buf = g_memdup (buf, len);
   tbs->length = len;
+  tbs->can_drop = !head;
   if (head)
     g_queue_push_head (&priv->send_queue, tbs);
   else

@@ -65,6 +65,7 @@ typedef struct {
   NiceSocket *base_socket;
 } TurnTcpPriv;
 
+#define MAX_UDP_MESSAGE_SIZE 65535
 
 static void socket_close (NiceSocket *sock);
 static gint socket_recv (NiceSocket *sock, NiceAddress *from,
@@ -183,32 +184,30 @@ static gboolean
 socket_send (NiceSocket *sock, const NiceAddress *to,
     guint len, const gchar *buf)
 {
-  gboolean ret = TRUE;
   TurnTcpPriv *priv = sock->priv;
   gchar padbuf[3] = {0, 0, 0};
   int padlen = (len%4) ? 4 - (len%4) : 0;
+  gchar buffer[MAX_UDP_MESSAGE_SIZE + sizeof(guint16) + sizeof(padbuf)];
+  guint buffer_len = 0;
 
   if (priv->compatibility != NICE_TURN_SOCKET_COMPATIBILITY_DRAFT9)
     padlen = 0;
 
   if (priv->compatibility == NICE_TURN_SOCKET_COMPATIBILITY_GOOGLE) {
     guint16 tmpbuf = htons (len);
-    ret = nice_socket_send (priv->base_socket, to,
-        sizeof(guint16), (gchar *)&tmpbuf);
-
-    if (!ret)
-      return ret;
+    memcpy (buffer + buffer_len, (gchar *)&tmpbuf, sizeof(guint16));
+    buffer_len += sizeof(guint16);
   }
 
-  ret = nice_socket_send (priv->base_socket, to, len, buf);
+  memcpy (buffer + buffer_len, buf, len);
+  buffer_len += len;
 
-  if (!ret)
-    return ret;
+  if (priv->compatibility == NICE_TURN_SOCKET_COMPATIBILITY_DRAFT9) {
+    memcpy (buffer + buffer_len, padbuf, padlen);
+    buffer_len += padlen;
+  }
+  return nice_socket_send (priv->base_socket, to, buffer_len, buffer);
 
-  if (priv->compatibility == NICE_TURN_SOCKET_COMPATIBILITY_DRAFT9)
-    ret = nice_socket_send (priv->base_socket, to, padlen, padbuf);
-
-  return ret;
 }
 
 
