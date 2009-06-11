@@ -1,3 +1,19 @@
+libnice 0.0.7 (2009-06-11)
+===========================
+
+Added UPnP Support
+Fix a race condition when destroying the nice agent
+Stun headers are now installed
+Unset timer's source if they return FALSE
+Fix interoperability with gtalk2voip.com
+Avoid a race condition where a candidate has the wrong user/pass
+Add support for delayed setting of the remote candidates in google mode
+Better connectivity support and race condition fixes
+Keepalive connchecks do not change the state if they fail but data was still received
+Fix foundation generation for remote peer reflexive candidates
+Drop packets when using TCP and the bandwidth is too slow for the data output
+
+
 libnice 0.0.6 (2009-03-31)
 ===========================
 
