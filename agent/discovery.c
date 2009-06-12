@@ -361,7 +361,7 @@ static void priv_assign_remote_foundation (NiceAgent *agent, NiceCandidate *cand
 
       for (k = c->remote_candidates; k; k = k->next) {
 	NiceCandidate *n = k->data;
-	NiceAddress temp = n->base_addr;
+	NiceAddress temp = n->addr;
 
 	/* note: candidate must not on the remote candidate list */
 	g_assert (candidate != n);
@@ -372,7 +372,7 @@ static void priv_assign_remote_foundation (NiceAgent *agent, NiceCandidate *cand
 
 	if (candidate->type == n->type &&
             candidate->stream_id == n->stream_id &&
-	    nice_address_equal (&candidate->base_addr, &temp)) {
+	    nice_address_equal (&candidate->addr, &temp)) {
 	  /* note: currently only one STUN/TURN server per stream at a
 	   *       time is supported, so there is no need to check
 	   *       for candidates that would otherwise share the
