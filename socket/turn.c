@@ -90,7 +90,6 @@ typedef struct {
   StunTransactionId id;
   GSource *source;
   TurnPriv *priv;
-  gint ref;
 } SendRequest;
 
 static void socket_close (NiceSocket *sock);
@@ -204,9 +203,7 @@ socket_close (NiceSocket *sock)
 
     stun_agent_forget_transaction (&priv->agent, r->id);
 
-    r->priv = NULL;
-    if (g_atomic_int_dec_and_test (&r->ref))
-      g_slice_free (SendRequest, r);
+    g_slice_free (SendRequest, r);
 
   }
   g_queue_free (priv->send_requests);
@@ -323,7 +320,6 @@ socket_send (NiceSocket *sock, const NiceAddress *to,
       req->source = agent_timeout_add_with_context (priv->nice, STUN_END_TIMEOUT,
           priv_forget_send_request, req);
       g_queue_push_tail (priv->send_requests, req);
-      g_atomic_int_inc (&req->ref);
     }
   }
 
@@ -356,23 +352,17 @@ priv_forget_send_request (gpointer pointer)
     return FALSE;
   }
 
-  if (req->source) {
-    stun_agent_forget_transaction (&req->priv->agent, req->id);
+  stun_agent_forget_transaction (&req->priv->agent, req->id);
 
-    if (g_queue_index (req->priv->send_requests, req) != -1) {
-      g_queue_remove (req->priv->send_requests, req);
-      (void)g_atomic_int_dec_and_test (&req->ref);
-    }
+  g_queue_remove (req->priv->send_requests, req);
 
-    g_source_destroy (req->source);
-    g_source_unref (req->source);
-    req->source = NULL;
-  }
+  g_source_destroy (req->source);
+  g_source_unref (req->source);
+  req->source = NULL;
 
   agent_unlock ();
 
-  if (g_atomic_int_dec_and_test (&req->ref))
-    g_slice_free (SendRequest, req);
+  g_slice_free (SendRequest, req);
 
   return FALSE;
 }
@@ -429,8 +419,7 @@ nice_turn_socket_parse_recv (NiceSocket *sock, NiceSocket **from_sock,
 
             g_queue_remove (priv->send_requests, req);
 
-            if (g_atomic_int_dec_and_test (&req->ref))
-              g_slice_free (SendRequest, req);
+            g_slice_free (SendRequest, req);
           }
 
           if (priv->compatibility == NICE_TURN_SOCKET_COMPATIBILITY_GOOGLE) {
