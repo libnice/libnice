@@ -109,7 +109,6 @@ struct _NiceAgent
   GSList *refresh_list;         /* list of CandidateRefresh items */
   guint64 tie_breaker;            /* tie breaker (ICE sect 5.2
 				     "Determining Role" ID-19) */
-  GStaticRecMutex mutex;                 /* Mutex used for thread-safe lib */
   NiceCompatibility compatibility; /* property: Compatibility mode */
   StunAgent stun_agent;            /* STUN agent */
   gboolean media_after_tick;       /* Received media after keepalive tick */
@@ -135,6 +134,9 @@ Stream *agent_find_stream (NiceAgent *agent, guint stream_id);
 
 void agent_gathering_done (NiceAgent *agent);
 void agent_signal_gathering_done (NiceAgent *agent);
+
+void agent_lock (void);
+void agent_unlock (void);
 
 void agent_signal_new_selected_pair (
   NiceAgent *agent,

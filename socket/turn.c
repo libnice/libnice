@@ -346,16 +346,15 @@ static gboolean
 priv_forget_send_request (gpointer pointer)
 {
   SendRequest *req = pointer;
-  GStaticRecMutex *mutex = NULL;
 
-  if (req->priv == NULL)
+  agent_lock ();
+
+  if (g_source_is_destroyed (g_main_current_source ())) {
+    nice_debug ("Source was destroyed. "
+        "Avoided race condition in turn.c:priv_forget_send_request");
+    agent_unlock ();
     return FALSE;
-
-  g_atomic_int_inc (&req->ref);
-
-  mutex = &req->priv->nice->mutex;
-
-  g_static_rec_mutex_lock (mutex);
+  }
 
   if (req->source) {
     stun_agent_forget_transaction (&req->priv->agent, req->id);
@@ -370,7 +369,7 @@ priv_forget_send_request (gpointer pointer)
     req->source = NULL;
   }
 
-  g_static_rec_mutex_unlock (mutex);
+  agent_unlock ();
 
   if (g_atomic_int_dec_and_test (&req->ref))
     g_slice_free (SendRequest, req);
@@ -658,7 +657,14 @@ priv_retransmissions_tick (gpointer pointer)
   TurnPriv *priv = pointer;
   gboolean ret;
 
-  g_static_rec_mutex_lock (&priv->nice->mutex);
+  agent_lock ();
+  if (g_source_is_destroyed (g_main_current_source ())) {
+    nice_debug ("Source was destroyed. "
+        "Avoided race condition in turn.c:priv_retransmissions_tick");
+    agent_unlock ();
+    return FALSE;
+  }
+
   ret = priv_retransmissions_tick_unlocked (priv);
   if (ret == FALSE) {
     if (priv->tick_source != NULL) {
@@ -667,7 +673,7 @@ priv_retransmissions_tick (gpointer pointer)
       priv->tick_source = NULL;
     }
   }
-  g_static_rec_mutex_unlock (&priv->nice->mutex);
+  agent_unlock ();
 
   return ret;
 }

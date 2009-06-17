@@ -450,12 +450,17 @@ static gboolean priv_conn_check_tick_unlocked (gpointer pointer)
 
 static gboolean priv_conn_check_tick (gpointer pointer)
 {
-  NiceAgent *agent = pointer;
   gboolean ret;
 
-  g_static_rec_mutex_lock (&agent->mutex);
+  agent_lock();
+  if (g_source_is_destroyed (g_main_current_source ())) {
+    nice_debug ("Source was destroyed. "
+        "Avoided race condition in priv_conn_check_tick");
+    agent_unlock ();
+    return FALSE;
+  }
   ret = priv_conn_check_tick_unlocked (pointer);
-  g_static_rec_mutex_unlock (&agent->mutex);
+  agent_unlock();
 
   return ret;
 }
@@ -464,14 +469,16 @@ static gboolean priv_conn_keepalive_retransmissions_tick (gpointer pointer)
 {
   CandidatePair *pair = (CandidatePair *) pointer;
 
-  g_static_rec_mutex_lock (&pair->keepalive.agent->mutex);
+  agent_lock();
 
   /* A race condition might happen where the mutex above waits for the lock
    * and in the meantime another thread destroys the source.
    * In that case, we don't need to run our retransmission tick since it should
    * have been cancelled */
-  if (pair->keepalive.tick_source == NULL) {
-    g_static_rec_mutex_unlock (&pair->keepalive.agent->mutex);
+  if (g_source_is_destroyed (g_main_current_source ())) {
+    nice_debug ("Source was destroyed. "
+        "Avoided race condition in priv_conn_keepalive_retransmissions_tick");
+    agent_unlock ();
     return FALSE;
   }
 
@@ -532,7 +539,7 @@ static gboolean priv_conn_keepalive_retransmissions_tick (gpointer pointer)
   }
 
 
-  g_static_rec_mutex_unlock (&pair->keepalive.agent->mutex);
+  agent_unlock ();
   return FALSE;
 }
 
@@ -676,7 +683,14 @@ static gboolean priv_conn_keepalive_tick (gpointer pointer)
   NiceAgent *agent = pointer;
   gboolean ret;
 
-  g_static_rec_mutex_lock (&agent->mutex);
+  agent_lock();
+  if (g_source_is_destroyed (g_main_current_source ())) {
+    nice_debug ("Source was destroyed. "
+        "Avoided race condition in priv_conn_keepalive_tick");
+    agent_unlock ();
+    return FALSE;
+  }
+
   ret = priv_conn_keepalive_tick_unlocked (agent);
   if (ret == FALSE) {
     if (agent->keepalive_timer_source) {
@@ -685,7 +699,7 @@ static gboolean priv_conn_keepalive_tick (gpointer pointer)
       agent->keepalive_timer_source = NULL;
     }
   }
-  g_static_rec_mutex_unlock (&agent->mutex);
+  agent_unlock();
   return ret;
 }
 
@@ -694,16 +708,19 @@ static gboolean priv_turn_allocate_refresh_retransmissions_tick (gpointer pointe
 {
   CandidateRefresh *cand = (CandidateRefresh *) pointer;
 
-  g_static_rec_mutex_lock (&cand->agent->mutex);
+  agent_lock();
 
   /* A race condition might happen where the mutex above waits for the lock
    * and in the meantime another thread destroys the source.
    * In that case, we don't need to run our retransmission tick since it should
    * have been cancelled */
-  if (cand->tick_source == NULL) {
-    g_static_rec_mutex_unlock (&cand->agent->mutex);
+  if (g_source_is_destroyed (g_main_current_source ())) {
+    nice_debug ("Source was destroyed. "
+        "Avoided race condition in priv_turn_allocate_refresh_retransmissions_tick");
+    agent_unlock ();
     return FALSE;
   }
+
 
   g_source_destroy (cand->tick_source);
   g_source_unref (cand->tick_source);
@@ -738,7 +755,7 @@ static gboolean priv_turn_allocate_refresh_retransmissions_tick (gpointer pointe
   }
 
 
-  g_static_rec_mutex_unlock (&cand->agent->mutex);
+  agent_unlock ();
   return FALSE;
 }
 
@@ -810,9 +827,16 @@ static gboolean priv_turn_allocate_refresh_tick (gpointer pointer)
 {
   CandidateRefresh *cand = (CandidateRefresh *) pointer;
 
-  g_static_rec_mutex_lock (&cand->agent->mutex);
+  agent_lock();
+  if (g_source_is_destroyed (g_main_current_source ())) {
+    nice_debug ("Source was destroyed. "
+        "Avoided race condition in priv_turn_allocate_refresh_tick");
+    agent_unlock ();
+    return FALSE;
+  }
+
   priv_turn_allocate_refresh_tick_unlocked (cand);
-  g_static_rec_mutex_unlock (&cand->agent->mutex);
+  agent_unlock ();
 
   return FALSE;
 }

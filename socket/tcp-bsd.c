@@ -299,7 +299,14 @@ socket_send_more (
   TcpPriv *priv = sock->priv;
   struct to_be_sent *tbs = NULL;
 
-  g_static_rec_mutex_lock (&priv->agent->mutex);
+  agent_lock ();
+
+  if (g_source_is_destroyed (g_main_current_source ())) {
+    nice_debug ("Source was destroyed. "
+        "Avoided race condition in tcp-bsd.c:socket_send_more");
+    agent_unlock ();
+    return FALSE;
+  }
 
   while ((tbs = g_queue_pop_head (&priv->send_queue)) != NULL) {
     int ret;
@@ -335,11 +342,11 @@ socket_send_more (
     g_source_unref (priv->io_source);
     priv->io_source = NULL;
 
-    g_static_rec_mutex_unlock (&priv->agent->mutex);
+    agent_unlock ();
     return FALSE;
   }
 
-  g_static_rec_mutex_unlock (&priv->agent->mutex);
+  agent_unlock ();
   return TRUE;
 }
 

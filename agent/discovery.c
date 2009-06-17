@@ -1044,7 +1044,14 @@ static gboolean priv_discovery_tick (gpointer pointer)
   NiceAgent *agent = pointer;
   gboolean ret;
 
-  g_static_rec_mutex_lock (&agent->mutex);
+  agent_lock();
+  if (g_source_is_destroyed (g_main_current_source ())) {
+    nice_debug ("Source was destroyed. "
+        "Avoided race condition in priv_discovery_tick");
+    agent_unlock ();
+    return FALSE;
+  }
+
   ret = priv_discovery_tick_unlocked (pointer);
   if (ret == FALSE) {
     if (agent->discovery_timer_source != NULL) {
@@ -1053,7 +1060,7 @@ static gboolean priv_discovery_tick (gpointer pointer)
       agent->discovery_timer_source = NULL;
     }
   }
-  g_static_rec_mutex_unlock (&agent->mutex);
+  agent_unlock();
 
   return ret;
 }

@@ -11,7 +11,8 @@ ERROR_CFLAGS = \
 	-Wmissing-prototypes \
 	-Wstrict-prototypes \
 	-Wredundant-decls \
-	-Wno-unused-parameter
+	-Wno-unused-parameter \
+	-Wno-missing-field-initializers
 # -Wold-style-definition -Winline -Wunreachable-code
 
 CLEANFILES = *.gcno *.gcda

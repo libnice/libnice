@@ -115,12 +115,27 @@ enum
 
 static guint signals[N_SIGNALS];
 
+static GStaticRecMutex agent_mutex = G_STATIC_REC_MUTEX_INIT;    /* Mutex used for thread-safe lib */
+
 static gboolean priv_attach_stream_component (NiceAgent *agent,
     Stream *stream,
     Component *component);
 static void priv_detach_stream_component (Stream *stream, Component *component);
 
 static void priv_free_upnp (NiceAgent *agent);
+
+
+void agent_lock (void)
+{
+  g_static_rec_mutex_lock (&agent_mutex);
+}
+
+void agent_unlock (void)
+{
+  g_static_rec_mutex_unlock (&agent_mutex);
+}
+
+
 
 StunUsageIceCompatibility
 agent_to_ice_compatibility (NiceAgent *agent)
@@ -548,8 +563,6 @@ nice_agent_init (NiceAgent *agent)
 
   agent->rng = nice_rng_new ();
   priv_generate_tie_breaker (agent);
-
-  g_static_rec_mutex_init (&agent->mutex);
 }
 
 
@@ -574,7 +587,7 @@ nice_agent_get_property (
 {
   NiceAgent *agent = NICE_AGENT (object);
 
-  g_static_rec_mutex_lock (&agent->mutex);
+  agent_lock();
 
   switch (property_id)
     {
@@ -645,7 +658,7 @@ nice_agent_get_property (
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
     }
 
-  g_static_rec_mutex_unlock (&agent->mutex);
+  agent_unlock();
 }
 
 
@@ -658,7 +671,7 @@ nice_agent_set_property (
 {
   NiceAgent *agent = NICE_AGENT (object);
 
-  g_static_rec_mutex_lock (&agent->mutex);
+  agent_lock();
 
   switch (property_id)
     {
@@ -749,7 +762,7 @@ nice_agent_set_property (
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
     }
 
-  g_static_rec_mutex_unlock (&agent->mutex);
+  agent_unlock();
 
 }
 
@@ -1061,7 +1074,7 @@ nice_agent_add_stream (
   GSList *modified_list = NULL;
   guint ret = 0;
 
-  g_static_rec_mutex_lock (&agent->mutex);
+  agent_lock();
 
   stream = stream_new (n_components);
   if (stream) {
@@ -1080,7 +1093,7 @@ nice_agent_add_stream (
 
   ret = stream->id;
 
-  g_static_rec_mutex_unlock (&agent->mutex);
+  agent_unlock();
   return ret;
 }
 
@@ -1101,7 +1114,7 @@ nice_agent_set_relay_info(NiceAgent *agent,
   g_return_val_if_fail (password, FALSE);
   g_return_val_if_fail (type <= NICE_PROXY_TYPE_LAST, FALSE);
 
-  g_static_rec_mutex_lock (&agent->mutex);
+  agent_lock();
 
   if (agent_find_component (agent, stream_id, component_id, NULL, &component)) {
     TurnServer *turn = g_slice_new0 (TurnServer);
@@ -1111,7 +1124,7 @@ nice_agent_set_relay_info(NiceAgent *agent,
       nice_address_set_port (&turn->server, server_port);
     } else {
       g_slice_free (TurnServer, turn);
-      g_static_rec_mutex_unlock (&agent->mutex);
+      agent_unlock();
       return FALSE;
     }
 
@@ -1126,7 +1139,7 @@ nice_agent_set_relay_info(NiceAgent *agent,
     component->turn_servers = g_list_append (component->turn_servers, turn);
   }
 
-  g_static_rec_mutex_unlock (&agent->mutex);
+  agent_unlock();
   return TRUE;
 }
 
@@ -1137,7 +1150,12 @@ static gboolean priv_upnp_timeout_cb (gpointer user_data)
   NiceAgent *agent = (NiceAgent*)user_data;
   GSList *i;
 
-  g_static_rec_mutex_lock (&agent->mutex);
+  agent_lock();
+
+  if (g_source_is_destroyed (g_main_current_source ())) {
+    agent_unlock ();
+    return FALSE;
+  }
 
   nice_debug ("Agent %p : UPnP port mapping timed out", agent);
 
@@ -1156,7 +1174,7 @@ static gboolean priv_upnp_timeout_cb (gpointer user_data)
 
   agent_gathering_done (agent);
 
-  g_static_rec_mutex_unlock (&agent->mutex);
+  agent_unlock();
   return FALSE;
 }
 
@@ -1170,7 +1188,7 @@ static void _upnp_mapped_external_port (GUPnPSimpleIgd *self, gchar *proto,
 
   GSList *i, *j, *k;
 
-  g_static_rec_mutex_lock (&agent->mutex);
+  agent_lock();
 
   nice_debug ("Agent %p : Sucessfully mapped %s:%d to %s:%d", agent, local_ip,
       local_port, external_ip, external_port);
@@ -1222,7 +1240,7 @@ static void _upnp_mapped_external_port (GUPnPSimpleIgd *self, gchar *proto,
     agent_gathering_done (agent);
   }
 
-  g_static_rec_mutex_unlock (&agent->mutex);
+  agent_unlock();
 }
 
 static void _upnp_error_mapping_port (GUPnPSimpleIgd *self, GError *error,
@@ -1233,7 +1251,7 @@ static void _upnp_error_mapping_port (GUPnPSimpleIgd *self, GError *error,
   NiceAddress localaddr;
   GSList *i;
 
-  g_static_rec_mutex_lock (&agent->mutex);
+  agent_lock();
 
   nice_debug ("Agent %p : Error mapping %s:%d to %d (%d) : %s", agent, local_ip,
       local_port, external_port, error->domain, error->message);
@@ -1259,7 +1277,7 @@ static void _upnp_error_mapping_port (GUPnPSimpleIgd *self, GError *error,
     }
   }
 
-  g_static_rec_mutex_unlock (&agent->mutex);
+  agent_unlock();
 }
 
 #endif
@@ -1273,7 +1291,7 @@ nice_agent_gather_candidates (
   GSList *i;
   Stream *stream;
 
-  g_static_rec_mutex_lock (&agent->mutex);
+  agent_lock();
 
   stream = agent_find_stream (agent, stream_id);
   if (stream == NULL) {
@@ -1415,7 +1433,7 @@ nice_agent_gather_candidates (
 
  done:
 
-  g_static_rec_mutex_unlock (&agent->mutex);
+  agent_unlock();
 }
 
 static void priv_free_upnp (NiceAgent *agent)
@@ -1462,7 +1480,7 @@ nice_agent_remove_stream (
   Stream *stream;
   GSList *i;
 
-  g_static_rec_mutex_lock (&agent->mutex);
+  agent_lock();
   stream = agent_find_stream (agent, stream_id);
 
   if (!stream) {
@@ -1486,7 +1504,7 @@ nice_agent_remove_stream (
     priv_remove_keepalive_timer (agent);
 
  done:
-  g_static_rec_mutex_unlock (&agent->mutex);
+  agent_unlock();
 }
 
 NICEAPI_EXPORT gboolean
@@ -1496,7 +1514,7 @@ nice_agent_add_local_address (NiceAgent *agent, NiceAddress *addr)
   GSList *modified_list;
   gboolean ret = FALSE;
 
-  g_static_rec_mutex_lock (&agent->mutex);
+  agent_lock();
 
   dup = nice_address_dup (addr);
   nice_address_set_port (dup, 0);
@@ -1509,7 +1527,7 @@ nice_agent_add_local_address (NiceAgent *agent, NiceAddress *addr)
   }
 
  done:
-  g_static_rec_mutex_unlock (&agent->mutex);
+  agent_unlock();
   return ret;
 }
 
@@ -1628,7 +1646,7 @@ nice_agent_set_remote_credentials (
   Stream *stream;
   gboolean ret = FALSE;
 
-  g_static_rec_mutex_lock (&agent->mutex);
+  agent_lock();
 
   stream = agent_find_stream (agent, stream_id);
   /* note: oddly enough, ufrag and pwd can be empty strings */
@@ -1642,7 +1660,7 @@ nice_agent_set_remote_credentials (
   }
 
  done:
-  g_static_rec_mutex_unlock (&agent->mutex);
+  agent_unlock();
   return ret;
 }
 
@@ -1656,7 +1674,7 @@ nice_agent_get_local_credentials (
   Stream *stream;
   gboolean ret = TRUE;
 
-  g_static_rec_mutex_lock (&agent->mutex);
+  agent_lock();
 
   stream = agent_find_stream (agent, stream_id);
   if (stream == NULL) {
@@ -1673,7 +1691,7 @@ nice_agent_get_local_credentials (
 
  done:
 
-  g_static_rec_mutex_unlock (&agent->mutex);
+  agent_unlock();
   return ret;
 }
 
@@ -1686,7 +1704,7 @@ nice_agent_set_remote_candidates (NiceAgent *agent, guint stream_id, guint compo
 
   nice_debug ("Agent %p: set_remote_candidates %d %d", agent, stream_id, component_id);
 
-  g_static_rec_mutex_lock (&agent->mutex);
+  agent_lock();
 
   stream = agent_find_stream (agent, stream_id);
   if (stream == NULL) {
@@ -1730,7 +1748,7 @@ nice_agent_set_remote_candidates (NiceAgent *agent, guint stream_id, guint compo
  }
 
  done:
- g_static_rec_mutex_unlock (&agent->mutex);
+ agent_unlock();
  return added;
 }
 
@@ -1820,7 +1838,7 @@ nice_agent_send (
   Component *component;
   guint ret = -1;
 
-  g_static_rec_mutex_lock (&agent->mutex);
+  agent_lock();
 
   if (!agent_find_component (agent, stream_id, component_id, &stream, &component)) {
     goto done;
@@ -1849,7 +1867,7 @@ nice_agent_send (
     }
 
  done:
-  g_static_rec_mutex_unlock (&agent->mutex);
+  agent_unlock();
   return ret;
 }
 
@@ -1864,17 +1882,16 @@ nice_agent_get_local_candidates (
   GSList * ret = NULL;
   GSList * item = NULL;
 
-  g_static_rec_mutex_lock (&agent->mutex);
-  if (!agent_find_component (agent, stream_id, component_id, NULL, &component))
-    {
-      goto done;
-    }
+  agent_lock();
+  if (!agent_find_component (agent, stream_id, component_id, NULL, &component)) {
+    goto done;
+  }
 
   for (item = component->local_candidates; item; item = item->next)
     ret = g_slist_append (ret, nice_candidate_copy (item->data));
 
  done:
-  g_static_rec_mutex_unlock (&agent->mutex);
+  agent_unlock();
   return ret;
 }
 
@@ -1888,7 +1905,7 @@ nice_agent_get_remote_candidates (
   Component *component;
   GSList *ret = NULL, *item = NULL;
 
-  g_static_rec_mutex_lock (&agent->mutex);
+  agent_lock();
   if (!agent_find_component (agent, stream_id, component_id, NULL, &component))
     {
       goto done;
@@ -1898,7 +1915,7 @@ nice_agent_get_remote_candidates (
     ret = g_slist_append (ret, nice_candidate_copy (item->data));
 
  done:
-  g_static_rec_mutex_unlock (&agent->mutex);
+  agent_unlock();
   return ret;
 }
 
@@ -1910,7 +1927,7 @@ nice_agent_restart (
   GSList *i;
   gboolean res = TRUE;
 
-  g_static_rec_mutex_lock (&agent->mutex);
+  agent_lock();
 
   /* step: clean up all connectivity checks */
   conn_check_free (agent);
@@ -1926,7 +1943,7 @@ nice_agent_restart (
     res = stream_restart (stream, agent->rng);
   }
 
-  g_static_rec_mutex_unlock (&agent->mutex);
+  agent_unlock();
   return res;
 }
 
@@ -1979,7 +1996,6 @@ nice_agent_dispose (GObject *object)
   if (G_OBJECT_CLASS (nice_agent_parent_class)->dispose)
     G_OBJECT_CLASS (nice_agent_parent_class)->dispose (object);
 
-  g_static_rec_mutex_free (&agent->mutex);
 }
 
 
@@ -2043,7 +2059,12 @@ nice_agent_g_source_cb (
   gchar buf[MAX_BUFFER_SIZE];
   gint len;
 
-  g_static_rec_mutex_lock (&agent->mutex);
+  agent_lock();
+
+  if (g_source_is_destroyed (g_main_current_source ())) {
+    agent_unlock ();
+    return FALSE;
+  }
 
   /* note: dear compiler, these are for you: */
   (void)io;
@@ -2063,9 +2084,13 @@ nice_agent_g_source_cb (
      * take care of every path where the socket might still be used.. */
     nice_debug ("Agent %p: unable to recv from socket %p. Detaching", agent,
         ctx->socket);
+
   }
 
-  g_static_rec_mutex_unlock (&agent->mutex);
+  agent_unlock();
+
+ done:
+
   return TRUE;
 }
 
@@ -2150,7 +2175,7 @@ nice_agent_attach_recv (
   Stream *stream = NULL;
   gboolean ret = FALSE;
 
-  g_static_rec_mutex_lock (&agent->mutex);
+  agent_lock();
 
   /* attach candidates */
 
@@ -2179,7 +2204,7 @@ nice_agent_attach_recv (
 
 
  done:
-  g_static_rec_mutex_unlock (&agent->mutex);
+  agent_unlock();
   return ret;
 }
 
@@ -2196,7 +2221,7 @@ nice_agent_set_selected_pair (
   CandidatePair pair;
   gboolean ret = FALSE;
 
-  g_static_rec_mutex_lock (&agent->mutex);
+  agent_lock();
 
   /* step: check that params specify an existing pair */
   if (!agent_find_component (agent, stream_id, component_id, &stream, &component)) {
@@ -2220,7 +2245,7 @@ nice_agent_set_selected_pair (
   ret = TRUE;
 
  done:
-  g_static_rec_mutex_unlock (&agent->mutex);
+  agent_unlock();
   return ret;
 }
 
@@ -2254,7 +2279,7 @@ nice_agent_set_selected_remote_candidate (
   NiceCandidate *lcandidate = NULL;
   gboolean ret = FALSE;
 
-  g_static_rec_mutex_lock (&agent->mutex);
+  agent_lock();
 
   /* step: check if the component exists*/
   if (!agent_find_component (agent, stream_id, component_id, &stream, &component)) {
@@ -2281,6 +2306,6 @@ nice_agent_set_selected_remote_candidate (
   ret = TRUE;
 
  done:
-  g_static_rec_mutex_unlock (&agent->mutex);
+  agent_unlock();
   return ret;
 }
