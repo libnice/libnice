@@ -2073,8 +2073,14 @@ nice_agent_g_source_cb (
 			  MAX_BUFFER_SIZE, buf);
 
   if (len > 0 && component->g_source_io_cb) {
-    component->g_source_io_cb (agent, stream->id, component->id,
-        len, buf, component->data);
+    gpointer data = component->data;
+    gint sid = stream->id;
+    gint cid = component->id;
+    NiceAgentRecvFunc callback = component->g_source_io_cb;
+    /* Unlock the agent before calling the callback */
+    agent_unlock();
+    callback (agent, sid, cid, len, buf, data);
+    goto done;
   } else if (len < 0) {
     GSource *source = ctx->source;
     component->gsources = g_slist_remove (component->gsources, source);
