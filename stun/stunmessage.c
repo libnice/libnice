@@ -126,7 +126,7 @@ StunMessageReturn
 stun_message_find_flag (const StunMessage *msg, StunAttribute type)
 {
   const void *ptr;
-  uint16_t len;
+  uint16_t len = 0;
 
   ptr = stun_message_find (msg, type, &len);
   if (ptr == NULL)
@@ -141,7 +141,7 @@ stun_message_find32 (const StunMessage *msg, StunAttribute type,
     uint32_t *pval)
 {
   const void *ptr;
-  uint16_t len;
+  uint16_t len = 0;
 
   ptr = stun_message_find (msg, type, &len);
   if (ptr == NULL)
@@ -164,7 +164,7 @@ stun_message_find64 (const StunMessage *msg, StunAttribute type,
     uint64_t *pval)
 {
   const void *ptr;
-  uint16_t len;
+  uint16_t len = 0;
 
   ptr = stun_message_find (msg, type, &len);
   if (ptr == NULL)
@@ -187,7 +187,7 @@ stun_message_find_string (const StunMessage *msg, StunAttribute type,
     char *buf, size_t buflen)
 {
   const unsigned char *ptr;
-  uint16_t len;
+  uint16_t len = 0;
 
   ptr = stun_message_find (msg, type, &len);
   if (ptr == NULL)
@@ -207,7 +207,7 @@ stun_message_find_addr (const StunMessage *msg, StunAttribute type,
     struct sockaddr *addr, socklen_t *addrlen)
 {
   const uint8_t *ptr;
-  uint16_t len;
+  uint16_t len = 0;
 
   ptr = stun_message_find (msg, type, &len);
   if (ptr == NULL)
@@ -289,7 +289,7 @@ stun_message_find_xor_addr_full (const StunMessage *msg, StunAttribute type,
 StunMessageReturn
 stun_message_find_error (const StunMessage *msg, int *code)
 {
-  uint16_t alen;
+  uint16_t alen = 0;
   const uint8_t *ptr = stun_message_find (msg, STUN_ATTRIBUTE_ERROR_CODE, &alen);
   uint8_t class, number;
 
