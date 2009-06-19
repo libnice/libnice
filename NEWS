@@ -1,3 +1,11 @@
+libnice 0.0.8 (2009-06-19)
+===========================
+
+Remove deprecated g_strcasecmp call
+Use addr instead of base_addr on assigning remote peer-reflexive candidates (fixes crash)
+Use a global mutex and g_source_is_destroyed to avoid race conditions (fixes crashes)
+Unlock the mutex before calling the recv callback
+
 libnice 0.0.7 (2009-06-11)
 ===========================
 
