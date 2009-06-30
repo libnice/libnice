@@ -100,6 +100,7 @@ component_free (Component *cmp)
  
   for (i = cmp->incoming_checks; i; i = i->next) {
     IncomingCheck *icheck = i->data;
+    g_free (icheck->username);
     g_slice_free (IncomingCheck, icheck);
   }
 
@@ -193,6 +194,7 @@ component_restart (Component *cmp)
 
   for (i = cmp->incoming_checks; i; i = i->next) {
     IncomingCheck *icheck = i->data;
+    g_free (icheck->username);
     g_slice_free (IncomingCheck, icheck);
   }
 

@@ -85,6 +85,8 @@ struct _IncomingCheck
   NiceSocket *local_socket;
   guint32 priority;
   gboolean use_candidate;
+  uint8_t *username;
+  uint16_t username_len;
 };
 
 struct _Component
