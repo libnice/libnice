@@ -143,11 +143,11 @@ static void SHA1Transform(uint32_t state[5], const unsigned char buffer[64])
 {
   uint32_t a, b, c, d, e;
   typedef union {
-    unsigned char c[64];
+    uint8_t c[64];
     uint32_t l[16];
   } CHAR64LONG16;
   CHAR64LONG16* block;
-  uint32_t workspace[16];
+  uint8_t workspace[64];
   block = (CHAR64LONG16 *) workspace;
   memcpy(block, buffer, 64);
 
