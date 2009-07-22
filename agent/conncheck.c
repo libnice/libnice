@@ -1012,6 +1012,8 @@ void conn_check_remote_candidates_set(NiceAgent *agent)
                     icheck->local_socket,
                     local_candidate, remote_candidate);
             if (candidate) {
+              conn_check_add_for_candidate (agent, stream->id, component, candidate);
+
               priv_schedule_triggered_check (agent, stream, component, icheck->local_socket, candidate, icheck->use_candidate);
             }
           }
@@ -2828,6 +2830,8 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, Stream *stream,
             agent, stream, component, priority, from, socket,
             local_candidate,
             remote_candidate2 ? remote_candidate2 : remote_candidate);
+        if(remote_candidate)
+          conn_check_add_for_candidate (agent, stream->id, component, remote_candidate);
       }
 
       priv_reply_to_conn_check (agent, stream, component, remote_candidate,
