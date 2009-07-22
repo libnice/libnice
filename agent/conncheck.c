@@ -1035,6 +1035,8 @@ static GSList *priv_limit_conn_check_list_size (GSList *conncheck_list, guint up
   GSList *result = conncheck_list;
 
   if (list_len > upper_limit) {
+    nice_debug ("Agent %p: Pruning candidates. Conncheck list has %d elements. "
+        "Maximum connchecks allowed : %d", agent, list_len, upper_limit);
     c = list_len - upper_limit;
     if (c == list_len) {
       /* case: delete whole list */
@@ -1249,8 +1251,10 @@ static gboolean priv_add_new_check_pair (NiceAgent *agent, guint stream_id, Comp
 
       /* implement the hard upper limit for number of 
 	 checks (see sect 5.7.3 ICE ID-19): */
-      stream->conncheck_list = 
-	priv_limit_conn_check_list_size (stream->conncheck_list, agent->max_conn_checks);
+      if (agent->compatibility == NICE_COMPATIBILITY_DRAFT19) {
+        stream->conncheck_list = 
+            priv_limit_conn_check_list_size (stream->conncheck_list, agent->max_conn_checks);
+      }
       if (!stream->conncheck_list) {
 	stream->conncheck_state = NICE_CHECKLIST_FAILED;  
 	result = FALSE;
