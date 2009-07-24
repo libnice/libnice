@@ -38,8 +38,9 @@
 #include <sys/ioctl.h>
 #include <sys/types.h>
 
+#include <sys/socket.h>
+
 #ifdef HAVE_GETIFADDRS
- #include <sys/socket.h>
  #include <ifaddrs.h>
 #endif
 
