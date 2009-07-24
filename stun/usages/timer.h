@@ -102,8 +102,10 @@
 #include <winsock2.h>
 #else
 # include <sys/types.h>
+# include <sys/time.h>
 # include <time.h>
 #endif
+
 
 /**
  * StunTimer:
