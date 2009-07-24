@@ -163,6 +163,8 @@ static int recv_err (int fd)
   struct msghdr hdr;
   memset (&hdr, 0, sizeof (hdr));
   return recvmsg (fd, &hdr, MSG_ERRQUEUE) >= 0;
+#else
+  return 0;
 #endif
 }
 
