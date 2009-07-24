@@ -1035,8 +1035,8 @@ static GSList *priv_limit_conn_check_list_size (GSList *conncheck_list, guint up
   GSList *result = conncheck_list;
 
   if (list_len > upper_limit) {
-    nice_debug ("Agent %p: Pruning candidates. Conncheck list has %d elements. "
-        "Maximum connchecks allowed : %d", agent, list_len, upper_limit);
+    nice_debug ("Agent : Pruning candidates. Conncheck list has %d elements. "
+        "Maximum connchecks allowed : %d", list_len, upper_limit);
     c = list_len - upper_limit;
     if (c == list_len) {
       /* case: delete whole list */
