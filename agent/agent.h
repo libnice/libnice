@@ -620,6 +620,13 @@ nice_agent_set_selected_remote_candidate (
   guint component_id,
   NiceCandidate *candidate);
 
+
+void nice_agent_set_stream_type_of_service (
+  NiceAgent *agent,
+  guint stream_id,
+  gint tos);
+
+
 G_END_DECLS
 
 #endif /* _AGENT_H */

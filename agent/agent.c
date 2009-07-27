@@ -2315,3 +2315,35 @@ nice_agent_set_selected_remote_candidate (
   agent_unlock();
   return ret;
 }
+
+void nice_agent_set_stream_type_of_service (NiceAgent *agent,
+  guint stream_id, gint tos)
+{
+
+  GSList *i, *j, *k;
+
+  for (i = agent->streams; i; i = i->next) {
+    Stream *stream = i->data;
+    if (stream->id == stream_id) {
+      for (j = stream->components; j; j = j->next) {
+        Component *component = j->data;
+
+        for (k = component->local_candidates; k; k = k->next) {
+          NiceCandidate *local_candidate = k->data;
+          if (setsockopt (local_candidate->sockptr->fileno, IPPROTO_IP,
+                  IP_TOS, &tos, sizeof (tos)) < 0) {
+              nice_debug ("Agent %p: Could not set socket ToS", agent,
+                  g_strerror (errno));
+          }
+#ifdef IPV6_TCLASS
+          if (setsockopt (local_candidate->sockptr->fileno, IPPROTO_IPV6,
+                  IPV6_TCLASS, &tos, sizeof (tos)) < 0) {
+            nice_debug ("Agent %p: Could not set IPV6 socket ToS", agent,
+                g_strerror (errno));
+          }
+#endif
+        }
+      }
+    }
+  }
+}
