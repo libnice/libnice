@@ -172,4 +172,6 @@ StunUsageIceCompatibility agent_to_ice_compatibility (NiceAgent *agent);
 StunUsageTurnCompatibility agent_to_turn_compatibility (NiceAgent *agent);
 NiceTurnSocketCompatibility agent_to_turn_socket_compatibility (NiceAgent *agent);
 
+void _priv_set_socket_tos (NiceAgent *agent, NiceSocket *sock, gint tos);
+
 #endif /*_NICE_AGENT_PRIV_H */

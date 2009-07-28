@@ -621,7 +621,16 @@ nice_agent_set_selected_remote_candidate (
   NiceCandidate *candidate);
 
 
-void nice_agent_set_stream_type_of_service (
+/**
+ * nice_agent_set_stream_tos:
+ * @agent: The #NiceAgent Object
+ * @stream_id: The ID of the stream
+ * @tos: The ToS to set
+ *
+ * Sets the ToS on the stream's sockets
+ *
+ */
+void nice_agent_set_stream_tos (
   NiceAgent *agent,
   guint stream_id,
   gint tos);

@@ -968,6 +968,7 @@ priv_add_new_candidate_discovery_turn (NiceAgent *agent,
 
           new_socket = nice_udp_bsd_socket_new (&addr);
           if (new_socket) {
+            _priv_set_socket_tos (agent, new_socket, stream->tos);
             agent_attach_stream_component_socket (agent, stream,
                 component, new_socket);
             socket_modified_list = g_slist_append (component->sockets, new_socket);
@@ -992,6 +993,7 @@ priv_add_new_candidate_discovery_turn (NiceAgent *agent,
           socket = nice_tcp_bsd_socket_new (agent, component->ctx, &proxy_server);
 
           if (socket) {
+            _priv_set_socket_tos (agent, socket, stream->tos);
             if (agent->proxy_type == NICE_PROXY_TYPE_SOCKS5) {
               socket = nice_socks5_socket_new (socket, &turn->server,
                   agent->proxy_username, agent->proxy_password);
@@ -1007,6 +1009,7 @@ priv_add_new_candidate_discovery_turn (NiceAgent *agent,
         }
         if (socket == NULL) {
           socket = nice_tcp_bsd_socket_new (agent, component->ctx, &turn->server);
+          _priv_set_socket_tos (agent, socket, stream->tos);
         }
         if (turn->type ==  NICE_RELAY_TYPE_TURN_TLS &&
             agent->compatibility == NICE_COMPATIBILITY_GOOGLE) {
@@ -2316,34 +2319,46 @@ nice_agent_set_selected_remote_candidate (
   return ret;
 }
 
-void nice_agent_set_stream_type_of_service (NiceAgent *agent,
+void
+_priv_set_socket_tos (NiceAgent *agent, NiceSocket *sock, gint tos)
+{
+  if (setsockopt (sock->fileno, IPPROTO_IP,
+          IP_TOS, &tos, sizeof (tos)) < 0) {
+    nice_debug ("Agent %p: Could not set socket ToS", agent,
+        g_strerror (errno));
+  }
+#ifdef IPV6_TCLASS
+  if (setsockopt (sock->fileno, IPPROTO_IPV6,
+          IPV6_TCLASS, &tos, sizeof (tos)) < 0) {
+    nice_debug ("Agent %p: Could not set IPV6 socket ToS", agent,
+        g_strerror (errno));
+  }
+#endif
+}
+
+
+void nice_agent_set_stream_tos (NiceAgent *agent,
   guint stream_id, gint tos)
 {
 
   GSList *i, *j, *k;
 
+  agent_lock();
+
   for (i = agent->streams; i; i = i->next) {
     Stream *stream = i->data;
     if (stream->id == stream_id) {
+      stream->tos = tos;
       for (j = stream->components; j; j = j->next) {
         Component *component = j->data;
 
         for (k = component->local_candidates; k; k = k->next) {
           NiceCandidate *local_candidate = k->data;
-          if (setsockopt (local_candidate->sockptr->fileno, IPPROTO_IP,
-                  IP_TOS, &tos, sizeof (tos)) < 0) {
-              nice_debug ("Agent %p: Could not set socket ToS", agent,
-                  g_strerror (errno));
-          }
-#ifdef IPV6_TCLASS
-          if (setsockopt (local_candidate->sockptr->fileno, IPPROTO_IPV6,
-                  IPV6_TCLASS, &tos, sizeof (tos)) < 0) {
-            nice_debug ("Agent %p: Could not set IPV6 socket ToS", agent,
-                g_strerror (errno));
-          }
-#endif
+          _priv_set_socket_tos (agent, local_candidate->sockptr, tos);
         }
       }
     }
   }
+
+  agent_unlock();
 }

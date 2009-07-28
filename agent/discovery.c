@@ -481,6 +481,7 @@ NiceCandidate *discovery_add_local_host_candidate (
     if (udp_socket) {
       gboolean result;
 
+      _priv_set_socket_tos (agent, udp_socket, stream->tos);
       agent_attach_stream_component_socket (agent, stream,
           component, udp_socket);
 

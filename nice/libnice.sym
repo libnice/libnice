@@ -30,6 +30,7 @@ nice_agent_set_remote_candidates
 nice_agent_set_remote_credentials
 nice_agent_set_selected_pair
 nice_agent_set_selected_remote_candidate
+nice_agent_set_stream_tos
 nice_candidate_free
 nice_candidate_new
 nice_debug_disable
