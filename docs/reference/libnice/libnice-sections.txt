@@ -23,6 +23,7 @@ nice_agent_send
 nice_agent_attach_recv
 nice_agent_set_selected_pair
 nice_agent_set_selected_remote_candidate
+nice_agent_set_stream_tos
 nice_agent_restart
 <SUBSECTION Standard>
 NICE_AGENT
