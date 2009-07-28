@@ -627,7 +627,7 @@ nice_agent_set_selected_remote_candidate (
  * @stream_id: The ID of the stream
  * @tos: The ToS to set
  *
- * Sets the ToS on the stream's sockets
+ * Sets the IP_TOS and/or IPV6_TCLASS field on the stream's sockets' options
  *
  */
 void nice_agent_set_stream_tos (
