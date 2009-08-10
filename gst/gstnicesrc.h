@@ -65,6 +65,7 @@ struct _GstNiceSrc
   NiceAgent *agent;
   guint stream_id;
   guint component_id;
+  GMainContext *mainctx;
   GMainLoop *mainloop;
   guint64 offset;
   GstFlowReturn flow_ret;

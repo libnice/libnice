@@ -180,7 +180,8 @@ gst_nice_src_init (GstNiceSrc *src, GstNiceSrcClass *g_class)
   src->agent = NULL;
   src->stream_id = 0;
   src->component_id = 0;
-  src->mainloop = g_main_loop_new (g_main_context_new (), FALSE);
+  src->mainctx = g_main_context_new ();
+  src->mainloop = g_main_loop_new (src->mainctx, FALSE);
   src->unlocked = FALSE;
   src->idle_source = NULL;
 }
@@ -308,6 +309,10 @@ gst_nice_src_dispose (GObject *object)
     g_main_loop_unref (src->mainloop);
   src->mainloop = NULL;
 
+  if (src->mainctx)
+    g_main_context_unref (src->mainctx);
+  src->mainctx = NULL;
+
   GST_CALL_PARENT (G_OBJECT_CLASS, dispose, (object));
 }
 
@@ -392,13 +397,12 @@ gst_nice_src_change_state (GstElement * element, GstStateChange transition)
       else
         {
           nice_agent_attach_recv (src->agent, src->stream_id, src->component_id,
-              g_main_loop_get_context (src->mainloop),
-              gst_nice_src_read_callback, (gpointer) src);
+              src->mainctx, gst_nice_src_read_callback, (gpointer) src);
         }
       break;
     case GST_STATE_CHANGE_READY_TO_NULL:
       nice_agent_attach_recv (src->agent, src->stream_id, src->component_id,
-          g_main_loop_get_context (src->mainloop), NULL, NULL);
+          src->mainctx, NULL, NULL);
       break;
     default:
       break;
