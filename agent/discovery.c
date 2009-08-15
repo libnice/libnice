@@ -325,7 +325,7 @@ static void priv_assign_foundation (NiceAgent *agent, NiceCandidate *candidate)
             candidate->stream_id == n->stream_id &&
 	    nice_address_equal (&candidate->base_addr, &temp) &&
             !(agent->compatibility == NICE_COMPATIBILITY_GOOGLE &&
-                n->turn != NULL)) {
+                n->type == NICE_CANDIDATE_TYPE_RELAYED)) {
 	  /* note: currently only one STUN/TURN server per stream at a
 	   *       time is supported, so there is no need to check
 	   *       for candidates that would otherwise share the
