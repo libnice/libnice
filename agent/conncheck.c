@@ -554,7 +554,7 @@ static gboolean priv_conn_keepalive_retransmissions_tick (gpointer pointer)
  */
 static gboolean priv_conn_keepalive_tick_unlocked (NiceAgent *agent)
 {
-  GSList *i, *j;
+  GSList *i, *j, *k;
   int errors = 0;
   gboolean ret = FALSE;
   size_t buf_len = 0;
@@ -657,12 +657,36 @@ static gboolean priv_conn_keepalive_tick_unlocked (NiceAgent *agent)
    *         (ref ICE sect 4.1.1.4 "Keeping Candidates Alive" ID-19)  */
   for (i = agent->streams; i; i = i->next) {
     Stream *stream = i->data;
-    if (stream->conncheck_state == NICE_CHECKLIST_RUNNING) {
-      for (j = stream->conncheck_list; j ; j = j->next) {
-	CandidateCheckPair *p = j->data;
+    for (j = stream->components; j; j = j->next) {
+      Component *component = j->data;
+      if (component->state < NICE_COMPONENT_STATE_READY &&
+          agent->stun_server_ip) {
+        NiceAddress stun_server;
+        if (nice_address_set_from_string (&stun_server, agent->stun_server_ip)) {
+          StunAgent stun_agent;
+          uint8_t stun_buffer[STUN_MAX_MESSAGE_SIZE];
+          StunMessage stun_message;
+          size_t buffer_len = 0;
 
-        nice_debug ("Agent %p : resending STUN-CC to keep the candidate alive (pair %p).", agent, p);
-        conn_check_send (agent, p);
+          nice_address_set_port (&stun_server, agent->stun_server_port);
+
+          stun_agent_init (&stun_agent, STUN_ALL_KNOWN_ATTRIBUTES,
+              STUN_COMPATIBILITY_RFC3489, 0);
+
+          buffer_len = stun_usage_bind_create (&stun_agent,
+              &stun_message, stun_buffer, sizeof(stun_buffer));
+
+          for (k = component->local_candidates; k; k = k->next) {
+            NiceCandidate *candidate = (NiceCandidate *) k->data;
+            if (candidate->type == NICE_CANDIDATE_TYPE_HOST) {
+              /* send the conncheck */
+              nice_debug ("Agent %p : resending STUN on %s to keep the "
+                  "candidate alive.", agent, candidate->foundation);
+              nice_socket_send (candidate->sockptr, &stun_server,
+                  buffer_len, (gchar *)stun_buffer);
+            }
+          }
+        }
       }
     }
   }
