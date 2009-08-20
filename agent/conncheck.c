@@ -1194,18 +1194,20 @@ static void priv_update_check_list_state_for_ready (NiceAgent *agent, Stream *st
 	++succeeded;
 	if (p->nominated == TRUE) {
           ++nominated;
-          /* Only go to READY if no checks are left in progress. If there are
-           * any that are kept, then this function will be called again when the
-           * conncheck tick timer finishes them all */
-	  if (priv_prune_pending_checks (stream, p->component_id) == 0) {
-            agent_signal_component_state_change (agent, p->stream_id,
-                p->component_id, NICE_COMPONENT_STATE_READY);
-          }
 	}
       }
     }
   }
-  
+
+  if (nominated > 0) {
+    /* Only go to READY if no checks are left in progress. If there are
+     * any that are kept, then this function will be called again when the
+     * conncheck tick timer finishes them all */
+    if (priv_prune_pending_checks (stream, component->id) == 0) {
+      agent_signal_component_state_change (agent, stream->id,
+          component->id, NICE_COMPONENT_STATE_READY);
+    }
+  }
   nice_debug ("Agent %p : conn.check list status: %u nominated, %u succeeded, c-id %u.", agent, nominated, succeeded, component->id);
 }
 
