@@ -216,13 +216,10 @@ static void bad_responses (void)
   val = getsockname (fd, (struct sockaddr *)&addr, &addrlen);
   assert (val == 0);
 
-  val = connect (servfd, (struct sockaddr *)&addr, addrlen);
-  assert (val == 0);
-
   /* Send request instead of response */
   val = getsockname (servfd, (struct sockaddr *)&addr, &addrlen);
   assert (val == 0);
-  len = recv (servfd, buf, 1000, MSG_DONTWAIT);
+  len = recvfrom (servfd, buf, 1000, MSG_DONTWAIT, NULL, 0);
   assert (len >= 20);
 
   assert (stun_agent_validate (&agent, &msg, buf, len, NULL, NULL)
@@ -283,30 +280,29 @@ static void responses (void)
   fd = socket (addr.ss_family, SOCK_DGRAM, 0);
   assert (fd != -1);
 
-  val = connect (fd, (struct sockaddr *)&addr, addrlen);
-  assert (val == 0);
-
   /* Send to/receive from our client instance only */
   val = getsockname (fd, (struct sockaddr *)&addr, &addrlen);
-  assert (val == 0);
-
-  val = connect (servfd, (struct sockaddr *)&addr, addrlen);
   assert (val == 0);
 
   /* Send error response */
   req_len = stun_usage_bind_create (&agent, &req_msg, req, sizeof(req));
   assert (req_len > 0);
 
-  val = send (fd, req, req_len, MSG_DONTWAIT | MSG_NOSIGNAL);
+  val = getsockname (servfd, (struct sockaddr *)&addr, &addrlen);
+  assert (val == 0);
+
+  val = sendto (fd, req, req_len, MSG_DONTWAIT | MSG_NOSIGNAL,
+      (struct sockaddr *)&addr, addrlen);
   assert (val >= 0);
 
-  val = recv (servfd, buf, 1000, MSG_DONTWAIT);
+  val = recvfrom (servfd, buf, 1000, MSG_DONTWAIT, NULL, 0);
   assert (val >= 0);
 
   assert (stun_agent_validate (&agent, &msg, buf, val, NULL, NULL)
       == STUN_VALIDATION_SUCCESS);
 
-  stun_agent_init_error (&agent, &msg, buf, sizeof (buf), &msg, STUN_ERROR_SERVER_ERROR);
+  stun_agent_init_error (&agent, &msg, buf, sizeof (buf),
+      &msg, STUN_ERROR_SERVER_ERROR);
   len = stun_agent_finish_message (&agent, &msg, NULL, 0);
   assert (len > 0);
 
@@ -321,10 +317,14 @@ static void responses (void)
   req_len = stun_usage_bind_create (&agent, &req_msg, req, sizeof(req));
   assert (req_len > 0);
 
-  val = send (fd, req, req_len, MSG_DONTWAIT | MSG_NOSIGNAL);
+  val = getsockname (servfd, (struct sockaddr *)&addr, &addrlen);
+  assert (val == 0);
+
+  val = sendto (fd, req, req_len, MSG_DONTWAIT | MSG_NOSIGNAL,
+      (struct sockaddr *)&addr, addrlen);
   assert (val >= 0);
 
-  val = recv (servfd, buf, 1000, MSG_DONTWAIT);
+  val = recvfrom (servfd, buf, 1000, MSG_DONTWAIT, NULL, 0);
   assert (val >= 0);
 
   assert (stun_agent_validate (&agent, &msg, buf, val, NULL, NULL)
@@ -348,10 +348,14 @@ static void responses (void)
   req_len = stun_usage_bind_create (&agent, &req_msg, req, sizeof(req));
   assert (req_len > 0);
 
-  val = send (fd, req, req_len, MSG_DONTWAIT | MSG_NOSIGNAL);
+  val = getsockname (servfd, (struct sockaddr *)&addr, &addrlen);
+  assert (val == 0);
+
+  val = sendto (fd, req, req_len, MSG_DONTWAIT | MSG_NOSIGNAL,
+      (struct sockaddr *)&addr, addrlen);
   assert (val >= 0);
 
-  val = recv (servfd, buf, 1000, MSG_DONTWAIT);
+  val = recvfrom (servfd, buf, 1000, MSG_DONTWAIT, NULL, 0);
   assert (val >= 0);
 
   assert (stun_agent_validate (&agent, &msg, buf, val, NULL, NULL)

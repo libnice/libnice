@@ -263,16 +263,20 @@ stun_trans_create (StunTransport *tr, int type, int proto,
   if (fd == -1)
     return STUN_USAGE_TRANS_RETURN_ERROR;
 
-  if (connect (fd, srv, srvlen) &&
+  if (type != SOCK_DGRAM) {
+    if (connect (fd, srv, srvlen) &&
 #ifdef _WIN32
-      (WSAGetLastError () != WSAEINPROGRESS)) {
+        (WSAGetLastError () != WSAEINPROGRESS)) {
 #else
-    (errno != EINPROGRESS)) {
+      (errno != EINPROGRESS)) {
 #endif
-    goto error;
+      goto error;
+    }
+    val = stun_trans_init (tr, fd, NULL, 0);
+  } else {
+    val = stun_trans_init (tr, fd, srv, srvlen);
   }
 
-  val = stun_trans_init (tr, fd, NULL, 0);
   if (val)
     goto error;
 
