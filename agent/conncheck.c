@@ -1100,8 +1100,8 @@ static gboolean priv_update_selected_pair (NiceAgent *agent, Component *componen
   g_assert (pair);
   if (pair->priority > component->selected_pair.priority) {
     nice_debug ("Agent %p : changing SELECTED PAIR for component %u: %s:%s "
-        "(prio:%lu).", agent, component->id, pair->local->foundation,
-        pair->remote->foundation, (long unsigned)pair->priority);
+        "(prio:%" G_GUINT64_FORMAT ").", agent, component->id, pair->local->foundation,
+        pair->remote->foundation, pair->priority);
 
     if (component->selected_pair.keepalive.tick_source != NULL) {
       g_source_destroy (component->selected_pair.keepalive.tick_source);
@@ -1701,6 +1701,8 @@ static guint priv_prune_pending_checks (Stream *stream, guint component_id)
   guint64 highest_nominated_priority = 0;
   guint in_progress = 0;
 
+  nice_debug ("Finding highest priority for component %d", component_id);
+
   for (i = stream->conncheck_list; i; i = i->next) {
     CandidateCheckPair *p = i->data;
     if (p->component_id == component_id &&
@@ -1714,7 +1716,7 @@ static guint priv_prune_pending_checks (Stream *stream, guint component_id)
   }
 
   nice_debug ("Agent XXX: Pruning pending checks. Highest nominated priority "
-      "is %lu", highest_nominated_priority);
+      "is %" G_GUINT64_FORMAT, highest_nominated_priority);
 
   /* step: cancel all FROZEN and WAITING pairs for the component */
   for (i = stream->conncheck_list; i; i = i->next) {
@@ -1737,9 +1739,9 @@ static guint priv_prune_pending_checks (Stream *stream, guint component_id)
         } else {
           /* We must keep the higher priority pairs running because if a udp
            * packet was lost, we might end up using a bad candidate */
-          nice_debug ("Agent XXX : pair %p kept IN_PROGRESS because priority %d"
-              " is higher than currently nominated pair %d", p, p->priority,
-              highest_nominated_priority);
+          nice_debug ("Agent XXX : pair %p kept IN_PROGRESS because priority %"
+              G_GUINT64_FORMAT " is higher than currently nominated pair %"
+              G_GUINT64_FORMAT, p, p->priority, highest_nominated_priority);
           in_progress++;
         }
       }

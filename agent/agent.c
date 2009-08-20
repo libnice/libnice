@@ -1557,7 +1557,14 @@ static gboolean priv_add_remote_candidate (
   /* step: check whether the candidate already exists */
   candidate = component_find_remote_candidate(component, addr, transport);
   if (candidate) {
-    nice_debug ("Agent %p : Update existing remote candidate %p.", agent, candidate);
+    {
+      gchar tmpbuf[INET6_ADDRSTRLEN];
+      nice_address_to_string (addr, tmpbuf);
+      nice_debug ("Agent %p : Updating existing remote candidate with addr [%s]:%u"
+          " for s%d/c%d. U/P '%s'/'%s' prio: %u", agent, tmpbuf,
+          nice_address_get_port (addr), stream_id, component_id,
+          username, password, priority);
+    }
     /* case 1: an existing candidate, update the attributes */
     candidate->type = type;
     if (base_addr)
@@ -1605,9 +1612,9 @@ static gboolean priv_add_remote_candidate (
 	  gchar tmpbuf[INET6_ADDRSTRLEN];
 	  nice_address_to_string (addr, tmpbuf);
 	  nice_debug ("Agent %p : Adding remote candidate with addr [%s]:%u"
-              " for s%d/c%d. U/P '%s'/'%s'", agent, tmpbuf,
+              " for s%d/c%d. U/P '%s'/'%s' prio: %u", agent, tmpbuf,
               nice_address_get_port (addr), stream_id, component_id,
-              username, password);
+              username, password, priority);
 	}
 	
 	if (base_addr)
