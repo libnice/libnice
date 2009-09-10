@@ -116,7 +116,7 @@ int listen_socket (int fam, int type, int proto, unsigned int port)
       break;
   }
 
-  if (bind (fd, (struct sockaddr *)&addr, sizeof (addr)))
+  if (bind (fd, (struct sockaddr *)&addr, sizeof (struct sockaddr)))
   {
     perror ("Error opening IP port");
     goto error;
@@ -213,7 +213,7 @@ static int dgram_process (int sock, StunAgent *oldagent, StunAgent *newagent)
   struct msghdr mh =
   {
     .msg_name = (struct sockaddr *)&addr,
-    .msg_namelen = sizeof (addr),
+    .msg_namelen = sizeof (struct sockaddr),
     .msg_iov = &iov,
     .msg_iovlen = 1,
     .msg_control = ctlbuf,
