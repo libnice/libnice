@@ -2364,8 +2364,9 @@ static gboolean priv_map_reply_to_relay_request (NiceAgent *agent, StunMessage *
              d->nicesock,
              d->turn);
 
-          priv_add_new_turn_refresh (d, relay_cand, lifetime);
-
+          if (relay_cand) {
+            priv_add_new_turn_refresh (d, relay_cand, lifetime);
+          }
 
           d->stun_message.buffer = NULL;
           d->stun_message.buffer_len = 0;
