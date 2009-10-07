@@ -1043,6 +1043,17 @@ void conn_check_remote_candidates_set(NiceAgent *agent)
           }
         }
       }
+
+      /* Once we process the pending checks, we should free them to avoid
+       * reprocessing them again if a dribble-mode set_remote_candidates
+       * is called */
+      for (i = cmp->incoming_checks; i; i = i->next) {
+        IncomingCheck *icheck = i->data;
+        g_free (icheck->username);
+        g_slice_free (IncomingCheck, icheck);
+      }
+      g_slist_free (cmp->incoming_checks);
+      cmp->incoming_checks = NULL;
     }
   }
 }
