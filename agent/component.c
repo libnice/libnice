@@ -197,6 +197,8 @@ component_restart (Component *cmp)
     g_free (icheck->username);
     g_slice_free (IncomingCheck, icheck);
   }
+  g_slist_free (cmp->incoming_checks);
+  cmp->incoming_checks = NULL;
 
   /* note: component state managed by agent */
 
