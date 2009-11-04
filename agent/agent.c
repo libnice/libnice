@@ -2006,6 +2006,9 @@ nice_agent_dispose (GObject *object)
 
   priv_free_upnp (agent);
 
+  g_free (agent->software_attribute);
+  agent->software_attribute = NULL;
+
   if (G_OBJECT_CLASS (nice_agent_parent_class)->dispose)
     G_OBJECT_CLASS (nice_agent_parent_class)->dispose (object);
 
