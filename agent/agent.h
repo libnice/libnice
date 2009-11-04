@@ -660,7 +660,7 @@ void nice_agent_set_stream_tos (
    </note>
  *
  */
-void nice_agent_set_software (NiceAgent *agent, gchar *software);
+void nice_agent_set_software (NiceAgent *agent, const gchar *software);
 
 G_END_DECLS
 

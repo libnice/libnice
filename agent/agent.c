@@ -2373,7 +2373,7 @@ void nice_agent_set_stream_tos (NiceAgent *agent,
   agent_unlock();
 }
 
-void nice_agent_set_software (NiceAgent *agent, gchar *software)
+void nice_agent_set_software (NiceAgent *agent, const gchar *software)
 {
   agent_lock();
 
