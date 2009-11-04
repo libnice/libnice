@@ -359,9 +359,9 @@ bool stun_agent_init_request (StunAgent *agent, StunMessage *msg,
       uint32_t cookie = htonl (STUN_MAGIC_COOKIE);
       memcpy (msg->buffer + STUN_MESSAGE_TRANS_ID_POS, &cookie, sizeof (cookie));
     }
-    if (agent->software_attribute != NULL ||
-        ((agent->compatibility == STUN_COMPATIBILITY_RFC5389 ||
+    if ((agent->compatibility == STUN_COMPATIBILITY_RFC5389 ||
             agent->compatibility == STUN_COMPATIBILITY_WLM2009) &&
+        (agent->software_attribute != NULL ||
             agent->usage_flags & STUN_AGENT_USAGE_ADD_SOFTWARE)) {
       stun_message_append_software (msg, agent->software_attribute);
     }
@@ -423,9 +423,9 @@ bool stun_agent_init_response (StunAgent *agent, StunMessage *msg,
   if (stun_message_init (msg, STUN_RESPONSE,
           stun_message_get_method (request), id)) {
 
-    if (agent->software_attribute != NULL ||
-        ((agent->compatibility == STUN_COMPATIBILITY_RFC5389 ||
+    if ((agent->compatibility == STUN_COMPATIBILITY_RFC5389 ||
             agent->compatibility == STUN_COMPATIBILITY_WLM2009) &&
+        (agent->software_attribute != NULL ||
             agent->usage_flags & STUN_AGENT_USAGE_ADD_SOFTWARE)) {
       stun_message_append_software (msg, agent->software_attribute);
     }
@@ -460,9 +460,9 @@ bool stun_agent_init_error (StunAgent *agent, StunMessage *msg,
   if (stun_message_init (msg, STUN_ERROR,
           stun_message_get_method (request), id)) {
 
-    if (agent->software_attribute != NULL ||
-        ((agent->compatibility == STUN_COMPATIBILITY_RFC5389 ||
+    if ((agent->compatibility == STUN_COMPATIBILITY_RFC5389 ||
             agent->compatibility == STUN_COMPATIBILITY_WLM2009) &&
+        (agent->software_attribute != NULL ||
             agent->usage_flags & STUN_AGENT_USAGE_ADD_SOFTWARE)) {
       stun_message_append_software (msg, agent->software_attribute);
     }
