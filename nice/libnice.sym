@@ -30,6 +30,7 @@ nice_agent_set_remote_candidates
 nice_agent_set_remote_credentials
 nice_agent_set_selected_pair
 nice_agent_set_selected_remote_candidate
+nice_agent_set_software
 nice_agent_set_stream_tos
 nice_candidate_free
 nice_candidate_new
@@ -47,6 +48,7 @@ stun_agent_init_error
 stun_agent_init_indication
 stun_agent_init_request
 stun_agent_init_response
+stun_agent_set_software
 stun_agent_validate
 stun_debug_disable
 stun_debug_enable
