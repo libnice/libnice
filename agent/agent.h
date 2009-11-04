@@ -636,6 +636,32 @@ void nice_agent_set_stream_tos (
   gint tos);
 
 
+
+/**
+ * nice_agent_set_software:
+ * @agent: The #NiceAgent Object
+ * @software: The value of the SOFTWARE attribute to add.
+ *
+ * This function will set the value of the SOFTWARE attribute to be added to
+ * STUN requests, responses and error responses sent during connectivity checks.
+ * <para>
+ * The SOFTWARE attribute will only be added in the #NICE_COMPATIBILITY_DRAFT19
+ * and #NICE_COMPATIBILITY_WLM2009 compatibility modes.
+ * </para>
+ * <note>
+     <para>
+       The @software argument will be appended with the libnice version before
+       being sent.
+     </para>
+     <para>
+       The @software argument must be in UTF-8 encoding and only the first
+       128 characters will be sent.
+     </para>
+   </note>
+ *
+ */
+void nice_agent_set_software (NiceAgent *agent, gchar *software);
+
 G_END_DECLS
 
 #endif /* _AGENT_H */

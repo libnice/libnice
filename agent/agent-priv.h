@@ -119,6 +119,7 @@ struct _NiceAgent
   GSList *upnp_mapping;            /* list of Candidates being mapped */
   GSource *upnp_timer_source;      /* source of upnp timeout timer */
 #endif
+  gchar *software_attribute;       /* SOFTWARE attribute */
   /* XXX: add pointer to internal data struct for ABI-safe extensions */
 };
 
