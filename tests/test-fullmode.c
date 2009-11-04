@@ -925,6 +925,8 @@ int main (void)
   /* step: create the agents L and R */
   lagent = nice_agent_new (g_main_loop_get_context (global_mainloop), NICE_COMPATIBILITY);
   ragent = nice_agent_new (g_main_loop_get_context (global_mainloop), NICE_COMPATIBILITY);
+  nice_agent_set_software (lagent, "Test-fullmode, Left Agent");
+  nice_agent_set_software (ragent, "Test-fullmode, Right Agent");
 
   /* step: add a timer to catch state changes triggered by signals */
 #if USE_TURN
