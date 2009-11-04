@@ -53,6 +53,21 @@
 #include "stuncrc32.h"
 #include "stunmessage.h"
 
+
+static const char utf8_skip_data[256] = {
+  1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+  1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+  1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+  1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+  1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+  1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+  2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,
+  3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,4,4,4,4,4,4,4,4,5,5,5,5,6,6,1,1
+};
+
+#define next_utf8_char(p) (char *)((p) + \
+      utf8_skip_data[*(const unsigned char *)(p)])
+
 uint32_t stun_fingerprint (const uint8_t *msg, size_t len,
     bool wlm2009_stupid_crc32_typo)
 {
@@ -81,10 +96,21 @@ bool stun_message_has_cookie (const StunMessage *msg)
 }
 
 
-StunMessageReturn stun_message_append_software (StunMessage *msg)
+StunMessageReturn stun_message_append_software (StunMessage *msg,
+    const char *software)
 {
-  static const char software[] = PACKAGE_STRING;
-  // assert (strlen (software) < 128);
+  int len = 0;
+  const char *ptr = NULL;
 
-  return stun_message_append_string (msg, STUN_ATTRIBUTE_SOFTWARE, software);
+  if (software == NULL)
+    software = PACKAGE_STRING;
+
+  ptr = software;
+  while (*ptr && len < 128) {
+    ptr = next_utf8_char (ptr);
+    len++;
+  }
+
+  return stun_message_append_bytes (msg, STUN_ATTRIBUTE_SOFTWARE, software,
+      ptr - software);
 }

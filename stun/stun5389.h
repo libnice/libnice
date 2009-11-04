@@ -60,7 +60,8 @@
 uint32_t stun_fingerprint (const uint8_t *msg, size_t len,
     bool wlm2009_stupid_crc32_typo);
 
-StunMessageReturn stun_message_append_software (StunMessage *msg);
+StunMessageReturn stun_message_append_software (StunMessage *msg,
+    const char *software);
 
 
 #endif /* _STUN_5389_H */

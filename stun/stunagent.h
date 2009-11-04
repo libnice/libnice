@@ -138,7 +138,10 @@ typedef enum {
  * @STUN_AGENT_USAGE_USE_FINGERPRINT: The agent should add the FINGERPRINT
  * attribute to the STUN messages it creates.
  * @STUN_AGENT_USAGE_ADD_SOFTWARE: The agent should add the SOFTWARE attribute
- * to the STUN messages it creates
+ * to the STUN messages it creates. Calling nice_agent_set_software() will have
+ * the same effect as enabling this Usage. STUN Indications do not have the
+ * SOFTWARE attributes added to them though. The SOFTWARE attribute is only
+ * added for the RFC5389 and WLM2009 compatibility modes.
  * @STUN_AGENT_USAGE_IGNORE_CREDENTIALS: The agent should ignore any credentials
  * in the STUN messages it receives (the MESSAGE-INTEGRITY attribute
  * will never be validated by stun_agent_validate())
@@ -184,6 +187,7 @@ struct stun_agent_t {
   StunAgentSavedIds sent_ids[STUN_AGENT_MAX_SAVED_IDS];
   uint16_t *known_attributes;
   StunAgentUsageFlags usage_flags;
+  char *software_attribute;
 };
 
 /**
@@ -469,5 +473,30 @@ size_t stun_agent_finish_message (StunAgent *agent, StunMessage *msg,
  */
 bool stun_agent_forget_transaction (StunAgent *agent, StunTransactionId id);
 
+
+/**
+ * stun_agent_set_software:
+ * @agent: The #StunAgent
+ * @software: The value of the SOFTWARE attribute to add.
+ *
+ * This function will set the value of the SOFTWARE attribute to be added to
+ * STUN requests, responses and error responses.
+ * <para>
+ * Calling this function will automatically enable the addition of the SOFTWARE
+ * attribute for RFC5389 and WLM2009 compatibility modes.
+ * </para>
+ * <note>
+     <para>
+       The @software argument must be in UTF-8 encoding and only the first
+       128 characters will be sent.
+     </para>
+     <para>
+       The value of the @software argument must stay valid throughout the life of
+       the StunAgent's life. Do not free its content.
+     </para>
+   </note>
+ *
+ */
+void stun_agent_set_software (StunAgent *agent, char *software);
 
 #endif /* _STUN_AGENT_H */
