@@ -187,7 +187,7 @@ struct stun_agent_t {
   StunAgentSavedIds sent_ids[STUN_AGENT_MAX_SAVED_IDS];
   uint16_t *known_attributes;
   StunAgentUsageFlags usage_flags;
-  char *software_attribute;
+  const char *software_attribute;
 };
 
 /**
@@ -497,6 +497,6 @@ bool stun_agent_forget_transaction (StunAgent *agent, StunTransactionId id);
    </note>
  *
  */
-void stun_agent_set_software (StunAgent *agent, char *software);
+void stun_agent_set_software (StunAgent *agent, const char *software);
 
 #endif /* _STUN_AGENT_H */

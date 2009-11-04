@@ -684,7 +684,7 @@ stun_agent_find_unknowns (StunAgent *agent, const StunMessage * msg,
   return count;
 }
 
-void stun_agent_set_software (StunAgent *agent, char *software)
+void stun_agent_set_software (StunAgent *agent, const char *software)
 {
   agent->software_attribute = software;
 }
