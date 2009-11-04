@@ -24,6 +24,7 @@ nice_agent_attach_recv
 nice_agent_set_selected_pair
 nice_agent_set_selected_remote_candidate
 nice_agent_set_stream_tos
+nice_agent_set_software
 nice_agent_restart
 <SUBSECTION Standard>
 NICE_AGENT
@@ -121,6 +122,7 @@ stun_agent_init_error
 stun_agent_build_unknown_attributes_error
 stun_agent_finish_message
 stun_agent_forget_transaction
+stun_agent_set_software
 stun_debug_enable
 stun_debug_disable
 <SUBSECTION Private>
