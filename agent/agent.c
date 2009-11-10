@@ -2099,6 +2099,9 @@ nice_agent_g_source_cb (
     goto done;
   } else if (len < 0) {
     GSource *source = ctx->source;
+
+    nice_debug ("Agent %p: _nice_agent_recv returned %d, errno (%d) : %s",
+        agent, len, errno, g_strerror (errno));
     component->gsources = g_slist_remove (component->gsources, source);
     g_source_destroy (source);
     g_source_unref (source);
