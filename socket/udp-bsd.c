@@ -160,6 +160,15 @@ socket_recv (NiceSocket *sock, NiceAddress *from, guint len, gchar *buf)
   recvd = recvfrom (sock->fileno, buf, len, 0, (struct sockaddr *) &sa,
       &from_len);
 
+  if (recvd < 0) {
+#ifdef G_OS_WIN32
+    if (WSAGetLastError () == WSAEWOULDBLOCK)
+#else
+    if (errno == EAGAIN || errno == EWOULDBLOCK)
+#endif
+      return 0;
+  }
+
   if (recvd > 0)
     nice_address_set_from_sockaddr (from, (struct sockaddr *)&sa);
 
