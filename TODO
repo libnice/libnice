@@ -8,4 +8,4 @@ Add support for TURN-15
 - Low priority:
 Add HTTP Digest support
 check for the cookie and act accordingly for incoming messages.
-
+Fix BSD support. stund fails to send with sendmsg
