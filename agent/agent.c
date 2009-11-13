@@ -1574,7 +1574,8 @@ static gboolean priv_add_remote_candidate (
       candidate->base_addr = *base_addr;
     candidate->priority = priority;
     if (foundation)
-      strncpy(candidate->foundation, foundation, NICE_CANDIDATE_MAX_FOUNDATION);
+      g_strlcpy(candidate->foundation, foundation,
+          NICE_CANDIDATE_MAX_FOUNDATION);
     /* note: username and password must remain the same during
      *       a session; see sect 9.1.2 in ICE ID-19 */
 
@@ -1620,17 +1621,18 @@ static gboolean priv_add_remote_candidate (
               addr? nice_address_get_port (addr) : 0, stream_id, component_id,
               username, password, priority);
 	}
-	
+
 	if (base_addr)
 	  candidate->base_addr = *base_addr;
-	
+
 	candidate->transport = transport;
 	candidate->priority = priority;
 	candidate->username = g_strdup (username);
 	candidate->password = g_strdup (password);
-	
+
 	if (foundation)
-	  g_strlcpy (candidate->foundation, foundation, NICE_CANDIDATE_MAX_FOUNDATION);
+	  g_strlcpy (candidate->foundation, foundation,
+              NICE_CANDIDATE_MAX_FOUNDATION);
 
 	if (conn_check_add_for_candidate (agent, stream_id, component, candidate) < 0)
 	  error_flag = TRUE;

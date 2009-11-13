@@ -330,7 +330,8 @@ static void priv_assign_foundation (NiceAgent *agent, NiceCandidate *candidate)
 	   *       time is supported, so there is no need to check
 	   *       for candidates that would otherwise share the
 	   *       foundation, but have different STUN/TURN servers */
-	  memcpy (candidate->foundation, n->foundation, NICE_CANDIDATE_MAX_FOUNDATION);
+	  g_strlcpy (candidate->foundation, n->foundation,
+              NICE_CANDIDATE_MAX_FOUNDATION);
           if (n->username) {
             g_free (candidate->username);
             candidate->username = g_strdup (n->username);
@@ -345,7 +346,8 @@ static void priv_assign_foundation (NiceAgent *agent, NiceCandidate *candidate)
     }
   }
 
-  g_snprintf (candidate->foundation, NICE_CANDIDATE_MAX_FOUNDATION, "%u", agent->next_candidate_id++);
+  g_snprintf (candidate->foundation, NICE_CANDIDATE_MAX_FOUNDATION,
+      "%u", agent->next_candidate_id++);
 }
 
 static void priv_assign_remote_foundation (NiceAgent *agent, NiceCandidate *candidate)
@@ -380,7 +382,8 @@ static void priv_assign_remote_foundation (NiceAgent *agent, NiceCandidate *cand
 	   *       time is supported, so there is no need to check
 	   *       for candidates that would otherwise share the
 	   *       foundation, but have different STUN/TURN servers */
-	  memcpy (candidate->foundation, n->foundation, NICE_CANDIDATE_MAX_FOUNDATION);
+	  g_strlcpy (candidate->foundation, n->foundation,
+              NICE_CANDIDATE_MAX_FOUNDATION);
           if (n->username) {
             g_free (candidate->username);
             candidate->username = g_strdup (n->username);
