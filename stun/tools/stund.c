@@ -263,8 +263,9 @@ static int dgram_process (int sock, StunAgent *oldagent, StunAgent *newagent)
       break;
 
     default:
-      stun_agent_init_error (agent, &response, buf, sizeof (buf),
-          &request, STUN_ERROR_BAD_REQUEST);
+      if (!stun_agent_init_error (agent, &response, buf, sizeof (buf),
+              &request, STUN_ERROR_BAD_REQUEST))
+        return -1;
   }
 
   iov.iov_len = stun_agent_finish_message (agent, &response, NULL, 0);
