@@ -613,13 +613,14 @@ priv_retransmissions_tick_unlocked (TurnPriv *priv)
           /* Time out */
           StunTransactionId id;
 
+          stun_message_id (&priv->current_binding_msg->message, id);
+          stun_agent_forget_transaction (&priv->agent, id);
+
           g_free (priv->current_binding);
           priv->current_binding = NULL;
           g_free (priv->current_binding_msg);
           priv->current_binding_msg = NULL;
 
-          stun_message_id (&priv->current_binding_msg->message, id);
-          stun_agent_forget_transaction (&priv->agent, id);
 
           priv_process_pending_bindings (priv);
           break;
