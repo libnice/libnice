@@ -294,7 +294,7 @@ nice_interfaces_get_ip_for_interface (gchar *interface_name)
 
   ifr.ifr_addr.sa_family = AF_INET;
   memset (ifr.ifr_name, 0, sizeof (ifr.ifr_name));
-  strncpy (ifr.ifr_name, interface_name, sizeof (ifr.ifr_name)-1);
+  g_strlcpy (ifr.ifr_name, interface_name, sizeof (ifr.ifr_name));
 
   if ((sockfd = socket (AF_INET, SOCK_DGRAM, IPPROTO_IP)) < 0) {
     nice_debug ("Error : Cannot open socket to retreive interface list");
