@@ -1612,11 +1612,12 @@ static gboolean priv_add_remote_candidate (
 	if (addr)
 	  candidate->addr = *addr;
 	{
-	  gchar tmpbuf[INET6_ADDRSTRLEN];
-	  nice_address_to_string (addr, tmpbuf);
+	  gchar tmpbuf[INET6_ADDRSTRLEN] = {0};
+	  if(addr)
+            nice_address_to_string (addr, tmpbuf);
 	  nice_debug ("Agent %p : Adding remote candidate with addr [%s]:%u"
               " for s%d/c%d. U/P '%s'/'%s' prio: %u", agent, tmpbuf,
-              nice_address_get_port (addr), stream_id, component_id,
+              addr? nice_address_get_port (addr) : 0, stream_id, component_id,
               username, password, priority);
 	}
 	
