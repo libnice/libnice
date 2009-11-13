@@ -2547,39 +2547,33 @@ static bool conncheck_stun_validater (StunAgent *agent,
 {
   conncheck_validater_data *data = (conncheck_validater_data*) user_data;
   GSList *i;
-  uint8_t uname[NICE_STREAM_MAX_UNAME];
-  guint uname_len = 0;
+  gchar *ufrag = NULL;
+  gsize ufrag_len;
 
   for (i = data->component->local_candidates; i; i = i->next) {
     NiceCandidate *cand = i->data;
-    gchar *ufrag = NULL;
-    gsize ufrag_len;
 
+    ufrag = NULL;
     if (cand->username)
       ufrag = cand->username;
     else if (data->stream)
       ufrag = data->stream->local_ufrag;
-    ufrag_len = strlen (ufrag);
+    ufrag_len = ufrag? strlen (ufrag) : 0;
 
-    if (data->agent->compatibility == NICE_COMPATIBILITY_MSN)
+    if (ufrag && data->agent->compatibility == NICE_COMPATIBILITY_MSN)
       ufrag = (gchar *)g_base64_decode (ufrag, &ufrag_len);
 
-    if (ufrag_len <= NICE_STREAM_MAX_UNAME) {
-      memcpy (uname, ufrag, ufrag_len);
-      uname_len = ufrag_len;
-    }
-
-    if (data->agent->compatibility == NICE_COMPATIBILITY_MSN)
-      g_free (ufrag);
+    if (ufrag == NULL)
+      continue;
 
     stun_debug ("Comparing username '");
     stun_debug_bytes (username, username_len);
     stun_debug ("' (%d) with '", username_len);
-    stun_debug_bytes (uname, uname_len);
+    stun_debug_bytes (ufrag, ufrag_len);
     stun_debug ("' (%d) : %d\n",
-        uname_len, memcmp (username, uname, uname_len));
-    if (uname_len > 0 && username_len >= uname_len &&
-        memcmp (username, uname, uname_len) == 0) {
+        ufrag_len, memcmp (username, ufrag, ufrag_len));
+    if (ufrag_len > 0 && username_len >= ufrag_len &&
+        memcmp (username, ufrag, ufrag_len) == 0) {
       gchar *pass = NULL;
 
       if (cand->password)
@@ -2595,9 +2589,15 @@ static bool conncheck_stun_validater (StunAgent *agent,
         *password = data->password;
       }
 
+      if (data->agent->compatibility == NICE_COMPATIBILITY_MSN)
+        g_free (ufrag);
+
       stun_debug ("Found valid username, returning password: '%s'\n", *password);
       return TRUE;
     }
+
+    if (data->agent->compatibility == NICE_COMPATIBILITY_MSN)
+      g_free (ufrag);
   }
 
   return FALSE;
