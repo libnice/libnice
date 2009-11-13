@@ -324,6 +324,7 @@ static int stun_err_dequeue (int fd)
   errno = saved_errno;
   return ret;
 #else
+  (void) fd;
   return 0;
 #endif
 }

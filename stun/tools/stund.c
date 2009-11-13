@@ -164,6 +164,7 @@ static int recv_err (int fd)
   memset (&hdr, 0, sizeof (hdr));
   return recvmsg (fd, &hdr, MSG_ERRQUEUE) >= 0;
 #else
+  (void) fd;
   return 0;
 #endif
 }
