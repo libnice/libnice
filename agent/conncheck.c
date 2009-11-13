@@ -2578,15 +2578,17 @@ static bool conncheck_stun_validater (StunAgent *agent,
 
       if (cand->password)
         pass = cand->password;
-      else
+      else if(data->stream->local_password)
         pass = data->stream->local_password;
 
-      *password = (uint8_t *) pass;
-      *password_len = strlen (pass);
+      if (pass) {
+        *password = (uint8_t *) pass;
+        *password_len = strlen (pass);
 
-      if (data->agent->compatibility == NICE_COMPATIBILITY_MSN) {
-        data->password = g_base64_decode (pass, password_len);
-        *password = data->password;
+        if (data->agent->compatibility == NICE_COMPATIBILITY_MSN) {
+          data->password = g_base64_decode (pass, password_len);
+          *password = data->password;
+        }
       }
 
       if (data->agent->compatibility == NICE_COMPATIBILITY_MSN)
