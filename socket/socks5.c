@@ -199,10 +199,12 @@ socket_recv (NiceSocket *sock, NiceAddress *from, guint len, gchar *buf)
 
                 msg[len++] = 0x01; /* auth version */
                 msg[len++] = ulen; /* username length */
-                memcpy (msg + len, priv->username, ulen); /* Username */
+                if (ulen > 0)
+                  memcpy (msg + len, priv->username, ulen); /* Username */
                 len += ulen;
                 msg[len++] = plen; /* Password length */
-                memcpy (msg + len, priv->password, plen); /* Password */
+                if (plen > 0)
+                  memcpy (msg + len, priv->password, plen); /* Password */
                 len += plen;
 
                 nice_socket_send (priv->base_socket, NULL, len, msg);
