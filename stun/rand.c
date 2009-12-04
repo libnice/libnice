@@ -230,11 +230,13 @@ void RAND_bytes (uint8_t *dst, int len)
     } else {
       time_t t = time (NULL);
       clock_t c = clock ();
+      unsigned long cl = c;
+      unsigned long tl = t;
       init_key[0] = *((unsigned long *) dst);
       init_key[1] = 0x6c69626e;
       init_key[2] = 0x69636500;
-      init_key[3] = *(unsigned long *) &t;
-      init_key[4] = *(unsigned long *) &c;
+      init_key[3] = tl;
+      init_key[4] = cl;
       key_length = 5;
     }
     init_by_array(init_key, key_length);
