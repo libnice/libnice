@@ -214,7 +214,7 @@ static int dgram_process (int sock, StunAgent *oldagent, StunAgent *newagent)
   struct msghdr mh =
   {
     .msg_name = (struct sockaddr *)&addr,
-    .msg_namelen = sizeof (struct sockaddr),
+    .msg_namelen = sizeof (struct sockaddr_in),
     .msg_iov = &iov,
     .msg_iovlen = 1,
     .msg_control = ctlbuf,
