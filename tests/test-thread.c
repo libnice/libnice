@@ -84,9 +84,9 @@ cb_new_selected_pair(NiceAgent *agent,
 {
   g_debug ("test-thread:%s: %p", __func__, data);
 
-  if ((int)data == 1)
+  if (GPOINTER_TO_UINT (data) == 1)
     g_atomic_int_inc (&global_lagent_cands);
-  else if ((int)data == 2)
+  else if (GPOINTER_TO_UINT (data) == 2)
     g_atomic_int_inc (&global_ragent_cands);
 }
 
@@ -227,17 +227,17 @@ int main (void)
   nice_agent_add_local_address (ragent, &baseaddr);
 
   g_signal_connect (G_OBJECT (lagent), "candidate-gathering-done",
-		    G_CALLBACK (cb_candidate_gathering_done), (gpointer)1);
+      G_CALLBACK (cb_candidate_gathering_done), GUINT_TO_POINTER(1));
   g_signal_connect (G_OBJECT (ragent), "candidate-gathering-done",
-		    G_CALLBACK (cb_candidate_gathering_done), (gpointer)2);
+      G_CALLBACK (cb_candidate_gathering_done), GUINT_TO_POINTER(2));
   g_signal_connect (G_OBJECT (lagent), "component-state-changed",
-		    G_CALLBACK (cb_component_state_changed), (gpointer)1);
+      G_CALLBACK (cb_component_state_changed), GUINT_TO_POINTER(1));
   g_signal_connect (G_OBJECT (ragent), "component-state-changed",
-		    G_CALLBACK (cb_component_state_changed), (gpointer)2);
+      G_CALLBACK (cb_component_state_changed), GUINT_TO_POINTER(2));
   g_signal_connect (G_OBJECT (lagent), "new-selected-pair",
-		    G_CALLBACK (cb_new_selected_pair), (gpointer)1);
+      G_CALLBACK (cb_new_selected_pair), GUINT_TO_POINTER(1));
   g_signal_connect (G_OBJECT (ragent), "new-selected-pair",
-		    G_CALLBACK (cb_new_selected_pair), (gpointer)2);
+      G_CALLBACK (cb_new_selected_pair), GUINT_TO_POINTER(2));
 
   stun_server = getenv ("NICE_STUN_SERVER");
   stun_server_port = getenv ("NICE_STUN_SERVER_PORT");
