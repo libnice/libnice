@@ -76,7 +76,7 @@
  */
 #define MAX_BUFFER_SIZE 65536
 #define DEFAULT_STUN_PORT  3478
-
+#define DEFAULT_UPNP_TIMEOUT 200
 
 G_DEFINE_TYPE (NiceAgent, nice_agent, G_TYPE_OBJECT);
 
@@ -95,10 +95,8 @@ enum
   PROP_PROXY_PORT,
   PROP_PROXY_USERNAME,
   PROP_PROXY_PASSWORD,
-#ifdef HAVE_GUPNP
   PROP_UPNP,
   PROP_UPNP_TIMEOUT
-#endif
 };
 
 
@@ -369,26 +367,34 @@ nice_agent_class_init (NiceAgentClass *klass)
         NULL,
         G_PARAM_READWRITE));
 
-#ifdef HAVE_GUPNP
    g_object_class_install_property (gobject_class, PROP_UPNP,
       g_param_spec_boolean (
         "upnp",
+#ifdef HAVE_GUPNP
         "Use UPnP",
         "Whether the agent should use UPnP to open a port in the router and "
         "get the external IP",
+#else
+        "Use UPnP (disabled in build)",
+        "Does nothing because libnice was not built with UPnP support",
+#endif
 	TRUE, /* enable UPnP by default */
         G_PARAM_READWRITE| G_PARAM_CONSTRUCT));
 
   g_object_class_install_property (gobject_class, PROP_UPNP_TIMEOUT,
       g_param_spec_uint (
         "upnp-timeout",
+#ifdef HAVE_GUPNP
         "Timeout for UPnP discovery",
         "The maximum amount of time to wait for UPnP discovery to finish before "
         "signaling the candidate-gathering-done signal",
-        100, 60000,
-	200,
-        G_PARAM_READWRITE | G_PARAM_CONSTRUCT));
+#else
+        "Timeout for UPnP discovery (disabled in build)",
+        "Does nothing because libnice was not built with UPnP support",
 #endif
+        100, 60000,
+	DEFAULT_UPNP_TIMEOUT,
+        G_PARAM_READWRITE | G_PARAM_CONSTRUCT));
 
   /* install signals */
 
@@ -645,15 +651,21 @@ nice_agent_get_property (
       g_value_set_string (value, agent->proxy_password);
       break;
 
-#ifdef HAVE_GUPNP
     case PROP_UPNP:
+#ifdef HAVE_GUPNP
       g_value_set_boolean (value, agent->upnp_enabled);
+#else
+      g_value_set_boolean (value, FALSE);
+#endif
       break;
 
     case PROP_UPNP_TIMEOUT:
+#ifdef HAVE_GUPNP
       g_value_set_uint (value, agent->upnp_timeout);
-      break;
+#else
+      g_value_set_uint (value, DEFAULT_UPNP_TIMEOUT);
 #endif
+      break;
 
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -751,15 +763,17 @@ nice_agent_set_property (
       agent->proxy_password = g_value_dup_string (value);
       break;
 
-#ifdef HAVE_GUPNP
     case PROP_UPNP_TIMEOUT:
+#ifdef HAVE_GUPNP
       agent->upnp_timeout = g_value_get_uint (value);
+#endif
       break;
 
     case PROP_UPNP:
+#ifdef HAVE_GUPNP
       agent->upnp_enabled = g_value_get_boolean (value);
-      break;
 #endif
+      break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
     }
