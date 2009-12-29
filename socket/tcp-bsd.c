@@ -99,12 +99,12 @@ nice_tcp_bsd_socket_new (NiceAgent *agent, GMainContext *ctx, NiceAddress *addr)
   NiceSocket *sock = g_slice_new0 (NiceSocket);
   TcpPriv *priv;
 
-  if (addr != NULL) {
-    nice_address_copy_to_sockaddr(addr, (struct sockaddr *)&name);
-  } else {
-    memset (&name, 0, sizeof (name));
-    name.ss_family = AF_UNSPEC;
+  if (addr == NULL) {
+    /* We can't connect a tcp socket with no destination address */
+    return NULL;
   }
+
+  nice_address_copy_to_sockaddr(addr, (struct sockaddr *)&name);
 
   if ((sockfd == -1) &&
       ((name.ss_family == AF_UNSPEC) ||
