@@ -21,6 +21,7 @@ AM_CFLAGS = \
 COMMON_LDADD = $(top_builddir)/agent/libagent.la $(top_builddir)/socket/libsocket.la $(GLIB_LIBS) $(GUPNP_LIBS)
 
 check_PROGRAMS = \
+	test-pseudotcp \
 	test-bsd \
 	test \
 	test-address \
@@ -34,9 +35,12 @@ check_PROGRAMS = \
 	test-dribble
 
 dist_check_SCRIPTS = \
-	check-test-fullmode-with-stun.sh
+	check-test-fullmode-with-stun.sh \
+	test-pseudotcp-random.sh
 
 TESTS = $(check_PROGRAMS) $(dist_check_SCRIPTS)
+
+test_pseudotcp_LDADD = $(COMMON_LDADD)
 
 test_bsd_LDADD = $(COMMON_LDADD)
 
@@ -64,3 +68,4 @@ test_dribble_LDADD = $(COMMON_LDADD)
 
 all-local:
 	chmod a+x $(srcdir)/check-test-fullmode-with-stun.sh
+	chmod a+x $(srcdir)/test-pseudotcp-random.sh
