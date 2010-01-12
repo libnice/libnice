@@ -57,6 +57,8 @@ libagent_la_SOURCES = \
 	discovery.h \
 	interfaces.c \
 	interfaces.h \
+	pseudotcp.h \
+	pseudotcp.c \
 	$(BUILT_SOURCES)
 
 libagent_la_LIBADD = \
@@ -68,4 +70,4 @@ libagent_la_DEPENDENCIES = \
 	$(top_builddir)/socket/libsocket.la \
 	$(top_builddir)/stun/libstun.la
 
-pkginclude_HEADERS = agent.h candidate.h debug.h address.h interfaces.h
+pkginclude_HEADERS = agent.h candidate.h debug.h address.h interfaces.h pseudotcp.h
