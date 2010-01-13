@@ -40,7 +40,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
-
+#include <errno.h>
 
 #include "pseudotcp.h"
 
@@ -67,6 +67,7 @@ static void write_to_sock (PseudoTcpSocket *sock)
     len = fread (buf, 1, sizeof(buf), in);
     if (len == 0) {
       g_debug ("Done reading data from file");
+      pseudo_tcp_socket_close (sock, FALSE);
       break;
     } else {
       wlen = pseudo_tcp_socket_send (sock, buf, len);
@@ -89,8 +90,10 @@ static void opened (PseudoTcpSocket *sock, gpointer data)
   if (sock == left) {
     if (in)
       write_to_sock (sock);
-    else
+    else {
       pseudo_tcp_socket_send (sock, "abcdefghijklmnopqrstuvwxyz", 26);
+      pseudo_tcp_socket_close (sock, FALSE);
+    }
   }
 }
 
@@ -127,6 +130,14 @@ static void readable (PseudoTcpSocket *sock, gpointer data)
       }
     }
   } while (len > 0);
+
+  if (len == -1 &&
+      pseudo_tcp_socket_get_error (sock) != EWOULDBLOCK) {
+    g_debug ("Error reading from socket : %d",
+        pseudo_tcp_socket_get_error (sock));
+    exit (-1);
+  }
+
   adjust_clock (sock);
 }
 
@@ -245,7 +256,6 @@ int main (int argc, char *argv[])
 
   pseudo_tcp_socket_connect (left);
   adjust_clock (left);
-  pseudo_tcp_socket_connect (right);
   adjust_clock (right);
 
   if (argc == 3) {

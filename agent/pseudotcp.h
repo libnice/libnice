@@ -38,10 +38,33 @@
 #ifndef _PSEUDOTCP_H
 #define _PSEUDOTCP_H
 
+/**
+ * SECTION:pseudotcp
+ * @short_description: Pseudo TCP implementation
+ * @include: pseudotcp.h
+ * @stability: Stable
+ *
+ * The #PseudoTcpSocket is an object implementing a Pseudo Tcp Socket for use
+ * over UDP.
+ * The socket will implement a subset of the TCP stack to allow for a reliable
+ * transport over non-reliable sockets (such as UDP).
+ *
+ * See the file tests/test-pseudotcp.c in the source package for an example
+ * of how to use the object.
+ */
+
+
+
 #include <glib-object.h>
 
 G_BEGIN_DECLS
 
+/**
+ * PseudoTcpSocket:
+ *
+ * The #PseudoTcpSocket is the GObject implementing the Pseudo TCP Socket
+ *
+ */
 typedef struct _PseudoTcpSocket PseudoTcpSocket;
 
 typedef struct _PseudoTcpSocketClass PseudoTcpSocketClass;
@@ -76,6 +99,19 @@ struct _PseudoTcpSocket {
     PseudoTcpSocketPrivate *priv;
 };
 
+/**
+ * PseudoTcpState:
+ * @TCP_LISTEN: The socket's initial state. The socket isn't connected and is
+ * listening for an incoming connection
+ * @TCP_SYN_SENT: The socket has sent a connection request (SYN) packet and is
+ * waiting for an answer
+ * @TCP_SYN_RECEIVED: The socket has received a connection request (SYN) packet.
+ * @TCP_ESTABLISHED: The socket is connected
+ * @TCP_CLOSED: The socket has been closed
+ *
+ * An enum representing the state of the #PseudoTcpSocket.
+ * <para> See also: #PseudoTcpSocket:state </para>
+ */
 typedef enum {
   TCP_LISTEN,
   TCP_SYN_SENT,
@@ -84,12 +120,36 @@ typedef enum {
   TCP_CLOSED
 } PseudoTcpState;
 
+/**
+ * PseudoTcpWriteResult:
+ * @WR_SUCCESS: The write operation was successful
+ * @WR_TOO_LARGE: The socket type requires that message be sent atomically
+ * and the size of the message to be sent made this impossible.
+ * @WR_FAIL: There was an error sending the message
+ *
+ * An enum representing the result value of the write operation requested by
+ * the #PseudoTcpSocket.
+ * <para> See also: #PseudoTcpCallbacks:WritePacket </para>
+ */
 typedef enum {
   WR_SUCCESS,
   WR_TOO_LARGE,
   WR_FAIL
 } PseudoTcpWriteResult;
 
+/**
+ * PseudoTcpCallbacks:
+ * @user_data: A user defined pointer to be passed to the callbacks
+ * @PseudoTcpOpened: The #PseudoTcpSocket is now connected
+ * @PseudoTcpReadable: The socket is readable
+ * @PseudoTcpWritable: The socket is writable
+ * @PseudoTcpClosed: The socket was closed
+ * @WritePacket: This callback is called when the socket needs to send data.
+ *
+ * A structure containing callbacks functions that will be called by the
+ * #PseudoTcpSocket when some events happen.
+ * <para> See also: #PseudoTcpWriteResult </para>
+ */
 typedef struct {
   gpointer user_data;
   void  (*PseudoTcpOpened) (PseudoTcpSocket *tcp, gpointer data);
@@ -100,18 +160,193 @@ typedef struct {
       const gchar * buffer, guint32 len, gpointer data);
 } PseudoTcpCallbacks;
 
+/**
+ * pseudo_tcp_socket_new:
+ * @conversation: The conversation id for the socket.
+ * @callbacks: A pointer to the #PseudoTcpCallbacks structure for getting
+ * notified of the #PseudoTcpSocket events.
+ *
+ * Creates a new #PseudoTcpSocket for the specified conversation
+ *
+ <note>
+   <para>
+     The @callbacks must be non-NULL, in order to get notified of packets the
+     socket needs to send.
+   </para>
+   <para>
+     If the @callbacks structure was dynamicly allocated, it can be freed
+     after the call @pseudo_tcp_socket_new
+   </para>
+ </note>
+ *
+ * Returns: The new #PseudoTcpSocket object, %NULL on error
+ */
 PseudoTcpSocket *pseudo_tcp_socket_new (guint32 conversation,
     PseudoTcpCallbacks *callbacks);
-gint pseudo_tcp_socket_connect(PseudoTcpSocket *self);
+
+
+/**
+ * pseudo_tcp_socket_connect:
+ * @self: The #PseudoTcpSocket object.
+ *
+ * Connects the #PseudoTcpSocket to the peer with the same conversation id.
+ * The connection will only be successful after the
+ * #PseudoTcpCallbacks:PseudoTcpOpened callback is called
+ *
+ * Returns: %TRUE on success, %FALSE on failure (not in %TCP_LISTEN state)
+ * <para> See also: pseudo_tcp_socket_get_error() </para>
+ */
+gboolean pseudo_tcp_socket_connect(PseudoTcpSocket *self);
+
+
+/**
+ * pseudo_tcp_socket_recv:
+ * @self: The #PseudoTcpSocket object.
+ * @buffer: The buffer to fill with received data
+ * @len: The length of @buffer
+ *
+ * Receive data from the socket.
+ *
+ <note>
+   <para>
+     Only call this on the #PseudoTcpCallbacks:PseudoTcpReadable callback.
+   </para>
+   <para>
+     This function should be called in a loop. If this function does not
+     return -1 with EWOULDBLOCK as the error, the
+     #PseudoTcpCallbacks:PseudoTcpReadable callback will not be called again.
+   </para>
+ </note>
+ *
+ * Returns: The number of bytes received or -1 in case of error
+ * <para> See also: pseudo_tcp_socket_get_error() </para>
+ */
 gint  pseudo_tcp_socket_recv(PseudoTcpSocket *self, char * buffer, size_t len);
+
+
+/**
+ * pseudo_tcp_socket_send:
+ * @self: The #PseudoTcpSocket object.
+ * @buffer: The buffer with data to send
+ * @len: The length of @buffer
+ *
+ * Send data on the socket.
+ *
+ <note>
+   <para>
+     If this function return -1 with EWOULDBLOCK as the error, or if the return
+     value is lower than @len, then the #PseudoTcpCallbacks:PseudoTcpWritable
+     callback will be called when the socket will become writable.
+   </para>
+ </note>
+ *
+ * Returns: The number of bytes sent or -1 in case of error
+ * <para> See also: pseudo_tcp_socket_get_error() </para>
+ */
 gint pseudo_tcp_socket_send(PseudoTcpSocket *self, const char * buffer,
     guint32 len);
+
+
+/**
+ * pseudo_tcp_socket_close:
+ * @self: The #PseudoTcpSocket object.
+ * @force: %TRUE to close the socket forcefully, %False to close it gracefully
+ *
+ * Close the socket. IF @force is set to %FALSE, the socket will finish sending
+ * pending data before closing.
+ *
+ <note>
+   <para>
+     The #PseudoTcpCallbacks:PseudoTcpClosed callback will not be called once
+     the socket gets closed. It is only used for aborted connection.
+     Instead, the socket gets closed when the pseudo_tcp_socket_get_next_clock()
+     function returns FALSE.
+   </para>
+ </note>
+ *
+ * <para> See also: pseudo_tcp_socket_get_next_clock() </para>
+ */
 void pseudo_tcp_socket_close(PseudoTcpSocket *self, gboolean force);
+
+
+/**
+ * pseudo_tcp_socket_get_error:
+ * @self: The #PseudoTcpSocket object.
+ *
+ * Return the last encountered error.
+ *
+ <note>
+   <para>
+     The return value can be :
+     <para>
+       EINVAL (for pseudo_tcp_socket_connect()).
+     </para>
+     <para>
+       EWOULDBLOCK or ENOTCONN (for pseudo_tcp_socket_recv() and
+       pseudo_tcp_socket_send()).
+     </para>
+   </para>
+ </note>
+ *
+ * Returns: The error code
+ * <para> See also: pseudo_tcp_socket_connect() </para>
+ * <para> See also: pseudo_tcp_socket_recv() </para>
+ * <para> See also: pseudo_tcp_socket_send() </para>
+ */
 int pseudo_tcp_socket_get_error(PseudoTcpSocket *self);
 
+
+/**
+ * pseudo_tcp_socket_get_next_clock:
+ * @self: The #PseudoTcpSocket object.
+ * @timeout: A pointer to be filled with the new timeout.
+ *
+ * Call this to determine the timeout needed before the next time call
+ * to pseudo_tcp_socket_notify_clock() should be made.
+ *
+ * Returns: %TRUE if @timeout was filled, %FALSE if the socket is closed and
+ * ready to be destroyed.
+ *
+ * <para> See also: pseudo_tcp_socket_notify_clock() </para>
+ */
 gboolean pseudo_tcp_socket_get_next_clock(PseudoTcpSocket *self, long *timeout);
+
+
+/**
+ * pseudo_tcp_socket_notify_clock:
+ * @self: The #PseudoTcpSocket object.
+ *
+ * Start the processing of receiving data, pending data or syn/acks.
+ * Call this based on timeout value returned by
+ * pseudo_tcp_socket_get_next_clock().
+ * It's ok to call this too frequently.
+ *
+ * <para> See also: pseudo_tcp_socket_get_next_clock() </para>
+ */
 void pseudo_tcp_socket_notify_clock(PseudoTcpSocket *self);
+
+
+/**
+ * pseudo_tcp_socket_notify_mtu:
+ * @self: The #PseudoTcpSocket object.
+ * @mtu: The new MTU of the socket
+ *
+ * Set the MTU of the socket
+ *
+ */
 void pseudo_tcp_socket_notify_mtu(PseudoTcpSocket *self, guint16 mtu);
+
+
+/**
+ * pseudo_tcp_socket_notify_packet:
+ * @self: The #PseudoTcpSocket object.
+ * @buffer: The buffer containing the received data
+ * @len: The length of @buffer
+ *
+ * Notify the #PseudoTcpSocket when a new packet arrives
+ *
+ * Returns: %TRUE if the packet was processed successfully, %FALSE otherwise
+ */
 gboolean pseudo_tcp_socket_notify_packet(PseudoTcpSocket *self,
     const gchar * buffer, guint32 len);
 

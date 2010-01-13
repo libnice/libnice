@@ -219,3 +219,22 @@ stun_usage_bind_process
 stun_usage_bind_keepalive
 stun_usage_bind_run
 </SECTION>
+
+<SECTION>
+<FILE>pseudotcp</FILE>
+<TITLE>Pseudo TCP Socket</TITLE>
+PseudoTcpSocket
+PseudoTcpState
+PseudoTcpWriteResult
+PseudoTcpCallbacks
+pseudo_tcp_socket_new
+pseudo_tcp_socket_connect
+pseudo_tcp_socket_recv
+pseudo_tcp_socket_send
+pseudo_tcp_socket_close
+pseudo_tcp_socket_get_error
+pseudo_tcp_socket_get_next_clock
+pseudo_tcp_socket_notify_clock
+pseudo_tcp_socket_notify_mtu
+pseudo_tcp_socket_notify_packet
+</SECTION>

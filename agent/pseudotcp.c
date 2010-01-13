@@ -498,7 +498,17 @@ pseudo_tcp_socket_init (PseudoTcpSocket *obj)
   priv->rx_srtt = priv->rx_rttvar = 0;
 }
 
-gint
+PseudoTcpSocket *pseudo_tcp_socket_new (guint32 conversation,
+    PseudoTcpCallbacks *callbacks)
+{
+
+  return g_object_new (PSEUDO_TCP_SOCKET_TYPE,
+      "conversation", conversation,
+      "callbacks", callbacks,
+      NULL);
+}
+
+gboolean
 pseudo_tcp_socket_connect(PseudoTcpSocket *self)
 {
   PseudoTcpSocketPrivate *priv = self->priv;
@@ -506,7 +516,7 @@ pseudo_tcp_socket_connect(PseudoTcpSocket *self)
 
   if (priv->state != TCP_LISTEN) {
     priv->error = EINVAL;
-    return -1;
+    return FALSE;
   }
 
   priv->state = TCP_SYN_SENT;
@@ -516,17 +526,7 @@ pseudo_tcp_socket_connect(PseudoTcpSocket *self)
   queue(self, buffer, 1, TRUE);
   attempt_send(self, sfNone);
 
-  return 0;
-}
-
-PseudoTcpSocket *pseudo_tcp_socket_new (guint32 conversation,
-    PseudoTcpCallbacks *callbacks)
-{
-
-  return g_object_new (PSEUDO_TCP_SOCKET_TYPE,
-      "conversation", conversation,
-      "callbacks", callbacks,
-      NULL);
+  return TRUE;
 }
 
 void
@@ -650,9 +650,6 @@ pseudo_tcp_socket_get_next_clock(PseudoTcpSocket *self, long *timeout)
   return TRUE;
 }
 
-//
-// IPStream Implementation
-//
 
 gint
 pseudo_tcp_socket_recv(PseudoTcpSocket *self, char * buffer, size_t len)
