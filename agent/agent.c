@@ -1093,6 +1093,7 @@ void agent_signal_new_selected_pair (NiceAgent *agent, guint stream_id, guint co
 
   if (component->tcp) {
     pseudo_tcp_socket_connect (component->tcp);
+    pseudo_tcp_socket_notify_mtu (component->tcp, MAX_TCP_MTU);
     adjust_tcp_clock (agent, component);
   }
 
