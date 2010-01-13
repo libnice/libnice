@@ -915,14 +915,14 @@ static void priv_destroy_component_tcp (Component *component)
       g_source_unref (component->tcp_clock);
       component->tcp_clock = NULL;
     }
-    if (component->tcp_data != NULL) {
-      g_slice_free (TcpUserData, component->tcp_data);
-      component->tcp_data = NULL;
-    }
     if (component->tcp) {
       pseudo_tcp_socket_close (component->tcp, TRUE);
       g_object_unref (component->tcp);
       component->tcp = NULL;
+    }
+    if (component->tcp_data != NULL) {
+      g_slice_free (TcpUserData, component->tcp_data);
+      component->tcp_data = NULL;
     }
 }
 

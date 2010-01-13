@@ -340,7 +340,7 @@ static void pseudo_tcp_socket_get_property (GObject *object, guint property_id,
     GValue *value,  GParamSpec *pspec);
 static void pseudo_tcp_socket_set_property (GObject *object, guint property_id,
     const GValue *value, GParamSpec *pspec);
-static void pseudo_tcp_socket_dispose (GObject *object);
+static void pseudo_tcp_socket_finalize (GObject *object);
 
 
 static guint32 queue(PseudoTcpSocket *self, const gchar * data,
@@ -364,7 +364,7 @@ pseudo_tcp_socket_class_init (PseudoTcpSocketClass *cls)
 
   object_class->get_property = pseudo_tcp_socket_get_property;
   object_class->set_property = pseudo_tcp_socket_set_property;
-  object_class->dispose = pseudo_tcp_socket_dispose;
+  object_class->finalize = pseudo_tcp_socket_finalize;
 
   g_object_class_install_property (object_class, PROP_CONVERSATION,
       g_param_spec_uint ("conversation", "TCP Conversation ID",
@@ -435,21 +435,33 @@ pseudo_tcp_socket_set_property (GObject *object,
 }
 
 static void
-pseudo_tcp_socket_dispose (GObject *object)
+pseudo_tcp_socket_finalize (GObject *object)
 {
   PseudoTcpSocket *self = PSEUDO_TCP_SOCKET (object);
   PseudoTcpSocketPrivate *priv = self->priv;
+  GList *i;
 
   if (priv == NULL)
     return;
 
-  /*TODO: free slist/rlist/?*/
+  for (i = priv->slist; i; i = i->next) {
+    SSegment *sseg = i->data;
+    g_slice_free (SSegment, sseg);
+  }
+  for (i = priv->rlist; i; i = i->next) {
+    RSegment *rseg = i->data;
+    g_slice_free (RSegment, rseg);
+  }
+  g_list_free (priv->slist);
+  priv->slist = NULL;
+  g_list_free (priv->rlist);
+  priv->rlist = NULL;
 
   g_free (priv);
   self->priv = NULL;
 
-  if (G_OBJECT_CLASS (pseudo_tcp_socket_parent_class)->dispose)
-    G_OBJECT_CLASS (pseudo_tcp_socket_parent_class)->dispose (object);
+  if (G_OBJECT_CLASS (pseudo_tcp_socket_parent_class)->finalize)
+    G_OBJECT_CLASS (pseudo_tcp_socket_parent_class)->finalize (object);
 }
 
 
