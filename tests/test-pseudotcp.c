@@ -121,10 +121,11 @@ static void readable (PseudoTcpSocket *sock, gpointer data)
           }
         }
       } else {
-        if (len == 26 && strcmp (buf, "abcdefghijklmnopqrstuvwxyz") == 0) {
+        if (len == 26 && strncmp (buf, "abcdefghijklmnopqrstuvwxyz", len) == 0) {
           pseudo_tcp_socket_close (left, FALSE);
           pseudo_tcp_socket_close (right, FALSE);
         } else {
+          g_debug ("Error reading data.. read %d bytes : %s", len, buf);
           exit (-1);
         }
       }
