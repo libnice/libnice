@@ -277,6 +277,21 @@ typedef void (*NiceAgentRecvFunc) (
 NiceAgent *
 nice_agent_new (GMainContext *ctx, NiceCompatibility compat);
 
+
+/**
+ * nice_agent_new_reliable:
+ * @ctx: The Glib Mainloop Context to use for timers
+ * @compat: The compatibility mode of the agent
+ *
+ * Create a new #NiceAgent in reliable mode, which uses #PseudoTcpSocket to
+ * assure reliability of the messages.
+ * The returned object must be freed with g_object_unref()
+ *
+ * Returns: The new agent GObject
+ */
+NiceAgent *
+nice_agent_new_reliable (GMainContext *ctx, NiceCompatibility compat);
+
 /**
  * nice_agent_add_local_address:
  * @agent: The #NiceAgent Object

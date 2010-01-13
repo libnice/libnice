@@ -53,9 +53,7 @@
 #include "agent-priv.h"
 
 Component *
-component_new (
-  G_GNUC_UNUSED
-  guint id)
+component_new (guint id)
 {
   Component *component;
 
@@ -63,6 +61,8 @@ component_new (
   component->id = id;
   component->state = NICE_COMPONENT_STATE_DISCONNECTED;
   component->restart_candidate = NULL;
+  component->tcp = NULL;
+
   return component;
 }
 
@@ -213,8 +213,9 @@ void component_update_selected_pair (Component *component, const CandidatePair *
 {
   g_assert (component);
   g_assert (pair);
-  nice_debug ("setting SELECTED PAIR for component %u: %s:%s (prio:%lu).", 
-	   component->id, pair->local->foundation, pair->remote->foundation, (long unsigned)pair->priority);
+  nice_debug ("setting SELECTED PAIR for component %u: %s:%s (prio:%"
+      G_GUINT64_FORMAT ").", component->id, pair->local->foundation,
+      pair->remote->foundation, pair->priority);
 
   if (component->selected_pair.keepalive.tick_source != NULL) {
     g_source_destroy (component->selected_pair.keepalive.tick_source);

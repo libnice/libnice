@@ -7,4 +7,6 @@ VOID:UINT,UINT,STRING
 # candidate-gathering-done
 # initial-binding-request-received
 VOID:UINT
+# reliable-transport-writable
+VOID:UINT,UINT
 

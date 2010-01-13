@@ -41,10 +41,14 @@
 
 #include <glib.h>
 
+typedef struct _Component Component;
+
 #include "agent.h"
 #include "candidate.h"
 #include "stun/stunagent.h"
 #include "stun/usages/timer.h"
+#include "pseudotcp.h"
+#include "stream.h"
 
 G_BEGIN_DECLS
 
@@ -55,7 +59,6 @@ G_BEGIN_DECLS
  * would end up with 2*K host candidates if an agent has K interfaces.""
  */
 
-typedef struct _Component Component;
 typedef struct _CandidatePair CandidatePair;
 typedef struct _CandidatePairKeepalive CandidatePairKeepalive;
 typedef struct _IncomingCheck IncomingCheck;
@@ -89,6 +92,12 @@ struct _IncomingCheck
   uint16_t username_len;
 };
 
+typedef struct {
+  NiceAgent *agent;
+  Stream *stream;
+  Component *component;
+} TcpUserData;
+
 struct _Component
 {
   NiceComponentType type;
@@ -107,12 +116,13 @@ struct _Component
   gpointer data;                    /**< data passed to the io function */
   GMainContext *ctx;                /**< context for data callbacks for this
                                        component */
+  PseudoTcpSocket *tcp;
+  GSource* tcp_clock;
+  TcpUserData *tcp_data;
 };
 
 Component *
-component_new (
-  G_GNUC_UNUSED
-  guint component_id);
+component_new (guint component_id);
 
 void
 component_free (Component *cmp);

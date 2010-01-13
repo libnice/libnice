@@ -40,6 +40,8 @@
 
 #include <glib.h>
 
+typedef struct _Stream Stream;
+
 #include "component.h"
 #include "random.h"
 
@@ -68,8 +70,6 @@ typedef enum
 } NiceCheckListState;
 
 
-typedef struct _Stream Stream;
-
 struct _Stream
 {
   guint id;
@@ -85,6 +85,7 @@ struct _Stream
   gboolean gathering;
   gint tos;
 };
+
 
 Stream *
 stream_new (guint n_components);

@@ -120,6 +120,7 @@ struct _NiceAgent
   GSource *upnp_timer_source;      /* source of upnp timeout timer */
 #endif
   gchar *software_attribute;       /* SOFTWARE attribute */
+  gboolean reliable;               /* property: reliable */
   /* XXX: add pointer to internal data struct for ABI-safe extensions */
 };
 
