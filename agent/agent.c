@@ -331,23 +331,44 @@ nice_agent_class_init (NiceAgentClass *klass)
 	0, /* default set in init */
         G_PARAM_READWRITE));
 
+  /**
+   * NiceAgent:proxy-ip:
+   *
+   * The proxy server IP used to bypass a proxy firewall
+   *
+   * Since: 0.0.4
+   */
   g_object_class_install_property (gobject_class, PROP_PROXY_IP,
       g_param_spec_string (
         "proxy-ip",
         "Proxy server IP",
-        "The proxy server used to bypass a proxy firewall",
+        "The proxy server IP used to bypass a proxy firewall",
         NULL,
         G_PARAM_READWRITE));
 
+  /**
+   * NiceAgent:proxy-port:
+   *
+   * The proxy server port used to bypass a proxy firewall
+   *
+   * Since: 0.0.4
+   */
   g_object_class_install_property (gobject_class, PROP_PROXY_PORT,
       g_param_spec_uint (
         "proxy-port",
         "Proxy server port",
-        "The Proxy server used to bypass a proxy firewall",
+        "The Proxy server port used to bypass a proxy firewall",
         1, 65536,
 	1,
         G_PARAM_READWRITE));
 
+  /**
+   * NiceAgent:proxy-type:
+   *
+   * The type of proxy set in the proxy-ip property
+   *
+   * Since: 0.0.4
+   */
   g_object_class_install_property (gobject_class, PROP_PROXY_TYPE,
       g_param_spec_uint (
          "proxy-type",
@@ -357,6 +378,13 @@ nice_agent_class_init (NiceAgentClass *klass)
          NICE_PROXY_TYPE_NONE,
          G_PARAM_READWRITE));
 
+  /**
+   * NiceAgent:proxy-username:
+   *
+   * The username used to authenticate with the proxy
+   *
+   * Since: 0.0.4
+   */
   g_object_class_install_property (gobject_class, PROP_PROXY_USERNAME,
       g_param_spec_string (
         "proxy-username",
@@ -365,6 +393,13 @@ nice_agent_class_init (NiceAgentClass *klass)
         NULL,
         G_PARAM_READWRITE));
 
+  /**
+   * NiceAgent:proxy-password:
+   *
+   * The password used to authenticate with the proxy
+   *
+   * Since: 0.0.4
+   */
   g_object_class_install_property (gobject_class, PROP_PROXY_PASSWORD,
       g_param_spec_string (
         "proxy-password",
@@ -373,6 +408,14 @@ nice_agent_class_init (NiceAgentClass *klass)
         NULL,
         G_PARAM_READWRITE));
 
+  /**
+   * NiceAgent:upnp:
+   *
+   * Whether the agent should use UPnP to open a port in the router and
+   * get the external IP
+   *
+   * Since: 0.0.7
+   */
    g_object_class_install_property (gobject_class, PROP_UPNP,
       g_param_spec_boolean (
         "upnp",
@@ -387,6 +430,14 @@ nice_agent_class_init (NiceAgentClass *klass)
 	TRUE, /* enable UPnP by default */
         G_PARAM_READWRITE| G_PARAM_CONSTRUCT));
 
+  /**
+   * NiceAgent:upnp-timeout:
+   *
+   * The maximum amount of time to wait for UPnP discovery to finish before
+   * signaling the candidate-gathering-done signal
+   *
+   * Since: 0.0.7
+   */
   g_object_class_install_property (gobject_class, PROP_UPNP_TIMEOUT,
       g_param_spec_uint (
         "upnp-timeout",
@@ -564,6 +615,8 @@ nice_agent_class_init (NiceAgentClass *klass)
    * This signal is only emitted when the nice_agent_send() function returns less
    * bytes than requested to send (or -1) and once when the connection
    * is established.
+   *
+   * Since: 0.0.11
    */
   signals[SIGNAL_RELIABLE_TRANSPORT_WRITABLE] =
       g_signal_new (

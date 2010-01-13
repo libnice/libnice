@@ -469,6 +469,7 @@ size_t stun_agent_finish_message (StunAgent *agent, StunMessage *msg,
  * this will allow the #StunAgent to forget about the timed out transaction and
  * free its slot for future transactions.
  * </para>
+ * Since: 0.0.6
  * Returns: %TRUE if the transaction was found, %FALSE otherwise
  */
 bool stun_agent_forget_transaction (StunAgent *agent, StunTransactionId id);
@@ -484,6 +485,7 @@ bool stun_agent_forget_transaction (StunAgent *agent, StunTransactionId id);
  * <para>
  * Calling this function will automatically enable the addition of the SOFTWARE
  * attribute for RFC5389 and WLM2009 compatibility modes.
+ *
  * </para>
  * <note>
      <para>
@@ -495,6 +497,8 @@ bool stun_agent_forget_transaction (StunAgent *agent, StunTransactionId id);
        the StunAgent's life. Do not free its content.
      </para>
    </note>
+ *
+ * Since: 0.0.10
  *
  */
 void stun_agent_set_software (StunAgent *agent, const char *software);

@@ -236,6 +236,8 @@ typedef enum
  * An enum to specify which proxy type to use for relaying.
  * Note that the proxies will only be used with TCP TURN relaying.
  * <para> See also: #NiceAgent:proxy-type </para>
+ *
+ * Since: 0.0.4
  */
 typedef enum
 {
@@ -287,6 +289,8 @@ nice_agent_new (GMainContext *ctx, NiceCompatibility compat);
  * assure reliability of the messages.
  * The returned object must be freed with g_object_unref()
  *
+ * Since: 0.0.11
+ *
  * Returns: The new agent GObject
  */
 NiceAgent *
@@ -298,8 +302,14 @@ nice_agent_new_reliable (GMainContext *ctx, NiceCompatibility compat);
  * @addr: The address to listen to
  * If the port is 0, then a random port will be chosen by the system
  *
- * Add a local address from which to derive local host candidates
+ * Add a local address from which to derive local host candidates for
+ * candidate gathering.
+ * <para>
+ * Since 0.0.5, if this method is not called, libnice will automatically
+ * discover the local addresses available
+ * </para>
  *
+ * See also: nice_agent_gather_candidates()
  * Returns: %TRUE on success, %FALSE on fatal (memory allocation) errors
  */
 gboolean
@@ -367,13 +377,15 @@ gboolean nice_agent_set_relay_info(
  * Start the candidate gathering process.
  * Once done, #NiceAgent::candidate-gathering-done is called for the stream
  *
+ * See also: nice_agent_add_local_address()
  <note>
    <para>
     Local addresses can be previously set with nice_agent_add_local_address()
   </para>
   <para>
-    If no local address was previously added, then the nice agent will
-    automatically detect the local address using nice_interfaces_get_local_ips()
+    Since 0.0.5, If no local address was previously added, then the nice agent
+    will automatically detect the local address using
+    nice_interfaces_get_local_ips()
    </para>
  </note>
  */
@@ -644,6 +656,7 @@ nice_agent_set_selected_remote_candidate (
  *
  * Sets the IP_TOS and/or IPV6_TCLASS field on the stream's sockets' options
  *
+ * Since: 0.0.9
  */
 void nice_agent_set_stream_tos (
   NiceAgent *agent,
@@ -662,6 +675,7 @@ void nice_agent_set_stream_tos (
  * <para>
  * The SOFTWARE attribute will only be added in the #NICE_COMPATIBILITY_DRAFT19
  * and #NICE_COMPATIBILITY_WLM2009 compatibility modes.
+ *
  * </para>
  * <note>
      <para>
@@ -673,6 +687,8 @@ void nice_agent_set_stream_tos (
        128 characters will be sent.
      </para>
    </note>
+ *
+ * Since: 0.0.10
  *
  */
 void nice_agent_set_software (NiceAgent *agent, const gchar *software);
