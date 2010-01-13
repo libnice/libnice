@@ -146,6 +146,11 @@ static gboolean timer_cb (gpointer pointer)
   g_error ("ERROR: test has got stuck, aborting...");
 }
 
+static void cb_writable (NiceAgent*agent, guint stream_id, guint component_id)
+{
+    g_main_loop_quit (global_mainloop);
+}
+
 static void cb_nice_recv (NiceAgent *agent, guint stream_id, guint component_id, guint len, gchar *buf, gpointer user_data)
 {
   g_debug ("test-fullmode:%s: %p", G_STRFUNC, user_data);
@@ -296,8 +301,6 @@ static GSList *priv_get_local_candidate (NiceAgent *agent, guint stream_id, guin
   return result;
 }
 
-
-
 static void init_candidate (NiceCandidate *cand)
 {
   memset (cand, 0, sizeof(NiceCandidate));
@@ -314,6 +317,7 @@ static int run_full_test (NiceAgent *lagent, NiceAgent *ragent, NiceAddress *bas
   NiceCandidate cdes;
   GSList *cands, *i;
   guint ls_id, rs_id;
+  gint ret;
 
   init_candidate (&cdes);
 
@@ -458,7 +462,22 @@ static int run_full_test (NiceAgent *lagent, NiceAgent *ragent, NiceAddress *bas
 
   /* note: test payload send and receive */
   global_ragent_read = 0;
-  g_assert (nice_agent_send (lagent, ls_id, 1, 16, "1234567812345678") == 16);
+  ret = nice_agent_send (lagent, ls_id, 1, 16, "1234567812345678");
+  if (ret == -1)
+  {
+    gboolean reliable = FALSE;
+    g_object_get (G_OBJECT (lagent), "reliable", &reliable, NULL);
+    if (reliable) {
+      gulong signal_handler;
+      signal_handler = g_signal_connect (G_OBJECT (lagent),
+          "reliable-transport-writable", G_CALLBACK (cb_writable), NULL);
+      g_main_loop_run (global_mainloop);
+      g_signal_handler_disconnect(G_OBJECT (lagent), signal_handler);
+
+      ret = nice_agent_send (lagent, ls_id, 1, 16, "1234567812345678");
+    }
+  }
+  g_assert (ret == 16);
   g_main_loop_run (global_mainloop);
   g_assert (global_ragent_read == 16);
 
@@ -483,6 +502,7 @@ static int run_full_test_delayed_answer (NiceAgent *lagent, NiceAgent *ragent, N
   NiceCandidate cdes;
   GSList *cands;
   guint ls_id, rs_id;
+  gint ret;
 
   init_candidate (&cdes);
 
@@ -629,7 +649,22 @@ static int run_full_test_delayed_answer (NiceAgent *lagent, NiceAgent *ragent, N
 
   /* note: test payload send and receive */
   global_ragent_read = 0;
-  g_assert (nice_agent_send (lagent, ls_id, 1, 16, "1234567812345678") == 16);
+  ret = nice_agent_send (lagent, ls_id, 1, 16, "1234567812345678");
+  {
+    gboolean reliable = FALSE;
+    g_object_get (G_OBJECT (lagent), "reliable", &reliable, NULL);
+    if (reliable) {
+      gulong signal_handler;
+      signal_handler = g_signal_connect (G_OBJECT (lagent),
+          "reliable-transport-writable", G_CALLBACK (cb_writable), NULL);
+      g_main_loop_run (global_mainloop);
+      g_signal_handler_disconnect(G_OBJECT (lagent), signal_handler);
+
+      ret = nice_agent_send (lagent, ls_id, 1, 16, "1234567812345678");
+    }
+  }
+  global_ragent_read = 0;
+  g_assert (ret == 16);
   g_main_loop_run (global_mainloop);
   g_assert (global_ragent_read == 16);
 
@@ -923,8 +958,8 @@ int main (void)
    */
 
   /* step: create the agents L and R */
-  lagent = nice_agent_new (g_main_loop_get_context (global_mainloop), NICE_COMPATIBILITY);
-  ragent = nice_agent_new (g_main_loop_get_context (global_mainloop), NICE_COMPATIBILITY);
+  lagent = nice_agent_new_reliable (g_main_loop_get_context (global_mainloop), NICE_COMPATIBILITY);
+  ragent = nice_agent_new_reliable (g_main_loop_get_context (global_mainloop), NICE_COMPATIBILITY);
   nice_agent_set_software (lagent, "Test-fullmode, Left Agent");
   nice_agent_set_software (ragent, "Test-fullmode, Right Agent");
 
