@@ -415,6 +415,7 @@ nice_agent_class_init (NiceAgentClass *klass)
 
   /**
    * NiceAgent::component-state-changed
+   * @agent: The #NiceAgent object
    * @stream_id: The ID of the stream
    * @component_id: The ID of the component
    * @state: The #NiceComponentState of the component
@@ -437,6 +438,7 @@ nice_agent_class_init (NiceAgentClass *klass)
 
   /**
    * NiceAgent::candidate-gathering-done:
+   * @agent: The #NiceAgent object
    * @stream_id: The ID of the stream
    *
    * This signal is fired whenever a stream has finished gathering its
@@ -457,6 +459,7 @@ nice_agent_class_init (NiceAgentClass *klass)
 
   /**
    * NiceAgent::new-selected-pair
+   * @agent: The #NiceAgent object
    * @stream_id: The ID of the stream
    * @component_id: The ID of the component
    * @lfoundation: The local foundation of the selected candidate pair
@@ -481,6 +484,7 @@ nice_agent_class_init (NiceAgentClass *klass)
 
   /**
    * NiceAgent::new-candidate
+   * @agent: The #NiceAgent object
    * @stream_id: The ID of the stream
    * @component_id: The ID of the component
    * @foundation: The foundation of the new candidate
@@ -504,6 +508,7 @@ nice_agent_class_init (NiceAgentClass *klass)
 
   /**
    * NiceAgent::new-remote-candidate
+   * @agent: The #NiceAgent object
    * @stream_id: The ID of the stream
    * @component_id: The ID of the component
    * @foundation: The foundation of the new candidate
@@ -528,6 +533,7 @@ nice_agent_class_init (NiceAgentClass *klass)
 
   /**
    * NiceAgent::initial-binding-request-received
+   * @agent: The #NiceAgent object
    * @stream_id: The ID of the stream
    *
    * This signal is fired when we received our first binding request from
@@ -549,6 +555,7 @@ nice_agent_class_init (NiceAgentClass *klass)
 
   /**
    * NiceAgent::reliable-transport-writable
+   * @agent: The #NiceAgent object
    * @stream_id: The ID of the stream
    * @component_id: The ID of the component
    *
@@ -558,8 +565,6 @@ nice_agent_class_init (NiceAgentClass *klass)
    * bytes than requested to send (or -1) and once when the connection
    * is established.
    */
-  /*TODO: transform into a property to allow people to check if it's writable
-   * before doing a send... */
   signals[SIGNAL_RELIABLE_TRANSPORT_WRITABLE] =
       g_signal_new (
           "reliable-transport-writable",
