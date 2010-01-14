@@ -2,8 +2,8 @@
  * This file is part of the Nice GLib ICE library.
  *
  * (C) 2008 Collabora Ltd.
- * (C) 2008 Nokia Corporation
  *  Contact: Youness Alaoui
+ * (C) 2008 Nokia Corporation
  *
  * The contents of this file are subject to the Mozilla Public License Version
  * 1.1 (the "License"); you may not use this file except in compliance with
@@ -21,7 +21,6 @@
  * Corporation. All Rights Reserved.
  *
  * Contributors:
- *   Dafydd Harries, Collabora Ltd.
  *   Youness Alaoui, Collabora Ltd.
  *
  * Alternatively, the contents of this file may be used under the terms of the

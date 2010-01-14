@@ -3,6 +3,9 @@
  *
  * Farsight Helper functions
  * Copyright (C) 2006 Youness Alaoui <kakaroto@kakaroto.homelinux.net>
+ * Copyright (C) 2008-2009 Collabora, Nokia
+ *  Contact: Youness Alaoui
+ * Copyright (C) 2008-2009 Nokia Corporation. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public

@@ -3,7 +3,6 @@
  *
  * (C) 2010 Collabora Ltd.
  *  Contact: Youness Alaoui
- * (C) 20010 Nokia Corporation. All rights reserved.
 
  *
  * The contents of this file are subject to the Mozilla Public License Version

@@ -3,6 +3,7 @@
  *
  * Copyright (C) 2006 Youness Alaoui <kakaroto@kakaroto.homelinux.net>
  * Copyright (C) 2007 Collabora, Nokia
+ *  Contact: Youness Alaoui
  * Copyright (C) 2008 Haakon Sporsheim <haakon.sporsheim@tandberg.com>
  * @author: Youness Alaoui <kakaroto@kakaroto.homelinux.net>
  *
