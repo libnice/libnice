@@ -293,7 +293,7 @@ nice_agent_class_init (NiceAgentClass *klass)
         "stun-server-port",
         "STUN server port",
         "The STUN server used to obtain server-reflexive candidates",
-        1, 65536, 
+        1, 65536,
 	1, /* not a construct property, ignored */
         G_PARAM_READWRITE));
 
@@ -317,7 +317,8 @@ nice_agent_class_init (NiceAgentClass *klass)
       g_param_spec_uint (
         "stun-pacing-timer",
         "STUN pacing timer",
-        "Timer 'Ta' (msecs) used in the IETF ICE specification for pacing candidate gathering and sending of connectivity checks",
+        "Timer 'Ta' (msecs) used in the IETF ICE specification for pacing "
+        "candidate gathering and sending of connectivity checks",
         1, 0xffffffff,
 	NICE_AGENT_TIMER_TA_DEFAULT,
         G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY));
@@ -454,11 +455,19 @@ nice_agent_class_init (NiceAgentClass *klass)
 	DEFAULT_UPNP_TIMEOUT,
         G_PARAM_READWRITE | G_PARAM_CONSTRUCT));
 
+  /**
+   * NiceAgent:reliable:
+   *
+   * Whether the agent should use PseudoTcp to ensure a reliable transport
+   * of messages
+   *
+   * Since: 0.0.11
+   */
    g_object_class_install_property (gobject_class, PROP_RELIABLE,
       g_param_spec_boolean (
         "reliable",
         "reliable mode",
-        "Whether agent should use PseudoTcp to ensure a reliable transport"
+        "Whether the agent should use PseudoTcp to ensure a reliable transport"
         "of messages",
 	FALSE,
         G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY));
@@ -567,7 +576,6 @@ nice_agent_class_init (NiceAgentClass *klass)
    *
    * This signal is fired when the agent discovers a new remote candidate.
    * This can happen with peer reflexive candidates.
-   * <para> See also: #NiceAgent::candidates-gathering-done </para>
    */
   signals[SIGNAL_NEW_REMOTE_CANDIDATE] =
       g_signal_new (
