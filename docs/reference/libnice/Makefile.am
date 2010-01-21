@@ -47,8 +47,12 @@ HFILE_GLOB=$(DOC_SOURCE_DIR)/agent/agent.h $(DOC_SOURCE_DIR)/agent/address.h \
 	$(DOC_SOURCE_DIR)/stun/usages/ice.h \
 	$(DOC_SOURCE_DIR)/stun/usages/timer.h \
 	$(DOC_SOURCE_DIR)/stun/usages/turn.h \
-	 $(DOC_SOURCE_DIR)/agent/pseudotcp.h \
-CFILE_GLOB=$(DOC_SOURCE_DIR)/agent/agent.c $(DOC_SOURCE_DIR)/agent/pseudotcp.c
+	$(DOC_SOURCE_DIR)/agent/pseudotcp.h \
+	$(DOC_SOURCE_DIR)/agent/iostream.h
+
+CFILE_GLOB=$(DOC_SOURCE_DIR)/agent/agent.c \
+	$(DOC_SOURCE_DIR)/agent/pseudotcp.c \
+	$(DOC_SOURCE_DIR)/agent/iostream.c
 
 # Header files to ignore when scanning.
 # e.g. IGNORE_HFILES=gtkdebug.h gtkintl.h

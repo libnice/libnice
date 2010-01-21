@@ -61,6 +61,12 @@ libagent_la_SOURCES = \
 	interfaces.h \
 	pseudotcp.h \
 	pseudotcp.c \
+	iostream.h \
+	iostream.c \
+	inputstream.h \
+	inputstream.c \
+	outputstream.h \
+	outputstream.c \
 	$(BUILT_SOURCES)
 
 libagent_la_LIBADD = \
@@ -72,7 +78,14 @@ libagent_la_DEPENDENCIES = \
 	$(top_builddir)/socket/libsocket.la \
 	$(top_builddir)/stun/libstun.la
 
-pkginclude_HEADERS = agent.h candidate.h debug.h address.h interfaces.h pseudotcp.h
+pkginclude_HEADERS = \
+	agent.h \
+	candidate.h \
+	debug.h \
+	address.h \
+	interfaces.h \
+	pseudotcp.h \
+	$(NULL)
 
 if WINDOWS
   libagent_la_LIBADD += -liphlpapi -lws2_32

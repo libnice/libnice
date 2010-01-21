@@ -260,3 +260,57 @@ pseudo_tcp_set_debug_level
 pseudo_tcp_socket_get_available_bytes
 pseudo_tcp_socket_can_send
 </SECTION>
+
+<SECTION>
+<FILE>nice_io_stream</FILE>
+<TITLE>NiceIOStream</TITLE>
+NiceIOStream
+nice_io_stream_new
+<SUBSECTION Standard>
+NICE_IO_STREAM
+NICE_IO_STREAM_CLASS
+NICE_IO_STREAM_GET_CLASS
+NICE_IS_IO_STREAM
+NICE_IS_IO_STREAM_CLASS
+NICE_TYPE_IO_STREAM
+nice_io_stream_get_type
+<SUBSECTION Private>
+NiceIOStreamClass
+NiceIOStreamPrivate
+</SECTION>
+
+<SECTION>
+<FILE>nice_input_stream</FILE>
+<TITLE>NiceInputStream</TITLE>
+NiceInputStream
+nice_input_stream_new
+<SUBSECTION Standard>
+NICE_INPUT_STREAM
+NICE_INPUT_STREAM_CLASS
+NICE_INPUT_STREAM_GET_CLASS
+NICE_IS_INPUT_STREAM
+NICE_IS_INPUT_STREAM_CLASS
+NICE_TYPE_INPUT_STREAM
+nice_input_stream_get_type
+<SUBSECTION Private>
+NiceInputStreamClass
+NiceInputStreamPrivate
+</SECTION>
+
+<SECTION>
+<FILE>nice_output_stream</FILE>
+<TITLE>NiceOutputStream</TITLE>
+NiceOutputStream
+nice_output_stream_new
+<SUBSECTION Standard>
+NICE_OUTPUT_STREAM
+NICE_OUTPUT_STREAM_CLASS
+NICE_OUTPUT_STREAM_GET_CLASS
+NICE_IS_OUTPUT_STREAM
+NICE_IS_OUTPUT_STREAM_CLASS
+NICE_TYPE_OUTPUT_STREAM
+nice_output_stream_get_type
+<SUBSECTION Private>
+NiceOutputStreamClass
+NiceOutputStreamPrivate
+</SECTION>
