@@ -942,8 +942,8 @@ static void priv_pseudo_tcp_error (NiceAgent *agent, Stream *stream,
     agent_signal_component_state_change (agent, stream->id,
         component->id, NICE_COMPONENT_STATE_FAILED);
     priv_detach_stream_component (stream, component);
-    priv_destroy_component_tcp (component);
   }
+  priv_destroy_component_tcp (component);
 }
 
 static void
@@ -1883,7 +1883,6 @@ nice_agent_remove_stream (
   /* note that streams/candidates can be in use by other threads */
 
   Stream *stream;
-  GSList *i;
 
   agent_lock();
   stream = agent_find_stream (agent, stream_id);
@@ -1898,12 +1897,6 @@ nice_agent_remove_stream (
   refresh_prune_stream (agent, stream_id);
 
   /* remove the stream itself */
-  for (i = stream->components; i; i = i->next) {
-    Component *component = (Component *) i->data;
-    priv_detach_stream_component (stream, component);
-    priv_destroy_component_tcp (component);
-  }
-
   agent->streams = g_slist_remove (agent->streams, stream);
   stream_free (stream);
 

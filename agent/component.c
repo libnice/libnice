@@ -125,6 +125,21 @@ component_free (Component *cmp)
     cmp->selected_pair.keepalive.tick_source = NULL;
   }
 
+  if (cmp->tcp_clock) {
+    g_source_destroy (cmp->tcp_clock);
+    g_source_unref (cmp->tcp_clock);
+    cmp->tcp_clock = NULL;
+  }
+  if (cmp->tcp) {
+    pseudo_tcp_socket_close (cmp->tcp, TRUE);
+    g_object_unref (cmp->tcp);
+    cmp->tcp = NULL;
+  }
+  if (cmp->tcp_data != NULL) {
+    g_slice_free (TcpUserData, cmp->tcp_data);
+    cmp->tcp_data = NULL;
+  }
+
   g_slice_free (Component, cmp);
 }
 
