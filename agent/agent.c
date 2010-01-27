@@ -2643,7 +2643,7 @@ nice_agent_attach_recv (
 
   ret = TRUE;
 
-  if (func && ctx) {
+  if (func) {
     component->g_source_io_cb = func;
     component->data = data;
     component->ctx = ctx;
