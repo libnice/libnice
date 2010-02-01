@@ -1,6 +1,7 @@
 
 ERROR_CFLAGS = \
 	$(LIBNICE_CFLAGS) \
+	-fno-strict-aliasing \
 	-Wextra \
 	-Wundef \
 	-Wnested-externs \
