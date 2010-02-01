@@ -881,21 +881,18 @@ gboolean conn_check_schedule_next (NiceAgent *agent)
   if (agent->discovery_unsched_items > 0)
     nice_debug ("Agent %p : WARN: starting conn checks before local candidate gathering is finished.", agent);
 
-  if (res == TRUE) {
-    /* step: call once imediately */
-    res = priv_conn_check_tick_unlocked ((gpointer) agent);
-    nice_debug ("Agent %p : priv_conn_check_tick_unlocked returned %d", agent, res);
+  /* step: call once imediately */
+  res = priv_conn_check_tick_unlocked ((gpointer) agent);
+  nice_debug ("Agent %p : priv_conn_check_tick_unlocked returned %d", agent, res);
 
-    /* step: schedule timer if not running yet */
-    if (res && agent->conncheck_timer_source == NULL) {
-      agent->conncheck_timer_source = agent_timeout_add_with_context (agent, agent->timer_ta, priv_conn_check_tick, agent);
-    }
+  /* step: schedule timer if not running yet */
+  if (res && agent->conncheck_timer_source == NULL) {
+    agent->conncheck_timer_source = agent_timeout_add_with_context (agent, agent->timer_ta, priv_conn_check_tick, agent);
+  }
 
-    /* step: also start the keepalive timer */
-    if (agent->keepalive_timer_source == NULL) {
-      agent->keepalive_timer_source = agent_timeout_add_with_context (agent, NICE_AGENT_TIMER_TR_DEFAULT, priv_conn_keepalive_tick, agent);
-    }
-
+  /* step: also start the keepalive timer */
+  if (agent->keepalive_timer_source == NULL) {
+    agent->keepalive_timer_source = agent_timeout_add_with_context (agent, NICE_AGENT_TIMER_TR_DEFAULT, priv_conn_keepalive_tick, agent);
   }
 
   nice_debug ("Agent %p : conn_check_schedule_next returning %d", agent, res);
