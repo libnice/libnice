@@ -569,11 +569,6 @@ static gboolean priv_conn_keepalive_tick_unlocked (NiceAgent *agent)
       Component *component = j->data;
       if (component->selected_pair.local != NULL) {
 	CandidatePair *p = &component->selected_pair;
-	struct sockaddr_storage sockaddr;
-
-	memset (&sockaddr, 0, sizeof (sockaddr));
-	nice_address_copy_to_sockaddr (&p->remote->addr,
-            (struct sockaddr *) &sockaddr);
 
         if (agent->compatibility == NICE_COMPATIBILITY_GOOGLE) {
           guint32 priority = nice_candidate_ice_priority_full (
@@ -593,7 +588,7 @@ static gboolean priv_conn_keepalive_tick_unlocked (NiceAgent *agent)
           nice_debug ("Agent %p : Keepalive STUN-CC REQ to '%s:%u', "
               "socket=%u (c-id:%u), username='%s' (%d), "
               "password='%s' (%d), priority=%u.", agent,
-              tmpbuf, ntohs(((struct sockaddr_in*)(&sockaddr))->sin_port),
+              tmpbuf, nice_address_get_port (&p->remote->addr),
               p->local->sockptr->fileno, component->id,
               uname, uname_len, password, password_len, priority);
 
@@ -1637,25 +1632,18 @@ int conn_check_send (NiceAgent *agent, CandidateCheckPair *pair)
  /* XXX: add API to support different nomination modes: */
   bool cand_use = controlling;
   size_t buffer_len;
-
-  struct sockaddr_storage sockaddr;
   unsigned int timeout;
 
   if (agent->compatibility == NICE_COMPATIBILITY_MSN) {
     password = g_base64_decode ((gchar *) password, &password_len);
   }
 
-  memset (&sockaddr, 0, sizeof (sockaddr)); 
-
-  nice_address_copy_to_sockaddr (&pair->remote->addr,
-      (struct sockaddr *) &sockaddr);
-
   {
     gchar tmpbuf[INET6_ADDRSTRLEN];
     nice_address_to_string (&pair->remote->addr, tmpbuf);
     nice_debug ("Agent %p : STUN-CC REQ to '%s:%u', socket=%u, pair=%s (c-id:%u), tie=%llu, username='%s' (%d), password='%s' (%d), priority=%u.", agent, 
 	     tmpbuf,
-	     ntohs(((struct sockaddr_in*)(&sockaddr))->sin_port), 
+             ntohs(nice_address_get_port (&pair->remote->addr)), 
 	     pair->local->sockptr->fileno,
 	     pair->foundation, pair->component_id,
 	     (unsigned long long)agent->tie_breaker,
