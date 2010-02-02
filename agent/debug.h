@@ -59,6 +59,8 @@
 
 #include <glib.h>
 
+G_BEGIN_DECLS
+
 /**
  * nice_debug_init:
  *
@@ -84,6 +86,8 @@ void nice_debug_enable (gboolean with_stun);
 void nice_debug_disable (gboolean with_stun);
 
 void nice_debug (const char *fmt, ...);
+
+G_END_DECLS
 
 #endif /* _DEBUG_H */
 
