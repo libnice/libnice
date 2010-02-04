@@ -247,6 +247,9 @@ int main (int argc, char *argv[])
   mainloop = g_main_loop_new (NULL, FALSE);
 
   g_type_init ();
+
+  pseudo_tcp_set_debug_level (PSEUDO_TCP_DEBUG_VERBOSE);
+
   left = pseudo_tcp_socket_new (0, &cbs);
   right = pseudo_tcp_socket_new (0, &cbs);
   g_debug ("Left: %p. Right: %p", left, right);
