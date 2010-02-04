@@ -2638,7 +2638,7 @@ nice_agent_attach_recv (
     goto done;
   }
 
-  if (component->g_source_io_cb && func == NULL)
+  if (component->g_source_io_cb)
     priv_detach_stream_component (stream, component);
 
   ret = TRUE;
