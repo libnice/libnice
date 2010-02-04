@@ -2536,7 +2536,6 @@ nice_agent_g_source_cb (
       nice_debug ("Our agent got destroyed in notify_packet!!");
   } else if(len > 0 && agent->reliable) {
     nice_debug ("Received data on a pseudo tcp FAILED component");
-    goto done;
   } else if (len > 0 && component->g_source_io_cb) {
     gpointer data = component->data;
     gint sid = stream->id;
