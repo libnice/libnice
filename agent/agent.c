@@ -971,7 +971,7 @@ pseudo_tcp_socket_readable (PseudoTcpSocket *sock, gpointer user_data)
   NiceAgent *agent = data->agent;
   Component *component = data->component;
   Stream *stream = data->stream;
-  gchar buf[MAX_TCP_MTU];
+  gchar buf[MAX_BUFFER_SIZE];
   gint len;
 
   nice_debug ("Agent %p: s%d:%d pseudo Tcp socket readable", agent,
