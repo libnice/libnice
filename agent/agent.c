@@ -979,6 +979,9 @@ pseudo_tcp_socket_readable (PseudoTcpSocket *sock, gpointer user_data)
 
   component->tcp_readable = TRUE;
 
+  g_object_add_weak_pointer (G_OBJECT (sock), (gpointer *)&sock);
+  g_object_add_weak_pointer (G_OBJECT (agent), (gpointer *)&agent);
+
   do {
     if (component->g_source_io_cb)
       len = pseudo_tcp_socket_recv (sock, buf, sizeof(buf));
@@ -994,6 +997,10 @@ pseudo_tcp_socket_readable (PseudoTcpSocket *sock, gpointer user_data)
       agent_unlock();
       callback (agent, sid, cid, len, buf, data);
       agent_lock();
+      if (sock == NULL) {
+        nice_debug ("PseudoTCP socket got destroyed in readable callback!");
+        break;
+      }
     } else if (len < 0 &&
         pseudo_tcp_socket_get_error (sock) != EWOULDBLOCK) {
       /* Signal error */
@@ -1004,7 +1011,10 @@ pseudo_tcp_socket_readable (PseudoTcpSocket *sock, gpointer user_data)
     }
   } while (len > 0);
 
-  adjust_tcp_clock (agent, stream, component);
+  if (agent)
+    adjust_tcp_clock (agent, stream, component);
+  else
+    nice_debug ("Not calling adjust_tcp_clock.. agent got destroyed!");
 }
 
 static void
@@ -2518,8 +2528,12 @@ nice_agent_g_source_cb (
 			  MAX_BUFFER_SIZE, buf);
 
   if (len > 0 && component->tcp) {
+    g_object_add_weak_pointer (G_OBJECT (agent), (gpointer *)&agent);
     pseudo_tcp_socket_notify_packet (component->tcp, buf, len);
-    adjust_tcp_clock (agent, stream, component);
+    if (agent)
+      adjust_tcp_clock (agent, stream, component);
+    else
+      nice_debug ("Our agent got destroyed in notify_packet!!");
   } else if(len > 0 && agent->reliable) {
     nice_debug ("Received data on a pseudo tcp FAILED component");
     goto done;
