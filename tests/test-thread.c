@@ -259,9 +259,6 @@ int main (void)
     g_free (string);
     g_object_get (G_OBJECT (lagent), "stun-server-port", &port, NULL);
     g_assert (stun_server_port == NULL || port == (guint)atoi (stun_server_port));
-    g_object_get (G_OBJECT (lagent), "turn-server", &string, NULL);
-    g_free (string);
-    g_object_get (G_OBJECT (lagent), "turn-server-port", &port, NULL);
     g_object_get (G_OBJECT (lagent), "controlling-mode", &mode, NULL);
     g_assert (mode == TRUE);
     g_object_set (G_OBJECT (lagent), "max-connectivity-checks", 300, NULL);
