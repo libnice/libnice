@@ -394,7 +394,7 @@ static int stun_trans_fd (const StunTransport *tr)
 }
 
 
-/**
+/*
  * Waits for a response or timeout to occur.
  *
  * @return ETIMEDOUT if the transaction has timed out, or 0 if an incoming

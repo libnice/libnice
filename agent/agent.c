@@ -436,7 +436,7 @@ nice_agent_class_init (NiceAgentClass *klass)
    * NiceAgent:upnp-timeout:
    *
    * The maximum amount of time to wait for UPnP discovery to finish before
-   * signaling the candidate-gathering-done signal
+   * signaling the #NiceAgent::candidate-gathering-done signal
    *
    * Since: 0.0.7
    */
@@ -551,7 +551,7 @@ nice_agent_class_init (NiceAgentClass *klass)
    * @foundation: The foundation of the new candidate
    *
    * This signal is fired when the agent discovers a new candidate
-   * <para> See also: #NiceAgent::candidates-gathering-done </para>
+   * <para> See also: #NiceAgent::candidate-gathering-done </para>
    */
   signals[SIGNAL_NEW_CANDIDATE] =
       g_signal_new (

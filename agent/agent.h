@@ -516,7 +516,7 @@ nice_agent_send (
      The caller owns the returned GSList as well as the candidates contained
      within it.
      To get full results, the client should wait for the
-     #NiceAgent::candidates-gathering-done signal.
+     #NiceAgent::candidate-gathering-done signal.
    </para>
  </note>
  *

@@ -40,14 +40,15 @@ FIXXREF_OPTIONS=
 HFILE_GLOB=$(DOC_SOURCE_DIR)/agent/agent.h $(DOC_SOURCE_DIR)/agent/address.h \
 	$(DOC_SOURCE_DIR)/agent/debug.h $(DOC_SOURCE_DIR)/agent/candidate.h \
 	$(DOC_SOURCE_DIR)/agent/interfaces.h \
-  	$(DOC_SOURCE_DIR)/stun/stunagent.h  \
+	$(DOC_SOURCE_DIR)/stun/stunagent.h  \
 	$(DOC_SOURCE_DIR)/stun/stunmessage.h 
 	$(DOC_SOURCE_DIR)/stun/debug.h \
 	$(DOC_SOURCE_DIR)/stun/usages/bind.h \
 	$(DOC_SOURCE_DIR)/stun/usages/ice.h \
 	$(DOC_SOURCE_DIR)/stun/usages/timer.h \
-	$(DOC_SOURCE_DIR)/stun/usages/turn.h
-CFILE_GLOB=$(DOC_SOURCE_DIR)/agent/agent.c
+	$(DOC_SOURCE_DIR)/stun/usages/turn.h \
+	 $(DOC_SOURCE_DIR)/agent/pseudotcp.h \
+CFILE_GLOB=$(DOC_SOURCE_DIR)/agent/agent.c $(DOC_SOURCE_DIR)/agent/pseudotcp.c
 
 # Header files to ignore when scanning.
 # e.g. IGNORE_HFILES=gtkdebug.h gtkintl.h

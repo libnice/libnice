@@ -142,7 +142,7 @@ typedef enum {
  *
  * An enum representing the result value of the write operation requested by
  * the #PseudoTcpSocket.
- * <para> See also: #PseudoTcpCallbacks:WritePacket </para>
+ * <para> See also: %PseudoTcpCallbacks:WritePacket </para>
  */
 typedef enum {
   WR_SUCCESS,
@@ -204,7 +204,7 @@ PseudoTcpSocket *pseudo_tcp_socket_new (guint32 conversation,
  *
  * Connects the #PseudoTcpSocket to the peer with the same conversation id.
  * The connection will only be successful after the
- * #PseudoTcpCallbacks:PseudoTcpOpened callback is called
+ * %PseudoTcpCallbacks:PseudoTcpOpened callback is called
  *
  * Returns: %TRUE on success, %FALSE on failure (not in %TCP_LISTEN state)
  * <para> See also: pseudo_tcp_socket_get_error() </para>
@@ -222,12 +222,12 @@ gboolean pseudo_tcp_socket_connect(PseudoTcpSocket *self);
  *
  <note>
    <para>
-     Only call this on the #PseudoTcpCallbacks:PseudoTcpReadable callback.
+     Only call this on the %PseudoTcpCallbacks:PseudoTcpReadable callback.
    </para>
    <para>
      This function should be called in a loop. If this function does not
      return -1 with EWOULDBLOCK as the error, the
-     #PseudoTcpCallbacks:PseudoTcpReadable callback will not be called again.
+     %PseudoTcpCallbacks:PseudoTcpReadable callback will not be called again.
    </para>
  </note>
  *
@@ -248,7 +248,7 @@ gint  pseudo_tcp_socket_recv(PseudoTcpSocket *self, char * buffer, size_t len);
  <note>
    <para>
      If this function return -1 with EWOULDBLOCK as the error, or if the return
-     value is lower than @len, then the #PseudoTcpCallbacks:PseudoTcpWritable
+     value is lower than @len, then the %PseudoTcpCallbacks:PseudoTcpWritable
      callback will be called when the socket will become writable.
    </para>
  </note>
@@ -263,14 +263,14 @@ gint pseudo_tcp_socket_send(PseudoTcpSocket *self, const char * buffer,
 /**
  * pseudo_tcp_socket_close:
  * @self: The #PseudoTcpSocket object.
- * @force: %TRUE to close the socket forcefully, %False to close it gracefully
+ * @force: %TRUE to close the socket forcefully, %FALSE to close it gracefully
  *
  * Close the socket. IF @force is set to %FALSE, the socket will finish sending
  * pending data before closing.
  *
  <note>
    <para>
-     The #PseudoTcpCallbacks:PseudoTcpClosed callback will not be called once
+     The %PseudoTcpCallbacks:PseudoTcpClosed callback will not be called once
      the socket gets closed. It is only used for aborted connection.
      Instead, the socket gets closed when the pseudo_tcp_socket_get_next_clock()
      function returns FALSE.

@@ -78,7 +78,7 @@ static const uint16_t known_attributes[] =  {
   0
 };
 
-/**
+/*
  * Creates a listening socket
  */
 int listen_socket (int fam, int type, int proto, unsigned int port)

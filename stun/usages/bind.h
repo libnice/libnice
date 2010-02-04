@@ -149,8 +149,8 @@ size_t stun_usage_bind_keepalive (StunAgent *agent, StunMessage *msg,
  * @addrlen: The length of @addr
  *
  * This is a convenience function that will do a synchronous Binding request to
- * a server and wait for its answer. It will use the #StunUsageTrans and
- * #StunUsageTimer usages to send the request and handle the response.
+ * a server and wait for its answer. It will create the socket transports and
+ * use the #StunTimer usage to send the request and handle the response.
  * Returns: A #StunUsageBindReturn.
  * Possible return values are #STUN_USAGE_BIND_RETURN_SUCCESS,
  * #STUN_USAGE_BIND_RETURN_ERROR and #STUN_USAGE_BIND_RETURN_TIMEOUT

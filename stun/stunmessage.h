@@ -599,7 +599,7 @@ StunMessageReturn stun_message_find_string (const StunMessage *msg,
  * Returns: A #StunMessageReturn value.
  * %STUN_MESSAGE_RETURN_INVALID is returned if the attribute payload size is
  * wrong or if the @addrlen is too small
- * %STUN_MESSAGE_RETURN_UNSUPPORTED_ADDRESSS if the address family is unknown.
+ * %STUN_MESSAGE_RETURN_UNSUPPORTED_ADDRESS if the address family is unknown.
  */
 StunMessageReturn stun_message_find_addr (const StunMessage *msg,
     StunAttribute type, struct sockaddr *addr, socklen_t *addrlen);
@@ -618,7 +618,7 @@ StunMessageReturn stun_message_find_addr (const StunMessage *msg,
  * Returns: A #StunMessageReturn value.
  * %STUN_MESSAGE_RETURN_INVALID is returned if the attribute payload size is
  * wrong or if the @addrlen is too small
- * %STUN_MESSAGE_RETURN_UNSUPPORTED_ADDRESSS if the address family is unknown.
+ * %STUN_MESSAGE_RETURN_UNSUPPORTED_ADDRESS if the address family is unknown.
  */
 StunMessageReturn stun_message_find_xor_addr (const StunMessage *msg,
     StunAttribute type, struct sockaddr *addr, socklen_t *addrlen);
@@ -638,7 +638,7 @@ StunMessageReturn stun_message_find_xor_addr (const StunMessage *msg,
  * Returns: A #StunMessageReturn value.
  * %STUN_MESSAGE_RETURN_INVALID is returned if the attribute payload size is
  * wrong or if the @addrlen is too small
- * %STUN_MESSAGE_RETURN_UNSUPPORTED_ADDRESSS if the address family is unknown.
+ * %STUN_MESSAGE_RETURN_UNSUPPORTED_ADDRESS if the address family is unknown.
  */
 StunMessageReturn stun_message_find_xor_addr_full (const StunMessage *msg,
     StunAttribute type, struct sockaddr *addr,
@@ -749,7 +749,7 @@ StunMessageReturn stun_message_append_string (StunMessage *msg,
  *
  * Returns: A #StunMessageReturn value.
  * %STUN_MESSAGE_RETURN_INVALID is returned if the @addrlen is too small
- * %STUN_MESSAGE_RETURN_UNSUPPORTED_ADDRESSS if the address family is unknown.
+ * %STUN_MESSAGE_RETURN_UNSUPPORTED_ADDRESS if the address family is unknown.
  */
 StunMessageReturn stun_message_append_addr (StunMessage * msg,
     StunAttribute type, const struct sockaddr *addr, socklen_t addrlen);
@@ -765,7 +765,7 @@ StunMessageReturn stun_message_append_addr (StunMessage * msg,
  *
  * Returns: A #StunMessageReturn value.
  * %STUN_MESSAGE_RETURN_INVALID is returned if the @addrlen is too small
- * %STUN_MESSAGE_RETURN_UNSUPPORTED_ADDRESSS if the address family is unknown.
+ * %STUN_MESSAGE_RETURN_UNSUPPORTED_ADDRESS if the address family is unknown.
  */
 StunMessageReturn stun_message_append_xor_addr (StunMessage * msg,
     StunAttribute type, const struct sockaddr *addr, socklen_t addrlen);
@@ -782,7 +782,7 @@ StunMessageReturn stun_message_append_xor_addr (StunMessage * msg,
  *
  * Returns: A #StunMessageReturn value.
  * %STUN_MESSAGE_RETURN_INVALID is returned if the @addrlen is too small
- * %STUN_MESSAGE_RETURN_UNSUPPORTED_ADDRESSS if the address family is unknown.
+ * %STUN_MESSAGE_RETURN_UNSUPPORTED_ADDRESS if the address family is unknown.
  */
 StunMessageReturn stun_message_append_xor_addr_full (StunMessage * msg,
     StunAttribute type, const struct sockaddr *addr, socklen_t addrlen,

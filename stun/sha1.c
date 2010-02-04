@@ -264,13 +264,15 @@ void SHA1Final(unsigned char digest[20], SHA1_CTX* context)
 
 
 /**
- * hmac_sha1_vector - HMAC-SHA1 over data vector (RFC 2104)
+ * hmac_sha1_vector:
  * @key: Key for HMAC operations
  * @key_len: Length of the key in bytes
  * @num_elem: Number of elements in the data vector
  * @addr: Pointers to the data areas
  * @len: Lengths of the data blocks
  * @mac: Buffer for the hash (20 bytes)
+ *
+ * HMAC-SHA1 over data vector (RFC 2104)
  */
 void hmac_sha1_vector(const uint8_t *key, size_t key_len, size_t num_elem,
     const uint8_t *addr[], const size_t *len, uint8_t *mac)
@@ -336,12 +338,14 @@ void hmac_sha1_vector(const uint8_t *key, size_t key_len, size_t num_elem,
 
 
 /**
- * hmac_sha1 - HMAC-SHA1 over data buffer (RFC 2104)
+ * hmac_sha1:
  * @key: Key for HMAC operations
  * @key_len: Length of the key in bytes
  * @data: Pointers to the data area
  * @data_len: Length of the data area
  * @mac: Buffer for the hash (20 bytes)
+ *
+ * HMAC-SHA1 over data buffer (RFC 2104)
  */
 void hmac_sha1(const uint8_t *key, size_t key_len,
     const uint8_t *data, size_t data_len, uint8_t *mac)
@@ -351,7 +355,7 @@ void hmac_sha1(const uint8_t *key, size_t key_len,
 
 
 /**
- * sha1_prf - SHA1-based Pseudo-Random Function (PRF) (IEEE 802.11i, 8.5.1.1)
+ * sha1_prf:
  * @key: Key for PRF
  * @key_len: Length of the key in bytes
  * @label: A unique label for each purpose of the PRF
@@ -359,6 +363,8 @@ void hmac_sha1(const uint8_t *key, size_t key_len,
  * @data_len: Length of the data
  * @buf: Buffer for the generated pseudo-random key
  * @buf_len: Number of bytes of key to generate
+ *
+ * SHA1-based Pseudo-Random Function (PRF) (IEEE 802.11i, 8.5.1.1)
  *
  * This function is used to derive new, cryptographically separate keys from a
  * given key (e.g., PMK in IEEE 802.11i).
@@ -396,11 +402,13 @@ void sha1_prf(const uint8_t *key, size_t key_len, const char *label,
 }
 
 /**
- * sha1_vector - SHA-1 hash for data vector
+ * sha1_vector:
  * @num_elem: Number of elements in the data vector
  * @addr: Pointers to the data areas
  * @len: Lengths of the data blocks
  * @mac: Buffer for the hash
+ *
+ * SHA-1 hash for data vector
  */
 void sha1_vector(size_t num_elem, const uint8_t *addr[], const size_t *len,
     uint8_t *mac)
