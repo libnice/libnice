@@ -75,14 +75,6 @@
 G_DEFINE_TYPE (PseudoTcpSocket, pseudo_tcp_socket, G_TYPE_OBJECT);
 
 
-// The following logging is for detailed (packet-level) pseudotcp analysis only.
-#define _DBG_NONE     0
-#define _DBG_NORMAL   1
-#define _DBG_VERBOSE  2
-#define _DEBUGMSG _DBG_NONE
-
-#define DEBUG(fmt, ...) g_debug ("PseudoTcpSocket %p: " fmt, self, ## __VA_ARGS__)
-
 //////////////////////////////////////////////////////////////////////
 // Network Constants
 //////////////////////////////////////////////////////////////////////
@@ -355,6 +347,18 @@ static void closedown(PseudoTcpSocket *self, guint32 err);
 static void adjustMTU(PseudoTcpSocket *self);
 
 
+// The following logging is for detailed (packet-level) pseudotcp analysis only.
+static PseudoTcpDebugLevel debug_level = PSEUDO_TCP_DEBUG_NONE;
+
+#define DEBUG(level, fmt, ...) \
+  if (debug_level >= level) \
+    g_debug ("PseudoTcpSocket %p: " fmt, self, ## __VA_ARGS__)
+
+void
+pseudo_tcp_set_debug_level (PseudoTcpDebugLevel level)
+{
+  debug_level = level;
+}
 
 static void
 pseudo_tcp_socket_class_init (PseudoTcpSocketClass *cls)
@@ -531,7 +535,7 @@ pseudo_tcp_socket_connect(PseudoTcpSocket *self)
   }
 
   priv->state = TCP_SYN_SENT;
-  DEBUG ("State: TCP_SYN_SENT");
+  DEBUG (PSEUDO_TCP_DEBUG_NORMAL, "State: TCP_SYN_SENT");
 
   buffer[0] = CTL_CONNECT;
   queue(self, buffer, 1, TRUE);
@@ -569,12 +573,11 @@ pseudo_tcp_socket_notify_clock(PseudoTcpSocket *self)
       // retransmit segments
       guint32 nInFlight;
       guint32 rto_limit;
-#if _DEBUGMSG >= _DBG_NORMAL
-      DEBUG ("timeout retransmit (rto: %d) (rto_base: %d) (now: %d) "
-          "(dup_acks: %d)", priv->rx_rto, priv->rto_base, now,
-          (guint) priv->dup_acks);
 
-#endif // _DEBUGMSG
+      DEBUG (PSEUDO_TCP_DEBUG_NORMAL, "timeout retransmit (rto: %d) "
+          "(rto_base: %d) (now: %d) (dup_acks: %d)",
+          priv->rx_rto, priv->rto_base, now, (guint) priv->dup_acks);
+
       if (!transmit(self, priv->slist, now)) {
         closedown(self, ECONNABORTED);
         return;
@@ -803,11 +806,10 @@ packet(PseudoTcpSocket *self, guint32 seq, guint8 flags,
 
   memcpy(buffer + HEADER_SIZE, data, len);
 
-#if _DEBUGMSG >= _DBG_VERBOSE
-  DEBUG ("<-- <CONV=%d><FLG=%d><SEQ=%d:%d><ACK=%d><WND=%d><TS=%d><TSR=%d><LEN=%d>",
+  DEBUG (PSEUDO_TCP_DEBUG_VERBOSE, "<-- <CONV=%d><FLG=%d><SEQ=%d:%d><ACK=%d>"
+      "<WND=%d><TS=%d><TSR=%d><LEN=%d>",
       priv->conv, (unsigned)flags, seq, seq + len, priv->rcv_nxt, priv->rcv_wnd,
       now % 10000, priv->ts_recent % 10000, len);
-#endif // _DEBUGMSG
 
   wres = priv->callbacks.WritePacket(self, (gchar *) buffer, len + HEADER_SIZE,
                                      priv->callbacks.user_data);
@@ -848,11 +850,10 @@ parse(PseudoTcpSocket *self, const guint8 * buffer, guint32 size)
   seg.data = ((gchar *)buffer) + HEADER_SIZE;
   seg.len = size - HEADER_SIZE;
 
-#if _DEBUGMSG >= _DBG_VERBOSE
-  DEBUG ("--> <CONV=%d><FLG=%d><SEQ=%d:%d><ACK=%d><WND=%d><TS=%d><TSR=%d><LEN=%d>",
+  DEBUG (PSEUDO_TCP_DEBUG_VERBOSE, "--> <CONV=%d><FLG=%d><SEQ=%d:%d><ACK=%d>"
+      "<WND=%d><TS=%d><TSR=%d><LEN=%d>",
       seg.conv, (unsigned)seg.flags, seg.seq, seg.seq + seg.len, seg.ack,
       seg.wnd, seg.tsval % 10000, seg.tsecr % 10000, seg.len);
-#endif // _DEBUGMSG
 
   return process(self, &seg);
 }
@@ -874,7 +875,7 @@ process(PseudoTcpSocket *self, Segment *seg)
     //if ((seg->flags & FLAG_RST) == 0) {
     //  packet(sock, tcb, seg->ack, 0, FLAG_RST, 0, 0);
     //}
-    DEBUG ("wrong conversation");
+    DEBUG (PSEUDO_TCP_DEBUG_NORMAL, "wrong conversation");
     return FALSE;
   }
 
@@ -884,7 +885,7 @@ process(PseudoTcpSocket *self, Segment *seg)
 
   if (priv->state == TCP_CLOSED) {
     // !?! send reset?
-    DEBUG ("closed");
+    DEBUG (PSEUDO_TCP_DEBUG_NORMAL, "closed");
     return FALSE;
   }
 
@@ -898,7 +899,7 @@ process(PseudoTcpSocket *self, Segment *seg)
   bConnect = FALSE;
   if (seg->flags & FLAG_CTL) {
     if (seg->len == 0) {
-      DEBUG ("Missing control code");
+      DEBUG (PSEUDO_TCP_DEBUG_NORMAL, "Missing control code");
       return FALSE;
     } else if (seg->data[0] == CTL_CONNECT) {
       bConnect = TRUE;
@@ -909,14 +910,14 @@ process(PseudoTcpSocket *self, Segment *seg)
         queue(self, buffer, 1, TRUE);
       } else if (priv->state == TCP_SYN_SENT) {
         priv->state = TCP_ESTABLISHED;
-        DEBUG ("State: TCP_ESTABLISHED");
+        DEBUG (PSEUDO_TCP_DEBUG_NORMAL, "State: TCP_ESTABLISHED");
         adjustMTU(self);
         if (priv->callbacks.PseudoTcpOpened)
           priv->callbacks.PseudoTcpOpened(self, priv->callbacks.user_data);
 
       }
     } else {
-      DEBUG ("Unknown control code: %d", seg->data[0]);
+      DEBUG (PSEUDO_TCP_DEBUG_NORMAL, "Unknown control code: %d", seg->data[0]);
       return FALSE;
     }
   }
@@ -947,9 +948,9 @@ process(PseudoTcpSocket *self, Segment *seg)
         }
         priv->rx_rto = bound(MIN_RTO,
             priv->rx_srtt + max(1LU, 4 * priv->rx_rttvar), MAX_RTO);
-#if _DEBUGMSG >= _DBG_VERBOSE
-        DEBUG ("rtt: %ld   srtt: %d  rto: %d", rtt, priv->rx_srtt, priv->rx_rto);
-#endif // _DEBUGMSG
+
+        DEBUG (PSEUDO_TCP_DEBUG_VERBOSE, "rtt: %ld   srtt: %d  rto: %d",
+                rtt, priv->rx_srtt, priv->rx_rto);
       } else {
         g_assert_not_reached ();
       }
@@ -987,14 +988,10 @@ process(PseudoTcpSocket *self, Segment *seg)
         guint32 nInFlight = priv->snd_nxt - priv->snd_una;
         // (Fast Retransmit)
         priv->cwnd = min(priv->ssthresh, nInFlight + priv->mss);
-#if _DEBUGMSG >= _DBG_NORMAL
-        DEBUG ("exit recovery");
-#endif // _DEBUGMSG
+        DEBUG (PSEUDO_TCP_DEBUG_NORMAL, "exit recovery");
         priv->dup_acks = 0;
       } else {
-#if _DEBUGMSG >= _DBG_NORMAL
-        DEBUG ("recovery retransmit");
-#endif // _DEBUGMSG
+        DEBUG (PSEUDO_TCP_DEBUG_NORMAL, "recovery retransmit");
         if (!transmit(self, priv->slist, now)) {
           closedown(self, ECONNABORTED);
           return FALSE;
@@ -1014,7 +1011,7 @@ process(PseudoTcpSocket *self, Segment *seg)
     // !?! A bit hacky
     if ((priv->state == TCP_SYN_RECEIVED) && !bConnect) {
       priv->state = TCP_ESTABLISHED;
-      DEBUG ("State: TCP_ESTABLISHED");
+      DEBUG (PSEUDO_TCP_DEBUG_NORMAL, "State: TCP_ESTABLISHED");
       adjustMTU(self);
       if (priv->callbacks.PseudoTcpOpened)
         priv->callbacks.PseudoTcpOpened(self, priv->callbacks.user_data);
@@ -1042,10 +1039,8 @@ process(PseudoTcpSocket *self, Segment *seg)
 
       priv->dup_acks += 1;
       if (priv->dup_acks == 3) { // (Fast Retransmit)
-#if _DEBUGMSG >= _DBG_NORMAL
-        DEBUG ("enter recovery");
-        DEBUG ("recovery retransmit");
-#endif // _DEBUGMSG
+        DEBUG (PSEUDO_TCP_DEBUG_NORMAL, "enter recovery");
+        DEBUG (PSEUDO_TCP_DEBUG_NORMAL, "recovery retransmit");
         if (!transmit(self, priv->slist, now)) {
           closedown(self, ECONNABORTED);
           return FALSE;
@@ -1076,15 +1071,13 @@ process(PseudoTcpSocket *self, Segment *seg)
   } else if (seg->len != 0) {
     sflags = sfDelayedAck;
   }
-#if _DEBUGMSG >= _DBG_NORMAL
   if (sflags == sfImmediateAck) {
     if (seg->seq > priv->rcv_nxt) {
-      DEBUG ("too new");
+      DEBUG (PSEUDO_TCP_DEBUG_NORMAL, "too new");
     } else if (seg->seq + seg->len <= priv->rcv_nxt) {
-      DEBUG ("too old");
+      DEBUG (PSEUDO_TCP_DEBUG_NORMAL, "too old");
     }
   }
-#endif // _DEBUGMSG
 
   // Adjust the incoming segment to fit our receive buffer
   if (seg->seq < priv->rcv_nxt) {
@@ -1133,10 +1126,8 @@ process(PseudoTcpSocket *self, Segment *seg)
           if (data->seq + data->len > priv->rcv_nxt) {
             guint32 nAdjust = (data->seq + data->len) - priv->rcv_nxt;
             sflags = sfImmediateAck; // (Fast Recovery)
-#if _DEBUGMSG >= _DBG_NORMAL
-            DEBUG ("Recovered %d bytes (%d -> %d)", nAdjust, priv->rcv_nxt,
-                priv->rcv_nxt + nAdjust);
-#endif // _DEBUGMSG
+            DEBUG (PSEUDO_TCP_DEBUG_NORMAL, "Recovered %d bytes (%d -> %d)",
+                nAdjust, priv->rcv_nxt, priv->rcv_nxt + nAdjust);
             priv->rlen += nAdjust;
             priv->rcv_nxt += nAdjust;
             priv->rcv_wnd -= nAdjust;
@@ -1146,10 +1137,8 @@ process(PseudoTcpSocket *self, Segment *seg)
           iter = priv->rlist;
         }
       } else {
-#if _DEBUGMSG >= _DBG_NORMAL
-        DEBUG ("Saving %d bytes (%d -> %d)", seg->len, seg->seq,
-            seg->seq + seg->len);
-#endif // _DEBUGMSG
+        DEBUG (PSEUDO_TCP_DEBUG_NORMAL, "Saving %d bytes (%d -> %d)",
+            seg->len, seg->seq, seg->seq + seg->len);
         GList *iter = NULL;
         RSegment *rseg = g_slice_new0 (RSegment);
         rseg->seq = seg->seq;
@@ -1183,7 +1172,7 @@ transmit(PseudoTcpSocket *self, const GList *seg, guint32 now)
   guint32 nTransmit = min(segment->len, priv->mss);
 
   if (segment->xmit >= ((priv->state == TCP_ESTABLISHED) ? 15 : 30)) {
-    DEBUG ("too many retransmits");
+    DEBUG (PSEUDO_TCP_DEBUG_NORMAL, "too many retransmits");
     return FALSE;
   }
 
@@ -1197,7 +1186,7 @@ transmit(PseudoTcpSocket *self, const GList *seg, guint32 now)
       break;
 
     if (wres == WR_FAIL) {
-      DEBUG ("packet failed");
+      DEBUG (PSEUDO_TCP_DEBUG_NORMAL, "packet failed");
       return FALSE;
     }
 
@@ -1205,7 +1194,7 @@ transmit(PseudoTcpSocket *self, const GList *seg, guint32 now)
 
     while (TRUE) {
       if (PACKET_MAXIMUMS[priv->msslevel + 1] == 0) {
-        DEBUG ("MTU too small");
+        DEBUG (PSEUDO_TCP_DEBUG_NORMAL, "MTU too small");
         return FALSE;
       }
       /* !?! We need to break up all outstanding and pending packets
@@ -1220,9 +1209,7 @@ transmit(PseudoTcpSocket *self, const GList *seg, guint32 now)
         break;
       }
     }
-#if _DEBUGMSG >= _DBG_NORMAL
-    DEBUG ("Adjusting mss to %d bytes ", priv->mss);
-#endif // _DEBUGMSG
+    DEBUG (PSEUDO_TCP_DEBUG_NORMAL, "Adjusting mss to %d bytes ", priv->mss);
   }
 
   if (nTransmit < segment->len) {
@@ -1232,7 +1219,7 @@ transmit(PseudoTcpSocket *self, const GList *seg, guint32 now)
     subseg->bCtrl = segment->bCtrl;
     subseg->xmit = segment->xmit;
 
-    DEBUG ("mss reduced to %d", priv->mss);
+    DEBUG (PSEUDO_TCP_DEBUG_NORMAL, "mss reduced to %d", priv->mss);
 
     segment->len = nTransmit;
     priv->slist = g_list_insert_before(priv->slist, seg->next, subseg);
@@ -1255,9 +1242,7 @@ attempt_send(PseudoTcpSocket *self, SendFlags sflags)
 {
   PseudoTcpSocketPrivate *priv = self->priv;
   guint32 now = get_current_time();
-#if _DEBUGMSG >= _DBG_VERBOSE
   gboolean bFirst = TRUE;
-#endif // _DEBUGMSG
 
   if (time_diff(now, priv->lastsend) > (long) priv->rx_rto) {
     priv->cwnd = priv->mss;
@@ -1290,15 +1275,13 @@ attempt_send(PseudoTcpSocket *self, SendFlags sflags)
       }
     }
 
-#if _DEBUGMSG >= _DBG_VERBOSE
     if (bFirst) {
       bFirst = FALSE;
-      DEBUG ("[cwnd: %d  nWindow: %d  nInFlight: %d  nAvailable: %d nQueued: %d"
-          "  nEmpty: %d  ssthresh: %d]",
+      DEBUG (PSEUDO_TCP_DEBUG_VERBOSE, "[cwnd: %d  nWindow: %d  nInFlight: %d "
+          "nAvailable: %d nQueued: %d  nEmpty: %d  ssthresh: %d]",
           priv->cwnd, nWindow, nInFlight, nAvailable, priv->slen - nInFlight,
           sizeof(priv->sbuf) - priv->slen, priv->ssthresh);
     }
-#endif // _DEBUGMSG
 
     if (nAvailable == 0) {
       if (sflags == sfNone)
@@ -1337,7 +1320,7 @@ attempt_send(PseudoTcpSocket *self, SendFlags sflags)
     }
 
     if (!transmit(self, iter, now)) {
-      DEBUG ("transmit failed");
+      DEBUG (PSEUDO_TCP_DEBUG_NORMAL, "transmit failed");
       // TODO: consider closing socket
       return;
     }
@@ -1352,7 +1335,7 @@ closedown(PseudoTcpSocket *self, guint32 err)
   PseudoTcpSocketPrivate *priv = self->priv;
   priv->slen = 0;
 
-  DEBUG ("State: TCP_CLOSED");
+  DEBUG (PSEUDO_TCP_DEBUG_NORMAL, "State: TCP_CLOSED");
   priv->state = TCP_CLOSED;
   if (priv->callbacks.PseudoTcpClosed)
     priv->callbacks.PseudoTcpClosed(self, err, priv->callbacks.user_data);
@@ -1373,9 +1356,7 @@ adjustMTU(PseudoTcpSocket *self)
   }
   priv->mss = priv->mtu_advise - PACKET_OVERHEAD;
   // !?! Should we reset priv->largest here?
-#if _DEBUGMSG >= _DBG_NORMAL
-  DEBUG ("Adjusting mss to %d bytes", priv->mss);
-#endif // _DEBUGMSG
+  DEBUG (PSEUDO_TCP_DEBUG_NORMAL, "Adjusting mss to %d bytes", priv->mss);
   // Enforce minimums on ssthresh and cwnd
   priv->ssthresh = max(priv->ssthresh, 2 * priv->mss);
   priv->cwnd = max(priv->cwnd, priv->mss);

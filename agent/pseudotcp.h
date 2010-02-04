@@ -99,6 +99,20 @@ struct _PseudoTcpSocket {
 };
 
 /**
+ * PseudoTcpDebugLevel:
+ * @PSEUDO_TCP_DEBUG_NONE: Disable debug messages
+ * @PSEUDO_TCP_DEBUG_NORMAL: Enable basic debug messages
+ * @PSEUDO_TCP_DEBUG_VERBOSE: Enable verbose debug messages
+ *
+ * Valid values of debug levels to be set.
+ */
+typedef enum {
+  PSEUDO_TCP_DEBUG_NONE = 0,
+  PSEUDO_TCP_DEBUG_NORMAL,
+  PSEUDO_TCP_DEBUG_VERBOSE,
+} PseudoTcpDebugLevel;
+
+/**
  * PseudoTcpState:
  * @TCP_LISTEN: The socket's initial state. The socket isn't connected and is
  * listening for an incoming connection
@@ -349,6 +363,15 @@ void pseudo_tcp_socket_notify_mtu(PseudoTcpSocket *self, guint16 mtu);
 gboolean pseudo_tcp_socket_notify_packet(PseudoTcpSocket *self,
     const gchar * buffer, guint32 len);
 
+
+/**
+ * pseudo_tcp_set_debug_level:
+ * @level: The level of debug to set
+ *
+ * Sets the debug level to enable/disable normal/verbose debug messages.
+ *
+ */
+void pseudo_tcp_set_debug_level (PseudoTcpDebugLevel level);
 
 G_END_DECLS
 
