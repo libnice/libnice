@@ -144,6 +144,8 @@ static gboolean timer_cb (gpointer pointer)
 
   /* note: should not be reached, abort */
   g_error ("ERROR: test has got stuck, aborting...");
+
+  return FALSE;
 }
 
 static void cb_writable (NiceAgent*agent, guint stream_id, guint component_id)

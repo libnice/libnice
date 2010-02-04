@@ -76,6 +76,8 @@ static gboolean timer_cb (gpointer pointer)
 
   /* note: should not be reached, abort */
   g_error ("ERROR: test has got stuck, aborting...");
+
+  return FALSE;
 }
 
 static gboolean quit_loop_cb (gpointer pointer)
