@@ -41,16 +41,20 @@
 #include "debug.h"
 
 #include "stunagent.h"
-
+#include "pseudotcp.h"
 
 static int debug_enabled = 0;
 
 #define NICE_DEBUG_STUN 1
 #define NICE_DEBUG_NICE 2
+#define NICE_DEBUG_PSEUDOTCP 4
+#define NICE_DEBUG_PSEUDOTCP_VERBOSE 8
 
 static const GDebugKey keys[] = {
   { (gchar *)"stun",  NICE_DEBUG_STUN },
   { (gchar *)"nice",  NICE_DEBUG_NICE },
+  { (gchar *)"pseudotcp",  NICE_DEBUG_PSEUDOTCP },
+  { (gchar *)"pseudotcp-verbose",  NICE_DEBUG_PSEUDOTCP_VERBOSE },
   { NULL, 0},
 };
 
@@ -65,12 +69,20 @@ void nice_debug_init ()
   nice_debug_disable (TRUE);
 
   if (flags_string != NULL) {
-    flags = g_parse_debug_string (flags_string, keys,  2);
+    flags = g_parse_debug_string (flags_string, keys,  4);
 
     if (flags & NICE_DEBUG_NICE)
       nice_debug_enable (FALSE);
     if (flags & NICE_DEBUG_STUN)
       stun_debug_enable ();
+
+    /* Set verbose before normal so that if we use 'all', then only
+       normal debug is enabled, we'd need to set pseudotcp-verbose without the
+       pseudotcp flag in order to actually enable verbose pseudotcp */
+    if (flags & NICE_DEBUG_PSEUDOTCP_VERBOSE)
+      pseudo_tcp_set_debug_level (PSEUDO_TCP_DEBUG_VERBOSE);
+    if (flags & NICE_DEBUG_PSEUDOTCP)
+      pseudo_tcp_set_debug_level (PSEUDO_TCP_DEBUG_NORMAL);
 
   }
 }
