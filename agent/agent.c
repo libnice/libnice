@@ -977,10 +977,15 @@ pseudo_tcp_socket_readable (PseudoTcpSocket *sock, gpointer user_data)
   nice_debug ("Agent %p: s%d:%d pseudo Tcp socket readable", agent,
       stream->id, component->id);
 
-  do {
-    len = pseudo_tcp_socket_recv (sock, buf, sizeof(buf));
+  component->tcp_readable = TRUE;
 
-    if (len > 0 && component->g_source_io_cb) {
+  do {
+    if (component->g_source_io_cb)
+      len = pseudo_tcp_socket_recv (sock, buf, sizeof(buf));
+    else
+      len = 0;
+
+    if (len > 0) {
       gpointer data = component->data;
       gint sid = stream->id;
       gint cid = component->id;
@@ -993,6 +998,9 @@ pseudo_tcp_socket_readable (PseudoTcpSocket *sock, gpointer user_data)
         pseudo_tcp_socket_get_error (sock) != EWOULDBLOCK) {
       /* Signal error */
       priv_pseudo_tcp_error (agent, stream, component);
+    } else if (len < 0 &&
+        pseudo_tcp_socket_get_error (sock) == EWOULDBLOCK){
+      component->tcp_readable = FALSE;
     }
   } while (len > 0);
 
@@ -2647,7 +2655,18 @@ nice_agent_attach_recv (
     component->g_source_io_cb = func;
     component->data = data;
     component->ctx = ctx;
+
     priv_attach_stream_component (agent, stream, component);
+
+    /* If we got detached, maybe our readable callback didn't finish reading
+     * all available data in the pseudotcp, so we need to make sure we free
+     * our recv window, so the readable callback can be triggered again on the
+     * next incoming data.
+     * but only do this if we know we're already readable, otherwise we might
+     * trigger an error in the initial, pre-connection attach. */
+    if (component->tcp && component->tcp_data && component->tcp_readable)
+      pseudo_tcp_socket_readable (component->tcp, component->tcp_data);
+
   } else {
     component->g_source_io_cb = NULL;
     component->data = NULL;

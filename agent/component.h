@@ -122,6 +122,7 @@ struct _Component
   PseudoTcpSocket *tcp;
   GSource* tcp_clock;
   TcpUserData *tcp_data;
+  gboolean tcp_readable;
 };
 
 Component *
