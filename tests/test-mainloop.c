@@ -42,6 +42,7 @@
 #include <string.h>
 
 #include <nice/nice.h>
+#include "socket/socket.h"
 
 static GMainLoop *loop = NULL;
 

@@ -589,7 +589,7 @@ static gboolean priv_conn_keepalive_tick_unlocked (NiceAgent *agent)
               "socket=%u (c-id:%u), username='%s' (%d), "
               "password='%s' (%d), priority=%u.", agent,
               tmpbuf, nice_address_get_port (&p->remote->addr),
-              p->local->sockptr->fileno, component->id,
+              ((NiceSocket *)p->local->sockptr)->fileno, component->id,
               uname, uname_len, password, password_len, priority);
 
           if (uname_len > 0) {
@@ -1644,7 +1644,7 @@ int conn_check_send (NiceAgent *agent, CandidateCheckPair *pair)
     nice_debug ("Agent %p : STUN-CC REQ to '%s:%u', socket=%u, pair=%s (c-id:%u), tie=%llu, username='%s' (%d), password='%s' (%d), priority=%u.", agent, 
 	     tmpbuf,
              ntohs(nice_address_get_port (&pair->remote->addr)), 
-	     pair->local->sockptr->fileno,
+             ((NiceSocket *)pair->local->sockptr)->fileno,
 	     pair->foundation, pair->component_id,
 	     (unsigned long long)agent->tie_breaker,
         uname, uname_len, password, password_len, priority);

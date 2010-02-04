@@ -56,8 +56,6 @@
 
 G_BEGIN_DECLS
 
-#include "socket.h"
-
 
 #define NICE_CANDIDATE_TYPE_PREF_HOST                 120
 #define NICE_CANDIDATE_TYPE_PREF_PEER_REFLEXIVE       110
@@ -178,7 +176,7 @@ struct _NiceCandidate
   gchar *username;        /* pointer to a NULL-terminated username string */
   gchar *password;        /* pointer to a NULL-terminated password string */
   TurnServer *turn;
-  NiceSocket *sockptr;
+  gpointer sockptr;
 };
 
 /**
