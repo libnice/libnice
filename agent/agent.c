@@ -1011,10 +1011,14 @@ pseudo_tcp_socket_readable (PseudoTcpSocket *sock, gpointer user_data)
     }
   } while (len > 0);
 
-  if (agent)
+  if (agent) {
     adjust_tcp_clock (agent, stream, component);
-  else
+    g_object_remove_weak_pointer (G_OBJECT (agent), (gpointer *)&agent);
+  } else {
     nice_debug ("Not calling adjust_tcp_clock.. agent got destroyed!");
+  }
+  if (sock)
+    g_object_remove_weak_pointer (G_OBJECT (sock), (gpointer *)&sock);
 }
 
 static void
@@ -2530,10 +2534,12 @@ nice_agent_g_source_cb (
   if (len > 0 && component->tcp) {
     g_object_add_weak_pointer (G_OBJECT (agent), (gpointer *)&agent);
     pseudo_tcp_socket_notify_packet (component->tcp, buf, len);
-    if (agent)
+    if (agent) {
       adjust_tcp_clock (agent, stream, component);
-    else
+      g_object_remove_weak_pointer (G_OBJECT (agent), (gpointer *)&agent);
+    } else {
       nice_debug ("Our agent got destroyed in notify_packet!!");
+    }
   } else if(len > 0 && agent->reliable) {
     nice_debug ("Received data on a pseudo tcp FAILED component");
   } else if (len > 0 && component->g_source_io_cb) {
