@@ -180,10 +180,7 @@ socket_close (NiceSocket *sock)
   }
   g_list_free (priv->channels);
 
-  for (i = priv->pending_bindings; i; i = i->next) {
-    ChannelBinding *b = i->data;
-    g_free (b);
-  }
+  g_list_foreach (priv->pending_bindings. nice_address_free, NULL);
   g_list_free (priv->pending_bindings);
 
   if (priv->tick_source != NULL) {
