@@ -180,7 +180,8 @@ socket_close (NiceSocket *sock)
   }
   g_list_free (priv->channels);
 
-  g_list_foreach (priv->pending_bindings. nice_address_free, NULL);
+  g_list_foreach (priv->pending_bindings, (GFunc) nice_address_free,
+      NULL);
   g_list_free (priv->pending_bindings);
 
   if (priv->tick_source != NULL) {
