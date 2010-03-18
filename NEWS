@@ -1,3 +1,12 @@
+libnice 0.0.11 (2010-03-18)
+===========================
+
+Handle EAGAIN for UDP sockets
+Fix coverity warnings
+Fix a bug with TURN and Channel Bindings
+Add a reliable transport mode using libjingle's PseudoTcp implementation
+Various fixes
+
 libnice 0.0.10 (2009-11-04)
 ===========================
 
