@@ -50,6 +50,8 @@
  *
  * See the file tests/test-pseudotcp.c in the source package for an example
  * of how to use the object.
+ *
+ * Since: 0.0.11
  */
 
 
@@ -63,6 +65,7 @@ G_BEGIN_DECLS
  *
  * The #PseudoTcpSocket is the GObject implementing the Pseudo TCP Socket
  *
+ * Since: 0.0.11
  */
 typedef struct _PseudoTcpSocket PseudoTcpSocket;
 
@@ -105,6 +108,8 @@ struct _PseudoTcpSocket {
  * @PSEUDO_TCP_DEBUG_VERBOSE: Enable verbose debug messages
  *
  * Valid values of debug levels to be set.
+ *
+ * Since: 0.0.11
  */
 typedef enum {
   PSEUDO_TCP_DEBUG_NONE = 0,
@@ -124,6 +129,8 @@ typedef enum {
  *
  * An enum representing the state of the #PseudoTcpSocket.
  * <para> See also: #PseudoTcpSocket:state </para>
+ *
+ * Since: 0.0.11
  */
 typedef enum {
   TCP_LISTEN,
@@ -143,6 +150,8 @@ typedef enum {
  * An enum representing the result value of the write operation requested by
  * the #PseudoTcpSocket.
  * <para> See also: %PseudoTcpCallbacks:WritePacket </para>
+ *
+ * Since: 0.0.11
  */
 typedef enum {
   WR_SUCCESS,
@@ -162,6 +171,8 @@ typedef enum {
  * A structure containing callbacks functions that will be called by the
  * #PseudoTcpSocket when some events happen.
  * <para> See also: #PseudoTcpWriteResult </para>
+ *
+ * Since: 0.0.11
  */
 typedef struct {
   gpointer user_data;
@@ -193,6 +204,8 @@ typedef struct {
  </note>
  *
  * Returns: The new #PseudoTcpSocket object, %NULL on error
+ *
+ * Since: 0.0.11
  */
 PseudoTcpSocket *pseudo_tcp_socket_new (guint32 conversation,
     PseudoTcpCallbacks *callbacks);
@@ -208,6 +221,8 @@ PseudoTcpSocket *pseudo_tcp_socket_new (guint32 conversation,
  *
  * Returns: %TRUE on success, %FALSE on failure (not in %TCP_LISTEN state)
  * <para> See also: pseudo_tcp_socket_get_error() </para>
+ *
+ * Since: 0.0.11
  */
 gboolean pseudo_tcp_socket_connect(PseudoTcpSocket *self);
 
@@ -233,6 +248,8 @@ gboolean pseudo_tcp_socket_connect(PseudoTcpSocket *self);
  *
  * Returns: The number of bytes received or -1 in case of error
  * <para> See also: pseudo_tcp_socket_get_error() </para>
+ *
+ * Since: 0.0.11
  */
 gint  pseudo_tcp_socket_recv(PseudoTcpSocket *self, char * buffer, size_t len);
 
@@ -255,6 +272,8 @@ gint  pseudo_tcp_socket_recv(PseudoTcpSocket *self, char * buffer, size_t len);
  *
  * Returns: The number of bytes sent or -1 in case of error
  * <para> See also: pseudo_tcp_socket_get_error() </para>
+ *
+ * Since: 0.0.11
  */
 gint pseudo_tcp_socket_send(PseudoTcpSocket *self, const char * buffer,
     guint32 len);
@@ -278,6 +297,8 @@ gint pseudo_tcp_socket_send(PseudoTcpSocket *self, const char * buffer,
  </note>
  *
  * <para> See also: pseudo_tcp_socket_get_next_clock() </para>
+ *
+ * Since: 0.0.11
  */
 void pseudo_tcp_socket_close(PseudoTcpSocket *self, gboolean force);
 
@@ -305,6 +326,8 @@ void pseudo_tcp_socket_close(PseudoTcpSocket *self, gboolean force);
  * <para> See also: pseudo_tcp_socket_connect() </para>
  * <para> See also: pseudo_tcp_socket_recv() </para>
  * <para> See also: pseudo_tcp_socket_send() </para>
+ *
+ * Since: 0.0.11
  */
 int pseudo_tcp_socket_get_error(PseudoTcpSocket *self);
 
@@ -321,6 +344,8 @@ int pseudo_tcp_socket_get_error(PseudoTcpSocket *self);
  * ready to be destroyed.
  *
  * <para> See also: pseudo_tcp_socket_notify_clock() </para>
+ *
+ * Since: 0.0.11
  */
 gboolean pseudo_tcp_socket_get_next_clock(PseudoTcpSocket *self, long *timeout);
 
@@ -335,6 +360,8 @@ gboolean pseudo_tcp_socket_get_next_clock(PseudoTcpSocket *self, long *timeout);
  * It's ok to call this too frequently.
  *
  * <para> See also: pseudo_tcp_socket_get_next_clock() </para>
+ *
+ * Since: 0.0.11
  */
 void pseudo_tcp_socket_notify_clock(PseudoTcpSocket *self);
 
@@ -346,6 +373,7 @@ void pseudo_tcp_socket_notify_clock(PseudoTcpSocket *self);
  *
  * Set the MTU of the socket
  *
+ * Since: 0.0.11
  */
 void pseudo_tcp_socket_notify_mtu(PseudoTcpSocket *self, guint16 mtu);
 
@@ -359,6 +387,8 @@ void pseudo_tcp_socket_notify_mtu(PseudoTcpSocket *self, guint16 mtu);
  * Notify the #PseudoTcpSocket when a new packet arrives
  *
  * Returns: %TRUE if the packet was processed successfully, %FALSE otherwise
+ *
+ * Since: 0.0.11
  */
 gboolean pseudo_tcp_socket_notify_packet(PseudoTcpSocket *self,
     const gchar * buffer, guint32 len);
@@ -370,6 +400,7 @@ gboolean pseudo_tcp_socket_notify_packet(PseudoTcpSocket *self,
  *
  * Sets the debug level to enable/disable normal/verbose debug messages.
  *
+ * Since: 0.0.11
  */
 void pseudo_tcp_set_debug_level (PseudoTcpDebugLevel level);
 

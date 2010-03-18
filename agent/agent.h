@@ -289,6 +289,7 @@ nice_agent_new (GMainContext *ctx, NiceCompatibility compat);
  * Create a new #NiceAgent in reliable mode, which uses #PseudoTcpSocket to
  * assure reliability of the messages.
  * The returned object must be freed with g_object_unref()
+ * <para> See also: #NiceAgent::reliable-transport-writable </para>
  *
  * Since: 0.0.11
  *
