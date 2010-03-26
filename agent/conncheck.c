@@ -1036,17 +1036,18 @@ void conn_check_remote_candidates_set(NiceAgent *agent)
             }
           }
         }
-        /* Once we process the pending checks, we should free them to avoid
-         * reprocessing them again if a dribble-mode set_remote_candidates
-         * is called */
-        for (m = component->incoming_checks; m; m = m->next) {
-          IncomingCheck *icheck = m->data;
-          g_free (icheck->username);
-          g_slice_free (IncomingCheck, icheck);
-        }
-        g_slist_free (component->incoming_checks);
-        component->incoming_checks = NULL;
       }
+
+      /* Once we process the pending checks, we should free them to avoid
+       * reprocessing them again if a dribble-mode set_remote_candidates
+       * is called */
+      for (m = component->incoming_checks; m; m = m->next) {
+        IncomingCheck *icheck = m->data;
+        g_free (icheck->username);
+        g_slice_free (IncomingCheck, icheck);
+      }
+      g_slist_free (component->incoming_checks);
+      component->incoming_checks = NULL;
     }
   }
 }
