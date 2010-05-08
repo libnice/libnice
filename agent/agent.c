@@ -819,6 +819,8 @@ nice_agent_set_property (
     {
     case PROP_MAIN_CONTEXT:
       agent->main_context = g_value_get_pointer (value);
+      if (agent->main_context != NULL)
+        g_main_context_ref (agent->main_context);
       break;
 
     case PROP_COMPATIBILITY:
@@ -2451,6 +2453,10 @@ nice_agent_dispose (GObject *object)
 
   g_free (agent->software_attribute);
   agent->software_attribute = NULL;
+
+  if (agent->main_context != NULL)
+    g_main_context_unref (agent->main_context);
+  agent->main_context = NULL;
 
   if (G_OBJECT_CLASS (nice_agent_parent_class)->dispose)
     G_OBJECT_CLASS (nice_agent_parent_class)->dispose (object);
