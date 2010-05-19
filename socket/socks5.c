@@ -193,9 +193,17 @@ socket_recv (NiceSocket *sock, NiceAddress *from, guint len, gchar *buf)
 
                 if (priv->username)
                   ulen = strlen (priv->username);
+                if (ulen > 255) {
+                  nice_debug ("Socks5 username length > 255");
+                  goto error;
+                }
 
                 if (priv->password)
                   plen  = strlen (priv->password);
+                if (plen > 255) {
+                  nice_debug ("Socks5 password length > 255");
+                  goto error;
+                }
 
                 msg[len++] = 0x01; /* auth version */
                 msg[len++] = ulen; /* username length */
