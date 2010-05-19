@@ -111,7 +111,7 @@ int main (void)
   len = sizeof (resp_buf);
   val2 = stun_usage_ice_conncheck_create_reply (&agent, &req,
       &resp, resp_buf, &len, (struct sockaddr *)&ip4,
-      sizeof (ip4), &control, tie, STUN_USAGE_ICE_COMPATIBILITY_DRAFT19);
+      sizeof (ip4), &control, tie, STUN_USAGE_ICE_COMPATIBILITY_RFC5245);
   assert (val2 == STUN_USAGE_ICE_RETURN_INVALID_REQUEST);
   assert (len == 0);
 
@@ -125,7 +125,7 @@ int main (void)
   len = sizeof (resp_buf);
   val2 = stun_usage_ice_conncheck_create_reply (&agent, &req,
       &resp, resp_buf, &len, (struct sockaddr *)&ip4,
-      sizeof (ip4), &control, tie, STUN_USAGE_ICE_COMPATIBILITY_DRAFT19);
+      sizeof (ip4), &control, tie, STUN_USAGE_ICE_COMPATIBILITY_RFC5245);
   assert (val2 == STUN_USAGE_ICE_RETURN_INVALID_METHOD);
   assert (len > 0);
 
@@ -179,7 +179,7 @@ int main (void)
   len = sizeof (resp_buf);
   val2 = stun_usage_ice_conncheck_create_reply (&agent, &req,
       &resp, resp_buf, &len, (struct sockaddr *)&ip4,
-      sizeof (ip4), &control, tie, STUN_USAGE_ICE_COMPATIBILITY_DRAFT19);
+      sizeof (ip4), &control, tie, STUN_USAGE_ICE_COMPATIBILITY_RFC5245);
   assert (val == STUN_USAGE_ICE_RETURN_SUCCESS);
   assert (len > 0);
   assert (stun_agent_validate (&agent, &resp, resp_buf, len,
@@ -199,7 +199,7 @@ int main (void)
   len = sizeof (resp_buf);
   val2 = stun_usage_ice_conncheck_create_reply (&agent, &req,
       &resp, resp_buf, &len, (struct sockaddr *)&ip4,
-      sizeof (ip4), &control, tie, STUN_USAGE_ICE_COMPATIBILITY_DRAFT19);
+      sizeof (ip4), &control, tie, STUN_USAGE_ICE_COMPATIBILITY_RFC5245);
   assert (val2 == STUN_USAGE_ICE_RETURN_INVALID_ADDRESS);
   assert (len == 0);
 
@@ -219,7 +219,7 @@ int main (void)
   control = true;
   val2 = stun_usage_ice_conncheck_create_reply (&agent, &req,
       &resp, resp_buf, &len, (struct sockaddr *)&ip4,
-      sizeof (ip4), &control, tie, STUN_USAGE_ICE_COMPATIBILITY_DRAFT19);
+      sizeof (ip4), &control, tie, STUN_USAGE_ICE_COMPATIBILITY_RFC5245);
   assert (val2 == STUN_USAGE_ICE_RETURN_ROLE_CONFLICT);
   assert (len > 0);
   assert (control == false);
@@ -240,7 +240,7 @@ int main (void)
   control = false;
   val2 = stun_usage_ice_conncheck_create_reply (&agent, &req,
       &resp, resp_buf, &len, (struct sockaddr *)&ip4,
-      sizeof (ip4), &control, tie, STUN_USAGE_ICE_COMPATIBILITY_DRAFT19);
+      sizeof (ip4), &control, tie, STUN_USAGE_ICE_COMPATIBILITY_RFC5245);
   assert (val2 == STUN_USAGE_ICE_RETURN_SUCCESS);
   assert (len > 0);
   assert (control == false);

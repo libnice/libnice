@@ -149,7 +149,7 @@ agent_to_ice_compatibility (NiceAgent *agent)
       STUN_USAGE_ICE_COMPATIBILITY_GOOGLE :
       agent->compatibility == NICE_COMPATIBILITY_MSN ?
       STUN_USAGE_ICE_COMPATIBILITY_MSN :
-      STUN_USAGE_ICE_COMPATIBILITY_DRAFT19;
+      STUN_USAGE_ICE_COMPATIBILITY_RFC5245;
 }
 
 
@@ -276,8 +276,8 @@ nice_agent_class_init (NiceAgentClass *klass)
          "compatibility",
          "ICE specification compatibility",
          "The compatibility mode for the agent",
-         NICE_COMPATIBILITY_DRAFT19, NICE_COMPATIBILITY_LAST,
-         NICE_COMPATIBILITY_DRAFT19,
+         NICE_COMPATIBILITY_RFC5245, NICE_COMPATIBILITY_LAST,
+         NICE_COMPATIBILITY_RFC5245,
          G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY));
 
   g_object_class_install_property (gobject_class, PROP_STUN_SERVER,
@@ -671,7 +671,7 @@ nice_agent_init (NiceAgent *agent)
   agent->media_after_tick = FALSE;
   agent->software_attribute = NULL;
 
-  agent->compatibility = NICE_COMPATIBILITY_DRAFT19;
+  agent->compatibility = NICE_COMPATIBILITY_RFC5245;
   agent->reliable = FALSE;
 
   stun_agent_init (&agent->stun_agent, STUN_ALL_KNOWN_ATTRIBUTES,

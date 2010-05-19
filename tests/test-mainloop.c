@@ -76,7 +76,7 @@ main (void)
   g_thread_init (NULL);
   loop = g_main_loop_new (NULL, FALSE);
 
-  agent = nice_agent_new (g_main_loop_get_context (loop), NICE_COMPATIBILITY_DRAFT19);
+  agent = nice_agent_new (g_main_loop_get_context (loop), NICE_COMPATIBILITY_RFC5245);
   nice_address_set_ipv4 (&addr, 0x7f000001);
   nice_agent_add_local_address (agent, &addr);
   stream = nice_agent_add_stream (agent, 1);

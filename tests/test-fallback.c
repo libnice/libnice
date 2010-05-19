@@ -493,8 +493,8 @@ int main (void)
    */
 
   /* step: create the agents L and R */
-  lagent = nice_agent_new (g_main_loop_get_context (global_mainloop), NICE_COMPATIBILITY_DRAFT19);
-  ragent = nice_agent_new (g_main_loop_get_context (global_mainloop), NICE_COMPATIBILITY_DRAFT19);
+  lagent = nice_agent_new (g_main_loop_get_context (global_mainloop), NICE_COMPATIBILITY_RFC5245);
+  ragent = nice_agent_new (g_main_loop_get_context (global_mainloop), NICE_COMPATIBILITY_RFC5245);
 
 
 

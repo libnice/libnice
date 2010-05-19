@@ -60,18 +60,25 @@ extern "C" {
 
 /**
  * StunUsageIceCompatibility:
- * @STUN_USAGE_ICE_COMPATIBILITY_DRAFT19: The ICE compatibility with draft 19
+ * @STUN_USAGE_ICE_COMPATIBILITY_RFC5245: The ICE compatibility with RFC 5245
  * @STUN_USAGE_ICE_COMPATIBILITY_GOOGLE: The ICE compatibility with Google's
  * implementation of ICE
  * @STUN_USAGE_ICE_COMPATIBILITY_MSN: The ICE compatibility with MSN's
  * implementation of ICE
+ * @STUN_USAGE_ICE_COMPATIBILITY_DRAFT19: The ICE compatibility with draft 19
  *
  * This enum defines which compatibility modes this ICE usage can use
+ *
+ * <warning>@STUN_USAGE_ICE_COMPATIBILITY_DRAFT19 is deprecated and should not
+ * be used in newly-written code. It is kept for compatibility reasons and
+ * represents the same compatibility as @STUN_USAGE_ICE_COMPATIBILITY_RFC5245
+ * </warning>
  */
 typedef enum {
-  STUN_USAGE_ICE_COMPATIBILITY_DRAFT19,
+  STUN_USAGE_ICE_COMPATIBILITY_RFC5245,
   STUN_USAGE_ICE_COMPATIBILITY_GOOGLE,
   STUN_USAGE_ICE_COMPATIBILITY_MSN,
+  STUN_USAGE_ICE_COMPATIBILITY_DRAFT19 = STUN_USAGE_ICE_COMPATIBILITY_RFC5245,
 } StunUsageIceCompatibility;
 
 
@@ -127,7 +134,7 @@ typedef enum {
  * request
  *
  * Builds an ICE connectivity check STUN message.
- * If the compatibility is not #STUN_USAGE_ICE_COMPATIBILITY_DRAFT19, the
+ * If the compatibility is not #STUN_USAGE_ICE_COMPATIBILITY_RFC5245, the
  * @cand_use, @controlling, @priority and @tie arguments are not used.
  * Returns: The length of the message built.
  */

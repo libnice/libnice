@@ -1283,7 +1283,7 @@ static gboolean priv_add_new_check_pair (NiceAgent *agent, guint stream_id, Comp
 
       /* implement the hard upper limit for number of 
 	 checks (see sect 5.7.3 ICE ID-19): */
-      if (agent->compatibility == NICE_COMPATIBILITY_DRAFT19) {
+      if (agent->compatibility == NICE_COMPATIBILITY_RFC5245) {
         stream->conncheck_list = 
             priv_limit_conn_check_list_size (stream->conncheck_list, agent->max_conn_checks);
       }
@@ -1334,7 +1334,7 @@ int conn_check_add_for_candidate (NiceAgent *agent, guint stream_id, Component *
 
       /* note: do not create pairs where local candidate is 
        *       a srv-reflexive (ICE 5.7.3. "Pruning the Pairs" ID-19) */
-      if ((agent->compatibility == NICE_COMPATIBILITY_DRAFT19 ||
+      if ((agent->compatibility == NICE_COMPATIBILITY_RFC5245 ||
               agent->compatibility == NICE_COMPATIBILITY_WLM2009) &&
           local->type == NICE_CANDIDATE_TYPE_SERVER_REFLEXIVE)
 	continue;
@@ -1453,7 +1453,7 @@ size_t priv_gen_username (NiceAgent *agent, guint component_id,
   gsize local_len = strlen (local);
 
   if (remote_len > 0 && local_len > 0) {
-    if (agent->compatibility == NICE_COMPATIBILITY_DRAFT19 &&
+    if (agent->compatibility == NICE_COMPATIBILITY_RFC5245 &&
         dest_len >= remote_len + local_len + 1) {
       memcpy (dest, remote, remote_len);
       len += remote_len;
@@ -1794,7 +1794,7 @@ static gboolean priv_schedule_triggered_check (NiceAgent *agent, Stream *stream,
 	  /* note: to take care of the controlling-controlling case in
 	   *       aggressive nomination mode, send a new triggered
 	   *       check to nominate the pair */
-	  if ((agent->compatibility == NICE_COMPATIBILITY_DRAFT19 ||
+	  if ((agent->compatibility == NICE_COMPATIBILITY_RFC5245 ||
                   agent->compatibility == NICE_COMPATIBILITY_WLM2009) &&
               agent->controlling_mode)
 	    priv_conn_check_initiate (agent, p);
@@ -2383,7 +2383,7 @@ static gboolean priv_map_reply_to_relay_request (NiceAgent *agent, StunMessage *
               STUN_ATTRIBUTE_REALM, &recv_realm_len);
 
           /* check for unauthorized error response */
-          if (agent->compatibility == NICE_COMPATIBILITY_DRAFT19 &&
+          if (agent->compatibility == NICE_COMPATIBILITY_RFC5245 &&
               stun_message_get_class (resp) == STUN_ERROR &&
               stun_message_find_error (resp, &code) ==
               STUN_MESSAGE_RETURN_SUCCESS &&
@@ -2471,7 +2471,7 @@ static gboolean priv_map_reply_to_relay_refresh (NiceAgent *agent, StunMessage *
               STUN_ATTRIBUTE_REALM, &recv_realm_len);
 
           /* check for unauthorized error response */
-          if (cand->agent->compatibility == NICE_COMPATIBILITY_DRAFT19 &&
+          if (cand->agent->compatibility == NICE_COMPATIBILITY_RFC5245 &&
               stun_message_get_class (resp) == STUN_ERROR &&
               stun_message_find_error (resp, &code) ==
               STUN_MESSAGE_RETURN_SUCCESS &&

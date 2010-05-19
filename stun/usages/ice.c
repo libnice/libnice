@@ -70,7 +70,7 @@ stun_usage_ice_conncheck_create (StunAgent *agent, StunMessage *msg,
 
   stun_agent_init_request (agent, msg, buffer, buffer_len, STUN_BINDING);
 
-  if (compatibility == STUN_USAGE_ICE_COMPATIBILITY_DRAFT19) {
+  if (compatibility == STUN_USAGE_ICE_COMPATIBILITY_RFC5245) {
     if (cand_use)
     {
       val = stun_message_append_flag (msg, STUN_ATTRIBUTE_USE_CANDIDATE);
