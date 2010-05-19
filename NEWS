@@ -1,3 +1,10 @@
+libnice 0.0.12 (2010-05-19)
+==========================
+
+Update compatibility to RFC5245
+Fix a memory corruption bug
+Fix a possible buffer overflow with socks5 proxies
+
 libnice 0.0.11 (2010-03-18)
 ===========================
 
