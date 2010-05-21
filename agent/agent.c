@@ -1900,24 +1900,15 @@ NICEAPI_EXPORT gboolean
 nice_agent_add_local_address (NiceAgent *agent, NiceAddress *addr)
 {
   NiceAddress *dup;
-  GSList *modified_list;
-  gboolean ret = FALSE;
 
   agent_lock();
 
   dup = nice_address_dup (addr);
   nice_address_set_port (dup, 0);
-  modified_list = g_slist_append (agent->local_addresses, dup);
-  if (modified_list) {
-    agent->local_addresses = modified_list;
+  agent->local_addresses = g_slist_append (agent->local_addresses, dup);
 
-    ret = TRUE;
-    goto done;
-  }
-
- done:
   agent_unlock();
-  return ret;
+  return TRUE;
 }
 
 static gboolean priv_add_remote_candidate (
