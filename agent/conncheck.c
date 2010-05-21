@@ -2655,9 +2655,7 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, Stream *stream,
     }
   }
 
-
-  if (validater_data.password)
-    g_free (validater_data.password);
+  g_free (validater_data.password);
 
   if (valid == STUN_VALIDATION_NOT_STUN ||
       valid == STUN_VALIDATION_INCOMPLETE_STUN ||

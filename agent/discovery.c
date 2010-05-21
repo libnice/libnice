@@ -407,10 +407,8 @@ void priv_generate_candidate_credentials (NiceAgent *agent,
     guchar username[32];
     guchar password[16];
 
-    if (candidate->username)
-      g_free (candidate->username);
-    if (candidate->password)
-      g_free (candidate->password);
+    g_free (candidate->username);
+    g_free (candidate->password);
 
     nice_rng_generate_bytes (agent->rng, 32, (gchar *)username);
     nice_rng_generate_bytes (agent->rng, 16, (gchar *)password);
@@ -421,10 +419,8 @@ void priv_generate_candidate_credentials (NiceAgent *agent,
   } else if (agent->compatibility == NICE_COMPATIBILITY_GOOGLE) {
     gchar username[16];
 
-    if (candidate->username)
-      g_free (candidate->username);
-    if (candidate->password)
-      g_free (candidate->password);
+    g_free (candidate->username);
+    g_free (candidate->password);
     candidate->password = NULL;
 
     nice_rng_generate_bytes_print (agent->rng, 16, (gchar *)username);
