@@ -1254,55 +1254,37 @@ static gboolean priv_add_new_check_pair (NiceAgent *agent, guint stream_id, Comp
   gboolean result = FALSE;
   Stream *stream = agent_find_stream (agent, stream_id);
   CandidateCheckPair *pair = g_slice_new0 (CandidateCheckPair);
-  if (pair) {
-    GSList *modified_list = 
-      g_slist_insert_sorted (stream->conncheck_list, pair, (GCompareFunc)conn_check_compare);
-    if (modified_list) {
-      /* step: allocation and addition succesful, do rest of the work */
 
-      pair->agent = agent;
-      pair->stream_id = stream_id;
-      pair->component_id = component->id;;
-      pair->local = local; 
-      pair->remote = remote;
-      g_snprintf (pair->foundation, NICE_CANDIDATE_PAIR_MAX_FOUNDATION, "%s:%s", local->foundation, remote->foundation);
+  stream->conncheck_list = g_slist_insert_sorted (stream->conncheck_list, pair,
+      (GCompareFunc)conn_check_compare);
 
-      pair->priority = agent_candidate_pair_priority (agent, local, remote);
-      pair->state = initial_state;
-      nice_debug ("Agent %p : creating new pair %p state %d", agent, pair, initial_state);
-      pair->nominated = use_candidate;
-      pair->controlling = agent->controlling_mode;
-      
-      /* note: for the first added check */
-      if (!stream->conncheck_list)
-	stream->conncheck_state = NICE_CHECKLIST_RUNNING;
-      stream->conncheck_list = modified_list;
+  pair->agent = agent;
+  pair->stream_id = stream_id;
+  pair->component_id = component->id;;
+  pair->local = local;
+  pair->remote = remote;
+  g_snprintf (pair->foundation, NICE_CANDIDATE_PAIR_MAX_FOUNDATION, "%s:%s", local->foundation, remote->foundation);
 
-      result = TRUE;
-      nice_debug ("Agent %p : added a new conncheck %p with foundation of '%s' to list %u.", agent, pair, pair->foundation, stream_id);
+  pair->priority = agent_candidate_pair_priority (agent, local, remote);
+  pair->state = initial_state;
+  nice_debug ("Agent %p : creating new pair %p state %d", agent, pair, initial_state);
+  pair->nominated = use_candidate;
+  pair->controlling = agent->controlling_mode;
 
-      /* implement the hard upper limit for number of 
-	 checks (see sect 5.7.3 ICE ID-19): */
-      if (agent->compatibility == NICE_COMPATIBILITY_RFC5245) {
-        stream->conncheck_list = 
-            priv_limit_conn_check_list_size (stream->conncheck_list, agent->max_conn_checks);
-      }
-      if (!stream->conncheck_list) {
-	stream->conncheck_state = NICE_CHECKLIST_FAILED;  
-	result = FALSE;
-      }
-    }
-    else {
-      /* memory alloc failed: list insert */
-      conn_check_free_item (pair, NULL);
-      stream->conncheck_state = NICE_CHECKLIST_FAILED;  
-    }
-  }
-  else { /* memory alloc failed: new pair */
-    stream->conncheck_state = NICE_CHECKLIST_FAILED;
+  /* note: for the first added check */
+  if (!stream->conncheck_list)
+    stream->conncheck_state = NICE_CHECKLIST_RUNNING;
+
+  nice_debug ("Agent %p : added a new conncheck %p with foundation of '%s' to list %u.", agent, pair, pair->foundation, stream_id);
+
+  /* implement the hard upper limit for number of
+     checks (see sect 5.7.3 ICE ID-19): */
+  if (agent->compatibility == NICE_COMPATIBILITY_RFC5245) {
+    stream->conncheck_list =
+        priv_limit_conn_check_list_size (stream->conncheck_list, agent->max_conn_checks);
   }
 
-  return result;
+  return TRUE;
 }
 
 /*
