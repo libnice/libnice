@@ -252,11 +252,11 @@ void refresh_cancel (CandidateRefresh *refresh)
  */
 static gboolean priv_add_local_candidate_pruned (Component *component, NiceCandidate *candidate)
 {
-  GSList *modified_list, *i;
+  GSList *i;
 
   for (i = component->local_candidates; i ; i = i->next) {
     NiceCandidate *c = i->data;
-    
+
     if (nice_address_equal (&c->base_addr, &candidate->base_addr) &&
 	nice_address_equal (&c->addr, &candidate->addr)) {
       nice_debug ("Candidate %p (component-id %u) redundant, ignoring.", candidate, component->id);
@@ -264,11 +264,8 @@ static gboolean priv_add_local_candidate_pruned (Component *component, NiceCandi
     }
   }
 
-  modified_list = g_slist_append (component->local_candidates,
-				 candidate);
-  if (modified_list) {
-    component->local_candidates = modified_list;
-  }
+  component->local_candidates = g_slist_append (component->local_candidates,
+      candidate);
 
   return TRUE;
 }
