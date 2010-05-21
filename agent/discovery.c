@@ -583,8 +583,6 @@ discovery_add_relay_candidate (
   NiceCandidate *candidate;
   Component *component;
   Stream *stream;
-  gboolean result = FALSE;
-  gboolean errors = FALSE;
   NiceSocket *relay_socket = NULL;
 
   if (!agent_find_component (agent, stream_id, component_id, &stream, &component))
@@ -610,41 +608,35 @@ discovery_add_relay_candidate (
       base_socket, &turn->server,
       turn->username, turn->password,
       agent_to_turn_socket_compatibility (agent));
-  if (relay_socket) {
-    candidate->sockptr = relay_socket;
-    candidate->base_addr = base_socket->addr;
+  if (!relay_socket)
+    goto errors;
 
-    priv_generate_candidate_credentials (agent, candidate);
+  candidate->sockptr = relay_socket;
+  candidate->base_addr = base_socket->addr;
 
-    /* Google uses the turn username as the candidate username */
-    if (agent->compatibility == NICE_COMPATIBILITY_GOOGLE) {
-      g_free (candidate->username);
-      candidate->username = g_strdup (turn->username);
-    }
+  priv_generate_candidate_credentials (agent, candidate);
 
-    priv_assign_foundation (agent, candidate);
-
-    result = priv_add_local_candidate_pruned (component, candidate);
-    if (result) {
-      component->sockets = g_slist_append (component->sockets, relay_socket);
-      agent_signal_new_candidate (agent, candidate);
-    } else {
-      /* error: duplicate candidate */
-      errors = TRUE;
-    }
-  } else {
-    /* error: socket factory make */
-    errors = TRUE;
+  /* Google uses the turn username as the candidate username */
+  if (agent->compatibility == NICE_COMPATIBILITY_GOOGLE) {
+    g_free (candidate->username);
+    candidate->username = g_strdup (turn->username);
   }
 
-  /* clean up after errors */
-  if (errors) {
-    if (candidate)
-      nice_candidate_free (candidate), candidate = NULL;
-    if (relay_socket)
-      nice_socket_free (relay_socket);
-  }
+  priv_assign_foundation (agent, candidate);
+
+  if (!priv_add_local_candidate_pruned (component, candidate))
+    goto errors;
+
+  component->sockets = g_slist_append (component->sockets, relay_socket);
+  agent_signal_new_candidate (agent, candidate);
+
   return candidate;
+
+errors:
+  nice_candidate_free (candidate);
+  if (relay_socket)
+    nice_socket_free (relay_socket);
+  return NULL;
 }
 
 /*
