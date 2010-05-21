@@ -1905,31 +1905,29 @@ static int priv_store_pending_check (NiceAgent *agent, Component *component,
 static CandidateCheckPair *priv_add_peer_reflexive_pair (NiceAgent *agent, guint stream_id, guint component_id, NiceCandidate *local_cand, CandidateCheckPair *parent_pair)
 {
   CandidateCheckPair *pair = g_slice_new0 (CandidateCheckPair);
-  if (pair) {
-    Stream *stream = agent_find_stream (agent, stream_id);
-    GSList *modified_list = g_slist_append (stream->conncheck_list, pair);
-    if (modified_list) {
-      stream->conncheck_list = modified_list;
-      pair->agent = agent;
-      pair->stream_id = stream_id;
-      pair->component_id = component_id;;
-      pair->local = local_cand;
-      pair->remote = parent_pair->remote;
-      pair->state = NICE_CHECK_DISCOVERED;
-      nice_debug ("Agent %p : pair %p state DISCOVERED", agent, pair);
-      g_snprintf (pair->foundation, NICE_CANDIDATE_PAIR_MAX_FOUNDATION, "%s:%s", local_cand->foundation, parent_pair->remote->foundation);
-      if (agent->controlling_mode == TRUE)
-	pair->priority = nice_candidate_pair_priority (local_cand->priority, parent_pair->priority);
-      else
-	pair->priority = nice_candidate_pair_priority (parent_pair->priority, local_cand->priority);
-      pair->nominated = FALSE;
-      pair->controlling = agent->controlling_mode;
-      nice_debug ("Agent %p : added a new peer-discovered pair with foundation of '%s'.", agent, pair->foundation);
-      return pair;
-    }
-  }
+  Stream *stream = agent_find_stream (agent, stream_id);
 
-  return NULL;
+  stream->conncheck_list = g_slist_append (stream->conncheck_list, pair);
+  pair->agent = agent;
+  pair->stream_id = stream_id;
+  pair->component_id = component_id;;
+  pair->local = local_cand;
+  pair->remote = parent_pair->remote;
+  pair->state = NICE_CHECK_DISCOVERED;
+  nice_debug ("Agent %p : pair %p state DISCOVERED", agent, pair);
+  g_snprintf (pair->foundation, NICE_CANDIDATE_PAIR_MAX_FOUNDATION, "%s:%s",
+      local_cand->foundation, parent_pair->remote->foundation);
+  if (agent->controlling_mode == TRUE)
+    pair->priority = nice_candidate_pair_priority (local_cand->priority,
+        parent_pair->priority);
+  else
+    pair->priority = nice_candidate_pair_priority (parent_pair->priority,
+        local_cand->priority);
+  pair->nominated = FALSE;
+  pair->controlling = agent->controlling_mode;
+  nice_debug ("Agent %p : added a new peer-discovered pair with foundation of '%s'.",  agent, pair->foundation);
+
+  return pair;
 }
 
 /*
