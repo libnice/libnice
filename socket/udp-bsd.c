@@ -73,10 +73,6 @@ nice_udp_bsd_socket_new (NiceAddress *addr)
   socklen_t name_len = sizeof (name);
   NiceSocket *sock = g_slice_new0 (NiceSocket);
 
-  if (!sock) {
-    return NULL;
-  }
-
   if (addr != NULL) {
     nice_address_copy_to_sockaddr(addr, (struct sockaddr *)&name);
   } else {
