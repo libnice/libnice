@@ -1249,9 +1249,8 @@ static void priv_mark_pair_nominated (NiceAgent *agent, Stream *stream, Componen
  * Creates a new connectivity check pair and adds it to
  * the agent's list of checks.
  */
-static gboolean priv_add_new_check_pair (NiceAgent *agent, guint stream_id, Component *component, NiceCandidate *local, NiceCandidate *remote, NiceCheckState initial_state, gboolean use_candidate)
+static void priv_add_new_check_pair (NiceAgent *agent, guint stream_id, Component *component, NiceCandidate *local, NiceCandidate *remote, NiceCheckState initial_state, gboolean use_candidate)
 {
-  gboolean result = FALSE;
   Stream *stream = agent_find_stream (agent, stream_id);
   CandidateCheckPair *pair = g_slice_new0 (CandidateCheckPair);
 
@@ -1283,8 +1282,6 @@ static gboolean priv_add_new_check_pair (NiceAgent *agent, guint stream_id, Comp
     stream->conncheck_list =
         priv_limit_conn_check_list_size (stream->conncheck_list, agent->max_conn_checks);
   }
-
-  return TRUE;
 }
 
 /*
@@ -1312,8 +1309,6 @@ int conn_check_add_for_candidate (NiceAgent *agent, guint stream_id, Component *
     if (local->transport == remote->transport &&
 	local->addr.s.addr.sa_family == remote->addr.s.addr.sa_family) {
 
-      gboolean result;
-
       /* note: do not create pairs where local candidate is 
        *       a srv-reflexive (ICE 5.7.3. "Pruning the Pairs" ID-19) */
       if ((agent->compatibility == NICE_COMPATIBILITY_RFC5245 ||
@@ -1321,24 +1316,18 @@ int conn_check_add_for_candidate (NiceAgent *agent, guint stream_id, Component *
           local->type == NICE_CANDIDATE_TYPE_SERVER_REFLEXIVE)
 	continue;
 
-      result = priv_add_new_check_pair (agent, stream_id, component, local, remote, NICE_CHECK_FROZEN, FALSE);
-      if (result) {
-	++added;
-        if (component->state < NICE_COMPONENT_STATE_CONNECTED) {
-          agent_signal_component_state_change (agent,
-              stream_id,
-              component->id,
-              NICE_COMPONENT_STATE_CONNECTING);
-        } else {
-          agent_signal_component_state_change (agent,
-              stream_id,
-              component->id,
-              NICE_COMPONENT_STATE_CONNECTED);
-        }
-      }
-      else {
-	added = -1;
-	break;
+      priv_add_new_check_pair (agent, stream_id, component, local, remote, NICE_CHECK_FROZEN, FALSE);
+      ++added;
+      if (component->state < NICE_COMPONENT_STATE_CONNECTED) {
+        agent_signal_component_state_change (agent,
+            stream_id,
+            component->id,
+            NICE_COMPONENT_STATE_CONNECTING);
+      } else {
+        agent_signal_component_state_change (agent,
+            stream_id,
+            component->id,
+            NICE_COMPONENT_STATE_CONNECTED);
       }
     }
   }
@@ -1748,7 +1737,7 @@ static guint priv_prune_pending_checks (Stream *stream, guint component_id)
 static gboolean priv_schedule_triggered_check (NiceAgent *agent, Stream *stream, Component *component, NiceSocket *local_socket, NiceCandidate *remote_cand, gboolean use_candidate)
 {
   GSList *i;
-  gboolean result = FALSE;
+  NiceCandidate *local = NULL;
 
   for (i = stream->conncheck_list; i ; i = i->next) {
       CandidateCheckPair *p = i->data;
@@ -1789,23 +1778,21 @@ static gboolean priv_schedule_triggered_check (NiceAgent *agent, Stream *stream,
       }
   }
 
-  {
-    NiceCandidate *local = NULL;
-
-    for (i = component->local_candidates; i ; i = i->next) {
-      local = i->data;
-      if (local->sockptr == local_socket)
-	break;
-    }    
-    if (i) {
-      nice_debug ("Agent %p : Adding a triggered check to conn.check list (local=%p).", agent, local);
-      result = priv_add_new_check_pair (agent, stream->id, component, local, remote_cand, NICE_CHECK_WAITING, use_candidate);
-    }
-    else
-      nice_debug ("Agent %p : Didn't find a matching pair for triggered check (remote-cand=%p).", agent, remote_cand);
+  for (i = component->local_candidates; i ; i = i->next) {
+    local = i->data;
+    if (local->sockptr == local_socket)
+      break;
   }
 
-  return result;
+  if (i) {
+    nice_debug ("Agent %p : Adding a triggered check to conn.check list (local=%p).", agent, local);
+    priv_add_new_check_pair (agent, stream->id, component, local, remote_cand, NICE_CHECK_WAITING, use_candidate);
+    return TRUE;
+  }
+  else {
+    nice_debug ("Agent %p : Didn't find a matching pair for triggered check (remote-cand=%p).", agent, remote_cand);
+    return FALSE;
+  }
 }
 
 
