@@ -1864,23 +1864,17 @@ static int priv_store_pending_check (NiceAgent *agent, Component *component,
   }
 
   icheck = g_slice_new0 (IncomingCheck);
-  if (icheck) {
-    GSList *pending = g_slist_append (component->incoming_checks, icheck);
-    if (pending) {
-      component->incoming_checks = pending;
-      icheck->from = *from;
-      icheck->local_socket = socket;
-      icheck->priority = priority;
-      icheck->use_candidate = use_candidate;
-      icheck->username_len = username_len;
-      icheck->username = NULL;
-      if (username_len > 0)
-        icheck->username = g_memdup (username, username_len);
-      return 0;
-    }
-  }
+  component->incoming_checks = g_slist_append (component->incoming_checks, icheck);
+  icheck->from = *from;
+  icheck->local_socket = socket;
+  icheck->priority = priority;
+  icheck->use_candidate = use_candidate;
+  icheck->username_len = username_len;
+  icheck->username = NULL;
+  if (username_len > 0)
+    icheck->username = g_memdup (username, username_len);
 
-  return -1;
+  return 0;
 }
 
 /*
