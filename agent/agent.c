@@ -1330,128 +1330,107 @@ priv_add_new_candidate_discovery_turn (NiceAgent *agent,
     Stream *stream, guint component_id)
 {
   CandidateDiscovery *cdisco;
-  GSList *modified_list;
-  GSList *socket_modified_list;
+  Component *component = stream_find_component_by_id (stream, component_id);
 
   /* note: no need to check for redundant candidates, as this is
    *       done later on in the process */
 
   cdisco = g_slice_new0 (CandidateDiscovery);
-  if (cdisco) {
-    modified_list = g_slist_append (agent->discovery_list, cdisco);
+  cdisco->type = NICE_CANDIDATE_TYPE_RELAYED;
 
-    if (modified_list) {
-      Component *component = stream_find_component_by_id (stream, component_id);
+  if (turn->type ==  NICE_RELAY_TYPE_TURN_UDP) {
+    if (agent->compatibility == NICE_COMPATIBILITY_GOOGLE) {
+      NiceAddress addr = socket->addr;
+      NiceSocket *new_socket;
+      nice_address_set_port (&addr, 0);
 
-      cdisco->type = NICE_CANDIDATE_TYPE_RELAYED;
-
-      if (turn->type ==  NICE_RELAY_TYPE_TURN_UDP) {
-        if (agent->compatibility == NICE_COMPATIBILITY_GOOGLE) {
-          NiceAddress addr = socket->addr;
-          NiceSocket *new_socket;
-          nice_address_set_port (&addr, 0);
-
-          new_socket = nice_udp_bsd_socket_new (&addr);
-          if (new_socket) {
-            _priv_set_socket_tos (agent, new_socket, stream->tos);
-            agent_attach_stream_component_socket (agent, stream,
-                component, new_socket);
-            socket_modified_list = g_slist_append (component->sockets, new_socket);
-            if (socket_modified_list) {
-              /* success: store a pointer to the sockaddr */
-              component->sockets = socket_modified_list;
-              socket = new_socket;
-            } else {
-              nice_socket_free (new_socket);
-            }
-          }
-        }
-        cdisco->nicesock = socket;
-      } else {
-        NiceAddress proxy_server;
-        socket = NULL;
-
-        if (agent->proxy_type != NICE_PROXY_TYPE_NONE &&
-            agent->proxy_ip != NULL &&
-            nice_address_set_from_string (&proxy_server, agent->proxy_ip)) {
-          nice_address_set_port (&proxy_server, agent->proxy_port);
-          socket = nice_tcp_bsd_socket_new (agent, component->ctx, &proxy_server);
-
-          if (socket) {
-            _priv_set_socket_tos (agent, socket, stream->tos);
-            if (agent->proxy_type == NICE_PROXY_TYPE_SOCKS5) {
-              socket = nice_socks5_socket_new (socket, &turn->server,
-                  agent->proxy_username, agent->proxy_password);
-            } else if (agent->proxy_type == NICE_PROXY_TYPE_HTTP){
-              socket = nice_http_socket_new (socket, &turn->server,
-                  agent->proxy_username, agent->proxy_password);
-            } else {
-              nice_socket_free (socket);
-              socket = NULL;
-            }
-          }
-
-        }
-        if (socket == NULL) {
-          socket = nice_tcp_bsd_socket_new (agent, component->ctx, &turn->server);
-          _priv_set_socket_tos (agent, socket, stream->tos);
-        }
-        if (turn->type ==  NICE_RELAY_TYPE_TURN_TLS &&
-            agent->compatibility == NICE_COMPATIBILITY_GOOGLE) {
-          socket = nice_pseudossl_socket_new (agent, socket);
-        }
-        cdisco->nicesock = nice_tcp_turn_socket_new (agent, socket,
-            agent_to_turn_socket_compatibility (agent));
-
-        if (!cdisco->nicesock) {
-          agent->discovery_list = g_slist_remove (modified_list, cdisco);
-          g_slice_free (CandidateDiscovery, cdisco);
-          return FALSE;
-        }
-
+      new_socket = nice_udp_bsd_socket_new (&addr);
+      if (new_socket) {
+        _priv_set_socket_tos (agent, new_socket, stream->tos);
         agent_attach_stream_component_socket (agent, stream,
-            component, cdisco->nicesock);
-        socket_modified_list = g_slist_append (component->sockets, cdisco->nicesock);
-        if (socket_modified_list) {
-          /* success: store a pointer to the sockaddr */
-          component->sockets = socket_modified_list;
+            component, new_socket);
+        component->sockets= g_slist_append (component->sockets, new_socket);
+        socket = new_socket;
+      }
+    }
+    cdisco->nicesock = socket;
+  } else {
+    NiceAddress proxy_server;
+    socket = NULL;
+
+    if (agent->proxy_type != NICE_PROXY_TYPE_NONE &&
+        agent->proxy_ip != NULL &&
+        nice_address_set_from_string (&proxy_server, agent->proxy_ip)) {
+      nice_address_set_port (&proxy_server, agent->proxy_port);
+      socket = nice_tcp_bsd_socket_new (agent, component->ctx, &proxy_server);
+
+      if (socket) {
+        _priv_set_socket_tos (agent, socket, stream->tos);
+        if (agent->proxy_type == NICE_PROXY_TYPE_SOCKS5) {
+          socket = nice_socks5_socket_new (socket, &turn->server,
+              agent->proxy_username, agent->proxy_password);
+        } else if (agent->proxy_type == NICE_PROXY_TYPE_HTTP){
+          socket = nice_http_socket_new (socket, &turn->server,
+              agent->proxy_username, agent->proxy_password);
+        } else {
+          nice_socket_free (socket);
+          socket = NULL;
         }
       }
-      cdisco->turn = turn;
-      cdisco->server = turn->server;
 
-      cdisco->stream = stream;
-      cdisco->component = stream_find_component_by_id (stream, component_id);
-      cdisco->agent = agent;
+    }
+    if (socket == NULL) {
+      socket = nice_tcp_bsd_socket_new (agent, component->ctx, &turn->server);
+      _priv_set_socket_tos (agent, socket, stream->tos);
+    }
+    if (turn->type ==  NICE_RELAY_TYPE_TURN_TLS &&
+        agent->compatibility == NICE_COMPATIBILITY_GOOGLE) {
+      socket = nice_pseudossl_socket_new (agent, socket);
+    }
+    cdisco->nicesock = nice_tcp_turn_socket_new (agent, socket,
+        agent_to_turn_socket_compatibility (agent));
 
-      if (agent->compatibility == NICE_COMPATIBILITY_GOOGLE) {
-        stun_agent_init (&cdisco->stun_agent, STUN_ALL_KNOWN_ATTRIBUTES,
-            STUN_COMPATIBILITY_RFC3489,
-            STUN_AGENT_USAGE_SHORT_TERM_CREDENTIALS |
-            STUN_AGENT_USAGE_IGNORE_CREDENTIALS);
-      } else if (agent->compatibility == NICE_COMPATIBILITY_MSN ||
-                 agent->compatibility == NICE_COMPATIBILITY_WLM2009) {
-        stun_agent_init (&cdisco->stun_agent, STUN_ALL_KNOWN_ATTRIBUTES,
-            STUN_COMPATIBILITY_RFC3489,
-            STUN_AGENT_USAGE_SHORT_TERM_CREDENTIALS);
-      } else {
-        stun_agent_init (&cdisco->stun_agent, STUN_ALL_KNOWN_ATTRIBUTES,
-            STUN_COMPATIBILITY_RFC5389,
-            STUN_AGENT_USAGE_ADD_SOFTWARE |
-            STUN_AGENT_USAGE_LONG_TERM_CREDENTIALS);
-      }
-      stun_agent_set_software (&cdisco->stun_agent, agent->software_attribute);
-
-      nice_debug ("Agent %p : Adding new relay-rflx candidate discovery %p\n",
-          agent, cdisco);
-      agent->discovery_list = modified_list;
-      ++agent->discovery_unsched_items;
+    if (!cdisco->nicesock) {
+      g_slice_free (CandidateDiscovery, cdisco);
+      return FALSE;
     }
 
-    return TRUE;
+    agent_attach_stream_component_socket (agent, stream,
+        component, cdisco->nicesock);
+    component->sockets = g_slist_append (component->sockets, cdisco->nicesock);
   }
 
-  return FALSE;
+  cdisco->turn = turn;
+  cdisco->server = turn->server;
+
+  cdisco->stream = stream;
+  cdisco->component = stream_find_component_by_id (stream, component_id);
+  cdisco->agent = agent;
+
+  if (agent->compatibility == NICE_COMPATIBILITY_GOOGLE) {
+    stun_agent_init (&cdisco->stun_agent, STUN_ALL_KNOWN_ATTRIBUTES,
+        STUN_COMPATIBILITY_RFC3489,
+        STUN_AGENT_USAGE_SHORT_TERM_CREDENTIALS |
+        STUN_AGENT_USAGE_IGNORE_CREDENTIALS);
+  } else if (agent->compatibility == NICE_COMPATIBILITY_MSN ||
+      agent->compatibility == NICE_COMPATIBILITY_WLM2009) {
+    stun_agent_init (&cdisco->stun_agent, STUN_ALL_KNOWN_ATTRIBUTES,
+        STUN_COMPATIBILITY_RFC3489,
+        STUN_AGENT_USAGE_SHORT_TERM_CREDENTIALS);
+  } else {
+    stun_agent_init (&cdisco->stun_agent, STUN_ALL_KNOWN_ATTRIBUTES,
+        STUN_COMPATIBILITY_RFC5389,
+        STUN_AGENT_USAGE_ADD_SOFTWARE |
+        STUN_AGENT_USAGE_LONG_TERM_CREDENTIALS);
+  }
+  stun_agent_set_software (&cdisco->stun_agent, agent->software_attribute);
+
+  nice_debug ("Agent %p : Adding new relay-rflx candidate discovery %p\n",
+      agent, cdisco);
+  agent->discovery_list = g_slist_append (agent->discovery_list, cdisco);
+  ++agent->discovery_unsched_items;
+
+  return TRUE;
 }
 
 NICEAPI_EXPORT guint
