@@ -2234,34 +2234,28 @@ priv_add_new_turn_refresh (CandidateDiscovery *cdisco, NiceCandidate *relay_cand
 {
   CandidateRefresh *cand;
   NiceAgent *agent = cdisco->agent;
-  GSList *modified_list;
 
   cand = g_slice_new0 (CandidateRefresh);
-  if (cand) {
-    modified_list = g_slist_append (agent->refresh_list, cand);
+  agent->refresh_list = g_slist_append (agent->refresh_list, cand);
 
-    if (modified_list) {
-      cand->nicesock = cdisco->nicesock;
-      cand->relay_socket = relay_cand->sockptr;
-      cand->server = cdisco->server;
-      cand->turn = cdisco->turn;
-      cand->stream = cdisco->stream;
-      cand->component = cdisco->component;
-      cand->agent = cdisco->agent;
-      memcpy (&cand->stun_agent, &cdisco->stun_agent, sizeof(StunAgent));
-      nice_debug ("Agent %p : Adding new refresh candidate %p with timeout %d",
-          agent, cand, (lifetime - 60) * 1000);
-      agent->refresh_list = modified_list;
+  cand->nicesock = cdisco->nicesock;
+  cand->relay_socket = relay_cand->sockptr;
+  cand->server = cdisco->server;
+  cand->turn = cdisco->turn;
+  cand->stream = cdisco->stream;
+  cand->component = cdisco->component;
+  cand->agent = cdisco->agent;
+  memcpy (&cand->stun_agent, &cdisco->stun_agent, sizeof(StunAgent));
+  nice_debug ("Agent %p : Adding new refresh candidate %p with timeout %d",
+      agent, cand, (lifetime - 60) * 1000);
 
-      /* step: also start the refresh timer */
-      /* refresh should be sent 1 minute before it expires */
-      cand->timer_source =
-          agent_timeout_add_with_context (agent, (lifetime - 60) * 1000,
-              priv_turn_allocate_refresh_tick, cand);
+  /* step: also start the refresh timer */
+  /* refresh should be sent 1 minute before it expires */
+  cand->timer_source =
+      agent_timeout_add_with_context (agent, (lifetime - 60) * 1000,
+          priv_turn_allocate_refresh_tick, cand);
 
-      nice_debug ("timer source is : %d", cand->timer_source);
-    }
-  }
+  nice_debug ("timer source is : %d", cand->timer_source);
 
   return cand;
 }
