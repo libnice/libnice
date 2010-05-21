@@ -459,7 +459,6 @@ NiceCandidate *discovery_add_local_host_candidate (
   Component *component;
   Stream *stream;
   NiceSocket *udp_socket = NULL;
-  gboolean errors = FALSE;
 
   if (!agent_find_component (agent, stream_id, component_id, &stream, &component))
     return NULL;
@@ -483,40 +482,31 @@ NiceCandidate *discovery_add_local_host_candidate (
   /* note: candidate username and password are left NULL as stream
      level ufrag/password are used */
   udp_socket = nice_udp_bsd_socket_new (address);
-  if (udp_socket) {
-    gboolean result;
+  if (!udp_socket)
+    goto errors;
 
-    _priv_set_socket_tos (agent, udp_socket, stream->tos);
-    agent_attach_stream_component_socket (agent, stream,
-        component, udp_socket);
 
-    candidate->sockptr = udp_socket;
-    candidate->addr = udp_socket->addr;
-    candidate->base_addr = udp_socket->addr;
+  _priv_set_socket_tos (agent, udp_socket, stream->tos);
+  agent_attach_stream_component_socket (agent, stream,
+      component, udp_socket);
 
-    result = priv_add_local_candidate_pruned (component, candidate);
+  candidate->sockptr = udp_socket;
+  candidate->addr = udp_socket->addr;
+  candidate->base_addr = udp_socket->addr;
 
-    if (result == TRUE) {
-      component->sockets = g_slist_append (component->sockets, udp_socket);
-      agent_signal_new_candidate (agent, candidate);
-    } else {
-      /* error: duplicate candidates */
-      errors = TRUE;
-    }
-  } else {
-    /* error: socket new */
-    errors = TRUE;
-  }
+  if (!priv_add_local_candidate_pruned (component, candidate))
+    goto errors;
 
-  /* clean up after errors */
-  if (errors) {
-    if (candidate)
-      nice_candidate_free (candidate), candidate = NULL;
-    if (udp_socket)
-      nice_socket_free (udp_socket);
-  }
+  component->sockets = g_slist_append (component->sockets, udp_socket);
+  agent_signal_new_candidate (agent, candidate);
 
   return candidate;
+
+errors:
+  nice_candidate_free (candidate);
+  if (udp_socket)
+    nice_socket_free (udp_socket);
+  return NULL;
 }
 
 /*
