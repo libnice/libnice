@@ -52,27 +52,12 @@ stream_new (guint n_components)
 {
   Stream *stream;
   guint n;
-  gboolean errors = FALSE;
-  GSList *modified_list;
   Component *component;
 
   stream = g_slice_new0 (Stream);
   for (n = 0; n < n_components; n++) {
     component = component_new (n + 1);
-    if (component) {
-      modified_list = g_slist_append (stream->components, component);
-      if (modified_list)
-	stream->components = modified_list;
-      else 
-	errors = TRUE;
-    }
-    else
-      errors = TRUE;
-  }
-
-  if (errors) {
-    stream_free (stream);
-    return NULL;
+    stream->components = g_slist_append (stream->components, component);
   }
 
   stream->n_components = n_components;
