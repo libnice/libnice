@@ -663,7 +663,7 @@ discovery_add_relay_candidate (
  *
  * @return pointer to the created candidate, or NULL on error
  */
-NiceCandidate* 
+NiceCandidate*
 discovery_add_peer_reflexive_candidate (
   NiceAgent *agent,
   guint stream_id,
@@ -676,71 +676,69 @@ discovery_add_peer_reflexive_candidate (
   NiceCandidate *candidate;
   Component *component;
   Stream *stream;
+  gboolean result;
 
   if (!agent_find_component (agent, stream_id, component_id, &stream, &component))
     return NULL;
 
   candidate = nice_candidate_new (NICE_CANDIDATE_TYPE_PEER_REFLEXIVE);
-  if (candidate) {
-    gboolean result;
 
-    candidate->transport = NICE_CANDIDATE_TRANSPORT_UDP;
-    if (agent->compatibility == NICE_COMPATIBILITY_GOOGLE) {
-      candidate->priority = nice_candidate_jingle_priority (candidate);
-    } else if (agent->compatibility == NICE_COMPATIBILITY_MSN)  {
-      candidate->priority = nice_candidate_msn_priority (candidate);
-    } else {
-      candidate->priority = nice_candidate_ice_priority_full
+  candidate->transport = NICE_CANDIDATE_TRANSPORT_UDP;
+  if (agent->compatibility == NICE_COMPATIBILITY_GOOGLE) {
+    candidate->priority = nice_candidate_jingle_priority (candidate);
+  } else if (agent->compatibility == NICE_COMPATIBILITY_MSN)  {
+    candidate->priority = nice_candidate_msn_priority (candidate);
+  } else {
+    candidate->priority = nice_candidate_ice_priority_full
         (NICE_CANDIDATE_TYPE_PREF_PEER_REFLEXIVE, 0, component_id);
-    }
-    candidate->stream_id = stream_id;
-    candidate->component_id = component_id;
-    candidate->addr = *address;
-    candidate->base_addr = base_socket->addr;
+  }
+  candidate->stream_id = stream_id;
+  candidate->component_id = component_id;
+  candidate->addr = *address;
+  candidate->base_addr = base_socket->addr;
 
 
-    priv_assign_foundation (agent, candidate);
+  priv_assign_foundation (agent, candidate);
 
-    if (agent->compatibility == NICE_COMPATIBILITY_MSN &&
-	remote && local) {
-      guchar *new_username = NULL;
-      guchar *decoded_local = NULL;
-      guchar *decoded_remote = NULL;
-      gsize local_size;
-      gsize remote_size;
-      g_free(candidate->username);
-      g_free(candidate->password);
+  if (agent->compatibility == NICE_COMPATIBILITY_MSN &&
+      remote && local) {
+    guchar *new_username = NULL;
+    guchar *decoded_local = NULL;
+    guchar *decoded_remote = NULL;
+    gsize local_size;
+    gsize remote_size;
+    g_free(candidate->username);
+    g_free(candidate->password);
 
-      decoded_local = g_base64_decode (local->username, &local_size);
-      decoded_remote = g_base64_decode (remote->username, &remote_size);
+    decoded_local = g_base64_decode (local->username, &local_size);
+    decoded_remote = g_base64_decode (remote->username, &remote_size);
 
-      new_username = g_new0(guchar, local_size + remote_size);
-      memcpy(new_username, decoded_local, local_size);
-      memcpy(new_username + local_size, decoded_remote, remote_size);
+    new_username = g_new0(guchar, local_size + remote_size);
+    memcpy(new_username, decoded_local, local_size);
+    memcpy(new_username + local_size, decoded_remote, remote_size);
 
-      candidate->username = g_base64_encode (new_username, local_size + remote_size);
-      g_free(new_username);
-      g_free(decoded_local);
-      g_free(decoded_remote);
+    candidate->username = g_base64_encode (new_username, local_size + remote_size);
+    g_free(new_username);
+    g_free(decoded_local);
+    g_free(decoded_remote);
 
-      candidate->password = g_strdup(local->password);
-    } else if (local) {
-      g_free(candidate->username);
-      g_free(candidate->password);
+    candidate->password = g_strdup(local->password);
+  } else if (local) {
+    g_free(candidate->username);
+    g_free(candidate->password);
 
-      candidate->username = g_strdup(local->username);
-      candidate->password = g_strdup(local->password);
-    }
+    candidate->username = g_strdup(local->username);
+    candidate->password = g_strdup(local->password);
+  }
 
-    /* step: link to the base candidate+socket */
-    candidate->sockptr = base_socket;
-    candidate->base_addr = base_socket->addr;
+  /* step: link to the base candidate+socket */
+  candidate->sockptr = base_socket;
+  candidate->base_addr = base_socket->addr;
 
-    result = priv_add_local_candidate_pruned (component, candidate);
-    if (result != TRUE) {
-      /* error: memory allocation, or duplicate candidatet */
-      nice_candidate_free (candidate), candidate = NULL;
-    }
+  result = priv_add_local_candidate_pruned (component, candidate);
+  if (result != TRUE) {
+    /* error: memory allocation, or duplicate candidatet */
+    nice_candidate_free (candidate), candidate = NULL;
   }
 
   return candidate;
