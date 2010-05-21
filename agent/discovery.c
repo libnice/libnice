@@ -87,15 +87,12 @@ void discovery_free_item (gpointer data, gpointer user_data)
  */
 void discovery_free (NiceAgent *agent)
 {
-  if (agent->discovery_list) {
-    GSList *tmp = agent->discovery_list;
-    agent->discovery_list = NULL;
 
-    g_slist_foreach (tmp, discovery_free_item, NULL);
-    g_slist_free (tmp);
+  g_slist_foreach (agent->discovery_list, discovery_free_item, NULL);
+  g_slist_free (agent->discovery_list);
+  agent->discovery_list = NULL;
+  agent->discovery_unsched_items = 0;
 
-    agent->discovery_unsched_items = 0;
-  }
   if (agent->discovery_timer_source != NULL) {
     g_source_destroy (agent->discovery_timer_source);
     g_source_unref (agent->discovery_timer_source);
@@ -204,14 +201,9 @@ void refresh_free_item (gpointer data, gpointer user_data)
  */
 void refresh_free (NiceAgent *agent)
 {
-  if (agent->refresh_list) {
-    GSList *tmp = agent->refresh_list;
-    agent->refresh_list = NULL;
-
-    g_slist_foreach (tmp, refresh_free_item, NULL);
-    g_slist_free (tmp);
-
-  }
+  g_slist_foreach (agent->refresh_list, refresh_free_item, NULL);
+  g_slist_free (agent->refresh_list);
+  agent->refresh_list = NULL;
 }
 
 /*
