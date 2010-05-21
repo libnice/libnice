@@ -1976,47 +1976,43 @@ static gboolean priv_add_remote_candidate (
 
     candidate = nice_candidate_new (type);
     if (candidate) {
-      GSList *modified_list = g_slist_append (component->remote_candidates, candidate);
-      if (modified_list) {
-	component->remote_candidates = modified_list;
-	
-	candidate->stream_id = stream_id;
-	candidate->component_id = component_id;
+      component->remote_candidates = g_slist_append (component->remote_candidates,
+          candidate);
 
-	candidate->type = type;
-	if (addr)
-	  candidate->addr = *addr;
-	{
-	  gchar tmpbuf[INET6_ADDRSTRLEN] = {0};
-	  if(addr)
-            nice_address_to_string (addr, tmpbuf);
-	  nice_debug ("Agent %p : Adding remote candidate with addr [%s]:%u"
-              " for s%d/c%d. U/P '%s'/'%s' prio: %u", agent, tmpbuf,
-              addr? nice_address_get_port (addr) : 0, stream_id, component_id,
-              username, password, priority);
-	}
+      candidate->stream_id = stream_id;
+      candidate->component_id = component_id;
 
-	if (base_addr)
-	  candidate->base_addr = *base_addr;
-
-	candidate->transport = transport;
-	candidate->priority = priority;
-	candidate->username = g_strdup (username);
-	candidate->password = g_strdup (password);
-
-	if (foundation)
-	  g_strlcpy (candidate->foundation, foundation,
-              NICE_CANDIDATE_MAX_FOUNDATION);
-
-	if (conn_check_add_for_candidate (agent, stream_id, component, candidate) < 0)
-	  error_flag = TRUE;
+      candidate->type = type;
+      if (addr)
+        candidate->addr = *addr;
+      {
+        gchar tmpbuf[INET6_ADDRSTRLEN] = {0};
+        if(addr)
+          nice_address_to_string (addr, tmpbuf);
+        nice_debug ("Agent %p : Adding remote candidate with addr [%s]:%u"
+            " for s%d/c%d. U/P '%s'/'%s' prio: %u", agent, tmpbuf,
+            addr? nice_address_get_port (addr) : 0, stream_id, component_id,
+            username, password, priority);
       }
-      else /* memory alloc error: list insert */
-	error_flag = TRUE;
+
+      if (base_addr)
+        candidate->base_addr = *base_addr;
+
+      candidate->transport = transport;
+      candidate->priority = priority;
+      candidate->username = g_strdup (username);
+      candidate->password = g_strdup (password);
+
+      if (foundation)
+        g_strlcpy (candidate->foundation, foundation,
+            NICE_CANDIDATE_MAX_FOUNDATION);
+
+      if (conn_check_add_for_candidate (agent, stream_id, component, candidate) < 0)
+        error_flag = TRUE;
     }
     else /* memory alloc error: candidate creation */
       error_flag = TRUE;
-  }  
+  }
 
   if (error_flag) {
     if (candidate) 
