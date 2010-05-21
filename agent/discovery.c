@@ -542,34 +542,33 @@ discovery_add_server_reflexive_candidate (
     return NULL;
 
   candidate = nice_candidate_new (NICE_CANDIDATE_TYPE_SERVER_REFLEXIVE);
-  if (candidate) {
-    if (agent->compatibility == NICE_COMPATIBILITY_GOOGLE) {
-      candidate->priority = nice_candidate_jingle_priority (candidate);
-    } else if (agent->compatibility == NICE_COMPATIBILITY_MSN)  {
-      candidate->priority = nice_candidate_msn_priority (candidate);
-    } else {
-      candidate->priority =  nice_candidate_ice_priority_full
+
+  if (agent->compatibility == NICE_COMPATIBILITY_GOOGLE) {
+    candidate->priority = nice_candidate_jingle_priority (candidate);
+  } else if (agent->compatibility == NICE_COMPATIBILITY_MSN)  {
+    candidate->priority = nice_candidate_msn_priority (candidate);
+  } else {
+    candidate->priority =  nice_candidate_ice_priority_full
         (NICE_CANDIDATE_TYPE_PREF_SERVER_REFLEXIVE, 0, component_id);
-    }
-    candidate->stream_id = stream_id;
-    candidate->component_id = component_id;
-    candidate->addr = *address;
+  }
+  candidate->stream_id = stream_id;
+  candidate->component_id = component_id;
+  candidate->addr = *address;
 
-    /* step: link to the base candidate+socket */
-    candidate->sockptr = base_socket;
-    candidate->base_addr = base_socket->addr;
+  /* step: link to the base candidate+socket */
+  candidate->sockptr = base_socket;
+  candidate->base_addr = base_socket->addr;
 
-    priv_generate_candidate_credentials (agent, candidate);
-    priv_assign_foundation (agent, candidate);
+  priv_generate_candidate_credentials (agent, candidate);
+  priv_assign_foundation (agent, candidate);
 
-    result = priv_add_local_candidate_pruned (component, candidate);
-    if (result) {
-      agent_signal_new_candidate (agent, candidate);
-    }
-    else {
-      /* error: memory allocation, or duplicate candidatet */
-      nice_candidate_free (candidate), candidate = NULL;
-    }
+  result = priv_add_local_candidate_pruned (component, candidate);
+  if (result) {
+    agent_signal_new_candidate (agent, candidate);
+  }
+  else {
+    /* error: duplicate candidate */
+    nice_candidate_free (candidate), candidate = NULL;
   }
 
   return candidate;
