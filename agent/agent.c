@@ -1439,49 +1439,42 @@ nice_agent_add_stream (
   guint n_components)
 {
   Stream *stream;
-  GSList *modified_list = NULL;
   guint ret = 0;
   guint i;
 
   agent_lock();
   stream = stream_new (n_components);
   if (stream) {
-    modified_list = g_slist_append (agent->streams, stream);
-    if (modified_list) {
-      stream->id = agent->next_stream_id++;
-      nice_debug ("Agent %p : allocating stream id %u (%p)", agent, stream->id, stream);
-      if (agent->reliable) {
-        nice_debug ("Agent %p : reliable stream", agent);
-        for (i = 0; i < n_components; i++) {
-          Component *component = stream_find_component_by_id (stream, i + 1);
-          if (component) {
-            TcpUserData *data = g_slice_new0 (TcpUserData);
-            PseudoTcpCallbacks tcp_callbacks = {data,
-                                                pseudo_tcp_socket_opened,
-                                                pseudo_tcp_socket_readable,
-                                                pseudo_tcp_socket_writable,
-                                                pseudo_tcp_socket_closed,
-                                                pseudo_tcp_socket_write_packet};
-            data->agent = agent;
-            data->stream = stream;
-            data->component = component;
-            component->tcp_data = data;
-            component->tcp = pseudo_tcp_socket_new (0, &tcp_callbacks);
-            adjust_tcp_clock (agent, stream, component);
-            nice_debug ("Agent %p: Create Pseudo Tcp Socket for component %d",
-                agent, i+1);
-          } else {
-            nice_debug ("Agent %p: couldn't find component %d", agent, i+1);
-          }
+    agent->streams = g_slist_append (agent->streams, stream);
+    stream->id = agent->next_stream_id++;
+    nice_debug ("Agent %p : allocating stream id %u (%p)", agent, stream->id, stream);
+    if (agent->reliable) {
+      nice_debug ("Agent %p : reliable stream", agent);
+      for (i = 0; i < n_components; i++) {
+        Component *component = stream_find_component_by_id (stream, i + 1);
+        if (component) {
+          TcpUserData *data = g_slice_new0 (TcpUserData);
+          PseudoTcpCallbacks tcp_callbacks = {data,
+                                              pseudo_tcp_socket_opened,
+                                              pseudo_tcp_socket_readable,
+                                              pseudo_tcp_socket_writable,
+                                              pseudo_tcp_socket_closed,
+                                              pseudo_tcp_socket_write_packet};
+          data->agent = agent;
+          data->stream = stream;
+          data->component = component;
+          component->tcp_data = data;
+          component->tcp = pseudo_tcp_socket_new (0, &tcp_callbacks);
+          adjust_tcp_clock (agent, stream, component);
+          nice_debug ("Agent %p: Create Pseudo Tcp Socket for component %d",
+              agent, i+1);
+        } else {
+          nice_debug ("Agent %p: couldn't find component %d", agent, i+1);
         }
       }
-
-      stream_initialize_credentials (stream, agent->rng);
-
-      agent->streams = modified_list;
     }
-    else
-      stream_free (stream);
+
+    stream_initialize_credentials (stream, agent->rng);
   }
 
   ret = stream->id;
