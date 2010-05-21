@@ -770,76 +770,67 @@ NiceCandidate *discovery_learn_remote_peer_reflexive_candidate (
   (void)udp_socket;
 
   candidate = nice_candidate_new (NICE_CANDIDATE_TYPE_PEER_REFLEXIVE);
-  if (candidate) {
-    GSList *modified_list;
 
-    candidate->transport = NICE_CANDIDATE_TRANSPORT_UDP;
-    candidate->addr = *remote_address;
-    candidate->base_addr = *remote_address;
+  candidate->transport = NICE_CANDIDATE_TRANSPORT_UDP;
+  candidate->addr = *remote_address;
+  candidate->base_addr = *remote_address;
 
-    /* if the check didn't contain the PRIORITY attribute, then the priority will
-     * be 0, which is invalid... */
-    if (priority != 0) {
-      candidate->priority = priority;
-    } else if (agent->compatibility == NICE_COMPATIBILITY_GOOGLE) {
-      candidate->priority = nice_candidate_jingle_priority (candidate);
-    } else if (agent->compatibility == NICE_COMPATIBILITY_MSN)  {
-      candidate->priority = nice_candidate_msn_priority (candidate);
-    } else {
-      candidate->priority = nice_candidate_ice_priority_full
+  /* if the check didn't contain the PRIORITY attribute, then the priority will
+   * be 0, which is invalid... */
+  if (priority != 0) {
+    candidate->priority = priority;
+  } else if (agent->compatibility == NICE_COMPATIBILITY_GOOGLE) {
+    candidate->priority = nice_candidate_jingle_priority (candidate);
+  } else if (agent->compatibility == NICE_COMPATIBILITY_MSN)  {
+    candidate->priority = nice_candidate_msn_priority (candidate);
+  } else {
+    candidate->priority = nice_candidate_ice_priority_full
         (NICE_CANDIDATE_TYPE_PREF_PEER_REFLEXIVE, 0, component->id);
-    }
-    candidate->stream_id = stream->id;
-    candidate->component_id = component->id;
-
-
-    priv_assign_remote_foundation (agent, candidate);
-
-    if (agent->compatibility == NICE_COMPATIBILITY_MSN &&
-	remote && local) {
-      guchar *new_username = NULL;
-      guchar *decoded_local = NULL;
-      guchar *decoded_remote = NULL;
-      gsize local_size;
-      gsize remote_size;
-      g_free(candidate->username);
-      g_free (candidate->password);
-
-      decoded_local = g_base64_decode (local->username, &local_size);
-      decoded_remote = g_base64_decode (remote->username, &remote_size);
-
-      new_username = g_new0(guchar, local_size + remote_size);
-      memcpy(new_username, decoded_remote, remote_size);
-      memcpy(new_username + remote_size, decoded_local, local_size);
-
-      candidate->username = g_base64_encode (new_username, local_size + remote_size);
-      g_free(new_username);
-      g_free(decoded_local);
-      g_free(decoded_remote);
-
-      candidate->password = g_strdup(remote->password);
-    } else if (remote) {
-      g_free (candidate->username);
-      g_free (candidate->password);
-      candidate->username = g_strdup(remote->username);
-      candidate->password = g_strdup(remote->password);
-    }
-
-
-    candidate->sockptr = NULL; /* not stored for remote candidates */
-    /* note: candidate username and password are left NULL as stream 
-             level ufrag/password are used */
-
-    modified_list = g_slist_append (component->remote_candidates,
-				    candidate);
-    if (modified_list) {
-      component->remote_candidates = modified_list;
-      agent_signal_new_remote_candidate (agent, candidate);
-    }
-    else { /* error: memory alloc / list */
-      nice_candidate_free (candidate), candidate = NULL;
-    }
   }
+  candidate->stream_id = stream->id;
+  candidate->component_id = component->id;
+
+
+  priv_assign_remote_foundation (agent, candidate);
+
+  if (agent->compatibility == NICE_COMPATIBILITY_MSN &&
+      remote && local) {
+    guchar *new_username = NULL;
+    guchar *decoded_local = NULL;
+    guchar *decoded_remote = NULL;
+    gsize local_size;
+    gsize remote_size;
+    g_free(candidate->username);
+    g_free (candidate->password);
+
+    decoded_local = g_base64_decode (local->username, &local_size);
+    decoded_remote = g_base64_decode (remote->username, &remote_size);
+
+    new_username = g_new0(guchar, local_size + remote_size);
+    memcpy(new_username, decoded_remote, remote_size);
+    memcpy(new_username + remote_size, decoded_local, local_size);
+
+    candidate->username = g_base64_encode (new_username, local_size + remote_size);
+    g_free(new_username);
+    g_free(decoded_local);
+    g_free(decoded_remote);
+
+    candidate->password = g_strdup(remote->password);
+  } else if (remote) {
+    g_free (candidate->username);
+    g_free (candidate->password);
+    candidate->username = g_strdup(remote->username);
+    candidate->password = g_strdup(remote->password);
+  }
+
+  candidate->sockptr = NULL; /* not stored for remote candidates */
+  /* note: candidate username and password are left NULL as stream 
+     level ufrag/password are used */
+
+  component->remote_candidates = g_slist_append (component->remote_candidates,
+      candidate);
+
+  agent_signal_new_remote_candidate (agent, candidate);
 
   return candidate;
 }
