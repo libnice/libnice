@@ -1300,35 +1300,28 @@ priv_add_new_candidate_discovery_stun (NiceAgent *agent,
     Stream *stream, guint component_id)
 {
   CandidateDiscovery *cdisco;
-  GSList *modified_list;
 
   /* note: no need to check for redundant candidates, as this is
    *       done later on in the process */
 
   cdisco = g_slice_new0 (CandidateDiscovery);
-  if (cdisco) {
-    modified_list = g_slist_append (agent->discovery_list, cdisco);
 
-    if (modified_list) {
-      cdisco->type = NICE_CANDIDATE_TYPE_SERVER_REFLEXIVE;
-      cdisco->nicesock = socket;
-      cdisco->server = server;
-      cdisco->stream = stream;
-      cdisco->component = stream_find_component_by_id (stream, component_id);
-      cdisco->agent = agent;
-      stun_agent_init (&cdisco->stun_agent, STUN_ALL_KNOWN_ATTRIBUTES,
-          STUN_COMPATIBILITY_RFC3489, 0);
+  cdisco->type = NICE_CANDIDATE_TYPE_SERVER_REFLEXIVE;
+  cdisco->nicesock = socket;
+  cdisco->server = server;
+  cdisco->stream = stream;
+  cdisco->component = stream_find_component_by_id (stream, component_id);
+  cdisco->agent = agent;
+  stun_agent_init (&cdisco->stun_agent, STUN_ALL_KNOWN_ATTRIBUTES,
+      STUN_COMPATIBILITY_RFC3489, 0);
 
-      nice_debug ("Agent %p : Adding new srv-rflx candidate discovery %p\n",
-          agent, cdisco);
-      agent->discovery_list = modified_list;
-      ++agent->discovery_unsched_items;
-    }
+  nice_debug ("Agent %p : Adding new srv-rflx candidate discovery %p\n",
+      agent, cdisco);
 
-    return TRUE;
-  }
+  agent->discovery_list = g_slist_append (agent->discovery_list, cdisco);
+  ++agent->discovery_unsched_items;
 
-  return FALSE;
+  return TRUE;
 }
 
 static gboolean
