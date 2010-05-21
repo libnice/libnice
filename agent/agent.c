@@ -1294,7 +1294,7 @@ agent_candidate_pair_priority (NiceAgent *agent, NiceCandidate *local, NiceCandi
     return nice_candidate_pair_priority (remote->priority, local->priority);
 }
 
-static gboolean
+static void
 priv_add_new_candidate_discovery_stun (NiceAgent *agent,
     NiceSocket *socket, NiceAddress server,
     Stream *stream, guint component_id)
@@ -1320,11 +1320,9 @@ priv_add_new_candidate_discovery_stun (NiceAgent *agent,
 
   agent->discovery_list = g_slist_append (agent->discovery_list, cdisco);
   ++agent->discovery_unsched_items;
-
-  return TRUE;
 }
 
-static gboolean
+static void
 priv_add_new_candidate_discovery_turn (NiceAgent *agent,
     NiceSocket *socket, TurnServer *turn,
     Stream *stream, guint component_id)
@@ -1391,8 +1389,7 @@ priv_add_new_candidate_discovery_turn (NiceAgent *agent,
         agent_to_turn_socket_compatibility (agent));
 
     if (!cdisco->nicesock) {
-      g_slice_free (CandidateDiscovery, cdisco);
-      return FALSE;
+      g_error ("Could not create tcp turn socket");
     }
 
     agent_attach_stream_component_socket (agent, stream,
@@ -1429,8 +1426,6 @@ priv_add_new_candidate_discovery_turn (NiceAgent *agent,
       agent, cdisco);
   agent->discovery_list = g_slist_append (agent->discovery_list, cdisco);
   ++agent->discovery_unsched_items;
-
-  return TRUE;
 }
 
 NICEAPI_EXPORT guint
@@ -1772,20 +1767,13 @@ nice_agent_gather_candidates (
           agent->stun_server_ip) {
         NiceAddress stun_server;
         if (nice_address_set_from_string (&stun_server, agent->stun_server_ip)) {
-          gboolean res;
           nice_address_set_port (&stun_server, agent->stun_server_port);
 
-          res =
-              priv_add_new_candidate_discovery_stun (agent,
-                  host_candidate->sockptr,
-                  stun_server,
-                  stream,
-                  n + 1);
-
-          if (res != TRUE) {
-            /* note: memory allocation failure, return error */
-            g_error ("Memory allocation failure?");
-          }
+          priv_add_new_candidate_discovery_stun (agent,
+              host_candidate->sockptr,
+              stun_server,
+              stream,
+              n + 1);
         }
       }
 
@@ -1795,17 +1783,11 @@ nice_agent_gather_candidates (
         for (item = component->turn_servers; item; item = item->next) {
           TurnServer *turn = item->data;
 
-          gboolean res =
-              priv_add_new_candidate_discovery_turn (agent,
-                  host_candidate->sockptr,
-                  turn,
-                  stream,
-                  n + 1);
-
-          if (res != TRUE) {
-            /* note: memory allocation failure, return error */
-            g_error ("Memory allocation failure?");
-          }
+          priv_add_new_candidate_discovery_turn (agent,
+              host_candidate->sockptr,
+              turn,
+              stream,
+              n + 1);
         }
       }
     }
@@ -2440,14 +2422,13 @@ io_ctx_new (
   IOCtx *ctx;
 
   ctx = g_slice_new0 (IOCtx);
-  if (ctx) {
-    ctx->agent = agent;
-    ctx->stream = stream;
-    ctx->component = component;
-    ctx->socket = socket;
-    ctx->channel = channel;
-    ctx->source = source;
-  }
+  ctx->agent = agent;
+  ctx->stream = stream;
+  ctx->component = component;
+  ctx->socket = socket;
+  ctx->channel = channel;
+  ctx->source = source;
+
   return ctx;
 }
 
