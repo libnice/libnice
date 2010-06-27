@@ -171,7 +171,7 @@ nice_interfaces_get_local_ips (gboolean include_loopback)
 {
   GList *ips = NULL;
   struct ifaddrs *ifa, *results;
-  gchar *loopback = NULL;
+  GList *loopbacks = NULL;
 
 
   if (getifaddrs (&results) < 0)
@@ -212,7 +212,7 @@ nice_interfaces_get_local_ips (gboolean include_loopback)
     nice_debug ("IP Address: %s", addr_as_string);
     if ((ifa->ifa_flags & IFF_LOOPBACK) == IFF_LOOPBACK) {
       if (include_loopback)
-        loopback = g_strdup (addr_as_string);
+        loopbacks = g_list_append (loopbacks, g_strdup (addr_as_string));
       else
         nice_debug ("Ignoring loopback interface");
     } else {
@@ -225,8 +225,8 @@ nice_interfaces_get_local_ips (gboolean include_loopback)
 
   freeifaddrs (results);
 
-  if (loopback)
-    ips = g_list_append (ips, loopback);
+  if (loopbacks)
+    ips = g_list_concat (ips, loopbacks);
 
   return ips;
 }
