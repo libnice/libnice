@@ -90,6 +90,12 @@ nice_udp_bsd_socket_new (NiceAddress *addr)
 #ifdef HAVE_SA_LEN
     name.ss_len = sizeof (struct sockaddr_in);
 #endif
+  } else if (name.ss_family == AF_INET6) {
+    sockfd = socket (PF_INET6, SOCK_DGRAM, IPPROTO_UDP);
+    name.ss_family = AF_INET6;
+#ifdef HAVE_SA_LEN
+    name.ss_len = sizeof (struct sockaddr_in6);
+#endif
   }
 
   if (sockfd == -1) {
