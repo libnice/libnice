@@ -83,7 +83,7 @@ uint32_t stun_fingerprint (const uint8_t *msg, size_t len,
   /* first 4 bytes done, last 8 bytes not summed */
   data[2].len = len - 12u;
 
-  return htonl (crc32 (data, 3, wlm2009_stupid_crc32_typo) ^ 0x5354554e);
+  return htonl (stun_crc32 (data, 3, wlm2009_stupid_crc32_typo) ^ 0x5354554e);
 }
 
 bool stun_message_has_cookie (const StunMessage *msg)
