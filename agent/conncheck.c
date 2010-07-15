@@ -1642,9 +1642,9 @@ int conn_check_send (NiceAgent *agent, CandidateCheckPair *pair)
   {
     gchar tmpbuf[INET6_ADDRSTRLEN];
     nice_address_to_string (&pair->remote->addr, tmpbuf);
-    nice_debug ("Agent %p : STUN-CC REQ to '%s:%u', socket=%u, pair=%s (c-id:%u), tie=%llu, username='%s' (%d), password='%s' (%d), priority=%u.", agent, 
+    nice_debug ("Agent %p : STUN-CC REQ to '%s:%u', socket=%u, pair=%s (c-id:%u), tie=%llu, username='%s' (%d), password='%s' (%d), priority=%u.", agent,
 	     tmpbuf,
-             ntohs(nice_address_get_port (&pair->remote->addr)), 
+             nice_address_get_port (&pair->remote->addr),
              ((NiceSocket *)pair->local->sockptr)->fileno,
 	     pair->foundation, pair->component_id,
 	     (unsigned long long)agent->tie_breaker,
