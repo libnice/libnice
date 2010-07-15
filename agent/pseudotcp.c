@@ -804,7 +804,8 @@ packet(PseudoTcpSocket *self, guint32 seq, guint8 flags,
   *((uint32_t *) (buffer + 20)) = htonl(priv->ts_recent);
   priv->ts_lastack = priv->rcv_nxt;
 
-  memcpy(buffer + HEADER_SIZE, data, len);
+  if (data != NULL)
+    memcpy(buffer + HEADER_SIZE, data, len);
 
   DEBUG (PSEUDO_TCP_DEBUG_VERBOSE, "<-- <CONV=%d><FLG=%d><SEQ=%d:%d><ACK=%d>"
       "<WND=%d><TS=%d><TSR=%d><LEN=%d>",

@@ -1652,7 +1652,7 @@ int conn_check_send (NiceAgent *agent, CandidateCheckPair *pair)
 
   }
 
-  if (cand_use) 
+  if (cand_use)
     pair->nominated = controlling;
 
   if (uname_len > 0) {
