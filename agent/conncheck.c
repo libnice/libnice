@@ -2577,7 +2577,7 @@ static bool conncheck_stun_validater (StunAgent *agent,
 
       if (cand->password)
         pass = cand->password;
-      else if(data->stream->local_password)
+      else if(data->stream->local_password[0])
         pass = data->stream->local_password;
 
       if (pass) {
