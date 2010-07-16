@@ -2181,8 +2181,6 @@ nice_agent_set_remote_candidates (NiceAgent *agent, guint stream_id, guint compo
              d->foundation);
      if (res)
        ++added;
-     else
-       added = -1;
    }
  }
 
