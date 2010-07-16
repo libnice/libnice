@@ -2023,7 +2023,7 @@ static gboolean priv_add_remote_candidate (
       GSList *modified_list = g_slist_append (component->remote_candidates, candidate);
       if (modified_list) {
 	component->remote_candidates = modified_list;
-	
+
 	candidate->stream_id = stream_id;
 	candidate->component_id = component_id;
 
@@ -2165,22 +2165,25 @@ nice_agent_set_remote_candidates (NiceAgent *agent, guint stream_id, guint compo
 
  for (i = candidates; i && added >= 0; i = i->next) {
    NiceCandidate *d = (NiceCandidate*) i->data;
-   gboolean res = 
-     priv_add_remote_candidate (agent,
-				stream_id,
-				component_id,
-				d->type,
-				&d->addr,
-				&d->base_addr,
-				d->transport,
-				d->priority,
-                                d->username,
-				d->password,
-				d->foundation);
-   if (res)
-     ++added;
-   else 
-     added = -1;
+
+   if (nice_address_is_valid (&d->addr) == TRUE) {
+     gboolean res =
+         priv_add_remote_candidate (agent,
+             stream_id,
+             component_id,
+             d->type,
+             &d->addr,
+             &d->base_addr,
+             d->transport,
+             d->priority,
+             d->username,
+             d->password,
+             d->foundation);
+     if (res)
+       ++added;
+     else
+       added = -1;
+   }
  }
 
  conn_check_remote_candidates_set(agent);
