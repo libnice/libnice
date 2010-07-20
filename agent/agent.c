@@ -1662,7 +1662,7 @@ static void _upnp_error_mapping_port (GUPnPSimpleIgd *self, GError *error,
 
 #endif
 
-NICEAPI_EXPORT void
+NICEAPI_EXPORT gboolean
 nice_agent_gather_candidates (
   NiceAgent *agent,
   guint stream_id)
@@ -1747,8 +1747,8 @@ nice_agent_gather_candidates (
           n + 1, addr);
 
       if (!host_candidate) {
-        g_error ("No host candidate??");
-        break;
+        g_warning ("No host candidate??");
+        return FALSE;
       }
 
 #ifdef HAVE_GUPNP
@@ -1809,6 +1809,8 @@ nice_agent_gather_candidates (
  done:
 
   agent_unlock();
+
+  return TRUE;
 }
 
 static void priv_free_upnp (NiceAgent *agent)
