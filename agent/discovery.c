@@ -87,15 +87,12 @@ void discovery_free_item (gpointer data, gpointer user_data)
  */
 void discovery_free (NiceAgent *agent)
 {
-  if (agent->discovery_list) {
-    GSList *tmp = agent->discovery_list;
-    agent->discovery_list = NULL;
 
-    g_slist_foreach (tmp, discovery_free_item, NULL);
-    g_slist_free (tmp);
+  g_slist_foreach (agent->discovery_list, discovery_free_item, NULL);
+  g_slist_free (agent->discovery_list);
+  agent->discovery_list = NULL;
+  agent->discovery_unsched_items = 0;
 
-    agent->discovery_unsched_items = 0;
-  }
   if (agent->discovery_timer_source != NULL) {
     g_source_destroy (agent->discovery_timer_source);
     g_source_unref (agent->discovery_timer_source);
@@ -204,14 +201,9 @@ void refresh_free_item (gpointer data, gpointer user_data)
  */
 void refresh_free (NiceAgent *agent)
 {
-  if (agent->refresh_list) {
-    GSList *tmp = agent->refresh_list;
-    agent->refresh_list = NULL;
-
-    g_slist_foreach (tmp, refresh_free_item, NULL);
-    g_slist_free (tmp);
-
-  }
+  g_slist_foreach (agent->refresh_list, refresh_free_item, NULL);
+  g_slist_free (agent->refresh_list);
+  agent->refresh_list = NULL;
 }
 
 /*
@@ -252,11 +244,11 @@ void refresh_cancel (CandidateRefresh *refresh)
  */
 static gboolean priv_add_local_candidate_pruned (Component *component, NiceCandidate *candidate)
 {
-  GSList *modified_list, *i;
+  GSList *i;
 
   for (i = component->local_candidates; i ; i = i->next) {
     NiceCandidate *c = i->data;
-    
+
     if (nice_address_equal (&c->base_addr, &candidate->base_addr) &&
 	nice_address_equal (&c->addr, &candidate->addr)) {
       nice_debug ("Candidate %p (component-id %u) redundant, ignoring.", candidate, component->id);
@@ -264,11 +256,8 @@ static gboolean priv_add_local_candidate_pruned (Component *component, NiceCandi
     }
   }
 
-  modified_list = g_slist_append (component->local_candidates,
-				 candidate);
-  if (modified_list) {
-    component->local_candidates = modified_list;
-  }
+  component->local_candidates = g_slist_append (component->local_candidates,
+      candidate);
 
   return TRUE;
 }
@@ -418,10 +407,8 @@ void priv_generate_candidate_credentials (NiceAgent *agent,
     guchar username[32];
     guchar password[16];
 
-    if (candidate->username)
-      g_free (candidate->username);
-    if (candidate->password)
-      g_free (candidate->password);
+    g_free (candidate->username);
+    g_free (candidate->password);
 
     nice_rng_generate_bytes (agent->rng, 32, (gchar *)username);
     nice_rng_generate_bytes (agent->rng, 16, (gchar *)password);
@@ -432,10 +419,8 @@ void priv_generate_candidate_credentials (NiceAgent *agent,
   } else if (agent->compatibility == NICE_COMPATIBILITY_GOOGLE) {
     gchar username[16];
 
-    if (candidate->username)
-      g_free (candidate->username);
-    if (candidate->password)
-      g_free (candidate->password);
+    g_free (candidate->username);
+    g_free (candidate->password);
     candidate->password = NULL;
 
     nice_rng_generate_bytes_print (agent->rng, 16, (gchar *)username);
@@ -462,72 +447,54 @@ NiceCandidate *discovery_add_local_host_candidate (
   Component *component;
   Stream *stream;
   NiceSocket *udp_socket = NULL;
-  gboolean errors = FALSE;
 
   if (!agent_find_component (agent, stream_id, component_id, &stream, &component))
     return NULL;
 
   candidate = nice_candidate_new (NICE_CANDIDATE_TYPE_HOST);
-  if (candidate) {
-    candidate->stream_id = stream_id;
-    candidate->component_id = component_id;
-    candidate->addr = *address;
-    candidate->base_addr = *address;
-    if (agent->compatibility == NICE_COMPATIBILITY_GOOGLE) {
-      candidate->priority = nice_candidate_jingle_priority (candidate);
-    } else if (agent->compatibility == NICE_COMPATIBILITY_MSN)  {
-      candidate->priority = nice_candidate_msn_priority (candidate);
-    } else {
-      candidate->priority = nice_candidate_ice_priority (candidate);
-    }
-
-    priv_generate_candidate_credentials (agent, candidate);
-    priv_assign_foundation (agent, candidate);
-
-      /* note: candidate username and password are left NULL as stream
-	 level ufrag/password are used */
-    udp_socket = nice_udp_bsd_socket_new (address);
-    if (udp_socket) {
-      gboolean result;
-
-      _priv_set_socket_tos (agent, udp_socket, stream->tos);
-      agent_attach_stream_component_socket (agent, stream,
-          component, udp_socket);
-
-      candidate->sockptr = udp_socket;
-      candidate->addr = udp_socket->addr;
-      candidate->base_addr = udp_socket->addr;
-
-      result = priv_add_local_candidate_pruned (component, candidate);
-
-      if (result == TRUE) {
-        GSList *modified_list = g_slist_append (component->sockets, udp_socket);
-        if (modified_list) {
-          /* success: store a pointer to the sockaddr */
-          component->sockets = modified_list;
-          agent_signal_new_candidate (agent, candidate);
-        } else { /* error: list memory allocation */
-          candidate = NULL; /* note: candidate already owned by component */
-        }
-      } else {
-        /* error: memory allocation, or duplicate candidates */
-        errors = TRUE;
-      }
-    } else {
-      /* error: socket new */
-      errors = TRUE;
-    }
+  candidate->stream_id = stream_id;
+  candidate->component_id = component_id;
+  candidate->addr = *address;
+  candidate->base_addr = *address;
+  if (agent->compatibility == NICE_COMPATIBILITY_GOOGLE) {
+    candidate->priority = nice_candidate_jingle_priority (candidate);
+  } else if (agent->compatibility == NICE_COMPATIBILITY_MSN)  {
+    candidate->priority = nice_candidate_msn_priority (candidate);
+  } else {
+    candidate->priority = nice_candidate_ice_priority (candidate);
   }
 
-  /* clean up after errors */
-  if (errors) {
-    if (candidate)
-      nice_candidate_free (candidate), candidate = NULL;
-    if (udp_socket)
-      nice_socket_free (udp_socket);
-  }
+  priv_generate_candidate_credentials (agent, candidate);
+  priv_assign_foundation (agent, candidate);
+
+  /* note: candidate username and password are left NULL as stream
+     level ufrag/password are used */
+  udp_socket = nice_udp_bsd_socket_new (address);
+  if (!udp_socket)
+    goto errors;
+
+
+  _priv_set_socket_tos (agent, udp_socket, stream->tos);
+  agent_attach_stream_component_socket (agent, stream,
+      component, udp_socket);
+
+  candidate->sockptr = udp_socket;
+  candidate->addr = udp_socket->addr;
+  candidate->base_addr = udp_socket->addr;
+
+  if (!priv_add_local_candidate_pruned (component, candidate))
+    goto errors;
+
+  component->sockets = g_slist_append (component->sockets, udp_socket);
+  agent_signal_new_candidate (agent, candidate);
 
   return candidate;
+
+errors:
+  nice_candidate_free (candidate);
+  if (udp_socket)
+    nice_socket_free (udp_socket);
+  return NULL;
 }
 
 /*
@@ -553,34 +520,33 @@ discovery_add_server_reflexive_candidate (
     return NULL;
 
   candidate = nice_candidate_new (NICE_CANDIDATE_TYPE_SERVER_REFLEXIVE);
-  if (candidate) {
-    if (agent->compatibility == NICE_COMPATIBILITY_GOOGLE) {
-      candidate->priority = nice_candidate_jingle_priority (candidate);
-    } else if (agent->compatibility == NICE_COMPATIBILITY_MSN)  {
-      candidate->priority = nice_candidate_msn_priority (candidate);
-    } else {
-      candidate->priority =  nice_candidate_ice_priority_full
+
+  if (agent->compatibility == NICE_COMPATIBILITY_GOOGLE) {
+    candidate->priority = nice_candidate_jingle_priority (candidate);
+  } else if (agent->compatibility == NICE_COMPATIBILITY_MSN)  {
+    candidate->priority = nice_candidate_msn_priority (candidate);
+  } else {
+    candidate->priority =  nice_candidate_ice_priority_full
         (NICE_CANDIDATE_TYPE_PREF_SERVER_REFLEXIVE, 0, component_id);
-    }
-    candidate->stream_id = stream_id;
-    candidate->component_id = component_id;
-    candidate->addr = *address;
+  }
+  candidate->stream_id = stream_id;
+  candidate->component_id = component_id;
+  candidate->addr = *address;
 
-    /* step: link to the base candidate+socket */
-    candidate->sockptr = base_socket;
-    candidate->base_addr = base_socket->addr;
+  /* step: link to the base candidate+socket */
+  candidate->sockptr = base_socket;
+  candidate->base_addr = base_socket->addr;
 
-    priv_generate_candidate_credentials (agent, candidate);
-    priv_assign_foundation (agent, candidate);
+  priv_generate_candidate_credentials (agent, candidate);
+  priv_assign_foundation (agent, candidate);
 
-    result = priv_add_local_candidate_pruned (component, candidate);
-    if (result) {
-      agent_signal_new_candidate (agent, candidate);
-    }
-    else {
-      /* error: memory allocation, or duplicate candidatet */
-      nice_candidate_free (candidate), candidate = NULL;
-    }
+  result = priv_add_local_candidate_pruned (component, candidate);
+  if (result) {
+    agent_signal_new_candidate (agent, candidate);
+  }
+  else {
+    /* error: duplicate candidate */
+    nice_candidate_free (candidate), candidate = NULL;
   }
 
   return candidate;
@@ -605,76 +571,60 @@ discovery_add_relay_candidate (
   NiceCandidate *candidate;
   Component *component;
   Stream *stream;
-  gboolean result = FALSE;
-  gboolean errors = FALSE;
   NiceSocket *relay_socket = NULL;
 
   if (!agent_find_component (agent, stream_id, component_id, &stream, &component))
     return NULL;
 
   candidate = nice_candidate_new (NICE_CANDIDATE_TYPE_RELAYED);
-  if (candidate) {
-    if (agent->compatibility == NICE_COMPATIBILITY_GOOGLE) {
-      candidate->priority = nice_candidate_jingle_priority (candidate);
-    } else if (agent->compatibility == NICE_COMPATIBILITY_MSN)  {
-      candidate->priority = nice_candidate_msn_priority (candidate);
-    } else {
-      candidate->priority =  nice_candidate_ice_priority_full
-          (NICE_CANDIDATE_TYPE_PREF_RELAYED, 0, component_id);
-    }
-    candidate->stream_id = stream_id;
-    candidate->component_id = component_id;
-    candidate->addr = *address;
-    candidate->turn = turn;
 
-    /* step: link to the base candidate+socket */
-    relay_socket = nice_turn_socket_new (agent, address,
-        base_socket, &turn->server,
-        turn->username, turn->password,
-        agent_to_turn_socket_compatibility (agent));
-    if (relay_socket) {
-      candidate->sockptr = relay_socket;
-      candidate->base_addr = base_socket->addr;
-
-      priv_generate_candidate_credentials (agent, candidate);
-
-      /* Google uses the turn username as the candidate username */
-      if (agent->compatibility == NICE_COMPATIBILITY_GOOGLE) {
-        g_free (candidate->username);
-        candidate->username = g_strdup (turn->username);
-      }
-
-      priv_assign_foundation (agent, candidate);
-
-      result = priv_add_local_candidate_pruned (component, candidate);
-      if (result) {
-        GSList *modified_list = g_slist_append (component->sockets, relay_socket);
-        if (modified_list) {
-          /* success: store a pointer to the sockaddr */
-          component->sockets = modified_list;
-        }
-        agent_signal_new_candidate (agent, candidate);
-      } else {
-        /* error: memory allocation, or duplicate candidate */
-        errors = TRUE;
-      }
-    } else {
-      /* error: socket factory make */
-      errors = TRUE;
-    }
+  if (agent->compatibility == NICE_COMPATIBILITY_GOOGLE) {
+    candidate->priority = nice_candidate_jingle_priority (candidate);
+  } else if (agent->compatibility == NICE_COMPATIBILITY_MSN)  {
+    candidate->priority = nice_candidate_msn_priority (candidate);
   } else {
-    /* error: udp socket memory allocation */
-    errors = TRUE;
+    candidate->priority =  nice_candidate_ice_priority_full
+        (NICE_CANDIDATE_TYPE_PREF_RELAYED, 0, component_id);
+  }
+  candidate->stream_id = stream_id;
+  candidate->component_id = component_id;
+  candidate->addr = *address;
+  candidate->turn = turn;
+
+  /* step: link to the base candidate+socket */
+  relay_socket = nice_turn_socket_new (agent, address,
+      base_socket, &turn->server,
+      turn->username, turn->password,
+      agent_to_turn_socket_compatibility (agent));
+  if (!relay_socket)
+    goto errors;
+
+  candidate->sockptr = relay_socket;
+  candidate->base_addr = base_socket->addr;
+
+  priv_generate_candidate_credentials (agent, candidate);
+
+  /* Google uses the turn username as the candidate username */
+  if (agent->compatibility == NICE_COMPATIBILITY_GOOGLE) {
+    g_free (candidate->username);
+    candidate->username = g_strdup (turn->username);
   }
 
-  /* clean up after errors */
-  if (errors) {
-    if (candidate)
-      nice_candidate_free (candidate), candidate = NULL;
-    if (relay_socket)
-      nice_socket_free (relay_socket);
-  }
+  priv_assign_foundation (agent, candidate);
+
+  if (!priv_add_local_candidate_pruned (component, candidate))
+    goto errors;
+
+  component->sockets = g_slist_append (component->sockets, relay_socket);
+  agent_signal_new_candidate (agent, candidate);
+
   return candidate;
+
+errors:
+  nice_candidate_free (candidate);
+  if (relay_socket)
+    nice_socket_free (relay_socket);
+  return NULL;
 }
 
 /*
@@ -683,7 +633,7 @@ discovery_add_relay_candidate (
  *
  * @return pointer to the created candidate, or NULL on error
  */
-NiceCandidate* 
+NiceCandidate*
 discovery_add_peer_reflexive_candidate (
   NiceAgent *agent,
   guint stream_id,
@@ -696,71 +646,69 @@ discovery_add_peer_reflexive_candidate (
   NiceCandidate *candidate;
   Component *component;
   Stream *stream;
+  gboolean result;
 
   if (!agent_find_component (agent, stream_id, component_id, &stream, &component))
     return NULL;
 
   candidate = nice_candidate_new (NICE_CANDIDATE_TYPE_PEER_REFLEXIVE);
-  if (candidate) {
-    gboolean result;
 
-    candidate->transport = NICE_CANDIDATE_TRANSPORT_UDP;
-    if (agent->compatibility == NICE_COMPATIBILITY_GOOGLE) {
-      candidate->priority = nice_candidate_jingle_priority (candidate);
-    } else if (agent->compatibility == NICE_COMPATIBILITY_MSN)  {
-      candidate->priority = nice_candidate_msn_priority (candidate);
-    } else {
-      candidate->priority = nice_candidate_ice_priority_full
+  candidate->transport = NICE_CANDIDATE_TRANSPORT_UDP;
+  if (agent->compatibility == NICE_COMPATIBILITY_GOOGLE) {
+    candidate->priority = nice_candidate_jingle_priority (candidate);
+  } else if (agent->compatibility == NICE_COMPATIBILITY_MSN)  {
+    candidate->priority = nice_candidate_msn_priority (candidate);
+  } else {
+    candidate->priority = nice_candidate_ice_priority_full
         (NICE_CANDIDATE_TYPE_PREF_PEER_REFLEXIVE, 0, component_id);
-    }
-    candidate->stream_id = stream_id;
-    candidate->component_id = component_id;
-    candidate->addr = *address;
-    candidate->base_addr = base_socket->addr;
+  }
+  candidate->stream_id = stream_id;
+  candidate->component_id = component_id;
+  candidate->addr = *address;
+  candidate->base_addr = base_socket->addr;
 
 
-    priv_assign_foundation (agent, candidate);
+  priv_assign_foundation (agent, candidate);
 
-    if (agent->compatibility == NICE_COMPATIBILITY_MSN &&
-	remote && local) {
-      guchar *new_username = NULL;
-      guchar *decoded_local = NULL;
-      guchar *decoded_remote = NULL;
-      gsize local_size;
-      gsize remote_size;
-      g_free(candidate->username);
-      g_free(candidate->password);
+  if (agent->compatibility == NICE_COMPATIBILITY_MSN &&
+      remote && local) {
+    guchar *new_username = NULL;
+    guchar *decoded_local = NULL;
+    guchar *decoded_remote = NULL;
+    gsize local_size;
+    gsize remote_size;
+    g_free(candidate->username);
+    g_free(candidate->password);
 
-      decoded_local = g_base64_decode (local->username, &local_size);
-      decoded_remote = g_base64_decode (remote->username, &remote_size);
+    decoded_local = g_base64_decode (local->username, &local_size);
+    decoded_remote = g_base64_decode (remote->username, &remote_size);
 
-      new_username = g_new0(guchar, local_size + remote_size);
-      memcpy(new_username, decoded_local, local_size);
-      memcpy(new_username + local_size, decoded_remote, remote_size);
+    new_username = g_new0(guchar, local_size + remote_size);
+    memcpy(new_username, decoded_local, local_size);
+    memcpy(new_username + local_size, decoded_remote, remote_size);
 
-      candidate->username = g_base64_encode (new_username, local_size + remote_size);
-      g_free(new_username);
-      g_free(decoded_local);
-      g_free(decoded_remote);
+    candidate->username = g_base64_encode (new_username, local_size + remote_size);
+    g_free(new_username);
+    g_free(decoded_local);
+    g_free(decoded_remote);
 
-      candidate->password = g_strdup(local->password);
-    } else if (local) {
-      g_free(candidate->username);
-      g_free(candidate->password);
+    candidate->password = g_strdup(local->password);
+  } else if (local) {
+    g_free(candidate->username);
+    g_free(candidate->password);
 
-      candidate->username = g_strdup(local->username);
-      candidate->password = g_strdup(local->password);
-    }
+    candidate->username = g_strdup(local->username);
+    candidate->password = g_strdup(local->password);
+  }
 
-    /* step: link to the base candidate+socket */
-    candidate->sockptr = base_socket;
-    candidate->base_addr = base_socket->addr;
+  /* step: link to the base candidate+socket */
+  candidate->sockptr = base_socket;
+  candidate->base_addr = base_socket->addr;
 
-    result = priv_add_local_candidate_pruned (component, candidate);
-    if (result != TRUE) {
-      /* error: memory allocation, or duplicate candidatet */
-      nice_candidate_free (candidate), candidate = NULL;
-    }
+  result = priv_add_local_candidate_pruned (component, candidate);
+  if (result != TRUE) {
+    /* error: memory allocation, or duplicate candidatet */
+    nice_candidate_free (candidate), candidate = NULL;
   }
 
   return candidate;
@@ -792,76 +740,67 @@ NiceCandidate *discovery_learn_remote_peer_reflexive_candidate (
   (void)udp_socket;
 
   candidate = nice_candidate_new (NICE_CANDIDATE_TYPE_PEER_REFLEXIVE);
-  if (candidate) {
-    GSList *modified_list;
 
-    candidate->transport = NICE_CANDIDATE_TRANSPORT_UDP;
-    candidate->addr = *remote_address;
-    candidate->base_addr = *remote_address;
+  candidate->transport = NICE_CANDIDATE_TRANSPORT_UDP;
+  candidate->addr = *remote_address;
+  candidate->base_addr = *remote_address;
 
-    /* if the check didn't contain the PRIORITY attribute, then the priority will
-     * be 0, which is invalid... */
-    if (priority != 0) {
-      candidate->priority = priority;
-    } else if (agent->compatibility == NICE_COMPATIBILITY_GOOGLE) {
-      candidate->priority = nice_candidate_jingle_priority (candidate);
-    } else if (agent->compatibility == NICE_COMPATIBILITY_MSN)  {
-      candidate->priority = nice_candidate_msn_priority (candidate);
-    } else {
-      candidate->priority = nice_candidate_ice_priority_full
+  /* if the check didn't contain the PRIORITY attribute, then the priority will
+   * be 0, which is invalid... */
+  if (priority != 0) {
+    candidate->priority = priority;
+  } else if (agent->compatibility == NICE_COMPATIBILITY_GOOGLE) {
+    candidate->priority = nice_candidate_jingle_priority (candidate);
+  } else if (agent->compatibility == NICE_COMPATIBILITY_MSN)  {
+    candidate->priority = nice_candidate_msn_priority (candidate);
+  } else {
+    candidate->priority = nice_candidate_ice_priority_full
         (NICE_CANDIDATE_TYPE_PREF_PEER_REFLEXIVE, 0, component->id);
-    }
-    candidate->stream_id = stream->id;
-    candidate->component_id = component->id;
-
-
-    priv_assign_remote_foundation (agent, candidate);
-
-    if (agent->compatibility == NICE_COMPATIBILITY_MSN &&
-	remote && local) {
-      guchar *new_username = NULL;
-      guchar *decoded_local = NULL;
-      guchar *decoded_remote = NULL;
-      gsize local_size;
-      gsize remote_size;
-      g_free(candidate->username);
-      g_free (candidate->password);
-
-      decoded_local = g_base64_decode (local->username, &local_size);
-      decoded_remote = g_base64_decode (remote->username, &remote_size);
-
-      new_username = g_new0(guchar, local_size + remote_size);
-      memcpy(new_username, decoded_remote, remote_size);
-      memcpy(new_username + remote_size, decoded_local, local_size);
-
-      candidate->username = g_base64_encode (new_username, local_size + remote_size);
-      g_free(new_username);
-      g_free(decoded_local);
-      g_free(decoded_remote);
-
-      candidate->password = g_strdup(remote->password);
-    } else if (remote) {
-      g_free (candidate->username);
-      g_free (candidate->password);
-      candidate->username = g_strdup(remote->username);
-      candidate->password = g_strdup(remote->password);
-    }
-
-
-    candidate->sockptr = NULL; /* not stored for remote candidates */
-    /* note: candidate username and password are left NULL as stream 
-             level ufrag/password are used */
-
-    modified_list = g_slist_append (component->remote_candidates,
-				    candidate);
-    if (modified_list) {
-      component->remote_candidates = modified_list;
-      agent_signal_new_remote_candidate (agent, candidate);
-    }
-    else { /* error: memory alloc / list */
-      nice_candidate_free (candidate), candidate = NULL;
-    }
   }
+  candidate->stream_id = stream->id;
+  candidate->component_id = component->id;
+
+
+  priv_assign_remote_foundation (agent, candidate);
+
+  if (agent->compatibility == NICE_COMPATIBILITY_MSN &&
+      remote && local) {
+    guchar *new_username = NULL;
+    guchar *decoded_local = NULL;
+    guchar *decoded_remote = NULL;
+    gsize local_size;
+    gsize remote_size;
+    g_free(candidate->username);
+    g_free (candidate->password);
+
+    decoded_local = g_base64_decode (local->username, &local_size);
+    decoded_remote = g_base64_decode (remote->username, &remote_size);
+
+    new_username = g_new0(guchar, local_size + remote_size);
+    memcpy(new_username, decoded_remote, remote_size);
+    memcpy(new_username + remote_size, decoded_local, local_size);
+
+    candidate->username = g_base64_encode (new_username, local_size + remote_size);
+    g_free(new_username);
+    g_free(decoded_local);
+    g_free(decoded_remote);
+
+    candidate->password = g_strdup(remote->password);
+  } else if (remote) {
+    g_free (candidate->username);
+    g_free (candidate->password);
+    candidate->username = g_strdup(remote->username);
+    candidate->password = g_strdup(remote->password);
+  }
+
+  candidate->sockptr = NULL; /* not stored for remote candidates */
+  /* note: candidate username and password are left NULL as stream 
+     level ufrag/password are used */
+
+  component->remote_candidates = g_slist_append (component->remote_candidates,
+      candidate);
+
+  agent_signal_new_remote_candidate (agent, candidate);
 
   return candidate;
 }

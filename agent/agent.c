@@ -1294,171 +1294,134 @@ agent_candidate_pair_priority (NiceAgent *agent, NiceCandidate *local, NiceCandi
     return nice_candidate_pair_priority (remote->priority, local->priority);
 }
 
-static gboolean
+static void
 priv_add_new_candidate_discovery_stun (NiceAgent *agent,
     NiceSocket *socket, NiceAddress server,
     Stream *stream, guint component_id)
 {
   CandidateDiscovery *cdisco;
-  GSList *modified_list;
 
   /* note: no need to check for redundant candidates, as this is
    *       done later on in the process */
 
   cdisco = g_slice_new0 (CandidateDiscovery);
-  if (cdisco) {
-    modified_list = g_slist_append (agent->discovery_list, cdisco);
 
-    if (modified_list) {
-      cdisco->type = NICE_CANDIDATE_TYPE_SERVER_REFLEXIVE;
-      cdisco->nicesock = socket;
-      cdisco->server = server;
-      cdisco->stream = stream;
-      cdisco->component = stream_find_component_by_id (stream, component_id);
-      cdisco->agent = agent;
-      stun_agent_init (&cdisco->stun_agent, STUN_ALL_KNOWN_ATTRIBUTES,
-          STUN_COMPATIBILITY_RFC3489, 0);
+  cdisco->type = NICE_CANDIDATE_TYPE_SERVER_REFLEXIVE;
+  cdisco->nicesock = socket;
+  cdisco->server = server;
+  cdisco->stream = stream;
+  cdisco->component = stream_find_component_by_id (stream, component_id);
+  cdisco->agent = agent;
+  stun_agent_init (&cdisco->stun_agent, STUN_ALL_KNOWN_ATTRIBUTES,
+      STUN_COMPATIBILITY_RFC3489, 0);
 
-      nice_debug ("Agent %p : Adding new srv-rflx candidate discovery %p\n",
-          agent, cdisco);
-      agent->discovery_list = modified_list;
-      ++agent->discovery_unsched_items;
-    }
+  nice_debug ("Agent %p : Adding new srv-rflx candidate discovery %p\n",
+      agent, cdisco);
 
-    return TRUE;
-  }
-
-  return FALSE;
+  agent->discovery_list = g_slist_append (agent->discovery_list, cdisco);
+  ++agent->discovery_unsched_items;
 }
 
-static gboolean
+static void
 priv_add_new_candidate_discovery_turn (NiceAgent *agent,
     NiceSocket *socket, TurnServer *turn,
     Stream *stream, guint component_id)
 {
   CandidateDiscovery *cdisco;
-  GSList *modified_list;
-  GSList *socket_modified_list;
+  Component *component = stream_find_component_by_id (stream, component_id);
 
   /* note: no need to check for redundant candidates, as this is
    *       done later on in the process */
 
   cdisco = g_slice_new0 (CandidateDiscovery);
-  if (cdisco) {
-    modified_list = g_slist_append (agent->discovery_list, cdisco);
+  cdisco->type = NICE_CANDIDATE_TYPE_RELAYED;
 
-    if (modified_list) {
-      Component *component = stream_find_component_by_id (stream, component_id);
+  if (turn->type ==  NICE_RELAY_TYPE_TURN_UDP) {
+    if (agent->compatibility == NICE_COMPATIBILITY_GOOGLE) {
+      NiceAddress addr = socket->addr;
+      NiceSocket *new_socket;
+      nice_address_set_port (&addr, 0);
 
-      cdisco->type = NICE_CANDIDATE_TYPE_RELAYED;
-
-      if (turn->type ==  NICE_RELAY_TYPE_TURN_UDP) {
-        if (agent->compatibility == NICE_COMPATIBILITY_GOOGLE) {
-          NiceAddress addr = socket->addr;
-          NiceSocket *new_socket;
-          nice_address_set_port (&addr, 0);
-
-          new_socket = nice_udp_bsd_socket_new (&addr);
-          if (new_socket) {
-            _priv_set_socket_tos (agent, new_socket, stream->tos);
-            agent_attach_stream_component_socket (agent, stream,
-                component, new_socket);
-            socket_modified_list = g_slist_append (component->sockets, new_socket);
-            if (socket_modified_list) {
-              /* success: store a pointer to the sockaddr */
-              component->sockets = socket_modified_list;
-              socket = new_socket;
-            } else {
-              nice_socket_free (new_socket);
-            }
-          }
-        }
-        cdisco->nicesock = socket;
-      } else {
-        NiceAddress proxy_server;
-        socket = NULL;
-
-        if (agent->proxy_type != NICE_PROXY_TYPE_NONE &&
-            agent->proxy_ip != NULL &&
-            nice_address_set_from_string (&proxy_server, agent->proxy_ip)) {
-          nice_address_set_port (&proxy_server, agent->proxy_port);
-          socket = nice_tcp_bsd_socket_new (agent, component->ctx, &proxy_server);
-
-          if (socket) {
-            _priv_set_socket_tos (agent, socket, stream->tos);
-            if (agent->proxy_type == NICE_PROXY_TYPE_SOCKS5) {
-              socket = nice_socks5_socket_new (socket, &turn->server,
-                  agent->proxy_username, agent->proxy_password);
-            } else if (agent->proxy_type == NICE_PROXY_TYPE_HTTP){
-              socket = nice_http_socket_new (socket, &turn->server,
-                  agent->proxy_username, agent->proxy_password);
-            } else {
-              nice_socket_free (socket);
-              socket = NULL;
-            }
-          }
-
-        }
-        if (socket == NULL) {
-          socket = nice_tcp_bsd_socket_new (agent, component->ctx, &turn->server);
-          _priv_set_socket_tos (agent, socket, stream->tos);
-        }
-        if (turn->type ==  NICE_RELAY_TYPE_TURN_TLS &&
-            agent->compatibility == NICE_COMPATIBILITY_GOOGLE) {
-          socket = nice_pseudossl_socket_new (agent, socket);
-        }
-        cdisco->nicesock = nice_tcp_turn_socket_new (agent, socket,
-            agent_to_turn_socket_compatibility (agent));
-
-        if (!cdisco->nicesock) {
-          agent->discovery_list = g_slist_remove (modified_list, cdisco);
-          g_slice_free (CandidateDiscovery, cdisco);
-          return FALSE;
-        }
-
+      new_socket = nice_udp_bsd_socket_new (&addr);
+      if (new_socket) {
+        _priv_set_socket_tos (agent, new_socket, stream->tos);
         agent_attach_stream_component_socket (agent, stream,
-            component, cdisco->nicesock);
-        socket_modified_list = g_slist_append (component->sockets, cdisco->nicesock);
-        if (socket_modified_list) {
-          /* success: store a pointer to the sockaddr */
-          component->sockets = socket_modified_list;
+            component, new_socket);
+        component->sockets= g_slist_append (component->sockets, new_socket);
+        socket = new_socket;
+      }
+    }
+    cdisco->nicesock = socket;
+  } else {
+    NiceAddress proxy_server;
+    socket = NULL;
+
+    if (agent->proxy_type != NICE_PROXY_TYPE_NONE &&
+        agent->proxy_ip != NULL &&
+        nice_address_set_from_string (&proxy_server, agent->proxy_ip)) {
+      nice_address_set_port (&proxy_server, agent->proxy_port);
+      socket = nice_tcp_bsd_socket_new (agent, component->ctx, &proxy_server);
+
+      if (socket) {
+        _priv_set_socket_tos (agent, socket, stream->tos);
+        if (agent->proxy_type == NICE_PROXY_TYPE_SOCKS5) {
+          socket = nice_socks5_socket_new (socket, &turn->server,
+              agent->proxy_username, agent->proxy_password);
+        } else if (agent->proxy_type == NICE_PROXY_TYPE_HTTP){
+          socket = nice_http_socket_new (socket, &turn->server,
+              agent->proxy_username, agent->proxy_password);
+        } else {
+          nice_socket_free (socket);
+          socket = NULL;
         }
       }
-      cdisco->turn = turn;
-      cdisco->server = turn->server;
 
-      cdisco->stream = stream;
-      cdisco->component = stream_find_component_by_id (stream, component_id);
-      cdisco->agent = agent;
-
-      if (agent->compatibility == NICE_COMPATIBILITY_GOOGLE) {
-        stun_agent_init (&cdisco->stun_agent, STUN_ALL_KNOWN_ATTRIBUTES,
-            STUN_COMPATIBILITY_RFC3489,
-            STUN_AGENT_USAGE_SHORT_TERM_CREDENTIALS |
-            STUN_AGENT_USAGE_IGNORE_CREDENTIALS);
-      } else if (agent->compatibility == NICE_COMPATIBILITY_MSN ||
-                 agent->compatibility == NICE_COMPATIBILITY_WLM2009) {
-        stun_agent_init (&cdisco->stun_agent, STUN_ALL_KNOWN_ATTRIBUTES,
-            STUN_COMPATIBILITY_RFC3489,
-            STUN_AGENT_USAGE_SHORT_TERM_CREDENTIALS);
-      } else {
-        stun_agent_init (&cdisco->stun_agent, STUN_ALL_KNOWN_ATTRIBUTES,
-            STUN_COMPATIBILITY_RFC5389,
-            STUN_AGENT_USAGE_ADD_SOFTWARE |
-            STUN_AGENT_USAGE_LONG_TERM_CREDENTIALS);
-      }
-      stun_agent_set_software (&cdisco->stun_agent, agent->software_attribute);
-
-      nice_debug ("Agent %p : Adding new relay-rflx candidate discovery %p\n",
-          agent, cdisco);
-      agent->discovery_list = modified_list;
-      ++agent->discovery_unsched_items;
     }
+    if (socket == NULL) {
+      socket = nice_tcp_bsd_socket_new (agent, component->ctx, &turn->server);
+      _priv_set_socket_tos (agent, socket, stream->tos);
+    }
+    if (turn->type ==  NICE_RELAY_TYPE_TURN_TLS &&
+        agent->compatibility == NICE_COMPATIBILITY_GOOGLE) {
+      socket = nice_pseudossl_socket_new (agent, socket);
+    }
+    cdisco->nicesock = nice_tcp_turn_socket_new (agent, socket,
+        agent_to_turn_socket_compatibility (agent));
 
-    return TRUE;
+    agent_attach_stream_component_socket (agent, stream,
+        component, cdisco->nicesock);
+    component->sockets = g_slist_append (component->sockets, cdisco->nicesock);
   }
 
-  return FALSE;
+  cdisco->turn = turn;
+  cdisco->server = turn->server;
+
+  cdisco->stream = stream;
+  cdisco->component = stream_find_component_by_id (stream, component_id);
+  cdisco->agent = agent;
+
+  if (agent->compatibility == NICE_COMPATIBILITY_GOOGLE) {
+    stun_agent_init (&cdisco->stun_agent, STUN_ALL_KNOWN_ATTRIBUTES,
+        STUN_COMPATIBILITY_RFC3489,
+        STUN_AGENT_USAGE_SHORT_TERM_CREDENTIALS |
+        STUN_AGENT_USAGE_IGNORE_CREDENTIALS);
+  } else if (agent->compatibility == NICE_COMPATIBILITY_MSN ||
+      agent->compatibility == NICE_COMPATIBILITY_WLM2009) {
+    stun_agent_init (&cdisco->stun_agent, STUN_ALL_KNOWN_ATTRIBUTES,
+        STUN_COMPATIBILITY_RFC3489,
+        STUN_AGENT_USAGE_SHORT_TERM_CREDENTIALS);
+  } else {
+    stun_agent_init (&cdisco->stun_agent, STUN_ALL_KNOWN_ATTRIBUTES,
+        STUN_COMPATIBILITY_RFC5389,
+        STUN_AGENT_USAGE_ADD_SOFTWARE |
+        STUN_AGENT_USAGE_LONG_TERM_CREDENTIALS);
+  }
+  stun_agent_set_software (&cdisco->stun_agent, agent->software_attribute);
+
+  nice_debug ("Agent %p : Adding new relay-rflx candidate discovery %p\n",
+      agent, cdisco);
+  agent->discovery_list = g_slist_append (agent->discovery_list, cdisco);
+  ++agent->discovery_unsched_items;
 }
 
 NICEAPI_EXPORT guint
@@ -1467,50 +1430,42 @@ nice_agent_add_stream (
   guint n_components)
 {
   Stream *stream;
-  GSList *modified_list = NULL;
   guint ret = 0;
   guint i;
 
   agent_lock();
   stream = stream_new (n_components);
-  if (stream) {
-    modified_list = g_slist_append (agent->streams, stream);
-    if (modified_list) {
-      stream->id = agent->next_stream_id++;
-      nice_debug ("Agent %p : allocating stream id %u (%p)", agent, stream->id, stream);
-      if (agent->reliable) {
-        nice_debug ("Agent %p : reliable stream", agent);
-        for (i = 0; i < n_components; i++) {
-          Component *component = stream_find_component_by_id (stream, i + 1);
-          if (component) {
-            TcpUserData *data = g_slice_new0 (TcpUserData);
-            PseudoTcpCallbacks tcp_callbacks = {data,
-                                                pseudo_tcp_socket_opened,
-                                                pseudo_tcp_socket_readable,
-                                                pseudo_tcp_socket_writable,
-                                                pseudo_tcp_socket_closed,
-                                                pseudo_tcp_socket_write_packet};
-            data->agent = agent;
-            data->stream = stream;
-            data->component = component;
-            component->tcp_data = data;
-            component->tcp = pseudo_tcp_socket_new (0, &tcp_callbacks);
-            adjust_tcp_clock (agent, stream, component);
-            nice_debug ("Agent %p: Create Pseudo Tcp Socket for component %d",
-                agent, i+1);
-          } else {
-            nice_debug ("Agent %p: couldn't find component %d", agent, i+1);
-          }
-        }
+
+  agent->streams = g_slist_append (agent->streams, stream);
+  stream->id = agent->next_stream_id++;
+  nice_debug ("Agent %p : allocating stream id %u (%p)", agent, stream->id, stream);
+  if (agent->reliable) {
+    nice_debug ("Agent %p : reliable stream", agent);
+    for (i = 0; i < n_components; i++) {
+      Component *component = stream_find_component_by_id (stream, i + 1);
+      if (component) {
+        TcpUserData *data = g_slice_new0 (TcpUserData);
+        PseudoTcpCallbacks tcp_callbacks = {data,
+                                            pseudo_tcp_socket_opened,
+                                            pseudo_tcp_socket_readable,
+                                            pseudo_tcp_socket_writable,
+                                            pseudo_tcp_socket_closed,
+                                            pseudo_tcp_socket_write_packet};
+        data->agent = agent;
+        data->stream = stream;
+        data->component = component;
+        component->tcp_data = data;
+        component->tcp = pseudo_tcp_socket_new (0, &tcp_callbacks);
+        adjust_tcp_clock (agent, stream, component);
+        nice_debug ("Agent %p: Create Pseudo Tcp Socket for component %d",
+            agent, i+1);
+      } else {
+        nice_debug ("Agent %p: couldn't find component %d", agent, i+1);
       }
-
-      stream_initialize_credentials (stream, agent->rng);
-
-      agent->streams = modified_list;
     }
-    else
-      stream_free (stream);
   }
+
+  stream_initialize_credentials (stream, agent->rng);
 
   ret = stream->id;
 
@@ -1703,7 +1658,7 @@ static void _upnp_error_mapping_port (GUPnPSimpleIgd *self, GError *error,
 
 #endif
 
-NICEAPI_EXPORT void
+NICEAPI_EXPORT gboolean
 nice_agent_gather_candidates (
   NiceAgent *agent,
   guint stream_id)
@@ -1788,8 +1743,8 @@ nice_agent_gather_candidates (
           n + 1, addr);
 
       if (!host_candidate) {
-        g_error ("No host candidate??");
-        break;
+        g_warning ("No host candidate??");
+        return FALSE;
       }
 
 #ifdef HAVE_GUPNP
@@ -1808,20 +1763,13 @@ nice_agent_gather_candidates (
           agent->stun_server_ip) {
         NiceAddress stun_server;
         if (nice_address_set_from_string (&stun_server, agent->stun_server_ip)) {
-          gboolean res;
           nice_address_set_port (&stun_server, agent->stun_server_port);
 
-          res =
-              priv_add_new_candidate_discovery_stun (agent,
-                  host_candidate->sockptr,
-                  stun_server,
-                  stream,
-                  n + 1);
-
-          if (res != TRUE) {
-            /* note: memory allocation failure, return error */
-            g_error ("Memory allocation failure?");
-          }
+          priv_add_new_candidate_discovery_stun (agent,
+              host_candidate->sockptr,
+              stun_server,
+              stream,
+              n + 1);
         }
       }
 
@@ -1831,17 +1779,11 @@ nice_agent_gather_candidates (
         for (item = component->turn_servers; item; item = item->next) {
           TurnServer *turn = item->data;
 
-          gboolean res =
-              priv_add_new_candidate_discovery_turn (agent,
-                  host_candidate->sockptr,
-                  turn,
-                  stream,
-                  n + 1);
-
-          if (res != TRUE) {
-            /* note: memory allocation failure, return error */
-            g_error ("Memory allocation failure?");
-          }
+          priv_add_new_candidate_discovery_turn (agent,
+              host_candidate->sockptr,
+              turn,
+              stream,
+              n + 1);
         }
       }
     }
@@ -1863,6 +1805,8 @@ nice_agent_gather_candidates (
  done:
 
   agent_unlock();
+
+  return TRUE;
 }
 
 static void priv_free_upnp (NiceAgent *agent)
@@ -1935,24 +1879,15 @@ NICEAPI_EXPORT gboolean
 nice_agent_add_local_address (NiceAgent *agent, NiceAddress *addr)
 {
   NiceAddress *dup;
-  GSList *modified_list;
-  gboolean ret = FALSE;
 
   agent_lock();
 
   dup = nice_address_dup (addr);
   nice_address_set_port (dup, 0);
-  modified_list = g_slist_append (agent->local_addresses, dup);
-  if (modified_list) {
-    agent->local_addresses = modified_list;
+  agent->local_addresses = g_slist_append (agent->local_addresses, dup);
 
-    ret = TRUE;
-    goto done;
-  }
-
- done:
   agent_unlock();
-  return ret;
+  return TRUE;
 }
 
 static gboolean priv_add_remote_candidate (
@@ -1970,7 +1905,6 @@ static gboolean priv_add_remote_candidate (
 {
   Component *component;
   NiceCandidate *candidate;
-  gboolean error_flag = FALSE;
 
   if (!agent_find_component (agent, stream_id, component_id, NULL, &component))
     return FALSE;
@@ -2013,62 +1947,53 @@ static gboolean priv_add_remote_candidate (
       candidate->password = g_strdup (password);
     }
     if (conn_check_add_for_candidate (agent, stream_id, component, candidate) < 0)
-      error_flag = TRUE;
+      goto errors;
   }
   else {
     /* case 2: add a new candidate */
 
     candidate = nice_candidate_new (type);
-    if (candidate) {
-      GSList *modified_list = g_slist_append (component->remote_candidates, candidate);
-      if (modified_list) {
-	component->remote_candidates = modified_list;
+    component->remote_candidates = g_slist_append (component->remote_candidates,
+        candidate);
 
-	candidate->stream_id = stream_id;
-	candidate->component_id = component_id;
+    candidate->stream_id = stream_id;
+    candidate->component_id = component_id;
 
-	candidate->type = type;
-	if (addr)
-	  candidate->addr = *addr;
-	{
-	  gchar tmpbuf[INET6_ADDRSTRLEN] = {0};
-	  if(addr)
-            nice_address_to_string (addr, tmpbuf);
-	  nice_debug ("Agent %p : Adding remote candidate with addr [%s]:%u"
-              " for s%d/c%d. U/P '%s'/'%s' prio: %u", agent, tmpbuf,
-              addr? nice_address_get_port (addr) : 0, stream_id, component_id,
-              username, password, priority);
-	}
+    candidate->type = type;
+    if (addr)
+      candidate->addr = *addr;
 
-	if (base_addr)
-	  candidate->base_addr = *base_addr;
-
-	candidate->transport = transport;
-	candidate->priority = priority;
-	candidate->username = g_strdup (username);
-	candidate->password = g_strdup (password);
-
-	if (foundation)
-	  g_strlcpy (candidate->foundation, foundation,
-              NICE_CANDIDATE_MAX_FOUNDATION);
-
-	if (conn_check_add_for_candidate (agent, stream_id, component, candidate) < 0)
-	  error_flag = TRUE;
-      }
-      else /* memory alloc error: list insert */
-	error_flag = TRUE;
+    {
+      gchar tmpbuf[INET6_ADDRSTRLEN] = {0};
+      if(addr)
+        nice_address_to_string (addr, tmpbuf);
+      nice_debug ("Agent %p : Adding remote candidate with addr [%s]:%u"
+          " for s%d/c%d. U/P '%s'/'%s' prio: %u", agent, tmpbuf,
+          addr? nice_address_get_port (addr) : 0, stream_id, component_id,
+          username, password, priority);
     }
-    else /* memory alloc error: candidate creation */
-      error_flag = TRUE;
-  }  
 
-  if (error_flag) {
-    if (candidate) 
-      nice_candidate_free (candidate);
-    return FALSE;
+    if (base_addr)
+      candidate->base_addr = *base_addr;
+
+    candidate->transport = transport;
+    candidate->priority = priority;
+    candidate->username = g_strdup (username);
+    candidate->password = g_strdup (password);
+
+    if (foundation)
+      g_strlcpy (candidate->foundation, foundation,
+          NICE_CANDIDATE_MAX_FOUNDATION);
+
+    if (conn_check_add_for_candidate (agent, stream_id, component, candidate) < 0)
+      goto errors;
   }
 
   return TRUE;
+
+errors:
+  nice_candidate_free (candidate);
+  return FALSE;
 }
 
 NICEAPI_EXPORT gboolean
@@ -2490,14 +2415,13 @@ io_ctx_new (
   IOCtx *ctx;
 
   ctx = g_slice_new0 (IOCtx);
-  if (ctx) {
-    ctx->agent = agent;
-    ctx->stream = stream;
-    ctx->component = component;
-    ctx->socket = socket;
-    ctx->channel = channel;
-    ctx->source = source;
-  }
+  ctx->agent = agent;
+  ctx->stream = stream;
+  ctx->component = component;
+  ctx->socket = socket;
+  ctx->channel = channel;
+  ctx->source = source;
+
   return ctx;
 }
 

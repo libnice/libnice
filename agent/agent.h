@@ -385,6 +385,8 @@ gboolean nice_agent_set_relay_info(
  * Start the candidate gathering process.
  * Once done, #NiceAgent::candidate-gathering-done is called for the stream
  *
+ * Returns: %FALSE if there were no local addresses and they couldn't be discovered. In this case, call nice_agent_add_local_address() first.
+ *
  * See also: nice_agent_add_local_address()
  <note>
    <para>
@@ -397,7 +399,7 @@ gboolean nice_agent_set_relay_info(
    </para>
  </note>
  */
-void
+gboolean
 nice_agent_gather_candidates (
   NiceAgent *agent,
   guint stream_id);

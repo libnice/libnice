@@ -1249,60 +1249,39 @@ static void priv_mark_pair_nominated (NiceAgent *agent, Stream *stream, Componen
  * Creates a new connectivity check pair and adds it to
  * the agent's list of checks.
  */
-static gboolean priv_add_new_check_pair (NiceAgent *agent, guint stream_id, Component *component, NiceCandidate *local, NiceCandidate *remote, NiceCheckState initial_state, gboolean use_candidate)
+static void priv_add_new_check_pair (NiceAgent *agent, guint stream_id, Component *component, NiceCandidate *local, NiceCandidate *remote, NiceCheckState initial_state, gboolean use_candidate)
 {
-  gboolean result = FALSE;
   Stream *stream = agent_find_stream (agent, stream_id);
   CandidateCheckPair *pair = g_slice_new0 (CandidateCheckPair);
-  if (pair) {
-    GSList *modified_list = 
-      g_slist_insert_sorted (stream->conncheck_list, pair, (GCompareFunc)conn_check_compare);
-    if (modified_list) {
-      /* step: allocation and addition succesful, do rest of the work */
 
-      pair->agent = agent;
-      pair->stream_id = stream_id;
-      pair->component_id = component->id;;
-      pair->local = local; 
-      pair->remote = remote;
-      g_snprintf (pair->foundation, NICE_CANDIDATE_PAIR_MAX_FOUNDATION, "%s:%s", local->foundation, remote->foundation);
+  stream->conncheck_list = g_slist_insert_sorted (stream->conncheck_list, pair,
+      (GCompareFunc)conn_check_compare);
 
-      pair->priority = agent_candidate_pair_priority (agent, local, remote);
-      pair->state = initial_state;
-      nice_debug ("Agent %p : creating new pair %p state %d", agent, pair, initial_state);
-      pair->nominated = use_candidate;
-      pair->controlling = agent->controlling_mode;
-      
-      /* note: for the first added check */
-      if (!stream->conncheck_list)
-	stream->conncheck_state = NICE_CHECKLIST_RUNNING;
-      stream->conncheck_list = modified_list;
+  pair->agent = agent;
+  pair->stream_id = stream_id;
+  pair->component_id = component->id;;
+  pair->local = local;
+  pair->remote = remote;
+  g_snprintf (pair->foundation, NICE_CANDIDATE_PAIR_MAX_FOUNDATION, "%s:%s", local->foundation, remote->foundation);
 
-      result = TRUE;
-      nice_debug ("Agent %p : added a new conncheck %p with foundation of '%s' to list %u.", agent, pair, pair->foundation, stream_id);
+  pair->priority = agent_candidate_pair_priority (agent, local, remote);
+  pair->state = initial_state;
+  nice_debug ("Agent %p : creating new pair %p state %d", agent, pair, initial_state);
+  pair->nominated = use_candidate;
+  pair->controlling = agent->controlling_mode;
 
-      /* implement the hard upper limit for number of 
-	 checks (see sect 5.7.3 ICE ID-19): */
-      if (agent->compatibility == NICE_COMPATIBILITY_RFC5245) {
-        stream->conncheck_list = 
-            priv_limit_conn_check_list_size (stream->conncheck_list, agent->max_conn_checks);
-      }
-      if (!stream->conncheck_list) {
-	stream->conncheck_state = NICE_CHECKLIST_FAILED;  
-	result = FALSE;
-      }
-    }
-    else {
-      /* memory alloc failed: list insert */
-      conn_check_free_item (pair, NULL);
-      stream->conncheck_state = NICE_CHECKLIST_FAILED;  
-    }
+  /* note: for the first added check */
+  if (!stream->conncheck_list)
+    stream->conncheck_state = NICE_CHECKLIST_RUNNING;
+
+  nice_debug ("Agent %p : added a new conncheck %p with foundation of '%s' to list %u.", agent, pair, pair->foundation, stream_id);
+
+  /* implement the hard upper limit for number of
+     checks (see sect 5.7.3 ICE ID-19): */
+  if (agent->compatibility == NICE_COMPATIBILITY_RFC5245) {
+    stream->conncheck_list =
+        priv_limit_conn_check_list_size (stream->conncheck_list, agent->max_conn_checks);
   }
-  else { /* memory alloc failed: new pair */
-    stream->conncheck_state = NICE_CHECKLIST_FAILED;
-  }
-
-  return result;
 }
 
 /*
@@ -1330,8 +1309,6 @@ int conn_check_add_for_candidate (NiceAgent *agent, guint stream_id, Component *
     if (local->transport == remote->transport &&
 	local->addr.s.addr.sa_family == remote->addr.s.addr.sa_family) {
 
-      gboolean result;
-
       /* note: do not create pairs where local candidate is 
        *       a srv-reflexive (ICE 5.7.3. "Pruning the Pairs" ID-19) */
       if ((agent->compatibility == NICE_COMPATIBILITY_RFC5245 ||
@@ -1339,24 +1316,18 @@ int conn_check_add_for_candidate (NiceAgent *agent, guint stream_id, Component *
           local->type == NICE_CANDIDATE_TYPE_SERVER_REFLEXIVE)
 	continue;
 
-      result = priv_add_new_check_pair (agent, stream_id, component, local, remote, NICE_CHECK_FROZEN, FALSE);
-      if (result) {
-	++added;
-        if (component->state < NICE_COMPONENT_STATE_CONNECTED) {
-          agent_signal_component_state_change (agent,
-              stream_id,
-              component->id,
-              NICE_COMPONENT_STATE_CONNECTING);
-        } else {
-          agent_signal_component_state_change (agent,
-              stream_id,
-              component->id,
-              NICE_COMPONENT_STATE_CONNECTED);
-        }
-      }
-      else {
-	added = -1;
-	break;
+      priv_add_new_check_pair (agent, stream_id, component, local, remote, NICE_CHECK_FROZEN, FALSE);
+      ++added;
+      if (component->state < NICE_COMPONENT_STATE_CONNECTED) {
+        agent_signal_component_state_change (agent,
+            stream_id,
+            component->id,
+            NICE_COMPONENT_STATE_CONNECTING);
+      } else {
+        agent_signal_component_state_change (agent,
+            stream_id,
+            component->id,
+            NICE_COMPONENT_STATE_CONNECTED);
       }
     }
   }
@@ -1766,7 +1737,7 @@ static guint priv_prune_pending_checks (Stream *stream, guint component_id)
 static gboolean priv_schedule_triggered_check (NiceAgent *agent, Stream *stream, Component *component, NiceSocket *local_socket, NiceCandidate *remote_cand, gboolean use_candidate)
 {
   GSList *i;
-  gboolean result = FALSE;
+  NiceCandidate *local = NULL;
 
   for (i = stream->conncheck_list; i ; i = i->next) {
       CandidateCheckPair *p = i->data;
@@ -1807,23 +1778,21 @@ static gboolean priv_schedule_triggered_check (NiceAgent *agent, Stream *stream,
       }
   }
 
-  {
-    NiceCandidate *local = NULL;
-
-    for (i = component->local_candidates; i ; i = i->next) {
-      local = i->data;
-      if (local->sockptr == local_socket)
-	break;
-    }    
-    if (i) {
-      nice_debug ("Agent %p : Adding a triggered check to conn.check list (local=%p).", agent, local);
-      result = priv_add_new_check_pair (agent, stream->id, component, local, remote_cand, NICE_CHECK_WAITING, use_candidate);
-    }
-    else
-      nice_debug ("Agent %p : Didn't find a matching pair for triggered check (remote-cand=%p).", agent, remote_cand);
+  for (i = component->local_candidates; i ; i = i->next) {
+    local = i->data;
+    if (local->sockptr == local_socket)
+      break;
   }
 
-  return result;
+  if (i) {
+    nice_debug ("Agent %p : Adding a triggered check to conn.check list (local=%p).", agent, local);
+    priv_add_new_check_pair (agent, stream->id, component, local, remote_cand, NICE_CHECK_WAITING, use_candidate);
+    return TRUE;
+  }
+  else {
+    nice_debug ("Agent %p : Didn't find a matching pair for triggered check (remote-cand=%p).", agent, remote_cand);
+    return FALSE;
+  }
 }
 
 
@@ -1895,23 +1864,17 @@ static int priv_store_pending_check (NiceAgent *agent, Component *component,
   }
 
   icheck = g_slice_new0 (IncomingCheck);
-  if (icheck) {
-    GSList *pending = g_slist_append (component->incoming_checks, icheck);
-    if (pending) {
-      component->incoming_checks = pending;
-      icheck->from = *from;
-      icheck->local_socket = socket;
-      icheck->priority = priority;
-      icheck->use_candidate = use_candidate;
-      icheck->username_len = username_len;
-      icheck->username = NULL;
-      if (username_len > 0)
-        icheck->username = g_memdup (username, username_len);
-      return 0;
-    }
-  }
+  component->incoming_checks = g_slist_append (component->incoming_checks, icheck);
+  icheck->from = *from;
+  icheck->local_socket = socket;
+  icheck->priority = priority;
+  icheck->use_candidate = use_candidate;
+  icheck->username_len = username_len;
+  icheck->username = NULL;
+  if (username_len > 0)
+    icheck->username = g_memdup (username, username_len);
 
-  return -1;
+  return 0;
 }
 
 /*
@@ -1923,31 +1886,29 @@ static int priv_store_pending_check (NiceAgent *agent, Component *component,
 static CandidateCheckPair *priv_add_peer_reflexive_pair (NiceAgent *agent, guint stream_id, guint component_id, NiceCandidate *local_cand, CandidateCheckPair *parent_pair)
 {
   CandidateCheckPair *pair = g_slice_new0 (CandidateCheckPair);
-  if (pair) {
-    Stream *stream = agent_find_stream (agent, stream_id);
-    GSList *modified_list = g_slist_append (stream->conncheck_list, pair);
-    if (modified_list) {
-      stream->conncheck_list = modified_list;
-      pair->agent = agent;
-      pair->stream_id = stream_id;
-      pair->component_id = component_id;;
-      pair->local = local_cand;
-      pair->remote = parent_pair->remote;
-      pair->state = NICE_CHECK_DISCOVERED;
-      nice_debug ("Agent %p : pair %p state DISCOVERED", agent, pair);
-      g_snprintf (pair->foundation, NICE_CANDIDATE_PAIR_MAX_FOUNDATION, "%s:%s", local_cand->foundation, parent_pair->remote->foundation);
-      if (agent->controlling_mode == TRUE)
-	pair->priority = nice_candidate_pair_priority (local_cand->priority, parent_pair->priority);
-      else
-	pair->priority = nice_candidate_pair_priority (parent_pair->priority, local_cand->priority);
-      pair->nominated = FALSE;
-      pair->controlling = agent->controlling_mode;
-      nice_debug ("Agent %p : added a new peer-discovered pair with foundation of '%s'.", agent, pair->foundation);
-      return pair;
-    }
-  }
+  Stream *stream = agent_find_stream (agent, stream_id);
 
-  return NULL;
+  stream->conncheck_list = g_slist_append (stream->conncheck_list, pair);
+  pair->agent = agent;
+  pair->stream_id = stream_id;
+  pair->component_id = component_id;;
+  pair->local = local_cand;
+  pair->remote = parent_pair->remote;
+  pair->state = NICE_CHECK_DISCOVERED;
+  nice_debug ("Agent %p : pair %p state DISCOVERED", agent, pair);
+  g_snprintf (pair->foundation, NICE_CANDIDATE_PAIR_MAX_FOUNDATION, "%s:%s",
+      local_cand->foundation, parent_pair->remote->foundation);
+  if (agent->controlling_mode == TRUE)
+    pair->priority = nice_candidate_pair_priority (local_cand->priority,
+        parent_pair->priority);
+  else
+    pair->priority = nice_candidate_pair_priority (parent_pair->priority,
+        local_cand->priority);
+  pair->nominated = FALSE;
+  pair->controlling = agent->controlling_mode;
+  nice_debug ("Agent %p : added a new peer-discovered pair with foundation of '%s'.",  agent, pair->foundation);
+
+  return pair;
 }
 
 /*
@@ -2254,34 +2215,28 @@ priv_add_new_turn_refresh (CandidateDiscovery *cdisco, NiceCandidate *relay_cand
 {
   CandidateRefresh *cand;
   NiceAgent *agent = cdisco->agent;
-  GSList *modified_list;
 
   cand = g_slice_new0 (CandidateRefresh);
-  if (cand) {
-    modified_list = g_slist_append (agent->refresh_list, cand);
+  agent->refresh_list = g_slist_append (agent->refresh_list, cand);
 
-    if (modified_list) {
-      cand->nicesock = cdisco->nicesock;
-      cand->relay_socket = relay_cand->sockptr;
-      cand->server = cdisco->server;
-      cand->turn = cdisco->turn;
-      cand->stream = cdisco->stream;
-      cand->component = cdisco->component;
-      cand->agent = cdisco->agent;
-      memcpy (&cand->stun_agent, &cdisco->stun_agent, sizeof(StunAgent));
-      nice_debug ("Agent %p : Adding new refresh candidate %p with timeout %d",
-          agent, cand, (lifetime - 60) * 1000);
-      agent->refresh_list = modified_list;
+  cand->nicesock = cdisco->nicesock;
+  cand->relay_socket = relay_cand->sockptr;
+  cand->server = cdisco->server;
+  cand->turn = cdisco->turn;
+  cand->stream = cdisco->stream;
+  cand->component = cdisco->component;
+  cand->agent = cdisco->agent;
+  memcpy (&cand->stun_agent, &cdisco->stun_agent, sizeof(StunAgent));
+  nice_debug ("Agent %p : Adding new refresh candidate %p with timeout %d",
+      agent, cand, (lifetime - 60) * 1000);
 
-      /* step: also start the refresh timer */
-      /* refresh should be sent 1 minute before it expires */
-      cand->timer_source =
-          agent_timeout_add_with_context (agent, (lifetime - 60) * 1000,
-              priv_turn_allocate_refresh_tick, cand);
+  /* step: also start the refresh timer */
+  /* refresh should be sent 1 minute before it expires */
+  cand->timer_source =
+      agent_timeout_add_with_context (agent, (lifetime - 60) * 1000,
+          priv_turn_allocate_refresh_tick, cand);
 
-      nice_debug ("timer source is : %d", cand->timer_source);
-    }
-  }
+  nice_debug ("timer source is : %d", cand->timer_source);
 
   return cand;
 }
@@ -2700,9 +2655,7 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, Stream *stream,
     }
   }
 
-
-  if (validater_data.password)
-    g_free (validater_data.password);
+  g_free (validater_data.password);
 
   if (valid == STUN_VALIDATION_NOT_STUN ||
       valid == STUN_VALIDATION_INCOMPLETE_STUN ||

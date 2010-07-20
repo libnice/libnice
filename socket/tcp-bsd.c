@@ -91,13 +91,15 @@ nice_tcp_bsd_socket_new (NiceAgent *agent, GMainContext *ctx, NiceAddress *addr)
   int ret;
   struct sockaddr_storage name;
   guint name_len = sizeof (name);
-  NiceSocket *sock = g_slice_new0 (NiceSocket);
+  NiceSocket *sock;
   TcpPriv *priv;
 
   if (addr == NULL) {
     /* We can't connect a tcp socket with no destination address */
     return NULL;
   }
+
+  sock = g_slice_new0 (NiceSocket);
 
   nice_address_copy_to_sockaddr(addr, (struct sockaddr *)&name);
 

@@ -310,20 +310,10 @@ component_set_selected_remote_candidate (NiceAgent *agent, Component *component,
       candidate->transport);
 
   if (!remote) {
-    GSList *modified_list = NULL;
-
     remote = nice_candidate_copy (candidate);
-
-    modified_list = g_slist_append (component->remote_candidates,
-				    remote);
-    if (modified_list) {
-      component->remote_candidates = modified_list;
-      agent_signal_new_remote_candidate (agent, remote);
-    }
-    else { /* error: memory alloc / list */
-      nice_candidate_free (remote), remote = NULL;
-      return NULL;
-    }
+    component->remote_candidates = g_slist_append (component->remote_candidates,
+        remote);
+    agent_signal_new_remote_candidate (agent, remote);
   }
 
   if (component->selected_pair.keepalive.tick_source != NULL) {
