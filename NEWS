@@ -1,3 +1,11 @@
+libnice 0.0.13 (2010-07-20)
+==========================
+
+Add support for IPv6
+Fix crc32 function conflict with libz.so
+Various bug fixing and code cleaning
+Validate the remote candidate address before adding it
+
 libnice 0.0.12 (2010-05-19)
 ==========================
 
