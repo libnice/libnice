@@ -1388,10 +1388,6 @@ priv_add_new_candidate_discovery_turn (NiceAgent *agent,
     cdisco->nicesock = nice_tcp_turn_socket_new (agent, socket,
         agent_to_turn_socket_compatibility (agent));
 
-    if (!cdisco->nicesock) {
-      g_error ("Could not create tcp turn socket");
-    }
-
     agent_attach_stream_component_socket (agent, stream,
         component, cdisco->nicesock);
     component->sockets = g_slist_append (component->sockets, cdisco->nicesock);
