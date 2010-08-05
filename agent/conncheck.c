@@ -174,7 +174,7 @@ static gboolean priv_conn_check_unfreeze_next (NiceAgent *agent)
 
 /*
  * Unfreezes the next next connectivity check in the list after
- * check 'success_check' has succesfully completed.
+ * check 'success_check' has successfully completed.
  *
  * See sect 7.1.2.2.3 (Updating Pair States) of ICE spec (ID-19).
  * 
@@ -200,7 +200,7 @@ static void priv_conn_check_unfreeze_related (NiceAgent *agent, Stream *stream, 
     if (p->stream_id == ok_check->stream_id) {
       if (p->state == NICE_CHECK_FROZEN &&
 	  strcmp (p->foundation, ok_check->foundation) == 0) {
-	nice_debug ("Agent %p : Unfreezing check %p (after succesful check %p).", agent, p, ok_check);
+	nice_debug ("Agent %p : Unfreezing check %p (after successful check %p).", agent, p, ok_check);
 	p->state = NICE_CHECK_WAITING;
         nice_debug ("Agent %p : pair %p state WAITING", agent, p);
 	++unfrozen;
@@ -221,7 +221,7 @@ static void priv_conn_check_unfreeze_related (NiceAgent *agent, Stream *stream, 
 	    p->stream_id != ok_check->stream_id) {
 	  if (p->state == NICE_CHECK_FROZEN &&
 	      strcmp (p->foundation, ok_check->foundation) == 0) {
-	    nice_debug ("Agent %p : Unfreezing check %p from stream %u (after succesful check %p).", agent, p, s->id, ok_check);
+	    nice_debug ("Agent %p : Unfreezing check %p from stream %u (after successful check %p).", agent, p, s->id, ok_check);
 	    p->state = NICE_CHECK_WAITING;
             nice_debug ("Agent %p : pair %p state WAITING", agent, p);
 	    ++unfrozen;
@@ -1725,7 +1725,7 @@ static guint priv_prune_pending_checks (Stream *stream, guint component_id)
 }
 
 /*
- * Schedules a triggered check after a succesfully inbound 
+ * Schedules a triggered check after a successfully inbound 
  * connectivity check. Implements ICE sect 7.2.1.4 "Triggered Checks" (ID-19).
  * 
  * @param agent self pointer
@@ -1797,7 +1797,7 @@ static gboolean priv_schedule_triggered_check (NiceAgent *agent, Stream *stream,
 
 
 /*
- * Sends a reply to an succesfully received STUN connectivity 
+ * Sends a reply to an successfully received STUN connectivity 
  * check request. Implements parts of the ICE spec section 7.2 (STUN
  * Server Procedures).
  *
@@ -1833,7 +1833,7 @@ static void priv_reply_to_conn_check (NiceAgent *agent, Stream *stream, Componen
   nice_socket_send (socket, toaddr, rbuf_len, (const gchar*)rbuf);
   
   if (rcand) {
-    /* note: upon succesful check, make the reserve check immediately */
+    /* note: upon successful check, make the reserve check immediately */
     priv_schedule_triggered_check (agent, stream, component, socket, rcand, use_candidate);
 
     if (use_candidate)
@@ -2178,7 +2178,7 @@ static gboolean priv_map_reply_to_discovery_request (NiceAgent *agent, StunMessa
 
           d->pending = FALSE;
         } else if (res == STUN_USAGE_BIND_RETURN_SUCCESS) {
-          /* case: succesful binding discovery, create a new local candidate */
+          /* case: successful binding discovery, create a new local candidate */
           NiceAddress niceaddr;
           nice_address_set_from_sockaddr (&niceaddr,
               (struct sockaddr *) &sockaddr);
@@ -2290,7 +2290,7 @@ static gboolean priv_map_reply_to_relay_request (NiceAgent *agent, StunMessage *
           d->pending = FALSE;
         } else if (res == STUN_USAGE_TURN_RETURN_RELAY_SUCCESS ||
                    res == STUN_USAGE_TURN_RETURN_MAPPED_SUCCESS) {
-          /* case: succesful allocate, create a new local candidate */
+          /* case: successful allocate, create a new local candidate */
           NiceAddress niceaddr;
           NiceCandidate *relay_cand;
 

@@ -1566,7 +1566,7 @@ static void _upnp_mapped_external_port (GUPnPSimpleIgd *self, gchar *proto,
 
   agent_lock();
 
-  nice_debug ("Agent %p : Sucessfully mapped %s:%d to %s:%d", agent, local_ip,
+  nice_debug ("Agent %p : Successfully mapped %s:%d to %s:%d", agent, local_ip,
       local_port, external_ip, external_port);
 
   if (!nice_address_set_from_string (&localaddr, local_ip))
