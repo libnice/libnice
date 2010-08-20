@@ -457,7 +457,7 @@ nice_agent_get_local_credentials (
  * @agent: The #NiceAgent Object
  * @stream_id: The ID of the stream the candidates are for
  * @component_id: The ID of the component the candidates are for
- * @candidates: a #GList of #NiceCandidate items describing each candidate to add
+ * @candidates: a #GSList of #NiceCandidate items describing each candidate to add
  *
  * Sets, adds or updates the remote candidates for a component of a stream.
  *
