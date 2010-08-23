@@ -44,9 +44,10 @@
 #include <string.h>
 
 
-#define USE_TURN 0
+#define USE_TURN 1
 #define USE_LOOPBACK 1
 #define TEST_GOOGLE 0
+#define USE_TURN_SERVER_ORG 1
 
 #define PROXY_IP "127.0.0.1"
 #define PROXY_PORT 1080
@@ -85,10 +86,10 @@
 #define NUMB_USER "youness.alaoui@collabora.co.uk"
 #define NUMB_PASS "badger"
 
-#define TSORG_IP "127.0.0.1"
-#define TSORG_PORT 3478
-#define TSORG_USER "toto"
-#define TSORG_PASS "password"
+#define TSORG_IP "91.121.109.155"
+#define TSORG_PORT 3480
+#define TSORG_USER "anonymous"
+#define TSORG_PASS "anonymous"
 
 
 #if USE_TURN_SERVER_ORG
@@ -348,6 +349,7 @@ static int run_full_test (NiceAgent *lagent, NiceAgent *ragent, NiceAddress *bas
   g_assert (ls_id > 0);
   g_assert (rs_id > 0);
 #if USE_TURN
+  nice_debug("TURN_IP: %s\n", TURN_IP);
   nice_agent_set_relay_info(lagent, ls_id, 1,
       TURN_IP, TURN_PORT, TURN_USER, TURN_PASS, TURN_TYPE);
   nice_agent_set_relay_info(lagent, ls_id, 2,

@@ -238,7 +238,7 @@ static void test_turn (char *username, char *password, char *hostname, int port)
 
 static void turnserver (void)
 {
-  test_turn ("toto", "password", "127.0.0.1", "3478");
+  test_turn ("anonymous", "anonymous", "91.121.109.155", "3480");
 }
 
 static void numb (void)

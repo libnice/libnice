@@ -59,7 +59,6 @@
 bool stun_message_init (StunMessage *msg, StunClass c, StunMethod m,
     const StunTransactionId id)
 {
-
   if (msg->buffer_len < STUN_MESSAGE_HEADER_LENGTH)
     return FALSE;
 

@@ -79,7 +79,8 @@ size_t stun_usage_turn_create (StunAgent *agent, StunMessage *msg,
 {
   stun_agent_init_request (agent, msg, buffer, buffer_len, STUN_ALLOCATE);
 
-  if (compatibility == STUN_USAGE_TURN_COMPATIBILITY_DRAFT9) {
+  if (compatibility == STUN_USAGE_TURN_COMPATIBILITY_DRAFT9 ||
+      compatibility == STUN_USAGE_TURN_COMPATIBILITY_RFC5766) {
     if (stun_message_append32 (msg, STUN_ATTRIBUTE_REQUESTED_TRANSPORT,
             TURN_REQUESTED_TRANSPORT_UDP) != STUN_MESSAGE_RETURN_SUCCESS)
       return 0;
@@ -104,7 +105,8 @@ size_t stun_usage_turn_create (StunAgent *agent, StunMessage *msg,
       return 0;
   }
 
-  if (compatibility == STUN_USAGE_TURN_COMPATIBILITY_DRAFT9 &&
+  if ((compatibility == STUN_USAGE_TURN_COMPATIBILITY_DRAFT9 ||
+       compatibility == STUN_USAGE_TURN_COMPATIBILITY_RFC5766) &&
       request_props != STUN_USAGE_TURN_REQUEST_PORT_NORMAL) {
     uint32_t req = 0;
 
@@ -166,7 +168,8 @@ size_t stun_usage_turn_create_refresh (StunAgent *agent, StunMessage *msg,
     StunUsageTurnCompatibility compatibility)
 {
 
-  if (compatibility != STUN_USAGE_TURN_COMPATIBILITY_DRAFT9) {
+  if (compatibility != STUN_USAGE_TURN_COMPATIBILITY_DRAFT9 &&
+      compatibility != STUN_USAGE_TURN_COMPATIBILITY_RFC5766) {
     return stun_usage_turn_create (agent, msg, buffer, buffer_len,
         previous_response, STUN_USAGE_TURN_REQUEST_PORT_NORMAL, 0, lifetime,
         username, username_len, password, password_len, compatibility);
@@ -210,6 +213,52 @@ size_t stun_usage_turn_create_refresh (StunAgent *agent, StunMessage *msg,
 
   return stun_agent_finish_message (agent, msg, password, password_len);
 }
+
+size_t stun_usage_turn_create_permission (StunAgent *agent, StunMessage *msg,
+    uint8_t *buffer, size_t buffer_len,
+    uint8_t *username, size_t username_len,
+    uint8_t *password, size_t password_len,
+    uint8_t *realm, size_t realm_len,
+    uint8_t *nonce, size_t nonce_len,
+    struct sockaddr *peer,
+    StunUsageTurnCompatibility compatibility)
+{
+	stun_agent_init_request (agent, msg, buffer, buffer_len,
+		STUN_CREATEPERMISSION);
+	
+	/* PEER address */
+	if (peer) {
+		if (stun_message_append_xor_addr (msg, STUN_ATTRIBUTE_XOR_PEER_ADDRESS,
+            peer, sizeof(*peer)) != STUN_MESSAGE_RETURN_SUCCESS) {
+			return 0;
+		}
+	}
+	
+	/* nonce */
+	if (nonce != NULL) {
+		if (stun_message_append_bytes (msg, STUN_ATTRIBUTE_NONCE,
+		        nonce, nonce_len) != STUN_MESSAGE_RETURN_SUCCESS)
+			return 0;
+	}
+
+	/* realm */
+	if (realm != NULL) {
+		if (stun_message_append_bytes (msg, STUN_ATTRIBUTE_REALM,
+		        realm, realm_len) != STUN_MESSAGE_RETURN_SUCCESS)
+			return 0;
+	}
+	
+	/* username */
+	if (username != NULL) {
+		if (stun_message_append_bytes (msg, STUN_ATTRIBUTE_USERNAME,
+		    	username, username_len) != STUN_MESSAGE_RETURN_SUCCESS)
+			return 0;
+	}
+
+	stun_debug("before stun_agent_finish_message \n");
+	return stun_agent_finish_message (agent, msg, password, password_len);
+}
+
 
 StunUsageTurnReturn stun_usage_turn_process (StunMessage *msg,
     struct sockaddr *relay_addr, socklen_t *relay_addrlen,
@@ -269,7 +318,8 @@ StunUsageTurnReturn stun_usage_turn_process (StunMessage *msg,
 
   stun_debug ("Received %u-bytes STUN message\n", stun_message_length (msg));
 
-  if (compatibility == STUN_USAGE_TURN_COMPATIBILITY_DRAFT9) {
+  if (compatibility == STUN_USAGE_TURN_COMPATIBILITY_DRAFT9 ||
+      compatibility == STUN_USAGE_TURN_COMPATIBILITY_RFC5766) {
     val = stun_message_find_xor_addr (msg,
         STUN_ATTRIBUTE_XOR_MAPPED_ADDRESS, addr, addrlen);
 
@@ -320,7 +370,8 @@ StunUsageTurnReturn stun_usage_turn_refresh_process (StunMessage *msg,
   int code = -1;
   StunUsageTurnReturn ret = STUN_USAGE_TURN_RETURN_RELAY_SUCCESS;
 
-  if (compatibility == STUN_USAGE_TURN_COMPATIBILITY_DRAFT9) {
+  if (compatibility == STUN_USAGE_TURN_COMPATIBILITY_DRAFT9 ||
+      compatibility == STUN_USAGE_TURN_COMPATIBILITY_RFC5766) {
     if (stun_message_get_method (msg) != STUN_REFRESH)
       return STUN_USAGE_TURN_RETURN_INVALID;
   } else {
