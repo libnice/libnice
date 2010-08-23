@@ -1743,8 +1743,11 @@ nice_agent_gather_candidates (
           n + 1, addr);
 
       if (!host_candidate) {
-        g_warning ("No host candidate??");
-        return FALSE;
+        gchar ip[NICE_ADDRESS_STRING_LEN];
+        nice_address_to_string (addr, ip);
+        nice_debug ("Agent %p: Unable to add local host candidate %s for s%d:%d"
+            ". Invalid interface?", agent, ip, stream->id, component->id);
+        continue;
       }
 
 #ifdef HAVE_GUPNP
