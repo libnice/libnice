@@ -1671,7 +1671,8 @@ nice_agent_gather_candidates (
 
   stream = agent_find_stream (agent, stream_id);
   if (stream == NULL) {
-    goto done;
+    agent_unlock();
+    return FALSE;
   }
 
   nice_debug ("Agent %p : In %s mode, starting candidate gathering.", agent,
