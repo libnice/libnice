@@ -283,8 +283,8 @@ nice_agent_class_init (NiceAgentClass *klass)
   g_object_class_install_property (gobject_class, PROP_STUN_SERVER,
       g_param_spec_string (
         "stun-server",
-        "STUN server",
-        "The STUN server used to obtain server-reflexive candidates",
+        "STUN server IP address",
+        "The IP address (not the hostname) of the STUN server to use",
         NULL,
         G_PARAM_READWRITE));
 
@@ -292,7 +292,7 @@ nice_agent_class_init (NiceAgentClass *klass)
       g_param_spec_uint (
         "stun-server-port",
         "STUN server port",
-        "The STUN server used to obtain server-reflexive candidates",
+        "Port of the STUN server used to gather server-reflexive candidates",
         1, 65536,
 	1, /* not a construct property, ignored */
         G_PARAM_READWRITE));
