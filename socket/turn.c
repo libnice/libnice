@@ -740,6 +740,7 @@ nice_turn_socket_parse_recv (NiceSocket *sock, NiceSocket **from_sock,
 		 		g_free (priv->current_create_permission_msg);
 		 		priv->current_create_permission_msg = NULL;
 
+				/* unathorized => resend with realm and nonce) */
 			 	if (stun_message_get_class (&msg) == STUN_ERROR &&
 				     stun_message_find_error (&msg, &code) ==
                   		STUN_MESSAGE_RETURN_SUCCESS &&
@@ -767,7 +768,9 @@ nice_turn_socket_parse_recv (NiceSocket *sock, NiceSocket **from_sock,
 					priv->num_sent_permission = 0;
 
 					/* install timer to schedule refresh of the permission */
-					if (!priv->permission_timeout_source) {
+					/* (will not schedule refresh if we got an error) */
+					if (stun_message_get_class (&msg) == STUN_RESPONSE &&
+					    !priv->permission_timeout_source) {
 						priv->permission_timeout_source =
 				 			g_timeout_add_seconds (STUN_PERMISSION_TIMEOUT,
 				                priv_permission_timeout, priv);
