@@ -304,7 +304,7 @@ stun_message_ensure_ms_realm(StunMessage *msg, uint8_t *realm)
 }
 
 static void
-socket_enqueue_data(NiceSocket *sock, const NiceAddress *to,
+socket_enqueue_data(TurnPriv *priv, const NiceAddress *to,
 	guint len, const gchar *buf)
 {
 	SendData *data = g_slice_new0 (SendData);
@@ -313,23 +313,23 @@ socket_enqueue_data(NiceSocket *sock, const NiceAddress *to,
 	data->data_len = len;
 	data->to = nice_address_dup (to);
 
-	g_queue_push_tail(((TurnPriv *) sock->priv)->send_data, data);
+	g_queue_push_tail(priv->send_data, data);
 }
 
 static gboolean
-socket_has_enqueued_data(NiceSocket *sock)
+socket_has_enqueued_data(TurnPriv *priv)
 {
-	return g_queue_get_length(((TurnPriv *) sock->priv)->send_data) > 0;
+	return g_queue_get_length(priv->send_data) > 0;
 }
 
 static void
-socket_dequeue_data(NiceSocket *sock)
+socket_dequeue_data(TurnPriv *priv)
 {
 	SendData *data =
-				(SendData *) g_queue_pop_head(((TurnPriv *) sock->priv)->send_data);
+				(SendData *) g_queue_pop_head(priv->send_data);
 
 	nice_debug("dequeing data enqueued when installing permission or binding");
-	socket_send (sock, data->to, data->data_len, data->data);
+	nice_socket_send (priv->base_socket, data->to, data->data_len, data->data);
 
 	g_free (data->data);
 	nice_address_free (data->to);
@@ -461,8 +461,7 @@ socket_send (NiceSocket *sock, const NiceAddress *to,
 	     !priv->has_permission) {
 		/* enque data */
 		nice_debug("enqueing data to be sent when aquiring permission or binding");
-		socket_enqueue_data(sock, to, msg_len,
-				(gchar *)buffer);
+		socket_enqueue_data(priv, to, msg_len, (gchar *)buffer);
 		return TRUE;	
 	} else {
 		return nice_socket_send (priv->base_socket, &priv->server_addr,
@@ -731,7 +730,8 @@ nice_turn_socket_parse_recv (NiceSocket *sock, NiceSocket **from_sock,
 			if (memcmp (request_id, response_id, sizeof(StunTransactionId)) == 0) {
 		 		struct sockaddr peer;
 		 		socklen_t peer_len = sizeof(peer);
-		  
+				int code = -1;
+				
 		 		nice_debug("got response for CreatePermission");
 		 		stun_message_find_xor_addr (&priv->current_create_permission_msg->message,
 		                             STUN_ATTRIBUTE_XOR_PEER_ADDRESS, &peer,
@@ -740,7 +740,10 @@ nice_turn_socket_parse_recv (NiceSocket *sock, NiceSocket **from_sock,
 		 		g_free (priv->current_create_permission_msg);
 		 		priv->current_create_permission_msg = NULL;
 
-			 	if (stun_message_get_class (&msg) == STUN_ERROR) {
+			 	if (stun_message_get_class (&msg) == STUN_ERROR &&
+				     stun_message_find_error (&msg, &code) ==
+                  		STUN_MESSAGE_RETURN_SUCCESS &&
+                  		(code == 438 || (code == 401))) {
 					uint8_t *recv_realm = NULL;
         			uint16_t recv_realm_len = 0;
 	 				uint8_t *recv_nonce = NULL;
@@ -772,8 +775,8 @@ nice_turn_socket_parse_recv (NiceSocket *sock, NiceSocket **from_sock,
 
 					/* send enqued data, unless there is also an ongoing channel bind */
 				 	nice_debug("about to dequeue data: sent_binding: %d", priv->sent_binding);
-		 		 	while (socket_has_enqueued_data (sock)) {
-			 			socket_dequeue_data (sock);
+		 		 	while (socket_has_enqueued_data (priv)) {
+			 			socket_dequeue_data (priv);
 				 	}
 				 } 
 			}	
@@ -933,6 +936,18 @@ priv_retransmissions_create_permission_tick_unlocked (TurnPriv *priv)
           g_free (priv->current_create_permission_msg);
           priv->current_create_permission_msg = NULL;
 
+		  /* we got a timeout when retransmitting a CreatePermission
+			 message, assume we can just send the data, the server
+			 might not support RFC TURN, or connectivity check will
+			 fail eventually anyway */
+		  priv->has_permission = TRUE;
+		  priv->sent_permission = FALSE;
+		  priv->num_sent_permission = 0;
+
+		  while (socket_has_enqueued_data (priv)) {
+			  socket_dequeue_data (priv);
+		  }
+			
           break;
         }
       case STUN_USAGE_TIMER_RETURN_RETRANSMIT:
