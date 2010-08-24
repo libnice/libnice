@@ -642,8 +642,7 @@ size_t stun_agent_finish_message (StunAgent *agent, StunMessage *msg,
 
   msg->key = (uint8_t *) key;
   msg->key_len = key_len;
-  stun_debug("stun_agent_finish_message, returning lenght: %d\n",
-             stun_message_length(msg));
+
   return stun_message_length (msg);
 
 }

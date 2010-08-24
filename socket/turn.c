@@ -356,8 +356,6 @@ socket_send (NiceSocket *sock, const NiceAddress *to,
       break;
     }
   }
-
-  nice_debug ("in turn.c:socket_send");
 	
   nice_address_copy_to_sockaddr (to, (struct sockaddr *)&sa);
 
@@ -441,7 +439,6 @@ socket_send (NiceSocket *sock, const NiceAddress *to,
   }
 
   if (msg_len > 0) {
-	nice_debug("before send");
 	if (priv->compatibility == NICE_TURN_SOCKET_COMPATIBILITY_RFC5766) {
 	  if (!priv->has_permission && !priv->sent_permission) {
 		  nice_debug ("no permission installed for peer");
@@ -455,8 +452,6 @@ socket_send (NiceSocket *sock, const NiceAddress *to,
 		priv_send_channel_bind  (priv, NULL, binding->channel, to);
 	}
 
-	nice_debug("about to send: permission %d, binding %d", priv->has_permission,
-	           priv->has_binding);
 	if (priv->compatibility == NICE_TURN_SOCKET_COMPATIBILITY_RFC5766 &&
 	     !priv->has_permission) {
 		/* enque data */
