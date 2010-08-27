@@ -385,6 +385,10 @@ socket_dequeue_all_data (TurnPriv *priv, const NiceAddress *to)
 			g_free (data->data);
 			g_slice_free (SendData, data);
 		}
+
+		/* remove queue from table */
+		g_hash_table_remove (priv->send_data_queues, to);
+		g_queue_free (send_queue);
 	}
 }
 
@@ -1139,15 +1143,19 @@ priv_send_create_permission(TurnPriv *priv, uint8_t *realm, gsize realm_len,
 	guint msg_buf_len;
 	gboolean res = FALSE;
 	TURNMessage *msg = g_new0 (TURNMessage, 1);
+	struct sockaddr addr;
 	
 	nice_debug("creating CreatePermission message");
-	g_hash_table_insert (priv->sent_permissions, peer, peer);
+	g_hash_table_insert (priv->sent_permissions, (gpointer) peer,
+	                     (gpointer) peer);
 
+	nice_address_copy_to_sockaddr (peer, &addr);
+	
 	/* send CreatePermission */
 	msg_buf_len = stun_usage_turn_create_permission(&priv->agent, &msg->message,
 		msg->buffer, sizeof(msg->buffer), priv->username, priv->username_len,
 		priv->password, priv->password_len, realm, realm_len, nonce, nonce_len,
-	    peer,
+	    &addr,
 		NICE_TURN_SOCKET_COMPATIBILITY_RFC5766);
 
 	if (msg_buf_len > 0) {
