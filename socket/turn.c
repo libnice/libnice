@@ -1144,10 +1144,10 @@ priv_send_create_permission(TurnPriv *priv, uint8_t *realm, gsize realm_len,
 	gboolean res = FALSE;
 	TURNMessage *msg = g_new0 (TURNMessage, 1);
 	struct sockaddr addr;
+	NiceAddress *to = nice_address_dup (peer);
 	
 	nice_debug("creating CreatePermission message");
-	g_hash_table_insert (priv->sent_permissions, (gpointer) peer,
-	                     (gpointer) peer);
+	g_hash_table_insert (priv->sent_permissions, to, to);
 
 	nice_address_copy_to_sockaddr (peer, &addr);
 	
