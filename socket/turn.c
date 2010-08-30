@@ -148,21 +148,16 @@ priv_nice_address_hash (gconstpointer data)
 static void
 priv_send_data_queue_destroy (gpointer data)
 {
-	GQueue *send_requests = (GQueue *) data;
+	GQueue *send_queue = (GQueue *) data;
 	GList *i;
 	
-	for (i = g_queue_peek_head_link (send_requests); i; i = i->next) {
-    	SendRequest *r = i->data;
-    	g_source_destroy (r->source);
-    	g_source_unref (r->source);
-    	r->source = NULL;
+	for (i = g_queue_peek_head_link (send_queue); i; i = i->next) {
+    	SendData *data = (SendData *) i->data;
 
-    	stun_agent_forget_transaction (&r->priv->agent, r->id);
-
-    	g_slice_free (SendRequest, r);
-
+		g_free (data->data);
+		g_slice_free (SendData, data);
   	}
- 	g_queue_free (send_requests);
+ 	g_queue_free (send_queue);
 }
 
 NiceSocket *
