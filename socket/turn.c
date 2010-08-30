@@ -388,7 +388,6 @@ socket_dequeue_all_data (TurnPriv *priv, const NiceAddress *to)
 
 		/* remove queue from table */
 		g_hash_table_remove (priv->send_data_queues, to);
-		g_queue_free (send_queue);
 	}
 }
 
