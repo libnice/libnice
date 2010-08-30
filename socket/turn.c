@@ -227,6 +227,10 @@ nice_turn_socket_new (NiceAgent *agent, NiceAddress *addr,
 		g_hash_table_new_full (priv_nice_address_hash ,
 		                       (GEqualFunc) nice_address_equal , 
 		                       (GDestroyNotify) nice_address_free, NULL);
+  priv->sent_permissions =
+		g_hash_table_new_full (priv_nice_address_hash ,
+		                       (GEqualFunc) nice_address_equal , 
+		                       (GDestroyNotify) nice_address_free, NULL);
   priv->send_data_queues =
 		g_hash_table_new_full (priv_nice_address_hash,
 		                       (GEqualFunc) nice_address_equal, 
