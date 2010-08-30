@@ -136,7 +136,7 @@ priv_nice_address_hash (gconstpointer data)
 {
 	int *buf = (int *) data;
 	size_t i;
-	guint hash; 
+	guint hash = 0; 
 		
 	for (i = 0 ; i < sizeof(NiceAddress) / sizeof(int) ; i++) {
 		hash ^= g_int_hash(&buf[i]);
