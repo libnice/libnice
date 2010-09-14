@@ -213,6 +213,7 @@ typedef enum
  * @NICE_COMPATIBILITY_MSN: Use compatibility for MSN Messenger specs
  * @NICE_COMPATIBILITY_WLM2009: Use compatibility with Windows Live Messenger
  * 2009
+ * @NICE_COMPATIBILITY_OC2007: Use compatibility with Microsoft Office Communicator 2007
  * @NICE_COMPATIBILITY_OC2007R2: Use compatibility with Microsoft Office Communicator 2007 R2
  * @NICE_COMPATIBILITY_DRAFT19: Use compatibility for ICE Draft 19 specs
  * @NICE_COMPATIBILITY_LAST: Dummy last compatibility mode
@@ -230,6 +231,7 @@ typedef enum
   NICE_COMPATIBILITY_GOOGLE,
   NICE_COMPATIBILITY_MSN,
   NICE_COMPATIBILITY_WLM2009,
+  NICE_COMPATIBILITY_OC2007,
   NICE_COMPATIBILITY_OC2007R2,
   NICE_COMPATIBILITY_DRAFT19 = NICE_COMPATIBILITY_RFC5245,
   NICE_COMPATIBILITY_LAST = NICE_COMPATIBILITY_OC2007R2,

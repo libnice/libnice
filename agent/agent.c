@@ -151,6 +151,8 @@ agent_to_ice_compatibility (NiceAgent *agent)
       STUN_USAGE_ICE_COMPATIBILITY_MSN :
       agent->compatibility == NICE_COMPATIBILITY_WLM2009 ?
       STUN_USAGE_ICE_COMPATIBILITY_WLM2009 :
+      agent->compatibility == NICE_COMPATIBILITY_OC2007 ?
+      STUN_USAGE_ICE_COMPATIBILITY_MSN :
       agent->compatibility == NICE_COMPATIBILITY_OC2007R2 ?
       STUN_USAGE_ICE_COMPATIBILITY_WLM2009 :
       STUN_USAGE_ICE_COMPATIBILITY_RFC5245;
@@ -165,6 +167,8 @@ agent_to_turn_compatibility (NiceAgent *agent)
       agent->compatibility == NICE_COMPATIBILITY_MSN ?
       STUN_USAGE_TURN_COMPATIBILITY_MSN :
       agent->compatibility == NICE_COMPATIBILITY_WLM2009 ?
+      STUN_USAGE_TURN_COMPATIBILITY_MSN :
+      agent->compatibility == NICE_COMPATIBILITY_OC2007 ?
       STUN_USAGE_TURN_COMPATIBILITY_MSN : STUN_USAGE_TURN_COMPATIBILITY_DRAFT9;
 }
 
@@ -176,6 +180,8 @@ agent_to_turn_socket_compatibility (NiceAgent *agent)
       agent->compatibility == NICE_COMPATIBILITY_MSN ?
       NICE_TURN_SOCKET_COMPATIBILITY_MSN :
       agent->compatibility == NICE_COMPATIBILITY_WLM2009 ?
+      NICE_TURN_SOCKET_COMPATIBILITY_MSN :
+      agent->compatibility == NICE_COMPATIBILITY_OC2007 ?
       NICE_TURN_SOCKET_COMPATIBILITY_MSN :
       NICE_TURN_SOCKET_COMPATIBILITY_DRAFT9;
 }
@@ -834,7 +840,8 @@ nice_agent_set_property (
             STUN_COMPATIBILITY_RFC3489,
             STUN_AGENT_USAGE_SHORT_TERM_CREDENTIALS |
             STUN_AGENT_USAGE_IGNORE_CREDENTIALS);
-      } else if (agent->compatibility == NICE_COMPATIBILITY_MSN) {
+      } else if (agent->compatibility == NICE_COMPATIBILITY_MSN ||
+		 agent->compatibility == NICE_COMPATIBILITY_OC2007) {
         stun_agent_init (&agent->stun_agent, STUN_ALL_KNOWN_ATTRIBUTES,
             STUN_COMPATIBILITY_RFC3489,
             STUN_AGENT_USAGE_SHORT_TERM_CREDENTIALS |

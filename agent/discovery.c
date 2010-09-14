@@ -403,7 +403,8 @@ void priv_generate_candidate_credentials (NiceAgent *agent,
     NiceCandidate *candidate)
 {
 
-  if (agent->compatibility == NICE_COMPATIBILITY_MSN) {
+  if (agent->compatibility == NICE_COMPATIBILITY_MSN ||
+      agent->compatibility == NICE_COMPATIBILITY_OC2007) {
     guchar username[32];
     guchar password[16];
 
@@ -458,7 +459,8 @@ NiceCandidate *discovery_add_local_host_candidate (
   candidate->base_addr = *address;
   if (agent->compatibility == NICE_COMPATIBILITY_GOOGLE) {
     candidate->priority = nice_candidate_jingle_priority (candidate);
-  } else if (agent->compatibility == NICE_COMPATIBILITY_MSN)  {
+  } else if (agent->compatibility == NICE_COMPATIBILITY_MSN ||
+             agent->compatibility == NICE_COMPATIBILITY_OC2007)  {
     candidate->priority = nice_candidate_msn_priority (candidate);
   } else {
     candidate->priority = nice_candidate_ice_priority (candidate);
@@ -523,7 +525,8 @@ discovery_add_server_reflexive_candidate (
 
   if (agent->compatibility == NICE_COMPATIBILITY_GOOGLE) {
     candidate->priority = nice_candidate_jingle_priority (candidate);
-  } else if (agent->compatibility == NICE_COMPATIBILITY_MSN)  {
+  } else if (agent->compatibility == NICE_COMPATIBILITY_MSN ||
+             agent->compatibility == NICE_COMPATIBILITY_OC2007)  {
     candidate->priority = nice_candidate_msn_priority (candidate);
   } else {
     candidate->priority =  nice_candidate_ice_priority_full
@@ -580,7 +583,8 @@ discovery_add_relay_candidate (
 
   if (agent->compatibility == NICE_COMPATIBILITY_GOOGLE) {
     candidate->priority = nice_candidate_jingle_priority (candidate);
-  } else if (agent->compatibility == NICE_COMPATIBILITY_MSN)  {
+  } else if (agent->compatibility == NICE_COMPATIBILITY_MSN ||
+             agent->compatibility == NICE_COMPATIBILITY_OC2007)  {
     candidate->priority = nice_candidate_msn_priority (candidate);
   } else {
     candidate->priority =  nice_candidate_ice_priority_full
@@ -656,7 +660,8 @@ discovery_add_peer_reflexive_candidate (
   candidate->transport = NICE_CANDIDATE_TRANSPORT_UDP;
   if (agent->compatibility == NICE_COMPATIBILITY_GOOGLE) {
     candidate->priority = nice_candidate_jingle_priority (candidate);
-  } else if (agent->compatibility == NICE_COMPATIBILITY_MSN)  {
+  } else if (agent->compatibility == NICE_COMPATIBILITY_MSN ||
+             agent->compatibility == NICE_COMPATIBILITY_OC2007)  {
     candidate->priority = nice_candidate_msn_priority (candidate);
   } else {
     candidate->priority = nice_candidate_ice_priority_full
@@ -670,7 +675,8 @@ discovery_add_peer_reflexive_candidate (
 
   priv_assign_foundation (agent, candidate);
 
-  if (agent->compatibility == NICE_COMPATIBILITY_MSN &&
+  if ((agent->compatibility == NICE_COMPATIBILITY_MSN ||
+       agent->compatibility == NICE_COMPATIBILITY_OC2007) &&
       remote && local) {
     guchar *new_username = NULL;
     guchar *decoded_local = NULL;
@@ -751,7 +757,8 @@ NiceCandidate *discovery_learn_remote_peer_reflexive_candidate (
     candidate->priority = priority;
   } else if (agent->compatibility == NICE_COMPATIBILITY_GOOGLE) {
     candidate->priority = nice_candidate_jingle_priority (candidate);
-  } else if (agent->compatibility == NICE_COMPATIBILITY_MSN)  {
+  } else if (agent->compatibility == NICE_COMPATIBILITY_MSN ||
+             agent->compatibility == NICE_COMPATIBILITY_OC2007)  {
     candidate->priority = nice_candidate_msn_priority (candidate);
   } else {
     candidate->priority = nice_candidate_ice_priority_full
@@ -763,7 +770,8 @@ NiceCandidate *discovery_learn_remote_peer_reflexive_candidate (
 
   priv_assign_remote_foundation (agent, candidate);
 
-  if (agent->compatibility == NICE_COMPATIBILITY_MSN &&
+  if ((agent->compatibility == NICE_COMPATIBILITY_MSN ||
+       agent->compatibility == NICE_COMPATIBILITY_OC2007) &&
       remote && local) {
     guchar *new_username = NULL;
     guchar *decoded_local = NULL;
