@@ -499,7 +499,23 @@ nice_agent_set_remote_candidates (
      Component state MUST be NICE_COMPONENT_STATE_READY, or as a special case,
      in any state if component was in READY state before and was then restarted
    </para>
- </note>
+   <para>
+   In reliable mode, the -1 error value means either that you are not yet
+   connected or that the send buffer is full (equivalent to EWOULDBLOCK).
+   In both cases, you simply need to wait for the
+   #NiceAgent::reliable-transport-writable signal to be fired before resending
+   the data.
+   </para>
+   <para>
+   In non-reliable mode, it will virtually never happen with UDP sockets, but
+   it might happen if the active candidate is a TURN-TCP connection that got
+   disconnected.
+   </para>
+   <para>
+   In both reliable and non-reliable mode, a -1 error code could also mean that
+   the stream_id and/or component_id are invalid.
+   </para>
+</note>
  *
  * Returns: The number of bytes sent, or negative error code
  */
