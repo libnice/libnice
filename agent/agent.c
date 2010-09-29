@@ -1666,6 +1666,7 @@ nice_agent_gather_candidates (
   guint n;
   GSList *i;
   Stream *stream;
+  GSList *local_addresses = NULL;
 
   agent_lock();
 
@@ -1711,13 +1712,21 @@ nice_agent_gather_candidates (
       NiceAddress *addr = nice_address_new ();
 
       if (nice_address_set_from_string (addr, item->data)) {
-        nice_agent_add_local_address (agent, addr);
+        local_addresses = g_slist_append (local_addresses, addr);
+      } else {
+        nice_address_free (addr);
       }
-      nice_address_free (addr);
     }
 
     g_list_foreach (addresses, (GFunc) g_free, NULL);
     g_list_free (addresses);
+  } else {
+    for (i = agent->local_addresses; i; i = i->next) {
+      NiceAddress *addr = i->data;
+      NiceAddress *dup = nice_address_dup (addr);
+
+      local_addresses = g_slist_append (local_addresses, dup);
+    }
   }
 
   /* generate a local host candidate for each local address */
@@ -1806,7 +1815,9 @@ nice_agent_gather_candidates (
     discovery_schedule (agent);
   }
 
- done:
+  for (i = local_addresses; i; i = i->next)
+    nice_address_free (i->data);
+  g_slist_free (local_addresses);
 
   agent_unlock();
 
