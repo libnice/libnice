@@ -697,9 +697,11 @@ priv_send_turn_message (TurnPriv *priv, TURNMessage *msg)
       stun_len, (gchar *)msg->buffer);
 
   if (nice_socket_is_reliable (priv->base_socket)) {
-    stun_timer_start_reliable (&msg->timer);
+    stun_timer_start_reliable (&msg->timer,
+        STUN_TIMER_DEFAULT_RELIABLE_TIMEOUT);
   } else {
-    stun_timer_start (&msg->timer);
+    stun_timer_start (&msg->timer, STUN_TIMER_DEFAULT_TIMEOUT,
+        STUN_TIMER_DEFAULT_MAX_RETRANSMISSIONS);
   }
 
   priv->current_binding_msg = msg;

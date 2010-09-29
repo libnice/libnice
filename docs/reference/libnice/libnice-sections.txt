@@ -205,6 +205,9 @@ stun_usage_ice_conncheck_use_candidate
 <TITLE>Timer</TITLE>
 StunTimer
 StunUsageTimerReturn
+STUN_TIMER_DEFAULT_MAX_RETRANSMISSIONS
+STUN_TIMER_DEFAULT_RELIABLE_TIMEOUT
+STUN_TIMER_DEFAULT_TIMEOUT
 stun_timer_start
 stun_timer_start_reliable
 stun_timer_refresh

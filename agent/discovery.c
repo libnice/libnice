@@ -886,7 +886,8 @@ static gboolean priv_discovery_tick_unlocked (gpointer pointer)
         }
 
 	if (buffer_len > 0) {
-          stun_timer_start (&cand->timer);
+          stun_timer_start (&cand->timer, 200,
+              STUN_TIMER_DEFAULT_MAX_RETRANSMISSIONS);
 
           /* send the conncheck */
           nice_socket_send (cand->nicesock, &cand->server,

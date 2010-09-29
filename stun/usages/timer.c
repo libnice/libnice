@@ -51,23 +51,6 @@
 
 #include <stdlib.h> /* div() */
 
-
-/*
- * Initial STUN timeout (milliseconds). The spec says it should be 100ms,
- * but that's way too short for most types of wireless Internet access.
- */
-#define STUN_INIT_TIMEOUT 600
-#define STUN_END_TIMEOUT 4800
-
-#define STUN_RELIABLE_TIMEOUT 7900
-
-#if STUN_RELIABLE_TIMEOUT < STUN_END_TIMEOUT
-/* Reliable timeout MUST be bigger (or equal) to end timeout, so that
- * retransmissions never happen with reliable transports. */
-# error Inconsistent STUN timeout values!
-#endif
-
-
 /*
  * Clock used throughout the STUN code.
  * STUN requires a monotonic 1kHz clock to operate properly.
@@ -99,7 +82,7 @@ static void stun_gettime (struct timeval *now)
   {  // fallback to wall clock
     gettimeofday (now, NULL);
   }
-#endif 
+#endif
 }
 
 
@@ -117,17 +100,19 @@ static void add_delay (struct timeval *ts, unsigned delay)
 }
 
 
-void stun_timer_start (StunTimer *timer)
+void stun_timer_start (StunTimer *timer, unsigned int initial_timeout,
+    unsigned int max_retransmissions)
 {
   stun_gettime (&timer->deadline);
-  add_delay (&timer->deadline, timer->delay = STUN_INIT_TIMEOUT);
+  timer->delay = initial_timeout;
+  timer->max_retransmissions = max_retransmissions;
+  add_delay (&timer->deadline, timer->delay);
 }
 
 
-void stun_timer_start_reliable (StunTimer *timer)
+void stun_timer_start_reliable (StunTimer *timer, unsigned int initial_timeout)
 {
-  stun_gettime (&timer->deadline);
-  add_delay (&timer->deadline, timer->delay = STUN_RELIABLE_TIMEOUT);
+  stun_timer_start (timer, initial_timeout, 0);
 }
 
 
@@ -156,10 +141,11 @@ StunUsageTimerReturn stun_timer_refresh (StunTimer *timer)
   unsigned delay = stun_timer_remainder (timer);
   if (delay == 0)
   {
-    if (timer->delay >= STUN_END_TIMEOUT)
+    if (timer->retransmissions >= timer->max_retransmissions)
       return STUN_USAGE_TIMER_RETURN_TIMEOUT;
 
     add_delay (&timer->deadline, timer->delay *= 2);
+    timer->retransmissions++;
     return STUN_USAGE_TIMER_RETURN_RETRANSMIT;
   }
 

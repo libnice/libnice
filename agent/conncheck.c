@@ -605,7 +605,8 @@ static gboolean priv_conn_keepalive_tick_unlocked (NiceAgent *agent)
                 agent, buf_len, p->keepalive.stun_message.buffer);
 
             if (buf_len > 0) {
-              stun_timer_start (&p->keepalive.timer);
+              stun_timer_start (&p->keepalive.timer, STUN_TIMER_DEFAULT_TIMEOUT,
+                  STUN_TIMER_DEFAULT_MAX_RETRANSMISSIONS);
 
               agent->media_after_tick = FALSE;
 
@@ -823,7 +824,8 @@ static void priv_turn_allocate_refresh_tick_unlocked (CandidateRefresh *cand)
   }
 
   if (buffer_len > 0) {
-    stun_timer_start (&cand->timer);
+    stun_timer_start (&cand->timer, STUN_TIMER_DEFAULT_TIMEOUT,
+        STUN_TIMER_DEFAULT_MAX_RETRANSMISSIONS);
 
     /* send the refresh */
     nice_socket_send (cand->nicesock, &cand->server,
@@ -1642,7 +1644,8 @@ int conn_check_send (NiceAgent *agent, CandidateCheckPair *pair)
     }
 
     if (buffer_len > 0) {
-      stun_timer_start (&pair->timer);
+      stun_timer_start (&pair->timer, STUN_TIMER_DEFAULT_TIMEOUT,
+          STUN_TIMER_DEFAULT_MAX_RETRANSMISSIONS);
 
       /* send the conncheck */
       nice_socket_send (pair->local->sockptr, &pair->remote->addr,

@@ -62,7 +62,8 @@
 
    // Send the message and start the timer
    send(socket, request, sizeof(request));
-   stun_timer_start(&timer);
+   stun_timer_start(&timer, STUN_TIMER_DEFAULT_TIMEOUT,
+                    STUN_TIMER_DEFAULT_MAX_RETRANSMISSIONS);
 
    // Loop until we get the response
    for (;;) {
@@ -120,8 +121,31 @@ typedef struct stun_timer_s StunTimer;
 struct stun_timer_s {
   struct timeval deadline;
   unsigned delay;
+  unsigned retransmissions;
+  unsigned max_retransmissions;
 };
 
+
+/**
+ * STUN_TIMER_DEFAULT_TIMEOUT:
+ *
+ * The default intial timeout to use for the timer
+ */
+#define STUN_TIMER_DEFAULT_TIMEOUT 600
+
+/**
+ * STUN_TIMER_DEFAULT_MAX_RETRANSMISSIONS:
+ *
+ * The default maximum retransmissions allowed before a timer decides to timeout
+ */
+#define STUN_TIMER_DEFAULT_MAX_RETRANSMISSIONS 3
+
+/**
+ * STUN_TIMER_DEFAULT_RELIABLE_TIMEOUT:
+ *
+ * The default intial timeout to use for a reliable timer
+ */
+#define STUN_TIMER_DEFAULT_RELIABLE_TIMEOUT 7900
 
 /**
  * StunUsageTimerReturn:
@@ -145,15 +169,33 @@ typedef enum {
 extern "C" {
 # endif
 
+
 /**
  * stun_timer_start:
  * @timer: The #StunTimer to start
+ * @initial_timeout: The initial timeout to use before the first retransmission
+ * @max_retransmissions: The maximum number of transmissions before the
+ * #StunTimer times out
  *
  * Starts a STUN transaction retransmission timer.
  * This should be called as soon as you send the message for the first time on
- * a UDP socket
+ * a UDP socket.
+ * The timeout before the next retransmission is set to @initial_timeout, then
+ * each time a packet is retransmited, that timeout will be doubled, until the
+ * @max_retransmissions retransmissions limit is reached.
+ * <para>
+ * To determine the total timeout value, one can use the following equation :
+ <programlisting>
+ total_timeout =  initial_timeout * (2^(max_retransmissions + 1) - 1);
+ </programlisting>
+ * </para>
+ *
+ * See also: #STUN_TIMER_DEFAULT_TIMEOUT
+ *
+ * See also: #STUN_TIMER_DEFAULT_MAX_RETRANSMISSIONS
  */
-void stun_timer_start (StunTimer *timer);
+void stun_timer_start (StunTimer *timer, unsigned int initial_timeout,
+      unsigned int max_retransmissions);
 
 /**
  * stun_timer_start_reliable:
@@ -163,7 +205,7 @@ void stun_timer_start (StunTimer *timer);
  * This should be called as soon as you send the message for the first time on
  * a TCP socket
  */
-void stun_timer_start_reliable (StunTimer *timer);
+void stun_timer_start_reliable (StunTimer *timer, unsigned int initial_timeout);
 
 /**
  * stun_timer_refresh:
