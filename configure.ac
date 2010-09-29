@@ -41,6 +41,12 @@ LIBNICE_LT_LDFLAGS="-version-info ${LIBNICE_LIBVERSION}"
 AC_SUBST(LIBNICE_LT_LDFLAGS)
 
 
+dnl use pretty build output with automake >= 1.11
+m4_ifdef([AM_SILENT_RULES],[AM_SILENT_RULES([yes])],
+  [AM_DEFAULT_VERBOSITY=1
+   AC_SUBST(AM_DEFAULT_VERBOSITY)])
+
+
 # Checks for programs.
 
 AC_PROG_CC
