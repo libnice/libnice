@@ -109,7 +109,6 @@ typedef struct {
 typedef struct {
   gchar *data;
   guint data_len;
-  TurnPriv *priv;
 } SendData;
 
 static void socket_close (NiceSocket *sock);
