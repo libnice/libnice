@@ -1057,9 +1057,7 @@ pseudo_tcp_socket_write_packet (PseudoTcpSocket *sock,
     const gchar *buffer, guint32 len, gpointer user_data)
 {
   TcpUserData *data = (TcpUserData *)user_data;
-  NiceAgent *agent = data->agent;
   Component *component = data->component;
-  Stream *stream = data->stream;
 
   if (component->selected_pair.local != NULL) {
     NiceSocket *sock;
@@ -1069,8 +1067,8 @@ pseudo_tcp_socket_write_packet (PseudoTcpSocket *sock,
     gchar tmpbuf[INET6_ADDRSTRLEN];
     nice_address_to_string (&component->selected_pair.remote->addr, tmpbuf);
 
-    nice_debug ("Agent %p : s%d:%d: sending %d bytes to [%s]:%d", agent,
-        stream->id, component->id, len, tmpbuf,
+    nice_debug ("Agent %p : s%d:%d: sending %d bytes to [%s]:%d", data->agent,
+        data->stream->id, component->id, len, tmpbuf,
         nice_address_get_port (&component->selected_pair.remote->addr));
 #endif
 
