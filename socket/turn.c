@@ -89,10 +89,12 @@ typedef struct {
   uint8_t ms_connection_id[20];
   uint32_t ms_sequence_num;
   bool ms_connection_id_valid;
-  GHashTable *permissions;
-  GHashTable *sent_permissions;
-  GHashTable *send_data_queues;
-  guint permission_timeout_source;
+  GHashTable *permissions;		/* stores installed permissions */
+  GHashTable *sent_permissions; /* ongoing permission installed */
+  GHashTable *send_data_queues; /* stores a send data queue for per
+	 								peer */
+  guint permission_timeout_source;	/* timer used to invalidate
+	 									permissions */
   gboolean has_binding;
   gboolean sent_binding;
   guint binding_timeout_source;
@@ -105,6 +107,7 @@ typedef struct {
   TurnPriv *priv;
 } SendRequest;
 
+/* used to store data sent while obtaining a permission */
 typedef struct {
   gchar *data;
   guint data_len;
