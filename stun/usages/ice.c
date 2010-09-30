@@ -42,6 +42,7 @@
 
 #include <string.h>
 #include <assert.h>
+#include <stdlib.h>
 
 #ifdef _WIN32
 #include <winsock2.h>
@@ -64,13 +65,15 @@ stun_usage_ice_conncheck_create (StunAgent *agent, StunMessage *msg,
     const uint8_t *username, const size_t username_len,
     const uint8_t *password, const size_t password_len,
     bool cand_use, bool controlling, uint32_t priority,
-    uint64_t tie, StunUsageIceCompatibility compatibility)
+    uint64_t tie, const char *candidate_identifier,
+    StunUsageIceCompatibility compatibility)
 {
   StunMessageReturn val;
 
   stun_agent_init_request (agent, msg, buffer, buffer_len, STUN_BINDING);
 
-  if (compatibility == STUN_USAGE_ICE_COMPATIBILITY_RFC5245) {
+  if (compatibility == STUN_USAGE_ICE_COMPATIBILITY_RFC5245 ||
+      compatibility == STUN_USAGE_ICE_COMPATIBILITY_WLM2009) {
     if (cand_use)
     {
       val = stun_message_append_flag (msg, STUN_ATTRIBUTE_USE_CANDIDATE);
@@ -95,6 +98,28 @@ stun_usage_ice_conncheck_create (StunAgent *agent, StunMessage *msg,
         username, username_len);
     if (val != STUN_MESSAGE_RETURN_SUCCESS)
       return 0;
+  }
+
+  if (compatibility == STUN_USAGE_ICE_COMPATIBILITY_WLM2009) {
+    size_t identifier_len = strlen(candidate_identifier);
+    size_t buffer_len = identifier_len;
+    int modulo4 = identifier_len % 4;
+    uint8_t* buf;
+
+    if (modulo4)
+        buffer_len += 4 - modulo4;
+
+    buf = malloc(buffer_len);
+    memset(buf, 0, buffer_len);
+    memcpy(buf, candidate_identifier, identifier_len);
+
+    val = stun_message_append_bytes (msg, STUN_ATTRIBUTE_CANDIDATE_IDENTIFIER,
+            buf, buffer_len);
+
+    free(buf);
+
+    if (val != STUN_MESSAGE_RETURN_SUCCESS)
+		return 0;
   }
 
   return stun_agent_finish_message (agent, msg, password, password_len);

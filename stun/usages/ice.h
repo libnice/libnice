@@ -65,6 +65,8 @@ extern "C" {
  * implementation of ICE
  * @STUN_USAGE_ICE_COMPATIBILITY_MSN: The ICE compatibility with MSN's
  * implementation of ICE
+ * @STUN_USAGE_ICE_COMPATIBILITY_WLM2009: The ICE compatibility with Windows
+ * Live Messenger and Microsoft Office Communicator 2007 R2 implementation of ICE
  * @STUN_USAGE_ICE_COMPATIBILITY_DRAFT19: The ICE compatibility with draft 19
  *
  * This enum defines which compatibility modes this ICE usage can use
@@ -78,6 +80,7 @@ typedef enum {
   STUN_USAGE_ICE_COMPATIBILITY_RFC5245,
   STUN_USAGE_ICE_COMPATIBILITY_GOOGLE,
   STUN_USAGE_ICE_COMPATIBILITY_MSN,
+  STUN_USAGE_ICE_COMPATIBILITY_WLM2009,
   STUN_USAGE_ICE_COMPATIBILITY_DRAFT19 = STUN_USAGE_ICE_COMPATIBILITY_RFC5245,
 } StunUsageIceCompatibility;
 
@@ -130,12 +133,16 @@ typedef enum {
  * @priority: The value of the PRIORITY attribute
  * @tie: The value of the tie-breaker to put in the ICE-CONTROLLED or
  * ICE-CONTROLLING attribute
+ * @candidate_identifier: The foundation value to put in the
+ * CANDIDATE-IDENTIFIER attribute
  * @compatibility: The compatibility mode to use for building the conncheck
  * request
  *
  * Builds an ICE connectivity check STUN message.
  * If the compatibility is not #STUN_USAGE_ICE_COMPATIBILITY_RFC5245, the
  * @cand_use, @controlling, @priority and @tie arguments are not used.
+ * If the compatibility is not #STUN_USAGE_ICE_COMPATIBILITY_WLM2009, the
+ * @candidate_identifier argument is not used.
  * Returns: The length of the message built.
  */
 size_t
@@ -144,7 +151,8 @@ stun_usage_ice_conncheck_create (StunAgent *agent, StunMessage *msg,
     const uint8_t *username, const size_t username_len,
     const uint8_t *password, const size_t password_len,
     bool cand_use, bool controlling, uint32_t priority,
-    uint64_t tie, StunUsageIceCompatibility compatibility);
+    uint64_t tie, const char *candidate_identifier,
+    StunUsageIceCompatibility compatibility);
 
 
 /**

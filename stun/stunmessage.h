@@ -218,6 +218,8 @@ typedef enum
  * defined by ICE draft 19
  * @STUN_ATTRIBUTE_ICE_CONTROLLING: The ICE-CONTROLLING optional attribute as
  * defined by ICE draft 19
+ * @STUN_ATTRIBUTE_CANDIDATE_IDENTIFIER: The CANDIDATE-IDENTIFIER optional
+ * attribute as defined by [MS-ICE2]
  *
  * Known STUN attribute types as defined by various RFCs and drafts
  */
@@ -288,7 +290,9 @@ typedef enum
   STUN_ATTRIBUTE_FINGERPRINT=0x8028,    /* RFC5389 */
   STUN_ATTRIBUTE_ICE_CONTROLLED=0x8029,    /* ICE-19 */
   STUN_ATTRIBUTE_ICE_CONTROLLING=0x802A,    /* ICE-19 */
-  /* 0x802B-0xFFFF */      /* reserved */
+  /* 0x802B-0x8053 */      /* reserved */
+  STUN_ATTRIBUTE_CANDIDATE_IDENTIFIER=0x8054    /* MS-ICE2 */
+  /* 0x8055-0xFFFF */      /* reserved */
 } StunAttribute;
 
 

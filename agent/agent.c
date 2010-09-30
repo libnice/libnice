@@ -149,6 +149,10 @@ agent_to_ice_compatibility (NiceAgent *agent)
       STUN_USAGE_ICE_COMPATIBILITY_GOOGLE :
       agent->compatibility == NICE_COMPATIBILITY_MSN ?
       STUN_USAGE_ICE_COMPATIBILITY_MSN :
+      agent->compatibility == NICE_COMPATIBILITY_WLM2009 ?
+      STUN_USAGE_ICE_COMPATIBILITY_WLM2009 :
+      agent->compatibility == NICE_COMPATIBILITY_OC2007R2 ?
+      STUN_USAGE_ICE_COMPATIBILITY_WLM2009 :
       STUN_USAGE_ICE_COMPATIBILITY_RFC5245;
 }
 
@@ -836,6 +840,11 @@ nice_agent_set_property (
             STUN_AGENT_USAGE_SHORT_TERM_CREDENTIALS |
             STUN_AGENT_USAGE_FORCE_VALIDATER);
       } else if (agent->compatibility == NICE_COMPATIBILITY_WLM2009) {
+        stun_agent_init (&agent->stun_agent, STUN_ALL_KNOWN_ATTRIBUTES,
+            STUN_COMPATIBILITY_WLM2009,
+            STUN_AGENT_USAGE_SHORT_TERM_CREDENTIALS |
+            STUN_AGENT_USAGE_USE_FINGERPRINT);
+      } else if (agent->compatibility == NICE_COMPATIBILITY_OC2007R2) {
         stun_agent_init (&agent->stun_agent, STUN_ALL_KNOWN_ATTRIBUTES,
             STUN_COMPATIBILITY_WLM2009,
             STUN_AGENT_USAGE_SHORT_TERM_CREDENTIALS |

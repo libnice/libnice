@@ -599,6 +599,7 @@ static gboolean priv_conn_keepalive_tick_unlocked (NiceAgent *agent)
                 uname, uname_len, password, password_len,
                 agent->controlling_mode, agent->controlling_mode, priority,
                 agent->tie_breaker,
+                NULL,
                 agent_to_ice_compatibility (agent));
 
             nice_debug ("Agent %p: conncheck created %d - %p",
@@ -1314,7 +1315,8 @@ int conn_check_add_for_candidate (NiceAgent *agent, guint stream_id, Component *
       /* note: do not create pairs where local candidate is 
        *       a srv-reflexive (ICE 5.7.3. "Pruning the Pairs" ID-19) */
       if ((agent->compatibility == NICE_COMPATIBILITY_RFC5245 ||
-              agent->compatibility == NICE_COMPATIBILITY_WLM2009) &&
+           agent->compatibility == NICE_COMPATIBILITY_WLM2009 ||
+           agent->compatibility == NICE_COMPATIBILITY_OC2007R2) &&
           local->type == NICE_CANDIDATE_TYPE_SERVER_REFLEXIVE)
 	continue;
 
@@ -1434,7 +1436,8 @@ size_t priv_gen_username (NiceAgent *agent, guint component_id,
       len++;
       memcpy (dest + len, local, local_len);
       len += local_len;
-    } else if (agent->compatibility == NICE_COMPATIBILITY_WLM2009 &&
+    } else if ((agent->compatibility == NICE_COMPATIBILITY_WLM2009 ||
+        agent->compatibility == NICE_COMPATIBILITY_OC2007R2) &&
         dest_len >= remote_len + local_len + 4 ) {
       memcpy (dest, remote, remote_len);
       len += remote_len;
@@ -1635,6 +1638,7 @@ int conn_check_send (NiceAgent *agent, CandidateCheckPair *pair)
         uname, uname_len, password, password_len,
         cand_use, controlling, priority,
         agent->tie_breaker,
+        pair->foundation,
         agent_to_ice_compatibility (agent));
 
     nice_debug ("Agent %p: conncheck created %d - %p", agent, buffer_len, pair->stun_message.buffer);
@@ -1769,8 +1773,9 @@ static gboolean priv_schedule_triggered_check (NiceAgent *agent, Stream *stream,
 	   *       aggressive nomination mode, send a new triggered
 	   *       check to nominate the pair */
 	  if ((agent->compatibility == NICE_COMPATIBILITY_RFC5245 ||
-                  agent->compatibility == NICE_COMPATIBILITY_WLM2009) &&
-              agent->controlling_mode)
+         agent->compatibility == NICE_COMPATIBILITY_WLM2009 ||
+         agent->compatibility == NICE_COMPATIBILITY_OC2007R2) &&
+        agent->controlling_mode)
 	    priv_conn_check_initiate (agent, p);
 	}
 
