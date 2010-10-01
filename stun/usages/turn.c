@@ -94,6 +94,10 @@ size_t stun_usage_turn_create (StunAgent *agent, StunMessage *msg,
       return 0;
   }
 
+  if (compatibility == STUN_USAGE_TURN_COMPATIBILITY_OC2007) {
+    stun_message_append32(msg, STUN_ATTRIBUTE_MS_VERSION, 1);
+  }
+
   if (lifetime >= 0) {
     if (stun_message_append32 (msg, STUN_ATTRIBUTE_LIFETIME, lifetime) !=
         STUN_MESSAGE_RETURN_SUCCESS)
@@ -284,7 +288,8 @@ StunUsageTurnReturn stun_usage_turn_process (StunMessage *msg,
       stun_debug (" No MAPPED-ADDRESS: %d\n", val);
       return STUN_USAGE_TURN_RETURN_ERROR;
     }
-  } else if (compatibility == STUN_USAGE_TURN_COMPATIBILITY_MSN) {
+  } else if (compatibility == STUN_USAGE_TURN_COMPATIBILITY_MSN ||
+             compatibility == STUN_USAGE_TURN_COMPATIBILITY_OC2007) {
     val = stun_message_find_addr (msg,
         STUN_ATTRIBUTE_MSN_MAPPED_ADDRESS, addr, addrlen);
 

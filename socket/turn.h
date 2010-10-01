@@ -42,10 +42,12 @@ typedef enum {
   NICE_TURN_SOCKET_COMPATIBILITY_DRAFT9,
   NICE_TURN_SOCKET_COMPATIBILITY_GOOGLE,
   NICE_TURN_SOCKET_COMPATIBILITY_MSN,
+  NICE_TURN_SOCKET_COMPATIBILITY_OC2007,
 } NiceTurnSocketCompatibility;
 
 #include "socket.h"
 #include "agent.h"
+#include "stun/stunmessage.h"
 
 
 G_BEGIN_DECLS
@@ -62,6 +64,12 @@ NiceSocket *
 nice_turn_socket_new (NiceAgent *agent, NiceAddress *addr,
     NiceSocket *base_socket, NiceAddress *server_addr,
     gchar *username, gchar *password, NiceTurnSocketCompatibility compatibility);
+
+void
+nice_turn_socket_set_ms_realm(NiceSocket *sock, StunMessage *msg);
+
+void
+nice_turn_socket_set_ms_connection_id (NiceSocket *sock, StunMessage *msg);
 
 
 G_END_DECLS

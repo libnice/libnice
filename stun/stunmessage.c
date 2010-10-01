@@ -88,6 +88,14 @@ stun_message_find (const StunMessage *msg, StunAttribute type,
   size_t length = stun_message_length (msg);
   size_t offset = 0;
 
+  /* In MS-TURN, IDs of REALM and NONCE STUN attributes are swapped. */
+  if (msg->agent && msg->agent->compatibility == STUN_COMPATIBILITY_OC2007)
+  {
+    if (type == STUN_ATTRIBUTE_REALM)
+      type = STUN_ATTRIBUTE_NONCE;
+    else if (type == STUN_ATTRIBUTE_NONCE)
+      type = STUN_ATTRIBUTE_REALM;
+  }
 
   offset = STUN_MESSAGE_ATTRIBUTES_POS;
 
@@ -118,7 +126,9 @@ stun_message_find (const StunMessage *msg, StunAttribute type,
         return NULL;
     }
 
-    alen = stun_align (alen);
+    if (!(msg->agent->usage_flags & STUN_AGENT_USAGE_NO_ALIGNED_ATTRIBUTES))
+      alen = stun_align (alen);
+
     offset += alen;
   }
 
@@ -317,20 +327,35 @@ stun_message_append (StunMessage *msg, StunAttribute type, size_t length)
   uint8_t *a;
   uint16_t mlen = stun_message_length (msg);
 
+  /* In MS-TURN, IDs of REALM and NONCE STUN attributes are swapped. */
+  if (msg->agent && msg->agent->compatibility == STUN_COMPATIBILITY_OC2007)
+  {
+    if (type == STUN_ATTRIBUTE_NONCE)
+      type = STUN_ATTRIBUTE_REALM;
+    else if (type == STUN_ATTRIBUTE_REALM)
+      type = STUN_ATTRIBUTE_NONCE;
+  }
+
   if ((size_t)mlen + STUN_ATTRIBUTE_HEADER_LENGTH + length > msg->buffer_len)
     return NULL;
 
 
   a = msg->buffer + mlen;
   a = stun_setw (a, type);
-  /* NOTE: If cookie is not present, we need to force the attribute length
-   * to a multiple of 4 for compatibility with old RFC3489 */
-  a = stun_setw (a, stun_message_has_cookie (msg) ? length : stun_align (length));
+  if (msg->agent->usage_flags & STUN_AGENT_USAGE_NO_ALIGNED_ATTRIBUTES)
+  {
+    a = stun_setw (a, length);
+  } else {
+    /* NOTE: If cookie is not present, we need to force the attribute length
+     * to a multiple of 4 for compatibility with old RFC3489 */
+    a = stun_setw (a, stun_message_has_cookie (msg) ? length : stun_align (length));
+
+    /* Add padding if needed */
+    memset (a + length, ' ', stun_padding (length));
+    mlen += stun_padding (length);
+  }
 
   mlen +=  4 + length;
-  /* Add padding if needed */
-  memset (a + length, ' ', stun_padding (length));
-  mlen += stun_padding (length);
 
   stun_setw (msg->buffer + STUN_MESSAGE_LENGTH_POS, mlen - STUN_MESSAGE_HEADER_LENGTH);
   return a;
@@ -499,7 +524,8 @@ stun_message_append_error (StunMessage *msg, StunError code)
   return STUN_MESSAGE_RETURN_SUCCESS;
 }
 
-int stun_message_validate_buffer_length (const uint8_t *msg, size_t length)
+int stun_message_validate_buffer_length (const uint8_t *msg, size_t length,
+    bool has_padding)
 {
   size_t mlen;
   size_t len;
@@ -525,7 +551,7 @@ int stun_message_validate_buffer_length (const uint8_t *msg, size_t length)
   mlen = stun_getw (msg + STUN_MESSAGE_LENGTH_POS) +
       STUN_MESSAGE_HEADER_LENGTH;
 
-  if (stun_padding (mlen))
+  if (has_padding && stun_padding (mlen))
   {
     stun_debug ("STUN error: Invalid message length: %u!\n", (unsigned)mlen);
     return STUN_MESSAGE_BUFFER_INVALID; // wrong padding
@@ -544,7 +570,9 @@ int stun_message_validate_buffer_length (const uint8_t *msg, size_t length)
   /* from then on, we know we have the entire packet in buffer */
   while (len > 0)
   {
-    size_t alen = stun_align (stun_getw (msg + STUN_ATTRIBUTE_TYPE_LEN));
+    size_t alen = stun_getw (msg + STUN_ATTRIBUTE_TYPE_LEN);
+    if (has_padding)
+      alen = stun_align (alen);
 
     /* thanks to padding check, if (end > msg) then there is not only one
      * but at least 4 bytes left */

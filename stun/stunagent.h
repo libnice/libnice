@@ -82,6 +82,9 @@ typedef struct stun_agent_t StunAgent;
  * @STUN_COMPATIBILITY_WLM2009: Use the STUN specifications compatible with
  * Windows Live Messenger 2009 (a mix between RFC3489 and RFC5389, as well as
  * a special usecase against a typo in their code)
+ * @STUN_COMPATIBILITY_OC2007: Use the STUN specifications compatible with
+ * Microsoft Office Communicator 2007 (basically RFC3489 with swapped
+ * REALM and NONCE attribute hex IDs, attributes are not aligned)
  * @STUN_COMPATIBILITY_LAST: Dummy last compatibility mode
  *
  * Enum that specifies the STUN compatibility mode of the #StunAgent
@@ -90,7 +93,8 @@ typedef enum {
   STUN_COMPATIBILITY_RFC3489,
   STUN_COMPATIBILITY_RFC5389,
   STUN_COMPATIBILITY_WLM2009,
-  STUN_COMPATIBILITY_LAST = STUN_COMPATIBILITY_WLM2009
+  STUN_COMPATIBILITY_OC2007,
+  STUN_COMPATIBILITY_LAST = STUN_COMPATIBILITY_OC2007
 } StunCompatibility;
 
 
@@ -157,6 +161,9 @@ typedef enum {
  * should be (a response to a previously created request). This means that the
  * #StunMessageIntegrityValidate callback will always be called when there is
  * a MESSAGE-INTEGRITY attribute.
+ * @STUN_AGENT_USAGE_NO_ALIGNED_ATTRIBUTES: The agent should not assume STUN
+ * attributes are aligned on 32-bit boundaries when parsing messages and also
+ * do not add padding when creating messages.
  *
  * This enum defines a bitflag usages for a #StunAgent and they will define how
  * the agent should behave, independently of the compatibility mode it uses.
@@ -171,6 +178,7 @@ typedef enum {
   STUN_AGENT_USAGE_IGNORE_CREDENTIALS        = (1 << 4),
   STUN_AGENT_USAGE_NO_INDICATION_AUTH        = (1 << 5),
   STUN_AGENT_USAGE_FORCE_VALIDATER           = (1 << 6),
+  STUN_AGENT_USAGE_NO_ALIGNED_ATTRIBUTES     = (1 << 7),
 } StunAgentUsageFlags;
 
 

@@ -209,6 +209,8 @@ typedef enum
  * ICE draft 19
  * @STUN_ATTRIBUTE_OPTIONS: The OPTIONS optional attribute as defined by
  * libjingle
+ * @STUN_ATTRIBUTE_MS_VERSION: The MS-VERSION optional attribute as defined
+ * by [MS-TURN]
  * @STUN_ATTRIBUTE_SOFTWARE: The SOFTWARE optional attribute as defined by RFC5389
  * @STUN_ATTRIBUTE_ALTERNATE_SERVER: The ALTERNATE-SERVER optional attribute as
  * defined by RFC5389
@@ -218,6 +220,8 @@ typedef enum
  * defined by ICE draft 19
  * @STUN_ATTRIBUTE_ICE_CONTROLLING: The ICE-CONTROLLING optional attribute as
  * defined by ICE draft 19
+ * @STUN_ATTRIBUTE_MS_SEQUENCE_NUMBER: The MS-SEQUENCE NUMBER optional attribute
+ * as defined by [MS-TURN]
  * @STUN_ATTRIBUTE_CANDIDATE_IDENTIFIER: The CANDIDATE-IDENTIFIER optional
  * attribute as defined by [MS-ICE2]
  *
@@ -241,7 +245,9 @@ typedef enum
   STUN_ATTRIBUTE_REFLECTED_FROM=0x000B,    /* old RFC3489 */
   STUN_ATTRIBUTE_CHANNEL_NUMBER=0x000C,        /* TURN-12 */
   STUN_ATTRIBUTE_LIFETIME=0x000D,      /* TURN-12 */
-  /* 0x000E */        /* reserved (was ALTERNATE-SERVER from midcom-TURN 08 */
+  /* MS_ALTERNATE_SERVER is only used by Microsoft's dialect, probably should
+   * not to be placed in STUN_ALL_KNOWN_ATTRIBUTES */
+  STUN_ATTRIBUTE_MS_ALTERNATE_SERVER=0x000E, /* MS-TURN */
   STUN_ATTRIBUTE_MAGIC_COOKIE=0x000F,        /* midcom-TURN 08 */
   STUN_ATTRIBUTE_BANDWIDTH=0x0010,      /* TURN-04 */
   STUN_ATTRIBUTE_DESTINATION_ADDRESS=0x0011,        /* midcom-TURN 08 */
@@ -281,6 +287,7 @@ typedef enum
   /* Optional attributes */
   /* 0x8000-0x8021 */      /* reserved */
   STUN_ATTRIBUTE_OPTIONS=0x8001, /* libjingle */
+  STUN_ATTRIBUTE_MS_VERSION=0x8008,    /* MS-TURN */
   STUN_ATTRIBUTE_SOFTWARE=0x8022,      /* RFC5389 */
   STUN_ATTRIBUTE_ALTERNATE_SERVER=0x8023,    /* RFC5389 */
   /* 0x8024 */        /* reserved */
@@ -290,7 +297,9 @@ typedef enum
   STUN_ATTRIBUTE_FINGERPRINT=0x8028,    /* RFC5389 */
   STUN_ATTRIBUTE_ICE_CONTROLLED=0x8029,    /* ICE-19 */
   STUN_ATTRIBUTE_ICE_CONTROLLING=0x802A,    /* ICE-19 */
-  /* 0x802B-0x8053 */      /* reserved */
+  /* 0x802B-0x804F */      /* reserved */
+  STUN_ATTRIBUTE_MS_SEQUENCE_NUMBER=0x8050,     /* MS-TURN */
+  /* 0x8051-0x8053 */      /* reserved */
   STUN_ATTRIBUTE_CANDIDATE_IDENTIFIER=0x8054    /* MS-ICE2 */
   /* 0x8055-0xFFFF */      /* reserved */
 } StunAttribute;
@@ -343,6 +352,36 @@ static const uint16_t STUN_ALL_KNOWN_ATTRIBUTES[] =
     STUN_ATTRIBUTE_CONNECT_STAT,
     STUN_ATTRIBUTE_PRIORITY,
     STUN_ATTRIBUTE_USE_CANDIDATE,
+    0
+  };
+
+/**
+ * STUN_MSOC_KNOWN_ATTRIBUTES:
+ *
+ * An array containing all the currently known mandatory attributes used by
+ * Microsoft Office Communicator as defined in [MS-TURN]
+ */
+static const uint16_t STUN_MSOC_KNOWN_ATTRIBUTES[] =
+  {
+    STUN_ATTRIBUTE_MAPPED_ADDRESS,
+    STUN_ATTRIBUTE_USERNAME,
+    STUN_ATTRIBUTE_MESSAGE_INTEGRITY,
+    STUN_ATTRIBUTE_ERROR_CODE,
+    STUN_ATTRIBUTE_UNKNOWN_ATTRIBUTES,
+    STUN_ATTRIBUTE_LIFETIME,
+    STUN_ATTRIBUTE_MS_ALTERNATE_SERVER,
+    STUN_ATTRIBUTE_MAGIC_COOKIE,
+    STUN_ATTRIBUTE_BANDWIDTH,
+    STUN_ATTRIBUTE_DESTINATION_ADDRESS,
+    STUN_ATTRIBUTE_REMOTE_ADDRESS,
+    STUN_ATTRIBUTE_DATA,
+    /* REALM and NONCE have swapped hexadecimal IDs in [MS-TURN]. Libnice users
+     * or developers can still use these enumeration values in their original
+     * meanings from StunAttribute anywhere in the code, as stun_message_find()
+     * and stun_message_append() will choose correct ID in MSOC compatibility
+     * modes. */
+    STUN_ATTRIBUTE_NONCE,
+    STUN_ATTRIBUTE_REALM,
     0
   };
 
@@ -826,6 +865,7 @@ StunMessageReturn stun_message_append_error (StunMessage * msg,
  * stun_message_validate_buffer_length:
  * @msg: The buffer to validate
  * @length: The length of the buffer
+ * @has_padding: Set TRUE if attributes should be padded to multiple of 4 bytes
  *
  * This function will take a data buffer and will try to validate whether it is
  * a STUN message or if it's not or if it's an incomplete STUN message and will
@@ -835,7 +875,8 @@ StunMessageReturn stun_message_append_error (StunMessage * msg,
  * <para> See also: #STUN_MESSAGE_BUFFER_INCOMPLETE </para>
  * <para> See also: #STUN_MESSAGE_BUFFER_INVALID </para>
  */
-int stun_message_validate_buffer_length (const uint8_t *msg, size_t length);
+int stun_message_validate_buffer_length (const uint8_t *msg, size_t length,
+    bool has_padding);
 
 /**
  * stun_message_id:

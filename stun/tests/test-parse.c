@@ -73,7 +73,7 @@ static void validate (const uint8_t *msg, unsigned len)
 
   do
   {
-    size_t vlen = stun_message_validate_buffer_length (msg, i);
+    size_t vlen = stun_message_validate_buffer_length (msg, i, TRUE);
     if ((vlen & 3) || (vlen != ((i >= len) * len)))
       fatal ("%u/%u short message test failed", i, len);
   }
@@ -242,16 +242,16 @@ static void test_message (void)
     fatal ("Binding Error Response failed");
 
 
-  if (stun_message_validate_buffer_length (NULL, 0) !=
+  if (stun_message_validate_buffer_length (NULL, 0, TRUE) !=
       STUN_MESSAGE_BUFFER_INVALID)
     fatal ("0 bytes test failed");
-  if (stun_message_validate_buffer_length ((uint8_t *)"\xf0", 1) >= 0)
+  if (stun_message_validate_buffer_length ((uint8_t *)"\xf0", 1, TRUE) >= 0)
     fatal ("1 byte test failed");
-  if (stun_message_validate_buffer_length (bad1, sizeof (bad1)) >= 0)
+  if (stun_message_validate_buffer_length (bad1, sizeof (bad1), TRUE) >= 0)
     fatal ("Badness 1 test failed");
-  if (stun_message_validate_buffer_length (bad2, sizeof (bad2)) >= 0)
+  if (stun_message_validate_buffer_length (bad2, sizeof (bad2), TRUE) >= 0)
     fatal ("Badness 2 test failed");
-  if (stun_message_validate_buffer_length (bad3, sizeof (bad3)) != 0)
+  if (stun_message_validate_buffer_length (bad3, sizeof (bad3), TRUE) != 0)
     fatal ("Badness 3 test failed");
   validate (simple_resp, 20);
   validate (old_ind, 20);

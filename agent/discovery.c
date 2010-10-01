@@ -141,6 +141,7 @@ void refresh_free_item (gpointer data, gpointer user_data)
   uint8_t *password;
   size_t password_len;
   size_t buffer_len = 0;
+  StunUsageTurnCompatibility turn_compat = agent_to_turn_compatibility (agent);
 
   g_assert (user_data == NULL);
 
@@ -160,7 +161,8 @@ void refresh_free_item (gpointer data, gpointer user_data)
   password = (uint8_t *)cand->turn->password;
   password_len = (size_t) strlen (cand->turn->password);
 
-  if (agent_to_turn_compatibility (agent) == STUN_USAGE_TURN_COMPATIBILITY_MSN) {
+  if (turn_compat == STUN_USAGE_TURN_COMPATIBILITY_MSN ||
+      turn_compat == STUN_USAGE_TURN_COMPATIBILITY_OC2007) {
     username = g_base64_decode ((gchar *)username, &username_len);
     password = g_base64_decode ((gchar *)password, &password_len);
   }
@@ -188,7 +190,8 @@ void refresh_free_item (gpointer data, gpointer user_data)
 
   }
 
-  if (agent_to_turn_compatibility (agent) == STUN_USAGE_TURN_COMPATIBILITY_MSN) {
+  if (turn_compat == STUN_USAGE_TURN_COMPATIBILITY_MSN ||
+      turn_compat == STUN_USAGE_TURN_COMPATIBILITY_OC2007) {
     g_free (username);
     g_free (password);
   }
@@ -868,9 +871,11 @@ static gboolean priv_discovery_tick_unlocked (gpointer pointer)
           size_t username_len = (size_t) strlen (cand->turn->username);
           uint8_t *password = (uint8_t *)cand->turn->password;
           size_t password_len = (size_t) strlen (cand->turn->password);
+          StunUsageTurnCompatibility turn_compat =
+              agent_to_turn_compatibility (agent);
 
-          if (agent_to_turn_compatibility (agent) ==
-              STUN_USAGE_TURN_COMPATIBILITY_MSN) {
+          if (turn_compat == STUN_USAGE_TURN_COMPATIBILITY_MSN ||
+              turn_compat == STUN_USAGE_TURN_COMPATIBILITY_OC2007) {
             username = g_base64_decode ((gchar *)username, &username_len);
             password = g_base64_decode ((gchar *)password, &password_len);
           }
@@ -882,10 +887,10 @@ static gboolean priv_discovery_tick_unlocked (gpointer pointer)
               -1, -1,
               username, username_len,
               password, password_len,
-              agent_to_turn_compatibility (agent));
+              turn_compat);
 
-          if (agent_to_turn_compatibility (agent) ==
-              STUN_USAGE_TURN_COMPATIBILITY_MSN) {
+          if (turn_compat == STUN_USAGE_TURN_COMPATIBILITY_MSN ||
+              turn_compat == STUN_USAGE_TURN_COMPATIBILITY_OC2007) {
             g_free (cand->msn_turn_username);
             g_free (cand->msn_turn_password);
             cand->msn_turn_username = username;

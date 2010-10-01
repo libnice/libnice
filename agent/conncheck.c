@@ -789,14 +789,16 @@ static void priv_turn_allocate_refresh_tick_unlocked (CandidateRefresh *cand)
   uint8_t *password;
   size_t password_len;
   size_t buffer_len = 0;
+  StunUsageTurnCompatibility turn_compat =
+      agent_to_turn_compatibility (cand->agent);
 
   username = (uint8_t *)cand->turn->username;
   username_len = (size_t) strlen (cand->turn->username);
   password = (uint8_t *)cand->turn->password;
   password_len = (size_t) strlen (cand->turn->password);
 
-  if (agent_to_turn_compatibility (cand->agent) ==
-      STUN_USAGE_TURN_COMPATIBILITY_MSN) {
+  if (turn_compat == STUN_USAGE_TURN_COMPATIBILITY_MSN ||
+      turn_compat == STUN_USAGE_TURN_COMPATIBILITY_OC2007) {
     username = g_base64_decode ((gchar *)username, &username_len);
     password = g_base64_decode ((gchar *)password, &password_len);
   }
@@ -806,10 +808,10 @@ static void priv_turn_allocate_refresh_tick_unlocked (CandidateRefresh *cand)
       cand->stun_resp_msg.buffer == NULL ? NULL : &cand->stun_resp_msg, -1,
       username, username_len,
       password, password_len,
-      agent_to_turn_compatibility (cand->agent));
+      turn_compat);
 
-  if (agent_to_turn_compatibility (cand->agent) ==
-      STUN_USAGE_TURN_COMPATIBILITY_MSN) {
+  if (turn_compat == STUN_USAGE_TURN_COMPATIBILITY_MSN ||
+      turn_compat == STUN_USAGE_TURN_COMPATIBILITY_OC2007) {
     g_free (cand->msn_turn_username);
     g_free (cand->msn_turn_password);
     cand->msn_turn_username = username;
@@ -2331,6 +2333,11 @@ static gboolean priv_map_reply_to_relay_request (NiceAgent *agent, StunMessage *
 
           if (relay_cand) {
             priv_add_new_turn_refresh (d, relay_cand, lifetime);
+            if (agent->compatibility == NICE_COMPATIBILITY_OC2007 ||
+                agent->compatibility == NICE_COMPATIBILITY_OC2007R2) {
+                  nice_turn_socket_set_ms_realm(relay_cand->sockptr, &d->stun_message);
+                  nice_turn_socket_set_ms_connection_id(relay_cand->sockptr, resp);
+            }
           }
 
           d->stun_message.buffer = NULL;
@@ -2350,7 +2357,9 @@ static gboolean priv_map_reply_to_relay_request (NiceAgent *agent, StunMessage *
               STUN_ATTRIBUTE_REALM, &recv_realm_len);
 
           /* check for unauthorized error response */
-          if (agent->compatibility == NICE_COMPATIBILITY_RFC5245 &&
+          if ((agent->compatibility == NICE_COMPATIBILITY_RFC5245 ||
+               agent->compatibility == NICE_COMPATIBILITY_OC2007  ||
+               agent->compatibility == NICE_COMPATIBILITY_OC2007R2) &&
               stun_message_get_class (resp) == STUN_ERROR &&
               stun_message_find_error (resp, &code) ==
               STUN_MESSAGE_RETURN_SUCCESS &&

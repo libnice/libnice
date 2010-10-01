@@ -117,7 +117,8 @@ StunValidationStatus stun_agent_validate (StunAgent *agent, StunMessage *msg,
   uint8_t long_term_key[16];
   bool long_term_key_valid = FALSE;
 
-  len = stun_message_validate_buffer_length (buffer, buffer_len);
+  len = stun_message_validate_buffer_length (buffer, buffer_len,
+       !(agent->usage_flags & STUN_AGENT_USAGE_NO_ALIGNED_ATTRIBUTES));
   if (len == STUN_MESSAGE_BUFFER_INVALID) {
     return STUN_VALIDATION_NOT_STUN;
   } else if (len == STUN_MESSAGE_BUFFER_INCOMPLETE) {
@@ -257,7 +258,8 @@ StunValidationStatus stun_agent_validate (StunAgent *agent, StunMessage *msg,
         memcpy (msg->long_term_key, md5, sizeof(md5));
         msg->long_term_valid = TRUE;
 
-        if (agent->compatibility == STUN_COMPATIBILITY_RFC3489) {
+        if (agent->compatibility == STUN_COMPATIBILITY_RFC3489 ||
+            agent->compatibility == STUN_COMPATIBILITY_OC2007) {
           stun_sha1 (msg->buffer, hash + 20 - msg->buffer, hash - msg->buffer,
               sha, md5, sizeof(md5), TRUE);
         } else if (agent->compatibility == STUN_COMPATIBILITY_WLM2009) {
@@ -268,7 +270,8 @@ StunValidationStatus stun_agent_validate (StunAgent *agent, StunMessage *msg,
               hash - msg->buffer, sha, md5, sizeof(md5), FALSE);
         }
       } else {
-        if (agent->compatibility == STUN_COMPATIBILITY_RFC3489) {
+        if (agent->compatibility == STUN_COMPATIBILITY_RFC3489 ||
+            agent->compatibility == STUN_COMPATIBILITY_OC2007) {
           stun_sha1 (msg->buffer, hash + 20 - msg->buffer, hash - msg->buffer,
               sha, key, key_len, TRUE);
         } else if (agent->compatibility == STUN_COMPATIBILITY_WLM2009) {
@@ -564,7 +567,8 @@ size_t stun_agent_finish_message (StunAgent *agent, StunMessage *msg,
         return 0;
       }
       if (agent->usage_flags & STUN_AGENT_USAGE_LONG_TERM_CREDENTIALS) {
-        if (agent->compatibility == STUN_COMPATIBILITY_RFC3489) {
+        if (agent->compatibility == STUN_COMPATIBILITY_RFC3489 ||
+            agent->compatibility == STUN_COMPATIBILITY_OC2007) {
           stun_sha1 (msg->buffer, stun_message_length (msg),
               stun_message_length (msg) - 20, ptr, md5, sizeof(md5), TRUE);
         } else if (agent->compatibility == STUN_COMPATIBILITY_WLM2009) {
@@ -579,7 +583,8 @@ size_t stun_agent_finish_message (StunAgent *agent, StunMessage *msg,
               stun_message_length (msg) - 20, ptr, md5, sizeof(md5), FALSE);
         }
       } else {
-        if (agent->compatibility == STUN_COMPATIBILITY_RFC3489) {
+        if (agent->compatibility == STUN_COMPATIBILITY_RFC3489 ||
+            agent->compatibility == STUN_COMPATIBILITY_OC2007) {
           stun_sha1 (msg->buffer, stun_message_length (msg),
               stun_message_length (msg) - 20, ptr, key, key_len, TRUE);
         } else if (agent->compatibility == STUN_COMPATIBILITY_WLM2009) {
@@ -671,14 +676,17 @@ stun_agent_find_unknowns (StunAgent *agent, const StunMessage * msg,
     size_t alen = stun_getw (msg->buffer + offset + STUN_ATTRIBUTE_TYPE_LEN);
     uint16_t atype = stun_getw (msg->buffer + offset);
 
-    offset += STUN_ATTRIBUTE_VALUE_POS + stun_align (alen);
-
     if (!stun_optional (atype) && stun_agent_is_unknown (agent, atype))
     {
       stun_debug ("STUN unknown: attribute 0x%04x(%u bytes)\n",
            (unsigned)atype, (unsigned)alen);
       list[count++] = htons (atype);
     }
+
+    if (!(agent->usage_flags & STUN_AGENT_USAGE_NO_ALIGNED_ATTRIBUTES))
+      alen = stun_align (alen);
+
+    offset += STUN_ATTRIBUTE_VALUE_POS + alen;
   }
 
   stun_debug ("STUN unknown: %u mandatory attribute(s)!\n", count);

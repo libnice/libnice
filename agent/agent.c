@@ -169,7 +169,10 @@ agent_to_turn_compatibility (NiceAgent *agent)
       agent->compatibility == NICE_COMPATIBILITY_WLM2009 ?
       STUN_USAGE_TURN_COMPATIBILITY_MSN :
       agent->compatibility == NICE_COMPATIBILITY_OC2007 ?
-      STUN_USAGE_TURN_COMPATIBILITY_MSN : STUN_USAGE_TURN_COMPATIBILITY_DRAFT9;
+      STUN_USAGE_TURN_COMPATIBILITY_OC2007 :
+      agent->compatibility == NICE_COMPATIBILITY_OC2007R2 ?
+      STUN_USAGE_TURN_COMPATIBILITY_OC2007 :
+      STUN_USAGE_TURN_COMPATIBILITY_DRAFT9;
 }
 
 NiceTurnSocketCompatibility
@@ -182,7 +185,9 @@ agent_to_turn_socket_compatibility (NiceAgent *agent)
       agent->compatibility == NICE_COMPATIBILITY_WLM2009 ?
       NICE_TURN_SOCKET_COMPATIBILITY_MSN :
       agent->compatibility == NICE_COMPATIBILITY_OC2007 ?
-      NICE_TURN_SOCKET_COMPATIBILITY_MSN :
+      NICE_TURN_SOCKET_COMPATIBILITY_OC2007 :
+      agent->compatibility == NICE_COMPATIBILITY_OC2007R2 ?
+      NICE_TURN_SOCKET_COMPATIBILITY_OC2007 :
       NICE_TURN_SOCKET_COMPATIBILITY_DRAFT9;
 }
 
@@ -840,8 +845,7 @@ nice_agent_set_property (
             STUN_COMPATIBILITY_RFC3489,
             STUN_AGENT_USAGE_SHORT_TERM_CREDENTIALS |
             STUN_AGENT_USAGE_IGNORE_CREDENTIALS);
-      } else if (agent->compatibility == NICE_COMPATIBILITY_MSN ||
-		 agent->compatibility == NICE_COMPATIBILITY_OC2007) {
+      } else if (agent->compatibility == NICE_COMPATIBILITY_MSN) {
         stun_agent_init (&agent->stun_agent, STUN_ALL_KNOWN_ATTRIBUTES,
             STUN_COMPATIBILITY_RFC3489,
             STUN_AGENT_USAGE_SHORT_TERM_CREDENTIALS |
@@ -851,11 +855,18 @@ nice_agent_set_property (
             STUN_COMPATIBILITY_WLM2009,
             STUN_AGENT_USAGE_SHORT_TERM_CREDENTIALS |
             STUN_AGENT_USAGE_USE_FINGERPRINT);
+      } else if (agent->compatibility == NICE_COMPATIBILITY_OC2007) {
+        stun_agent_init (&agent->stun_agent, STUN_ALL_KNOWN_ATTRIBUTES,
+            STUN_COMPATIBILITY_RFC3489,
+            STUN_AGENT_USAGE_SHORT_TERM_CREDENTIALS |
+            STUN_AGENT_USAGE_FORCE_VALIDATER |
+            STUN_AGENT_USAGE_NO_ALIGNED_ATTRIBUTES);
       } else if (agent->compatibility == NICE_COMPATIBILITY_OC2007R2) {
         stun_agent_init (&agent->stun_agent, STUN_ALL_KNOWN_ATTRIBUTES,
             STUN_COMPATIBILITY_WLM2009,
             STUN_AGENT_USAGE_SHORT_TERM_CREDENTIALS |
-            STUN_AGENT_USAGE_USE_FINGERPRINT);
+            STUN_AGENT_USAGE_USE_FINGERPRINT |
+            STUN_AGENT_USAGE_NO_ALIGNED_ATTRIBUTES);
       } else {
         stun_agent_init (&agent->stun_agent, STUN_ALL_KNOWN_ATTRIBUTES,
             STUN_COMPATIBILITY_RFC5389,
@@ -1327,7 +1338,10 @@ priv_add_new_candidate_discovery_stun (NiceAgent *agent,
   cdisco->component = stream_find_component_by_id (stream, component_id);
   cdisco->agent = agent;
   stun_agent_init (&cdisco->stun_agent, STUN_ALL_KNOWN_ATTRIBUTES,
-      STUN_COMPATIBILITY_RFC3489, 0);
+      STUN_COMPATIBILITY_RFC3489,
+      (agent->compatibility == NICE_COMPATIBILITY_OC2007 ||
+       agent->compatibility == NICE_COMPATIBILITY_OC2007R2) ?
+        STUN_AGENT_USAGE_NO_ALIGNED_ATTRIBUTES : 0);
 
   nice_debug ("Agent %p : Adding new srv-rflx candidate discovery %p\n",
       agent, cdisco);
@@ -1424,6 +1438,12 @@ priv_add_new_candidate_discovery_turn (NiceAgent *agent,
     stun_agent_init (&cdisco->stun_agent, STUN_ALL_KNOWN_ATTRIBUTES,
         STUN_COMPATIBILITY_RFC3489,
         STUN_AGENT_USAGE_SHORT_TERM_CREDENTIALS);
+  } else if (agent->compatibility == NICE_COMPATIBILITY_OC2007 ||
+      agent->compatibility == NICE_COMPATIBILITY_OC2007R2) {
+    stun_agent_init (&cdisco->stun_agent, STUN_MSOC_KNOWN_ATTRIBUTES,
+        STUN_COMPATIBILITY_OC2007,
+        STUN_AGENT_USAGE_LONG_TERM_CREDENTIALS |
+        STUN_AGENT_USAGE_NO_ALIGNED_ATTRIBUTES);
   } else {
     stun_agent_init (&cdisco->stun_agent, STUN_ALL_KNOWN_ATTRIBUTES,
         STUN_COMPATIBILITY_RFC5389,
@@ -2210,7 +2230,9 @@ _nice_agent_recv (
 
   agent->media_after_tick = TRUE;
 
-  if (stun_message_validate_buffer_length ((uint8_t *) buf, (size_t) len) != len)
+  if (stun_message_validate_buffer_length ((uint8_t *) buf, (size_t) len,
+      (agent->compatibility != NICE_COMPATIBILITY_OC2007 &&
+       agent->compatibility != NICE_COMPATIBILITY_OC2007R2)) != len)
     /* If the retval is no 0, its not a valid stun packet, probably data */
     return len;
 

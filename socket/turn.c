@@ -51,6 +51,7 @@
 #include "agent-priv.h"
 
 #define STUN_END_TIMEOUT 8000
+#define STUN_MAX_MS_REALM_LEN 128 // as defined in [MS-TURN]
 
 
 typedef struct {
@@ -80,6 +81,10 @@ typedef struct {
   size_t password_len;
   NiceTurnSocketCompatibility compatibility;
   GQueue *send_requests;
+  uint8_t ms_realm[STUN_MAX_MS_REALM_LEN + 1];
+  uint8_t ms_connection_id[20];
+  uint32_t ms_sequence_num;
+  bool ms_connection_id_valid;
 } TurnPriv;
 
 
@@ -133,6 +138,13 @@ nice_turn_socket_new (NiceAgent *agent, NiceAddress *addr,
         STUN_COMPATIBILITY_RFC3489,
         STUN_AGENT_USAGE_SHORT_TERM_CREDENTIALS |
         STUN_AGENT_USAGE_IGNORE_CREDENTIALS);
+  } else if (compatibility == NICE_TURN_SOCKET_COMPATIBILITY_OC2007) {
+      stun_agent_init (&priv->agent, STUN_ALL_KNOWN_ATTRIBUTES,
+        STUN_COMPATIBILITY_OC2007,
+        STUN_AGENT_USAGE_SHORT_TERM_CREDENTIALS |
+        STUN_AGENT_USAGE_NO_INDICATION_AUTH |
+        STUN_AGENT_USAGE_LONG_TERM_CREDENTIALS |
+        STUN_AGENT_USAGE_NO_ALIGNED_ATTRIBUTES);
   }
 
   priv->nice = agent;
@@ -140,7 +152,8 @@ nice_turn_socket_new (NiceAgent *agent, NiceAddress *addr,
   priv->current_binding = NULL;
   priv->base_socket = base_socket;
 
-  if (compatibility == NICE_TURN_SOCKET_COMPATIBILITY_MSN) {
+  if (compatibility == NICE_TURN_SOCKET_COMPATIBILITY_MSN ||
+      compatibility == NICE_TURN_SOCKET_COMPATIBILITY_OC2007) {
     priv->username = g_base64_decode (username, &priv->username_len);
     priv->password = g_base64_decode (password, &priv->password_len);
   } else {
@@ -230,6 +243,33 @@ socket_recv (NiceSocket *sock, NiceAddress *from, guint len, gchar *buf)
     return recv_len;
 }
 
+static StunMessageReturn
+stun_message_append_ms_connection_id(StunMessage *msg,
+    uint8_t *ms_connection_id, uint32_t ms_sequence_num)
+{
+  uint8_t buf[24];
+
+  memcpy(buf, ms_connection_id, 20);
+  *(uint32_t*)(buf + 20) = htonl(ms_sequence_num);
+  return stun_message_append_bytes (msg, STUN_ATTRIBUTE_MS_SEQUENCE_NUMBER,
+                                    buf, 24);
+}
+
+static void
+stun_message_ensure_ms_realm(StunMessage *msg, uint8_t *realm)
+{
+  /* With MS-TURN, original clients do not send REALM attribute in Send and Set
+   * Active Destination requests, but use it to compute MESSAGE-INTEGRITY. We
+   * simply append cached realm value to the message and use it in subsequent
+   * stun_agent_finish_message() call. Messages with this additional attribute
+   * are handled correctly on OCS Access Edge working as TURN server. */
+  if (stun_message_get_method(msg) == STUN_SEND ||
+      stun_message_get_method(msg) == STUN_OLD_SET_ACTIVE_DST) {
+    stun_message_append_bytes (msg, STUN_ATTRIBUTE_REALM, realm,
+                               strlen((char *)realm));
+  }
+}
+
 static gboolean
 socket_send (NiceSocket *sock, const NiceAddress *to,
     guint len, const gchar *buf)
@@ -299,6 +339,16 @@ socket_send (NiceSocket *sock, const NiceAddress *to,
           nice_address_equal (&priv->current_binding->peer, to)) {
         stun_message_append32 (&msg, STUN_ATTRIBUTE_OPTIONS, 1);
       }
+    }
+
+    if (priv->compatibility == NICE_TURN_SOCKET_COMPATIBILITY_OC2007) {
+      stun_message_append32(&msg, STUN_ATTRIBUTE_MS_VERSION, 1);
+
+      if (priv->ms_connection_id_valid)
+        stun_message_append_ms_connection_id(&msg, priv->ms_connection_id,
+            ++priv->ms_sequence_num);
+
+      stun_message_ensure_ms_realm(&msg, priv->ms_realm);
     }
 
     if (stun_message_append_bytes (&msg, STUN_ATTRIBUTE_DATA,
@@ -436,7 +486,8 @@ nice_turn_socket_parse_recv (NiceSocket *sock, NiceSocket **from_sock,
             priv->current_binding_msg = NULL;
 
             if (stun_message_get_class (&msg) == STUN_RESPONSE &&
-                priv->compatibility == NICE_TURN_SOCKET_COMPATIBILITY_MSN) {
+                (priv->compatibility == NICE_TURN_SOCKET_COMPATIBILITY_MSN ||
+                 priv->compatibility == NICE_TURN_SOCKET_COMPATIBILITY_OC2007)) {
               goto msn_google_lock;
             } else {
               g_free (priv->current_binding);
@@ -817,7 +868,8 @@ priv_add_channel_binding (TurnPriv *priv, NiceAddress *peer)
       return ret;
     }
     return FALSE;
-  } else if (priv->compatibility == NICE_TURN_SOCKET_COMPATIBILITY_MSN) {
+  } else if (priv->compatibility == NICE_TURN_SOCKET_COMPATIBILITY_MSN ||
+             priv->compatibility == NICE_TURN_SOCKET_COMPATIBILITY_OC2007) {
     TURNMessage *msg = g_new0 (TURNMessage, 1);
     if (!stun_agent_init_request (&priv->agent, &msg->message,
             msg->buffer, sizeof(msg->buffer), STUN_OLD_SET_ACTIVE_DST)) {
@@ -837,6 +889,14 @@ priv_add_channel_binding (TurnPriv *priv, NiceAddress *peer)
         g_free (msg);
         return FALSE;
       }
+    }
+
+    if (priv->compatibility == NICE_TURN_SOCKET_COMPATIBILITY_OC2007) {
+      if (priv->ms_connection_id_valid)
+          stun_message_append_ms_connection_id(&msg->message,
+              priv->ms_connection_id, ++priv->ms_sequence_num);
+
+      stun_message_ensure_ms_realm(&msg->message, priv->ms_realm);
     }
 
     if (stun_message_append_addr (&msg->message,
@@ -868,4 +928,32 @@ priv_add_channel_binding (TurnPriv *priv, NiceAddress *peer)
   }
 
   return FALSE;
+}
+
+void
+nice_turn_socket_set_ms_realm(NiceSocket *sock, StunMessage *msg)
+{
+  TurnPriv *priv = (TurnPriv *)sock->priv;
+  uint16_t alen;
+  const uint8_t *realm = stun_message_find(msg, STUN_ATTRIBUTE_REALM, &alen);
+
+  if (realm && alen <= STUN_MAX_MS_REALM_LEN) {
+    memcpy(priv->ms_realm, realm, alen);
+    priv->ms_realm[alen] = '\0';
+  }
+}
+
+void
+nice_turn_socket_set_ms_connection_id (NiceSocket *sock, StunMessage *msg)
+{
+  TurnPriv *priv = (TurnPriv *)sock->priv;
+  uint16_t alen;
+  const uint8_t *ms_seq_num = stun_message_find(msg,
+      STUN_ATTRIBUTE_MS_SEQUENCE_NUMBER, &alen);
+
+  if (ms_seq_num && alen == 24) {
+      memcpy (priv->ms_connection_id, ms_seq_num, 20);
+      priv->ms_sequence_num = ntohl((uint32_t)*(ms_seq_num + 20));
+      priv->ms_connection_id_valid = TRUE;
+  }
 }
