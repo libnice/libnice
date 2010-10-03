@@ -141,7 +141,6 @@ nice_turn_socket_new (NiceAgent *agent, NiceAddress *addr,
   } else if (compatibility == NICE_TURN_SOCKET_COMPATIBILITY_OC2007) {
       stun_agent_init (&priv->agent, STUN_ALL_KNOWN_ATTRIBUTES,
         STUN_COMPATIBILITY_OC2007,
-        STUN_AGENT_USAGE_SHORT_TERM_CREDENTIALS |
         STUN_AGENT_USAGE_NO_INDICATION_AUTH |
         STUN_AGENT_USAGE_LONG_TERM_CREDENTIALS |
         STUN_AGENT_USAGE_NO_ALIGNED_ATTRIBUTES);
