@@ -374,7 +374,7 @@ socket_dequeue_all_data (TurnPriv *priv, const NiceAddress *to)
 	GQueue *send_queue = g_hash_table_lookup (priv->send_data_queues, to);
 	
 	if (send_queue) {
-		while (g_queue_get_length (send_queue) > 0) {
+		while (!g_queue_is_empty (send_queue)) {
 			SendData *data =
 				(SendData *) g_queue_pop_head(send_queue);
 
