@@ -91,7 +91,7 @@ typedef struct {
   bool ms_connection_id_valid;
   GList *permissions;		/* the peers (NiceAddress) for which
                           there is an installed permission */
-  GHashTable *sent_permissions; /* ongoing permission installed */
+  GList *sent_permissions; /* ongoing permission installed */
   GHashTable *send_data_queues; /* stores a send data queue for per peer */
   guint permission_timeout_source;	/* timer used to invalidate permissions */
   gboolean has_binding;
@@ -219,10 +219,7 @@ nice_turn_socket_new (NiceAgent *agent, NiceAddress *addr,
   priv->server_addr = *server_addr;
   priv->compatibility = compatibility;
   priv->send_requests = g_queue_new ();
-  priv->sent_permissions =
-		g_hash_table_new_full (priv_nice_address_hash ,
-		                       (GEqualFunc) nice_address_equal , 
-		                       (GDestroyNotify) nice_address_free, NULL);
+
   priv->send_data_queues =
 		g_hash_table_new_full (priv_nice_address_hash,
 		                       (GEqualFunc) nice_address_equal, 
@@ -348,7 +345,8 @@ priv_has_permission_for_peer (TurnPriv *priv, const NiceAddress *to)
 static gboolean
 priv_has_sent_permission_for_peer (TurnPriv *priv, const NiceAddress *to)
 {
-	return g_hash_table_lookup (priv->sent_permissions, to) != NULL;
+	return g_list_find_custom (priv->sent_permissions, to,
+    (GCompareFunc) nice_address_equal) != NULL;
 }
 
 static void
@@ -820,9 +818,18 @@ nice_turn_socket_parse_recv (NiceSocket *sock, NiceSocket **from_sock,
 					nice_address_free (to);
 		 		} else {
 		 			/* we now have a permission installed for this peer */
+          GList *sent_permission =
+            g_list_find_custom (priv->sent_permissions, to,
+              (GCompareFunc) nice_address_equal);
+             
           priv->permissions =
-            g_list_append(priv->permissions, to);
-					g_hash_table_remove (priv->sent_permissions, to);
+            g_list_append (priv->permissions, to);
+
+          if (sent_permission) {
+            nice_address_free ((NiceAddress *) sent_permission->data);
+            priv->sent_permissions =
+              g_list_remove_link (priv->sent_permissions, sent_permission);
+          }
 
 					/* install timer to schedule refresh of the permission */
 					/* (will not schedule refresh if we got an error) */
@@ -987,29 +994,36 @@ priv_retransmissions_create_permission_tick_unlocked (TurnPriv *priv)
         {
           /* Time out */
           StunTransactionId id;
-		  NiceAddress *to = nice_address_new ();
-		  struct sockaddr addr;
-		  socklen_t addr_len = sizeof(addr);
-
+		      NiceAddress *to = nice_address_new ();
+		      struct sockaddr addr;
+		      socklen_t addr_len = sizeof(addr);
+          GList *sent_permission;
+            
           stun_message_id (&priv->current_create_permission_msg->message, id);
           stun_agent_forget_transaction (&priv->agent, id);
-		  stun_message_find_xor_addr (&priv->current_create_permission_msg->message,
-		                              STUN_ATTRIBUTE_XOR_PEER_ADDRESS, &addr,
-		                              &addr_len);
-		  nice_address_set_from_sockaddr (to, &addr);
-			
+		      stun_message_find_xor_addr (&priv->current_create_permission_msg->message,
+		        STUN_ATTRIBUTE_XOR_PEER_ADDRESS, &addr, &addr_len);
+		      nice_address_set_from_sockaddr (to, &addr);
+          sent_permission = g_list_find_custom (priv->sent_permissions, to,
+            (GCompareFunc) nice_address_equal);
+            
           g_free (priv->current_create_permission_msg);
           priv->current_create_permission_msg = NULL;
 
-		  /* we got a timeout when retransmitting a CreatePermission
-			 message, assume we can just send the data, the server
-			 might not support RFC TURN, or connectivity check will
-			 fail eventually anyway */
-      priv->permissions = g_list_append (priv->permissions, to);
-		  g_hash_table_remove (priv->sent_permissions, to);
+		      /* we got a timeout when retransmitting a CreatePermission
+			      message, assume we can just send the data, the server
+			      might not support RFC TURN, or connectivity check will
+			      fail eventually anyway */
+          priv->permissions = g_list_append (priv->permissions, to);
 
-		  socket_dequeue_all_data (priv, to);
-		
+          if (sent_permission) {
+            nice_address_free ((NiceAddress *) sent_permission->data);
+            priv->sent_permissions =
+              g_list_delete_link (priv->sent_permissions, sent_permission);
+          }
+
+		      socket_dequeue_all_data (priv, to);
+
           break;
         }
       case STUN_USAGE_TIMER_RETURN_RETRANSMIT:
@@ -1149,10 +1163,10 @@ priv_send_create_permission(TurnPriv *priv, uint8_t *realm, gsize realm_len,
 	NiceAddress *to = nice_address_dup (peer);
 	
 	nice_debug("creating CreatePermission message");
-	g_hash_table_insert (priv->sent_permissions, to, to);
+  priv->sent_permissions = g_list_append (priv->sent_permissions, to);
 
 	nice_address_copy_to_sockaddr (peer, &addr);
-	
+
 	/* send CreatePermission */
 	msg_buf_len = stun_usage_turn_create_permission(&priv->agent, &msg->message,
 		msg->buffer, sizeof(msg->buffer), priv->username, priv->username_len,
