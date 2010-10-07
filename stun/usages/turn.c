@@ -225,7 +225,7 @@ size_t stun_usage_turn_create_permission (StunAgent *agent, StunMessage *msg,
 {
 	stun_agent_init_request (agent, msg, buffer, buffer_len,
 		STUN_CREATEPERMISSION);
-	
+
 	/* PEER address */
 	if (peer) {
 		if (stun_message_append_xor_addr (msg, STUN_ATTRIBUTE_XOR_PEER_ADDRESS,
@@ -233,7 +233,7 @@ size_t stun_usage_turn_create_permission (StunAgent *agent, StunMessage *msg,
 			return 0;
 		}
 	}
-	
+
 	/* nonce */
 	if (nonce != NULL) {
 		if (stun_message_append_bytes (msg, STUN_ATTRIBUTE_NONCE,
@@ -247,7 +247,7 @@ size_t stun_usage_turn_create_permission (StunAgent *agent, StunMessage *msg,
 		        realm, realm_len) != STUN_MESSAGE_RETURN_SUCCESS)
 			return 0;
 	}
-	
+
 	/* username */
 	if (username != NULL) {
 		if (stun_message_append_bytes (msg, STUN_ATTRIBUTE_USERNAME,

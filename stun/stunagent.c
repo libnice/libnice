@@ -544,7 +544,7 @@ size_t stun_agent_finish_message (StunAgent *agent, StunMessage *msg,
       uint8_t *username = NULL;
       uint16_t realm_len;
       uint16_t username_len;
-		
+
       realm = (uint8_t *) stun_message_find (msg,
           STUN_ATTRIBUTE_REALM, &realm_len);
       username = (uint8_t *) stun_message_find (msg,
