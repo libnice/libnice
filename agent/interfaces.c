@@ -172,7 +172,6 @@ nice_interfaces_get_local_ips (gboolean include_loopback)
   GList *ips = NULL;
   struct ifaddrs *ifa, *results;
   GList *loopbacks = NULL;
-  int ret;
 
   if (getifaddrs (&results) < 0)
       return NULL;
