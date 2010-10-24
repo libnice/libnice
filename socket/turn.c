@@ -501,13 +501,13 @@ socket_send (NiceSocket *sock, const NiceAddress *to,
       if (!priv_has_permission_for_peer (priv, to) &&
           !priv_has_sent_permission_for_peer (priv, to)) {
         nice_debug ("no permission installed for peer");
-        priv_send_create_permission(priv, NULL, 0, NULL, 0, to);
+        priv_send_create_permission (priv, NULL, 0, NULL, 0, to);
       }
     }
 
     if (!priv->has_binding && !priv->current_binding_msg && binding) {
       nice_debug("renewing channel binding");
-      priv_send_channel_bind  (priv, NULL, binding->channel, to);
+      priv_send_channel_bind (priv, NULL, binding->channel, to);
     }
 
     if (priv->compatibility == NICE_TURN_SOCKET_COMPATIBILITY_RFC5766 &&
