@@ -337,17 +337,31 @@ stun_message_ensure_ms_realm(StunMessage *msg, uint8_t *realm)
 static gboolean
 priv_has_permission_for_peer (TurnPriv *priv, const NiceAddress *to)
 {
-  GList *found = g_list_find_custom (priv->permissions, to,
-                                     (GCompareFunc) nice_address_equal);
+  GList *iter;
 
-  return found != NULL;
+  for (iter = priv->permissions ; iter ; iter = g_list_next (iter)) {
+    NiceAddress *address = (NiceAddress *) iter->data;
+
+    if (nice_address_equal (address, to))
+      return TRUE;
+  }
+
+  return FALSE;
 }
 
 static gboolean
 priv_has_sent_permission_for_peer (TurnPriv *priv, const NiceAddress *to)
 {
-  return g_list_find_custom (priv->sent_permissions, to,
-                             (GCompareFunc) nice_address_equal) != NULL;
+  GList *iter;
+
+  for (iter = priv->sent_permissions ; iter ; iter = g_list_next (iter)) {
+    NiceAddress *address = (NiceAddress *) iter->data;
+
+    if (nice_address_equal (address, to))
+      return TRUE;
+  }
+
+  return FALSE;
 }
 
 static void
@@ -830,18 +844,21 @@ nice_turn_socket_parse_recv (NiceSocket *sock, NiceSocket **from_sock,
               nice_address_free (to);
             } else {
               /* we now have a permission installed for this peer */
-              GList *sent_permission =
-                g_list_find_custom (priv->sent_permissions, to,
-                                    (GCompareFunc) nice_address_equal);
+              GList *iter;
+
+              for (iter = priv->sent_permissions ; iter ; iter = g_list_next (iter)) {
+                NiceAddress *address = (NiceAddress *) iter->data;
+
+                if (nice_address_equal (address, to)) {
+                  nice_address_free ((NiceAddress *) iter->data);
+                  priv->sent_permissions =
+                    g_list_remove_link (priv->sent_permissions, iter);
+                  break;
+                }
+              }
 
               priv->permissions =
                 g_list_append (priv->permissions, to);
-
-              if (sent_permission) {
-                nice_address_free ((NiceAddress *) sent_permission->data);
-                priv->sent_permissions =
-                  g_list_remove_link (priv->sent_permissions, sent_permission);
-              }
 
               /* install timer to schedule refresh of the permission */
               /* (will not schedule refresh if we got an error) */
@@ -1178,8 +1195,10 @@ priv_send_create_permission(TurnPriv *priv, uint8_t *realm, gsize realm_len,
   TURNMessage *msg = g_new0 (TURNMessage, 1);
   struct sockaddr addr;
   NiceAddress *to = nice_address_dup (peer);
+  gchar addr_str[NICE_ADDRESS_STRING_LEN];
 
-  nice_debug("creating CreatePermission message");
+  nice_address_to_string (to, addr_str);
+  nice_debug("creating CreatePermission message for %s", addr_str);
   priv->sent_permissions = g_list_append (priv->sent_permissions, to);
 
   nice_address_copy_to_sockaddr (peer, &addr);
