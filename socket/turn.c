@@ -514,16 +514,7 @@ socket_send (NiceSocket *sock, const NiceAddress *to,
     if (priv->compatibility == NICE_TURN_SOCKET_COMPATIBILITY_RFC5766) {
       if (!priv_has_permission_for_peer (priv, to) &&
           !priv_has_sent_permission_for_peer (priv, to)) {
-        nice_debug ("installed permissions: %d\n", g_list_length (priv->permissions));
-        nice_debug ("sent permissions: %d\n", g_list_length (priv->sent_permissions));
-        nice_debug ("permission: %d\n",
-          priv_has_permission_for_peer (priv, to));
-        nice_debug ("has sent permission: %d\n",
-          priv_has_sent_permission_for_peer (priv, to));
-        nice_debug ("no permission installed for peer");
         priv_send_create_permission (priv, NULL, 0, NULL, 0, to);
-        nice_debug ("has sent permission: %d\n",
-          priv_has_sent_permission_for_peer (priv, to));
       }
     }
 
@@ -853,9 +844,6 @@ nice_turn_socket_parse_recv (NiceSocket *sock, NiceSocket **from_sock,
             } else {
               /* we now have a permission installed for this peer */
               GList *iter;
-
-              nice_debug ("have %d sent permissions pending\n",
-                g_list_length (priv->sent_permissions));
                 
               for (iter = priv->sent_permissions ; iter ; iter = g_list_next (iter)) {
                 NiceAddress *address = (NiceAddress *) iter->data;
@@ -866,20 +854,7 @@ nice_turn_socket_parse_recv (NiceSocket *sock, NiceSocket **from_sock,
                     g_list_delete_link (priv->sent_permissions, iter);
                 }
               }
-
-              for (iter = priv->sent_permissions ; iter ; iter = g_list_next (iter)) {
-                NiceAddress *address = (NiceAddress *) iter->data;
-                gchar addr[NICE_ADDRESS_STRING_LEN];
-
-                nice_address_to_string (address, addr);
-                nice_debug ("pending permission left for %s\n", addr);
-              }
-
-              nice_debug ("sent permissions left: %d\n",
-                g_list_length (priv->sent_permissions));
-
-              exit (0);
-                
+          
               priv->permissions =
                 g_list_append (priv->permissions, to);
 
