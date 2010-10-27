@@ -134,6 +134,7 @@ static gboolean priv_send_channel_bind (TurnPriv *priv,  StunMessage *resp,
 static gboolean priv_add_channel_binding (TurnPriv *priv,
                                           const NiceAddress *peer);
 static gboolean priv_forget_send_request (gpointer pointer);
+static void priv_clear_permissions (TurnPriv *priv);
 
 static guint
 priv_nice_address_hash (gconstpointer data)
@@ -272,8 +273,7 @@ socket_close (NiceSocket *sock)
   }
   g_queue_free (priv->send_requests);
 
-  g_list_foreach (priv->permissions, (GFunc) nice_address_free, NULL);
-  g_list_free (priv->permissions);
+  priv_clear_permissions (priv);
   g_hash_table_destroy (priv->send_data_queues);
   g_source_remove (priv->permission_timeout_source);
 
@@ -335,14 +335,14 @@ stun_message_ensure_ms_realm(StunMessage *msg, uint8_t *realm)
 }
 
 static gboolean
-priv_has_permission_for_peer (TurnPriv *priv, const NiceAddress *to)
+priv_is_peer_in_list (const GList *list, const NiceAddress *peer)
 {
-  GList *iter;
+  const GList *iter;
 
-  for (iter = priv->permissions ; iter ; iter = g_list_next (iter)) {
+  for (iter = list ; iter ; iter = g_list_next (iter)) {
     NiceAddress *address = (NiceAddress *) iter->data;
 
-    if (nice_address_equal (address, to))
+    if (nice_address_equal (address, peer))
       return TRUE;
   }
 
@@ -350,20 +350,62 @@ priv_has_permission_for_peer (TurnPriv *priv, const NiceAddress *to)
 }
 
 static gboolean
-priv_has_sent_permission_for_peer (TurnPriv *priv, const NiceAddress *to)
+priv_has_permission_for_peer (TurnPriv *priv, const NiceAddress *peer)
 {
-  GList *iter;
-
-  for (iter = priv->sent_permissions ; iter ; iter = g_list_next (iter)) {
-    NiceAddress *address = (NiceAddress *) iter->data;
-
-    if (nice_address_equal (address, to))
-      return TRUE;
-  }
-
-  return FALSE;
+  return priv_is_peer_in_list (priv->permissions, peer);
 }
 
+static gboolean
+priv_has_sent_permission_for_peer (TurnPriv *priv, const NiceAddress *peer)
+{
+  return priv_is_peer_in_list (priv->sent_permissions, peer);
+}
+
+static void
+priv_add_permission_for_peer (TurnPriv *priv, const NiceAddress *peer)
+{
+  priv->permissions = g_list_append (priv->permissions, nice_address_dup (peer));
+}
+
+static void
+priv_add_sent_permission_for_peer (TurnPriv *priv, const NiceAddress *peer)
+{
+  priv->sent_permissions =
+    g_list_append (priv->sent_permissions, nice_address_dup (peer));
+}
+
+static GList *
+priv_remove_peer_from_list (GList *list, const NiceAddress *peer)
+{
+  GList *iter;
+              
+  for (iter = list ; iter ; iter = g_list_next (iter)) {
+    NiceAddress *address = (NiceAddress *) iter->data;
+  
+    if (nice_address_equal (address, peer)) {
+      nice_address_free ((NiceAddress *) iter->data);
+      list = g_list_delete_link (list, iter);
+    }
+  }
+
+  return list;
+}
+
+static void
+priv_remove_sent_permission_for_peer (TurnPriv *priv, const NiceAddress *peer)
+{
+  priv->sent_permissions =
+    priv_remove_peer_from_list (priv->sent_permissions, peer);
+}
+
+static void
+priv_clear_permissions (TurnPriv *priv)
+{
+  g_list_foreach (priv->permissions, (GFunc) nice_address_free, NULL);
+  g_list_free (priv->permissions);
+  priv->permissions = NULL;
+}
+ 
 static void
 socket_enqueue_data(TurnPriv *priv, const NiceAddress *to,
                     guint len, const gchar *buf)
@@ -584,11 +626,9 @@ priv_permission_timeout (gpointer data)
   agent_lock ();
   /* remove all permissions for this agent (the permission for the peer
      we are sending to will be renewed) */
-  g_list_foreach (priv->permissions, (GFunc) nice_address_free, NULL);
-  g_list_free (priv->permissions);
-  priv->permissions = NULL;
+  priv_clear_permissions (priv);
   agent_unlock ();
-
+    
   return TRUE;
 }
 
@@ -808,13 +848,13 @@ nice_turn_socket_parse_recv (NiceSocket *sock, NiceSocket **from_sock,
             struct sockaddr peer;
             socklen_t peer_len = sizeof(peer);
             int code = -1;
-            NiceAddress *to = nice_address_new ();;
+            NiceAddress to;
 
             nice_debug("got response for CreatePermission");
             stun_message_find_xor_addr (&priv->current_create_permission_msg->message,
                                         STUN_ATTRIBUTE_XOR_PEER_ADDRESS, &peer,
                                         &peer_len);
-            nice_address_set_from_sockaddr (to, &peer);
+            nice_address_set_from_sockaddr (&to, &peer);
 
             g_free (priv->current_create_permission_msg);
             priv->current_create_permission_msg = NULL;
@@ -839,24 +879,11 @@ nice_turn_socket_parse_recv (NiceSocket *sock, NiceSocket **from_sock,
 
               /* resend CreatePermission */
               priv_send_create_permission (priv, recv_realm, recv_realm_len,
-                                           recv_nonce, recv_nonce_len, to);
-              nice_address_free (to);
+                                           recv_nonce, recv_nonce_len, &to);
             } else {
               /* we now have a permission installed for this peer */
-              GList *iter;
-                
-              for (iter = priv->sent_permissions ; iter ; iter = g_list_next (iter)) {
-                NiceAddress *address = (NiceAddress *) iter->data;
-  
-                if (nice_address_equal (address, to)) {
-                  nice_address_free ((NiceAddress *) iter->data);
-                  priv->sent_permissions =
-                    g_list_delete_link (priv->sent_permissions, iter);
-                }
-              }
-          
-              priv->permissions =
-                g_list_append (priv->permissions, to);
+              priv_remove_sent_permission_for_peer (priv, &to);
+              priv_add_permission_for_peer (priv, &to);
 
               /* install timer to schedule refresh of the permission */
               /* (will not schedule refresh if we got an error) */
@@ -869,7 +896,7 @@ nice_turn_socket_parse_recv (NiceSocket *sock, NiceSocket **from_sock,
 
               /* send enqued data */
               nice_debug("about to dequeue data");
-              socket_dequeue_all_data (priv, to);
+              socket_dequeue_all_data (priv, &to);
             }
           }
         }
@@ -1021,7 +1048,7 @@ priv_retransmissions_create_permission_tick_unlocked (TurnPriv *priv)
       {
         /* Time out */
         StunTransactionId id;
-        NiceAddress *to = nice_address_new ();
+        NiceAddress to;
         struct sockaddr addr;
         socklen_t addr_len = sizeof(addr);
         GList *iter;
@@ -1031,19 +1058,9 @@ priv_retransmissions_create_permission_tick_unlocked (TurnPriv *priv)
         stun_message_find_xor_addr (&priv->current_create_permission_msg->message,
                                     STUN_ATTRIBUTE_XOR_PEER_ADDRESS, &addr,
                                     &addr_len);
-        nice_address_set_from_sockaddr (to, &addr);
+        nice_address_set_from_sockaddr (&to, &addr);
 
-        for (iter = priv->sent_permissions ; iter ; iter = g_list_next (iter)) {
-          NiceAddress *address = (NiceAddress *) iter->data;
-
-          if (nice_address_equal (address, to)) {
-              nice_address_free (address);
-              priv->sent_permissions =
-                g_list_delete_link (priv->sent_permissions, iter);
-              break;
-          }
-        }
-
+        priv_remove_sent_permission_for_peer (priv, &to);
         g_free (priv->current_create_permission_msg);
         priv->current_create_permission_msg = NULL;
 
@@ -1051,9 +1068,9 @@ priv_retransmissions_create_permission_tick_unlocked (TurnPriv *priv)
            message, assume we can just send the data, the server
            might not support RFC TURN, or connectivity check will
            fail eventually anyway */
-        priv->permissions = g_list_append (priv->permissions, to);
+        priv_add_permission_for_peer (priv, &to);
 
-        socket_dequeue_all_data (priv, to);
+        socket_dequeue_all_data (priv, &to);
 
         break;
       }
@@ -1194,15 +1211,10 @@ priv_send_create_permission(TurnPriv *priv, uint8_t *realm, gsize realm_len,
   gboolean res = FALSE;
   TURNMessage *msg = g_new0 (TURNMessage, 1);
   struct sockaddr addr;
-  NiceAddress *to = nice_address_dup (peer);
-  gchar addr_str[NICE_ADDRESS_STRING_LEN];
-
-  nice_address_to_string (to, addr_str);
-  nice_debug("creating CreatePermission message for %s", addr_str);
 
   /* register this peer as being pening a permission (if not already pending) */
-  if (!priv_has_sent_permission_for_peer (priv, to)) {
-    priv->sent_permissions = g_list_append (priv->sent_permissions, to);
+  if (!priv_has_sent_permission_for_peer (priv, peer)) {
+    priv_add_sent_permission_for_peer (priv, peer);
   }
 
   nice_address_copy_to_sockaddr (peer, &addr);
