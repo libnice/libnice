@@ -553,13 +553,6 @@ socket_send (NiceSocket *sock, const NiceAddress *to,
   }
 
   if (msg_len > 0) {
-    if (priv->compatibility == NICE_TURN_SOCKET_COMPATIBILITY_RFC5766) {
-      if (!priv_has_permission_for_peer (priv, to) &&
-          !priv_has_sent_permission_for_peer (priv, to)) {
-        priv_send_create_permission (priv, NULL, 0, NULL, 0, to);
-      }
-    }
-
     if (!priv->current_binding_msg && binding && !binding->active) {
       nice_debug("renewing channel binding");
       priv_send_channel_bind (priv, NULL, binding->channel, to);
@@ -567,6 +560,10 @@ socket_send (NiceSocket *sock, const NiceAddress *to,
 
     if (priv->compatibility == NICE_TURN_SOCKET_COMPATIBILITY_RFC5766 &&
         !priv_has_permission_for_peer (priv, to)) {
+      if (!priv_has_sent_permission_for_peer (priv, to)) {
+        priv_send_create_permission (priv, NULL, 0, NULL, 0, to);
+      }
+
       /* enque data */
       nice_debug("enqueing data to be sent when aquiring permission or binding");
       socket_enqueue_data(priv, to, msg_len, (gchar *)buffer);
