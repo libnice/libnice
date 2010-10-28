@@ -65,6 +65,7 @@ typedef struct {
 typedef struct {
   NiceAddress peer;
   uint16_t channel;
+  gboolean active;
 } ChannelBinding;
 
 typedef struct {
@@ -95,7 +96,6 @@ typedef struct {
   GHashTable *send_data_queues; /* stores a send data queue for per peer */
   guint permission_timeout_source;      /* timer used to invalidate
                                            permissions */
-  gboolean has_binding;
   guint binding_timeout_source;
 } TurnPriv;
 
@@ -560,7 +560,7 @@ socket_send (NiceSocket *sock, const NiceAddress *to,
       }
     }
 
-    if (!priv->has_binding && !priv->current_binding_msg && binding) {
+    if (!priv->current_binding_msg && binding && !binding->active) {
       nice_debug("renewing channel binding");
       priv_send_channel_bind (priv, NULL, binding->channel, to);
     }
@@ -636,11 +636,18 @@ static gboolean
 priv_binding_timeout (gpointer data)
 {
   TurnPriv *priv = (TurnPriv *) data;
-
+  GList *i;
+    
   nice_debug ("Permission is about to timeout, schedule renewal");
 
   agent_lock ();
-  priv->has_binding = FALSE;
+
+  /* find current binding and inactivate it */
+  for (i = priv->channels ; i; i = i->next) {
+    ChannelBinding *b = i->data;
+    b->active = FALSE;
+  }
+    
   agent_unlock ();
 
   return TRUE;
@@ -757,11 +764,6 @@ nice_turn_socket_parse_recv (NiceSocket *sock, NiceSocket **from_sock,
                 (uint8_t *) stun_message_find (&msg,
 					       STUN_ATTRIBUTE_REALM, &recv_realm_len);
 
-              if (!priv->has_binding) {
-                nice_debug ("sent realm: %s\n", sent_realm);
-                nice_debug ("recv realm: %s\n", recv_realm);
-              }
-
               /* check for unauthorized error response */
               if (stun_message_find_error (&msg, &code) ==
                   STUN_MESSAGE_RETURN_SUCCESS &&
@@ -816,9 +818,9 @@ nice_turn_socket_parse_recv (NiceSocket *sock, NiceSocket **from_sock,
             } else if (stun_message_get_class (&msg) == STUN_RESPONSE) {
               g_free (priv->current_binding_msg);
               priv->current_binding_msg = NULL;
-              priv->has_binding = TRUE;
 
               if (priv->current_binding) {
+                priv->current_binding->active = TRUE;
                 priv->channels = g_list_append (priv->channels,
                                                 priv->current_binding);
                 priv->current_binding = NULL;
@@ -1051,7 +1053,6 @@ priv_retransmissions_create_permission_tick_unlocked (TurnPriv *priv)
         NiceAddress to;
         struct sockaddr addr;
         socklen_t addr_len = sizeof(addr);
-        GList *iter;
 
         stun_message_id (&priv->current_create_permission_msg->message, id);
         stun_agent_forget_transaction (&priv->agent, id);
