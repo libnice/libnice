@@ -873,9 +873,6 @@ nice_turn_socket_parse_recv (NiceSocket *sock, NiceSocket **from_sock,
               recv_nonce = (uint8_t *) stun_message_find (&msg,
                                                           STUN_ATTRIBUTE_NONCE, &recv_nonce_len);
 
-              nice_debug("got realm: %s", recv_realm);
-              nice_debug("got nonce: %s", recv_nonce);
-
               /* resend CreatePermission */
               priv_send_create_permission (priv, recv_realm, recv_realm_len,
                                            recv_nonce, recv_nonce_len, &to);
@@ -894,7 +891,6 @@ nice_turn_socket_parse_recv (NiceSocket *sock, NiceSocket **from_sock,
               }
 
               /* send enqued data */
-              nice_debug("about to dequeue data");
               socket_dequeue_all_data (priv, &to);
             }
           }
@@ -1231,11 +1227,8 @@ priv_send_create_permission(TurnPriv *priv, uint8_t *realm, gsize realm_len,
                                                   NICE_TURN_SOCKET_COMPATIBILITY_RFC5766);
 
   if (msg_buf_len > 0) {
-    nice_debug("sending CreatePermission message, lenght: %d",
-               msg_buf_len);
     res = nice_socket_send (priv->base_socket, &priv->server_addr,
                             msg_buf_len, (gchar *) msg->buffer);
-    nice_debug("sent CreatePermission message, result: %d", res);
 
     if (nice_socket_is_reliable (priv->base_socket)) {
       stun_timer_start_reliable (&msg->timer);
