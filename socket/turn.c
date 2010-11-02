@@ -378,10 +378,10 @@ static GList *
 priv_remove_peer_from_list (GList *list, const NiceAddress *peer)
 {
   GList *iter;
-              
+
   for (iter = list ; iter ; iter = g_list_next (iter)) {
     NiceAddress *address = (NiceAddress *) iter->data;
-  
+
     if (nice_address_equal (address, peer)) {
       nice_address_free ((NiceAddress *) iter->data);
       list = g_list_delete_link (list, iter);
@@ -405,7 +405,7 @@ priv_clear_permissions (TurnPriv *priv)
   g_list_free (priv->permissions);
   priv->permissions = NULL;
 }
- 
+
 static void
 socket_enqueue_data(TurnPriv *priv, const NiceAddress *to,
                     guint len, const gchar *buf)
@@ -643,7 +643,7 @@ priv_binding_timeout (gpointer data)
     ChannelBinding *b = i->data;
     b->active = FALSE;
   }
-    
+
   agent_unlock ();
 
   return TRUE;
