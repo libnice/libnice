@@ -878,6 +878,7 @@ nice_agent_set_property (
       break;
 
     case PROP_STUN_SERVER:
+      g_free (agent->stun_server_ip);
       agent->stun_server_ip = g_value_dup_string (value);
       break;
 
@@ -902,6 +903,7 @@ nice_agent_set_property (
       break;
 
     case PROP_PROXY_IP:
+      g_free (agent->proxy_ip);
       agent->proxy_ip = g_value_dup_string (value);
       break;
 
@@ -914,10 +916,12 @@ nice_agent_set_property (
       break;
 
     case PROP_PROXY_USERNAME:
+      g_free (agent->proxy_username);
       agent->proxy_username = g_value_dup_string (value);
       break;
 
     case PROP_PROXY_PASSWORD:
+      g_free (agent->proxy_password);
       agent->proxy_password = g_value_dup_string (value);
       break;
 
@@ -2422,6 +2426,13 @@ nice_agent_dispose (GObject *object)
 
   g_free (agent->stun_server_ip);
   agent->stun_server_ip = NULL;
+
+  g_free (agent->proxy_ip);
+  agent->proxy_ip = NULL;
+  g_free (agent->proxy_username);
+  agent->proxy_username = NULL;
+  g_free (agent->proxy_password);
+  agent->proxy_password = NULL;
 
   nice_rng_free (agent->rng);
   agent->rng = NULL;
