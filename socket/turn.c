@@ -434,7 +434,7 @@ socket_dequeue_all_data (TurnPriv *priv, const NiceAddress *to)
       SendData *data =
         (SendData *) g_queue_pop_head(send_queue);
 
-      nice_debug("dequeing data enqueued when installing permission or binding");
+      nice_debug ("dequeing data enqueued when installing permission or binding");
       nice_socket_send (priv->base_socket, to, data->data_len, data->data);
 
       g_free (data->data);
@@ -486,7 +486,6 @@ socket_send (NiceSocket *sock, const NiceAddress *to,
       return nice_socket_send (priv->base_socket, &priv->server_addr, len, buf);
     }
   } else {
-    nice_debug("no binding");
     if (priv->compatibility == NICE_TURN_SOCKET_COMPATIBILITY_DRAFT9 ||
         priv->compatibility == NICE_TURN_SOCKET_COMPATIBILITY_RFC5766) {
       if (!stun_agent_init_indication (&priv->agent, &msg,
@@ -554,7 +553,7 @@ socket_send (NiceSocket *sock, const NiceAddress *to,
 
   if (msg_len > 0) {
     if (!priv->current_binding_msg && binding && !binding->active) {
-      nice_debug("renewing channel binding");
+      nice_debug ("renewing channel binding");
       priv_send_channel_bind (priv, NULL, binding->channel, to);
     }
 
@@ -565,7 +564,7 @@ socket_send (NiceSocket *sock, const NiceAddress *to,
       }
 
       /* enque data */
-      nice_debug("enqueing data to be sent when aquiring permission or binding");
+      nice_debug ("enqueing data to be sent when aquiring permission or binding");
       socket_enqueue_data(priv, to, msg_len, (gchar *)buffer);
       return TRUE;
     } else {
@@ -849,7 +848,7 @@ nice_turn_socket_parse_recv (NiceSocket *sock, NiceSocket **from_sock,
             int code = -1;
             NiceAddress to;
 
-            nice_debug("got response for CreatePermission");
+            nice_debug ("got response for CreatePermission");
             stun_message_find_xor_addr (&priv->current_create_permission_msg->message,
                                         STUN_ATTRIBUTE_XOR_PEER_ADDRESS, &peer,
                                         &peer_len);
