@@ -1768,7 +1768,7 @@ nice_agent_gather_candidates (
   }
 
   /* generate a local host candidate for each local address */
-  for (i = agent->local_addresses; i; i = i->next){
+  for (i = local_addresses; i; i = i->next) {
     NiceAddress *addr = i->data;
     NiceCandidate *host_candidate;
 
