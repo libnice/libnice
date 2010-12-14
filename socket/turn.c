@@ -114,9 +114,9 @@ typedef struct {
 
 static void socket_close (NiceSocket *sock);
 static gint socket_recv (NiceSocket *sock, NiceAddress *from,
-                         guint len, gchar *buf);
+    guint len, gchar *buf);
 static gboolean socket_send (NiceSocket *sock, const NiceAddress *to,
-                             guint len, const gchar *buf);
+    guint len, const gchar *buf);
 static gboolean socket_is_reliable (NiceSocket *sock);
 
 static void priv_process_pending_bindings (TurnPriv *priv);
@@ -125,14 +125,14 @@ static gboolean priv_retransmissions_tick (gpointer pointer);
 static void priv_schedule_tick (TurnPriv *priv);
 static void priv_send_turn_message (TurnPriv *priv, TURNMessage *msg);
 static gboolean priv_send_create_permission (TurnPriv *priv,
-                                             uint8_t *realm, gsize realm_len,
-                                             uint8_t *nonce, gsize nonce_len,
-                                             const NiceAddress *peer);
+    uint8_t *realm, gsize realm_len,
+    uint8_t *nonce, gsize nonce_len,
+    const NiceAddress *peer);
 static gboolean priv_send_channel_bind (TurnPriv *priv,  StunMessage *resp,
-                                        uint16_t channel,
-                                        const NiceAddress *peer);
+    uint16_t channel,
+    const NiceAddress *peer);
 static gboolean priv_add_channel_binding (TurnPriv *priv,
-                                          const NiceAddress *peer);
+    const NiceAddress *peer);
 static gboolean priv_forget_send_request (gpointer pointer);
 static void priv_clear_permissions (TurnPriv *priv);
 
@@ -163,9 +163,9 @@ priv_send_data_queue_destroy (gpointer data)
 
 NiceSocket *
 nice_turn_socket_new (NiceAgent *agent, NiceAddress *addr,
-                      NiceSocket *base_socket, NiceAddress *server_addr,
-                      gchar *username, gchar *password,
-                      NiceTurnSocketCompatibility compatibility)
+    NiceSocket *base_socket, NiceAddress *server_addr,
+    gchar *username, gchar *password,
+    NiceTurnSocketCompatibility compatibility)
 {
   TurnPriv *priv = g_new0 (TurnPriv, 1);
   NiceSocket *sock = g_slice_new0 (NiceSocket);
@@ -177,20 +177,20 @@ nice_turn_socket_new (NiceAgent *agent, NiceAddress *addr,
   if (compatibility == NICE_TURN_SOCKET_COMPATIBILITY_DRAFT9 ||
       compatibility == NICE_TURN_SOCKET_COMPATIBILITY_RFC5766) {
     stun_agent_init (&priv->agent, STUN_ALL_KNOWN_ATTRIBUTES,
-                     STUN_COMPATIBILITY_RFC5389,
-                     STUN_AGENT_USAGE_LONG_TERM_CREDENTIALS);
+        STUN_COMPATIBILITY_RFC5389,
+        STUN_AGENT_USAGE_LONG_TERM_CREDENTIALS);
   } else if (compatibility == NICE_TURN_SOCKET_COMPATIBILITY_MSN) {
     stun_agent_init (&priv->agent, STUN_ALL_KNOWN_ATTRIBUTES,
-                     STUN_COMPATIBILITY_RFC3489,
-                     STUN_AGENT_USAGE_SHORT_TERM_CREDENTIALS |
-                     STUN_AGENT_USAGE_NO_INDICATION_AUTH);
+        STUN_COMPATIBILITY_RFC3489,
+        STUN_AGENT_USAGE_SHORT_TERM_CREDENTIALS |
+        STUN_AGENT_USAGE_NO_INDICATION_AUTH);
   } else if (compatibility == NICE_TURN_SOCKET_COMPATIBILITY_GOOGLE) {
     stun_agent_init (&priv->agent, STUN_ALL_KNOWN_ATTRIBUTES,
-                     STUN_COMPATIBILITY_RFC3489,
-                     STUN_AGENT_USAGE_SHORT_TERM_CREDENTIALS |
-                     STUN_AGENT_USAGE_IGNORE_CREDENTIALS);
+        STUN_COMPATIBILITY_RFC3489,
+        STUN_AGENT_USAGE_SHORT_TERM_CREDENTIALS |
+        STUN_AGENT_USAGE_IGNORE_CREDENTIALS);
   } else if (compatibility == NICE_TURN_SOCKET_COMPATIBILITY_OC2007) {
-      stun_agent_init (&priv->agent, STUN_ALL_KNOWN_ATTRIBUTES,
+    stun_agent_init (&priv->agent, STUN_ALL_KNOWN_ATTRIBUTES,
         STUN_COMPATIBILITY_OC2007,
         STUN_AGENT_USAGE_NO_INDICATION_AUTH |
         STUN_AGENT_USAGE_LONG_TERM_CREDENTIALS |
@@ -222,10 +222,10 @@ nice_turn_socket_new (NiceAgent *agent, NiceAddress *addr,
   priv->send_requests = g_queue_new ();
 
   priv->send_data_queues =
-    g_hash_table_new_full (priv_nice_address_hash,
-                           (GEqualFunc) nice_address_equal,
-                           (GDestroyNotify) nice_address_free,
-                           priv_send_data_queue_destroy);
+      g_hash_table_new_full (priv_nice_address_hash,
+          (GEqualFunc) nice_address_equal,
+          (GDestroyNotify) nice_address_free,
+          priv_send_data_queue_destroy);
   sock->addr = *addr;
   sock->fileno = base_socket->fileno;
   sock->send = socket_send;
@@ -251,7 +251,7 @@ socket_close (NiceSocket *sock)
   g_list_free (priv->channels);
 
   g_list_foreach (priv->pending_bindings, (GFunc) nice_address_free,
-                  NULL);
+      NULL);
   g_list_free (priv->pending_bindings);
 
   if (priv->tick_source_channel_bind != NULL) {
@@ -297,12 +297,12 @@ socket_recv (NiceSocket *sock, NiceAddress *from, guint len, gchar *buf)
   nice_debug ("received message on TURN socket");
 
   recv_len = nice_socket_recv (priv->base_socket, &recv_from,
-                               sizeof(recv_buf), (gchar *) recv_buf);
+      sizeof(recv_buf), (gchar *) recv_buf);
 
   if (recv_len > 0)
     return nice_turn_socket_parse_recv (sock, &dummy, from, len, buf,
-                                        &recv_from, (gchar *) recv_buf,
-                                        (guint) recv_len);
+        &recv_from, (gchar *) recv_buf,
+        (guint) recv_len);
   else
     return recv_len;
 }
@@ -316,7 +316,7 @@ stun_message_append_ms_connection_id(StunMessage *msg,
   memcpy(buf, ms_connection_id, 20);
   *(uint32_t*)(buf + 20) = htonl(ms_sequence_num);
   return stun_message_append_bytes (msg, STUN_ATTRIBUTE_MS_SEQUENCE_NUMBER,
-                                    buf, 24);
+      buf, 24);
 }
 
 static void
@@ -330,7 +330,7 @@ stun_message_ensure_ms_realm(StunMessage *msg, uint8_t *realm)
   if (stun_message_get_method(msg) == STUN_SEND ||
       stun_message_get_method(msg) == STUN_OLD_SET_ACTIVE_DST) {
     stun_message_append_bytes (msg, STUN_ATTRIBUTE_REALM, realm,
-                               strlen((char *)realm));
+        strlen((char *)realm));
   }
 }
 
@@ -371,7 +371,7 @@ static void
 priv_add_sent_permission_for_peer (TurnPriv *priv, const NiceAddress *peer)
 {
   priv->sent_permissions =
-    g_list_append (priv->sent_permissions, nice_address_dup (peer));
+      g_list_append (priv->sent_permissions, nice_address_dup (peer));
 }
 
 static GList *
@@ -395,7 +395,7 @@ static void
 priv_remove_sent_permission_for_peer (TurnPriv *priv, const NiceAddress *peer)
 {
   priv->sent_permissions =
-    priv_remove_peer_from_list (priv->sent_permissions, peer);
+      priv_remove_peer_from_list (priv->sent_permissions, peer);
 }
 
 static void
@@ -408,7 +408,7 @@ priv_clear_permissions (TurnPriv *priv)
 
 static void
 socket_enqueue_data(TurnPriv *priv, const NiceAddress *to,
-                    guint len, const gchar *buf)
+    guint len, const gchar *buf)
 {
   SendData *data = g_slice_new0 (SendData);
   GQueue *queue = g_hash_table_lookup (priv->send_data_queues, to);
@@ -416,7 +416,7 @@ socket_enqueue_data(TurnPriv *priv, const NiceAddress *to,
   if (queue == NULL) {
     queue = g_queue_new ();
     g_hash_table_insert (priv->send_data_queues, nice_address_dup (to),
-                         queue);
+        queue);
   }
 
   data->data = g_memdup(buf, len);
@@ -432,7 +432,7 @@ socket_dequeue_all_data (TurnPriv *priv, const NiceAddress *to)
   if (send_queue) {
     while (!g_queue_is_empty (send_queue)) {
       SendData *data =
-        (SendData *) g_queue_pop_head(send_queue);
+          (SendData *) g_queue_pop_head(send_queue);
 
       nice_debug ("dequeing data enqueued when installing permission or binding");
       nice_socket_send (priv->base_socket, to, data->data_len, data->data);
@@ -449,7 +449,7 @@ socket_dequeue_all_data (TurnPriv *priv, const NiceAddress *to)
 
 static gboolean
 socket_send (NiceSocket *sock, const NiceAddress *to,
-             guint len, const gchar *buf)
+    guint len, const gchar *buf)
 {
   TurnPriv *priv = (TurnPriv *) sock->priv;
   StunMessage msg;
@@ -489,30 +489,30 @@ socket_send (NiceSocket *sock, const NiceAddress *to,
     if (priv->compatibility == NICE_TURN_SOCKET_COMPATIBILITY_DRAFT9 ||
         priv->compatibility == NICE_TURN_SOCKET_COMPATIBILITY_RFC5766) {
       if (!stun_agent_init_indication (&priv->agent, &msg,
-                                       buffer, sizeof(buffer), STUN_IND_SEND))
+              buffer, sizeof(buffer), STUN_IND_SEND))
         goto send;
       if (stun_message_append_xor_addr (&msg, STUN_ATTRIBUTE_PEER_ADDRESS,
-                                        (struct sockaddr *)&sa, sizeof(sa)) !=
+              (struct sockaddr *)&sa, sizeof(sa)) !=
           STUN_MESSAGE_RETURN_SUCCESS)
         goto send;
     } else {
       if (!stun_agent_init_request (&priv->agent, &msg,
-                                    buffer, sizeof(buffer), STUN_SEND))
+              buffer, sizeof(buffer), STUN_SEND))
         goto send;
 
       if (stun_message_append32 (&msg, STUN_ATTRIBUTE_MAGIC_COOKIE,
-                                 TURN_MAGIC_COOKIE) !=
+              TURN_MAGIC_COOKIE) !=
 	  STUN_MESSAGE_RETURN_SUCCESS)
         goto send;
       if (priv->username != NULL && priv->username_len > 0) {
         if (stun_message_append_bytes (&msg, STUN_ATTRIBUTE_USERNAME,
-                                       priv->username, priv->username_len) !=
+                priv->username, priv->username_len) !=
             STUN_MESSAGE_RETURN_SUCCESS)
           goto send;
       }
       if (stun_message_append_addr (&msg, STUN_ATTRIBUTE_DESTINATION_ADDRESS,
-                                    (struct sockaddr *)&sa,
-                                    sizeof(sa)) != STUN_MESSAGE_RETURN_SUCCESS)
+              (struct sockaddr *)&sa,
+              sizeof(sa)) != STUN_MESSAGE_RETURN_SUCCESS)
         goto send;
 
       if (priv->compatibility == NICE_TURN_SOCKET_COMPATIBILITY_GOOGLE &&
@@ -533,20 +533,20 @@ socket_send (NiceSocket *sock, const NiceAddress *to,
     }
 
     if (stun_message_append_bytes (&msg, STUN_ATTRIBUTE_DATA,
-                                   buf, len) != STUN_MESSAGE_RETURN_SUCCESS)
+            buf, len) != STUN_MESSAGE_RETURN_SUCCESS)
       goto send;
 
     msg_len = stun_agent_finish_message (&priv->agent, &msg,
-                                         priv->password, priv->password_len);
+        priv->password, priv->password_len);
     if (msg_len > 0 && stun_message_get_class (&msg) == STUN_REQUEST) {
       SendRequest *req = g_slice_new0 (SendRequest);
 
       req->priv = priv;
       stun_message_id (&msg, req->id);
       req->source = agent_timeout_add_with_context (priv->nice,
-                                                    STUN_END_TIMEOUT,
-                                                    priv_forget_send_request,
-                                                    req);
+          STUN_END_TIMEOUT,
+          priv_forget_send_request,
+          req);
       g_queue_push_tail (priv->send_requests, req);
     }
   }
@@ -569,7 +569,7 @@ socket_send (NiceSocket *sock, const NiceAddress *to,
       return TRUE;
     } else {
       return nice_socket_send (priv->base_socket, &priv->server_addr,
-                               msg_len, (gchar *)buffer);
+          msg_len, (gchar *)buffer);
     }
   }
  send:
@@ -592,7 +592,7 @@ priv_forget_send_request (gpointer pointer)
 
   if (g_source_is_destroyed (g_main_current_source ())) {
     nice_debug ("Source was destroyed. "
-                "Avoided race condition in turn.c:priv_forget_send_request");
+        "Avoided race condition in turn.c:priv_forget_send_request");
     agent_unlock ();
     return FALSE;
   }
@@ -651,8 +651,8 @@ priv_binding_timeout (gpointer data)
 
 gint
 nice_turn_socket_parse_recv (NiceSocket *sock, NiceSocket **from_sock,
-                             NiceAddress *from, guint len, gchar *buf,
-                             NiceAddress *recv_from, gchar *recv_buf, guint recv_len)
+    NiceAddress *from, guint len, gchar *buf,
+    NiceAddress *recv_from, gchar *recv_buf, guint recv_len)
 {
 
   TurnPriv *priv = (TurnPriv *) sock->priv;
@@ -665,15 +665,15 @@ nice_turn_socket_parse_recv (NiceSocket *sock, NiceSocket **from_sock,
 
   if (nice_address_equal (&priv->server_addr, recv_from)) {
     valid = stun_agent_validate (&priv->agent, &msg,
-                                 (uint8_t *) recv_buf, (size_t) recv_len, NULL,
-                                 NULL);
+        (uint8_t *) recv_buf, (size_t) recv_len, NULL,
+        NULL);
 
     if (valid == STUN_VALIDATION_SUCCESS) {
       if (priv->compatibility != NICE_TURN_SOCKET_COMPATIBILITY_DRAFT9 &&
           priv->compatibility != NICE_TURN_SOCKET_COMPATIBILITY_RFC5766) {
         uint32_t cookie;
         if (stun_message_find32 (&msg, STUN_ATTRIBUTE_MAGIC_COOKIE,
-                                 &cookie) != STUN_MESSAGE_RETURN_SUCCESS)
+                &cookie) != STUN_MESSAGE_RETURN_SUCCESS)
           goto recv;
         if (cookie != TURN_MAGIC_COOKIE)
           goto recv;
@@ -720,13 +720,13 @@ nice_turn_socket_parse_recv (NiceSocket *sock, NiceSocket **from_sock,
           stun_message_id (&msg, response_id);
           stun_message_id (&priv->current_binding_msg->message, request_id);
           if (memcmp (request_id, response_id,
-                      sizeof(StunTransactionId)) == 0) {
+                  sizeof(StunTransactionId)) == 0) {
             g_free (priv->current_binding_msg);
             priv->current_binding_msg = NULL;
 
             if (stun_message_get_class (&msg) == STUN_RESPONSE &&
                 (priv->compatibility == NICE_TURN_SOCKET_COMPATIBILITY_MSN ||
-                 priv->compatibility == NICE_TURN_SOCKET_COMPATIBILITY_OC2007)) {
+                    priv->compatibility == NICE_TURN_SOCKET_COMPATIBILITY_OC2007)) {
               goto msn_google_lock;
             } else {
               g_free (priv->current_binding);
@@ -744,7 +744,7 @@ nice_turn_socket_parse_recv (NiceSocket *sock, NiceSocket **from_sock,
           stun_message_id (&msg, response_id);
           stun_message_id (&priv->current_binding_msg->message, request_id);
           if (memcmp (request_id, response_id,
-                      sizeof(StunTransactionId)) == 0) {
+                  sizeof(StunTransactionId)) == 0) {
             if (stun_message_get_class (&msg) == STUN_ERROR) {
               int code = -1;
               uint8_t *sent_realm = NULL;
@@ -753,30 +753,30 @@ nice_turn_socket_parse_recv (NiceSocket *sock, NiceSocket **from_sock,
               uint16_t recv_realm_len = 0;
 
               sent_realm =
-                (uint8_t *) stun_message_find (
-					       &priv->current_binding_msg->message,
-					       STUN_ATTRIBUTE_REALM, &sent_realm_len);
+                  (uint8_t *) stun_message_find (
+                      &priv->current_binding_msg->message,
+                      STUN_ATTRIBUTE_REALM, &sent_realm_len);
               recv_realm =
-                (uint8_t *) stun_message_find (&msg,
-					       STUN_ATTRIBUTE_REALM, &recv_realm_len);
+                  (uint8_t *) stun_message_find (&msg,
+                      STUN_ATTRIBUTE_REALM, &recv_realm_len);
 
               /* check for unauthorized error response */
               if (stun_message_find_error (&msg, &code) ==
                   STUN_MESSAGE_RETURN_SUCCESS &&
                   (code == 438 || (code == 401 &&
-                                   !(recv_realm != NULL &&
-                                     recv_realm_len > 0 &&
-                                     recv_realm_len == sent_realm_len &&
-                                     sent_realm != NULL &&
-                                     memcmp (sent_realm, recv_realm,
-                                             sent_realm_len) == 0)))) {
+                      !(recv_realm != NULL &&
+                          recv_realm_len > 0 &&
+                          recv_realm_len == sent_realm_len &&
+                          sent_realm != NULL &&
+                          memcmp (sent_realm, recv_realm,
+                              sent_realm_len) == 0)))) {
 
                 if (priv->current_binding) {
                   g_free (priv->current_binding_msg);
                   priv->current_binding_msg = NULL;
                   priv_send_channel_bind (priv, &msg,
-                                          priv->current_binding->channel,
-                                          &priv->current_binding->peer);
+                      priv->current_binding->channel,
+                      &priv->current_binding->peer);
                 } else {
                   /* look up binding associated with peer */
                   GList *i = priv->channels;
@@ -786,8 +786,8 @@ nice_turn_socket_parse_recv (NiceSocket *sock, NiceSocket **from_sock,
                   NiceAddress to;
 
                   stun_message_find_xor_addr (&priv->current_binding_msg->message,
-                                              STUN_ATTRIBUTE_XOR_PEER_ADDRESS, &sa,
-                                              &sa_len);
+                      STUN_ATTRIBUTE_XOR_PEER_ADDRESS, &sa,
+                      &sa_len);
                   nice_address_set_from_sockaddr (&to, &sa);
 
                   for (; i; i = i->next) {
@@ -818,7 +818,7 @@ nice_turn_socket_parse_recv (NiceSocket *sock, NiceSocket **from_sock,
               if (priv->current_binding) {
                 priv->current_binding->active = TRUE;
                 priv->channels = g_list_append (priv->channels,
-                                                priv->current_binding);
+                    priv->current_binding);
                 priv->current_binding = NULL;
               }
               priv_process_pending_bindings (priv);
@@ -826,8 +826,8 @@ nice_turn_socket_parse_recv (NiceSocket *sock, NiceSocket **from_sock,
               /* install timer to schedule refresh of the permission */
               if (!priv->binding_timeout_source) {
                 priv->binding_timeout_source =
-                  g_timeout_add_seconds (STUN_BINDING_TIMEOUT,
-                                         priv_binding_timeout, priv);
+                    g_timeout_add_seconds (STUN_BINDING_TIMEOUT,
+                        priv_binding_timeout, priv);
               }
             }
           }
@@ -840,7 +840,7 @@ nice_turn_socket_parse_recv (NiceSocket *sock, NiceSocket **from_sock,
         if (priv->current_create_permission_msg) {
           stun_message_id (&msg, response_id);
           stun_message_id (&priv->current_create_permission_msg->message,
-                           request_id);
+              request_id);
 
           if (memcmp (request_id, response_id, sizeof(StunTransactionId)) == 0) {
             struct sockaddr peer;
@@ -850,8 +850,8 @@ nice_turn_socket_parse_recv (NiceSocket *sock, NiceSocket **from_sock,
 
             nice_debug ("got response for CreatePermission");
             stun_message_find_xor_addr (&priv->current_create_permission_msg->message,
-                                        STUN_ATTRIBUTE_XOR_PEER_ADDRESS, &peer,
-                                        &peer_len);
+                STUN_ATTRIBUTE_XOR_PEER_ADDRESS, &peer,
+                &peer_len);
             nice_address_set_from_sockaddr (&to, &peer);
 
             g_free (priv->current_create_permission_msg);
@@ -868,13 +868,13 @@ nice_turn_socket_parse_recv (NiceSocket *sock, NiceSocket **from_sock,
               uint16_t recv_nonce_len = 0;
 
               recv_realm = (uint8_t *) stun_message_find (&msg,
-                                                          STUN_ATTRIBUTE_REALM, &recv_realm_len);
+                  STUN_ATTRIBUTE_REALM, &recv_realm_len);
               recv_nonce = (uint8_t *) stun_message_find (&msg,
-                                                          STUN_ATTRIBUTE_NONCE, &recv_nonce_len);
+                  STUN_ATTRIBUTE_NONCE, &recv_nonce_len);
 
               /* resend CreatePermission */
               priv_send_create_permission (priv, recv_realm, recv_realm_len,
-                                           recv_nonce, recv_nonce_len, &to);
+                  recv_nonce, recv_nonce_len, &to);
             } else {
               /* we now have a permission installed for this peer */
               priv_remove_sent_permission_for_peer (priv, &to);
@@ -885,8 +885,8 @@ nice_turn_socket_parse_recv (NiceSocket *sock, NiceSocket **from_sock,
               if (stun_message_get_class (&msg) == STUN_RESPONSE &&
                   !priv->permission_timeout_source) {
                 priv->permission_timeout_source =
-                  g_timeout_add_seconds (STUN_PERMISSION_TIMEOUT,
-                                         priv_permission_timeout, priv);
+                    g_timeout_add_seconds (STUN_PERMISSION_TIMEOUT,
+                        priv_permission_timeout, priv);
               }
 
               /* send enqued data */
@@ -897,25 +897,25 @@ nice_turn_socket_parse_recv (NiceSocket *sock, NiceSocket **from_sock,
 
         return 0;
       } else if (stun_message_get_class (&msg) == STUN_INDICATION &&
-                 stun_message_get_method (&msg) == STUN_IND_DATA) {
+          stun_message_get_method (&msg) == STUN_IND_DATA) {
         uint16_t data_len;
         uint8_t *data;
 
         if (priv->compatibility == NICE_TURN_SOCKET_COMPATIBILITY_DRAFT9 ||
             priv->compatibility == NICE_TURN_SOCKET_COMPATIBILITY_RFC5766) {
           if (stun_message_find_xor_addr (&msg, STUN_ATTRIBUTE_REMOTE_ADDRESS,
-                                          (struct sockaddr *)&sa, &from_len) !=
+                  (struct sockaddr *)&sa, &from_len) !=
               STUN_MESSAGE_RETURN_SUCCESS)
             goto recv;
         } else {
           if (stun_message_find_addr (&msg, STUN_ATTRIBUTE_REMOTE_ADDRESS,
-                                      (struct sockaddr *)&sa, &from_len) !=
+                  (struct sockaddr *)&sa, &from_len) !=
               STUN_MESSAGE_RETURN_SUCCESS)
             goto recv;
         }
 
         data = (uint8_t *) stun_message_find (&msg, STUN_ATTRIBUTE_DATA,
-                                              &data_len);
+            &data_len);
 
         if (data == NULL)
           goto recv;
@@ -1001,31 +1001,31 @@ priv_retransmissions_tick_unlocked (TurnPriv *priv)
 {
   if (priv->current_binding_msg) {
     switch (stun_timer_refresh (&priv->current_binding_msg->timer)) {
-    case STUN_USAGE_TIMER_RETURN_TIMEOUT:
-      {
-        /* Time out */
-        StunTransactionId id;
+      case STUN_USAGE_TIMER_RETURN_TIMEOUT:
+        {
+          /* Time out */
+          StunTransactionId id;
 
-        stun_message_id (&priv->current_binding_msg->message, id);
-        stun_agent_forget_transaction (&priv->agent, id);
+          stun_message_id (&priv->current_binding_msg->message, id);
+          stun_agent_forget_transaction (&priv->agent, id);
 
-        g_free (priv->current_binding);
-        priv->current_binding = NULL;
-        g_free (priv->current_binding_msg);
-        priv->current_binding_msg = NULL;
+          g_free (priv->current_binding);
+          priv->current_binding = NULL;
+          g_free (priv->current_binding_msg);
+          priv->current_binding_msg = NULL;
 
 
-        priv_process_pending_bindings (priv);
+          priv_process_pending_bindings (priv);
+          break;
+        }
+      case STUN_USAGE_TIMER_RETURN_RETRANSMIT:
+        /* Retransmit */
+        nice_socket_send (priv->base_socket, &priv->server_addr,
+            stun_message_length (&priv->current_binding_msg->message),
+            (gchar *)priv->current_binding_msg->buffer);
         break;
-      }
-    case STUN_USAGE_TIMER_RETURN_RETRANSMIT:
-      /* Retransmit */
-      nice_socket_send (priv->base_socket, &priv->server_addr,
-                        stun_message_length (&priv->current_binding_msg->message),
-                        (gchar *)priv->current_binding_msg->buffer);
-      break;
-    case STUN_USAGE_TIMER_RETURN_SUCCESS:
-      break;
+      case STUN_USAGE_TIMER_RETURN_SUCCESS:
+        break;
     }
   }
 
@@ -1038,43 +1038,43 @@ priv_retransmissions_create_permission_tick_unlocked (TurnPriv *priv)
 {
   if (priv->current_create_permission_msg) {
     switch (stun_timer_refresh (&priv->current_create_permission_msg->timer)) {
-    case STUN_USAGE_TIMER_RETURN_TIMEOUT:
-      {
-        /* Time out */
-        StunTransactionId id;
-        NiceAddress to;
-        struct sockaddr addr;
-        socklen_t addr_len = sizeof(addr);
+      case STUN_USAGE_TIMER_RETURN_TIMEOUT:
+        {
+          /* Time out */
+          StunTransactionId id;
+          NiceAddress to;
+          struct sockaddr addr;
+          socklen_t addr_len = sizeof(addr);
 
-        stun_message_id (&priv->current_create_permission_msg->message, id);
-        stun_agent_forget_transaction (&priv->agent, id);
-        stun_message_find_xor_addr (&priv->current_create_permission_msg->message,
-                                    STUN_ATTRIBUTE_XOR_PEER_ADDRESS, &addr,
-                                    &addr_len);
-        nice_address_set_from_sockaddr (&to, &addr);
+          stun_message_id (&priv->current_create_permission_msg->message, id);
+          stun_agent_forget_transaction (&priv->agent, id);
+          stun_message_find_xor_addr (&priv->current_create_permission_msg->message,
+              STUN_ATTRIBUTE_XOR_PEER_ADDRESS, &addr,
+              &addr_len);
+          nice_address_set_from_sockaddr (&to, &addr);
 
-        priv_remove_sent_permission_for_peer (priv, &to);
-        g_free (priv->current_create_permission_msg);
-        priv->current_create_permission_msg = NULL;
+          priv_remove_sent_permission_for_peer (priv, &to);
+          g_free (priv->current_create_permission_msg);
+          priv->current_create_permission_msg = NULL;
 
-        /* we got a timeout when retransmitting a CreatePermission
-           message, assume we can just send the data, the server
-           might not support RFC TURN, or connectivity check will
-           fail eventually anyway */
-        priv_add_permission_for_peer (priv, &to);
+          /* we got a timeout when retransmitting a CreatePermission
+             message, assume we can just send the data, the server
+             might not support RFC TURN, or connectivity check will
+             fail eventually anyway */
+          priv_add_permission_for_peer (priv, &to);
 
-        socket_dequeue_all_data (priv, &to);
+          socket_dequeue_all_data (priv, &to);
 
+          break;
+        }
+      case STUN_USAGE_TIMER_RETURN_RETRANSMIT:
+        /* Retransmit */
+        nice_socket_send (priv->base_socket, &priv->server_addr,
+            stun_message_length (&priv->current_create_permission_msg->message),
+            (gchar *)priv->current_create_permission_msg->buffer);
         break;
-      }
-    case STUN_USAGE_TIMER_RETURN_RETRANSMIT:
-      /* Retransmit */
-      nice_socket_send (priv->base_socket, &priv->server_addr,
-                        stun_message_length (&priv->current_create_permission_msg->message),
-                        (gchar *)priv->current_create_permission_msg->buffer);
-      break;
-    case STUN_USAGE_TIMER_RETURN_SUCCESS:
-      break;
+      case STUN_USAGE_TIMER_RETURN_SUCCESS:
+        break;
     }
   }
 
@@ -1091,7 +1091,7 @@ priv_retransmissions_tick (gpointer pointer)
   agent_lock ();
   if (g_source_is_destroyed (g_main_current_source ())) {
     nice_debug ("Source was destroyed. "
-                "Avoided race condition in turn.c:priv_retransmissions_tick");
+        "Avoided race condition in turn.c:priv_retransmissions_tick");
     agent_unlock ();
     return FALSE;
   }
@@ -1118,7 +1118,7 @@ priv_retransmissions_create_permission_tick (gpointer pointer)
   agent_lock ();
   if (g_source_is_destroyed (g_main_current_source ())) {
     nice_debug ("Source was destroyed. "
-                "Avoided race condition in turn.c:priv_retransmissions_create_permission_tick");
+        "Avoided race condition in turn.c:priv_retransmissions_create_permission_tick");
     agent_unlock ();
     return FALSE;
   }
@@ -1160,10 +1160,10 @@ priv_schedule_tick (TurnPriv *priv)
     guint timeout = stun_timer_remainder (&priv->current_create_permission_msg->timer);
     if (timeout > 0) {
       priv->tick_source_create_permission =
-        agent_timeout_add_with_context (priv->nice,
-                                        timeout,
-                                        priv_retransmissions_create_permission_tick,
-                                        priv);
+          agent_timeout_add_with_context (priv->nice,
+              timeout,
+              priv_retransmissions_create_permission_tick,
+              priv);
     } else {
       priv_retransmissions_create_permission_tick_unlocked (priv);
     }
@@ -1181,7 +1181,7 @@ priv_send_turn_message (TurnPriv *priv, TURNMessage *msg)
   }
 
   nice_socket_send (priv->base_socket, &priv->server_addr,
-                    stun_len, (gchar *)msg->buffer);
+      stun_len, (gchar *)msg->buffer);
 
   if (nice_socket_is_reliable (priv->base_socket)) {
     stun_timer_start_reliable (&msg->timer,
@@ -1197,8 +1197,8 @@ priv_send_turn_message (TurnPriv *priv, TURNMessage *msg)
 
 static gboolean
 priv_send_create_permission(TurnPriv *priv, uint8_t *realm, gsize realm_len,
-                            uint8_t *nonce, gsize nonce_len,
-                            const NiceAddress *peer)
+    uint8_t *nonce, gsize nonce_len,
+    const NiceAddress *peer)
 {
   guint msg_buf_len;
   gboolean res = FALSE;
@@ -1214,20 +1214,20 @@ priv_send_create_permission(TurnPriv *priv, uint8_t *realm, gsize realm_len,
 
   /* send CreatePermission */
   msg_buf_len = stun_usage_turn_create_permission(&priv->agent, &msg->message,
-                                                  msg->buffer,
-                                                  sizeof(msg->buffer),
-                                                  priv->username,
-                                                  priv->username_len,
-                                                  priv->password,
-                                                  priv->password_len,
-                                                  realm, realm_len,
-                                                  nonce, nonce_len,
-                                                  &addr,
-                                                  NICE_TURN_SOCKET_COMPATIBILITY_RFC5766);
+      msg->buffer,
+      sizeof(msg->buffer),
+      priv->username,
+      priv->username_len,
+      priv->password,
+      priv->password_len,
+      realm, realm_len,
+      nonce, nonce_len,
+      &addr,
+      NICE_TURN_SOCKET_COMPATIBILITY_RFC5766);
 
   if (msg_buf_len > 0) {
     res = nice_socket_send (priv->base_socket, &priv->server_addr,
-                            msg_buf_len, (gchar *) msg->buffer);
+        msg_buf_len, (gchar *) msg->buffer);
 
     if (nice_socket_is_reliable (priv->base_socket)) {
       stun_timer_start_reliable (&msg->timer);
@@ -1246,7 +1246,7 @@ priv_send_create_permission(TurnPriv *priv, uint8_t *realm, gsize realm_len,
 
 static gboolean
 priv_send_channel_bind (TurnPriv *priv,  StunMessage *resp,
-                        uint16_t channel, const NiceAddress *peer)
+    uint16_t channel, const NiceAddress *peer)
 {
   uint32_t channel_attr = channel << 16;
   size_t stun_len;
@@ -1256,21 +1256,21 @@ priv_send_channel_bind (TurnPriv *priv,  StunMessage *resp,
   nice_address_copy_to_sockaddr (peer, (struct sockaddr *)&sa);
 
   if (!stun_agent_init_request (&priv->agent, &msg->message,
-                                msg->buffer, sizeof(msg->buffer),
-                                STUN_CHANNELBIND)) {
+          msg->buffer, sizeof(msg->buffer),
+          STUN_CHANNELBIND)) {
     g_free (msg);
     return FALSE;
   }
 
   if (stun_message_append32 (&msg->message, STUN_ATTRIBUTE_CHANNEL_NUMBER,
-                             channel_attr) != STUN_MESSAGE_RETURN_SUCCESS) {
+          channel_attr) != STUN_MESSAGE_RETURN_SUCCESS) {
     g_free (msg);
     return FALSE;
   }
 
   if (stun_message_append_xor_addr (&msg->message, STUN_ATTRIBUTE_PEER_ADDRESS,
-                                    (struct sockaddr *)&sa,
-                                    sizeof(sa))
+          (struct sockaddr *)&sa,
+          sizeof(sa))
       != STUN_MESSAGE_RETURN_SUCCESS) {
     g_free (msg);
     return FALSE;
@@ -1278,7 +1278,7 @@ priv_send_channel_bind (TurnPriv *priv,  StunMessage *resp,
 
   if (priv->username != NULL && priv->username_len > 0) {
     if (stun_message_append_bytes (&msg->message, STUN_ATTRIBUTE_USERNAME,
-                                   priv->username, priv->username_len)
+            priv->username, priv->username_len)
         != STUN_MESSAGE_RETURN_SUCCESS) {
       g_free (msg);
       return FALSE;
@@ -1293,7 +1293,7 @@ priv_send_channel_bind (TurnPriv *priv,  StunMessage *resp,
     realm = (uint8_t *) stun_message_find (resp, STUN_ATTRIBUTE_REALM, &len);
     if (realm != NULL) {
       if (stun_message_append_bytes (&msg->message, STUN_ATTRIBUTE_REALM,
-                                     realm, len)
+              realm, len)
           != STUN_MESSAGE_RETURN_SUCCESS) {
         g_free (msg);
         return 0;
@@ -1302,7 +1302,7 @@ priv_send_channel_bind (TurnPriv *priv,  StunMessage *resp,
     nonce = (uint8_t *) stun_message_find (resp, STUN_ATTRIBUTE_NONCE, &len);
     if (nonce != NULL) {
       if (stun_message_append_bytes (&msg->message, STUN_ATTRIBUTE_NONCE,
-                                     nonce, len)
+              nonce, len)
           != STUN_MESSAGE_RETURN_SUCCESS) {
         g_free (msg);
         return 0;
@@ -1311,7 +1311,7 @@ priv_send_channel_bind (TurnPriv *priv,  StunMessage *resp,
   }
 
   stun_len = stun_agent_finish_message (&priv->agent, &msg->message,
-                                        priv->password, priv->password_len);
+      priv->password, priv->password_len);
 
   if (stun_len > 0) {
     priv_send_turn_message (priv, msg);
@@ -1361,17 +1361,17 @@ priv_add_channel_binding (TurnPriv *priv, const NiceAddress *peer)
     }
     return FALSE;
   } else if (priv->compatibility == NICE_TURN_SOCKET_COMPATIBILITY_MSN ||
-             priv->compatibility == NICE_TURN_SOCKET_COMPATIBILITY_OC2007) {
+      priv->compatibility == NICE_TURN_SOCKET_COMPATIBILITY_OC2007) {
     TURNMessage *msg = g_new0 (TURNMessage, 1);
     if (!stun_agent_init_request (&priv->agent, &msg->message,
-                                  msg->buffer, sizeof(msg->buffer),
-                                  STUN_OLD_SET_ACTIVE_DST)) {
+            msg->buffer, sizeof(msg->buffer),
+            STUN_OLD_SET_ACTIVE_DST)) {
       g_free (msg);
       return FALSE;
     }
 
     if (stun_message_append32 (&msg->message, STUN_ATTRIBUTE_MAGIC_COOKIE,
-                               TURN_MAGIC_COOKIE)
+            TURN_MAGIC_COOKIE)
         != STUN_MESSAGE_RETURN_SUCCESS) {
       g_free (msg);
       return FALSE;
@@ -1379,7 +1379,7 @@ priv_add_channel_binding (TurnPriv *priv, const NiceAddress *peer)
 
     if (priv->username != NULL && priv->username_len > 0) {
       if (stun_message_append_bytes (&msg->message, STUN_ATTRIBUTE_USERNAME,
-                                     priv->username, priv->username_len)
+              priv->username, priv->username_len)
           != STUN_MESSAGE_RETURN_SUCCESS) {
         g_free (msg);
         return FALSE;
@@ -1388,22 +1388,22 @@ priv_add_channel_binding (TurnPriv *priv, const NiceAddress *peer)
 
     if (priv->compatibility == NICE_TURN_SOCKET_COMPATIBILITY_OC2007) {
       if (priv->ms_connection_id_valid)
-          stun_message_append_ms_connection_id(&msg->message,
-              priv->ms_connection_id, ++priv->ms_sequence_num);
+        stun_message_append_ms_connection_id(&msg->message,
+            priv->ms_connection_id, ++priv->ms_sequence_num);
 
       stun_message_ensure_ms_realm(&msg->message, priv->ms_realm);
     }
 
     if (stun_message_append_addr (&msg->message,
-                                  STUN_ATTRIBUTE_DESTINATION_ADDRESS,
-                                  (struct sockaddr *)&sa, sizeof(sa))
+            STUN_ATTRIBUTE_DESTINATION_ADDRESS,
+            (struct sockaddr *)&sa, sizeof(sa))
         != STUN_MESSAGE_RETURN_SUCCESS) {
       g_free (msg);
       return FALSE;
     }
 
     stun_len = stun_agent_finish_message (&priv->agent, &msg->message,
-                                          priv->password, priv->password_len);
+        priv->password, priv->password_len);
 
     if (stun_len > 0) {
       priv->current_binding = g_new0 (ChannelBinding, 1);
@@ -1448,8 +1448,8 @@ nice_turn_socket_set_ms_connection_id (NiceSocket *sock, StunMessage *msg)
       STUN_ATTRIBUTE_MS_SEQUENCE_NUMBER, &alen);
 
   if (ms_seq_num && alen == 24) {
-      memcpy (priv->ms_connection_id, ms_seq_num, 20);
-      priv->ms_sequence_num = ntohl((uint32_t)*(ms_seq_num + 20));
-      priv->ms_connection_id_valid = TRUE;
+    memcpy (priv->ms_connection_id, ms_seq_num, 20);
+    priv->ms_sequence_num = ntohl((uint32_t)*(ms_seq_num + 20));
+    priv->ms_connection_id_valid = TRUE;
   }
 }

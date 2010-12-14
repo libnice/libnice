@@ -106,7 +106,7 @@ size_t stun_usage_turn_create (StunAgent *agent, StunMessage *msg,
   }
 
   if ((compatibility == STUN_USAGE_TURN_COMPATIBILITY_DRAFT9 ||
-       compatibility == STUN_USAGE_TURN_COMPATIBILITY_RFC5766) &&
+          compatibility == STUN_USAGE_TURN_COMPATIBILITY_RFC5766) &&
       request_props != STUN_USAGE_TURN_REQUEST_PORT_NORMAL) {
     uint32_t req = 0;
 
@@ -223,40 +223,40 @@ size_t stun_usage_turn_create_permission (StunAgent *agent, StunMessage *msg,
     struct sockaddr *peer,
     StunUsageTurnCompatibility compatibility)
 {
-	stun_agent_init_request (agent, msg, buffer, buffer_len,
-		STUN_CREATEPERMISSION);
+  stun_agent_init_request (agent, msg, buffer, buffer_len,
+      STUN_CREATEPERMISSION);
 
-	/* PEER address */
-	if (peer) {
-		if (stun_message_append_xor_addr (msg, STUN_ATTRIBUTE_XOR_PEER_ADDRESS,
+  /* PEER address */
+  if (peer) {
+    if (stun_message_append_xor_addr (msg, STUN_ATTRIBUTE_XOR_PEER_ADDRESS,
             peer, sizeof(*peer)) != STUN_MESSAGE_RETURN_SUCCESS) {
-			return 0;
-		}
-	}
+      return 0;
+    }
+  }
 
-	/* nonce */
-	if (nonce != NULL) {
-		if (stun_message_append_bytes (msg, STUN_ATTRIBUTE_NONCE,
-		        nonce, nonce_len) != STUN_MESSAGE_RETURN_SUCCESS)
-			return 0;
-	}
+  /* nonce */
+  if (nonce != NULL) {
+    if (stun_message_append_bytes (msg, STUN_ATTRIBUTE_NONCE,
+            nonce, nonce_len) != STUN_MESSAGE_RETURN_SUCCESS)
+      return 0;
+  }
 
-	/* realm */
-	if (realm != NULL) {
-		if (stun_message_append_bytes (msg, STUN_ATTRIBUTE_REALM,
-		        realm, realm_len) != STUN_MESSAGE_RETURN_SUCCESS)
-			return 0;
-	}
+  /* realm */
+  if (realm != NULL) {
+    if (stun_message_append_bytes (msg, STUN_ATTRIBUTE_REALM,
+            realm, realm_len) != STUN_MESSAGE_RETURN_SUCCESS)
+      return 0;
+  }
 
-	/* username */
-	if (username != NULL) {
-		if (stun_message_append_bytes (msg, STUN_ATTRIBUTE_USERNAME,
-		    	username, username_len) != STUN_MESSAGE_RETURN_SUCCESS)
-			return 0;
-	}
+  /* username */
+  if (username != NULL) {
+    if (stun_message_append_bytes (msg, STUN_ATTRIBUTE_USERNAME,
+            username, username_len) != STUN_MESSAGE_RETURN_SUCCESS)
+      return 0;
+  }
 
-	stun_debug("before stun_agent_finish_message \n");
-	return stun_agent_finish_message (agent, msg, password, password_len);
+  stun_debug("before stun_agent_finish_message \n");
+  return stun_agent_finish_message (agent, msg, password, password_len);
 }
 
 
@@ -339,7 +339,7 @@ StunUsageTurnReturn stun_usage_turn_process (StunMessage *msg,
       return STUN_USAGE_TURN_RETURN_ERROR;
     }
   } else if (compatibility == STUN_USAGE_TURN_COMPATIBILITY_MSN ||
-             compatibility == STUN_USAGE_TURN_COMPATIBILITY_OC2007) {
+      compatibility == STUN_USAGE_TURN_COMPATIBILITY_OC2007) {
     val = stun_message_find_addr (msg,
         STUN_ATTRIBUTE_MSN_MAPPED_ADDRESS, addr, addrlen);
 
