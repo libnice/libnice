@@ -1230,9 +1230,11 @@ priv_send_create_permission(TurnPriv *priv, uint8_t *realm, gsize realm_len,
         msg_buf_len, (gchar *) msg->buffer);
 
     if (nice_socket_is_reliable (priv->base_socket)) {
-      stun_timer_start_reliable (&msg->timer);
+      stun_timer_start_reliable (&msg->timer,
+        STUN_TIMER_DEFAULT_RELIABLE_TIMEOUT);
     } else {
-      stun_timer_start (&msg->timer);
+      stun_timer_start (&msg->timer, STUN_TIMER_DEFAULT_TIMEOUT,
+        STUN_TIMER_DEFAULT_MAX_RETRANSMISSIONS);
     }
 
     priv_schedule_tick (priv);
