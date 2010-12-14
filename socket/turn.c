@@ -364,7 +364,8 @@ priv_has_sent_permission_for_peer (TurnPriv *priv, const NiceAddress *peer)
 static void
 priv_add_permission_for_peer (TurnPriv *priv, const NiceAddress *peer)
 {
-  priv->permissions = g_list_append (priv->permissions, nice_address_dup (peer));
+  priv->permissions =
+      g_list_append (priv->permissions, nice_address_dup (peer));
 }
 
 static void
@@ -434,7 +435,7 @@ socket_dequeue_all_data (TurnPriv *priv, const NiceAddress *to)
       SendData *data =
           (SendData *) g_queue_pop_head(send_queue);
 
-      nice_debug ("dequeing data enqueued when installing permission or binding");
+      nice_debug ("dequeuing data");
       nice_socket_send (priv->base_socket, to, data->data_len, data->data);
 
       g_free (data->data);
@@ -564,7 +565,7 @@ socket_send (NiceSocket *sock, const NiceAddress *to,
       }
 
       /* enque data */
-      nice_debug ("enqueing data to be sent when aquiring permission or binding");
+      nice_debug ("enqueuing data");
       socket_enqueue_data(priv, to, msg_len, (gchar *)buffer);
       return TRUE;
     } else {
@@ -725,8 +726,8 @@ nice_turn_socket_parse_recv (NiceSocket *sock, NiceSocket **from_sock,
             priv->current_binding_msg = NULL;
 
             if (stun_message_get_class (&msg) == STUN_RESPONSE &&
-                (priv->compatibility == NICE_TURN_SOCKET_COMPATIBILITY_MSN ||
-                    priv->compatibility == NICE_TURN_SOCKET_COMPATIBILITY_OC2007)) {
+                (priv->compatibility == NICE_TURN_SOCKET_COMPATIBILITY_OC2007 ||
+                 priv->compatibility == NICE_TURN_SOCKET_COMPATIBILITY_MSN)) {
               goto msn_google_lock;
             } else {
               g_free (priv->current_binding);
@@ -785,7 +786,8 @@ nice_turn_socket_parse_recv (NiceSocket *sock, NiceSocket **from_sock,
                   socklen_t sa_len = sizeof(sa);
                   NiceAddress to;
 
-                  stun_message_find_xor_addr (&priv->current_binding_msg->message,
+                  stun_message_find_xor_addr (
+                      &priv->current_binding_msg->message,
                       STUN_ATTRIBUTE_XOR_PEER_ADDRESS, &sa,
                       &sa_len);
                   nice_address_set_from_sockaddr (&to, &sa);
@@ -842,14 +844,16 @@ nice_turn_socket_parse_recv (NiceSocket *sock, NiceSocket **from_sock,
           stun_message_id (&priv->current_create_permission_msg->message,
               request_id);
 
-          if (memcmp (request_id, response_id, sizeof(StunTransactionId)) == 0) {
+          if (memcmp (request_id, response_id,
+                  sizeof(StunTransactionId)) == 0) {
             struct sockaddr peer;
             socklen_t peer_len = sizeof(peer);
             int code = -1;
             NiceAddress to;
 
             nice_debug ("got response for CreatePermission");
-            stun_message_find_xor_addr (&priv->current_create_permission_msg->message,
+            stun_message_find_xor_addr (
+                &priv->current_create_permission_msg->message,
                 STUN_ATTRIBUTE_XOR_PEER_ADDRESS, &peer,
                 &peer_len);
             nice_address_set_from_sockaddr (&to, &peer);
@@ -1048,7 +1052,8 @@ priv_retransmissions_create_permission_tick_unlocked (TurnPriv *priv)
 
           stun_message_id (&priv->current_create_permission_msg->message, id);
           stun_agent_forget_transaction (&priv->agent, id);
-          stun_message_find_xor_addr (&priv->current_create_permission_msg->message,
+          stun_message_find_xor_addr (
+              &priv->current_create_permission_msg->message,
               STUN_ATTRIBUTE_XOR_PEER_ADDRESS, &addr,
               &addr_len);
           nice_address_set_from_sockaddr (&to, &addr);
@@ -1117,8 +1122,8 @@ priv_retransmissions_create_permission_tick (gpointer pointer)
 
   agent_lock ();
   if (g_source_is_destroyed (g_main_current_source ())) {
-    nice_debug ("Source was destroyed. "
-        "Avoided race condition in turn.c:priv_retransmissions_create_permission_tick");
+    nice_debug ("Source was destroyed. Avoided race condition in "
+                "turn.c:priv_retransmissions_create_permission_tick");
     agent_unlock ();
     return FALSE;
   }
@@ -1157,7 +1162,9 @@ priv_schedule_tick (TurnPriv *priv)
   }
 
   if (priv->current_create_permission_msg) {
-    guint timeout = stun_timer_remainder (&priv->current_create_permission_msg->timer);
+    guint timeout =
+        stun_timer_remainder (&priv->current_create_permission_msg->timer);
+
     if (timeout > 0) {
       priv->tick_source_create_permission =
           agent_timeout_add_with_context (priv->nice,

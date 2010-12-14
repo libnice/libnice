@@ -143,7 +143,8 @@ size_t stun_usage_turn_create (StunAgent *agent, StunMessage *msg,
           STUN_MESSAGE_RETURN_SUCCESS)
         return 0;
     }
-    if (stun_message_find64 (previous_response, STUN_ATTRIBUTE_RESERVATION_TOKEN,
+    if (stun_message_find64 (previous_response,
+            STUN_ATTRIBUTE_RESERVATION_TOKEN,
             &reservation) == STUN_MESSAGE_RETURN_SUCCESS) {
       if (stun_message_append64 (msg, STUN_ATTRIBUTE_RESERVATION_TOKEN,
               reservation) != STUN_MESSAGE_RETURN_SUCCESS)
