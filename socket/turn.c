@@ -73,6 +73,7 @@ typedef struct {
   ChannelBinding *current_binding;
   TURNMessage *current_binding_msg;
   GSource *tick_source;
+  GSource *tick_source_channel_bind;
   NiceSocket *base_socket;
   NiceAddress server_addr;
   uint8_t *username;
@@ -196,10 +197,10 @@ socket_close (NiceSocket *sock)
       NULL);
   g_list_free (priv->pending_bindings);
 
-  if (priv->tick_source != NULL) {
-    g_source_destroy (priv->tick_source);
-    g_source_unref (priv->tick_source);
-    priv->tick_source = NULL;
+  if (priv->tick_source_channel_bind != NULL) {
+    g_source_destroy (priv->tick_source_channel_bind);
+    g_source_unref (priv->tick_source_channel_bind);
+    priv->tick_source_channel_bind = NULL;
   }
 
   for (i = g_queue_peek_head_link (priv->send_requests); i; i = i->next) {
@@ -702,10 +703,10 @@ priv_retransmissions_tick (gpointer pointer)
 
   ret = priv_retransmissions_tick_unlocked (priv);
   if (ret == FALSE) {
-    if (priv->tick_source != NULL) {
-      g_source_destroy (priv->tick_source);
-      g_source_unref (priv->tick_source);
-      priv->tick_source = NULL;
+    if (priv->tick_source_channel_bind != NULL) {
+      g_source_destroy (priv->tick_source_channel_bind);
+      g_source_unref (priv->tick_source_channel_bind);
+      priv->tick_source_channel_bind = NULL;
     }
   }
   agent_unlock ();
@@ -716,17 +717,18 @@ priv_retransmissions_tick (gpointer pointer)
 static void
 priv_schedule_tick (TurnPriv *priv)
 {
-  if (priv->tick_source != NULL) {
-    g_source_destroy (priv->tick_source);
-    g_source_unref (priv->tick_source);
-    priv->tick_source = NULL;
+  if (priv->tick_source_channel_bind != NULL) {
+    g_source_destroy (priv->tick_source_channel_bind);
+    g_source_unref (priv->tick_source_channel_bind);
+    priv->tick_source_channel_bind = NULL;
   }
 
   if (priv->current_binding_msg) {
     guint timeout = stun_timer_remainder (&priv->current_binding_msg->timer);
     if (timeout > 0) {
-      priv->tick_source = agent_timeout_add_with_context (priv->nice, timeout,
-          priv_retransmissions_tick, priv);
+      priv->tick_source_channel_bind =
+          agent_timeout_add_with_context (priv->nice, timeout,
+              priv_retransmissions_tick, priv);
     } else {
       priv_retransmissions_tick_unlocked (priv);
     }
