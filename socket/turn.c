@@ -625,7 +625,7 @@ priv_permission_timeout (gpointer data)
      we are sending to will be renewed) */
   priv_clear_permissions (priv);
   agent_unlock ();
-    
+
   return TRUE;
 }
 
@@ -634,7 +634,7 @@ priv_binding_timeout (gpointer data)
 {
   TurnPriv *priv = (TurnPriv *) data;
   GList *i;
-    
+
   nice_debug ("Permission is about to timeout, schedule renewal");
 
   agent_lock ();
@@ -717,6 +717,7 @@ nice_turn_socket_parse_recv (NiceSocket *sock, NiceSocket **from_sock,
       } else if (stun_message_get_method (&msg) == STUN_OLD_SET_ACTIVE_DST) {
         StunTransactionId request_id;
         StunTransactionId response_id;
+
         if (priv->current_binding && priv->current_binding_msg) {
           stun_message_id (&msg, response_id);
           stun_message_id (&priv->current_binding_msg->message, request_id);
