@@ -260,6 +260,13 @@ socket_close (NiceSocket *sock)
     priv->tick_source_channel_bind = NULL;
   }
 
+  if (priv->tick_source_create_permission != NULL) {
+    g_source_destroy (priv->tick_source_create_permission);
+    g_source_unref (priv->tick_source_create_permission);
+    priv->tick_source_create_permission = NULL;
+  }
+
+
   for (i = g_queue_peek_head_link (priv->send_requests); i; i = i->next) {
     SendRequest *r = i->data;
     g_source_destroy (r->source);
@@ -274,7 +281,10 @@ socket_close (NiceSocket *sock)
   g_queue_free (priv->send_requests);
 
   priv_clear_permissions (priv);
+  g_list_foreach (priv->sent_permissions, (GFunc) nice_address_free, NULL);
+  g_list_free (priv->sent_permissions);
   g_hash_table_destroy (priv->send_data_queues);
+  g_source_remove (priv->binding_timeout_source);
   g_source_remove (priv->permission_timeout_source);
 
   g_free (priv->current_binding);
