@@ -256,7 +256,6 @@ size_t stun_usage_turn_create_permission (StunAgent *agent, StunMessage *msg,
       return 0;
   }
 
-  stun_debug("before stun_agent_finish_message \n");
   return stun_agent_finish_message (agent, msg, password, password_len);
 }
 

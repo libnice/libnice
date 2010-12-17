@@ -384,7 +384,7 @@ priv_remove_peer_from_list (GList *list, const NiceAddress *peer)
     NiceAddress *address = (NiceAddress *) iter->data;
 
     if (nice_address_equal (address, peer)) {
-      nice_address_free ((NiceAddress *) iter->data);
+      nice_address_free (address);
       list = g_list_delete_link (list, iter);
     }
   }
@@ -502,8 +502,7 @@ socket_send (NiceSocket *sock, const NiceAddress *to,
         goto send;
 
       if (stun_message_append32 (&msg, STUN_ATTRIBUTE_MAGIC_COOKIE,
-              TURN_MAGIC_COOKIE) !=
-	  STUN_MESSAGE_RETURN_SUCCESS)
+              TURN_MAGIC_COOKIE) != STUN_MESSAGE_RETURN_SUCCESS)
         goto send;
       if (priv->username != NULL && priv->username_len > 0) {
         if (stun_message_append_bytes (&msg, STUN_ATTRIBUTE_USERNAME,
@@ -512,8 +511,8 @@ socket_send (NiceSocket *sock, const NiceAddress *to,
           goto send;
       }
       if (stun_message_append_addr (&msg, STUN_ATTRIBUTE_DESTINATION_ADDRESS,
-              (struct sockaddr *)&sa,
-              sizeof(sa)) != STUN_MESSAGE_RETURN_SUCCESS)
+              (struct sockaddr *)&sa, sizeof(sa)) !=
+          STUN_MESSAGE_RETURN_SUCCESS)
         goto send;
 
       if (priv->compatibility == NICE_TURN_SOCKET_COMPATIBILITY_GOOGLE &&
@@ -545,9 +544,7 @@ socket_send (NiceSocket *sock, const NiceAddress *to,
       req->priv = priv;
       stun_message_id (&msg, req->id);
       req->source = agent_timeout_add_with_context (priv->nice,
-          STUN_END_TIMEOUT,
-          priv_forget_send_request,
-          req);
+          STUN_END_TIMEOUT, priv_forget_send_request, req);
       g_queue_push_tail (priv->send_requests, req);
     }
   }
@@ -666,8 +663,7 @@ nice_turn_socket_parse_recv (NiceSocket *sock, NiceSocket **from_sock,
 
   if (nice_address_equal (&priv->server_addr, recv_from)) {
     valid = stun_agent_validate (&priv->agent, &msg,
-        (uint8_t *) recv_buf, (size_t) recv_len, NULL,
-        NULL);
+        (uint8_t *) recv_buf, (size_t) recv_len, NULL, NULL);
 
     if (valid == STUN_VALIDATION_SUCCESS) {
       if (priv->compatibility != NICE_TURN_SOCKET_COMPATIBILITY_DRAFT9 &&
@@ -781,7 +777,7 @@ nice_turn_socket_parse_recv (NiceSocket *sock, NiceSocket **from_sock,
                       &priv->current_binding->peer);
                 } else {
                   /* look up binding associated with peer */
-                  GList *i = priv->channels;
+                  GList *i;
                   ChannelBinding *binding = NULL;
                   struct sockaddr sa;
                   socklen_t sa_len = sizeof(sa);
@@ -793,7 +789,7 @@ nice_turn_socket_parse_recv (NiceSocket *sock, NiceSocket **from_sock,
                       &sa_len);
                   nice_address_set_from_sockaddr (&to, &sa);
 
-                  for (; i; i = i->next) {
+                  for (i = priv->channels; i; i = i->next) {
                     ChannelBinding *b = i->data;
                     if (nice_address_equal (&b->peer, &to)) {
                       binding = b;
