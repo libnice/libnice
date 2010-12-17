@@ -224,15 +224,16 @@ size_t stun_usage_turn_create_permission (StunAgent *agent, StunMessage *msg,
     struct sockaddr *peer,
     StunUsageTurnCompatibility compatibility)
 {
+  if (!peer)
+    return 0;
+
   stun_agent_init_request (agent, msg, buffer, buffer_len,
       STUN_CREATEPERMISSION);
 
   /* PEER address */
-  if (peer) {
-    if (stun_message_append_xor_addr (msg, STUN_ATTRIBUTE_XOR_PEER_ADDRESS,
-            peer, sizeof(*peer)) != STUN_MESSAGE_RETURN_SUCCESS) {
-      return 0;
-    }
+  if (stun_message_append_xor_addr (msg, STUN_ATTRIBUTE_XOR_PEER_ADDRESS,
+          peer, sizeof(*peer)) != STUN_MESSAGE_RETURN_SUCCESS) {
+    return 0;
   }
 
   /* nonce */
