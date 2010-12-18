@@ -66,7 +66,7 @@ typedef struct {
 typedef struct {
   NiceAddress peer;
   uint16_t channel;
-  gboolean active;
+  gboolean renew;
   guint timeout_source;
 } ChannelBinding;
 
@@ -706,11 +706,11 @@ priv_binding_timeout (gpointer data)
     return FALSE;
   }
 
-  /* find current binding and inactivate it */
+  /* find current binding and mark it for renewal */
   for (i = priv->channels ; i; i = i->next) {
     ChannelBinding *b = i->data;
     if (b->timeout_source == g_source_get_id (source)) {
-      b->active = FALSE;
+      b->renew = TRUE;
       /* Install timer to expire the permission */
       b->timeout_source = g_timeout_add_seconds (STUN_EXPIRE_TIMEOUT,
               priv_binding_expired_timeout, priv);
@@ -898,7 +898,7 @@ nice_turn_socket_parse_recv (NiceSocket *sock, NiceSocket **from_sock,
               priv->current_binding = NULL;
 
               if (binding) {
-                binding->active = TRUE;
+                binding->renew = FALSE;
 
                 /* Remove any existing timer */
                 if (binding->timeout_source)
@@ -1069,11 +1069,27 @@ static void
 priv_process_pending_bindings (TurnPriv *priv)
 {
   gboolean ret = FALSE;
+
   while (priv->pending_bindings != NULL && ret == FALSE) {
     NiceAddress *peer = priv->pending_bindings->data;
     ret = priv_add_channel_binding (priv, peer);
     priv->pending_bindings = g_list_remove (priv->pending_bindings, peer);
     nice_address_free (peer);
+  }
+
+  /* If no new channel bindings are in progress and there are no
+     pending bindings, then renew the soon to be expired bindings */
+  if (priv->pending_bindings == NULL && priv->current_binding_msg == NULL) {
+    GList *i = NULL;
+
+    /* find binding to renew */
+    for (i = priv->channels ; i; i = i->next) {
+      ChannelBinding *b = i->data;
+      if (b->renew) {
+        priv_send_channel_bind (priv, NULL, b->channel, &b->peer);
+        break;
+      }
+    }
   }
 }
 
