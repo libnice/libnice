@@ -125,11 +125,9 @@ static gboolean priv_retransmissions_tick_unlocked (TurnPriv *priv);
 static gboolean priv_retransmissions_tick (gpointer pointer);
 static void priv_schedule_tick (TurnPriv *priv);
 static void priv_send_turn_message (TurnPriv *priv, TURNMessage *msg);
-static gboolean priv_send_create_permission (TurnPriv *priv,
-    uint8_t *realm, gsize realm_len,
-    uint8_t *nonce, gsize nonce_len,
+static gboolean priv_send_create_permission (TurnPriv *priv,  StunMessage *resp,
     const NiceAddress *peer);
-static gboolean priv_send_channel_bind (TurnPriv *priv,  StunMessage *resp,
+static gboolean priv_send_channel_bind (TurnPriv *priv, StunMessage *resp,
     uint16_t channel,
     const NiceAddress *peer);
 static gboolean priv_add_channel_binding (TurnPriv *priv,
@@ -564,7 +562,7 @@ socket_send (NiceSocket *sock, const NiceAddress *to,
     if (priv->compatibility == NICE_TURN_SOCKET_COMPATIBILITY_RFC5766 &&
         !priv_has_permission_for_peer (priv, to)) {
       if (!priv_has_sent_permission_for_peer (priv, to)) {
-        priv_send_create_permission (priv, NULL, 0, NULL, 0, to);
+        priv_send_create_permission (priv, NULL, to);
       }
 
       /* enque data */
@@ -929,7 +927,6 @@ nice_turn_socket_parse_recv (NiceSocket *sock, NiceSocket **from_sock,
                   sizeof(StunTransactionId)) == 0) {
             struct sockaddr peer;
             socklen_t peer_len = sizeof(peer);
-            int code = -1;
             NiceAddress to;
 
             nice_debug ("got response for CreatePermission");
@@ -942,26 +939,42 @@ nice_turn_socket_parse_recv (NiceSocket *sock, NiceSocket **from_sock,
             g_free (priv->current_create_permission_msg);
             priv->current_create_permission_msg = NULL;
 
-            /* unathorized => resend with realm and nonce) */
-            if (stun_message_get_class (&msg) == STUN_ERROR &&
-                stun_message_find_error (&msg, &code) ==
-                STUN_MESSAGE_RETURN_SUCCESS &&
-                (code == 438 || (code == 401))) {
+            /* unathorized => resend with realm and nonce */
+            if (stun_message_get_class (&msg) == STUN_ERROR) {
+              int code = -1;
+              uint8_t *sent_realm = NULL;
               uint8_t *recv_realm = NULL;
+              uint16_t sent_realm_len = 0;
               uint16_t recv_realm_len = 0;
-              uint8_t *recv_nonce = NULL;
-              uint16_t recv_nonce_len = 0;
 
-              recv_realm = (uint8_t *) stun_message_find (&msg,
-                  STUN_ATTRIBUTE_REALM, &recv_realm_len);
-              recv_nonce = (uint8_t *) stun_message_find (&msg,
-                  STUN_ATTRIBUTE_NONCE, &recv_nonce_len);
+              sent_realm =
+                  (uint8_t *) stun_message_find (
+                      &priv->current_create_permission_msg->message,
+                      STUN_ATTRIBUTE_REALM, &sent_realm_len);
+              recv_realm =
+                  (uint8_t *) stun_message_find (&msg,
+                      STUN_ATTRIBUTE_REALM, &recv_realm_len);
 
-              /* resend CreatePermission */
-              priv_send_create_permission (priv, recv_realm, recv_realm_len,
-                  recv_nonce, recv_nonce_len, &to);
-            } else {
-              /* we now have a permission installed for this peer */
+              /* check for unauthorized error response */
+              if (stun_message_find_error (&msg, &code) ==
+                  STUN_MESSAGE_RETURN_SUCCESS &&
+                  (code == 438 || (code == 401 &&
+                      !(recv_realm != NULL &&
+                          recv_realm_len > 0 &&
+                          recv_realm_len == sent_realm_len &&
+                          sent_realm != NULL &&
+                          memcmp (sent_realm, recv_realm,
+                              sent_realm_len) == 0)))) {
+                g_free (priv->current_create_permission_msg);
+                priv->current_create_permission_msg = NULL;
+                /* resend CreatePermission */
+                priv_send_create_permission (priv, &msg, &to);
+                return 0;
+              }
+              /* If we get an error, we just assume the server somehow
+                 doesn't support permissions and we ignore the error and
+                 fake a successful completion. If the server needs a permission
+                 but it failed to create it, then the connchecks will fail. */
               priv_remove_sent_permission_for_peer (priv, &to);
               priv_add_permission_for_peer (priv, &to);
 
@@ -1300,14 +1313,22 @@ priv_send_turn_message (TurnPriv *priv, TURNMessage *msg)
 }
 
 static gboolean
-priv_send_create_permission(TurnPriv *priv, uint8_t *realm, gsize realm_len,
-    uint8_t *nonce, gsize nonce_len,
+priv_send_create_permission(TurnPriv *priv, StunMessage *resp,
     const NiceAddress *peer)
 {
   guint msg_buf_len;
   gboolean res = FALSE;
   TURNMessage *msg = g_new0 (TURNMessage, 1);
   struct sockaddr addr;
+  uint8_t *realm = NULL;
+  uint16_t realm_len = 0;
+  uint8_t *nonce = NULL;
+  uint16_t nonce_len = 0;
+
+  realm = (uint8_t *) stun_message_find (resp,
+      STUN_ATTRIBUTE_REALM, &realm_len);
+  nonce = (uint8_t *) stun_message_find (resp,
+      STUN_ATTRIBUTE_NONCE, &nonce_len);
 
   /* register this peer as being pening a permission (if not already pending) */
   if (!priv_has_sent_permission_for_peer (priv, peer)) {
