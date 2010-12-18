@@ -677,6 +677,9 @@ priv_binding_expired_timeout (gpointer data)
           break;
         }
       }
+      /* In case the binding timed out before it could be processed, add it to
+         the pending list */
+      priv_add_channel_binding (priv, &b->peer);
       g_free (b);
       break;
     }
