@@ -656,6 +656,27 @@ priv_binding_expired_timeout (gpointer data)
     ChannelBinding *b = i->data;
     if (b->timeout_source == g_source_get_id (source)) {
       priv->channels = g_list_remove (priv->channels, b);
+      /* Make sure we don't free a currently being-refreshed binding */
+      if (priv->current_binding_msg && !priv->current_binding) {
+        struct sockaddr sa;
+        socklen_t sa_len = sizeof(sa);
+        NiceAddress to;
+
+        /* look up binding associated with peer */
+        stun_message_find_xor_addr (
+            &priv->current_binding_msg->message,
+            STUN_ATTRIBUTE_XOR_PEER_ADDRESS, &sa,
+            &sa_len);
+        nice_address_set_from_sockaddr (&to, &sa);
+
+        /* If the binding is being refreshed, then move it to
+           priv->current_binding so it counts as a 'new' binding and
+           will get readded to the list if it succeeds */
+        if (nice_address_equal (&b->peer, &to)) {
+          priv->current_binding = b;
+          break;
+        }
+      }
       g_free (b);
       break;
     }
