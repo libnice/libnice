@@ -1113,6 +1113,8 @@ priv_process_pending_bindings (TurnPriv *priv)
 static gboolean
 priv_retransmissions_tick_unlocked (TurnPriv *priv)
 {
+  gboolean ret = FALSE;
+
   if (priv->current_binding_msg) {
     switch (stun_timer_refresh (&priv->current_binding_msg->timer)) {
       case STUN_USAGE_TIMER_RETURN_TIMEOUT:
@@ -1137,19 +1139,24 @@ priv_retransmissions_tick_unlocked (TurnPriv *priv)
         nice_socket_send (priv->base_socket, &priv->server_addr,
             stun_message_length (&priv->current_binding_msg->message),
             (gchar *)priv->current_binding_msg->buffer);
+        ret = TRUE;
         break;
       case STUN_USAGE_TIMER_RETURN_SUCCESS:
+        ret = TRUE;
         break;
     }
   }
 
-  priv_schedule_tick (priv);
-  return FALSE;
+  if (ret)
+    priv_schedule_tick (priv);
+  return ret;
 }
 
 static gboolean
 priv_retransmissions_create_permission_tick_unlocked (TurnPriv *priv)
 {
+  gboolean ret = FALSE;
+
   if (priv->current_create_permission_msg) {
     switch (stun_timer_refresh (&priv->current_create_permission_msg->timer)) {
       case STUN_USAGE_TIMER_RETURN_TIMEOUT:
@@ -1187,21 +1194,23 @@ priv_retransmissions_create_permission_tick_unlocked (TurnPriv *priv)
         nice_socket_send (priv->base_socket, &priv->server_addr,
             stun_message_length (&priv->current_create_permission_msg->message),
             (gchar *)priv->current_create_permission_msg->buffer);
+        ret = TRUE;
         break;
       case STUN_USAGE_TIMER_RETURN_SUCCESS:
+        ret = TRUE;
         break;
     }
   }
 
-  priv_schedule_tick (priv);
-  return FALSE;
+  if (ret)
+    priv_schedule_tick (priv);
+  return ret;
 }
 
 static gboolean
 priv_retransmissions_tick (gpointer pointer)
 {
   TurnPriv *priv = pointer;
-  gboolean ret;
 
   agent_lock ();
   if (g_source_is_destroyed (g_main_current_source ())) {
@@ -1211,8 +1220,7 @@ priv_retransmissions_tick (gpointer pointer)
     return FALSE;
   }
 
-  ret = priv_retransmissions_tick_unlocked (priv);
-  if (ret == FALSE) {
+  if (priv_retransmissions_tick_unlocked (priv) == FALSE) {
     if (priv->tick_source_channel_bind != NULL) {
       g_source_destroy (priv->tick_source_channel_bind);
       g_source_unref (priv->tick_source_channel_bind);
@@ -1221,14 +1229,13 @@ priv_retransmissions_tick (gpointer pointer)
   }
   agent_unlock ();
 
-  return ret;
+  return FALSE;
 }
 
 static gboolean
 priv_retransmissions_create_permission_tick (gpointer pointer)
 {
   TurnPriv *priv = pointer;
-  gboolean ret;
 
   agent_lock ();
   if (g_source_is_destroyed (g_main_current_source ())) {
@@ -1238,8 +1245,7 @@ priv_retransmissions_create_permission_tick (gpointer pointer)
     return FALSE;
   }
 
-  ret = priv_retransmissions_create_permission_tick_unlocked (priv);
-  if (ret == FALSE) {
+  if (priv_retransmissions_create_permission_tick_unlocked (priv) == FALSE) {
     if (priv->tick_source_create_permission != NULL) {
       g_source_destroy (priv->tick_source_create_permission);
       g_source_unref (priv->tick_source_create_permission);
@@ -1248,7 +1254,7 @@ priv_retransmissions_create_permission_tick (gpointer pointer)
   }
   agent_unlock ();
 
-  return ret;
+  return FALSE;
 }
 
 static void
