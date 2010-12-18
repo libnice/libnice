@@ -53,8 +53,9 @@
 
 #define STUN_END_TIMEOUT 8000
 #define STUN_MAX_MS_REALM_LEN 128 // as defined in [MS-TURN]
-#define STUN_PERMISSION_TIMEOUT 240 /* 300-60 s */
-#define STUN_BINDING_TIMEOUT 540 /* 600-60 s */
+#define STUN_EXPIRE_TIMEOUT 60 /* Time we refresh before expiration  */
+#define STUN_PERMISSION_TIMEOUT (300 - STUN_EXPIRE_TIMEOUT) /* 240 s */
+#define STUN_BINDING_TIMEOUT (600 - STUN_EXPIRE_TIMEOUT) /* 540 s */
 
 typedef struct {
   StunMessage message;
@@ -66,6 +67,7 @@ typedef struct {
   NiceAddress peer;
   uint16_t channel;
   gboolean active;
+  guint timeout_source;
 } ChannelBinding;
 
 typedef struct {
@@ -96,7 +98,6 @@ typedef struct {
   GHashTable *send_data_queues; /* stores a send data queue for per peer */
   guint permission_timeout_source;      /* timer used to invalidate
                                            permissions */
-  guint binding_timeout_source;
 } TurnPriv;
 
 
@@ -246,6 +247,7 @@ socket_close (NiceSocket *sock)
 
   for (i = priv->channels; i; i = i->next) {
     ChannelBinding *b = i->data;
+    g_source_remove (b->timeout_source);
     g_free (b);
   }
   g_list_free (priv->channels);
@@ -284,7 +286,6 @@ socket_close (NiceSocket *sock)
   g_list_foreach (priv->sent_permissions, (GFunc) nice_address_free, NULL);
   g_list_free (priv->sent_permissions);
   g_hash_table_destroy (priv->send_data_queues);
-  g_source_remove (priv->binding_timeout_source);
   g_source_remove (priv->permission_timeout_source);
 
   g_free (priv->current_binding);
@@ -560,11 +561,6 @@ socket_send (NiceSocket *sock, const NiceAddress *to,
   }
 
   if (msg_len > 0) {
-    if (!priv->current_binding_msg && binding && !binding->active) {
-      nice_debug ("renewing channel binding");
-      priv_send_channel_bind (priv, NULL, binding->channel, to);
-    }
-
     if (priv->compatibility == NICE_TURN_SOCKET_COMPATIBILITY_RFC5766 &&
         !priv_has_permission_for_peer (priv, to)) {
       if (!priv_has_sent_permission_for_peer (priv, to)) {
@@ -637,24 +633,76 @@ priv_permission_timeout (gpointer data)
 }
 
 static gboolean
-priv_binding_timeout (gpointer data)
+priv_binding_expired_timeout (gpointer data)
 {
   TurnPriv *priv = (TurnPriv *) data;
   GList *i;
+  GSource *source = NULL;
 
-  nice_debug ("Permission is about to timeout, schedule renewal");
+  nice_debug ("Permission expired, refresh failed");
 
   agent_lock ();
 
-  /* find current binding and inactivate it */
+  source = g_main_current_source ();
+  if (g_source_is_destroyed (source)) {
+    nice_debug ("Source was destroyed. "
+        "Avoided race condition in turn.c:priv_binding_expired_timeout");
+    agent_unlock ();
+    return FALSE;
+  }
+
+  /* find current binding and destroy it */
   for (i = priv->channels ; i; i = i->next) {
     ChannelBinding *b = i->data;
-    b->active = FALSE;
+    if (b->timeout_source == g_source_get_id (source)) {
+      priv->channels = g_list_remove (priv->channels, b);
+      g_free (b);
+      break;
+    }
   }
 
   agent_unlock ();
 
-  return TRUE;
+  return FALSE;
+}
+
+static gboolean
+priv_binding_timeout (gpointer data)
+{
+  TurnPriv *priv = (TurnPriv *) data;
+  GList *i;
+  GSource *source = NULL;
+
+  nice_debug ("Permission is about to timeout, sending binding renewal");
+
+  agent_lock ();
+
+  source = g_main_current_source ();
+  if (g_source_is_destroyed (source)) {
+    nice_debug ("Source was destroyed. "
+        "Avoided race condition in turn.c:priv_binding_timeout");
+    agent_unlock ();
+    return FALSE;
+  }
+
+  /* find current binding and inactivate it */
+  for (i = priv->channels ; i; i = i->next) {
+    ChannelBinding *b = i->data;
+    if (b->timeout_source == g_source_get_id (source)) {
+      b->active = FALSE;
+      /* Install timer to expire the permission */
+      b->timeout_source = g_timeout_add_seconds (STUN_EXPIRE_TIMEOUT,
+              priv_binding_expired_timeout, priv);
+      /* Send renewal */
+      if (!priv->current_binding_msg)
+        priv_send_channel_bind (priv, NULL, b->channel, &b->peer);
+      break;
+    }
+  }
+
+  agent_unlock ();
+
+  return FALSE;
 }
 
 gint
@@ -753,6 +801,33 @@ nice_turn_socket_parse_recv (NiceSocket *sock, NiceSocket **from_sock,
           stun_message_id (&priv->current_binding_msg->message, request_id);
           if (memcmp (request_id, response_id,
                   sizeof(StunTransactionId)) == 0) {
+
+            if (priv->current_binding) {
+              /* New channel binding */
+              binding = priv->current_binding;
+            } else {
+              /* Existing binding refresh */
+              GList *i;
+              struct sockaddr sa;
+              socklen_t sa_len = sizeof(sa);
+              NiceAddress to;
+
+              /* look up binding associated with peer */
+              stun_message_find_xor_addr (
+                  &priv->current_binding_msg->message,
+                  STUN_ATTRIBUTE_XOR_PEER_ADDRESS, &sa,
+                  &sa_len);
+              nice_address_set_from_sockaddr (&to, &sa);
+
+              for (i = priv->channels; i; i = i->next) {
+                ChannelBinding *b = i->data;
+                if (nice_address_equal (&b->peer, &to)) {
+                  binding = b;
+                  break;
+                }
+              }
+            }
+
             if (stun_message_get_class (&msg) == STUN_ERROR) {
               int code = -1;
               uint8_t *sent_realm = NULL;
@@ -779,40 +854,11 @@ nice_turn_socket_parse_recv (NiceSocket *sock, NiceSocket **from_sock,
                           memcmp (sent_realm, recv_realm,
                               sent_realm_len) == 0)))) {
 
-                if (priv->current_binding) {
-                  g_free (priv->current_binding_msg);
-                  priv->current_binding_msg = NULL;
-                  priv_send_channel_bind (priv, &msg,
-                      priv->current_binding->channel,
-                      &priv->current_binding->peer);
-                } else {
-                  /* look up binding associated with peer */
-                  GList *i;
-                  ChannelBinding *binding = NULL;
-                  struct sockaddr sa;
-                  socklen_t sa_len = sizeof(sa);
-                  NiceAddress to;
-
-                  stun_message_find_xor_addr (
-                      &priv->current_binding_msg->message,
-                      STUN_ATTRIBUTE_XOR_PEER_ADDRESS, &sa,
-                      &sa_len);
-                  nice_address_set_from_sockaddr (&to, &sa);
-
-                  for (i = priv->channels; i; i = i->next) {
-                    ChannelBinding *b = i->data;
-                    if (nice_address_equal (&b->peer, &to)) {
-                      binding = b;
-                      break;
-                    }
-                  }
-
-                  g_free (priv->current_binding_msg);
-                  priv->current_binding_msg = NULL;
-
-                  if (binding)
-                    priv_send_channel_bind (priv, &msg, binding->channel, &to);
-                }
+                g_free (priv->current_binding_msg);
+                priv->current_binding_msg = NULL;
+                if (binding)
+                  priv_send_channel_bind (priv, &msg, binding->channel,
+                      &binding->peer);
               } else {
                 g_free (priv->current_binding);
                 priv->current_binding = NULL;
@@ -824,20 +870,24 @@ nice_turn_socket_parse_recv (NiceSocket *sock, NiceSocket **from_sock,
               g_free (priv->current_binding_msg);
               priv->current_binding_msg = NULL;
 
-              if (priv->current_binding) {
-                priv->current_binding->active = TRUE;
+              /* If it's a new channel binding, then add it to the list */
+              if (priv->current_binding)
                 priv->channels = g_list_append (priv->channels,
                     priv->current_binding);
-                priv->current_binding = NULL;
-              }
-              priv_process_pending_bindings (priv);
+              priv->current_binding = NULL;
 
-              /* install timer to schedule refresh of the permission */
-              if (!priv->binding_timeout_source) {
-                priv->binding_timeout_source =
+              if (binding) {
+                binding->active = TRUE;
+
+                /* Remove any existing timer */
+                if (binding->timeout_source)
+                  g_source_remove (binding->timeout_source);
+                /* Install timer to schedule refresh of the permission */
+                binding->timeout_source =
                     g_timeout_add_seconds (STUN_BINDING_TIMEOUT,
                         priv_binding_timeout, priv);
               }
+              priv_process_pending_bindings (priv);
             }
           }
         }
