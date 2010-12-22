@@ -47,6 +47,7 @@
 #define USE_TURN 0
 #define USE_LOOPBACK 1
 #define USE_PROXY 0
+#define USE_UPNP 0
 #define TEST_GOOGLE 0
 
 #define PROXY_IP "127.0.0.1"
@@ -1017,6 +1018,7 @@ int main (void)
     g_object_set (G_OBJECT (ragent), "stun-server-port", atoi (stun_server_port),  NULL);
   }
 
+  g_object_set (G_OBJECT (lagent), "upnp", USE_UPNP,  NULL);
   g_object_set (G_OBJECT (lagent), "proxy-ip", PROXY_IP,  NULL);
   g_object_set (G_OBJECT (lagent), "proxy-port", PROXY_PORT, NULL);
   g_object_set (G_OBJECT (lagent), "proxy-type", PROXY_TYPE, NULL);
