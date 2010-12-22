@@ -48,6 +48,7 @@
 #define USE_LOOPBACK 1
 #define USE_PROXY 0
 #define USE_UPNP 0
+#define USE_RELIABLE 1
 #define TEST_GOOGLE 0
 
 #define PROXY_IP "127.0.0.1"
@@ -746,8 +747,18 @@ int main (void)
    */
 
   /* step: create the agents L and R */
-  lagent = nice_agent_new_reliable (g_main_loop_get_context (global_mainloop), NICE_COMPATIBILITY);
-  ragent = nice_agent_new_reliable (g_main_loop_get_context (global_mainloop), NICE_COMPATIBILITY);
+#if USE_RELIABLE
+  lagent = nice_agent_new_reliable (g_main_loop_get_context (global_mainloop),
+      NICE_COMPATIBILITY);
+  ragent = nice_agent_new_reliable (g_main_loop_get_context (global_mainloop),
+      NICE_COMPATIBILITY);
+#else
+  lagent = nice_agent_new (g_main_loop_get_context (global_mainloop),
+      NICE_COMPATIBILITY);
+  ragent = nice_agent_new (g_main_loop_get_context (global_mainloop),
+      NICE_COMPATIBILITY);
+#endif
+
   nice_agent_set_software (lagent, "Test-fullmode, Left Agent");
   nice_agent_set_software (ragent, "Test-fullmode, Right Agent");
 
@@ -899,7 +910,7 @@ int main (void)
   g_object_set (G_OBJECT (ragent), "max-connectivity-checks", 1, NULL);
   result = run_full_test (lagent, ragent, &baseaddr, 2, 2);
   priv_print_global_status ();
-  g_assert (result == 0); 
+  g_assert (result == 0);
   /* should FAIL as agent L can't send any checks: */
   g_assert (global_lagent_state[0] == NICE_COMPONENT_STATE_FAILED ||
 	    global_lagent_state[1] == NICE_COMPONENT_STATE_FAILED);
@@ -912,7 +923,7 @@ int main (void)
   result = run_full_test (lagent, ragent, &baseaddr, 4, 0);
   priv_print_global_status ();
   /* should SUCCEED as agent L can send the checks: */
-  g_assert (result == 0); 
+  g_assert (result == 0);
   g_assert (global_lagent_state[0] == NICE_COMPONENT_STATE_READY);
   g_assert (global_lagent_state[1] == NICE_COMPONENT_STATE_READY);
   g_assert (global_ragent_state[0] == NICE_COMPONENT_STATE_READY);
