@@ -299,6 +299,20 @@ static void set_candidates (NiceAgent *from, guint from_stream,
   g_slist_free (cands);
 }
 
+static void set_credentials (NiceAgent *lagent, guint lstream,
+    NiceAgent *ragent, guint rstream)
+{
+  gchar *ufrag = NULL, *password = NULL;
+
+  nice_agent_get_local_credentials(lagent, lstream, &ufrag, &password);
+  nice_agent_set_remote_credentials (ragent, rstream, ufrag, password);
+  g_free (ufrag);
+  g_free (password);
+  nice_agent_get_local_credentials(ragent, rstream, &ufrag, &password);
+  nice_agent_set_remote_credentials (lagent, lstream, ufrag, password);
+  g_free (ufrag);
+  g_free (password);
+}
 
 static int run_full_test (NiceAgent *lagent, NiceAgent *ragent, NiceAddress *baseaddr, guint ready, guint failed)
 {
@@ -368,21 +382,9 @@ static int run_full_test (NiceAgent *lagent, NiceAgent *ragent, NiceAddress *bas
     g_assert (global_ragent_gathering_done == TRUE);
   }
 
+  set_credentials (lagent, ls_id, ragent, rs_id);
 
   /* step: pass the remote candidates to agents  */
-  {
-      gchar *ufrag = NULL, *password = NULL;
-      nice_agent_get_local_credentials(lagent, ls_id, &ufrag, &password);
-      nice_agent_set_remote_credentials (ragent,
-					 rs_id, ufrag, password);
-      g_free (ufrag);
-      g_free (password);
-      nice_agent_get_local_credentials(ragent, rs_id, &ufrag, &password);
-      nice_agent_set_remote_credentials (lagent,
-					 ls_id, ufrag, password);
-      g_free (ufrag);
-      g_free (password);
-  }
   set_candidates (ragent, rs_id, lagent, ls_id, NICE_COMPONENT_TYPE_RTP);
   set_candidates (ragent, rs_id, lagent, ls_id, NICE_COMPONENT_TYPE_RTCP);
   set_candidates (lagent, ls_id, ragent, rs_id, NICE_COMPONENT_TYPE_RTP);
@@ -496,21 +498,8 @@ static int run_full_test_delayed_answer (NiceAgent *lagent, NiceAgent *ragent, N
     g_assert (global_ragent_gathering_done == TRUE);
   }
 
-  /* step: find out the local candidates of each agent */
+  set_credentials (lagent, ls_id, ragent, rs_id);
 
-  {
-      gchar *ufrag = NULL, *password = NULL;
-      nice_agent_get_local_credentials(lagent, ls_id, &ufrag, &password);
-      nice_agent_set_remote_credentials (ragent,
-					 rs_id, ufrag, password);
-      g_free (ufrag);
-      g_free (password);
-      nice_agent_get_local_credentials(ragent, rs_id, &ufrag, &password);
-      nice_agent_set_remote_credentials (lagent,
-					 ls_id, ufrag, password);
-      g_free (ufrag);
-      g_free (password);
-  }
   /* step: set remote candidates for agent R (answering party) */
   set_candidates (lagent, ls_id, ragent, rs_id, NICE_COMPONENT_TYPE_RTP);
   set_candidates (lagent, ls_id, ragent, rs_id, NICE_COMPONENT_TYPE_RTCP);
@@ -525,21 +514,6 @@ static int run_full_test_delayed_answer (NiceAgent *lagent, NiceAgent *ragent, N
   g_assert (global_lagent_ibr_received == TRUE);
 
   g_debug ("test-fullmode: Delayed answer received, continuing processing..");
-
-  /* step: pass the remote candidates to agent L (offering party)  */
-  {
-      gchar *ufrag = NULL, *password = NULL;
-      nice_agent_get_local_credentials(ragent, rs_id, &ufrag, &password);
-      nice_agent_set_remote_credentials (lagent,
-					 ls_id, ufrag, password);
-      g_free (ufrag);
-      g_free (password);
-      nice_agent_get_local_credentials(ragent, rs_id, &ufrag, &password);
-      nice_agent_set_remote_credentials (lagent,
-					 ls_id, ufrag, password);
-      g_free (ufrag);
-      g_free (password);
-  }
 
   /* step: pass remove candidates to agent L (offering party) */
   set_candidates (ragent, rs_id, lagent, ls_id, NICE_COMPONENT_TYPE_RTP);
@@ -641,24 +615,12 @@ static int run_full_test_wrong_password (NiceAgent *lagent, NiceAgent *ragent, N
 
   g_debug ("test-fullmode: Got local candidates...");
 
+  set_credentials (lagent, ls_id, ragent, rs_id);
   nice_agent_set_remote_credentials (ragent, rs_id, "wrong", "password");
   nice_agent_set_remote_credentials (lagent, ls_id, "wrong2", "password2");
 
 
   /* step: pass the remote candidates to agents  */
-  {
-      gchar *ufrag = NULL, *password = NULL;
-      nice_agent_get_local_credentials(lagent, ls_id, &ufrag, &password);
-      nice_agent_set_remote_credentials (ragent,
-					 rs_id, "wrong", password);
-      g_free (ufrag);
-      g_free (password);
-      nice_agent_get_local_credentials(ragent, rs_id, &ufrag, &password);
-      nice_agent_set_remote_credentials (lagent,
-					 ls_id, ufrag, "wrong2");
-      g_free (ufrag);
-      g_free (password);
-  }
   set_candidates (ragent, rs_id, lagent, ls_id, NICE_COMPONENT_TYPE_RTP);
   set_candidates (lagent, ls_id, ragent, rs_id, NICE_COMPONENT_TYPE_RTP);
 
@@ -739,21 +701,10 @@ static int run_full_test_control_conflict (NiceAgent *lagent, NiceAgent *ragent,
   }
 
   g_debug ("test-fullmode: Got local candidates...");
- 
+
+  set_credentials (lagent, ls_id, ragent, rs_id);
+
   /* step: pass the remote candidates to agents  */
-  {
-      gchar *ufrag = NULL, *password = NULL;
-      nice_agent_get_local_credentials(lagent, ls_id, &ufrag, &password);
-      nice_agent_set_remote_credentials (ragent,
-					 rs_id, ufrag, password);
-      g_free (ufrag);
-      g_free (password);
-      nice_agent_get_local_credentials(ragent, rs_id, &ufrag, &password);
-      nice_agent_set_remote_credentials (lagent,
-					 ls_id, ufrag, password);
-      g_free (ufrag);
-      g_free (password);
-  }
   set_candidates (ragent, rs_id, lagent, ls_id, NICE_COMPONENT_TYPE_RTP);
   set_candidates (lagent, ls_id, ragent, rs_id, NICE_COMPONENT_TYPE_RTP);
 
