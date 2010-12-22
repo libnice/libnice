@@ -1330,10 +1330,12 @@ priv_send_create_permission(TurnPriv *priv, StunMessage *resp,
   uint8_t *nonce = NULL;
   uint16_t nonce_len = 0;
 
-  realm = (uint8_t *) stun_message_find (resp,
-      STUN_ATTRIBUTE_REALM, &realm_len);
-  nonce = (uint8_t *) stun_message_find (resp,
-      STUN_ATTRIBUTE_NONCE, &nonce_len);
+  if (resp) {
+    realm = (uint8_t *) stun_message_find (resp,
+        STUN_ATTRIBUTE_REALM, &realm_len);
+    nonce = (uint8_t *) stun_message_find (resp,
+        STUN_ATTRIBUTE_NONCE, &nonce_len);
+  }
 
   /* register this peer as being pening a permission (if not already pending) */
   if (!priv_has_sent_permission_for_peer (priv, peer)) {
