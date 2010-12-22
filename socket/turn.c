@@ -936,9 +936,6 @@ nice_turn_socket_parse_recv (NiceSocket *sock, NiceSocket **from_sock,
                 &peer_len);
             nice_address_set_from_sockaddr (&to, &peer);
 
-            g_free (priv->current_create_permission_msg);
-            priv->current_create_permission_msg = NULL;
-
             /* unathorized => resend with realm and nonce */
             if (stun_message_get_class (&msg) == STUN_ERROR) {
               int code = -1;
@@ -990,6 +987,8 @@ nice_turn_socket_parse_recv (NiceSocket *sock, NiceSocket **from_sock,
               /* send enqued data */
               socket_dequeue_all_data (priv, &to);
             }
+            g_free (priv->current_create_permission_msg);
+            priv->current_create_permission_msg = NULL;
           }
         }
 
