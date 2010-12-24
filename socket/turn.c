@@ -245,7 +245,8 @@ socket_close (NiceSocket *sock)
 
   for (i = priv->channels; i; i = i->next) {
     ChannelBinding *b = i->data;
-    g_source_remove (b->timeout_source);
+    if (b->timeout_source)
+      g_source_remove (b->timeout_source);
     g_free (b);
   }
   g_list_free (priv->channels);
@@ -284,7 +285,9 @@ socket_close (NiceSocket *sock)
   g_list_foreach (priv->sent_permissions, (GFunc) nice_address_free, NULL);
   g_list_free (priv->sent_permissions);
   g_hash_table_destroy (priv->send_data_queues);
-  g_source_remove (priv->permission_timeout_source);
+
+  if (priv->permission_timeout_source)
+    g_source_remove (priv->permission_timeout_source);
 
   g_free (priv->current_binding);
   g_free (priv->current_binding_msg);
