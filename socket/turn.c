@@ -968,25 +968,26 @@ nice_turn_socket_parse_recv (NiceSocket *sock, NiceSocket **from_sock,
                 priv_send_create_permission (priv, &msg, &to);
                 return 0;
               }
-              /* If we get an error, we just assume the server somehow
-                 doesn't support permissions and we ignore the error and
-                 fake a successful completion. If the server needs a permission
-                 but it failed to create it, then the connchecks will fail. */
-              priv_remove_sent_permission_for_peer (priv, &to);
-              priv_add_permission_for_peer (priv, &to);
-
-              /* install timer to schedule refresh of the permission */
-              /* (will not schedule refresh if we got an error) */
-              if (stun_message_get_class (&msg) == STUN_RESPONSE &&
-                  !priv->permission_timeout_source) {
-                priv->permission_timeout_source =
-                    g_timeout_add_seconds (STUN_PERMISSION_TIMEOUT,
-                        priv_permission_timeout, priv);
-              }
-
-              /* send enqued data */
-              socket_dequeue_all_data (priv, &to);
             }
+            /* If we get an error, we just assume the server somehow
+               doesn't support permissions and we ignore the error and
+               fake a successful completion. If the server needs a permission
+               but it failed to create it, then the connchecks will fail. */
+            priv_remove_sent_permission_for_peer (priv, &to);
+            priv_add_permission_for_peer (priv, &to);
+
+            /* install timer to schedule refresh of the permission */
+            /* (will not schedule refresh if we got an error) */
+            if (stun_message_get_class (&msg) == STUN_RESPONSE &&
+                !priv->permission_timeout_source) {
+              priv->permission_timeout_source =
+                  g_timeout_add_seconds (STUN_PERMISSION_TIMEOUT,
+                      priv_permission_timeout, priv);
+            }
+
+            /* send enqued data */
+            socket_dequeue_all_data (priv, &to);
+
             g_free (priv->current_create_permission_msg);
             priv->current_create_permission_msg = NULL;
           }
