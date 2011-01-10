@@ -1526,7 +1526,7 @@ nice_agent_set_relay_info(NiceAgent *agent,
   g_return_val_if_fail (server_port, FALSE);
   g_return_val_if_fail (username, FALSE);
   g_return_val_if_fail (password, FALSE);
-  g_return_val_if_fail (type <= NICE_PROXY_TYPE_LAST, FALSE);
+  g_return_val_if_fail (type <= NICE_RELAY_TYPE_TURN_TLS, FALSE);
 
   agent_lock();
 
