@@ -113,7 +113,8 @@ socket_recv (NiceSocket *sock, NiceAddress *from, guint len, gchar *buf)
   if (priv->expecting_len == 0) {
     guint headerlen = 0;
 
-    if (priv->compatibility == NICE_TURN_SOCKET_COMPATIBILITY_DRAFT9)
+    if (priv->compatibility == NICE_TURN_SOCKET_COMPATIBILITY_DRAFT9 ||
+        priv->compatibility == NICE_TURN_SOCKET_COMPATIBILITY_RFC5766)
       headerlen = 4;
     else if (priv->compatibility == NICE_TURN_SOCKET_COMPATIBILITY_GOOGLE)
       headerlen = 2;

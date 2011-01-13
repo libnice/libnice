@@ -714,9 +714,15 @@ static int run_full_test_control_conflict (NiceAgent *lagent, NiceAgent *ragent,
    *       (see timer_cb() above) */
   g_main_loop_run (global_mainloop);
 
+  /* When using TURN, we get peer reflexive candidates for the host cands
+     that we removed so we can get another new_selected_pair signal later
+     depending on timing/racing, we could double (or not) the amount we expected
+  */
+#if !(USE_TURN)
   /* note: verify that correct number of local candidates were reported */
   g_assert (global_lagent_cands == 1);
   g_assert (global_ragent_cands == 1);
+#endif
 
   g_debug ("test-fullmode: Ran mainloop, removing streams...");
 
@@ -852,9 +858,15 @@ int main (void)
   g_assert (global_lagent_state[1] == NICE_COMPONENT_STATE_READY);
   g_assert (global_ragent_state[0] == NICE_COMPONENT_STATE_READY);
   g_assert (global_ragent_state[1] == NICE_COMPONENT_STATE_READY);
+  /* When using TURN, we get peer reflexive candidates for the host cands
+     that we removed so we can get another new_selected_pair signal later
+     depending on timing/racing, we could double (or not) the amount we expected
+  */
+#if !(USE_TURN)
   /* note: verify that correct number of local candidates were reported */
-  g_assert (global_lagent_cands == 2);
-  g_assert (global_ragent_cands == 2);
+    g_assert (global_lagent_cands == 2);
+    g_assert (global_ragent_cands == 2);
+#endif
 
 
   /* step: run test again without unref'ing agents */
@@ -866,9 +878,15 @@ int main (void)
   g_assert (global_lagent_state[1] == NICE_COMPONENT_STATE_READY);
   g_assert (global_ragent_state[0] == NICE_COMPONENT_STATE_READY);
   g_assert (global_ragent_state[1] == NICE_COMPONENT_STATE_READY);
+  /* When using TURN, we get peer reflexive candidates for the host cands
+     that we removed so we can get another new_selected_pair signal later
+     depending on timing/racing, we could double (or not) the amount we expected
+  */
+#if !(USE_TURN)
   /* note: verify that correct number of local candidates were reported */
   g_assert (global_lagent_cands == 2);
   g_assert (global_ragent_cands == 2);
+#endif
 
 
   /* step: run test simulating delayed SDP answer */
@@ -881,8 +899,14 @@ int main (void)
   g_assert (global_ragent_state[0] == NICE_COMPONENT_STATE_READY);
   g_assert (global_ragent_state[1] == NICE_COMPONENT_STATE_READY);
   /* note: verify that correct number of local candidates were reported */
+  /* When using TURN, we get peer reflexive candidates for the host cands
+     that we removed so we can get another new_selected_pair signal later
+     depending on timing/racing, we could double (or not) the amount we expected
+  */
+#if !(USE_TURN)
   g_assert (global_lagent_cands == 2);
   g_assert (global_ragent_cands == 2);
+#endif
 
 #if TEST_GOOGLE
   return result;
