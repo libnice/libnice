@@ -274,25 +274,22 @@ static void cb_initial_binding_request_received(NiceAgent *agent, guint stream_i
 }
 
 static void set_candidates (NiceAgent *from, guint from_stream,
-    NiceAgent *to, guint to_stream, guint component)
+    NiceAgent *to, guint to_stream, guint component, gboolean remove_non_relay)
 {
   GSList *cands = NULL, *i;
 
   cands = nice_agent_get_local_candidates (from, from_stream, component);
-#if USE_TURN
- restart:
-  g_debug ("%d candidates : %p ", g_slist_length (cands), cands);
-  for (i = cands; i; i = i->next) {
-    NiceCandidate *cand = i->data;
-    g_debug ("candidate of type %d", cand->type);
-    if (cand->type != NICE_CANDIDATE_TYPE_RELAYED) {
-      g_debug ("Removing");
-      cands = g_slist_remove (cands, cand);
-      nice_candidate_free (cand);
-      goto restart;
+  if (remove_non_relay) {
+  restart:
+    for (i = cands; i; i = i->next) {
+      NiceCandidate *cand = i->data;
+      if (cand->type != NICE_CANDIDATE_TYPE_RELAYED) {
+        cands = g_slist_remove (cands, cand);
+        nice_candidate_free (cand);
+        goto restart;
+      }
     }
   }
-#endif
   nice_agent_set_remote_candidates (to, to_stream, component, cands);
 
   for (i = cands; i; i = i->next)
@@ -386,10 +383,10 @@ static int run_full_test (NiceAgent *lagent, NiceAgent *ragent, NiceAddress *bas
   set_credentials (lagent, ls_id, ragent, rs_id);
 
   /* step: pass the remote candidates to agents  */
-  set_candidates (ragent, rs_id, lagent, ls_id, NICE_COMPONENT_TYPE_RTP);
-  set_candidates (ragent, rs_id, lagent, ls_id, NICE_COMPONENT_TYPE_RTCP);
-  set_candidates (lagent, ls_id, ragent, rs_id, NICE_COMPONENT_TYPE_RTP);
-  set_candidates (lagent, ls_id, ragent, rs_id, NICE_COMPONENT_TYPE_RTCP);
+  set_candidates (ragent, rs_id, lagent, ls_id, NICE_COMPONENT_TYPE_RTP, USE_TURN);
+  set_candidates (ragent, rs_id, lagent, ls_id, NICE_COMPONENT_TYPE_RTCP, USE_TURN);
+  set_candidates (lagent, ls_id, ragent, rs_id, NICE_COMPONENT_TYPE_RTP, USE_TURN);
+  set_candidates (lagent, ls_id, ragent, rs_id, NICE_COMPONENT_TYPE_RTCP, USE_TURN);
 
   g_debug ("test-fullmode: Set properties, next running mainloop until connectivity checks succeed...");
 
@@ -502,8 +499,10 @@ static int run_full_test_delayed_answer (NiceAgent *lagent, NiceAgent *ragent, N
   set_credentials (lagent, ls_id, ragent, rs_id);
 
   /* step: set remote candidates for agent R (answering party) */
-  set_candidates (lagent, ls_id, ragent, rs_id, NICE_COMPONENT_TYPE_RTP);
-  set_candidates (lagent, ls_id, ragent, rs_id, NICE_COMPONENT_TYPE_RTCP);
+  /* We have to disable TURN for this test because with the delayed answer,
+     we can't create turn permissions, so we won't receive any connchecks */
+  set_candidates (lagent, ls_id, ragent, rs_id, NICE_COMPONENT_TYPE_RTP, FALSE);
+  set_candidates (lagent, ls_id, ragent, rs_id, NICE_COMPONENT_TYPE_RTCP, FALSE);
 
   g_debug ("test-fullmode: Set properties, next running mainloop until first check is received...");
 
@@ -517,8 +516,8 @@ static int run_full_test_delayed_answer (NiceAgent *lagent, NiceAgent *ragent, N
   g_debug ("test-fullmode: Delayed answer received, continuing processing..");
 
   /* step: pass remove candidates to agent L (offering party) */
-  set_candidates (ragent, rs_id, lagent, ls_id, NICE_COMPONENT_TYPE_RTP);
-  set_candidates (ragent, rs_id, lagent, ls_id, NICE_COMPONENT_TYPE_RTCP);
+  set_candidates (ragent, rs_id, lagent, ls_id, NICE_COMPONENT_TYPE_RTP, FALSE);
+  set_candidates (ragent, rs_id, lagent, ls_id, NICE_COMPONENT_TYPE_RTCP, FALSE);
 
   g_debug ("test-fullmode: Running mainloop until connectivity checks succeeed.");
 
@@ -622,8 +621,8 @@ static int run_full_test_wrong_password (NiceAgent *lagent, NiceAgent *ragent, N
 
 
   /* step: pass the remote candidates to agents  */
-  set_candidates (ragent, rs_id, lagent, ls_id, NICE_COMPONENT_TYPE_RTP);
-  set_candidates (lagent, ls_id, ragent, rs_id, NICE_COMPONENT_TYPE_RTP);
+  set_candidates (ragent, rs_id, lagent, ls_id, NICE_COMPONENT_TYPE_RTP, USE_TURN);
+  set_candidates (lagent, ls_id, ragent, rs_id, NICE_COMPONENT_TYPE_RTP, USE_TURN);
 
   g_debug ("test-fullmode: Set properties, next running mainloop until connectivity checks succeed...");
 
@@ -706,8 +705,8 @@ static int run_full_test_control_conflict (NiceAgent *lagent, NiceAgent *ragent,
   set_credentials (lagent, ls_id, ragent, rs_id);
 
   /* step: pass the remote candidates to agents  */
-  set_candidates (ragent, rs_id, lagent, ls_id, NICE_COMPONENT_TYPE_RTP);
-  set_candidates (lagent, ls_id, ragent, rs_id, NICE_COMPONENT_TYPE_RTP);
+  set_candidates (ragent, rs_id, lagent, ls_id, NICE_COMPONENT_TYPE_RTP, USE_TURN);
+  set_candidates (lagent, ls_id, ragent, rs_id, NICE_COMPONENT_TYPE_RTP, USE_TURN);
 
   g_debug ("test-fullmode: Set properties, next running mainloop until connectivity checks succeed...");
 
