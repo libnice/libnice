@@ -131,7 +131,8 @@ socket_recv (NiceSocket *sock, NiceAddress *from, guint len, gchar *buf)
     if (priv->recv_buf_len < headerlen)
       return 0;
 
-    if (priv->compatibility == NICE_TURN_SOCKET_COMPATIBILITY_DRAFT9) {
+    if (priv->compatibility == NICE_TURN_SOCKET_COMPATIBILITY_DRAFT9 ||
+        priv->compatibility == NICE_TURN_SOCKET_COMPATIBILITY_RFC5766) {
       guint16 magic = ntohs (*(guint16*)priv->recv_buf);
       guint16 packetlen = ntohs (*(guint16*)(priv->recv_buf + 2));
 
@@ -150,7 +151,8 @@ socket_recv (NiceSocket *sock, NiceAddress *from, guint len, gchar *buf)
     }
   }
 
-  if (priv->compatibility == NICE_TURN_SOCKET_COMPATIBILITY_DRAFT9)
+  if (priv->compatibility == NICE_TURN_SOCKET_COMPATIBILITY_DRAFT9 ||
+        priv->compatibility == NICE_TURN_SOCKET_COMPATIBILITY_RFC5766)
     padlen = (priv->expecting_len % 4) ?  4 - (priv->expecting_len % 4) : 0;
   else
     padlen = 0;
@@ -186,7 +188,8 @@ socket_send (NiceSocket *sock, const NiceAddress *to,
   gchar buffer[MAX_UDP_MESSAGE_SIZE + sizeof(guint16) + sizeof(padbuf)];
   guint buffer_len = 0;
 
-  if (priv->compatibility != NICE_TURN_SOCKET_COMPATIBILITY_DRAFT9)
+  if (priv->compatibility != NICE_TURN_SOCKET_COMPATIBILITY_DRAFT9 ||
+        priv->compatibility == NICE_TURN_SOCKET_COMPATIBILITY_RFC5766)
     padlen = 0;
 
   if (priv->compatibility == NICE_TURN_SOCKET_COMPATIBILITY_GOOGLE) {
@@ -198,7 +201,8 @@ socket_send (NiceSocket *sock, const NiceAddress *to,
   memcpy (buffer + buffer_len, buf, len);
   buffer_len += len;
 
-  if (priv->compatibility == NICE_TURN_SOCKET_COMPATIBILITY_DRAFT9) {
+  if (priv->compatibility == NICE_TURN_SOCKET_COMPATIBILITY_DRAFT9 ||
+        priv->compatibility == NICE_TURN_SOCKET_COMPATIBILITY_RFC5766) {
     memcpy (buffer + buffer_len, padbuf, padlen);
     buffer_len += padlen;
   }
