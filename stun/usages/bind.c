@@ -74,6 +74,13 @@
 #include "timer.h"
 
 
+#ifndef SOL_IP
+# define SOL_IP IPPROTO_IP
+#endif
+
+#ifndef SOL_IPV6
+# define SOL_IPV6 IPPROTO_IPV6
+#endif
 
 
 /** Non-blocking mode STUN binding discovery */
