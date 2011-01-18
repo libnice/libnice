@@ -60,6 +60,7 @@ typedef struct {
   GMainContext *context;
   GIOChannel *io_channel;
   GSource *io_source;
+  gboolean error;
 } TcpPriv;
 
 struct to_be_sent {
@@ -165,6 +166,7 @@ nice_tcp_bsd_socket_new (NiceAgent *agent, GMainContext *ctx, NiceAddress *addr)
   priv->agent = agent;
   priv->context = ctx;
   priv->server_addr = *addr;
+  priv->error = FALSE;
 
   sock->fileno = sockfd;
   sock->send = socket_send;
@@ -204,12 +206,18 @@ socket_recv (NiceSocket *sock, NiceAddress *from, guint len, gchar *buf)
   TcpPriv *priv = sock->priv;
   int ret;
 
+  /* Don't try to access the socket if it had an error */
+  if (priv->error)
+    return -1;
+
   ret = recv (sock->fileno, buf, len, 0);
 
   /* recv returns 0 when the peer performed a shutdown.. we must return -1 here
    * so that the agent destroys the g_source */
-  if (ret == 0)
+  if (ret == 0) {
+    priv->error = TRUE;
     return -1;
+  }
 
   if (ret < 0) {
 #ifdef G_OS_WIN32
@@ -236,6 +244,11 @@ socket_send (NiceSocket *sock, const NiceAddress *to,
 {
   TcpPriv *priv = sock->priv;
   int ret;
+
+  /* Don't try to access the socket if it had an error, otherwise we risk a
+     crash with SIGPIPE (Broken pipe) */
+  if (priv->error)
+    return -1;
 
   /* First try to send the data, don't send it later if it can be sent now
      this way we avoid allocating memory on every send */
