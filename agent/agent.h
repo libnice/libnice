@@ -416,9 +416,12 @@ gboolean nice_agent_set_relay_info(
  * Start the candidate gathering process.
  * Once done, #NiceAgent::candidate-gathering-done is called for the stream
  *
- * Returns: %FALSE if the stream is invalid.
+ * <para>See also: nice_agent_add_local_address()</para>
+ * <para>See also: nice_agent_set_port_range()</para>
  *
- * See also: nice_agent_add_local_address()
+ * Returns: %FALSE if the stream id is invalid or if a host candidate couldn't be allocated
+ * on the requested interfaces/ports.
+ *
  <note>
    <para>
     Local addresses can be previously set with nice_agent_add_local_address()
