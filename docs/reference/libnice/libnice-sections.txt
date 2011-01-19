@@ -11,6 +11,7 @@ NICE_AGENT_MAX_REMOTE_CANDIDATES
 nice_agent_new
 nice_agent_new_reliable
 nice_agent_add_local_address
+nice_agent_set_port_range
 nice_agent_add_stream
 nice_agent_remove_stream
 nice_agent_set_relay_info

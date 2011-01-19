@@ -355,6 +355,33 @@ nice_agent_remove_stream (
   NiceAgent *agent,
   guint stream_id);
 
+
+/**
+ * nice_agent_set_port_range:
+ * @agent: The #NiceAgent Object
+ * @stream_id: The ID of the stream
+ * @component_id: The ID of the component
+ * @min_port: The minimum port to use
+ * @max_port: The maximum port to use
+ *
+ * Sets a preferred port range for allocating host candidates.
+ * <para>
+ * If a local host candidate cannot be created on that port
+ * range, then the nice_agent_gather_candidates() call will fail.
+ * </para>
+ * <para>
+ * This MUST be called before nice_agent_gather_candidates()
+ * </para>
+ *
+ */
+void
+nice_agent_set_port_range (
+    NiceAgent *agent,
+    guint stream_id,
+    guint component_id,
+    guint min_port,
+    guint max_port);
+
 /**
  * nice_agent_set_relay_info:
  * @agent: The #NiceAgent Object

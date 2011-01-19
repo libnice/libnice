@@ -123,6 +123,8 @@ struct _Component
   GSource* tcp_clock;
   TcpUserData *tcp_data;
   gboolean tcp_readable;
+  guint min_port;
+  guint max_port;
 };
 
 Component *

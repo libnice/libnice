@@ -1780,6 +1780,7 @@ nice_agent_gather_candidates (
 
     for (n = 0; n < stream->n_components; n++) {
       Component *component = stream_find_component_by_id (stream, n + 1);
+      guint current_port = component->min_port;
 
       if (agent->reliable && component->tcp == NULL) {
         nice_debug ("Agent %p: not gathering candidates for s%d:%d because "
@@ -1788,14 +1789,25 @@ nice_agent_gather_candidates (
         continue;
       }
 
-      host_candidate = discovery_add_local_host_candidate (agent, stream->id,
-          n + 1, addr);
+      host_candidate = NULL;
+      while (host_candidate == NULL) {
+        nice_debug ("Agent %p: Trying to create host candidate on port %d", agent, current_port);
+        nice_address_set_port (addr, current_port);
+        host_candidate = discovery_add_local_host_candidate (agent, stream->id,
+            n + 1, addr);
+        if (current_port > 0)
+          current_port++;
+        if (current_port == 0 || current_port > component->max_port)
+          break;
+      }
+      nice_address_set_port (addr, 0);
 
       if (!host_candidate) {
         gchar ip[NICE_ADDRESS_STRING_LEN];
         nice_address_to_string (addr, ip);
         nice_debug ("Agent %p: Unable to add local host candidate %s for s%d:%d"
             ". Invalid interface?", agent, ip, stream->id, component->id);
+        ret = FALSE;
         goto error;
       }
 
@@ -1927,6 +1939,22 @@ nice_agent_remove_stream (
     priv_remove_keepalive_timer (agent);
 
  done:
+  agent_unlock();
+}
+
+NICEAPI_EXPORT void
+nice_agent_set_port_range (NiceAgent *agent, guint stream_id, guint component_id,
+    guint min_port, guint max_port)
+{
+  Component *component;
+
+  agent_lock();
+
+  if (agent_find_component (agent, stream_id, component_id, NULL, &component)) {
+    component->min_port = min_port;
+    component->max_port = max_port;
+  }
+
   agent_unlock();
 }
 
