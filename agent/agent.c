@@ -1705,6 +1705,7 @@ nice_agent_gather_candidates (
   GSList *i;
   Stream *stream;
   GSList *local_addresses = NULL;
+  gboolean ret = TRUE;
 
   agent_lock();
 
@@ -1795,7 +1796,7 @@ nice_agent_gather_candidates (
         nice_address_to_string (addr, ip);
         nice_debug ("Agent %p: Unable to add local host candidate %s for s%d:%d"
             ". Invalid interface?", agent, ip, stream->id, component->id);
-        continue;
+        goto error;
       }
 
 #ifdef HAVE_GUPNP
@@ -1853,13 +1854,14 @@ nice_agent_gather_candidates (
     discovery_schedule (agent);
   }
 
+ error:
   for (i = local_addresses; i; i = i->next)
     nice_address_free (i->data);
   g_slist_free (local_addresses);
 
   agent_unlock();
 
-  return TRUE;
+  return ret;
 }
 
 static void priv_free_upnp (NiceAgent *agent)
