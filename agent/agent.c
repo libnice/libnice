@@ -1871,6 +1871,20 @@ nice_agent_gather_candidates (
     nice_address_free (i->data);
   g_slist_free (local_addresses);
 
+  if (ret == FALSE) {
+    priv_free_upnp (agent);
+    for (n = 0; n < stream->n_components; n++) {
+      Component *component = stream_find_component_by_id (stream, n + 1);
+      for (i = component->local_candidates; i; i = i->next) {
+        NiceCandidate *candidate = i->data;
+        nice_candidate_free (candidate);
+      }
+      g_slist_free (component->local_candidates);
+      component->local_candidates = NULL;
+    }
+    discovery_prune_stream (agent, stream_id);
+  }
+
   agent_unlock();
 
   return ret;
