@@ -1875,12 +1875,21 @@ nice_agent_gather_candidates (
     priv_free_upnp (agent);
     for (n = 0; n < stream->n_components; n++) {
       Component *component = stream_find_component_by_id (stream, n + 1);
+
+      priv_detach_stream_component (stream, component);
+
       for (i = component->local_candidates; i; i = i->next) {
         NiceCandidate *candidate = i->data;
         nice_candidate_free (candidate);
       }
+      for (i = component->sockets; i; i = i->next) {
+        NiceSocket *udpsocket = i->data;
+        nice_socket_free (udpsocket);
+      }
       g_slist_free (component->local_candidates);
       component->local_candidates = NULL;
+      g_slist_free (component->sockets);
+      component->sockets = NULL;
     }
     discovery_prune_stream (agent, stream_id);
   }
