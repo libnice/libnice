@@ -491,7 +491,6 @@ NiceCandidate *discovery_add_local_host_candidate (
     goto errors;
 
   component->sockets = g_slist_append (component->sockets, udp_socket);
-  agent_signal_new_candidate (agent, candidate);
 
   return candidate;
 
