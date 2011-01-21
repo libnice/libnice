@@ -1,3 +1,15 @@
+libnice 0.1.0 (2011-01-20)
+==========================
+
+Added nice_candidate_copy to the public API
+Make stun_timer timeouts configurable (Break API and ABI)
+Add compatibility support for MSOC 2007 and MSOC 2007 R2
+Add MS-TURN support for MSOC
+Added and completed TURN RFC 5766 support
+Add a nice_agent_set_port_range API to force a component to use a specific port
+Fix various bugs and memory leaks
+Improve documentation
+
 libnice 0.0.13 (2010-07-20)
 ==========================
 
