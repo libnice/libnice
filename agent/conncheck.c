@@ -1765,8 +1765,13 @@ static gboolean priv_schedule_triggered_check (NiceAgent *agent, Stream *stream,
 	  priv_conn_check_initiate (agent, p);
         else if (p->state == NICE_CHECK_IN_PROGRESS) {
 	  /* XXX: according to ICE 7.2.1.4 "Triggered Checks" (ID-19),
-	   * we should cancel the existing one, and send a new one...? :P */
-	  nice_debug ("Agent %p : Skipping triggered check, already in progress..", agent);
+	   * we should cancel the existing one, instead we reset our timer, so
+	   * we'll resend the exiting transactions faster if needed...? :P
+	   */
+	  nice_debug ("Agent %p : check already in progress, "
+	    "restarting the timer..", agent);
+	  stun_timer_start (&p->timer, STUN_TIMER_DEFAULT_TIMEOUT,
+	    STUN_TIMER_DEFAULT_MAX_RETRANSMISSIONS);
 	}
 	else if (p->state == NICE_CHECK_SUCCEEDED ||
 		 p->state == NICE_CHECK_DISCOVERED) {
