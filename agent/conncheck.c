@@ -502,13 +502,7 @@ static gboolean priv_conn_keepalive_retransmissions_tick (gpointer pointer)
               "but media was received. Suspecting keepalive lost because of "
               "network bottleneck", pair->keepalive.agent);
 
-          if (pair->keepalive.tick_source) {
-            g_source_destroy (pair->keepalive.tick_source);
-            g_source_unref (pair->keepalive.tick_source);
-            pair->keepalive.tick_source = NULL;
-          }
           pair->keepalive.stun_message.buffer = NULL;
-
         } else {
           nice_debug ("Agent %p : Keepalive conncheck timed out!! "
               "peer probably lost connection", pair->keepalive.agent);
