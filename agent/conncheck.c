@@ -1763,9 +1763,13 @@ static gboolean priv_schedule_triggered_check (NiceAgent *agent, Stream *stream,
 	   * we'll resend the exiting transactions faster if needed...? :P
 	   */
 	  nice_debug ("Agent %p : check already in progress, "
-	    "restarting the timer..", agent);
-	  stun_timer_start (&p->timer, STUN_TIMER_DEFAULT_TIMEOUT,
-	    STUN_TIMER_DEFAULT_MAX_RETRANSMISSIONS);
+	    "restarting the timer again?: %s ..", agent,
+            p->timer_restarted ? "no" : "yes");
+	  if (!p->timer_restarted) {
+	    stun_timer_start (&p->timer, STUN_TIMER_DEFAULT_TIMEOUT,
+	      STUN_TIMER_DEFAULT_MAX_RETRANSMISSIONS);
+	    p->timer_restarted = TRUE;
+	  }
 	}
 	else if (p->state == NICE_CHECK_SUCCEEDED ||
 		 p->state == NICE_CHECK_DISCOVERED) {
