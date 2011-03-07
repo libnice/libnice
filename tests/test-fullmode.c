@@ -157,6 +157,7 @@ static gboolean timer_cb (gpointer pointer)
 
 static void cb_writable (NiceAgent*agent, guint stream_id, guint component_id)
 {
+    g_debug ("Transport is now writable, stopping mainloop");
     g_main_loop_quit (global_mainloop);
 }
 
@@ -176,6 +177,7 @@ static void cb_nice_recv (NiceAgent *agent, guint stream_id, guint component_id,
     return;
 
   if (GPOINTER_TO_UINT (user_data) == 2) {
+    g_debug ("right agent received %d bytes, stopping mainloop", len);
     global_ragent_read = len;
     g_main_loop_quit (global_mainloop);
   }
@@ -218,6 +220,7 @@ static void cb_component_state_changed (NiceAgent *agent, guint stream_id, guint
   /* signal status via a global variable */
   if (global_components_ready == global_components_ready_exit &&
       global_components_failed == global_components_failed_exit) {
+    g_debug ("Components ready/failed achieved. Stopping mailoop");
     g_main_loop_quit (global_mainloop); 
     return;
   }
@@ -266,8 +269,10 @@ static void cb_initial_binding_request_received(NiceAgent *agent, guint stream_i
   else if (GPOINTER_TO_UINT (data) == 2)
     global_ragent_ibr_received = TRUE;
 
-  if (global_exit_when_ibr_received)
-    g_main_loop_quit (global_mainloop);     
+  if (global_exit_when_ibr_received) {
+    g_debug ("Received initial binding request. Stopping mailoop");
+    g_main_loop_quit (global_mainloop);
+  }
 
   /* XXX: dear compiler, these are for you: */
   (void)agent; (void)stream_id; (void)data;
@@ -458,16 +463,19 @@ static int run_full_test (NiceAgent *lagent, NiceAgent *ragent, NiceAddress *bas
   {
     gboolean reliable = FALSE;
     g_object_get (G_OBJECT (lagent), "reliable", &reliable, NULL);
+    g_debug ("Sending data returned -1 in %s mode", reliable?"Reliable":"Non-reliable");
     if (reliable) {
       gulong signal_handler;
       signal_handler = g_signal_connect (G_OBJECT (lagent),
           "reliable-transport-writable", G_CALLBACK (cb_writable), NULL);
+      g_debug ("Running mainloop until transport is writable");
       g_main_loop_run (global_mainloop);
       g_signal_handler_disconnect(G_OBJECT (lagent), signal_handler);
 
       ret = nice_agent_send (lagent, ls_id, 1, 16, "1234567812345678");
     }
   }
+  g_debug ("Sent %d bytes", ret);
   g_assert (ret == 16);
   g_main_loop_run (global_mainloop);
   g_assert (global_ragent_read == 16);
