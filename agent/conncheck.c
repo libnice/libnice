@@ -1660,12 +1660,18 @@ int conn_check_send (NiceAgent *agent, CandidateCheckPair *pair)
       g_get_current_time (&pair->next_tick);
       g_time_val_add (&pair->next_tick, timeout * 1000);
     } else {
+      nice_debug ("Agent %p: buffer is empty, cancelling conncheck", agent);
       pair->stun_message.buffer = NULL;
       pair->stun_message.buffer_len = 0;
       return -1;
     }
+  } else {
+      nice_debug ("Agent %p: no credentials found, cancelling conncheck", agent);
+      pair->stun_message.buffer = NULL;
+      pair->stun_message.buffer_len = 0;
+      return -1;
   }
-    
+
   return 0;
 }
 
