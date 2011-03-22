@@ -126,7 +126,8 @@ stun_message_find (const StunMessage *msg, StunAttribute type,
         return NULL;
     }
 
-    if (!(msg->agent->usage_flags & STUN_AGENT_USAGE_NO_ALIGNED_ATTRIBUTES))
+    if (!(msg->agent &&
+            (msg->agent->usage_flags & STUN_AGENT_USAGE_NO_ALIGNED_ATTRIBUTES)))
       alen = stun_align (alen);
 
     offset += alen;
@@ -342,7 +343,8 @@ stun_message_append (StunMessage *msg, StunAttribute type, size_t length)
 
   a = msg->buffer + mlen;
   a = stun_setw (a, type);
-  if (msg->agent->usage_flags & STUN_AGENT_USAGE_NO_ALIGNED_ATTRIBUTES)
+  if (msg->agent &&
+      (msg->agent->usage_flags & STUN_AGENT_USAGE_NO_ALIGNED_ATTRIBUTES))
   {
     a = stun_setw (a, length);
   } else {
