@@ -13,8 +13,8 @@
  */
 
 #include "sha1.h"
-#include <string.h>
 
+#include <string.h>
 
 
 /* ===== start - public domain SHA1 implementation ===== */
@@ -261,6 +261,66 @@ void SHA1Final(unsigned char digest[20], SHA1_CTX* context)
 
 /* ===== end - public domain SHA1 implementation ===== */
 
+
+void HMACInit(HMAC_CTX* context, const uint8_t *key, size_t key_len)
+{
+  unsigned char ipad[64]; /* padding - key XORd with ipad */
+  unsigned char tk[20];
+  size_t i;
+
+  /* if key is longer than 64 bytes reset it to key = SHA1(key) */
+  if (key_len > 64) {
+    sha1_vector(1, &key, &key_len, tk);
+    key = tk;
+    key_len = 20;
+  }
+
+  /* start out by storing key in ipad */
+  memset(ipad, 0, sizeof(ipad));
+  memcpy(ipad, key, key_len);
+
+  /* XOR key with ipad values */
+  for (i = 0; i < 64; i++)
+    ipad[i] ^= 0x36;
+
+  /* Store the key in our context */
+  memcpy(context->key, key, key_len);
+  context->key_len = key_len;
+
+  SHA1Init (&context->context);
+  SHA1Update (&context->context, ipad, sizeof(ipad));
+}
+
+void HMACUpdate(HMAC_CTX *context, const void *data, uint32_t len)
+{
+  SHA1Update (&context->context, data, len);
+}
+
+void HMACFinal(unsigned char digest[20], HMAC_CTX *context)
+{
+
+  unsigned char opad[64]; /* padding - key XORd with opad */
+  unsigned char sha1_digest[SHA1_MAC_LEN];
+  const uint8_t *_addr[2];
+  size_t _len[2];
+  size_t i;
+
+  SHA1Final (sha1_digest, &context->context);
+
+  memset(opad, 0, sizeof(opad));
+  memcpy(opad, context->key, context->key_len);
+
+  /* XOR key with opad values */
+  for (i = 0; i < 64; i++)
+    opad[i] ^= 0x5c;
+
+  /* perform outer SHA1 */
+  _addr[0] = opad;
+  _len[0] = 64;
+  _addr[1] = sha1_digest;
+  _len[1] = SHA1_MAC_LEN;
+  sha1_vector(2, _addr, _len, digest);
+}
 
 
 /**
