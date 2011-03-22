@@ -659,16 +659,16 @@ priv_binding_expired_timeout (gpointer data)
       priv->channels = g_list_remove (priv->channels, b);
       /* Make sure we don't free a currently being-refreshed binding */
       if (priv->current_binding_msg && !priv->current_binding) {
-        struct sockaddr sa;
+        struct sockaddr_storage sa;
         socklen_t sa_len = sizeof(sa);
         NiceAddress to;
 
         /* look up binding associated with peer */
         stun_message_find_xor_addr (
             &priv->current_binding_msg->message,
-            STUN_ATTRIBUTE_XOR_PEER_ADDRESS, &sa,
+            STUN_ATTRIBUTE_XOR_PEER_ADDRESS, (struct sockaddr *) &sa,
             &sa_len);
-        nice_address_set_from_sockaddr (&to, &sa);
+        nice_address_set_from_sockaddr (&to, (struct sockaddr *) &sa);
 
         /* If the binding is being refreshed, then move it to
            priv->current_binding so it counts as a 'new' binding and
@@ -833,16 +833,16 @@ nice_turn_socket_parse_recv (NiceSocket *sock, NiceSocket **from_sock,
             } else {
               /* Existing binding refresh */
               GList *i;
-              struct sockaddr sa;
+              struct sockaddr_storage sa;
               socklen_t sa_len = sizeof(sa);
               NiceAddress to;
 
               /* look up binding associated with peer */
               stun_message_find_xor_addr (
                   &priv->current_binding_msg->message,
-                  STUN_ATTRIBUTE_XOR_PEER_ADDRESS, &sa,
+                  STUN_ATTRIBUTE_XOR_PEER_ADDRESS, (struct sockaddr *) &sa,
                   &sa_len);
-              nice_address_set_from_sockaddr (&to, &sa);
+              nice_address_set_from_sockaddr (&to, (struct sockaddr *) &sa);
 
               for (i = priv->channels; i; i = i->next) {
                 ChannelBinding *b = i->data;
@@ -928,16 +928,16 @@ nice_turn_socket_parse_recv (NiceSocket *sock, NiceSocket **from_sock,
 
           if (memcmp (request_id, response_id,
                   sizeof(StunTransactionId)) == 0) {
-            struct sockaddr peer;
+            struct sockaddr_storage peer;
             socklen_t peer_len = sizeof(peer);
             NiceAddress to;
 
             nice_debug ("got response for CreatePermission");
             stun_message_find_xor_addr (
                 &priv->current_create_permission_msg->message,
-                STUN_ATTRIBUTE_XOR_PEER_ADDRESS, &peer,
+                STUN_ATTRIBUTE_XOR_PEER_ADDRESS, (struct sockaddr *) &peer,
                 &peer_len);
-            nice_address_set_from_sockaddr (&to, &peer);
+            nice_address_set_from_sockaddr (&to, (struct sockaddr *) &peer);
 
             /* unathorized => resend with realm and nonce */
             if (stun_message_get_class (&msg) == STUN_ERROR) {
@@ -1021,7 +1021,7 @@ nice_turn_socket_parse_recv (NiceSocket *sock, NiceSocket **from_sock,
         if (data == NULL)
           goto recv;
 
-        nice_address_set_from_sockaddr (from, (struct sockaddr *)&sa);
+        nice_address_set_from_sockaddr (from, (struct sockaddr *) &sa);
 
         *from_sock = sock;
         memmove (buf, data, len > data_len ? data_len : len);
@@ -1167,16 +1167,16 @@ priv_retransmissions_create_permission_tick_unlocked (TurnPriv *priv)
           /* Time out */
           StunTransactionId id;
           NiceAddress to;
-          struct sockaddr addr;
+          struct sockaddr_storage addr;
           socklen_t addr_len = sizeof(addr);
 
           stun_message_id (&priv->current_create_permission_msg->message, id);
           stun_agent_forget_transaction (&priv->agent, id);
           stun_message_find_xor_addr (
               &priv->current_create_permission_msg->message,
-              STUN_ATTRIBUTE_XOR_PEER_ADDRESS, &addr,
+              STUN_ATTRIBUTE_XOR_PEER_ADDRESS, (struct sockaddr *) &addr,
               &addr_len);
-          nice_address_set_from_sockaddr (&to, &addr);
+          nice_address_set_from_sockaddr (&to, (struct sockaddr *) &addr);
 
           priv_remove_sent_permission_for_peer (priv, &to);
           g_free (priv->current_create_permission_msg);
@@ -1328,7 +1328,7 @@ priv_send_create_permission(TurnPriv *priv, StunMessage *resp,
   guint msg_buf_len;
   gboolean res = FALSE;
   TURNMessage *msg = g_new0 (TURNMessage, 1);
-  struct sockaddr addr;
+  struct sockaddr_storage addr;
   uint8_t *realm = NULL;
   uint16_t realm_len = 0;
   uint8_t *nonce = NULL;
@@ -1346,7 +1346,7 @@ priv_send_create_permission(TurnPriv *priv, StunMessage *resp,
     priv_add_sent_permission_for_peer (priv, peer);
   }
 
-  nice_address_copy_to_sockaddr (peer, &addr);
+  nice_address_copy_to_sockaddr (peer, (struct sockaddr *) &addr);
 
   /* send CreatePermission */
   msg_buf_len = stun_usage_turn_create_permission(&priv->agent, &msg->message,
@@ -1358,7 +1358,7 @@ priv_send_create_permission(TurnPriv *priv, StunMessage *resp,
       priv->password_len,
       realm, realm_len,
       nonce, nonce_len,
-      &addr,
+      (struct sockaddr *) &addr,
       NICE_TURN_SOCKET_COMPATIBILITY_RFC5766);
 
   if (msg_buf_len > 0) {
