@@ -109,6 +109,8 @@ stun_usage_ice_conncheck_create (StunAgent *agent, StunMessage *msg,
     if (modulo4)
         attribute_len += 4 - modulo4;
 
+    // Avoid a coverify false positive
+    assert (attribute_len >= identifier_len);
     buf = malloc(attribute_len);
     memset(buf, 0, attribute_len);
     memcpy(buf, candidate_identifier, identifier_len);
