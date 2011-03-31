@@ -174,7 +174,7 @@ static gboolean notify_packet (gpointer user_data)
 static PseudoTcpWriteResult write (PseudoTcpSocket *sock,
     const gchar *buffer, guint32 len, gpointer user_data)
 {
-  struct notify_data *data = g_new0 (struct notify_data,1);
+  struct notify_data *data;
   PseudoTcpState state;
   int drop_rate = rand () % 100;
   g_object_get (sock, "state", &state, NULL);
@@ -183,6 +183,8 @@ static PseudoTcpWriteResult write (PseudoTcpSocket *sock,
     g_debug ("*********************Dropping packet (%d)", drop_rate);
     return WR_SUCCESS;
   }
+
+  data = g_new0 (struct notify_data,1);
 
   g_debug ("Socket %p(%d) Writing : %d bytes", sock, state, len);
 

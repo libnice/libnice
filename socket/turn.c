@@ -166,12 +166,14 @@ nice_turn_socket_new (NiceAgent *agent, NiceAddress *addr,
     gchar *username, gchar *password,
     NiceTurnSocketCompatibility compatibility)
 {
-  TurnPriv *priv = g_new0 (TurnPriv, 1);
+  TurnPriv *priv;
   NiceSocket *sock = g_slice_new0 (NiceSocket);
 
   if (!sock) {
     return NULL;
   }
+
+  priv = g_new0 (TurnPriv, 1);
 
   if (compatibility == NICE_TURN_SOCKET_COMPATIBILITY_DRAFT9 ||
       compatibility == NICE_TURN_SOCKET_COMPATIBILITY_RFC5766) {
