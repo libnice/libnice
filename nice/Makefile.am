@@ -37,9 +37,9 @@ AM_CFLAGS = \
 test-symbols.sh::
 	chmod +x $(srcdir)/$@
 
-libnice.symbols: libnice.sym Makefile
+libnice.symbols: libnice.sym
 	rm -f $@
-	while read s; do echo "T $$s"; done < $< > $@
+	while read s; do echo "T $$s"; done < $? > $@
 
 CLEANFILES += libnice.symbols
 

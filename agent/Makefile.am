@@ -24,12 +24,12 @@ dist_noinst_DATA = agent-signals-marshal.list
 noinst_LTLIBRARIES = libagent.la
 
 agent-signals-marshal.h: agent-signals-marshal.list
-	glib-genmarshal --header --prefix=agent_marshal $< > $@
+	glib-genmarshal --header --prefix=agent_marshal $? > $@
 
-agent-signals-marshal.c: agent-signals-marshal.list Makefile.am
-	glib-genmarshal --body --prefix=agent_marshal $< > $@
-	sed -i "1i#include \"agent-signals-marshal.h\"" $@
-	sed -i -e 's/^}$$/(void)return_value;(void)invocation_hint;}/' $@
+agent-signals-marshal.c: agent-signals-marshal.list
+	echo '#include "agent-signals-marshal.h"' > $@
+	glib-genmarshal --body --prefix=agent_marshal $? | \
+	sed -e 's/^}$$/(void)return_value;(void)invocation_hint;}/' >> $@
 
 BUILT_SOURCES = \
 	agent-signals-marshal.h \
