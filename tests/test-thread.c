@@ -179,7 +179,6 @@ int main (void)
 {
   NiceAgent *lagent, *ragent;      /* agent's L and R */
   NiceAddress baseaddr;
-  guint timer_id;
   const char *stun_server = NULL, *stun_server_port = NULL;
   GMainContext *lmainctx, *rmainctx;
   GMainLoop *lmainloop, *rmainloop;
@@ -218,7 +217,7 @@ int main (void)
   g_object_set (G_OBJECT (ragent), "upnp", FALSE, NULL);
 
   /* step: add a timer to catch state changes triggered by signals */
-  timer_id = g_timeout_add (30000, timer_cb, NULL);
+  g_timeout_add (30000, timer_cb, NULL);
 
   /* step: specify which local interface to use */
   if (!nice_address_set_from_string (&baseaddr, "127.0.0.1"))
