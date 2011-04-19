@@ -1,11 +1,6 @@
 - High priority:
-channel bind have a 10 minutes expiration :@
 nice_socket_recv returns -1 means we must close the nice_socket and stop all connchecks/candidates and reelect if was eleected...
-
-- Medium priority:
-Add support for TURN-15
 
 - Low priority:
 Add HTTP Digest support
 check for the cookie and act accordingly for incoming messages.
-Fix BSD support. stund fails to send with sendmsg
