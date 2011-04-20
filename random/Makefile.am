@@ -10,9 +10,9 @@ include $(top_srcdir)/common.mk
 
 AM_CFLAGS = $(ERROR_CFLAGS) $(GLIB_CFLAGS)
 
-noinst_LTLIBRARIES = librandom.la
+noinst_LTLIBRARIES = libnice-random.la
 
-librandom_la_SOURCES = \
+libnice_random_la_SOURCES = \
 	random.h \
 	random.c \
 	random-glib.h \
@@ -20,7 +20,7 @@ librandom_la_SOURCES = \
 
 check_PROGRAMS = test
 
-test_LDADD = librandom.la $(GLIB_LIBS)
+test_LDADD = libnice-random.la $(GLIB_LIBS)
 
 TESTS = $(check_PROGRAMS)
 

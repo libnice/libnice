@@ -62,11 +62,11 @@ libagent_la_SOURCES = \
 	$(BUILT_SOURCES)
 
 libagent_la_LIBADD = \
-	$(top_builddir)/random/librandom.la \
+	$(top_builddir)/random/libnice-random.la \
 	$(top_builddir)/socket/libsocket.la \
 	$(top_builddir)/stun/libstun.la
 libagent_la_DEPENDENCIES = \
-	$(top_builddir)/random/librandom.la \
+	$(top_builddir)/random/libnice-random.la \
 	$(top_builddir)/socket/libsocket.la \
 	$(top_builddir)/stun/libstun.la
 
