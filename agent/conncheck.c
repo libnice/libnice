@@ -430,7 +430,6 @@ static gboolean priv_conn_check_tick_unlocked (gpointer pointer)
         Component *component = j->data;
         priv_update_check_list_state_for_ready (agent, stream, component);
       }
-      stream->conncheck_state = NICE_CHECKLIST_COMPLETED;
     }
 
     /* Stopping the timer so destroy the source.. this will allow
@@ -1270,10 +1269,6 @@ static void priv_add_new_check_pair (NiceAgent *agent, guint stream_id, Componen
   pair->nominated = use_candidate;
   pair->controlling = agent->controlling_mode;
 
-  /* note: for the first added check */
-  if (!stream->conncheck_list)
-    stream->conncheck_state = NICE_CHECKLIST_RUNNING;
-
   nice_debug ("Agent %p : added a new conncheck %p with foundation of '%s' to list %u.", agent, pair, pair->foundation, stream_id);
 
   /* implement the hard upper limit for number of
@@ -1363,7 +1358,6 @@ void conn_check_free (NiceAgent *agent)
       g_slist_foreach (stream->conncheck_list, conn_check_free_item, NULL);
       g_slist_free (stream->conncheck_list),
 	stream->conncheck_list = NULL;
-      stream->conncheck_state = NICE_CHECKLIST_NOT_STARTED;
     }
   }
 
@@ -1399,10 +1393,8 @@ gboolean conn_check_prune_stream (NiceAgent *agent, Stream *stream)
       break;
   }
 
-  if (!stream->conncheck_list) {
-    stream->conncheck_state = NICE_CHECKLIST_NOT_STARTED;
+  if (!stream->conncheck_list)
     conn_check_free (agent);
-  }
 
   /* return FALSE if there was a memory allocation failure */
   if (stream->conncheck_list == NULL && i != NULL)
