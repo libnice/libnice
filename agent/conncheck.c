@@ -1727,7 +1727,7 @@ int conn_check_send (NiceAgent *agent, CandidateCheckPair *pair)
         uname, uname_len, password, password_len,
         cand_use, controlling, priority,
         agent->tie_breaker,
-        pair->foundation,
+        pair->local->foundation,
         agent_to_ice_compatibility (agent));
 
     nice_debug ("Agent %p: conncheck created %zd - %p", agent, buffer_len,
