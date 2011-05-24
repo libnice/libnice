@@ -49,7 +49,7 @@ STUN
   http://tools.ietf.org/html/rfc3489
   http://tools.ietf.org/html/rfc5389
 TURN 
-  http://tools.ietf.org/wg/behave/draft-ietf-behave-turn/
+  http://tools.ietf.org/html/rfc5766
 RTP
   http://tools.ietf.org/html/rfc3550
 XMPP Jingle ICE transport
@@ -57,10 +57,7 @@ XMPP Jingle ICE transport
 
 In future, nice may additionally support the following standards.
 
-TURN
-  http://tools.ietf.org/html/draft-ietf-behave-turn-02
 NAT-PMP
   http://files.dns-sd.org/draft-cheshire-nat-pmp.txt
-UPnP IGD
-  http://www.upnp.org/standardizeddcps/igd.asp
+
 
