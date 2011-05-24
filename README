@@ -5,8 +5,8 @@ Nice: GLib ICE library
 Copyright
 ---------
 
- (C) 2006, 2007 Collabora Ltd.
- (C) 2006, 2007 Nokia Corporation
+ (C) 2006-2011 Collabora Ltd.
+ (C) 2006-2011 Nokia Corporation
 
 License
 -------
@@ -18,25 +18,20 @@ Requirements
 
  glib >= 2.10
  pkg-config
-
-Limitations
------------
-
- - only implements ICE Lite
- - no support for RTCP
- - no support for IPv6
+ gupnp-igd >= 0.1.2 (optional)
+ gstreamer-0.10 >= 0.10.0 (optional)
 
 Structure
 ---------
 
- docs/    - design documentation
- address/ - IP address convenience library
- local/   - local address gathering code
- random/  - random number generation
- stun/    - STUN implementation
- udp/     - UDP abstraction layer
  agent/   - ICE agent
- nice/    - libnice
+ docs/    - Design and API documentation
+ gst/     - Gstreamer elements
+ nice/    - libnice library
+ random/  - random number generation
+ socket/  - Socket abstraction layer
+ stun/    - STUN implementation
+ tests/   - Unit tests
 
 Relevant standards
 ------------------
@@ -44,7 +39,7 @@ Relevant standards
 These standards are relevant to nice's current implementation.
 
 ICE draft 15
-  http://tools.ietf.org/wg/mmusic/draft-ietf-mmusic-ice/
+  http://tools.ietf.org/html/rfc5245
 STUN
   http://tools.ietf.org/html/rfc3489
   http://tools.ietf.org/html/rfc5389
