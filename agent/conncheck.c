@@ -1739,8 +1739,12 @@ int conn_check_send (NiceAgent *agent, CandidateCheckPair *pair)
     }
 
     if (buffer_len > 0) {
-      stun_timer_start (&pair->timer, STUN_TIMER_DEFAULT_TIMEOUT,
-          STUN_TIMER_DEFAULT_MAX_RETRANSMISSIONS);
+      if (nice_socket_is_reliable(pair->local->sockptr)) {
+        stun_timer_start_reliable(&pair->timer, STUN_TIMER_DEFAULT_TIMEOUT);
+      } else {
+        stun_timer_start (&pair->timer, STUN_TIMER_DEFAULT_TIMEOUT,
+            STUN_TIMER_DEFAULT_MAX_RETRANSMISSIONS);
+      }
 
       /* send the conncheck */
       agent_socket_send (pair->local->sockptr, &pair->remote->addr,
