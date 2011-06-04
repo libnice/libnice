@@ -623,7 +623,16 @@ int stun_message_validate_buffer_length (const uint8_t *msg, size_t length,
   /* from then on, we know we have the entire packet in buffer */
   while (len > 0)
   {
-    size_t alen = stun_getw (msg + STUN_ATTRIBUTE_TYPE_LEN);
+    size_t alen;
+
+    if (len < 4)
+    {
+      stun_debug ("STUN error: Incomplete STUN attribute header of length "
+          "%u bytes!\n", (unsigned)len);
+      return STUN_MESSAGE_BUFFER_INVALID;
+    }
+
+    alen = stun_getw (msg + STUN_ATTRIBUTE_TYPE_LEN);
     if (has_padding)
       alen = stun_align (alen);
 
