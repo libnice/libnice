@@ -69,7 +69,7 @@ struct _GstNiceSrc
   GMainLoop *mainloop;
   guint64 offset;
   GstFlowReturn flow_ret;
-  GstBuffer *outbuf;
+  GQueue *outbufs;
   gboolean unlocked;
   GSource *idle_source;
 };
