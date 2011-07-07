@@ -1282,7 +1282,8 @@ attempt_send(PseudoTcpSocket *self, SendFlags sflags)
     if (bFirst) {
       bFirst = FALSE;
       DEBUG (PSEUDO_TCP_DEBUG_VERBOSE, "[cwnd: %d  nWindow: %d  nInFlight: %d "
-          "nAvailable: %d nQueued: %d  nEmpty: %d  ssthresh: %d]",
+          "nAvailable: %d nQueued: %d  nEmpty: %" G_GSIZE_FORMAT
+          "  ssthresh: %d]",
           priv->cwnd, nWindow, nInFlight, nAvailable, priv->slen - nInFlight,
           sizeof(priv->sbuf) - priv->slen, priv->ssthresh);
     }
