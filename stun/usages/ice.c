@@ -293,7 +293,8 @@ stun_usage_ice_conncheck_create_reply (StunAgent *agent, StunMessage *req,
 
     val = stun_message_append_xor_addr_full (msg, STUN_ATTRIBUTE_XOR_MAPPED_ADDRESS,
         src, srclen, htonl (magic_cookie));
-  } else if (stun_message_has_cookie (msg)) {
+  } else if (stun_message_has_cookie (msg) &&
+      compatibility != STUN_USAGE_ICE_COMPATIBILITY_GOOGLE) {
     val = stun_message_append_xor_addr (msg, STUN_ATTRIBUTE_XOR_MAPPED_ADDRESS,
         src, srclen);
   } else {
