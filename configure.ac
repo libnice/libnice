@@ -154,6 +154,14 @@ AS_IF([test "${enable_coverage}" != "no"], [
 ])
 AC_SUBST(CCACHE_DISABLE)
 
+case $host_os in
+  solaris*)
+    LDFLAGS="$LDFLAGS -lsocket -lnls"
+    ;;
+  *)
+    ;;
+esac
+
 # check for gtk-doc
 GTK_DOC_CHECK(1.9)
 AC_CONFIG_MACRO_DIR(m4)

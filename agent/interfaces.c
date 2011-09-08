@@ -42,6 +42,10 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 
+#ifdef __sun
+#include <sys/sockio.h>
+#endif
+
 #ifdef HAVE_GETIFADDRS
  #include <ifaddrs.h>
 #endif

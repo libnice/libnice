@@ -40,6 +40,10 @@
 # include <config.h>
 #endif
 
+#ifdef __sun
+#define _XPG4_2 1
+#endif
+
 #ifndef _WIN32
 
 #include <stdio.h>
