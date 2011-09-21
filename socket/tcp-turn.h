@@ -44,7 +44,7 @@ G_BEGIN_DECLS
 
 
 NiceSocket *
-nice_tcp_turn_socket_new (NiceAgent *agent, NiceSocket *base_socket,
+nice_tcp_turn_socket_new (NiceSocket *base_socket,
     NiceTurnSocketCompatibility compatibility);
 
 

@@ -70,7 +70,7 @@ static gboolean socket_send (NiceSocket *sock, const NiceAddress *to,
 static gboolean socket_is_reliable (NiceSocket *sock);
 
 NiceSocket *
-nice_tcp_turn_socket_new (NiceAgent *agent, NiceSocket *base_socket,
+nice_tcp_turn_socket_new (NiceSocket *base_socket,
     NiceTurnSocketCompatibility compatibility)
 {
   TurnTcpPriv *priv;

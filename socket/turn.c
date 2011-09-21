@@ -71,7 +71,7 @@ typedef struct {
 } ChannelBinding;
 
 typedef struct {
-  NiceAgent *nice;
+  GMainContext *ctx;
   StunAgent agent;
   GList *channels;
   GList *pending_bindings;
@@ -161,7 +161,7 @@ priv_send_data_queue_destroy (gpointer data)
 }
 
 NiceSocket *
-nice_turn_socket_new (NiceAgent *agent, NiceAddress *addr,
+nice_turn_socket_new (GMainContext *ctx, NiceAddress *addr,
     NiceSocket *base_socket, NiceAddress *server_addr,
     gchar *username, gchar *password,
     NiceTurnSocketCompatibility compatibility)
@@ -198,10 +198,11 @@ nice_turn_socket_new (NiceAgent *agent, NiceAddress *addr,
         STUN_AGENT_USAGE_NO_ALIGNED_ATTRIBUTES);
   }
 
-  priv->nice = agent;
   priv->channels = NULL;
   priv->current_binding = NULL;
   priv->base_socket = base_socket;
+  if (ctx)
+    priv->ctx = g_main_context_ref (ctx);
 
   if (compatibility == NICE_TURN_SOCKET_COMPATIBILITY_MSN ||
       compatibility == NICE_TURN_SOCKET_COMPATIBILITY_OC2007) {
@@ -291,6 +292,9 @@ socket_close (NiceSocket *sock)
   if (priv->permission_timeout_source)
     g_source_remove (priv->permission_timeout_source);
 
+  if (priv->ctx)
+    g_main_context_unref (priv->ctx);
+
   g_free (priv->current_binding);
   g_free (priv->current_binding_msg);
   g_free (priv->current_create_permission_msg);
@@ -319,6 +323,22 @@ socket_recv (NiceSocket *sock, NiceAddress *from, guint len, gchar *buf)
         (guint) recv_len);
   else
     return recv_len;
+}
+
+static GSource *
+priv_timeout_add_with_context (TurnPriv *priv, guint interval,
+    GSourceFunc function, gpointer data)
+{
+  GSource *source;
+
+  g_return_val_if_fail (function != NULL, NULL);
+
+  source = g_timeout_source_new (interval);
+
+  g_source_set_callback (source, function, data, NULL);
+  g_source_attach (source, priv->ctx);
+
+  return source;
 }
 
 static StunMessageReturn
@@ -557,7 +577,7 @@ socket_send (NiceSocket *sock, const NiceAddress *to,
 
       req->priv = priv;
       stun_message_id (&msg, req->id);
-      req->source = agent_timeout_add_with_context (priv->nice,
+      req->source = priv_timeout_add_with_context (priv,
           STUN_END_TIMEOUT, priv_forget_send_request, req);
       g_queue_push_tail (priv->send_requests, req);
     }
@@ -1275,7 +1295,7 @@ priv_schedule_tick (TurnPriv *priv)
     guint timeout = stun_timer_remainder (&priv->current_binding_msg->timer);
     if (timeout > 0) {
       priv->tick_source_channel_bind =
-          agent_timeout_add_with_context (priv->nice, timeout,
+          priv_timeout_add_with_context (priv, timeout,
               priv_retransmissions_tick, priv);
     } else {
       priv_retransmissions_tick_unlocked (priv);
@@ -1288,7 +1308,7 @@ priv_schedule_tick (TurnPriv *priv)
 
     if (timeout > 0) {
       priv->tick_source_create_permission =
-          agent_timeout_add_with_context (priv->nice,
+          priv_timeout_add_with_context (priv,
               timeout,
               priv_retransmissions_create_permission_tick,
               priv);

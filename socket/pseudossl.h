@@ -38,13 +38,12 @@
 #define _PSEUDOSSL_H
 
 #include "socket.h"
-#include "agent.h"
 
 G_BEGIN_DECLS
 
 
 NiceSocket *
-nice_pseudossl_socket_new (NiceAgent *agent, NiceSocket *base_socket);
+nice_pseudossl_socket_new (NiceSocket *base_socket);
 
 
 G_END_DECLS

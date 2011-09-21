@@ -101,7 +101,7 @@ static void free_to_be_sent (struct to_be_sent *tbs);
 
 
 NiceSocket *
-nice_pseudossl_socket_new (NiceAgent *agent, NiceSocket *base_socket)
+nice_pseudossl_socket_new (NiceSocket *base_socket)
 {
   PseudoSSLPriv *priv;
   NiceSocket *sock = g_slice_new0 (NiceSocket);

@@ -1392,8 +1392,7 @@ priv_add_new_candidate_discovery_turn (NiceAgent *agent,
         agent->proxy_ip != NULL &&
         nice_address_set_from_string (&proxy_server, agent->proxy_ip)) {
       nice_address_set_port (&proxy_server, agent->proxy_port);
-      socket = nice_tcp_bsd_socket_new (agent, agent->main_context,
-          &proxy_server);
+      socket = nice_tcp_bsd_socket_new (agent->main_context, &proxy_server);
 
       if (socket) {
         _priv_set_socket_tos (agent, socket, stream->tos);
@@ -1411,15 +1410,14 @@ priv_add_new_candidate_discovery_turn (NiceAgent *agent,
 
     }
     if (socket == NULL) {
-      socket = nice_tcp_bsd_socket_new (agent, agent->main_context,
-          &turn->server);
+      socket = nice_tcp_bsd_socket_new (agent->main_context, &turn->server);
       _priv_set_socket_tos (agent, socket, stream->tos);
     }
     if (turn->type ==  NICE_RELAY_TYPE_TURN_TLS &&
         agent->compatibility == NICE_COMPATIBILITY_GOOGLE) {
-      socket = nice_pseudossl_socket_new (agent, socket);
+      socket = nice_pseudossl_socket_new (socket);
     }
-    cdisco->nicesock = nice_tcp_turn_socket_new (agent, socket,
+    cdisco->nicesock = nice_tcp_turn_socket_new (socket,
         agent_to_turn_socket_compatibility (agent));
 
     agent_attach_stream_component_socket (agent, stream,
@@ -2818,7 +2816,7 @@ GSource* agent_timeout_add_with_context (NiceAgent *agent, guint interval,
 {
   GSource *source;
 
-  g_return_val_if_fail (function != NULL, 0);
+  g_return_val_if_fail (function != NULL, NULL);
 
   source = g_timeout_source_new (interval);
 

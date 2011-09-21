@@ -54,7 +54,6 @@
 #endif
 
 typedef struct {
-  NiceAgent *agent;
   NiceAddress server_addr;
   GQueue send_queue;
   GMainContext *context;
@@ -86,7 +85,7 @@ static gboolean socket_send_more (GIOChannel *source, GIOCondition condition,
     gpointer data);
 
 NiceSocket *
-nice_tcp_bsd_socket_new (NiceAgent *agent, GMainContext *ctx, NiceAddress *addr)
+nice_tcp_bsd_socket_new (GMainContext *ctx, NiceAddress *addr)
 {
   int sockfd = -1;
   int ret;
@@ -163,7 +162,6 @@ nice_tcp_bsd_socket_new (NiceAgent *agent, GMainContext *ctx, NiceAddress *addr)
 
   sock->priv = priv = g_slice_new0 (TcpPriv);
 
-  priv->agent = agent;
   priv->context = g_main_context_ref (ctx);
   priv->server_addr = *addr;
   priv->error = FALSE;

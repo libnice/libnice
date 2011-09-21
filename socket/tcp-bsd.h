@@ -38,13 +38,12 @@
 #define _TCP_BSD_H
 
 #include "socket.h"
-#include "agent.h"
 
 G_BEGIN_DECLS
 
 
 NiceSocket *
-nice_tcp_bsd_socket_new (NiceAgent *agent, GMainContext *ctx, NiceAddress *addr);
+nice_tcp_bsd_socket_new (GMainContext *ctx, NiceAddress *addr);
 
 
 G_END_DECLS
