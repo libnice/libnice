@@ -1392,7 +1392,8 @@ priv_add_new_candidate_discovery_turn (NiceAgent *agent,
         agent->proxy_ip != NULL &&
         nice_address_set_from_string (&proxy_server, agent->proxy_ip)) {
       nice_address_set_port (&proxy_server, agent->proxy_port);
-      socket = nice_tcp_bsd_socket_new (agent, component->ctx, &proxy_server);
+      socket = nice_tcp_bsd_socket_new (agent, agent->main_context,
+          &proxy_server);
 
       if (socket) {
         _priv_set_socket_tos (agent, socket, stream->tos);
@@ -1410,7 +1411,8 @@ priv_add_new_candidate_discovery_turn (NiceAgent *agent,
 
     }
     if (socket == NULL) {
-      socket = nice_tcp_bsd_socket_new (agent, component->ctx, &turn->server);
+      socket = nice_tcp_bsd_socket_new (agent, agent->main_context,
+          &turn->server);
       _priv_set_socket_tos (agent, socket, stream->tos);
     }
     if (turn->type ==  NICE_RELAY_TYPE_TURN_TLS &&
