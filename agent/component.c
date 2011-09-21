@@ -140,6 +140,11 @@ component_free (Component *cmp)
     cmp->tcp_data = NULL;
   }
 
+  if (cmp->ctx != NULL) {
+    g_main_context_unref (cmp->ctx);
+    cmp->ctx = NULL;
+  }
+
   g_slice_free (Component, cmp);
 }
 

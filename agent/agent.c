@@ -2733,10 +2733,18 @@ nice_agent_attach_recv (
 
   ret = TRUE;
 
+  component->g_source_io_cb = NULL;
+  component->data = NULL;
+  if (component->ctx)
+    g_main_context_unref (component->ctx);
+  component->ctx = NULL;
+
   if (func) {
     component->g_source_io_cb = func;
     component->data = data;
     component->ctx = ctx;
+    if (ctx)
+      g_main_context_ref (ctx);
 
     priv_attach_stream_component (agent, stream, component);
 
@@ -2749,12 +2757,7 @@ nice_agent_attach_recv (
     if (component->tcp && component->tcp_data && component->tcp_readable)
       pseudo_tcp_socket_readable (component->tcp, component->tcp_data);
 
-  } else {
-    component->g_source_io_cb = NULL;
-    component->data = NULL;
-    component->ctx = NULL;
   }
-
 
  done:
   agent_unlock();
