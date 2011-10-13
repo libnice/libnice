@@ -27,6 +27,7 @@ configure
 compile
 depcomp
 diff
+gtk-doc.make
 install-sh
 libtool
 ltmain.sh
@@ -36,6 +37,7 @@ stamp-h1
 
 # top level stuff
 debian
+m4
 
 # address/ stuff
 address/libaddress.la
@@ -81,8 +83,8 @@ stun/test-message-unpack
 stun/tests/test-bind
 stun/tests/test-conncheck
 stun/tests/test-format
+stun/tests/test-hmac
 stun/tests/test-parse
-
 
 # local/ stuff
 local/liblocal.la
@@ -105,6 +107,7 @@ nice/test-readline
 nice/test-util
 nice/nice.pc
 nice/libnice.symbols
+nice/libnice-symbols-test.c
 
 # random/ stuff
 random/librandom.la
@@ -113,6 +116,20 @@ random/test
 # gst/ stuff
 gst/libgstnice.la
 gst/jingle-gst-test-server
+
+# tests/ stuff
+tests/test
+tests/test-add-remove-stream
+tests/test-address
+tests/test-bsd
+tests/test-dribble
+tests/test-fallback
+tests/test-fullmode
+tests/test-mainloop
+tests/test-priority
+tests/test-pseudotcp
+tests/test-restart
+tests/test-thread
 
 docs/reference/libnice/libnice*.txt
 docs/reference/libnice/libnice.args
