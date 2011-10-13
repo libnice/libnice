@@ -37,16 +37,16 @@ AM_CFLAGS = \
 test-symbols.sh::
 	chmod +x $(srcdir)/$@
 
-libnice-symbols-test.c: libnice.sym Makefile
+libnice-symbols-test.c: libnice.sym
 	rm -f $@
-	while read s; do echo "void $$s(void) { }" ; done < $< > $@
+	while read s; do echo "void $$s(void) { }" ; done < $? > $@
 
 libnice-symbols-test.o: libnice-symbols-test.c
-	$(CC) $(CFLAGS) -c -o $@ $<
+	$(CC) $(CFLAGS) -c -o $@ $?
 
-libnice.symbols: libnice-symbols-test.o Makefile
+libnice.symbols: libnice-symbols-test.o
 	rm -f $@
-	$(top_srcdir)/scripts/make-symbol-list.sh $< >$@
+	$(top_srcdir)/scripts/make-symbol-list.sh $? > $@
 
 CLEANFILES += libnice.symbols libnice-symbols-test.c libnice-symbols-test.o
 
