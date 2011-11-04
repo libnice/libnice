@@ -81,9 +81,9 @@ AC_CHECK_FUNCS([poll])
 AC_SUBST(LIBRT)
 
 PKG_CHECK_MODULES(GLIB, [dnl
-	glib-2.0 >= 2.10 dnl
-	gobject-2.0 >= 2.10 dnl
-	gthread-2.0 >= 2.10 dnl
+	glib-2.0 >= 2.13 dnl
+	gobject-2.0 >= 2.13 dnl
+	gthread-2.0 >= 2.13 dnl
 	])
 
 AC_ARG_WITH(gstreamer, 
