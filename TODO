@@ -1,4 +1,8 @@
 - High priority:
+Refactor/cleanup conncheck.c and discovery.c
+Finish GIO support for reliable transport
+Implement SIP-style forking
+Implement ICE-TCP (http://tools.ietf.org/html/draft-ietf-mmusic-ice-tcp-15) both for packetized content and streams
 nice_socket_recv returns -1 means we must close the nice_socket and stop all connchecks/candidates and reelect if was eleected...
 
 - Low priority:
