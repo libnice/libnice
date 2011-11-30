@@ -54,6 +54,7 @@
 #include <unistd.h>
 #include <errno.h>
 #include <sys/time.h>
+#include <fcntl.h>
 #endif
 
 
@@ -70,7 +71,6 @@
 #include <stdlib.h>
 #include <time.h>
 #include <errno.h>
-#include <fcntl.h>
 #include "timer.h"
 
 
@@ -394,11 +394,13 @@ stun_trans_recv (StunTransport *tr, uint8_t *buf, size_t maxlen)
 }
 
 
+#ifdef HAVE_POLL
 static int stun_trans_fd (const StunTransport *tr)
 {
   assert (tr != NULL);
   return tr->fd;
 }
+#endif
 
 
 /*

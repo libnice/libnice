@@ -18,7 +18,9 @@ AM_CFLAGS = \
 	-I $(top_srcdir)/socket \
 	-I $(top_srcdir)/stun
 
-COMMON_LDADD = libagent.la $(GLIB_LIBS) (GUPNP_LIBS)
+if WINDOWS
+  AM_CFLAGS += -DWINVER=0x0501 # _WIN32_WINNT_WINXP
+endif
 
 dist_noinst_DATA = agent-signals-marshal.list
 noinst_LTLIBRARIES = libagent.la
@@ -71,3 +73,7 @@ libagent_la_DEPENDENCIES = \
 	$(top_builddir)/stun/libstun.la
 
 pkginclude_HEADERS = agent.h candidate.h debug.h address.h interfaces.h pseudotcp.h
+
+if WINDOWS
+  libagent_la_LIBADD += -lws2_32
+endif

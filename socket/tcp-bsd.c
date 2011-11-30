@@ -91,7 +91,7 @@ nice_tcp_bsd_socket_new (NiceAgent *agent, GMainContext *ctx, NiceAddress *addr)
   int sockfd = -1;
   int ret;
   struct sockaddr_storage name;
-  guint name_len = sizeof (name);
+  socklen_t name_len = sizeof (name);
   NiceSocket *sock;
   TcpPriv *priv;
 

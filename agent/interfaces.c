@@ -350,6 +350,20 @@ nice_interfaces_get_ip_for_interface (gchar *interface_name)
 #include <winsock2.h>
 #include <Iphlpapi.h>
 
+// Should be in Iphlpapi.h, but mingw doesn't seem to have these
+// Values copied directly from:
+// http://msdn.microsoft.com/en-us/library/aa366845(v=vs.85).aspx
+// (Title: MIB_IPADDRROW structure)
+
+#ifndef MIB_IPADDR_DISCONNECTED
+#define MIB_IPADDR_DISCONNECTED 0x0008
+#endif
+
+#ifndef MIB_IPADDR_DELETED
+#define MIB_IPADDR_DELETED 0x0040
+#endif
+
+#if 0
 static gboolean started_wsa_engine = FALSE;
 
 /*
@@ -383,6 +397,7 @@ SOCKET nice_interfaces_get_WSA_socket ()
 
   return sock;
 }
+#endif
 
 GList * nice_interfaces_get_local_interfaces ()
 {
@@ -450,7 +465,7 @@ GList * nice_interfaces_get_local_ips (gboolean include_loopback)
             continue;
         }
 
-        ipstr = g_strdup_printf ("%d.%d.%d.%d",
+        ipstr = g_strdup_printf ("%lu.%lu.%lu.%lu",
             (ipaddr->dwAddr      ) & 0xFF,
             (ipaddr->dwAddr >>  8) & 0xFF,
             (ipaddr->dwAddr >> 16) & 0xFF,
@@ -471,8 +486,11 @@ GList * nice_interfaces_get_local_ips (gboolean include_loopback)
 /*
  * returns ip address as an utf8 string
  */
+// Source for idx's type (Was IF_INDEX):
+// http://msdn.microsoft.com/en-us/library/aa366836(v=VS.85).aspx
+// (Title: MIB_IFROW structure)
 static gchar *
-win32_get_ip_for_interface (IF_INDEX idx)
+win32_get_ip_for_interface (DWORD idx)
 {
   ULONG size = 0;
   PMIB_IPADDRTABLE ip_table;
@@ -491,7 +509,7 @@ win32_get_ip_for_interface (IF_INDEX idx)
       PMIB_IPADDRROW ipaddr = &ip_table->table[i];
       if (ipaddr->dwIndex == idx &&
           !(ipaddr->wType & (MIB_IPADDR_DISCONNECTED | MIB_IPADDR_DELETED))) {
-        ret = g_strdup_printf ("%d.%d.%d.%d",
+        ret = g_strdup_printf ("%lu.%lu.%lu.%lu",
             (ipaddr->dwAddr      ) & 0xFF,
             (ipaddr->dwAddr >>  8) & 0xFF,
             (ipaddr->dwAddr >> 16) & 0xFF,

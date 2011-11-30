@@ -43,6 +43,7 @@
 #ifdef _WIN32
 
 #include <windows.h>
+#include <Wincrypt.h>
 
 void RAND_bytes (uint8_t *dst, int len)
 {
@@ -51,7 +52,9 @@ void RAND_bytes (uint8_t *dst, int len)
 
   if(!CryptAcquireContext(&hCryptProv, container, NULL, PROV_RSA_FULL, 0)) {
     /* non existing container. try to create a new one */
-    if (GetLastError() == NTE_BAD_KEYSET) {
+    // I hope this cast here doesn't cause issues
+    // gcc was complaining about comparing signed and unsigned values
+    if (GetLastError() == (DWORD) NTE_BAD_KEYSET) {
       if(!CryptAcquireContext(&hCryptProv, container, NULL, PROV_RSA_FULL, CRYPT_NEWKEYSET)) {
         return;
       }

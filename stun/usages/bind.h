@@ -52,7 +52,7 @@
 
 
 #ifdef _WIN32
-#include "win32_common.h"
+#  include "../win32_common.h"
 #else
 # include <stdbool.h>
 # include <stdint.h>

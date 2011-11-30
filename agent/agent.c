@@ -50,7 +50,8 @@
 #include <errno.h>
 
 #ifdef G_OS_WIN32
-#include <winsock2.h>
+#  include <winsock2.h>
+#  define EWOULDBLOCK WSAEWOULDBLOCK
 #else
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -2878,13 +2879,13 @@ void
 _priv_set_socket_tos (NiceAgent *agent, NiceSocket *sock, gint tos)
 {
   if (setsockopt (sock->fileno, IPPROTO_IP,
-          IP_TOS, &tos, sizeof (tos)) < 0) {
+          IP_TOS, (const char *) &tos, sizeof (tos)) < 0) {
     nice_debug ("Agent %p: Could not set socket ToS", agent,
         g_strerror (errno));
   }
 #ifdef IPV6_TCLASS
   if (setsockopt (sock->fileno, IPPROTO_IPV6,
-          IPV6_TCLASS, &tos, sizeof (tos)) < 0) {
+          IPV6_TCLASS, (const char *) &tos, sizeof (tos)) < 0) {
     nice_debug ("Agent %p: Could not set IPV6 socket ToS", agent,
         g_strerror (errno));
   }

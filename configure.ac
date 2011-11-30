@@ -6,9 +6,12 @@ dnl use a three digit version number for releases, and four for cvs/prerelease
 AC_INIT(libnice, 0.1.1.0)
 LIBNICE_RELEASE="no"
 
+AC_CANONICAL_SYSTEM
+
 AC_CONFIG_SRCDIR([agent/agent.c])
 AC_CONFIG_HEADER([config.h])
 AM_INIT_AUTOMAKE([-Wall])
+
 AC_CONFIG_FILES([
 	Makefile
 	agent/Makefile
@@ -53,6 +56,20 @@ AC_PROG_CC
 AC_USE_SYSTEM_EXTENSIONS
 AC_PROG_LIBTOOL
 
+# Check Operating System
+AC_MSG_CHECKING([operating system])
+case "$host" in
+	*-*-*mingw*|*-*-*cygwin*)
+		platform=win32
+		AC_MSG_RESULT($platform)
+		;;
+	*)
+		platform=linux/other
+		AC_MSG_RESULT($platform)
+		;;
+esac
+
+AM_CONDITIONAL([WINDOWS], [test "$platform" = "win32"])
 
 # Checks for compiler features
 

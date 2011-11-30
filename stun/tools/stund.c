@@ -346,7 +346,7 @@ int main (int argc, char *argv[])
 }
 
 #else
-int main () {
+int main (int argc, char **argv) {
   return 0;
 }
 #endif

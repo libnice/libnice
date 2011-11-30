@@ -13,6 +13,10 @@ include $(top_srcdir)/common.mk
 AM_CFLAGS = -std=gnu99 -DG_LOG_DOMAIN=\"libnice-stun\" $(ERROR_CFLAGS)
 AM_CPPFLAGS = -I$(top_srcdir)
 
+if WINDOWS
+  AM_CFLAGS += -DWINVER=0x0501 # _WIN32_WINNT_WINXP
+endif
+
 noinst_LTLIBRARIES = libstun.la
 
 libstun_la_SOURCES = constants.h \

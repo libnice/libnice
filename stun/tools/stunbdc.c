@@ -40,9 +40,12 @@
 # include <config.h>
 #endif
 
-#ifndef _WIN32
-#include <sys/socket.h>
-#include <netdb.h>
+#ifdef _WIN32
+#  include <winsock2.h>
+#else
+#  include <sys/socket.h>
+#  include <netdb.h>
+#endif
 
 #include <sys/types.h>
 #include "stun/stunagent.h"
@@ -184,8 +187,3 @@ int main (int argc, char *argv[])
 
   return run (family, server, port) ? 1 : 0;
 }
-#else
-int main () {
-  return 0;
-}
-#endif

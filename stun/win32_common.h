@@ -57,6 +57,7 @@
 #ifndef _WIN32_COMMON_H
 #define _WIN32_COMMON_H
 
+#include <sys/types.h>
 
 /* 7.18.1.1  Exact-width integer types */
 typedef signed char int8_t;
@@ -67,8 +68,6 @@ typedef int  int32_t;
 typedef unsigned   uint32_t;
 typedef long long  int64_t;
 typedef unsigned long long   uint64_t;
-typedef unsigned int size_t;
-typedef unsigned long ssize_t;
 
 typedef uint8_t bool;
 #define true 1

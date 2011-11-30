@@ -51,9 +51,7 @@
 
 #include "udp-bsd.h"
 
-#ifdef G_OS_WIN32
-typedef unsigned long ssize_t;
-#else
+#ifndef G_OS_WIN32
 #include <unistd.h>
 #endif
 

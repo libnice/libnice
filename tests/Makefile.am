@@ -62,8 +62,6 @@ test_restart_LDADD = $(COMMON_LDADD)
 
 test_fallback_LDADD = $(COMMON_LDADD)
 
-test_thread_LDADD = $(COMMON_LDADD)
-
 test_dribble_LDADD = $(COMMON_LDADD)
 
 all-local:
