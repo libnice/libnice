@@ -79,7 +79,8 @@ AC_HEADER_ASSERT
 AC_HEADER_STDBOOL
 AC_DEFINE([_FORTIFY_SOURCE], [2], [Define to `2' to get GNU/libc warnings.])
 AC_DEFINE([NICEAPI_EXPORT], [ ], [Public library function implementation])
-AC_CHECK_HEADERS([arpa/inet.h net/in.h ifaddrs.h], \
+AC_CHECK_HEADERS([arpa/inet.h net/in.h])
+AC_CHECK_HEADERS([ifaddrs.h], \
 		      [AC_DEFINE(HAVE_GETIFADDRS, [1], \
 		       [Whether getifaddrs() is available on the system])])
 
