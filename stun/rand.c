@@ -43,7 +43,7 @@
 #ifdef _WIN32
 
 #include <windows.h>
-#include <Wincrypt.h>
+#include <wincrypt.h>
 
 void RAND_bytes (uint8_t *dst, int len)
 {

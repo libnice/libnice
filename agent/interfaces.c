@@ -348,7 +348,7 @@ nice_interfaces_get_ip_for_interface (gchar *interface_name)
 #ifdef G_OS_WIN32
 
 #include <winsock2.h>
-#include <Iphlpapi.h>
+#include <iphlpapi.h>
 
 // Should be in Iphlpapi.h, but mingw doesn't seem to have these
 // Values copied directly from:
