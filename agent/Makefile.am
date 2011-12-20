@@ -75,5 +75,5 @@ libagent_la_DEPENDENCIES = \
 pkginclude_HEADERS = agent.h candidate.h debug.h address.h interfaces.h pseudotcp.h
 
 if WINDOWS
-  libagent_la_LIBADD += -lws2_32
+  libagent_la_LIBADD += -liphlpapi -lws2_32
 endif
