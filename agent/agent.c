@@ -1873,12 +1873,12 @@ nice_agent_gather_candidates (
   }
 
   /* note: no async discoveries pending, signal that we are ready */
-  if (agent->discovery_unsched_items == 0) {
+  if (agent->discovery_unsched_items == 0 &&
+      g_slist_length (agent->upnp_mapping) == 0) {
     nice_debug ("Agent %p: Candidate gathering FINISHED, no scheduled items.",
         agent);
     agent_gathering_done (agent);
-  } else {
-    g_assert (agent->discovery_list);
+  } else if (agent->discovery_unsched_items) {
     discovery_schedule (agent);
   }
 
