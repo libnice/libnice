@@ -1646,7 +1646,7 @@ static void _upnp_mapped_external_port (GUPnPSimpleIgd *self, gchar *proto,
   }
 
  end:
-  if (g_slist_length (agent->upnp_mapping)) {
+  if (g_slist_length (agent->upnp_mapping) == 0) {
     if (agent->upnp_timer_source != NULL) {
       g_source_destroy (agent->upnp_timer_source);
       g_source_unref (agent->upnp_timer_source);
@@ -1682,7 +1682,7 @@ static void _upnp_error_mapping_port (GUPnPSimpleIgd *self, GError *error,
       }
     }
 
-    if (g_slist_length (agent->upnp_mapping)) {
+    if (g_slist_length (agent->upnp_mapping) == 0) {
       if (agent->upnp_timer_source != NULL) {
         g_source_destroy (agent->upnp_timer_source);
         g_source_unref (agent->upnp_timer_source);
