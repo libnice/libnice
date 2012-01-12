@@ -881,6 +881,7 @@ int main (void)
   g_object_set (G_OBJECT (lagent), "proxy-type", PROXY_TYPE, NULL);
   g_object_set (G_OBJECT (lagent), "proxy-username", PROXY_USERNAME, NULL);
   g_object_set (G_OBJECT (lagent), "proxy-password", PROXY_PASSWORD, NULL);
+  g_object_set (G_OBJECT (ragent), "upnp", USE_UPNP,  NULL);
   g_object_set (G_OBJECT (ragent), "proxy-ip", PROXY_IP,  NULL);
   g_object_set (G_OBJECT (ragent), "proxy-port", PROXY_PORT, NULL);
   g_object_set (G_OBJECT (ragent), "proxy-type", PROXY_TYPE, NULL);
