@@ -1874,7 +1874,11 @@ nice_agent_gather_candidates (
 
   /* note: no async discoveries pending, signal that we are ready */
   if (agent->discovery_unsched_items == 0 &&
+#ifdef HAVE_GUPNP
       g_slist_length (agent->upnp_mapping) == 0) {
+#else
+      TRUE) {
+#endif
     nice_debug ("Agent %p: Candidate gathering FINISHED, no scheduled items.",
         agent);
     agent_gathering_done (agent);
