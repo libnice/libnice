@@ -189,7 +189,9 @@ int main (void)
   GThread *ldthread, *rdthread;
 
   g_type_init ();
-  g_thread_init (NULL);
+#if !GLIB_CHECK_VERSION(2,31,8)
+  g_thread_init(NULL);
+#endif
 
   lmainctx = g_main_context_new ();
   rmainctx = g_main_context_new ();
@@ -268,9 +270,15 @@ int main (void)
   /* step: run test the first time */
   g_debug ("test-thread: TEST STARTS / running test for the 1st time");
 
+#if !GLIB_CHECK_VERSION(2,31,8)
   lthread = g_thread_create (mainloop_thread, lmainloop, TRUE, NULL);
-  g_assert (lthread);
   rthread = g_thread_create (mainloop_thread, rmainloop, TRUE, NULL);
+#else
+  lthread = g_thread_new ("lthread libnice", mainloop_thread, lmainloop);
+  rthread = g_thread_new ("rthread libnice", mainloop_thread, rmainloop);
+#endif
+
+  g_assert (lthread);
   g_assert (rthread);
 
   ls_id = nice_agent_add_stream (lagent, 2);
@@ -289,9 +297,14 @@ int main (void)
   nice_agent_attach_recv (ragent, rs_id, 1, rdmainctx, cb_nice_recv,
       GUINT_TO_POINTER (2));
 
+#if !GLIB_CHECK_VERSION(2,31,8)
   ldthread = g_thread_create (mainloop_thread, ldmainloop, TRUE, NULL);
-  g_assert (ldthread);
   rdthread = g_thread_create (mainloop_thread, rdmainloop, TRUE, NULL);
+#else
+  ldthread = g_thread_new ("ldthread libnice", mainloop_thread, ldmainloop);
+  rdthread = g_thread_new ("rdthread libnice", mainloop_thread, rdmainloop);
+#endif
+  g_assert (ldthread);
   g_assert (rdthread);
 
   /* Run loop for error timer */

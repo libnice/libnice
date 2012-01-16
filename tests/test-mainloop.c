@@ -73,7 +73,10 @@ main (void)
 
   nice_address_init (&addr);
   g_type_init ();
-  g_thread_init (NULL);
+#if !GLIB_CHECK_VERSION(2,31,8)
+  g_thread_init(NULL);
+#endif
+
   loop = g_main_loop_new (NULL, FALSE);
 
   agent = nice_agent_new (g_main_loop_get_context (loop), NICE_COMPATIBILITY_RFC5245);

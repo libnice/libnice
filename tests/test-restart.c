@@ -394,7 +394,10 @@ int main (void)
   const char *stun_server = NULL, *stun_server_port = NULL;
 
   g_type_init ();
-  g_thread_init (NULL);
+#if !GLIB_CHECK_VERSION(2,31,8)
+  g_thread_init(NULL)
+#endif
+
   global_mainloop = g_main_loop_new (NULL, FALSE);
 
   /* Note: impl limits ...
