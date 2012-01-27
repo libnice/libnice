@@ -50,9 +50,7 @@ GST_DEBUG_CATEGORY_STATIC (nicesrc_debug);
 
 static GstFlowReturn
 gst_nice_src_create (
-  GstBaseSrc *basesrc,
-  guint64 offset,
-  guint length,
+  GstPushSrc *basesrc,
   GstBuffer **buffer);
 
 static gboolean
@@ -93,7 +91,7 @@ GST_STATIC_PAD_TEMPLATE (
     GST_PAD_ALWAYS,
     GST_STATIC_CAPS_ANY);
 
-G_DEFINE_TYPE (GstNiceSrc, gst_nice_src, GST_TYPE_BASE_SRC);
+G_DEFINE_TYPE (GstNiceSrc, gst_nice_src, GST_TYPE_PUSH_SRC);
 
 enum
 {
@@ -106,6 +104,7 @@ enum
 static void
 gst_nice_src_class_init (GstNiceSrcClass *klass)
 {
+  GstPushSrcClass *gstpushsrc_class;
   GstBaseSrcClass *gstbasesrc_class;
   GstElementClass *gstelement_class;
   GObjectClass *gobject_class;
@@ -113,8 +112,10 @@ gst_nice_src_class_init (GstNiceSrcClass *klass)
   GST_DEBUG_CATEGORY_INIT (nicesrc_debug, "nicesrc",
       0, "libnice source");
 
+  gstpushsrc_class = (GstPushSrcClass *) klass;
+  gstpushsrc_class->create = GST_DEBUG_FUNCPTR (gst_nice_src_create);
+
   gstbasesrc_class = (GstBaseSrcClass *) klass;
-  gstbasesrc_class->create = GST_DEBUG_FUNCPTR (gst_nice_src_create);
   gstbasesrc_class->unlock = GST_DEBUG_FUNCPTR (gst_nice_src_unlock);
   gstbasesrc_class->unlock_stop = GST_DEBUG_FUNCPTR (gst_nice_src_unlock_stop);
 
@@ -262,16 +263,12 @@ gst_nice_src_unlock_stop (GstBaseSrc *src)
 
 static GstFlowReturn
 gst_nice_src_create (
-  GstBaseSrc *basesrc,
-  guint64 offset,
-  guint length,
+  GstPushSrc *basesrc,
   GstBuffer **buffer)
 {
   GstNiceSrc *nicesrc = GST_NICE_SRC (basesrc);
 
   GST_LOG_OBJECT (nicesrc, "create called");
-
-  nicesrc->offset = offset;
 
   GST_OBJECT_LOCK (basesrc);
   if (nicesrc->unlocked) {

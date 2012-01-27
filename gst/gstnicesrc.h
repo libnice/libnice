@@ -39,7 +39,7 @@
 #define _GSTNICESRC_H
 
 #include <gst/gst.h>
-#include <gst/base/gstbasesrc.h>
+#include <gst/base/gstpushsrc.h>
 
 #include <nice/nice.h>
 
@@ -60,15 +60,13 @@ typedef struct _GstNiceSrc GstNiceSrc;
 
 struct _GstNiceSrc
 {
-  GstBaseSrc parent;
+  GstPushSrc parent;
   GstPad *srcpad;
   NiceAgent *agent;
   guint stream_id;
   guint component_id;
   GMainContext *mainctx;
   GMainLoop *mainloop;
-  guint64 offset;
-  GstFlowReturn flow_ret;
   GQueue *outbufs;
   gboolean unlocked;
   GSource *idle_source;
@@ -78,7 +76,7 @@ typedef struct _GstNiceSrcClass GstNiceSrcClass;
 
 struct _GstNiceSrcClass
 {
-  GstBaseSrcClass parent_class;
+  GstPushSrcClass parent_class;
 };
 
 GType gst_nice_src_get_type (void);
