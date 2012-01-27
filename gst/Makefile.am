@@ -12,7 +12,8 @@ AM_CFLAGS = $(LIBNICE_CFLAGS) \
 	-I $(top_srcdir)/socket \
 	-I $(top_srcdir)/agent \
 	-I $(top_srcdir)/random \
-	-I $(top_srcdir)/stun
+	-I $(top_srcdir)/stun \
+	-DGST_USE_UNSTABLE_API
 
 COMMON_LDADD = \
 	$(GST_LIBS) \

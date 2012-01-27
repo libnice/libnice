@@ -71,13 +71,6 @@ gst_nice_sink_change_state (
     GstElement * element,
     GstStateChange transition);
 
-static const GstElementDetails gst_nice_sink_details =
-GST_ELEMENT_DETAILS (
-    "ICE sink",
-    "Sink",
-    "Interactive UDP connectivity establishment",
-    "Dafydd Harries <dafydd.harries@collabora.co.uk>");
-
 static GstStaticPadTemplate gst_nice_sink_sink_template =
 GST_STATIC_PAD_TEMPLATE (
     "sink",
@@ -85,7 +78,7 @@ GST_STATIC_PAD_TEMPLATE (
     GST_PAD_ALWAYS,
     GST_STATIC_CAPS_ANY);
 
-GST_BOILERPLATE (GstNiceSink, gst_nice_sink, GstBaseSink, GST_TYPE_BASE_SINK);
+G_DEFINE_TYPE (GstNiceSink, gst_nice_sink, GST_TYPE_BASE_SINK);
 
 enum
 {
@@ -93,16 +86,6 @@ enum
   PROP_STREAM,
   PROP_COMPONENT
 };
-
-static void
-gst_nice_sink_base_init (gpointer g_class)
-{
-  GstElementClass *element_class = GST_ELEMENT_CLASS (g_class);
-
-  gst_element_class_add_pad_template (element_class,
-      gst_static_pad_template_get (&gst_nice_sink_sink_template));
-  gst_element_class_set_details (element_class, &gst_nice_sink_details);
-}
 
 static void
 gst_nice_sink_class_init (GstNiceSinkClass *klass)
@@ -124,6 +107,14 @@ gst_nice_sink_class_init (GstNiceSinkClass *klass)
 
   gstelement_class = (GstElementClass *) klass;
   gstelement_class->change_state = gst_nice_sink_change_state;
+
+  gst_element_class_add_pad_template (gstelement_class,
+      gst_static_pad_template_get (&gst_nice_sink_sink_template));
+  gst_element_class_set_metadata (gstelement_class,     "ICE sink",
+    "Sink",
+    "Interactive UDP connectivity establishment",
+    "Dafydd Harries <dafydd.harries@collabora.co.uk>");
+
 
   g_object_class_install_property (gobject_class, PROP_AGENT,
       g_param_spec_object (
@@ -155,22 +146,22 @@ gst_nice_sink_class_init (GstNiceSinkClass *klass)
 }
 
 static void
-gst_nice_sink_init (
-  GstNiceSink *sink,
-  GstNiceSinkClass *g_class)
+gst_nice_sink_init (GstNiceSink *sink)
 {
 }
 
 static GstFlowReturn
-gst_nice_sink_render (
-    GstBaseSink *basesink, GstBuffer *buffer)
+gst_nice_sink_render (GstBaseSink *basesink, GstBuffer *buffer)
 {
-  GstNiceSink *nicesink;
+  GstNiceSink *nicesink = GST_NICE_SINK (basesink);
+  GstMapInfo info;
 
-  nicesink = GST_NICE_SINK (basesink);
+  gst_buffer_map (buffer, &info, GST_MAP_READ);
+
   nice_agent_send (nicesink->agent, nicesink->stream_id,
-      nicesink->component_id, GST_BUFFER_SIZE (buffer),
-      (gchar *) GST_BUFFER_DATA (buffer));
+      nicesink->component_id, info.size, (gchar *) info.data);
+
+  gst_buffer_unmap (buffer, &info);
 
   return GST_FLOW_OK;
 }
@@ -185,7 +176,7 @@ gst_nice_sink_dispose (GObject *object)
     g_object_unref (sink->agent);
   sink->agent = NULL;
 
-  GST_CALL_PARENT (G_OBJECT_CLASS, dispose, (object));
+  G_OBJECT_CLASS (gst_nice_sink_parent_class)->dispose (object);
 }
 
 static void
@@ -271,7 +262,8 @@ gst_nice_sink_change_state (GstElement * element, GstStateChange transition)
       break;
   }
 
-  ret = GST_ELEMENT_CLASS (parent_class)->change_state (element, transition);
+  ret = GST_ELEMENT_CLASS (gst_nice_sink_parent_class)->change_state (element,
+      transition);
 
   return ret;
 }
