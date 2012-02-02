@@ -1226,7 +1226,8 @@ void agent_gathering_done (NiceAgent *agent)
     agent_signal_gathering_done (agent);
   }
 #else
-  agent_signal_gathering_done (agent);
+  if (agent->discovery_timer_source == NULL)
+    agent_signal_gathering_done (agent);
 #endif
 }
 
@@ -2215,7 +2216,7 @@ nice_agent_set_remote_candidates (NiceAgent *agent, guint stream_id, guint compo
     goto done;
   }
 
-  if (agent->discovery_unsched_items > 0 || stream->gathering) {
+  if (stream->gathering) {
     nice_debug ("Agent %p: Remote candidates refused for stream %d because "
         "we are still gathering our own candidates", agent, stream_id);
     added = -1;
