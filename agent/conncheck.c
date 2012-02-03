@@ -1031,6 +1031,8 @@ void conn_check_remote_candidates_set(NiceAgent *agent)
             if (candidate) {
               conn_check_add_for_candidate (agent, stream->id, component, candidate);
 
+              if (icheck->use_candidate)
+                priv_mark_pair_nominated (agent, stream, component, candidate);
               priv_schedule_triggered_check (agent, stream, component, icheck->local_socket, candidate, icheck->use_candidate);
             }
           }
