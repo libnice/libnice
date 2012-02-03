@@ -943,13 +943,14 @@ static void priv_preprocess_conn_check_pending_data (NiceAgent *agent, Stream *s
 void conn_check_remote_candidates_set(NiceAgent *agent)
 {
   GSList *i, *j, *k, *l, *m, *n;
+
   for (i = agent->streams; i ; i = i->next) {
     Stream *stream = i->data;
     for (j = stream->conncheck_list; j ; j = j->next) {
       CandidateCheckPair *pair = j->data;
       Component *component = stream_find_component_by_id (stream, pair->component_id);
       gboolean match = FALSE;
-      
+
       /* performn delayed processing of spec steps section 7.2.1.4,
 	 and section 7.2.1.5 */
       priv_preprocess_conn_check_pending_data (agent, stream, component, pair);
@@ -1020,7 +1021,11 @@ void conn_check_remote_candidates_set(NiceAgent *agent)
             nice_debug ("Agent %p : Username check failed. pending check has "
                 "to wait to be processed", agent);
           } else {
-            NiceCandidate *candidate =
+            NiceCandidate *candidate;
+
+            nice_debug ("Agent %p : Discovered peer reflexive from early i-check",
+                agent);
+            candidate =
                 discovery_learn_remote_peer_reflexive_candidate (agent,
                     stream,
                     component,
@@ -1681,7 +1686,8 @@ static guint priv_prune_pending_checks (Stream *stream, guint component_id)
   guint64 highest_nominated_priority = 0;
   guint in_progress = 0;
 
-  nice_debug ("Finding highest priority for component %d", component_id);
+  nice_debug ("Agent XXX: Finding highest priority for component %d",
+      component_id);
 
   for (i = stream->conncheck_list; i; i = i->next) {
     CandidateCheckPair *p = i->data;
