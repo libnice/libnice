@@ -2714,14 +2714,13 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, Stream *stream,
 
   if (valid == STUN_VALIDATION_UNKNOWN_REQUEST_ATTRIBUTE) {
     nice_debug ("Agent %p : Unknown mandatory attributes in message.", agent);
-    rbuf_len = stun_agent_build_unknown_attributes_error (&agent->stun_agent,
-        &msg, rbuf, rbuf_len, &req);
-    if (len == 0)
-      return FALSE;
 
     if (agent->compatibility != NICE_COMPATIBILITY_MSN &&
         agent->compatibility != NICE_COMPATIBILITY_OC2007) {
-      nice_socket_send (socket, from, rbuf_len, (const gchar*)rbuf);
+      rbuf_len = stun_agent_build_unknown_attributes_error (&agent->stun_agent,
+          &msg, rbuf, rbuf_len, &req);
+      if (rbuf_len != 0)
+        nice_socket_send (socket, from, rbuf_len, (const gchar*)rbuf);
     }
     return TRUE;
   }
