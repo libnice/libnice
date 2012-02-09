@@ -1409,7 +1409,7 @@ priv_add_new_candidate_discovery_turn (NiceAgent *agent,
         agent->proxy_ip != NULL &&
         nice_address_set_from_string (&proxy_server, agent->proxy_ip)) {
       nice_address_set_port (&proxy_server, agent->proxy_port);
-      socket = nice_tcp_bsd_socket_new (agent, component->ctx, &proxy_server);
+      socket = nice_tcp_bsd_socket_new (agent->main_context, &proxy_server);
 
       if (socket) {
         _priv_set_socket_tos (agent, socket, stream->tos);
@@ -1427,14 +1427,14 @@ priv_add_new_candidate_discovery_turn (NiceAgent *agent,
 
     }
     if (socket == NULL) {
-      socket = nice_tcp_bsd_socket_new (agent, component->ctx, &turn->server);
+      socket = nice_tcp_bsd_socket_new (agent->main_context, &turn->server);
       _priv_set_socket_tos (agent, socket, stream->tos);
     }
     if (turn->type ==  NICE_RELAY_TYPE_TURN_TLS &&
         agent->compatibility == NICE_COMPATIBILITY_GOOGLE) {
-      socket = nice_pseudossl_socket_new (agent, socket);
+      socket = nice_pseudossl_socket_new (socket);
     }
-    cdisco->nicesock = nice_tcp_turn_socket_new (agent, socket,
+    cdisco->nicesock = nice_tcp_turn_socket_new (socket,
         agent_to_turn_socket_compatibility (agent));
 
     agent_attach_stream_component_socket (agent, stream,
@@ -2752,10 +2752,18 @@ nice_agent_attach_recv (
 
   ret = TRUE;
 
+  component->g_source_io_cb = NULL;
+  component->data = NULL;
+  if (component->ctx)
+    g_main_context_unref (component->ctx);
+  component->ctx = NULL;
+
   if (func) {
     component->g_source_io_cb = func;
     component->data = data;
     component->ctx = ctx;
+    if (ctx)
+      g_main_context_ref (ctx);
 
     priv_attach_stream_component (agent, stream, component);
 
@@ -2768,12 +2776,7 @@ nice_agent_attach_recv (
     if (component->tcp && component->tcp_data && component->tcp_readable)
       pseudo_tcp_socket_readable (component->tcp, component->tcp_data);
 
-  } else {
-    component->g_source_io_cb = NULL;
-    component->data = NULL;
-    component->ctx = NULL;
   }
-
 
  done:
   agent_unlock();
@@ -2834,7 +2837,7 @@ GSource* agent_timeout_add_with_context (NiceAgent *agent, guint interval,
 {
   GSource *source;
 
-  g_return_val_if_fail (function != NULL, 0);
+  g_return_val_if_fail (function != NULL, NULL);
 
   source = g_timeout_source_new (interval);
 
