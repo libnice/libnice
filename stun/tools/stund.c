@@ -249,7 +249,7 @@ static int dgram_process (int sock, StunAgent *oldagent, StunAgent *newagent)
   /* Unknown attributes */
   if (validation == STUN_VALIDATION_UNKNOWN_REQUEST_ATTRIBUTE)
   {
-    stun_agent_build_unknown_attributes_error (agent, &response, buf,
+    iov.iov_len = stun_agent_build_unknown_attributes_error (agent, &response, buf,
         sizeof (buf), &request);
     goto send_buf;
   }
