@@ -2317,8 +2317,10 @@ static gboolean priv_map_reply_to_relay_request (NiceAgent *agent, StunMessage *
           NiceAddress niceaddr;
           NiceCandidate *relay_cand;
 
-          /* We also received our mapped address */
-          if (res == STUN_USAGE_TURN_RETURN_MAPPED_SUCCESS) {
+          /* Server reflexive candidates are only valid for UDP sockets */
+          if (res == STUN_USAGE_TURN_RETURN_MAPPED_SUCCESS &&
+              !nice_socket_is_reliable (d->nicesock)) {
+            /* We also received our mapped address */
             nice_address_set_from_sockaddr (&niceaddr,
                 (struct sockaddr *) &sockaddr);
 
