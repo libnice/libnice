@@ -185,8 +185,10 @@ void refresh_free_item (gpointer data, gpointer user_data)
     /* send the refresh twice since we won't do retransmissions */
     nice_socket_send (cand->nicesock, &cand->server,
         buffer_len, (gchar *)cand->stun_buffer);
-    nice_socket_send (cand->nicesock, &cand->server,
-        buffer_len, (gchar *)cand->stun_buffer);
+    if (!nice_socket_is_reliable (cand->nicesock)) {
+      nice_socket_send (cand->nicesock, &cand->server,
+          buffer_len, (gchar *)cand->stun_buffer);
+    }
 
   }
 
@@ -898,8 +900,13 @@ static gboolean priv_discovery_tick_unlocked (gpointer pointer)
         }
 
 	if (buffer_len > 0) {
-          stun_timer_start (&cand->timer, 200,
-              STUN_TIMER_DEFAULT_MAX_RETRANSMISSIONS);
+          if (nice_socket_is_reliable (cand->nicesock)) {
+            stun_timer_start_reliable (&cand->timer,
+                STUN_TIMER_DEFAULT_RELIABLE_TIMEOUT);
+          } else {
+            stun_timer_start (&cand->timer, 200,
+                STUN_TIMER_DEFAULT_MAX_RETRANSMISSIONS);
+          }
 
           /* send the conncheck */
           nice_socket_send (cand->nicesock, &cand->server,
