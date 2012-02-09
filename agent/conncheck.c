@@ -2250,6 +2250,17 @@ priv_add_new_turn_refresh (CandidateDiscovery *cdisco, NiceCandidate *relay_cand
   cand->component = cdisco->component;
   cand->agent = cdisco->agent;
   memcpy (&cand->stun_agent, &cdisco->stun_agent, sizeof(StunAgent));
+
+  /* Use previous stun response for authentication credentials */
+  if (cdisco->stun_resp_msg.buffer != NULL) {
+    memcpy(cand->stun_resp_buffer, cdisco->stun_resp_buffer,
+        sizeof(cand->stun_resp_buffer));
+    memcpy(&cand->stun_resp_msg, &cdisco->stun_resp_msg, sizeof(StunMessage));
+    cand->stun_resp_msg.buffer = cand->stun_resp_buffer;
+    cand->stun_resp_msg.agent = NULL;
+    cand->stun_resp_msg.key = NULL;
+  }
+
   nice_debug ("Agent %p : Adding new refresh candidate %p with timeout %d",
       agent, cand, (lifetime - 60) * 1000);
 
