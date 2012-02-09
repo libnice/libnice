@@ -166,74 +166,22 @@ error:
   return -1;
 }
 
-
-/** Dequeue error from a socket if applicable */
-static int recv_err (int fd)
-{
-#ifdef MSG_ERRQUEUE
-  struct msghdr hdr;
-  memset (&hdr, 0, sizeof (hdr));
-  return recvmsg (fd, &hdr, MSG_ERRQUEUE) >= 0;
-#else
-  (void) fd;
-  return 0;
-#endif
-}
-
-
-/** Receives a message or dequeues an error from a socket */
-ssize_t recv_safe (int fd, struct msghdr *msg)
-{
-  ssize_t len = recvmsg (fd, msg, 0);
-  if (len == -1)
-    recv_err (fd);
-  else
-  if (msg->msg_flags & MSG_TRUNC)
-  {
-    errno = EMSGSIZE;
-    return -1;
-  }
-
-  return len;
-}
-
-
-/** Sends a message through a socket */
-ssize_t send_safe (int fd, const struct msghdr *msg)
-{
-  ssize_t len;
-
-  do
-    len = sendmsg (fd, msg, 0);
-  while ((len == -1) && (recv_err (fd) == 0));
-
-  return len;
-}
-
-
 static int dgram_process (int sock, StunAgent *oldagent, StunAgent *newagent)
 {
   struct sockaddr_storage addr;
+  socklen_t addr_len;
   uint8_t buf[STUN_MAX_MESSAGE_SIZE];
-  char ctlbuf[CMSG_SPACE (sizeof (struct in6_pktinfo))];
-  struct iovec iov = { buf, sizeof (buf) };
+  size_t buf_len = 0;
+  size_t len = 0;
   StunMessage request;
   StunMessage response;
   StunValidationStatus validation;
   StunAgent *agent = NULL;
 
-  struct msghdr mh =
-  {
-    .msg_name = (struct sockaddr *)&addr,
-    .msg_namelen = sizeof (struct sockaddr_in),
-    .msg_iov = &iov,
-    .msg_iovlen = 1,
-    .msg_control = ctlbuf,
-    .msg_controllen = sizeof (ctlbuf)
-  };
-
-  size_t len = recv_safe (sock, &mh);
-  if (len == (size_t)-1)
+  addr_len = sizeof (struct sockaddr_in);
+  len = recvfrom (sock, buf, sizeof(buf), 0,
+      (struct sockaddr *)&addr, &addr_len);
+  if (buf_len == (size_t)-1)
     return -1;
 
   validation = stun_agent_validate (newagent, &request, buf, len, NULL, 0);
@@ -249,7 +197,7 @@ static int dgram_process (int sock, StunAgent *oldagent, StunAgent *newagent)
   /* Unknown attributes */
   if (validation == STUN_VALIDATION_UNKNOWN_REQUEST_ATTRIBUTE)
   {
-    iov.iov_len = stun_agent_build_unknown_attributes_error (agent, &response, buf,
+    buf_len = stun_agent_build_unknown_attributes_error (agent, &response, buf,
         sizeof (buf), &request);
     goto send_buf;
   }
@@ -266,11 +214,11 @@ static int dgram_process (int sock, StunAgent *oldagent, StunAgent *newagent)
       stun_agent_init_response (agent, &response, buf, sizeof (buf), &request);
       if (stun_message_has_cookie (&request))
         stun_message_append_xor_addr (&response,
-                              STUN_ATTRIBUTE_XOR_MAPPED_ADDRESS,
-                              mh.msg_name, mh.msg_namelen);
+            STUN_ATTRIBUTE_XOR_MAPPED_ADDRESS,
+            (struct sockaddr *)&addr, addr_len);
       else
          stun_message_append_addr (&response, STUN_ATTRIBUTE_MAPPED_ADDRESS,
-                          mh.msg_name, mh.msg_namelen);
+             (struct sockaddr *)&addr, addr_len);
       break;
 
     default:
@@ -279,11 +227,11 @@ static int dgram_process (int sock, StunAgent *oldagent, StunAgent *newagent)
         return -1;
   }
 
-  iov.iov_len = stun_agent_finish_message (agent, &response, NULL, 0);
+  buf_len = stun_agent_finish_message (agent, &response, NULL, 0);
 send_buf:
-
-  len = send_safe (sock, &mh);
-  return (len < iov.iov_len) ? -1 : 0;
+  len = sendto (sock, buf, buf_len, 0,
+      (struct sockaddr *)&addr, addr_len);
+  return (len < buf_len) ? -1 : 0;
 }
 
 
