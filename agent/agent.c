@@ -1428,8 +1428,15 @@ priv_add_new_candidate_discovery_turn (NiceAgent *agent,
     }
     if (socket == NULL) {
       socket = nice_tcp_bsd_socket_new (agent->main_context, &turn->server);
-      _priv_set_socket_tos (agent, socket, stream->tos);
+
+      if (socket)
+        _priv_set_socket_tos (agent, socket, stream->tos);
     }
+
+    /* The TURN server may be invalid or not listening */
+    if (socket == NULL)
+      return;
+
     if (turn->type ==  NICE_RELAY_TYPE_TURN_TLS &&
         agent->compatibility == NICE_COMPATIBILITY_GOOGLE) {
       socket = nice_pseudossl_socket_new (socket);
