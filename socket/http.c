@@ -190,8 +190,11 @@ socket_recv (NiceSocket *sock, NiceAddress *from, guint len, gchar *buf)
   HttpPriv *priv = sock->priv;
   gint read = -1;
 
+  if (from)
+    *from = priv->addr;
+
   if (priv->base_socket)
-    read = nice_socket_recv (priv->base_socket, from, len, buf);
+    read = nice_socket_recv (priv->base_socket, NULL, len, buf);
 
   if (read <= 0 || priv->state == HTTP_STATE_CONNECTED) {
     return read;

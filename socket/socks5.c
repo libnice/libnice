@@ -164,10 +164,13 @@ socket_recv (NiceSocket *sock, NiceAddress *from, guint len, gchar *buf)
 {
   Socks5Priv *priv = sock->priv;
 
+  if (from)
+    *from = priv->addr;
+
   switch (priv->state) {
     case SOCKS_STATE_CONNECTED:
       if (priv->base_socket)
-        return nice_socket_recv (priv->base_socket, from, len, buf);
+        return nice_socket_recv (priv->base_socket, NULL, len, buf);
       break;
     case SOCKS_STATE_INIT:
       {
@@ -177,7 +180,7 @@ socket_recv (NiceSocket *sock, NiceAddress *from, guint len, gchar *buf)
         nice_debug ("Socks5 state Init");
 
         if (priv->base_socket)
-          ret = nice_socket_recv (priv->base_socket, from, sizeof(data), data);
+          ret = nice_socket_recv (priv->base_socket, NULL, sizeof(data), data);
 
         if (ret <= 0) {
           return ret;
@@ -244,7 +247,7 @@ socket_recv (NiceSocket *sock, NiceAddress *from, guint len, gchar *buf)
 
         nice_debug ("Socks5 state auth");
         if (priv->base_socket)
-          ret = nice_socket_recv (priv->base_socket, from, sizeof(data), data);
+          ret = nice_socket_recv (priv->base_socket, NULL, sizeof(data), data);
 
         if (ret <= 0) {
           return ret;
@@ -266,7 +269,7 @@ socket_recv (NiceSocket *sock, NiceAddress *from, guint len, gchar *buf)
 
         nice_debug ("Socks5 state connect");
         if (priv->base_socket)
-          ret = nice_socket_recv (priv->base_socket, from, 4, data);
+          ret = nice_socket_recv (priv->base_socket, NULL, 4, data);
 
         if (ret <= 0) {
           return ret;
@@ -278,14 +281,14 @@ socket_recv (NiceSocket *sock, NiceAddress *from, guint len, gchar *buf)
                   struct to_be_sent *tbs = NULL;
                   switch (data[3]) {
                     case 0x01: /* IPV4 bound address */
-                      ret = nice_socket_recv (priv->base_socket, from, 6, data);
+                      ret = nice_socket_recv (priv->base_socket, NULL, 6, data);
                       if (ret != 6) {
                         /* Could not read server bound address */
                         goto error;
                       }
                       break;
                     case 0x04: /* IPV6 bound address */
-                      ret = nice_socket_recv (priv->base_socket, from, 18, data);
+                      ret = nice_socket_recv (priv->base_socket, NULL, 18, data);
                       if (ret != 18) {
                         /* Could not read server bound address */
                         goto error;
