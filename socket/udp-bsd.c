@@ -161,7 +161,8 @@ socket_recv (NiceSocket *sock, NiceAddress *from, guint len, gchar *buf)
 
   if (recvd < 0) {
 #ifdef G_OS_WIN32
-    if (WSAGetLastError () == WSAEWOULDBLOCK)
+    if (WSAGetLastError () == WSAEWOULDBLOCK ||
+        WSAGetLastError () == WSAECONNRESET)
 #else
     if (errno == EAGAIN || errno == EWOULDBLOCK)
 #endif
