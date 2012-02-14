@@ -1381,7 +1381,7 @@ priv_send_create_permission(TurnPriv *priv, StunMessage *resp,
       realm, realm_len,
       nonce, nonce_len,
       (struct sockaddr *) &addr,
-      NICE_TURN_SOCKET_COMPATIBILITY_RFC5766);
+      STUN_USAGE_TURN_COMPATIBILITY_RFC5766);
 
   if (msg_buf_len > 0) {
     res = nice_socket_send (priv->base_socket, &priv->server_addr,
