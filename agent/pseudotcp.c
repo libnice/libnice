@@ -68,13 +68,8 @@
 #include <string.h>
 
 #include <glib.h>
-#ifdef G_OS_WIN32
-#  include <winsock2.h>
-#  define ECONNABORTED WSAECONNABORTED
-#  define ENOTCONN WSAENOTCONN
-#  define EWOULDBLOCK WSAEWOULDBLOCK
-#  define ECONNRESET WSAECONNRESET
-#else
+
+#ifndef G_OS_WIN32
 #  include <arpa/inet.h>
 #endif
 

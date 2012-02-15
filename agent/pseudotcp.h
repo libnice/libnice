@@ -58,6 +58,14 @@
 
 #include <glib-object.h>
 
+#ifdef G_OS_WIN32
+#  include <winsock2.h>
+#  define ECONNABORTED WSAECONNABORTED
+#  define ENOTCONN WSAENOTCONN
+#  define EWOULDBLOCK WSAEWOULDBLOCK
+#  define ECONNRESET WSAECONNRESET
+#endif
+
 G_BEGIN_DECLS
 
 /**

@@ -49,10 +49,7 @@
 #include <string.h>
 #include <errno.h>
 
-#ifdef G_OS_WIN32
-#  include <winsock2.h>
-#  define EWOULDBLOCK WSAEWOULDBLOCK
-#else
+#ifndef G_OS_WIN32
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
