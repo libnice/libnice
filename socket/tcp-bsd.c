@@ -387,7 +387,11 @@ add_to_be_sent (NiceSocket *sock, const gchar *buf, guint len, gboolean head)
     g_queue_push_tail (&priv->send_queue, tbs);
 
   if (priv->io_channel == NULL) {
+#ifndef G_OS_WIN32
     priv->io_channel = g_io_channel_unix_new (sock->fileno);
+#else
+    priv->io_channel = g_io_channel_win32_new_socket (sock->fileno);
+#endif
     priv->io_source = g_io_create_watch (priv->io_channel, G_IO_OUT);
     g_source_set_callback (priv->io_source, (GSourceFunc) socket_send_more,
         sock, NULL);
