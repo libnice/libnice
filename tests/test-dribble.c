@@ -207,6 +207,12 @@ int main (void)
   GSList *cands, *i;
   guint ls_id, rs_id;
 
+#ifdef G_OS_WIN32
+  WSADATA w;
+
+  WSAStartup(0x0202, &w);
+#endif
+
   g_type_init ();
 #if !GLIB_CHECK_VERSION(2,31,8)
   g_thread_init (NULL);
@@ -397,5 +403,8 @@ int main (void)
 
   g_source_remove (timer_id);
 
+#ifdef G_OS_WIN32
+  WSACleanup();
+#endif
   return 0;
 }

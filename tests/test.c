@@ -52,6 +52,12 @@ main (void)
   GSList *candidates, *i;
   guint stream_id;
 
+#ifdef G_OS_WIN32
+  WSADATA w;
+
+  WSAStartup(0x0202, &w);
+#endif
+
   nice_address_init (&addr_local);
   nice_address_init (&addr_remote);
   g_type_init ();
@@ -94,6 +100,9 @@ main (void)
 
   /* clean up */
   g_object_unref (agent);
+#ifdef G_OS_WIN32
+  WSACleanup();
+#endif
   return 0;
 }
 
