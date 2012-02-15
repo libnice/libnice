@@ -1922,11 +1922,11 @@ static CandidateCheckPair *priv_add_peer_reflexive_pair (NiceAgent *agent, guint
   g_snprintf (pair->foundation, NICE_CANDIDATE_PAIR_MAX_FOUNDATION, "%s:%s",
       local_cand->foundation, parent_pair->remote->foundation);
   if (agent->controlling_mode == TRUE)
-    pair->priority = nice_candidate_pair_priority (local_cand->priority,
-        parent_pair->priority);
+    pair->priority = nice_candidate_pair_priority (pair->local->priority,
+        pair->remote->priority);
   else
-    pair->priority = nice_candidate_pair_priority (parent_pair->priority,
-        local_cand->priority);
+    pair->priority = nice_candidate_pair_priority (pair->remote->priority,
+        pair->local->priority);
   pair->nominated = FALSE;
   pair->controlling = agent->controlling_mode;
   nice_debug ("Agent %p : added a new peer-discovered pair with foundation of '%s'.",  agent, pair->foundation);
