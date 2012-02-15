@@ -15,7 +15,11 @@
 #ifndef SHA1_H
 #define SHA1_H
 
+#ifdef _WIN32
+#include "win32_common.h"
+#else
 #include <stdint.h>
+#endif
 #include <stddef.h>
 
 #define SHA1_MAC_LEN 20
