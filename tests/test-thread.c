@@ -82,7 +82,7 @@ cb_new_selected_pair(NiceAgent *agent,
     gchar* rfoundation,
     gpointer data)
 {
-  g_debug ("test-thread:%s: %p", __func__, data);
+  g_debug ("test-thread:%s: %p", G_STRFUNC, data);
 
   if (GPOINTER_TO_UINT (data) == 1)
     g_atomic_int_inc (&global_lagent_cands);

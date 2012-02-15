@@ -128,7 +128,7 @@ static void cb_candidate_gathering_done(NiceAgent *agent, guint stream_id, gpoin
 
 static void cb_component_state_changed (NiceAgent *agent, guint stream_id, guint component_id, guint state, gpointer data)
 {
-  g_debug ("test-dribble:%s: %p", __func__, data);
+  g_debug ("test-dribble:%s: %p", G_STRFUNC, data);
 
   if (GPOINTER_TO_UINT (data) == 1)
     global_lagent_state = state;
@@ -165,7 +165,7 @@ static void cb_component_state_changed (NiceAgent *agent, guint stream_id, guint
 static void cb_new_selected_pair(NiceAgent *agent, guint stream_id, guint component_id, 
 				 gchar *lfoundation, gchar* rfoundation, gpointer data)
 {
-  g_debug ("test-dribble:%s: %p", __func__, data);
+  g_debug ("test-dribble:%s: %p", G_STRFUNC, data);
 
   if (GPOINTER_TO_UINT (data) == 1)
     ++global_lagent_cands;
@@ -179,7 +179,7 @@ static void cb_new_selected_pair(NiceAgent *agent, guint stream_id, guint compon
 static void cb_new_candidate(NiceAgent *agent, guint stream_id, guint component_id, 
 			     gchar *foundation, gpointer data)
 {
-  g_debug ("test-dribble:%s: %p", __func__, data);
+  g_debug ("test-dribble:%s: %p", G_STRFUNC, data);
 
   /* XXX: dear compiler, these are for you: */
   (void)agent; (void)stream_id; (void)data; (void)component_id; (void)foundation;
@@ -187,7 +187,7 @@ static void cb_new_candidate(NiceAgent *agent, guint stream_id, guint component_
 
 static void cb_initial_binding_request_received(NiceAgent *agent, guint stream_id, gpointer data)
 {
-  g_debug ("test-dribble:%s: %p", __func__, data);
+  g_debug ("test-dribble:%s: %p", G_STRFUNC, data);
 
   if (GPOINTER_TO_UINT (data) == 1)
     global_lagent_ibr_received = TRUE;
