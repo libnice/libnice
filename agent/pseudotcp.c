@@ -1142,10 +1142,11 @@ process(PseudoTcpSocket *self, Segment *seg)
           iter = priv->rlist;
         }
       } else {
-        DEBUG (PSEUDO_TCP_DEBUG_NORMAL, "Saving %d bytes (%d -> %d)",
-            seg->len, seg->seq, seg->seq + seg->len);
         GList *iter = NULL;
         RSegment *rseg = g_slice_new0 (RSegment);
+
+        DEBUG (PSEUDO_TCP_DEBUG_NORMAL, "Saving %d bytes (%d -> %d)",
+            seg->len, seg->seq, seg->seq + seg->len);
         rseg->seq = seg->seq;
         rseg->len = seg->len;
         iter = priv->rlist;
