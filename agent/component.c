@@ -288,12 +288,12 @@ component_set_selected_remote_candidate (NiceAgent *agent, Component *component,
 {
   NiceCandidate *local = NULL;
   NiceCandidate *remote = NULL;
-  guint32 priority = 0;
+  guint64 priority = 0;
   GSList *item = NULL;
 
   for (item = component->local_candidates; item; item = g_slist_next (item)) {
     NiceCandidate *tmp = item->data;
-    guint32 tmp_prio = 0;
+    guint64 tmp_prio = 0;
 
     if (tmp->transport != candidate->transport ||
 	tmp->addr.s.addr.sa_family != candidate->addr.s.addr.sa_family ||
