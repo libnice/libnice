@@ -69,7 +69,7 @@ static void stun_gettime (struct timeval *now)
   *time64 -= (unsigned long long) 116444736000000000;
   *time64 /= 10;
 
-  now->tv_sec = *time64 / 1000000;
+  now->tv_sec = (long)(*time64 / 1000000);
   now->tv_usec = *time64 % 1000000;
 #else
 #if defined (_POSIX_MONOTONIC_CLOCK) && (_POSIX_MONOTONIC_CLOCK >= 0)
