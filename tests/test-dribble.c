@@ -150,14 +150,6 @@ static void cb_component_state_changed (NiceAgent *agent, guint stream_id, guint
     return;
   }
 
-#if 0
-  /* signal status via a global variable */
-  if (global_components_failed == global_components_failed_exit) {
-    g_main_loop_quit (global_mainloop); 
-    return;
-  }
-#endif
-
   /* XXX: dear compiler, these are for you: */
   (void)agent; (void)stream_id; (void)data; (void)component_id;
 }
