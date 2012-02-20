@@ -1,0 +1,73 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 10.00
+# Visual Studio 2008
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "libnice", "libnice.vcproj", "{550C7FB8-DBFE-4364-B26A-DAF7158CD878}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "test", "test.vcproj", "{3B5FCB79-8AAA-4388-926B-3AD3F8BBB5D8}"
+	ProjectSection(ProjectDependencies) = postProject
+		{550C7FB8-DBFE-4364-B26A-DAF7158CD878} = {550C7FB8-DBFE-4364-B26A-DAF7158CD878}
+	EndProjectSection
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "test-dribble", "test-dribble.vcproj", "{4E64F83D-4AE9-468A-867A-CB42A8B89150}"
+	ProjectSection(ProjectDependencies) = postProject
+		{550C7FB8-DBFE-4364-B26A-DAF7158CD878} = {550C7FB8-DBFE-4364-B26A-DAF7158CD878}
+	EndProjectSection
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "test-fullmode", "test-fullmode.vcproj", "{60EC66A2-FE1F-413E-8FEE-204386D62617}"
+	ProjectSection(ProjectDependencies) = postProject
+		{550C7FB8-DBFE-4364-B26A-DAF7158CD878} = {550C7FB8-DBFE-4364-B26A-DAF7158CD878}
+	EndProjectSection
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "glib", "glib.vcproj", "{DD34FAC7-C1A2-4F29-8C96-3F053B47D714}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "test-pseudotcp", "test-pseudotcp.vcproj", "{619723EB-D355-46DC-AF8F-0A04F44AC581}"
+	ProjectSection(ProjectDependencies) = postProject
+		{550C7FB8-DBFE-4364-B26A-DAF7158CD878} = {550C7FB8-DBFE-4364-B26A-DAF7158CD878}
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "dependencies", "dependencies", "{D3264B88-D38F-41E4-A2CB-C53644913D75}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{46508783-E794-4688-B045-DE02A626B078}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Win32 = Debug|Win32
+		Release|Win32 = Release|Win32
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{550C7FB8-DBFE-4364-B26A-DAF7158CD878}.Debug|Win32.ActiveCfg = Debug|Win32
+		{550C7FB8-DBFE-4364-B26A-DAF7158CD878}.Debug|Win32.Build.0 = Debug|Win32
+		{550C7FB8-DBFE-4364-B26A-DAF7158CD878}.Release|Win32.ActiveCfg = Release|Win32
+		{550C7FB8-DBFE-4364-B26A-DAF7158CD878}.Release|Win32.Build.0 = Release|Win32
+		{3B5FCB79-8AAA-4388-926B-3AD3F8BBB5D8}.Debug|Win32.ActiveCfg = Debug|Win32
+		{3B5FCB79-8AAA-4388-926B-3AD3F8BBB5D8}.Debug|Win32.Build.0 = Debug|Win32
+		{3B5FCB79-8AAA-4388-926B-3AD3F8BBB5D8}.Release|Win32.ActiveCfg = Release|Win32
+		{3B5FCB79-8AAA-4388-926B-3AD3F8BBB5D8}.Release|Win32.Build.0 = Release|Win32
+		{4E64F83D-4AE9-468A-867A-CB42A8B89150}.Debug|Win32.ActiveCfg = Debug|Win32
+		{4E64F83D-4AE9-468A-867A-CB42A8B89150}.Debug|Win32.Build.0 = Debug|Win32
+		{4E64F83D-4AE9-468A-867A-CB42A8B89150}.Release|Win32.ActiveCfg = Release|Win32
+		{4E64F83D-4AE9-468A-867A-CB42A8B89150}.Release|Win32.Build.0 = Release|Win32
+		{60EC66A2-FE1F-413E-8FEE-204386D62617}.Debug|Win32.ActiveCfg = Debug|Win32
+		{60EC66A2-FE1F-413E-8FEE-204386D62617}.Debug|Win32.Build.0 = Debug|Win32
+		{60EC66A2-FE1F-413E-8FEE-204386D62617}.Release|Win32.ActiveCfg = Release|Win32
+		{60EC66A2-FE1F-413E-8FEE-204386D62617}.Release|Win32.Build.0 = Release|Win32
+		{DD34FAC7-C1A2-4F29-8C96-3F053B47D714}.Debug|Win32.ActiveCfg = Debug|Win32
+		{DD34FAC7-C1A2-4F29-8C96-3F053B47D714}.Debug|Win32.Build.0 = Debug|Win32
+		{DD34FAC7-C1A2-4F29-8C96-3F053B47D714}.Release|Win32.ActiveCfg = Release|Win32
+		{DD34FAC7-C1A2-4F29-8C96-3F053B47D714}.Release|Win32.Build.0 = Release|Win32
+		{619723EB-D355-46DC-AF8F-0A04F44AC581}.Debug|Win32.ActiveCfg = Debug|Win32
+		{619723EB-D355-46DC-AF8F-0A04F44AC581}.Debug|Win32.Build.0 = Debug|Win32
+		{619723EB-D355-46DC-AF8F-0A04F44AC581}.Release|Win32.ActiveCfg = Release|Win32
+		{619723EB-D355-46DC-AF8F-0A04F44AC581}.Release|Win32.Build.0 = Release|Win32
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{DD34FAC7-C1A2-4F29-8C96-3F053B47D714} = {D3264B88-D38F-41E4-A2CB-C53644913D75}
+		{3B5FCB79-8AAA-4388-926B-3AD3F8BBB5D8} = {46508783-E794-4688-B045-DE02A626B078}
+		{4E64F83D-4AE9-468A-867A-CB42A8B89150} = {46508783-E794-4688-B045-DE02A626B078}
+		{60EC66A2-FE1F-413E-8FEE-204386D62617} = {46508783-E794-4688-B045-DE02A626B078}
+		{619723EB-D355-46DC-AF8F-0A04F44AC581} = {46508783-E794-4688-B045-DE02A626B078}
+	EndGlobalSection
+EndGlobal

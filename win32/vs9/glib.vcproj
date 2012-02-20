@@ -1,0 +1,235 @@
+<?xml version="1.0" encoding="Windows-1252"?>
+<VisualStudioProject
+	ProjectType="Visual C++"
+	Version="9.00"
+	Name="glib"
+	ProjectGUID="{DD34FAC7-C1A2-4F29-8C96-3F053B47D714}"
+	RootNamespace="glib"
+	Keyword="Win32Proj"
+	TargetFrameworkVersion="196613"
+	>
+	<Platforms>
+		<Platform
+			Name="Win32"
+		/>
+	</Platforms>
+	<ToolFiles>
+	</ToolFiles>
+	<Configurations>
+		<Configuration
+			Name="Debug|Win32"
+			OutputDirectory="$(SolutionDir)$(SolutionName)\bin\$(PlatformName)_$(ConfigurationName)"
+			IntermediateDirectory="$(SolutionDir)$(SolutionName)\obj\$(PlatformName)_$(ConfigurationName)\$(ProjectName)"
+			ConfigurationType="10"
+			CharacterSet="1"
+			>
+			<Tool
+				Name="VCPreBuildEventTool"
+			/>
+			<Tool
+				Name="VCCustomBuildTool"
+			/>
+			<Tool
+				Name="VCMIDLTool"
+			/>
+			<Tool
+				Name="VCPostBuildEventTool"
+			/>
+		</Configuration>
+		<Configuration
+			Name="Release|Win32"
+			OutputDirectory="$(SolutionDir)$(SolutionName)\bin\$(PlatformName)_$(ConfigurationName)"
+			IntermediateDirectory="$(SolutionDir)$(SolutionName)\obj\$(PlatformName)_$(ConfigurationName)\$(ProjectName)"
+			ConfigurationType="10"
+			CharacterSet="1"
+			WholeProgramOptimization="1"
+			>
+			<Tool
+				Name="VCPreBuildEventTool"
+			/>
+			<Tool
+				Name="VCCustomBuildTool"
+			/>
+			<Tool
+				Name="VCMIDLTool"
+			/>
+			<Tool
+				Name="VCPostBuildEventTool"
+			/>
+		</Configuration>
+	</Configurations>
+	<References>
+	</References>
+	<Files>
+		<File
+			RelativePath="..\..\glib\bin\intl.dll"
+			>
+			<FileConfiguration
+				Name="Debug|Win32"
+				>
+				<Tool
+					Name="VCCustomBuildTool"
+					Description="copying $(InputFileName) to OutDir"
+					CommandLine="copy /y $(InputPath) $(OutDir) &gt;NUL&#x0D;&#x0A;"
+					Outputs="$(OutDir)\$(InputFileName)"
+				/>
+			</FileConfiguration>
+			<FileConfiguration
+				Name="Release|Win32"
+				>
+				<Tool
+					Name="VCCustomBuildTool"
+					Description="copying $(InputFileName) to OutDir"
+					CommandLine="copy /y $(InputPath) $(OutDir) &gt;NUL&#x0D;&#x0A;"
+					Outputs="$(OutDir)\$(InputFileName)"
+				/>
+			</FileConfiguration>
+		</File>
+		<File
+			RelativePath="..\..\glib\bin\libgio-2.0-0.dll"
+			>
+			<FileConfiguration
+				Name="Debug|Win32"
+				>
+				<Tool
+					Name="VCCustomBuildTool"
+					Description="copying $(InputFileName) to OutDir"
+					CommandLine="copy /y $(InputPath) $(OutDir) &gt;NUL&#x0D;&#x0A;"
+					Outputs="$(OutDir)\$(InputFileName)"
+				/>
+			</FileConfiguration>
+			<FileConfiguration
+				Name="Release|Win32"
+				>
+				<Tool
+					Name="VCCustomBuildTool"
+					Description="copying $(InputFileName) to OutDir"
+					CommandLine="copy /y $(InputPath) $(OutDir) &gt;NUL&#x0D;&#x0A;"
+					Outputs="$(OutDir)\$(InputFileName)"
+				/>
+			</FileConfiguration>
+		</File>
+		<File
+			RelativePath="..\..\glib\bin\libglib-2.0-0.dll"
+			>
+			<FileConfiguration
+				Name="Debug|Win32"
+				>
+				<Tool
+					Name="VCCustomBuildTool"
+					Description="copying $(InputFileName) to OutDir"
+					CommandLine="copy /y $(InputPath) $(OutDir) &gt;NUL&#x0D;&#x0A;"
+					Outputs="$(OutDir)\$(InputFileName)"
+				/>
+			</FileConfiguration>
+			<FileConfiguration
+				Name="Release|Win32"
+				>
+				<Tool
+					Name="VCCustomBuildTool"
+					Description="copying $(InputFileName) to OutDir"
+					CommandLine="copy /y $(InputPath) $(OutDir) &gt;NUL&#x0D;&#x0A;"
+					Outputs="$(OutDir)\$(InputFileName)"
+				/>
+			</FileConfiguration>
+		</File>
+		<File
+			RelativePath="..\..\glib\bin\libgmodule-2.0-0.dll"
+			>
+			<FileConfiguration
+				Name="Debug|Win32"
+				>
+				<Tool
+					Name="VCCustomBuildTool"
+					Description="copying $(InputFileName) to OutDir"
+					CommandLine="copy /y $(InputPath) $(OutDir) &gt;NUL&#x0D;&#x0A;"
+					Outputs="$(OutDir)\$(InputFileName)"
+				/>
+			</FileConfiguration>
+			<FileConfiguration
+				Name="Release|Win32"
+				>
+				<Tool
+					Name="VCCustomBuildTool"
+					Description="copying $(InputFileName) to OutDir"
+					CommandLine="copy /y $(InputPath) $(OutDir) &gt;NUL&#x0D;&#x0A;"
+					Outputs="$(OutDir)\$(InputFileName)"
+				/>
+			</FileConfiguration>
+		</File>
+		<File
+			RelativePath="..\..\glib\bin\libgobject-2.0-0.dll"
+			>
+			<FileConfiguration
+				Name="Debug|Win32"
+				>
+				<Tool
+					Name="VCCustomBuildTool"
+					Description="copying $(InputFileName) to OutDir"
+					CommandLine="copy /y $(InputPath) $(OutDir) &gt;NUL&#x0D;&#x0A;"
+					Outputs="$(OutDir)\$(InputFileName)"
+				/>
+			</FileConfiguration>
+			<FileConfiguration
+				Name="Release|Win32"
+				>
+				<Tool
+					Name="VCCustomBuildTool"
+					Description="copying $(InputFileName) to OutDir"
+					CommandLine="copy /y $(InputPath) $(OutDir) &gt;NUL&#x0D;&#x0A;"
+					Outputs="$(OutDir)\$(InputFileName)"
+				/>
+			</FileConfiguration>
+		</File>
+		<File
+			RelativePath="..\..\glib\bin\libgthread-2.0-0.dll"
+			>
+			<FileConfiguration
+				Name="Debug|Win32"
+				>
+				<Tool
+					Name="VCCustomBuildTool"
+					Description="copying $(InputFileName) to OutDir"
+					CommandLine="copy /y $(InputPath) $(OutDir) &gt;NUL&#x0D;&#x0A;"
+					Outputs="$(OutDir)\$(InputFileName)"
+				/>
+			</FileConfiguration>
+			<FileConfiguration
+				Name="Release|Win32"
+				>
+				<Tool
+					Name="VCCustomBuildTool"
+					Description="copying $(InputFileName) to OutDir"
+					CommandLine="copy /y $(InputPath) $(OutDir) &gt;NUL&#x0D;&#x0A;"
+					Outputs="$(OutDir)\$(InputFileName)"
+				/>
+			</FileConfiguration>
+		</File>
+		<File
+			RelativePath="..\..\glib\bin\zlib1.dll"
+			>
+			<FileConfiguration
+				Name="Debug|Win32"
+				>
+				<Tool
+					Name="VCCustomBuildTool"
+					Description="copying $(InputFileName) to OutDir"
+					CommandLine="copy /y $(InputPath) $(OutDir) &gt;NUL"
+					Outputs="$(OutDir)\$(InputFileName)"
+				/>
+			</FileConfiguration>
+			<FileConfiguration
+				Name="Release|Win32"
+				>
+				<Tool
+					Name="VCCustomBuildTool"
+					Description="copying $(InputFileName) to OutDir"
+					CommandLine="copy /y $(InputPath) $(OutDir) &gt;NUL"
+					Outputs="$(OutDir)\$(InputFileName)"
+				/>
+			</FileConfiguration>
+		</File>
+	</Files>
+	<Globals>
+	</Globals>
+</VisualStudioProject>
