@@ -93,6 +93,9 @@ nice_tcp_bsd_socket_new (GMainContext *ctx, NiceAddress *addr)
   socklen_t name_len = sizeof (name);
   NiceSocket *sock;
   TcpPriv *priv;
+#ifdef G_OS_WIN32
+  unsigned long set_nonblock=1;
+#endif
 
   if (addr == NULL) {
     /* We can't connect a tcp socket with no destination address */
@@ -129,6 +132,8 @@ nice_tcp_bsd_socket_new (GMainContext *ctx, NiceAddress *addr)
 #endif
 #ifdef O_NONBLOCK
   fcntl (sockfd, F_SETFL, fcntl (sockfd, F_GETFL) | O_NONBLOCK);
+#elif defined G_OS_WIN32
+  ioctlsocket(sockfd, FIONBIO, &set_nonblock);
 #endif
 
   name_len = name.ss_family == AF_INET? sizeof (struct sockaddr_in) :
@@ -136,7 +141,7 @@ nice_tcp_bsd_socket_new (GMainContext *ctx, NiceAddress *addr)
   ret = connect (sockfd, (const struct sockaddr *)&name, name_len);
 
 #ifdef G_OS_WIN32
-  if (ret < 0 && WSAGetLastError () != WSAEINPROGRESS) {
+  if (ret < 0 && WSAGetLastError () != WSAEWOULDBLOCK) {
     closesocket (sockfd);
 #else
   if (ret < 0 && errno != EINPROGRESS) {
@@ -258,7 +263,8 @@ socket_send (NiceSocket *sock, const NiceAddress *to,
 
     if (ret < 0) {
 #ifdef G_OS_WIN32
-      if (WSAGetLastError () == WSAEWOULDBLOCK) {
+      if (WSAGetLastError () == WSAEWOULDBLOCK ||
+          WSAGetLastError () == WSAENOTCONN) {
 #else
       if (errno == EAGAIN) {
 #endif

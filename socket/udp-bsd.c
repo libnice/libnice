@@ -70,6 +70,9 @@ nice_udp_bsd_socket_new (NiceAddress *addr)
   struct sockaddr_storage name;
   socklen_t name_len = sizeof (name);
   NiceSocket *sock = g_slice_new0 (NiceSocket);
+#ifdef G_OS_WIN32
+  unsigned long set_nonblock=1;
+#endif
 
   if (addr != NULL) {
     nice_address_copy_to_sockaddr(addr, (struct sockaddr *)&name);
@@ -102,6 +105,8 @@ nice_udp_bsd_socket_new (NiceAddress *addr)
 #endif
 #ifdef O_NONBLOCK
   fcntl (sockfd, F_SETFL, fcntl (sockfd, F_GETFL) | O_NONBLOCK);
+#elif defined G_OS_WIN32
+  ioctlsocket(sockfd, FIONBIO, &set_nonblock);
 #endif
 
   if(bind (sockfd, (struct sockaddr *) &name,
