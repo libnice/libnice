@@ -582,7 +582,7 @@ static gboolean priv_conn_keepalive_tick_unlocked (NiceAgent *agent)
               "socket=%u (c-id:%u), username='%s' (%d), "
               "password='%s' (%d), priority=%u.", agent,
               tmpbuf, nice_address_get_port (&p->remote->addr),
-              ((NiceSocket *)p->local->sockptr)->fileno, component->id,
+              g_socket_get_fd(((NiceSocket *)p->local->sockptr)->fileno), component->id,
               uname, uname_len, password, password_len, priority);
 
           if (uname_len > 0) {
@@ -1619,7 +1619,7 @@ int conn_check_send (NiceAgent *agent, CandidateCheckPair *pair)
     nice_debug ("Agent %p : STUN-CC REQ to '%s:%u', socket=%u, pair=%s (c-id:%u), tie=%llu, username='%s' (%d), password='%s' (%d), priority=%u.", agent,
 	     tmpbuf,
              nice_address_get_port (&pair->remote->addr),
-             ((NiceSocket *)pair->local->sockptr)->fileno,
+             g_socket_get_fd(((NiceSocket *)pair->local->sockptr)->fileno),
 	     pair->foundation, pair->component_id,
 	     (unsigned long long)agent->tie_breaker,
         uname, uname_len, password, password_len, priority);
@@ -1847,7 +1847,7 @@ static void priv_reply_to_conn_check (NiceAgent *agent, Stream *stream, Componen
     nice_debug ("Agent %p : STUN-CC RESP to '%s:%u', socket=%u, len=%u, cand=%p (c-id:%u), use-cand=%d.", agent,
 	     tmpbuf,
 	     nice_address_get_port (toaddr),
-	     socket->fileno,
+	     g_socket_get_fd(socket->fileno),
 	     (unsigned)rbuf_len,
 	     rcand, component->id,
 	     (int)use_candidate);

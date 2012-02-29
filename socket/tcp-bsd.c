@@ -57,7 +57,6 @@ typedef struct {
   NiceAddress server_addr;
   GQueue send_queue;
   GMainContext *context;
-  GIOChannel *io_channel;
   GSource *io_source;
   gboolean error;
 } TcpPriv;
@@ -87,15 +86,14 @@ static gboolean socket_send_more (GIOChannel *source, GIOCondition condition,
 NiceSocket *
 nice_tcp_bsd_socket_new (GMainContext *ctx, NiceAddress *addr)
 {
-  int sockfd = -1;
-  int ret;
   struct sockaddr_storage name;
   socklen_t name_len = sizeof (name);
   NiceSocket *sock;
   TcpPriv *priv;
-#ifdef G_OS_WIN32
-  unsigned long set_nonblock=1;
-#endif
+  GSocket *gsock = NULL;
+  GError *gerr = NULL;
+  boolean gret;
+  GSocketAddress *gaddr;
 
   if (addr == NULL) {
     /* We can't connect a tcp socket with no destination address */
@@ -106,15 +104,16 @@ nice_tcp_bsd_socket_new (GMainContext *ctx, NiceAddress *addr)
 
   nice_address_copy_to_sockaddr(addr, (struct sockaddr *)&name);
 
-  if (sockfd == -1) {
+  if (gsock == NULL) {
     if (name.ss_family == AF_UNSPEC || name.ss_family == AF_INET) {
-      sockfd = socket (PF_INET, SOCK_STREAM, 0);
+      gsock = g_socket_new(G_SOCKET_FAMILY_IPV4, G_SOCKET_TYPE_STREAM, G_SOCKET_PROTOCOL_TCP, NULL);
+
       name.ss_family = AF_INET;
 #ifdef HAVE_SA_LEN
       name.ss_len = sizeof (struct sockaddr_in);
 #endif
     } else if (name.ss_family == AF_INET6) {
-      sockfd = socket (PF_INET6, SOCK_STREAM, 0);
+      gsock = g_socket_new(G_SOCKET_FAMILY_IPV6, G_SOCKET_TYPE_STREAM, G_SOCKET_PROTOCOL_TCP, NULL);
       name.ss_family = AF_INET6;
 #ifdef HAVE_SA_LEN
       name.ss_len = sizeof (struct sockaddr_in6);
@@ -122,56 +121,60 @@ nice_tcp_bsd_socket_new (GMainContext *ctx, NiceAddress *addr)
     }
   }
 
-  if (sockfd == -1) {
+  if(gsock == NULL) {
     g_slice_free (NiceSocket, sock);
     return NULL;
-  }
+  } 
 
-#ifdef FD_CLOEXEC
-  fcntl (sockfd, F_SETFD, fcntl (sockfd, F_GETFD) | FD_CLOEXEC);
-#endif
-#ifdef O_NONBLOCK
-  fcntl (sockfd, F_SETFL, fcntl (sockfd, F_GETFL) | O_NONBLOCK);
-#elif defined G_OS_WIN32
-  ioctlsocket(sockfd, FIONBIO, &set_nonblock);
-#endif
+  /* GSocket: All socket file descriptors are set to be close-on-exec. */
+  g_socket_set_blocking(gsock, false);
 
+  
   name_len = name.ss_family == AF_INET? sizeof (struct sockaddr_in) :
       sizeof(struct sockaddr_in6);
-  ret = connect (sockfd, (const struct sockaddr *)&name, name_len);
+  gaddr = g_socket_address_new_from_native(&name, name_len);
 
-#ifdef G_OS_WIN32
-  if (ret < 0 && WSAGetLastError () != WSAEWOULDBLOCK) {
-    closesocket (sockfd);
-#else
-  if (ret < 0 && errno != EINPROGRESS) {
-    close (sockfd);
-#endif
+  gret = g_socket_connect(gsock, gaddr, NULL, &gerr);
+  g_object_unref(gaddr);
+
+  if(gret == FALSE)
+  {
+      if(g_error_matches(gerr, G_IO_ERROR, G_IO_ERROR_PENDING) == FALSE)
+      {
+          g_socket_close(gsock, NULL);
+          g_object_unref(gsock);
+          g_slice_free (NiceSocket, sock);
+          return NULL;
+      }
+      g_error_free(gerr);
+  }
+
+  
+
+  gaddr = g_socket_get_local_address(gsock, NULL);
+  if(gaddr == NULL)
+  {
     g_slice_free (NiceSocket, sock);
+    g_socket_close(gsock, NULL);
+    g_object_unref(gsock);
     return NULL;
   }
 
   name_len = name.ss_family == AF_INET? sizeof (struct sockaddr_in) :
-      sizeof(struct sockaddr_in6);
-  if (getsockname (sockfd, (struct sockaddr *) &name, &name_len) < 0) {
-    g_slice_free (NiceSocket, sock);
-#ifdef G_OS_WIN32
-    closesocket(sockfd);
-#else
-    close (sockfd);
-#endif
-    return NULL;
-  }
+    sizeof(struct sockaddr_in6);
+
+  g_socket_address_to_native(gaddr, &name, name_len, NULL);
+  g_object_unref(gaddr);
 
   nice_address_set_from_sockaddr (&sock->addr, (struct sockaddr *)&name);
-
+  
   sock->priv = priv = g_slice_new0 (TcpPriv);
 
   priv->context = g_main_context_ref (ctx);
   priv->server_addr = *addr;
   priv->error = FALSE;
 
-  sock->fileno = sockfd;
+  sock->fileno = gsock;
   sock->send = socket_send;
   sock->recv = socket_recv;
   sock->is_reliable = socket_is_reliable;
@@ -186,17 +189,15 @@ socket_close (NiceSocket *sock)
 {
   TcpPriv *priv = sock->priv;
 
-#ifdef G_OS_WIN32
-  closesocket(sock->fileno);
-#else
-  close (sock->fileno);
-#endif
+  if(sock->fileno) {
+    g_socket_close(sock->fileno, NULL);
+    g_object_unref(sock->fileno);
+    sock->fileno = NULL;
+  }
   if (priv->io_source) {
     g_source_destroy (priv->io_source);
     g_source_unref (priv->io_source);
   }
-  if (priv->io_channel)
-    g_io_channel_unref (priv->io_channel);
   g_queue_foreach (&priv->send_queue, (GFunc) free_to_be_sent, NULL);
   g_queue_clear (&priv->send_queue);
 
@@ -211,12 +212,13 @@ socket_recv (NiceSocket *sock, NiceAddress *from, guint len, gchar *buf)
 {
   TcpPriv *priv = sock->priv;
   int ret;
+  GError *gerr = NULL;
 
   /* Don't try to access the socket if it had an error */
   if (priv->error)
     return -1;
 
-  ret = recv (sock->fileno, buf, len, 0);
+  ret = g_socket_receive(sock->fileno, buf, len, NULL, &gerr);
 
   /* recv returns 0 when the peer performed a shutdown.. we must return -1 here
    * so that the agent destroys the g_source */
@@ -226,14 +228,11 @@ socket_recv (NiceSocket *sock, NiceAddress *from, guint len, gchar *buf)
   }
 
   if (ret < 0) {
-#ifdef G_OS_WIN32
-    if (WSAGetLastError () == WSAEWOULDBLOCK)
-#else
-    if (errno == EAGAIN)
-#endif
-      return 0;
-    else
-      return ret;
+    if(g_error_matches(gerr, G_IO_ERROR, G_IO_ERROR_WOULD_BLOCK)) 
+      ret = 0;
+
+    g_error_free(gerr);
+    return ret;
   }
 
   if (from)
@@ -250,6 +249,7 @@ socket_send (NiceSocket *sock, const NiceAddress *to,
 {
   TcpPriv *priv = sock->priv;
   int ret;
+  GError *gerr = NULL;
 
   /* Don't try to access the socket if it had an error, otherwise we risk a
      crash with SIGPIPE (Broken pipe) */
@@ -259,18 +259,15 @@ socket_send (NiceSocket *sock, const NiceAddress *to,
   /* First try to send the data, don't send it later if it can be sent now
      this way we avoid allocating memory on every send */
   if (g_queue_is_empty (&priv->send_queue)) {
-    ret = send (sock->fileno, buf, len, 0);
-
+      ret = g_socket_send (sock->fileno, buf, len, NULL, &gerr);
     if (ret < 0) {
-#ifdef G_OS_WIN32
-      if (WSAGetLastError () == WSAEWOULDBLOCK ||
-          WSAGetLastError () == WSAENOTCONN) {
-#else
-      if (errno == EAGAIN) {
-#endif
+      if(g_error_matches(gerr, G_IO_ERROR, G_IO_ERROR_WOULD_BLOCK) 
+         || g_error_matches(gerr, G_IO_ERROR, G_IO_ERROR_FAILED)) {
         add_to_be_sent (sock, buf, len, FALSE);
+        g_error_free(gerr);
         return TRUE;
       } else {
+        g_error_free(gerr);
         return FALSE;
       }
     } else if ((guint)ret < len) {
@@ -321,6 +318,7 @@ socket_send_more (
   NiceSocket *sock = (NiceSocket *) data;
   TcpPriv *priv = sock->priv;
   struct to_be_sent *tbs = NULL;
+  GError *gerr = NULL;
 
   agent_lock ();
 
@@ -334,19 +332,22 @@ socket_send_more (
   while ((tbs = g_queue_pop_head (&priv->send_queue)) != NULL) {
     int ret;
 
-    ret = send (sock->fileno, tbs->buf, tbs->length, 0);
+    if(condition & G_IO_HUP) {
+      /* connection hangs up */
+      ret = -1;
+    } 
+    else
+      ret = g_socket_send (sock->fileno, tbs->buf, tbs->length, NULL, &gerr);
 
     if (ret < 0) {
-#ifdef G_OS_WIN32
-      if (WSAGetLastError () == WSAEWOULDBLOCK) {
-#else
-      if (errno == EAGAIN) {
-#endif
+      if(gerr!=NULL && g_error_matches(gerr, G_IO_ERROR, G_IO_ERROR_WOULD_BLOCK)) {
         add_to_be_sent (sock, tbs->buf, tbs->length, TRUE);
         g_free (tbs->buf);
         g_slice_free (struct to_be_sent, tbs);
+        g_error_free(gerr);
         break;
       }
+      g_error_free(gerr);
     } else if (ret < (int) tbs->length) {
       add_to_be_sent (sock, tbs->buf + ret, tbs->length - ret, TRUE);
       g_free (tbs->buf);
@@ -359,8 +360,6 @@ socket_send_more (
   }
 
   if (g_queue_is_empty (&priv->send_queue)) {
-    g_io_channel_unref (priv->io_channel);
-    priv->io_channel = NULL;
     g_source_destroy (priv->io_source);
     g_source_unref (priv->io_source);
     priv->io_source = NULL;
@@ -392,13 +391,8 @@ add_to_be_sent (NiceSocket *sock, const gchar *buf, guint len, gboolean head)
   else
     g_queue_push_tail (&priv->send_queue, tbs);
 
-  if (priv->io_channel == NULL) {
-#ifndef G_OS_WIN32
-    priv->io_channel = g_io_channel_unix_new (sock->fileno);
-#else
-    priv->io_channel = g_io_channel_win32_new_socket (sock->fileno);
-#endif
-    priv->io_source = g_io_create_watch (priv->io_channel, G_IO_OUT);
+  if (priv->io_source == NULL) {
+    priv->io_source = g_socket_create_source(sock->fileno, G_IO_OUT, NULL);
     g_source_set_callback (priv->io_source, (GSourceFunc) socket_send_more,
         sock, NULL);
     g_source_attach (priv->io_source, priv->context);

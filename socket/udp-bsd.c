@@ -66,13 +66,12 @@ static gboolean socket_is_reliable (NiceSocket *sock);
 NiceSocket *
 nice_udp_bsd_socket_new (NiceAddress *addr)
 {
-  int sockfd = -1;
   struct sockaddr_storage name;
   socklen_t name_len = sizeof (name);
   NiceSocket *sock = g_slice_new0 (NiceSocket);
-#ifdef G_OS_WIN32
-  unsigned long set_nonblock=1;
-#endif
+  GSocket *gsock = NULL;
+  gboolean gret;
+  GSocketAddress *gaddr;
 
   if (addr != NULL) {
     nice_address_copy_to_sockaddr(addr, (struct sockaddr *)&name);
@@ -82,60 +81,53 @@ nice_udp_bsd_socket_new (NiceAddress *addr)
   }
 
   if (name.ss_family == AF_UNSPEC || name.ss_family == AF_INET) {
-    sockfd = socket (PF_INET, SOCK_DGRAM, IPPROTO_UDP);
+    gsock = g_socket_new(G_SOCKET_FAMILY_IPV4, G_SOCKET_TYPE_DATAGRAM, G_SOCKET_PROTOCOL_UDP, NULL);
     name.ss_family = AF_INET;
 #ifdef HAVE_SA_LEN
     name.ss_len = sizeof (struct sockaddr_in);
 #endif
   } else if (name.ss_family == AF_INET6) {
-    sockfd = socket (PF_INET6, SOCK_DGRAM, IPPROTO_UDP);
+    gsock = g_socket_new(G_SOCKET_FAMILY_IPV6, G_SOCKET_TYPE_DATAGRAM, G_SOCKET_PROTOCOL_UDP, NULL);
     name.ss_family = AF_INET6;
 #ifdef HAVE_SA_LEN
     name.ss_len = sizeof (struct sockaddr_in6);
 #endif
   }
 
-  if (sockfd == -1) {
+  if(gsock == NULL) {
     g_slice_free (NiceSocket, sock);
     return NULL;
-  }
-
-#ifdef FD_CLOEXEC
-  fcntl (sockfd, F_SETFD, fcntl (sockfd, F_GETFD) | FD_CLOEXEC);
-#endif
-#ifdef O_NONBLOCK
-  fcntl (sockfd, F_SETFL, fcntl (sockfd, F_GETFL) | O_NONBLOCK);
-#elif defined G_OS_WIN32
-  ioctlsocket(sockfd, FIONBIO, &set_nonblock);
-#endif
-
-  if(bind (sockfd, (struct sockaddr *) &name,
-          name.ss_family == AF_INET? sizeof (struct sockaddr_in) :
-          sizeof(struct sockaddr_in6)) < 0) {
-    g_slice_free (NiceSocket, sock);
-#ifdef G_OS_WIN32
-    closesocket(sockfd);
-#else
-    close (sockfd);
-#endif
-    return NULL;
-  }
+  } 
+   
+  /* GSocket: All socket file descriptors are set to be close-on-exec. */
+  g_socket_set_blocking(gsock, false);
 
   name_len = name.ss_family == AF_INET? sizeof (struct sockaddr_in) :
       sizeof(struct sockaddr_in6);
-  if (getsockname (sockfd, (struct sockaddr *) &name, &name_len) < 0) {
+
+  gret = g_socket_bind(gsock, g_socket_address_new_from_native(&name, name_len), FALSE, NULL);
+  if(gret == FALSE) {
     g_slice_free (NiceSocket, sock);
-#ifdef G_OS_WIN32
-    closesocket(sockfd);
-#else
-    close (sockfd);
-#endif
+    g_socket_close(gsock, NULL);
+    g_object_unref(gsock);
     return NULL;
   }
 
-  nice_address_set_from_sockaddr (&sock->addr, (struct sockaddr *)&name);
-  sock->fileno = sockfd;
+  gaddr = g_socket_get_local_address(gsock, NULL);
+  if(gaddr == NULL) {
+    g_slice_free (NiceSocket, sock);
+    g_socket_close(gsock, NULL);
+    g_object_unref(gsock);
+    return NULL;
+  }
 
+  g_socket_address_to_native(gaddr, &name, name_len, NULL);
+  g_object_unref(gaddr);
+
+  nice_address_set_from_sockaddr (&sock->addr, (struct sockaddr *)&name);
+  
+  //sock->gsock = gsock;
+  sock->fileno = gsock;
   sock->send = socket_send;
   sock->recv = socket_recv;
   sock->is_reliable = socket_is_reliable;
@@ -147,11 +139,11 @@ nice_udp_bsd_socket_new (NiceAddress *addr)
 static void
 socket_close (NiceSocket *sock)
 {
-#ifdef G_OS_WIN32
-  closesocket(sock->fileno);
-#else
-  close (sock->fileno);
-#endif
+  if(sock->fileno) {
+    g_socket_close(sock->fileno, NULL);
+    g_object_unref(sock->fileno);
+    sock->fileno = NULL;
+  }
 }
 
 static gint
@@ -160,22 +152,26 @@ socket_recv (NiceSocket *sock, NiceAddress *from, guint len, gchar *buf)
   gint recvd;
   struct sockaddr_storage sa;
   socklen_t from_len = sizeof (sa);
+  GSocketAddress *gaddr = NULL;
+  GError *gerr = NULL;
 
-  recvd = recvfrom (sock->fileno, buf, len, 0, (struct sockaddr *) &sa,
-      &from_len);
+  recvd = g_socket_receive_from(sock->fileno, &gaddr, buf, len, NULL, &gerr);
 
   if (recvd < 0) {
-#ifdef G_OS_WIN32
-    if (WSAGetLastError () == WSAEWOULDBLOCK ||
-        WSAGetLastError () == WSAECONNRESET)
-#else
-    if (errno == EAGAIN || errno == EWOULDBLOCK)
-#endif
-      return 0;
+    if(g_error_matches(gerr, G_IO_ERROR, G_IO_ERROR_WOULD_BLOCK)
+        || g_error_matches(gerr, G_IO_ERROR, G_IO_ERROR_FAILED)) 
+      recvd = 0;
+
+    g_error_free(gerr);
   }
 
-  if (recvd > 0)
+  if (recvd > 0) {
+    if(gaddr != NULL) {
+      g_socket_address_to_native(gaddr, &sa, from_len, NULL);
+      g_object_unref(gaddr);
+    }
     nice_address_set_from_sockaddr (from, (struct sockaddr *)&sa);
+  }
 
   return recvd;
 }
@@ -186,12 +182,18 @@ socket_send (NiceSocket *sock, const NiceAddress *to,
 {
   struct sockaddr_storage sa;
   ssize_t sent;
+  socklen_t name_len = sizeof (sa);
+  GSocketAddress *gaddr;
 
   nice_address_copy_to_sockaddr (to, (struct sockaddr *)&sa);
 
-  sent = sendto (sock->fileno, buf, len, 0, (struct sockaddr *) &sa,
-      sa.ss_family == AF_INET? sizeof (struct sockaddr_in) :
-      sizeof(struct sockaddr_in6));
+  name_len = sa.ss_family == AF_INET? sizeof (struct sockaddr_in) :
+      sizeof(struct sockaddr_in6);
+
+  gaddr = g_socket_address_new_from_native(&sa, name_len); 
+
+  sent = g_socket_send_to(sock->fileno, gaddr, buf, len, NULL, NULL);
+  g_object_unref(gaddr);
 
   return sent == (ssize_t)len;
 }

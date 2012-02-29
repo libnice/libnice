@@ -38,6 +38,7 @@
 #define _SOCKET_H
 
 #include "address.h"
+#include <gio/gio.h>
 
 #ifdef G_OS_WIN32
 #include <winsock2.h>
@@ -56,7 +57,7 @@ typedef struct _NiceSocket NiceSocket;
 struct _NiceSocket
 {
   NiceAddress addr;
-  guint fileno;
+  GSocket *fileno;
   gint (*recv) (NiceSocket *sock, NiceAddress *from, guint len,
       gchar *buf);
   gboolean (*send) (NiceSocket *sock, const NiceAddress *to, guint len,

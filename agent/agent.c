@@ -2292,7 +2292,7 @@ _nice_agent_recv (
     gchar tmpbuf[INET6_ADDRSTRLEN];
     nice_address_to_string (&from, tmpbuf);
     nice_debug ("Agent %p : Packet received on local socket %u from [%s]:%u (%u octets).", agent,
-        socket->fileno, tmpbuf, nice_address_get_port (&from), len);
+        g_socket_get_fd(socket->fileno), tmpbuf, nice_address_get_port (&from), len);
   }
 #endif
 
@@ -2549,7 +2549,6 @@ typedef struct _IOCtx IOCtx;
 
 struct _IOCtx
 {
-  GIOChannel *channel;
   GSource *source;
   NiceAgent *agent;
   Stream *stream;
@@ -2564,7 +2563,6 @@ io_ctx_new (
   Stream *stream,
   Component *component,
   NiceSocket *socket,
-  GIOChannel *channel,
   GSource *source)
 {
   IOCtx *ctx;
@@ -2574,7 +2572,6 @@ io_ctx_new (
   ctx->stream = stream;
   ctx->component = component;
   ctx->socket = socket;
-  ctx->channel = channel;
   ctx->source = source;
 
   return ctx;
@@ -2584,7 +2581,6 @@ io_ctx_new (
 static void
 io_ctx_free (IOCtx *ctx)
 {
-  g_io_channel_unref (ctx->channel);
   g_slice_free (IOCtx, ctx);
 }
 
@@ -2669,21 +2665,17 @@ agent_attach_stream_component_socket (NiceAgent *agent,
     Component *component,
     NiceSocket *socket)
 {
-  GIOChannel *io;
   GSource *source;
   IOCtx *ctx;
 
   if (!component->ctx)
     return;
-#ifndef G_OS_WIN32
-  io = g_io_channel_unix_new (socket->fileno);
-#else
-  io = g_io_channel_win32_new_socket (socket->fileno);
-#endif
+
   /* note: without G_IO_ERR the glib mainloop goes into
    *       busyloop if errors are encountered */
-  source = g_io_create_watch (io, G_IO_IN | G_IO_ERR);
-  ctx = io_ctx_new (agent, stream, component, socket, io, source);
+  source = g_socket_create_source(socket->fileno, G_IO_IN | G_IO_ERR, NULL);
+
+  ctx = io_ctx_new (agent, stream, component, socket, source);
   g_source_set_callback (source, (GSourceFunc) nice_agent_g_source_cb,
       ctx, (GDestroyNotify) io_ctx_free);
   nice_debug ("Agent %p : Attach source %p (stream %u).", agent, source, stream->id);
@@ -2908,13 +2900,13 @@ nice_agent_set_selected_remote_candidate (
 void
 _priv_set_socket_tos (NiceAgent *agent, NiceSocket *sock, gint tos)
 {
-  if (setsockopt (sock->fileno, IPPROTO_IP,
+  if (setsockopt (g_socket_get_fd(sock->fileno), IPPROTO_IP,
           IP_TOS, (const char *) &tos, sizeof (tos)) < 0) {
     nice_debug ("Agent %p: Could not set socket ToS", agent,
         g_strerror (errno));
   }
 #ifdef IPV6_TCLASS
-  if (setsockopt (sock->fileno, IPPROTO_IPV6,
+  if (setsockopt (g_socket_get_fd(sock->fileno), IPPROTO_IPV6,
           IPV6_TCLASS, (const char *) &tos, sizeof (tos)) < 0) {
     nice_debug ("Agent %p: Could not set IPV6 socket ToS", agent,
         g_strerror (errno));
