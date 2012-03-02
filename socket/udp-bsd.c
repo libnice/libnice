@@ -81,24 +81,25 @@ nice_udp_bsd_socket_new (NiceAddress *addr)
   }
 
   if (name.ss_family == AF_UNSPEC || name.ss_family == AF_INET) {
-    gsock = g_socket_new(G_SOCKET_FAMILY_IPV4, G_SOCKET_TYPE_DATAGRAM, G_SOCKET_PROTOCOL_UDP, NULL);
+    gsock = g_socket_new (G_SOCKET_FAMILY_IPV4, G_SOCKET_TYPE_DATAGRAM,
+        G_SOCKET_PROTOCOL_UDP, NULL);
     name.ss_family = AF_INET;
 #ifdef HAVE_SA_LEN
     name.ss_len = sizeof (struct sockaddr_in);
 #endif
   } else if (name.ss_family == AF_INET6) {
-    gsock = g_socket_new(G_SOCKET_FAMILY_IPV6, G_SOCKET_TYPE_DATAGRAM, G_SOCKET_PROTOCOL_UDP, NULL);
+    gsock = g_socket_new (G_SOCKET_FAMILY_IPV6, G_SOCKET_TYPE_DATAGRAM,
+        G_SOCKET_PROTOCOL_UDP, NULL);
     name.ss_family = AF_INET6;
 #ifdef HAVE_SA_LEN
     name.ss_len = sizeof (struct sockaddr_in6);
 #endif
   }
 
-  if(gsock == NULL) {
+  if (gsock == NULL) {
     g_slice_free (NiceSocket, sock);
     return NULL;
-  } 
-   
+  }
   /* GSocket: All socket file descriptors are set to be close-on-exec. */
   g_socket_set_blocking(gsock, false);
 
@@ -106,18 +107,18 @@ nice_udp_bsd_socket_new (NiceAddress *addr)
       sizeof(struct sockaddr_in6);
 
   gret = g_socket_bind(gsock, g_socket_address_new_from_native(&name, name_len), FALSE, NULL);
-  if(gret == FALSE) {
+  if (gret == FALSE) {
     g_slice_free (NiceSocket, sock);
-    g_socket_close(gsock, NULL);
-    g_object_unref(gsock);
+    g_socket_close (gsock, NULL);
+    g_object_unref (gsock);
     return NULL;
   }
 
   gaddr = g_socket_get_local_address(gsock, NULL);
   if(gaddr == NULL) {
     g_slice_free (NiceSocket, sock);
-    g_socket_close(gsock, NULL);
-    g_object_unref(gsock);
+    g_socket_close (gsock, NULL);
+    g_object_unref (gsock);
     return NULL;
   }
 
@@ -125,8 +126,7 @@ nice_udp_bsd_socket_new (NiceAddress *addr)
   g_object_unref(gaddr);
 
   nice_address_set_from_sockaddr (&sock->addr, (struct sockaddr *)&name);
-  
-  //sock->gsock = gsock;
+
   sock->fileno = gsock;
   sock->send = socket_send;
   sock->recv = socket_recv;
@@ -139,9 +139,9 @@ nice_udp_bsd_socket_new (NiceAddress *addr)
 static void
 socket_close (NiceSocket *sock)
 {
-  if(sock->fileno) {
-    g_socket_close(sock->fileno, NULL);
-    g_object_unref(sock->fileno);
+  if (sock->fileno) {
+    g_socket_close (sock->fileno, NULL);
+    g_object_unref (sock->fileno);
     sock->fileno = NULL;
   }
 }
@@ -155,14 +155,14 @@ socket_recv (NiceSocket *sock, NiceAddress *from, guint len, gchar *buf)
   GSocketAddress *gaddr = NULL;
   GError *gerr = NULL;
 
-  recvd = g_socket_receive_from(sock->fileno, &gaddr, buf, len, NULL, &gerr);
+  recvd = g_socket_receive_from (sock->fileno, &gaddr, buf, len, NULL, &gerr);
 
   if (recvd < 0) {
-    if(g_error_matches(gerr, G_IO_ERROR, G_IO_ERROR_WOULD_BLOCK)
-        || g_error_matches(gerr, G_IO_ERROR, G_IO_ERROR_FAILED)) 
+    if (g_error_matches(gerr, G_IO_ERROR, G_IO_ERROR_WOULD_BLOCK)
+        || g_error_matches(gerr, G_IO_ERROR, G_IO_ERROR_FAILED))
       recvd = 0;
 
-    g_error_free(gerr);
+    g_error_free (gerr);
   }
 
   if (recvd > 0) {

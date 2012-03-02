@@ -2292,7 +2292,7 @@ _nice_agent_recv (
     gchar tmpbuf[INET6_ADDRSTRLEN];
     nice_address_to_string (&from, tmpbuf);
     nice_debug ("Agent %p : Packet received on local socket %u from [%s]:%u (%u octets).", agent,
-        g_socket_get_fd(socket->fileno), tmpbuf, nice_address_get_port (&from), len);
+        g_socket_get_fd (socket->fileno), tmpbuf, nice_address_get_port (&from), len);
   }
 #endif
 
@@ -2900,13 +2900,13 @@ nice_agent_set_selected_remote_candidate (
 void
 _priv_set_socket_tos (NiceAgent *agent, NiceSocket *sock, gint tos)
 {
-  if (setsockopt (g_socket_get_fd(sock->fileno), IPPROTO_IP,
+  if (setsockopt (g_socket_get_fd (sock->fileno), IPPROTO_IP,
           IP_TOS, (const char *) &tos, sizeof (tos)) < 0) {
     nice_debug ("Agent %p: Could not set socket ToS", agent,
         g_strerror (errno));
   }
 #ifdef IPV6_TCLASS
-  if (setsockopt (g_socket_get_fd(sock->fileno), IPPROTO_IPV6,
+  if (setsockopt (g_socket_get_fd (sock->fileno), IPPROTO_IPV6,
           IPV6_TCLASS, (const char *) &tos, sizeof (tos)) < 0) {
     nice_debug ("Agent %p: Could not set IPV6 socket ToS", agent,
         g_strerror (errno));

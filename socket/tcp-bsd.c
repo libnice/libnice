@@ -102,18 +102,20 @@ nice_tcp_bsd_socket_new (GMainContext *ctx, NiceAddress *addr)
 
   sock = g_slice_new0 (NiceSocket);
 
-  nice_address_copy_to_sockaddr(addr, (struct sockaddr *)&name);
+  nice_address_copy_to_sockaddr (addr, (struct sockaddr *)&name);
 
   if (gsock == NULL) {
     if (name.ss_family == AF_UNSPEC || name.ss_family == AF_INET) {
-      gsock = g_socket_new(G_SOCKET_FAMILY_IPV4, G_SOCKET_TYPE_STREAM, G_SOCKET_PROTOCOL_TCP, NULL);
+      gsock = g_socket_new (G_SOCKET_FAMILY_IPV4, G_SOCKET_TYPE_STREAM,
+          G_SOCKET_PROTOCOL_TCP, NULL);
 
       name.ss_family = AF_INET;
 #ifdef HAVE_SA_LEN
       name.ss_len = sizeof (struct sockaddr_in);
 #endif
     } else if (name.ss_family == AF_INET6) {
-      gsock = g_socket_new(G_SOCKET_FAMILY_IPV6, G_SOCKET_TYPE_STREAM, G_SOCKET_PROTOCOL_TCP, NULL);
+      gsock = g_socket_new (G_SOCKET_FAMILY_IPV6, G_SOCKET_TYPE_STREAM,
+          G_SOCKET_PROTOCOL_TCP, NULL);
       name.ss_family = AF_INET6;
 #ifdef HAVE_SA_LEN
       name.ss_len = sizeof (struct sockaddr_in6);
@@ -121,10 +123,10 @@ nice_tcp_bsd_socket_new (GMainContext *ctx, NiceAddress *addr)
     }
   }
 
-  if(gsock == NULL) {
+  if (gsock == NULL) {
     g_slice_free (NiceSocket, sock);
     return NULL;
-  } 
+  }
 
   /* GSocket: All socket file descriptors are set to be close-on-exec. */
   g_socket_set_blocking(gsock, false);
@@ -155,8 +157,8 @@ nice_tcp_bsd_socket_new (GMainContext *ctx, NiceAddress *addr)
   if(gaddr == NULL)
   {
     g_slice_free (NiceSocket, sock);
-    g_socket_close(gsock, NULL);
-    g_object_unref(gsock);
+    g_socket_close (gsock, NULL);
+    g_object_unref (gsock);
     return NULL;
   }
 
@@ -167,7 +169,7 @@ nice_tcp_bsd_socket_new (GMainContext *ctx, NiceAddress *addr)
   g_object_unref(gaddr);
 
   nice_address_set_from_sockaddr (&sock->addr, (struct sockaddr *)&name);
-  
+
   sock->priv = priv = g_slice_new0 (TcpPriv);
 
   priv->context = g_main_context_ref (ctx);
@@ -189,9 +191,9 @@ socket_close (NiceSocket *sock)
 {
   TcpPriv *priv = sock->priv;
 
-  if(sock->fileno) {
-    g_socket_close(sock->fileno, NULL);
-    g_object_unref(sock->fileno);
+  if (sock->fileno) {
+    g_socket_close (sock->fileno, NULL);
+    g_object_unref (sock->fileno);
     sock->fileno = NULL;
   }
   if (priv->io_source) {
@@ -218,7 +220,7 @@ socket_recv (NiceSocket *sock, NiceAddress *from, guint len, gchar *buf)
   if (priv->error)
     return -1;
 
-  ret = g_socket_receive(sock->fileno, buf, len, NULL, &gerr);
+  ret = g_socket_receive (sock->fileno, buf, len, NULL, &gerr);
 
   /* recv returns 0 when the peer performed a shutdown.. we must return -1 here
    * so that the agent destroys the g_source */
@@ -228,10 +230,10 @@ socket_recv (NiceSocket *sock, NiceAddress *from, guint len, gchar *buf)
   }
 
   if (ret < 0) {
-    if(g_error_matches(gerr, G_IO_ERROR, G_IO_ERROR_WOULD_BLOCK)) 
+    if(g_error_matches (gerr, G_IO_ERROR, G_IO_ERROR_WOULD_BLOCK))
       ret = 0;
 
-    g_error_free(gerr);
+    g_error_free (gerr);
     return ret;
   }
 
@@ -259,15 +261,15 @@ socket_send (NiceSocket *sock, const NiceAddress *to,
   /* First try to send the data, don't send it later if it can be sent now
      this way we avoid allocating memory on every send */
   if (g_queue_is_empty (&priv->send_queue)) {
-      ret = g_socket_send (sock->fileno, buf, len, NULL, &gerr);
+    ret = g_socket_send (sock->fileno, buf, len, NULL, &gerr);
     if (ret < 0) {
-      if(g_error_matches(gerr, G_IO_ERROR, G_IO_ERROR_WOULD_BLOCK) 
-         || g_error_matches(gerr, G_IO_ERROR, G_IO_ERROR_FAILED)) {
+      if(g_error_matches (gerr, G_IO_ERROR, G_IO_ERROR_WOULD_BLOCK)
+         || g_error_matches (gerr, G_IO_ERROR, G_IO_ERROR_FAILED)) {
         add_to_be_sent (sock, buf, len, FALSE);
-        g_error_free(gerr);
+        g_error_free (gerr);
         return TRUE;
       } else {
-        g_error_free(gerr);
+        g_error_free (gerr);
         return FALSE;
       }
     } else if ((guint)ret < len) {
@@ -335,19 +337,20 @@ socket_send_more (
     if(condition & G_IO_HUP) {
       /* connection hangs up */
       ret = -1;
-    } 
-    else
+    } else {
       ret = g_socket_send (sock->fileno, tbs->buf, tbs->length, NULL, &gerr);
+    }
 
     if (ret < 0) {
-      if(gerr!=NULL && g_error_matches(gerr, G_IO_ERROR, G_IO_ERROR_WOULD_BLOCK)) {
+      if(gerr != NULL &&
+          g_error_matches (gerr, G_IO_ERROR, G_IO_ERROR_WOULD_BLOCK)) {
         add_to_be_sent (sock, tbs->buf, tbs->length, TRUE);
         g_free (tbs->buf);
         g_slice_free (struct to_be_sent, tbs);
-        g_error_free(gerr);
+        g_error_free (gerr);
         break;
       }
-      g_error_free(gerr);
+      g_error_free (gerr);
     } else if (ret < (int) tbs->length) {
       add_to_be_sent (sock, tbs->buf + ret, tbs->length - ret, TRUE);
       g_free (tbs->buf);
