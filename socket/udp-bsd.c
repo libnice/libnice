@@ -67,10 +67,9 @@ NiceSocket *
 nice_udp_bsd_socket_new (NiceAddress *addr)
 {
   struct sockaddr_storage name;
-  socklen_t name_len = sizeof (name);
   NiceSocket *sock = g_slice_new0 (NiceSocket);
   GSocket *gsock = NULL;
-  gboolean gret;
+  gboolean gret = FALSE;
   GSocketAddress *gaddr;
 
   if (addr != NULL) {
@@ -100,13 +99,15 @@ nice_udp_bsd_socket_new (NiceAddress *addr)
     g_slice_free (NiceSocket, sock);
     return NULL;
   }
+
   /* GSocket: All socket file descriptors are set to be close-on-exec. */
-  g_socket_set_blocking(gsock, false);
+  g_socket_set_blocking (gsock, false);
+  gaddr = g_socket_address_new_from_native (&name, sizeof (name));
+  if (gaddr != NULL) {
+    gret = g_socket_bind (gsock, gaddr, FALSE, NULL);
+    g_object_unref (gaddr);
+  }
 
-  name_len = name.ss_family == AF_INET? sizeof (struct sockaddr_in) :
-      sizeof(struct sockaddr_in6);
-
-  gret = g_socket_bind(gsock, g_socket_address_new_from_native(&name, name_len), FALSE, NULL);
   if (gret == FALSE) {
     g_slice_free (NiceSocket, sock);
     g_socket_close (gsock, NULL);
@@ -114,16 +115,16 @@ nice_udp_bsd_socket_new (NiceAddress *addr)
     return NULL;
   }
 
-  gaddr = g_socket_get_local_address(gsock, NULL);
-  if(gaddr == NULL) {
+  gaddr = g_socket_get_local_address (gsock, NULL);
+  if (gaddr == NULL ||
+      !g_socket_address_to_native (gaddr, &name, sizeof(name), NULL)) {
     g_slice_free (NiceSocket, sock);
     g_socket_close (gsock, NULL);
     g_object_unref (gsock);
     return NULL;
   }
 
-  g_socket_address_to_native(gaddr, &name, name_len, NULL);
-  g_object_unref(gaddr);
+  g_object_unref (gaddr);
 
   nice_address_set_from_sockaddr (&sock->addr, (struct sockaddr *)&name);
 
