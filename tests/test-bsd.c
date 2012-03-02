@@ -50,7 +50,7 @@ main (void)
   NiceAddress tmp;
   gchar buf[5];
 
-
+  g_type_init ();
   server = nice_udp_bsd_socket_new (NULL);
   if (!server)
     g_assert_not_reached();
