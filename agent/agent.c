@@ -2586,13 +2586,10 @@ io_ctx_free (IOCtx *ctx)
 
 static gboolean
 nice_agent_g_source_cb (
-  GIOChannel *io,
-  G_GNUC_UNUSED
+  GSocket *gsocket,
   GIOCondition condition,
   gpointer data)
 {
-  /* return value is whether to keep the source */
-
   IOCtx *ctx = data;
   NiceAgent *agent = ctx->agent;
   Stream *stream = ctx->stream;
@@ -2606,9 +2603,6 @@ nice_agent_g_source_cb (
     agent_unlock ();
     return FALSE;
   }
-
-  /* note: dear compiler, these are for you: */
-  (void)io;
 
   len = _nice_agent_recv (agent, stream, component, ctx->socket,
 			  MAX_BUFFER_SIZE, buf);

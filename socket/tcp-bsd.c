@@ -80,7 +80,7 @@ static gboolean socket_is_reliable (NiceSocket *sock);
 static void add_to_be_sent (NiceSocket *sock, const gchar *buf, guint len,
     gboolean head);
 static void free_to_be_sent (struct to_be_sent *tbs);
-static gboolean socket_send_more (GIOChannel *source, GIOCondition condition,
+static gboolean socket_send_more (GSocket *gsocket, GIOCondition condition,
     gpointer data);
 
 NiceSocket *
@@ -313,7 +313,7 @@ socket_is_reliable (NiceSocket *sock)
 
 static gboolean
 socket_send_more (
-  GIOChannel *source,
+  GSocket *gsocket,
   GIOCondition condition,
   gpointer data)
 {
