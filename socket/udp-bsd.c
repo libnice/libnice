@@ -150,11 +150,9 @@ socket_close (NiceSocket *sock)
 static gint
 socket_recv (NiceSocket *sock, NiceAddress *from, guint len, gchar *buf)
 {
-  gint recvd;
-  struct sockaddr_storage sa;
-  socklen_t from_len = sizeof (sa);
   GSocketAddress *gaddr = NULL;
   GError *gerr = NULL;
+  gint recvd;
 
   recvd = g_socket_receive_from (sock->fileno, &gaddr, buf, len, NULL, &gerr);
 
@@ -166,13 +164,15 @@ socket_recv (NiceSocket *sock, NiceAddress *from, guint len, gchar *buf)
     g_error_free (gerr);
   }
 
-  if (recvd > 0) {
-    if(gaddr != NULL) {
-      g_socket_address_to_native(gaddr, &sa, from_len, NULL);
-      g_object_unref(gaddr);
-    }
+  if (recvd > 0 && from != NULL && gaddr != NULL) {
+    struct sockaddr_storage sa;
+
+    g_socket_address_to_native (gaddr, &sa, sizeof (sa), NULL);
     nice_address_set_from_sockaddr (from, (struct sockaddr *)&sa);
   }
+
+  if (gaddr != NULL)
+    g_object_unref (gaddr);
 
   return recvd;
 }
@@ -182,19 +182,16 @@ socket_send (NiceSocket *sock, const NiceAddress *to,
     guint len, const gchar *buf)
 {
   struct sockaddr_storage sa;
-  ssize_t sent;
-  socklen_t name_len = sizeof (sa);
   GSocketAddress *gaddr;
+  ssize_t sent  = -1;
 
   nice_address_copy_to_sockaddr (to, (struct sockaddr *)&sa);
+  gaddr = g_socket_address_new_from_native (&sa, sizeof(sa));
 
-  name_len = sa.ss_family == AF_INET? sizeof (struct sockaddr_in) :
-      sizeof(struct sockaddr_in6);
-
-  gaddr = g_socket_address_new_from_native(&sa, name_len); 
-
-  sent = g_socket_send_to(sock->fileno, gaddr, buf, len, NULL, NULL);
-  g_object_unref(gaddr);
+  if (gaddr) {
+    sent = g_socket_send_to (sock->fileno, gaddr, buf, len, NULL, NULL);
+    g_object_unref (gaddr);
+  }
 
   return sent == (ssize_t)len;
 }

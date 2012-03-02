@@ -87,12 +87,11 @@ NiceSocket *
 nice_tcp_bsd_socket_new (GMainContext *ctx, NiceAddress *addr)
 {
   struct sockaddr_storage name;
-  socklen_t name_len = sizeof (name);
   NiceSocket *sock;
   TcpPriv *priv;
   GSocket *gsock = NULL;
   GError *gerr = NULL;
-  boolean gret;
+  gboolean gret = FALSE;
   GSocketAddress *gaddr;
 
   if (addr == NULL) {
@@ -129,44 +128,34 @@ nice_tcp_bsd_socket_new (GMainContext *ctx, NiceAddress *addr)
   }
 
   /* GSocket: All socket file descriptors are set to be close-on-exec. */
-  g_socket_set_blocking(gsock, false);
+  g_socket_set_blocking (gsock, false);
 
-  
-  name_len = name.ss_family == AF_INET? sizeof (struct sockaddr_in) :
-      sizeof(struct sockaddr_in6);
-  gaddr = g_socket_address_new_from_native(&name, name_len);
+  gaddr = g_socket_address_new_from_native (&name, sizeof (name));
 
-  gret = g_socket_connect(gsock, gaddr, NULL, &gerr);
-  g_object_unref(gaddr);
-
-  if(gret == FALSE)
-  {
-      if(g_error_matches(gerr, G_IO_ERROR, G_IO_ERROR_PENDING) == FALSE)
-      {
-          g_socket_close(gsock, NULL);
-          g_object_unref(gsock);
-          g_slice_free (NiceSocket, sock);
-          return NULL;
-      }
-      g_error_free(gerr);
+  if (gaddr != NULL) {
+    gret = g_socket_connect (gsock, gaddr, NULL, &gerr);
+    g_object_unref (gaddr);
   }
 
-  
+  if (gret == FALSE) {
+    if (g_error_matches (gerr, G_IO_ERROR, G_IO_ERROR_PENDING) == FALSE) {
+      g_socket_close (gsock, NULL);
+      g_object_unref (gsock);
+      g_slice_free (NiceSocket, sock);
+      return NULL;
+    }
+    g_error_free(gerr);
+  }
 
-  gaddr = g_socket_get_local_address(gsock, NULL);
-  if(gaddr == NULL)
-  {
+  gaddr = g_socket_get_local_address (gsock, NULL);
+  if (gaddr == NULL ||
+      !g_socket_address_to_native (gaddr, &name, sizeof (name), NULL)) {
     g_slice_free (NiceSocket, sock);
     g_socket_close (gsock, NULL);
     g_object_unref (gsock);
     return NULL;
   }
-
-  name_len = name.ss_family == AF_INET? sizeof (struct sockaddr_in) :
-    sizeof(struct sockaddr_in6);
-
-  g_socket_address_to_native(gaddr, &name, name_len, NULL);
-  g_object_unref(gaddr);
+  g_object_unref (gaddr);
 
   nice_address_set_from_sockaddr (&sock->addr, (struct sockaddr *)&name);
 
