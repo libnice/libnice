@@ -49,6 +49,10 @@ main (void)
   NiceAgent *agent;
   NiceAddress addr;
 
+#ifdef G_OS_WIN32
+  WSADATA w;
+  WSAStartup(0x0202, &w);
+#endif
   nice_address_init (&addr);
   g_type_init ();
 #if !GLIB_CHECK_VERSION(2,31,8)
@@ -74,7 +78,9 @@ main (void)
   g_assert (NULL == agent->streams);
 
   g_object_unref (agent);
-
+#ifdef G_OS_WIN32
+  WSACleanup();
+#endif
   return 0;
 }
 
