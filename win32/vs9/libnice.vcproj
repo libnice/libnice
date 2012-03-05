@@ -61,7 +61,7 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="iphlpapi.lib ws2_32.lib glib-2.0.lib gobject-2.0.lib"
+				AdditionalDependencies="iphlpapi.lib ws2_32.lib glib-2.0.lib gobject-2.0.lib gio-2.0.lib"
 				LinkIncremental="2"
 				AdditionalLibraryDirectories="..\..\glib\lib"
 				ModuleDefinitionFile="libnice.def"
@@ -137,7 +137,7 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="iphlpapi.lib ws2_32.lib glib-2.0.lib gobject-2.0.lib"
+				AdditionalDependencies="iphlpapi.lib ws2_32.lib glib-2.0.lib gobject-2.0.lib gio-2.0.lib"
 				LinkIncremental="1"
 				AdditionalLibraryDirectories="..\..\glib\lib"
 				ModuleDefinitionFile="libnice.def"
@@ -271,11 +271,11 @@
 				>
 			</File>
 			<File
-				RelativePath="..\..\stun\debug.h"
+				RelativePath="..\..\agent\debug.h"
 				>
 			</File>
 			<File
-				RelativePath="..\..\agent\debug.h"
+				RelativePath="..\..\stun\debug.h"
 				>
 			</File>
 			<File
@@ -483,11 +483,11 @@
 				>
 			</File>
 			<File
-				RelativePath="..\..\stun\usages\turn.h"
+				RelativePath="..\..\socket\turn.h"
 				>
 			</File>
 			<File
-				RelativePath="..\..\socket\turn.h"
+				RelativePath="..\..\stun\usages\turn.h"
 				>
 			</File>
 			<File

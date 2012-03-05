@@ -102,6 +102,7 @@ PKG_CHECK_MODULES(GLIB, [dnl
 	glib-2.0 >= 2.13 dnl
 	gobject-2.0 >= 2.13 dnl
 	gthread-2.0 >= 2.13 dnl
+	gio-2.0 >= 2.13 dnl
 	])
 
 AC_ARG_WITH(gstreamer, 
