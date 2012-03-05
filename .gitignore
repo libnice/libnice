@@ -142,3 +142,10 @@ docs/reference/libnice/html
 docs/reference/libnice/tmpl
 docs/reference/libnice/xml
 
+# win32 stuff
+win32/vs9/*.user
+win32/vs9/libnice.ncb
+win32/vs9/libnice.suo
+win32/vs9/libnice/
+glib/
+*.exe
