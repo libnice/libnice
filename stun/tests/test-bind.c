@@ -43,7 +43,6 @@
 
 #include <stdlib.h>
 #include <stdio.h>
-#include <unistd.h>
 #include <string.h>
 
 #ifdef _WIN32
@@ -59,6 +58,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
+#include <unistd.h>
 #include <netdb.h>
 #endif
 
@@ -69,6 +69,7 @@
 static int listen_dgram (void)
 {
   struct addrinfo hints, *res;
+  const struct addrinfo *ptr;
   int val = -1;
 
   memset (&hints, 0, sizeof (hints));
@@ -77,7 +78,7 @@ static int listen_dgram (void)
   if (getaddrinfo (NULL, "0", &hints, &res))
     return -1;
 
-  for (const struct addrinfo *ptr = res; ptr != NULL; ptr = ptr->ai_next)
+  for (ptr = res; ptr != NULL; ptr = ptr->ai_next)
   {
     int fd = socket (ptr->ai_family, ptr->ai_socktype, ptr->ai_protocol);
     if (fd == -1)
@@ -103,6 +104,7 @@ static void bad_family (void)
 {
   struct sockaddr addr, dummy;
   int val;
+  socklen_t dummylen = sizeof(dummy);
 
   memset (&addr, 0, sizeof (addr));
   addr.sa_family = AF_UNSPEC;
@@ -111,7 +113,7 @@ static void bad_family (void)
 #endif
 
   val = stun_usage_bind_run (&addr, sizeof (addr),
-                       &dummy, &(socklen_t){ sizeof (dummy) });
+                       &dummy, &dummylen);
   assert (val != 0);
 }
 
@@ -121,6 +123,7 @@ static void small_srv_addr (void)
 {
   struct sockaddr addr, dummy;
   int val;
+  socklen_t dummylen = sizeof(dummy);
 
   memset (&addr, 0, sizeof (addr));
   addr.sa_family = AF_INET;
@@ -129,7 +132,7 @@ static void small_srv_addr (void)
 #endif
 
   val = stun_usage_bind_run (&addr, 1,
-                       &dummy, &(socklen_t){ sizeof (dummy) });
+                       &dummy, &dummylen);
   assert (val == STUN_USAGE_BIND_RETURN_ERROR);
 }
 
@@ -139,12 +142,13 @@ static void big_srv_addr (void)
 {
   uint8_t buf[sizeof (struct sockaddr_storage) + 16];
   struct sockaddr dummy;
-  int fd, val;
+  int val;
+  socklen_t dummylen = sizeof(dummy);
 
 
   memset (buf, 0, sizeof (buf));
   val = stun_usage_bind_run ((struct sockaddr *)buf, sizeof (buf),
-                       &dummy, &(socklen_t){ sizeof (dummy) });
+                       &dummy, &dummylen);
   assert (val == STUN_USAGE_BIND_RETURN_ERROR);
 }
 
@@ -155,6 +159,7 @@ static void timeout (void)
   struct sockaddr_storage srv;
   struct sockaddr dummy;
   socklen_t srvlen = sizeof (srv);
+  socklen_t dummylen = sizeof(dummy);
   int val;
 
   /* Allocate a local UDP port, so we are 100% sure nobody responds there */
@@ -165,7 +170,7 @@ static void timeout (void)
   assert (val == 0);
 
   val = stun_usage_bind_run ((struct sockaddr *)&srv, srvlen,
-                       &dummy, &(socklen_t){ sizeof (dummy) });
+                       &dummy, &dummylen);
   assert (val == STUN_USAGE_BIND_RETURN_TIMEOUT);
 
   close (servfd);
@@ -183,6 +188,7 @@ static void bad_responses (void)
   StunAgent agent;
   StunMessage msg;
   StunMessage req_msg;
+  int servfd, fd;
 
   uint16_t known_attributes[] = {
     STUN_ATTRIBUTE_MAPPED_ADDRESS,
@@ -196,7 +202,7 @@ static void bad_responses (void)
       STUN_COMPATIBILITY_RFC5389, 0);
 
   /* Allocate a local UDP port */
-  int servfd = listen_dgram (), fd;
+  servfd = listen_dgram ();
   assert (servfd != -1);
 
   val = getsockname (servfd, (struct sockaddr *)&addr, &addrlen);
@@ -279,10 +285,6 @@ static void responses (void)
   /* Allocate a client socket and connect to server */
   fd = socket (addr.ss_family, SOCK_DGRAM, 0);
   assert (fd != -1);
-
-  /* Send to/receive from our client instance only */
-  val = getsockname (fd, (struct sockaddr *)&addr, &addrlen);
-  assert (val == 0);
 
   /* Send error response */
   req_len = stun_usage_bind_create (&agent, &req_msg, req, sizeof(req));
@@ -445,12 +447,21 @@ static void test (void (*func) (void), const char *name)
 
 int main (void)
 {
+#ifdef _WIN32
+  WSADATA w;
+  WSAStartup(0x0202, &w);
+#endif
   test (bad_family, "Bad socket family");
   test (small_srv_addr, "Too small server address");
   test (big_srv_addr, "Too big server address");
   test (bad_responses, "Bad responses");
   test (responses, "Error responses");
   test (keepalive, "Keep alives");
+#ifdef HAVE_POLL
   test (timeout, "Binding discovery timeout");
+#endif
+#ifdef _WIN32
+  WSACleanup();
+#endif
   return 0;
 }
