@@ -41,6 +41,7 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <io.h>
 
 static NiceComponentState global_lagent_state = NICE_COMPONENT_STATE_LAST;
 static NiceComponentState global_ragent_state = NICE_COMPONENT_STATE_LAST;
@@ -393,6 +394,11 @@ int main (void)
   guint timer_id;
   const char *stun_server = NULL, *stun_server_port = NULL;
 
+#ifdef G_OS_WIN32
+  WSADATA w;
+
+  WSAStartup(0x0202, &w);
+#endif
   g_type_init ();
 #if !GLIB_CHECK_VERSION(2,31,8)
   g_thread_init(NULL);
@@ -466,6 +472,8 @@ int main (void)
   global_mainloop = NULL;
 
   g_source_remove (timer_id);
-
+#ifdef G_OS_WIN32
+  WSACleanup();
+#endif
   return result;
 }
