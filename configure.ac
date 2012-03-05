@@ -182,7 +182,11 @@ case $host_os in
 esac
 
 # check for gtk-doc
+m4_ifdef([GTK_DOC_CHECK], [
 GTK_DOC_CHECK(1.9)
+],[
+AM_CONDITIONAL([ENABLE_GTK_DOC], false)
+])
 AC_CONFIG_MACRO_DIR(m4)
 
 AC_OUTPUT
