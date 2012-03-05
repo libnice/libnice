@@ -91,11 +91,11 @@ inet_pton_win32(int af, const char *src, void *dst)
   while (res)  {
     if( res->ai_addr->sa_family == AF_INET) {
       memcpy(dst, &((struct sockaddr_in *) res->ai_addr)->sin_addr,
-          res->ai_addrlen);
+          sizeof(struct in_addr));
       res = res->ai_next;
     } else if(res->ai_addr->sa_family == AF_INET6) {
       memcpy(dst, &((struct sockaddr_in6 *) res->ai_addr)->sin6_addr,
-          res->ai_addrlen);
+          sizeof(struct in_addr6));
       res = res->ai_next;
     }
   }
