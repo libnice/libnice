@@ -17,6 +17,11 @@ check_PROGRAMS = \
 	test-conncheck \
 	test-hmac
 
+if WINDOWS
+  AM_CFLAGS += -DWINVER=0x0501 # _WIN32_WINNT_WINXP
+  LDADD += -lws2_32
+endif
+
 dist_check_SCRIPTS = check-bind.sh
 
 TESTS = $(check_PROGRAMS)
