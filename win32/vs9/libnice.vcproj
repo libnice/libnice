@@ -41,7 +41,7 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="0"
-				AdditionalIncludeDirectories="..\..\glib\include\glib-2.0;..\..\glib\lib\glib-2.0\include;..\..\socket;..\..\;..\..\stun;..\..\random;..\..\agent;."
+				AdditionalIncludeDirectories="..\..\glib\include\glib-2.0;..\..\glib\lib\glib-2.0\include;..\..\socket;.;..\..\;..\..\stun;..\..\random;..\..\agent"
 				PreprocessorDefinitions="WIN32;_DEBUG;_WINDOWS;_USRDLL;HAVE_CONFIG_H;_CRT_SECURE_NO_WARNINGS"
 				MinimalRebuild="true"
 				BasicRuntimeChecks="3"
@@ -118,7 +118,7 @@
 				Name="VCCLCompilerTool"
 				Optimization="2"
 				EnableIntrinsicFunctions="true"
-				AdditionalIncludeDirectories="..\..\glib\include\glib-2.0;..\..\glib\lib\glib-2.0\include;..\..\socket;..\..\;..\..\stun;..\..\random;..\..\agent;."
+				AdditionalIncludeDirectories="..\..\glib\include\glib-2.0;..\..\glib\lib\glib-2.0\include;..\..\socket;.;..\..\;..\..\stun;..\..\random;..\..\agent"
 				PreprocessorDefinitions="WIN32;NDEBUG;_WINDOWS;_USRDLL;HAVE_CONFIG_H;_CRT_SECURE_NO_WARNINGS"
 				RuntimeLibrary="2"
 				EnableFunctionLevelLinking="true"
@@ -271,11 +271,11 @@
 				>
 			</File>
 			<File
-				RelativePath="..\..\agent\debug.h"
+				RelativePath="..\..\stun\debug.h"
 				>
 			</File>
 			<File
-				RelativePath="..\..\stun\debug.h"
+				RelativePath="..\..\agent\debug.h"
 				>
 			</File>
 			<File
@@ -483,11 +483,11 @@
 				>
 			</File>
 			<File
-				RelativePath="..\..\socket\turn.h"
+				RelativePath="..\..\stun\usages\turn.h"
 				>
 			</File>
 			<File
-				RelativePath="..\..\stun\usages\turn.h"
+				RelativePath="..\..\socket\turn.h"
 				>
 			</File>
 			<File

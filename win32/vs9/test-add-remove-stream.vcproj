@@ -2,9 +2,9 @@
 <VisualStudioProject
 	ProjectType="Visual C++"
 	Version="9,00"
-	Name="test-fullmode"
-	ProjectGUID="{60EC66A2-FE1F-413E-8FEE-204386D62617}"
-	RootNamespace="testfullmode"
+	Name="test-add-remove-stream"
+	ProjectGUID="{065B91A4-2024-486F-A338-53C31FFC9580}"
+	RootNamespace="testaddremovestream"
 	Keyword="Win32Proj"
 	TargetFrameworkVersion="196613"
 	>
@@ -21,7 +21,7 @@
 			OutputDirectory="$(SolutionDir)$(SolutionName)\bin\$(PlatformName)_$(ConfigurationName)"
 			IntermediateDirectory="$(SolutionDir)$(SolutionName)\obj\$(PlatformName)_$(ConfigurationName)\$(ProjectName)"
 			ConfigurationType="1"
-			CharacterSet="2"
+			CharacterSet="1"
 			>
 			<Tool
 				Name="VCPreBuildEventTool"
@@ -42,7 +42,7 @@
 				Name="VCCLCompilerTool"
 				Optimization="0"
 				AdditionalIncludeDirectories="..\..\glib\include\glib-2.0;..\..\glib\lib\glib-2.0\include;..\..\socket;.;..\..\;..\..\stun;..\..\random;..\..\agent"
-				PreprocessorDefinitions="WIN32;_DEBUG;_CONSOLE;HAVE_CONFIG_H;_CRT_SECURE_NO_WARNINGS"
+				PreprocessorDefinitions="WIN32;_DEBUG;_CONSOLE"
 				MinimalRebuild="true"
 				BasicRuntimeChecks="3"
 				RuntimeLibrary="3"
@@ -95,7 +95,7 @@
 			OutputDirectory="$(SolutionDir)$(SolutionName)\bin\$(PlatformName)_$(ConfigurationName)"
 			IntermediateDirectory="$(SolutionDir)$(SolutionName)\obj\$(PlatformName)_$(ConfigurationName)\$(ProjectName)"
 			ConfigurationType="1"
-			CharacterSet="2"
+			CharacterSet="1"
 			WholeProgramOptimization="1"
 			>
 			<Tool
@@ -118,7 +118,7 @@
 				Optimization="2"
 				EnableIntrinsicFunctions="true"
 				AdditionalIncludeDirectories="..\..\glib\include\glib-2.0;..\..\glib\lib\glib-2.0\include;..\..\socket;.;..\..\;..\..\stun;..\..\random;..\..\agent"
-				PreprocessorDefinitions="WIN32;NDEBUG;_CONSOLE;HAVE_CONFIG_H;_CRT_SECURE_NO_WARNINGS"
+				PreprocessorDefinitions="WIN32;NDEBUG;_CONSOLE"
 				RuntimeLibrary="2"
 				EnableFunctionLevelLinking="true"
 				UsePrecompiledHeader="0"
@@ -177,7 +177,7 @@
 			UniqueIdentifier="{4FC737F1-C7A5-4376-A066-2A32D752A2FF}"
 			>
 			<File
-				RelativePath="..\..\tests\test-fullmode.c"
+				RelativePath="..\..\tests\test-add-remove-stream.c"
 				>
 			</File>
 		</Filter>

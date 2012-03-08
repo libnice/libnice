@@ -70,6 +70,9 @@ stun_agent_set_software
 stun_agent_validate
 stun_debug_disable
 stun_debug_enable
+stun_debug
+stun_debug_bytes
+stun_hash_creds
 stun_message_append
 stun_message_append32
 stun_message_append64
