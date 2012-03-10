@@ -2220,12 +2220,6 @@ nice_agent_set_remote_candidates (NiceAgent *agent, guint stream_id, guint compo
     goto done;
   }
 
-  if (stream->gathering) {
-    nice_debug ("Agent %p: Remote candidates refused for stream %d because "
-        "we are still gathering our own candidates", agent, stream_id);
-    added = -1;
-    goto done;
-  }
 
   if (agent->reliable && component->tcp == NULL) {
     nice_debug ("Agent %p: not setting remote candidate for s%d:%d because "
