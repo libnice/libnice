@@ -1286,6 +1286,40 @@ static void priv_add_new_check_pair (NiceAgent *agent, guint stream_id, Componen
   }
 }
 
+static gboolean priv_conn_check_add_for_candidate_pair (NiceAgent *agent, guint stream_id, Component *component, NiceCandidate *local, NiceCandidate *remote)
+{
+  gboolean ret = FALSE;
+  /* note: do not create pairs where the local candidate is
+   *       a srv-reflexive (ICE 5.7.3. "Pruning the pairs" ID-9) */
+  if ((agent->compatibility == NICE_COMPATIBILITY_RFC5245 ||
+      agent->compatibility == NICE_COMPATIBILITY_WLM2009 ||
+      agent->compatibility == NICE_COMPATIBILITY_OC2007R2) &&
+      local->type == NICE_CANDIDATE_TYPE_SERVER_REFLEXIVE) {
+    return FALSE;
+  }
+
+  /* note: match pairs only if transport and address family are the same */
+  if (local->transport == remote->transport &&
+     local->addr.s.addr.sa_family == remote->addr.s.addr.sa_family) {
+
+    priv_add_new_check_pair (agent, stream_id, component, local, remote, NICE_CHECK_FROZEN, FALSE);
+    ret = TRUE;
+    if (component->state < NICE_COMPONENT_STATE_CONNECTED) {
+      agent_signal_component_state_change (agent,
+          stream_id,
+          component->id,
+          NICE_COMPONENT_STATE_CONNECTING);
+    } else {
+      agent_signal_component_state_change (agent,
+          stream_id,
+          component->id,
+          NICE_COMPONENT_STATE_CONNECTED);
+    }
+  }
+
+  return ret;
+}
+
 /*
  * Forms new candidate pairs by matching the new remote candidate
  * 'remote_cand' with all existing local candidates of 'component'.
@@ -1301,37 +1335,45 @@ static void priv_add_new_check_pair (NiceAgent *agent, guint stream_id, Componen
 int conn_check_add_for_candidate (NiceAgent *agent, guint stream_id, Component *component, NiceCandidate *remote)
 {
   GSList *i;
-  int added = 0; 
+  int added = 0;
+  int ret = 0;
 
   for (i = component->local_candidates; i ; i = i->next) {
 
     NiceCandidate *local = i->data;
+    ret = priv_conn_check_add_for_candidate_pair (agent, stream_id, component, local, remote);
 
-    /* note: match pairs only if transport and address family are the same */
-    if (local->transport == remote->transport &&
-	local->addr.s.addr.sa_family == remote->addr.s.addr.sa_family) {
-
-      /* note: do not create pairs where local candidate is 
-       *       a srv-reflexive (ICE 5.7.3. "Pruning the Pairs" ID-19) */
-      if ((agent->compatibility == NICE_COMPATIBILITY_RFC5245 ||
-           agent->compatibility == NICE_COMPATIBILITY_WLM2009 ||
-           agent->compatibility == NICE_COMPATIBILITY_OC2007R2) &&
-          local->type == NICE_CANDIDATE_TYPE_SERVER_REFLEXIVE)
-	continue;
-
-      priv_add_new_check_pair (agent, stream_id, component, local, remote, NICE_CHECK_FROZEN, FALSE);
+    if (ret) {
       ++added;
-      if (component->state < NICE_COMPONENT_STATE_CONNECTED) {
-        agent_signal_component_state_change (agent,
-            stream_id,
-            component->id,
-            NICE_COMPONENT_STATE_CONNECTING);
-      } else {
-        agent_signal_component_state_change (agent,
-            stream_id,
-            component->id,
-            NICE_COMPONENT_STATE_CONNECTED);
-      }
+    }
+  }
+
+  return added;
+}
+
+/*
+ * Forms new candidate pairs by matching the new local candidate
+ * 'local_cand' with all existing remote candidates of 'component'.
+ *
+ * @param agent context
+ * @param component pointer to the component
+ * @param local local candidate to match with
+ *
+ * @return number of checks added, negative on fatal errors
+ */
+int conn_check_add_for_local_candidate (NiceAgent *agent, guint stream_id, Component *component, NiceCandidate *local)
+{
+  GSList *i;
+  int added = 0;
+  int ret = 0;
+
+  for (i = component->remote_candidates; i ; i = i->next) {
+
+    NiceCandidate *remote = i->data;
+    ret = priv_conn_check_add_for_candidate_pair (agent, stream_id, component, local, remote);
+
+    if (ret) {
+      ++added;
     }
   }
 

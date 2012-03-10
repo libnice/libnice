@@ -82,6 +82,7 @@ struct _CandidateCheckPair
 };
 
 int conn_check_add_for_candidate (NiceAgent *agent, guint stream_id, Component *component, NiceCandidate *remote);
+int conn_check_add_for_local_candidate (NiceAgent *agent, guint stream_id, Component *component, NiceCandidate *local);
 void conn_check_free_item (gpointer data, gpointer user_data);
 void conn_check_free (NiceAgent *agent);
 gboolean conn_check_schedule_next (NiceAgent *agent);
