@@ -43,10 +43,10 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdarg.h>
-#include <io.h>
 
 #ifdef _WIN32
 #include <winsock2.h>
+#include <io.h>
 #else
 #include <sys/types.h>
 #include <sys/socket.h>

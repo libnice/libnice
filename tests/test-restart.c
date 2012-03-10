@@ -41,7 +41,9 @@
 
 #include <stdlib.h>
 #include <string.h>
+#ifdef _WIN32
 #include <io.h>
+#endif
 
 static NiceComponentState global_lagent_state = NICE_COMPONENT_STATE_LAST;
 static NiceComponentState global_ragent_state = NICE_COMPONENT_STATE_LAST;
