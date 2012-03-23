@@ -181,7 +181,7 @@ static int dgram_process (int sock, StunAgent *oldagent, StunAgent *newagent)
   addr_len = sizeof (struct sockaddr_in);
   len = recvfrom (sock, buf, sizeof(buf), 0,
       (struct sockaddr *)&addr, &addr_len);
-  if (buf_len == (size_t)-1)
+  if (len == (size_t)-1)
     return -1;
 
   validation = stun_agent_validate (newagent, &request, buf, len, NULL, 0);
