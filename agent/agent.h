@@ -505,6 +505,12 @@ nice_agent_get_local_credentials (
    #NiceAgent::candidate-gathering-done signale before
    calling nice_agent_set_remote_candidates()
    </para>
+   <para>
+    Since 0.1.3, there is no need to wait for the candidate-gathering-done signal.
+    Remote candidates can be set even while gathering local candidates.
+    Newly discovered local candidates will automatically be paired with
+    existing remote candidates.
+   </para>
  </note>
  *
  * Returns: The number of candidates added, negative on errors (memory allocation
