@@ -1788,11 +1788,18 @@ static gboolean priv_schedule_triggered_check (NiceAgent *agent, Stream *stream,
 	   *       aggressive nomination mode, send a new triggered
 	   *       check to nominate the pair */
 	  if ((agent->compatibility == NICE_COMPATIBILITY_RFC5245 ||
-         agent->compatibility == NICE_COMPATIBILITY_WLM2009 ||
-         agent->compatibility == NICE_COMPATIBILITY_OC2007R2) &&
-        agent->controlling_mode)
+                  agent->compatibility == NICE_COMPATIBILITY_WLM2009 ||
+                  agent->compatibility == NICE_COMPATIBILITY_OC2007R2) &&
+              agent->controlling_mode)
 	    priv_conn_check_initiate (agent, p);
-	}
+	} else if (p->state == NICE_CHECK_FAILED) {
+          /* 7.2.1.4 Triggered Checks
+           * If the state of the pair is Failed, it is changed to Waiting
+             and the agent MUST create a new connectivity check for that
+             pair (representing a new STUN Binding request transaction), by
+             enqueueing the pair in the triggered check queue. */
+          priv_conn_check_initiate (agent, p);
+        }
 
 	/* note: the spec says the we SHOULD retransmit in-progress
 	 *       checks immediately, but we won't do that now */
