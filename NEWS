@@ -1,3 +1,21 @@
+libnice 0.1.2 (2012-04-03)
+==========================
+
+Fix a bug where a controlled agent may never go to READY if it received early conncheck
+Restart connchecks on a failed candidate pair when receiving a triggered check
+Fix a bug where gathering-done signal could be sent before UPnP mapping finishes
+Fix a race condition where setting remote-candidates on a gathered stream failed if another stream was gathering
+Many fixes to complete and stabilize TURN support 
+Fix a bug in proxy support where TURN packets were misread
+Refactor libnice to use GSocket which works around a glib limitation of g_io_channel on windows
+Fix a bug with receiving error messages during conncheck
+Fix a possible infinite loop bug
+Fix memory leaks and multi-threaded race conditions
+Better compatibility for BSD and Mingw
+Added support files for Visual Studio compilation
+Various fixes to UPnP support
+Fixes to the build system
+
 libnice 0.1.1 (2011-09-07)
 ==========================
 
