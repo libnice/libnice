@@ -2153,7 +2153,7 @@ static gboolean priv_map_reply_to_conn_check_request (NiceAgent *agent, Stream *
           p->state = NICE_CHECK_WAITING;
           nice_debug ("Agent %p : pair %p state WAITING", agent, p);
           trans_found = TRUE;
-        } else if (res == STUN_USAGE_ICE_RETURN_ERROR) {
+        } else {
           /* case: STUN error, the check STUN context was freed */
           nice_debug ("Agent %p : conncheck %p FAILED.", agent, p);
           p->stun_message.buffer = NULL;
