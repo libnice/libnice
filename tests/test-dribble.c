@@ -381,7 +381,7 @@ int main (void)
   nice_agent_remove_stream (ragent, rs_id);
   priv_print_global_status ();
   g_assert (global_lagent_state == NICE_COMPONENT_STATE_READY);
-  g_assert (global_ragent_state == NICE_COMPONENT_STATE_READY);
+  g_assert (global_ragent_state >= NICE_COMPONENT_STATE_CONNECTED);
   /* note: verify that correct number of local candidates were reported */
   g_assert (global_lagent_cands == 1);
   g_assert (global_ragent_cands == 1);
