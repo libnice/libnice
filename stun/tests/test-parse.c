@@ -368,7 +368,7 @@ static void test_attribute (void)
   StunMessage msg;
   uint16_t known_attributes[] = {STUN_ATTRIBUTE_MESSAGE_INTEGRITY, STUN_ATTRIBUTE_USERNAME, 0};
 
-  printf ("Attribute test message length: %u\n", sizeof (acme));
+  printf ("Attribute test message length: %lu\n", sizeof (acme));
 
   stun_agent_init (&agent, known_attributes,
       STUN_COMPATIBILITY_RFC5389, STUN_AGENT_USAGE_SHORT_TERM_CREDENTIALS);
