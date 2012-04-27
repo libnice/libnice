@@ -1300,6 +1300,30 @@ void agent_signal_new_remote_candidate (NiceAgent *agent, NiceCandidate *candida
 		 candidate->foundation);
 }
 
+static const gchar *
+component_state_to_string (NiceComponentState state)
+{
+  switch (state)
+    {
+      case NICE_COMPONENT_STATE_DISCONNECTED:
+        return "disconnected";
+      case NICE_COMPONENT_STATE_GATHERING:
+        return "gathering";
+      case NICE_COMPONENT_STATE_CONNECTING:
+        return "connecting";
+      case NICE_COMPONENT_STATE_CONNECTED:
+        return "connected";
+      case NICE_COMPONENT_STATE_READY:
+        return "ready";
+      case NICE_COMPONENT_STATE_FAILED:
+        return "failed";
+      case NICE_COMPONENT_STATE_LAST:
+        break;
+    }
+
+  return "invalid";
+}
+
 void agent_signal_component_state_change (NiceAgent *agent, guint stream_id, guint component_id, NiceComponentState state)
 {
   Component *component;
@@ -1318,8 +1342,9 @@ void agent_signal_component_state_change (NiceAgent *agent, guint stream_id, gui
   }
 
   if (component->state != state && state < NICE_COMPONENT_STATE_LAST) {
-    nice_debug ("Agent %p : stream %u component %u STATE-CHANGE %u -> %u.", agent,
-	     stream_id, component_id, component->state, state);
+    nice_debug ("Agent %p : stream %u component %u STATE-CHANGE %s -> %s.", agent,
+        stream_id, component_id, component_state_to_string (component->state),
+        component_state_to_string (state));
 
     component->state = state;
 
