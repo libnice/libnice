@@ -38,6 +38,7 @@
  */
 
 #include <glib.h>
+#include <glib-object.h>
 #include <string.h>
 #include <errno.h>
 #include <stdio.h>
@@ -77,6 +78,7 @@ static gboolean exit_stun_thread = FALSE;
 static gboolean lagent_candidate_gathering_done = FALSE;
 static gboolean ragent_candidate_gathering_done = FALSE;
 static guint global_ls_id, global_rs_id;
+static gboolean data_received = FALSE;
 
 static const uint16_t known_attributes[] =  {
   0
@@ -163,9 +165,6 @@ recv_packet:
     goto recv_packet;
   }
 
-  // Don't recieve anymore
-  shutdown (sock, 0);
-
   switch (stun_message_get_method (&request)) {
     case STUN_BINDING:
       stun_agent_init_response (agent, &response, buf, sizeof (buf), &request);
@@ -182,6 +181,7 @@ recv_packet:
       if (!stun_agent_init_error (agent, &response, buf, sizeof (buf),
               &request, STUN_ERROR_BAD_REQUEST)) {
         g_debug ("STUN error message not initialized properly");
+        g_assert_not_reached();
       }
   }
 
@@ -195,11 +195,11 @@ send_buf:
     g_debug ("Waiting for signal. State is %d", global_lagent_state);
     g_cond_wait (stun_signal_ptr, stun_mutex_ptr);
   }
+  g_mutex_unlock (stun_mutex_ptr);
   len = sendto (sock, buf, buf_len, 0,
       (struct sockaddr *)&addr, addr_len);
   g_debug ("STUN response sent");
   ret = (len < buf_len) ? -1 : 0;
-  g_mutex_unlock (stun_mutex_ptr);
   return ret;
 }
 
@@ -216,24 +216,20 @@ static gpointer stun_thread_func (const gpointer user_data)
   stun_agent_init (&newagent, known_attributes,
       STUN_COMPATIBILITY_RFC5389, STUN_AGENT_USAGE_USE_FINGERPRINT);
 
-  for (;;) {
+  while (!exit_stun_thread) {
     sock = listen_socket (IPPORT_STUN);
     if (sock == -1) {
       continue;
-    }
-    if (exit_stun_thread) {
-      g_debug ("Exit STUN daemon");
-      exit_code = close (sock);
-      g_thread_exit (GINT_TO_POINTER (exit_code));
     }
     g_debug ("Ready to process next datagram");
     dgram_process (sock, &oldagent, &newagent);
     g_assert (g_mutex_trylock(stun_thread_ret_mutex_ptr));
     g_cond_wait (stun_thread_ret_ptr, stun_thread_ret_mutex_ptr);
     g_mutex_unlock (stun_thread_ret_mutex_ptr);
-    close (sock);
+    exit_code = close (sock);
   }
 
+  g_thread_exit (GINT_TO_POINTER (exit_code));
   return NULL;
 }
 
@@ -282,7 +278,11 @@ static void cb_nice_recv (NiceAgent *agent, guint stream_id, guint component_id,
 
     g_debug ("test-dribblemode:%s: ragent recieved %d bytes : quit mainloop",
              G_STRFUNC, len);
+    data_received = TRUE;
     g_main_loop_quit (global_mainloop);
+  } else {
+    g_debug ("Buffer is %s", buf);
+    g_assert_not_reached();
   }
 }
 
@@ -315,19 +315,21 @@ static void cb_component_state_changed (NiceAgent *agent, guint stream_id, guint
   }
 }
 
-static void swap_candidates(NiceAgent *local, guint local_id, NiceAgent *remote, guint remote_id, gpointer user_data)
+static void swap_candidates(NiceAgent *local, guint local_id, NiceAgent *remote, guint remote_id, gboolean signal_stun_reply)
 {
   GSList *cands = NULL;
 
-  g_debug ("test-dribblemode:%s: %p", G_STRFUNC, user_data);
+  g_debug ("test-dribblemode:%s", G_STRFUNC);
   cands = nice_agent_get_local_candidates(local, local_id,
                                           NICE_COMPONENT_TYPE_RTP);
   g_assert(nice_agent_set_remote_candidates(remote, remote_id,
                                             NICE_COMPONENT_TYPE_RTP, cands));
 
-  if (GPOINTER_TO_UINT(user_data) == 2) {
+  if (signal_stun_reply) {
     g_cond_signal (stun_signal_ptr);
   }
+
+  g_slist_free_full (cands, (GDestroyNotify) nice_candidate_free);
 }
 
 static void cb_agent_new_candidate(NiceAgent *agent, guint stream_id, guint component_id, gchar *foundation, gpointer user_data)
@@ -339,7 +341,6 @@ static void cb_agent_new_candidate(NiceAgent *agent, guint stream_id, guint comp
   NiceCandidate* temp;
   gpointer tmp;
   guint id;
-  static bool send_stun_response = TRUE;
 
   g_debug ("test-dribblemode:%s: %p", G_STRFUNC, user_data);
 
@@ -350,7 +351,7 @@ static void cb_agent_new_candidate(NiceAgent *agent, guint stream_id, guint comp
     temp = (NiceCandidate*) cands->data;
     if (g_strcmp0(temp->foundation, foundation) == 0) {
       g_debug ("Adding new local candidate to other agent's connchecks");
-      remote_cands = g_slist_prepend (remote_cands, temp);
+      remote_cands = g_slist_prepend (remote_cands, nice_candidate_copy(temp));
       g_assert (nice_agent_set_remote_candidates (other, id,
                                                   NICE_COMPONENT_TYPE_RTP,
                                                   remote_cands));
@@ -358,10 +359,8 @@ static void cb_agent_new_candidate(NiceAgent *agent, guint stream_id, guint comp
     cands = g_slist_next(cands);
   }
 
-  if (send_stun_response) {
-    g_cond_signal (stun_signal_ptr);
-    send_stun_response = FALSE;
-  }
+  g_slist_free_full (remote_cands, (GDestroyNotify) nice_candidate_free);
+  g_slist_free_full (cands, (GDestroyNotify) nice_candidate_free);
 
 }
 
@@ -376,30 +375,27 @@ static void add_bad_candidate (NiceAgent *agent, guint stream_id, NiceCandidate 
   cand->stream_id = stream_id;
   cand->component_id = NICE_COMPONENT_TYPE_RTP;
   cand->addr = bad_addr;
-  cand->username = NULL;
-  cand->password = NULL;
 
+  nice_agent_get_local_credentials (agent, stream_id,
+                                    &cand->username, &cand->password);
   cand_list = g_slist_prepend (cand_list, cand);
 
   g_debug ("Adding buggy candidate to the agent %p", agent);
-  nice_agent_set_remote_candidates (agent, stream_id,
+  g_assert (nice_agent_set_remote_candidates (agent, stream_id,
                                     NICE_COMPONENT_TYPE_RTP,
-                                    cand_list);
+                                    cand_list));
 
-  g_slist_free (cand_list);
+  g_slist_free_full (cand_list, (GDestroyNotify) nice_candidate_free);
 
 }
 
 static void init_test(NiceAgent *lagent, NiceAgent *ragent, gboolean connect_new_candidate_signal)
 {
-  global_lagent_state = NICE_COMPONENT_STATE_LAST;
-  global_ragent_state = NICE_COMPONENT_STATE_LAST;
+  global_lagent_state = NICE_COMPONENT_STATE_DISCONNECTED;
+  global_ragent_state = NICE_COMPONENT_STATE_DISCONNECTED;
 
   lagent_candidate_gathering_done = FALSE;
   ragent_candidate_gathering_done = FALSE;
-
-  global_ls_id = 0;
-  global_rs_id = 0;
 
   global_ls_id = nice_agent_add_stream (lagent, 1);
   global_rs_id = nice_agent_add_stream (ragent, 1);
@@ -415,11 +411,18 @@ static void init_test(NiceAgent *lagent, NiceAgent *ragent, gboolean connect_new
   g_object_set_data (G_OBJECT (ragent), "id", GUINT_TO_POINTER (global_rs_id));
 
   if (connect_new_candidate_signal) {
-    g_signal_connect(G_OBJECT(ragent), "new-candidate",
-                     G_CALLBACK(cb_agent_new_candidate), GUINT_TO_POINTER(1));
-    g_signal_connect(G_OBJECT(ragent), "new-candidate",
-                     G_CALLBACK(cb_agent_new_candidate), GUINT_TO_POINTER(2));
-  }
+    g_signal_connect (G_OBJECT(lagent), "new-candidate",
+                      G_CALLBACK(cb_agent_new_candidate), GUINT_TO_POINTER(1));
+    g_signal_connect (G_OBJECT(ragent), "new-candidate",
+                      G_CALLBACK(cb_agent_new_candidate), GUINT_TO_POINTER(2));
+  } /*else {
+    g_signal_disconnect_by_func (G_OBJECT(lagent), cb_agent_new_candidate,
+                                 GUINT_TO_POINTER(1));
+    g_signal_disconnect_by_func (G_OBJECT(ragent), cb_agent_new_candidate,
+                                 GUINT_TO_POINTER(2));
+  }*/
+
+  data_received = FALSE;
 
   nice_agent_attach_recv (lagent, global_ls_id, NICE_COMPONENT_TYPE_RTP,
                    g_main_loop_get_context(global_mainloop),
@@ -444,8 +447,8 @@ static void standard_test(NiceAgent *lagent, NiceAgent *ragent)
 
   nice_agent_gather_candidates (lagent, global_ls_id);
   g_main_loop_run (global_mainloop);
-  g_assert (global_lagent_state == NICE_COMPONENT_STATE_GATHERING);
-  g_assert (!lagent_candidate_gathering_done);
+  g_assert (global_lagent_state == NICE_COMPONENT_STATE_GATHERING &&
+            !lagent_candidate_gathering_done);
 
   nice_agent_gather_candidates (ragent, global_rs_id);
   if (!ragent_candidate_gathering_done) {
@@ -458,20 +461,22 @@ static void standard_test(NiceAgent *lagent, NiceAgent *ragent)
   g_debug ("Setting local candidates of ragent as remote candidates of lagent");
   swap_candidates (ragent, global_rs_id,
                    lagent, global_ls_id,
-                   GUINT_TO_POINTER(2));
+                   TRUE);
 
   g_main_loop_run (global_mainloop);
+  g_assert (global_lagent_state >= NICE_COMPONENT_STATE_CONNECTED &&
+            data_received);
 
   g_debug ("Setting local candidates of lagent as remote candidates of ragent");
   swap_candidates (lagent, global_ls_id,
                    ragent, global_rs_id,
-                   GUINT_TO_POINTER(1));
+                   FALSE);
   g_main_loop_run (global_mainloop);
 
   g_assert (lagent_candidate_gathering_done);
 
   g_assert (global_lagent_state == NICE_COMPONENT_STATE_READY);
-  g_assert (global_lagent_state >= NICE_COMPONENT_STATE_CONNECTED);
+  g_assert (global_ragent_state >= NICE_COMPONENT_STATE_CONNECTED);
 
   cleanup (lagent, ragent);
 }
@@ -490,8 +495,8 @@ static void bad_credentials_test(NiceAgent *lagent, NiceAgent *ragent)
   nice_agent_gather_candidates (lagent, global_ls_id);
   g_cond_signal (stun_thread_ret_ptr);
   g_main_loop_run (global_mainloop);
-  g_assert (global_lagent_state == NICE_COMPONENT_STATE_GATHERING);
-  g_assert (!lagent_candidate_gathering_done);
+  g_assert (global_lagent_state == NICE_COMPONENT_STATE_GATHERING &&
+            !lagent_candidate_gathering_done);
 
   nice_agent_gather_candidates (ragent, global_rs_id);
   if (!ragent_candidate_gathering_done) {
@@ -501,7 +506,7 @@ static void bad_credentials_test(NiceAgent *lagent, NiceAgent *ragent)
 
   swap_candidates (ragent, global_rs_id,
                    lagent, global_ls_id,
-                   GUINT_TO_POINTER(1));
+                   FALSE);
   g_main_loop_run (global_mainloop);
   g_assert (global_lagent_state == NICE_COMPONENT_STATE_FAILED);
 
@@ -509,14 +514,15 @@ static void bad_credentials_test(NiceAgent *lagent, NiceAgent *ragent)
   set_credentials (lagent, global_ls_id, ragent, global_rs_id);
   swap_candidates (ragent, global_rs_id,
                    lagent, global_ls_id,
-                   GUINT_TO_POINTER(1));
+                   FALSE);
 
   swap_candidates (lagent, global_ls_id,
                    ragent, global_rs_id,
-                   GUINT_TO_POINTER(1));
+                   FALSE);
 
   g_main_loop_run (global_mainloop);
 
+  g_assert (data_received);
   g_assert (global_lagent_state == NICE_COMPONENT_STATE_READY);
   g_assert (global_ragent_state >= NICE_COMPONENT_STATE_CONNECTED);
 
@@ -538,8 +544,8 @@ static void bad_candidate_test(NiceAgent *lagent,NiceAgent *ragent)
   nice_agent_gather_candidates (lagent, global_ls_id);
   g_cond_signal (stun_thread_ret_ptr);
   g_main_loop_run (global_mainloop);
-  g_assert (global_lagent_state == NICE_COMPONENT_STATE_GATHERING);
-  g_assert (!lagent_candidate_gathering_done);
+  g_assert (global_lagent_state == NICE_COMPONENT_STATE_GATHERING &&
+            !lagent_candidate_gathering_done);
 
   nice_agent_gather_candidates (ragent, global_rs_id);
   if (!ragent_candidate_gathering_done) {
@@ -548,21 +554,25 @@ static void bad_candidate_test(NiceAgent *lagent,NiceAgent *ragent)
   }
 
   add_bad_candidate (lagent, global_ls_id, cand);
-  g_main_loop_run (global_mainloop);
-  g_assert (global_lagent_state == NICE_COMPONENT_STATE_FAILED);
 
+  // lagent will finish candidate gathering causing this mainloop to quit
+  g_main_loop_run (global_mainloop);
+
+  // connchecks will fail causing this mainloop to quit
+  g_main_loop_run (global_mainloop);
+
+  g_assert (global_lagent_state == NICE_COMPONENT_STATE_FAILED &&
+            !data_received);
   set_credentials (lagent, global_ls_id, ragent, global_rs_id);
 
   swap_candidates (ragent, global_rs_id,
                    lagent, global_ls_id,
-                   GUINT_TO_POINTER(1));
+                   FALSE);
 
   swap_candidates (lagent, global_ls_id,
                    ragent, global_rs_id,
-                   GUINT_TO_POINTER(1));
-  g_main_loop_run (global_mainloop);
+                   FALSE);
 
-  // Wait for lagent to finish candidate gathering
   g_main_loop_run (global_mainloop);
 
   g_assert (lagent_candidate_gathering_done);
@@ -583,16 +593,22 @@ static void new_candidate_test(NiceAgent *lagent, NiceAgent *ragent)
   nice_agent_gather_candidates (lagent, global_ls_id);
   g_cond_signal (stun_thread_ret_ptr);
   g_main_loop_run (global_mainloop);
-  g_assert (global_lagent_state == NICE_COMPONENT_STATE_GATHERING);
-  g_assert (!lagent_candidate_gathering_done);
+  g_assert (global_lagent_state == NICE_COMPONENT_STATE_GATHERING &&
+            !lagent_candidate_gathering_done);
 
   nice_agent_gather_candidates (ragent, global_rs_id);
   if (!ragent_candidate_gathering_done) {
     g_main_loop_run (global_mainloop);
   }
 
-  // Wait for lagent and ragent to finish gathering candidates
+  // Wait for data
   g_main_loop_run (global_mainloop);
+  g_assert (data_received);
+
+  // Data arrived, signal STUN thread to send STUN response
+  g_cond_signal (stun_signal_ptr);
+
+  // Wait for lagent to finish gathering candidates
   g_main_loop_run (global_mainloop);
 
   g_assert (lagent_candidate_gathering_done);
