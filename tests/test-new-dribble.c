@@ -54,6 +54,8 @@
 
 #define IPPORT_STUN 3456
 #define USE_UPNP 0
+#define LEFT_AGENT GINT_TO_POINTER(1)
+#define RIGHT_AGENT GINT_TO_POINTER(2)
 
 #if !GLIB_CHECK_VERSION(2,31,8)
   static GMutex *stun_mutex_ptr = NULL;
@@ -271,18 +273,15 @@ static void cb_nice_recv (NiceAgent *agent, guint stream_id, guint component_id,
 
   g_debug ("test-dribblemode:%s: %p", G_STRFUNC, user_data);
 
-  if (GPOINTER_TO_UINT(user_data) == 2) {
-
-    ret = strncmp ("1234567812345678", buf, 16);
+  ret = strncmp ("0000", buf, 4);
+  if (ret == 0) {
+    ret = strncmp ("00001234567812345678", buf, 16);
     g_assert (ret == 0);
 
     g_debug ("test-dribblemode:%s: ragent recieved %d bytes : quit mainloop",
              G_STRFUNC, len);
     data_received = TRUE;
     g_main_loop_quit (global_mainloop);
-  } else {
-    g_debug ("Buffer is %s", buf);
-    g_assert_not_reached();
   }
 }
 
@@ -309,9 +308,9 @@ static void cb_component_state_changed (NiceAgent *agent, guint stream_id, guint
   if(GPOINTER_TO_UINT(data) == 1 && state == NICE_COMPONENT_STATE_READY) {
     /* note: test payload send and receive */
     ret = nice_agent_send (agent, stream_id, component_id,
-                           16, "1234567812345678");
+                           20, "00001234567812345678");
     g_debug ("Sent %d bytes", ret);
-    g_assert (ret == 16);
+    g_assert (ret == 20);
   }
 }
 
@@ -337,6 +336,7 @@ static void cb_agent_new_candidate(NiceAgent *agent, guint stream_id, guint comp
   NiceAgent *other = g_object_get_data (G_OBJECT (agent), "other-agent");
   GSList *cands = nice_agent_get_local_candidates (agent, stream_id,
                                                    component_id);
+  GSList *i = NULL;
   GSList *remote_cands = NULL;
   NiceCandidate* temp;
   gpointer tmp;
@@ -347,8 +347,8 @@ static void cb_agent_new_candidate(NiceAgent *agent, guint stream_id, guint comp
   tmp = g_object_get_data (G_OBJECT (other), "id");
   id = GPOINTER_TO_UINT (tmp);
 
-  while(cands != NULL) {
-    temp = (NiceCandidate*) cands->data;
+  for (i = cands; i; i = i->next) {
+    temp = (NiceCandidate*) i->data;
     if (g_strcmp0(temp->foundation, foundation) == 0) {
       g_debug ("Adding new local candidate to other agent's connchecks");
       remote_cands = g_slist_prepend (remote_cands, nice_candidate_copy(temp));
@@ -356,7 +356,6 @@ static void cb_agent_new_candidate(NiceAgent *agent, guint stream_id, guint comp
                                                   NICE_COMPONENT_TYPE_RTP,
                                                   remote_cands));
     }
-    cands = g_slist_next(cands);
   }
 
   g_slist_free_full (remote_cands, (GDestroyNotify) nice_candidate_free);
@@ -412,24 +411,24 @@ static void init_test(NiceAgent *lagent, NiceAgent *ragent, gboolean connect_new
 
   if (connect_new_candidate_signal) {
     g_signal_connect (G_OBJECT(lagent), "new-candidate",
-                      G_CALLBACK(cb_agent_new_candidate), GUINT_TO_POINTER(1));
+                      G_CALLBACK(cb_agent_new_candidate), LEFT_AGENT);
     g_signal_connect (G_OBJECT(ragent), "new-candidate",
-                      G_CALLBACK(cb_agent_new_candidate), GUINT_TO_POINTER(2));
-  } /*else {
-    g_signal_disconnect_by_func (G_OBJECT(lagent), cb_agent_new_candidate,
-                                 GUINT_TO_POINTER(1));
-    g_signal_disconnect_by_func (G_OBJECT(ragent), cb_agent_new_candidate,
-                                 GUINT_TO_POINTER(2));
-  }*/
+                      G_CALLBACK(cb_agent_new_candidate), RIGHT_AGENT);
+  } else {
+    g_signal_handlers_disconnect_by_func (G_OBJECT(lagent), cb_agent_new_candidate,
+                                 LEFT_AGENT);
+    g_signal_handlers_disconnect_by_func (G_OBJECT(ragent), cb_agent_new_candidate,
+                                 RIGHT_AGENT);
+  }
 
   data_received = FALSE;
 
   nice_agent_attach_recv (lagent, global_ls_id, NICE_COMPONENT_TYPE_RTP,
                    g_main_loop_get_context(global_mainloop),
-                   cb_nice_recv, GUINT_TO_POINTER(1));
+                   cb_nice_recv, LEFT_AGENT);
   nice_agent_attach_recv (ragent, global_rs_id, NICE_COMPONENT_TYPE_RTP,
                    g_main_loop_get_context(global_mainloop),
-                   cb_nice_recv, GUINT_TO_POINTER(2));
+                   cb_nice_recv, RIGHT_AGENT);
 }
 
 static void cleanup(NiceAgent *lagent,  NiceAgent *ragent)
@@ -662,13 +661,13 @@ int main(void)
   nice_agent_add_local_address (ragent, &baseaddr);
 
   g_signal_connect(G_OBJECT(lagent), "candidate-gathering-done",
-                   G_CALLBACK(cb_candidate_gathering_done), GUINT_TO_POINTER(1));
+                   G_CALLBACK(cb_candidate_gathering_done), LEFT_AGENT);
   g_signal_connect(G_OBJECT(ragent), "candidate-gathering-done",
-                   G_CALLBACK(cb_candidate_gathering_done), GUINT_TO_POINTER(2));
+                   G_CALLBACK(cb_candidate_gathering_done), RIGHT_AGENT);
   g_signal_connect(G_OBJECT(lagent), "component-state-changed",
-                   G_CALLBACK(cb_component_state_changed), GUINT_TO_POINTER(1));
+                   G_CALLBACK(cb_component_state_changed), LEFT_AGENT);
   g_signal_connect(G_OBJECT(ragent), "component-state-changed",
-                   G_CALLBACK(cb_component_state_changed), GUINT_TO_POINTER(2));
+                   G_CALLBACK(cb_component_state_changed), RIGHT_AGENT);
 
   standard_test (lagent, ragent);
   bad_credentials_test (lagent, ragent);
