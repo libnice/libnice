@@ -60,17 +60,11 @@
 #if !GLIB_CHECK_VERSION(2,31,8)
   static GMutex *stun_mutex_ptr = NULL;
   static GCond *stun_signal_ptr = NULL;
-  static GMutex *stun_thread_ret_mutex_ptr = NULL;
-  static GCond *stun_thread_ret_ptr = NULL;
 #else
   static GMutex stun_mutex;
   static GMutex *stun_mutex_ptr = &stun_mutex;
   static GCond stun_signal;
   static GCond *stun_signal_ptr = &stun_signal;
-  static GMutex stun_thread_ret_mutex;
-  static GMutex *stun_thread_ret_mutex_ptr = &stun_thread_ret_mutex;
-  static GCond stun_thread_ret;
-  static GCond *stun_thread_ret_ptr = &stun_thread_ret;
 #endif
 
 static GMainLoop *global_mainloop;
@@ -81,6 +75,7 @@ static gboolean lagent_candidate_gathering_done = FALSE;
 static gboolean ragent_candidate_gathering_done = FALSE;
 static guint global_ls_id, global_rs_id;
 static gboolean data_received = FALSE;
+static gboolean drop_stun_packets = FALSE;
 
 static const uint16_t known_attributes[] =  {
   0
@@ -91,7 +86,6 @@ static const uint16_t known_attributes[] =  {
  */
 static int listen_socket (unsigned int port)
 {
-  int yes = 1;
   struct sockaddr_in addr;
   int fd = socket (AF_INET, SOCK_DGRAM, IPPROTO_UDP);
 
@@ -104,7 +98,6 @@ static int listen_socket (unsigned int port)
   addr.sin_family = AF_INET;
   inet_pton(AF_INET, "127.0.0.1", &addr.sin_addr);
   addr.sin_port = htons(port);
-  setsockopt (fd, SOL_IP, IP_RECVERR, &yes, sizeof (yes));
 
   if (bind (fd, (struct sockaddr *)&addr, sizeof (struct sockaddr_in))) {
     perror ("Error opening IP port");
@@ -137,12 +130,13 @@ recv_packet:
   len = recvfrom (sock, buf, sizeof(buf), 0,
       (struct sockaddr *)&addr, &addr_len);
 
-  // Incase the packet gets corrupted and we return,
-  // the thread will wait till the stun_thread_ret_ptr is
-  // signalled again. Instead, accept more packets till a
-  // proper packet is recieved
+  if (drop_stun_packets) {
+    g_debug ("Dropping STUN packet as requested");
+    return -1;
+  }
+
   if (len == (size_t)-1) {
-    goto recv_packet;
+    return -1;
   }
 
   validation = stun_agent_validate (newagent, &request, buf, len, NULL, 0);
@@ -201,6 +195,7 @@ send_buf:
   len = sendto (sock, buf, buf_len, 0,
       (struct sockaddr *)&addr, addr_len);
   g_debug ("STUN response sent");
+  drop_stun_packets = TRUE;
   ret = (len < buf_len) ? -1 : 0;
   return ret;
 }
@@ -213,24 +208,23 @@ static gpointer stun_thread_func (const gpointer user_data)
   int sock;
   int exit_code = -1;
 
+  sock = listen_socket (IPPORT_STUN);
+
+  if (sock == -1) {
+    g_assert_not_reached ();
+  }
+
   stun_agent_init (&oldagent, known_attributes,
       STUN_COMPATIBILITY_RFC3489, 0);
   stun_agent_init (&newagent, known_attributes,
       STUN_COMPATIBILITY_RFC5389, STUN_AGENT_USAGE_USE_FINGERPRINT);
 
   while (!exit_stun_thread) {
-    sock = listen_socket (IPPORT_STUN);
-    if (sock == -1) {
-      continue;
-    }
     g_debug ("Ready to process next datagram");
     dgram_process (sock, &oldagent, &newagent);
-    g_assert (g_mutex_trylock(stun_thread_ret_mutex_ptr));
-    g_cond_wait (stun_thread_ret_ptr, stun_thread_ret_mutex_ptr);
-    g_mutex_unlock (stun_thread_ret_mutex_ptr);
-    exit_code = close (sock);
   }
 
+  exit_code = close (sock);
   g_thread_exit (GINT_TO_POINTER (exit_code));
   return NULL;
 }
@@ -301,7 +295,9 @@ static void cb_component_state_changed (NiceAgent *agent, guint stream_id, guint
 
   if (GPOINTER_TO_UINT(data) == 1 && state == NICE_COMPONENT_STATE_FAILED) {
     g_debug ("Signalling STUN response since connchecks failed");
+    g_mutex_lock (stun_mutex_ptr);
     g_cond_signal (stun_signal_ptr);
+    g_mutex_unlock (stun_mutex_ptr);
     g_main_loop_quit (global_mainloop);
   }
 
@@ -325,7 +321,9 @@ static void swap_candidates(NiceAgent *local, guint local_id, NiceAgent *remote,
                                             NICE_COMPONENT_TYPE_RTP, cands));
 
   if (signal_stun_reply) {
+    g_mutex_lock (stun_mutex_ptr);
     g_cond_signal (stun_signal_ptr);
+    g_mutex_unlock (stun_mutex_ptr);
   }
 
   g_slist_free_full (cands, (GDestroyNotify) nice_candidate_free);
@@ -434,6 +432,7 @@ static void init_test(NiceAgent *lagent, NiceAgent *ragent, gboolean connect_new
 static void cleanup(NiceAgent *lagent,  NiceAgent *ragent)
 {
   g_debug ("Cleaning up");
+  drop_stun_packets = FALSE;
   nice_agent_remove_stream (lagent, global_ls_id);
   nice_agent_remove_stream (ragent, global_rs_id);
 }
@@ -492,7 +491,6 @@ static void bad_credentials_test(NiceAgent *lagent, NiceAgent *ragent)
                                      "wrong2", "wrong2");
 
   nice_agent_gather_candidates (lagent, global_ls_id);
-  g_cond_signal (stun_thread_ret_ptr);
   g_main_loop_run (global_mainloop);
   g_assert (global_lagent_state == NICE_COMPONENT_STATE_GATHERING &&
             !lagent_candidate_gathering_done);
@@ -541,7 +539,6 @@ static void bad_candidate_test(NiceAgent *lagent,NiceAgent *ragent)
   init_test (lagent, ragent, FALSE);
 
   nice_agent_gather_candidates (lagent, global_ls_id);
-  g_cond_signal (stun_thread_ret_ptr);
   g_main_loop_run (global_mainloop);
   g_assert (global_lagent_state == NICE_COMPONENT_STATE_GATHERING &&
             !lagent_candidate_gathering_done);
@@ -590,7 +587,6 @@ static void new_candidate_test(NiceAgent *lagent, NiceAgent *ragent)
   set_credentials (lagent, global_ls_id, ragent, global_rs_id);
 
   nice_agent_gather_candidates (lagent, global_ls_id);
-  g_cond_signal (stun_thread_ret_ptr);
   g_main_loop_run (global_mainloop);
   g_assert (global_lagent_state == NICE_COMPONENT_STATE_GATHERING &&
             !lagent_candidate_gathering_done);
@@ -605,7 +601,9 @@ static void new_candidate_test(NiceAgent *lagent, NiceAgent *ragent)
   g_assert (data_received);
 
   // Data arrived, signal STUN thread to send STUN response
+  g_mutex_lock (stun_mutex_ptr);
   g_cond_signal (stun_signal_ptr);
+  g_mutex_unlock (stun_mutex_ptr);
 
   // Wait for lagent to finish gathering candidates
   g_main_loop_run (global_mainloop);
@@ -617,6 +615,21 @@ static void new_candidate_test(NiceAgent *lagent, NiceAgent *ragent)
   g_assert (global_ragent_state >= NICE_COMPONENT_STATE_CONNECTED);
 
   cleanup (lagent, ragent);
+}
+
+static void send_dummy_data(void)
+{
+  int sockfd = listen_socket (4567);
+  struct sockaddr_in addr;
+
+  memset (&addr, 0, sizeof (addr));
+  addr.sin_family = AF_INET;
+  inet_pton(AF_INET, "127.0.0.1", &addr.sin_addr);
+  addr.sin_port = htons (IPPORT_STUN);
+
+  g_debug ("Sending dummy data to close STUN thread");
+  sendto (sockfd, "close socket", 12, 0,
+          (struct sockaddr *)&addr, sizeof (addr));
 }
 
 int main(void)
@@ -674,11 +687,13 @@ int main(void)
   bad_candidate_test (lagent, ragent);
   new_candidate_test (lagent, ragent);
 
+  // Do this to make sure the STUN thread exits
+  exit_stun_thread = TRUE;
+  drop_stun_packets = TRUE;
+  send_dummy_data ();
+
   g_object_unref (lagent);
   g_object_unref (ragent);
-
-  exit_stun_thread = TRUE;
-  g_cond_signal (stun_thread_ret_ptr);
 
   g_thread_join (stun_thread);
   g_main_loop_unref (global_mainloop);
