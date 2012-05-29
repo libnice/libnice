@@ -63,6 +63,12 @@ static gboolean socket_send (NiceSocket *sock, const NiceAddress *to,
     guint len, const gchar *buf);
 static gboolean socket_is_reliable (NiceSocket *sock);
 
+struct UdpBsdSocketPrivate
+{
+  NiceAddress niceaddr;
+  GSocketAddress *gaddr;
+};
+
 NiceSocket *
 nice_udp_bsd_socket_new (NiceAddress *addr)
 {
@@ -71,6 +77,7 @@ nice_udp_bsd_socket_new (NiceAddress *addr)
   GSocket *gsock = NULL;
   gboolean gret = FALSE;
   GSocketAddress *gaddr;
+  struct UdpBsdSocketPrivate *priv;
 
   if (addr != NULL) {
     nice_address_copy_to_sockaddr(addr, (struct sockaddr *)&name);
@@ -128,6 +135,9 @@ nice_udp_bsd_socket_new (NiceAddress *addr)
 
   nice_address_set_from_sockaddr (&sock->addr, (struct sockaddr *)&name);
 
+  priv = sock->priv = g_slice_new (struct UdpBsdSocketPrivate);
+  nice_address_init (&priv->niceaddr);
+
   sock->fileno = gsock;
   sock->send = socket_send;
   sock->recv = socket_recv;
@@ -140,6 +150,12 @@ nice_udp_bsd_socket_new (NiceAddress *addr)
 static void
 socket_close (NiceSocket *sock)
 {
+  struct UdpBsdSocketPrivate *priv = sock->priv;
+
+  if (priv->gaddr)
+    g_object_unref (priv->gaddr);
+  g_slice_free (struct UdpBsdSocketPrivate, sock->priv);
+
   if (sock->fileno) {
     g_socket_close (sock->fileno, NULL);
     g_object_unref (sock->fileno);
@@ -181,17 +197,25 @@ static gboolean
 socket_send (NiceSocket *sock, const NiceAddress *to,
     guint len, const gchar *buf)
 {
-  struct sockaddr_storage sa;
-  GSocketAddress *gaddr;
-  ssize_t sent  = -1;
+  struct UdpBsdSocketPrivate *priv = sock->priv;
+  ssize_t sent;
 
-  nice_address_copy_to_sockaddr (to, (struct sockaddr *)&sa);
-  gaddr = g_socket_address_new_from_native (&sa, sizeof(sa));
+  if (!nice_address_is_valid (&priv->niceaddr) ||
+      !nice_address_equal (&priv->niceaddr, to)) {
+    struct sockaddr_storage sa;
+    GSocketAddress *gaddr;
 
-  if (gaddr) {
-    sent = g_socket_send_to (sock->fileno, gaddr, buf, len, NULL, NULL);
-    g_object_unref (gaddr);
+    if (priv->gaddr)
+      g_object_unref (priv->gaddr);
+    nice_address_copy_to_sockaddr (to, (struct sockaddr *)&sa);
+    gaddr = g_socket_address_new_from_native (&sa, sizeof(sa));
+    if (priv->gaddr == NULL)
+      return -1;
+    priv->gaddr = gaddr;
+    priv->niceaddr = *to;
   }
+
+  sent = g_socket_send_to (sock->fileno, priv->gaddr, buf, len, NULL, NULL);
 
   return sent == (ssize_t)len;
 }
