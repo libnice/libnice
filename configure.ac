@@ -77,7 +77,12 @@ AC_C_RESTRICT
 AC_C_VARARRAYS
 AC_HEADER_ASSERT
 AC_HEADER_STDBOOL
-AC_DEFINE([_FORTIFY_SOURCE], [2], [Define to `2' to get GNU/libc warnings.])
+AH_VERBATIM([_FORTIFY_SOURCE], 
+[/* Define to `2' to get GNU/libc warnings. */
+/* Only define if -O1 or more is enabled */
+#if defined __OPTIMIZE__ && __OPTIMIZE__ > 0
+# define _FORTIFY_SOURCE 2
+#endif])
 AC_DEFINE([NICEAPI_EXPORT], [ ], [Public library function implementation])
 AC_CHECK_HEADERS([arpa/inet.h net/in.h])
 AC_CHECK_HEADERS([ifaddrs.h], \
