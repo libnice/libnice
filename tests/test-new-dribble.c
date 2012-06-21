@@ -647,6 +647,8 @@ int main(void)
   stun_thread = g_thread_create (stun_thread_func,
                                  global_mainloop,
                                  TRUE, NULL);
+ stun_mutex_ptr = g_mutex_new ();
+ stun_signal_ptr = g_cond_new ();
 #else
   stun_thread = g_thread_new ("listen for STUN requests",
                               stun_thread_func, NULL);
