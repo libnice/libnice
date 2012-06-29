@@ -698,6 +698,10 @@ int main(void)
   g_object_unref (ragent);
 
   g_thread_join (stun_thread);
+#if !GLIB_CHECK_VERSION(2,31,8)
+  g_mutex_free (stun_mutex_ptr);
+  g_cond_free (stun_signal_ptr);
+#endif
   g_main_loop_unref (global_mainloop);
 
   return 0;
