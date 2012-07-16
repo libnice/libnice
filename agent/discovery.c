@@ -247,7 +247,7 @@ void refresh_cancel (CandidateRefresh *refresh)
  * defined in ICE spec section 4.1.3 "Eliminating Redundant
  * Candidates" (ID-19).
  */
-static gboolean priv_add_local_candidate_pruned (Component *component, NiceCandidate *candidate)
+static gboolean priv_add_local_candidate_pruned (NiceAgent *agent, guint stream_id, Component *component, NiceCandidate *candidate)
 {
   GSList *i;
 
@@ -263,6 +263,7 @@ static gboolean priv_add_local_candidate_pruned (Component *component, NiceCandi
 
   component->local_candidates = g_slist_append (component->local_candidates,
       candidate);
+  conn_check_add_for_local_candidate(agent, stream_id, component, candidate);
 
   return TRUE;
 }
@@ -489,7 +490,7 @@ NiceCandidate *discovery_add_local_host_candidate (
   candidate->addr = udp_socket->addr;
   candidate->base_addr = udp_socket->addr;
 
-  if (!priv_add_local_candidate_pruned (component, candidate))
+  if (!priv_add_local_candidate_pruned (agent, stream_id, component, candidate))
     goto errors;
 
   component->sockets = g_slist_append (component->sockets, udp_socket);
@@ -547,7 +548,7 @@ discovery_add_server_reflexive_candidate (
   priv_generate_candidate_credentials (agent, candidate);
   priv_assign_foundation (agent, candidate);
 
-  result = priv_add_local_candidate_pruned (component, candidate);
+  result = priv_add_local_candidate_pruned (agent, stream_id, component, candidate);
   if (result) {
     agent_signal_new_candidate (agent, candidate);
   }
@@ -620,7 +621,7 @@ discovery_add_relay_candidate (
 
   priv_assign_foundation (agent, candidate);
 
-  if (!priv_add_local_candidate_pruned (component, candidate))
+  if (!priv_add_local_candidate_pruned (agent, stream_id, component, candidate))
     goto errors;
 
   component->sockets = g_slist_append (component->sockets, relay_socket);
@@ -715,9 +716,9 @@ discovery_add_peer_reflexive_candidate (
   candidate->sockptr = base_socket;
   candidate->base_addr = base_socket->addr;
 
-  result = priv_add_local_candidate_pruned (component, candidate);
+  result = priv_add_local_candidate_pruned (agent, stream_id, component, candidate);
   if (result != TRUE) {
-    /* error: memory allocation, or duplicate candidatet */
+    /* error: memory allocation, or duplicate candidate */
     nice_candidate_free (candidate), candidate = NULL;
   }
 

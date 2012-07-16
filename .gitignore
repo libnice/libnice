@@ -130,6 +130,7 @@ tests/test-priority
 tests/test-pseudotcp
 tests/test-restart
 tests/test-thread
+tests/test-new-dribble
 
 docs/reference/libnice/libnice*.txt
 docs/reference/libnice/libnice.args
