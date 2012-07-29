@@ -195,7 +195,7 @@ gst_nice_src_read_callback (NiceAgent *agent,
 
   GST_LOG_OBJECT (agent, "Got buffer, getting out of the main loop");
 
-  buffer = gst_buffer_new_allocate (NULL, len, 1);
+  buffer = gst_buffer_new_allocate (NULL, len, NULL);
   gst_buffer_map (buffer, &info, GST_MAP_WRITE);
   memcpy (info.data, buf, len);
   gst_buffer_unmap (buffer, &info);
@@ -273,7 +273,7 @@ gst_nice_src_create (
   GST_OBJECT_LOCK (basesrc);
   if (nicesrc->unlocked) {
     GST_OBJECT_UNLOCK (basesrc);
-    return GST_FLOW_WRONG_STATE;
+    return GST_FLOW_FLUSHING;
   }
   GST_OBJECT_UNLOCK (basesrc);
 
@@ -286,7 +286,7 @@ gst_nice_src_create (
     return GST_FLOW_OK;
   } else {
     GST_LOG_OBJECT (nicesrc, "Got interrupting, returning wrong-state");
-    return GST_FLOW_WRONG_STATE;
+    return GST_FLOW_FLUSHING;
   }
 
 }
