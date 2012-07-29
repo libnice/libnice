@@ -118,12 +118,12 @@ AC_ARG_WITH(gstreamer,
 AS_IF([test "$with_gstreamer" != no], [
   
 	PKG_CHECK_MODULES(GST, [
-		gstreamer-0.11 >= 0.11.1
-		gstreamer-base-0.11 >= 0.11.1
+		gstreamer-1.0 >= 0.11.1
+		gstreamer-base-1.0 >= 0.11.1
 		],
 		[
 		with_gstreamer=yes
-		GST_MAJORMINOR=0.11
+		GST_MAJORMINOR=1.0
 		gstplugindir="\$(libdir)/gstreamer-$GST_MAJORMINOR"
 		],
 		[
