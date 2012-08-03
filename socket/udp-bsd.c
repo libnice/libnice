@@ -135,7 +135,7 @@ nice_udp_bsd_socket_new (NiceAddress *addr)
 
   nice_address_set_from_sockaddr (&sock->addr, (struct sockaddr *)&name);
 
-  priv = sock->priv = g_slice_new (struct UdpBsdSocketPrivate);
+  priv = sock->priv = g_slice_new0 (struct UdpBsdSocketPrivate);
   nice_address_init (&priv->niceaddr);
 
   sock->fileno = gsock;
@@ -209,7 +209,7 @@ socket_send (NiceSocket *sock, const NiceAddress *to,
       g_object_unref (priv->gaddr);
     nice_address_copy_to_sockaddr (to, (struct sockaddr *)&sa);
     gaddr = g_socket_address_new_from_native (&sa, sizeof(sa));
-    if (priv->gaddr == NULL)
+    if (gaddr == NULL)
       return -1;
     priv->gaddr = gaddr;
     priv->niceaddr = *to;
