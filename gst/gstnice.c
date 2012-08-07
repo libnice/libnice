@@ -58,7 +58,7 @@ plugin_init (GstPlugin *plugin)
 GST_PLUGIN_DEFINE (
     GST_VERSION_MAJOR,
     GST_VERSION_MINOR,
-    "nice",
+    nice,
     "Interactive UDP connectivity establishment",
     plugin_init, VERSION, "LGPL", PACKAGE_NAME,
     "http://telepathy.freedesktop.org/wiki/");
