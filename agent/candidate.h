@@ -91,12 +91,18 @@ typedef enum
 /**
  * NiceCandidateTransport:
  * @NICE_CANDIDATE_TRANSPORT_UDP: UDP transport
+ * @NICE_CANDIDATE_TRANSPORT_TCP_ACTIVE: TCP Active transport
+ * @NICE_CANDIDATE_TRANSPORT_TCP_PASSIVE: TCP Passive transport
+ * @NICE_CANDIDATE_TRANSPORT_TCP_SO: TCP Simultaneous-Open transport
  *
  * An enum representing the type of transport to use
  */
 typedef enum
 {
   NICE_CANDIDATE_TRANSPORT_UDP,
+  NICE_CANDIDATE_TRANSPORT_TCP_ACTIVE,
+  NICE_CANDIDATE_TRANSPORT_TCP_PASSIVE,
+  NICE_CANDIDATE_TRANSPORT_TCP_SO,
 } NiceCandidateTransport;
 
 /**
