@@ -2473,7 +2473,6 @@ static gboolean priv_map_reply_to_relay_request (NiceAgent *agent, StunMessage *
              d->turn);
 
           if (relay_cand) {
-            priv_add_new_turn_refresh (d, relay_cand, lifetime);
             if (agent->compatibility == NICE_COMPATIBILITY_OC2007 ||
                 agent->compatibility == NICE_COMPATIBILITY_OC2007R2) {
               /* These data are needed on TURN socket when sending requests,
@@ -2484,7 +2483,8 @@ static gboolean priv_map_reply_to_relay_request (NiceAgent *agent, StunMessage *
                * so we are doing it here. */
               nice_turn_socket_set_ms_realm(relay_cand->sockptr, &d->stun_message);
               nice_turn_socket_set_ms_connection_id(relay_cand->sockptr, resp);
-            }
+            } else
+              priv_add_new_turn_refresh (d, relay_cand, lifetime);
           }
 
           d->stun_message.buffer = NULL;
