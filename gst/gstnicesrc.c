@@ -191,14 +191,11 @@ gst_nice_src_read_callback (NiceAgent *agent,
   GstBaseSrc *basesrc = GST_BASE_SRC (data);
   GstNiceSrc *nicesrc = GST_NICE_SRC (basesrc);
   GstBuffer *buffer = NULL;
-  GstMapInfo info;
 
   GST_LOG_OBJECT (agent, "Got buffer, getting out of the main loop");
 
   buffer = gst_buffer_new_allocate (NULL, len, NULL);
-  gst_buffer_map (buffer, &info, GST_MAP_WRITE);
-  memcpy (info.data, buf, len);
-  gst_buffer_unmap (buffer, &info);
+  gst_buffer_fill (buffer, 0, buf, len);
   g_queue_push_tail (nicesrc->outbufs, buffer);
 
   g_main_loop_quit (nicesrc->mainloop);
