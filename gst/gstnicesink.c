@@ -110,7 +110,12 @@ gst_nice_sink_class_init (GstNiceSinkClass *klass)
 
   gst_element_class_add_pad_template (gstelement_class,
       gst_static_pad_template_get (&gst_nice_sink_sink_template));
-  gst_element_class_set_metadata (gstelement_class,     "ICE sink",
+#if GST_CHECK_VERSION (1,0,0)
+  gst_element_class_set_metadata (gstelement_class,
+#else
+  gst_element_class_set_details_simple (gstelement_class,
+#endif
+    "ICE sink",
     "Sink",
     "Interactive UDP connectivity establishment",
     "Dafydd Harries <dafydd.harries@collabora.co.uk>");
@@ -154,6 +159,8 @@ static GstFlowReturn
 gst_nice_sink_render (GstBaseSink *basesink, GstBuffer *buffer)
 {
   GstNiceSink *nicesink = GST_NICE_SINK (basesink);
+
+#if GST_CHECK_VERSION (1,0,0)
   GstMapInfo info;
 
   gst_buffer_map (buffer, &info, GST_MAP_READ);
@@ -162,6 +169,11 @@ gst_nice_sink_render (GstBaseSink *basesink, GstBuffer *buffer)
       nicesink->component_id, info.size, (gchar *) info.data);
 
   gst_buffer_unmap (buffer, &info);
+#else
+  nice_agent_send (nicesink->agent, nicesink->stream_id,
+      nicesink->component_id, GST_BUFFER_SIZE (buffer),
+      (gchar *) GST_BUFFER_DATA (buffer));
+#endif
 
   return GST_FLOW_OK;
 }

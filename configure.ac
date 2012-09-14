@@ -111,15 +111,20 @@ PKG_CHECK_MODULES(GLIB, [dnl
 	])
 
 AC_ARG_WITH(gstreamer, 
-	AC_HELP_STRING([--with-gstreamer], [use GStreamer]),
+	AC_HELP_STRING([--with-gstreamer], [build GStreamer plugin]),
 	[with_gstreamer=${withval}],
 	[with_gstreamer=auto])
+
+AC_ARG_WITH(gstreamer-0.10, 
+	AC_HELP_STRING([--with-gstreamer-0.10], [build GStreamer 0.10 plugin]),
+	[with_gstreamer010=${withval}],
+	[with_gstreamer010=auto])
 
 AS_IF([test "$with_gstreamer" != no], [
   
 	PKG_CHECK_MODULES(GST, [
-		gstreamer-1.0 >= 0.11.1
-		gstreamer-base-1.0 >= 0.11.1
+		gstreamer-1.0 >= 0.11.91
+		gstreamer-base-1.0 >= 0.11.91
 		],
 		[
 		with_gstreamer=yes
@@ -128,16 +133,38 @@ AS_IF([test "$with_gstreamer" != no], [
 		],
 		[
 		AS_IF([test "$with_gstreamer" = yes], [
-			AC_MSG_ERROR([GStreamer support was requested but GStreamer libraries are not available])
+			AC_MSG_ERROR([GStreamer 1.0 support was requested but GStreamer 1.0 libraries are not available])
 		])
 
 		with_gstreamer=no
 		])
 ])
 
+AS_IF([test "$with_gstreamer010" != no], [
+  
+	PKG_CHECK_MODULES(GST010, [
+		gstreamer-0.10 >= 0.10.10
+		gstreamer-base-0.10 >= 0.10.10
+		],
+		[
+		with_gstreamer010=yes
+		GST_MAJORMINOR=0.10
+		gstplugin010dir="\$(libdir)/gstreamer-$GST_MAJORMINOR"
+		],
+		[
+		AS_IF([test "$with_gstreamer010" = yes], [
+			AC_MSG_ERROR([GStreamer 0.10 support was requested but GStreamer 0.10 libraries are not available])
+		])
+
+		with_gstreamer010=no
+		])
+])
+
 AC_SUBST(gstplugindir)
+AC_SUBST(gstplugin010dir)
 
 AM_CONDITIONAL(WITH_GSTREAMER, test "$with_gstreamer" = yes)
+AM_CONDITIONAL(WITH_GSTREAMER010, test "$with_gstreamer010" = yes)
 
 GUPNP_IGD_REQUIRED=0.1.2
 

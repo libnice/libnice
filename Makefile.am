@@ -8,21 +8,16 @@
 
 include common.mk
 
-ALWAYS_SUBDIRS = \
+SUBDIRS = \
 	stun \
 	socket \
 	random \
 	agent \
 	nice \
+	gst \
 	docs \
 	tests
-SUBDIRS = $(ALWAYS_SUBDIRS)
 
-if WITH_GSTREAMER
-SUBDIRS += gst
-endif
-
-DIST_SUBDIRS = $(ALWAYS_SUBDIRS) gst
 DISTCHECK_CONFIGURE_FLAGS = --disable-assert -enable-gtk-doc
 
 EXTRA_DIST = \
