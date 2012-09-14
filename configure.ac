@@ -3,8 +3,8 @@ AC_PREREQ(2.59c)
 
 dnl releases only do -Wall, cvs and prerelease does -Werror too
 dnl use a three digit version number for releases, and four for cvs/prerelease
-AC_INIT(libnice, 0.1.2.1)
-LIBNICE_RELEASE="no"
+AC_INIT(libnice, 0.1.3)
+LIBNICE_RELEASE="yes"
 
 AC_CANONICAL_SYSTEM
 
@@ -36,9 +36,9 @@ AC_CONFIG_FILES([
 #      Increment CURRENT and AGE. Set REVISION to 0
 #    If there was an incompatible interface change:
 #      Increment CURRENT. Set AGE and REVISION to 0
-LIBNICE_CURRENT=10
-LIBNICE_REVISION=2
-LIBNICE_AGE=0
+LIBNICE_CURRENT=11
+LIBNICE_REVISION=0
+LIBNICE_AGE=1
 LIBNICE_LIBVERSION=${LIBNICE_CURRENT}:${LIBNICE_REVISION}:${LIBNICE_AGE}
 LIBNICE_LT_LDFLAGS="-version-info ${LIBNICE_LIBVERSION} -no-undefined"
 AC_SUBST(LIBNICE_LT_LDFLAGS)
