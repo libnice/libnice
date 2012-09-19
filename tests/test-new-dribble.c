@@ -60,11 +60,17 @@
 #if !GLIB_CHECK_VERSION(2,31,8)
   static GMutex *stun_mutex_ptr = NULL;
   static GCond *stun_signal_ptr = NULL;
+  static GMutex *stun_thread_mutex_ptr = NULL;
+  static GCond *stun_thread_signal_ptr = NULL
 #else
   static GMutex stun_mutex;
   static GMutex *stun_mutex_ptr = &stun_mutex;
   static GCond stun_signal;
   static GCond *stun_signal_ptr = &stun_signal;
+  static GMutex stun_thread_mutex;
+  static GMutex *stun_thread_mutex_ptr = &stun_thread_mutex;
+  static GCond stun_thread_signal;
+  static GCond *stun_thread_signal_ptr = &stun_thread_signal;
 #endif
 
 static GMainLoop *global_mainloop;
@@ -213,6 +219,10 @@ static gpointer stun_thread_func (const gpointer user_data)
   if (sock == -1) {
     g_assert_not_reached ();
   }
+
+  g_mutex_lock (stun_thread_mutex_ptr);
+  g_cond_signal (stun_thread_signal_ptr);
+  g_mutex_unlock (stun_thread_mutex_ptr);
 
   stun_agent_init (&oldagent, known_attributes,
       STUN_COMPATIBILITY_RFC3489, 0);
@@ -653,6 +663,11 @@ int main(void)
   stun_thread = g_thread_new ("listen for STUN requests",
                               stun_thread_func, NULL);
 #endif
+
+  // Once the the thread is forked, we want to listen for a signal 
+  // that the socket was opened successfully
+  g_mutex_lock (stun_thread_mutex_ptr);
+  g_cond_wait (stun_thread_signal_ptr, stun_thread_mutex_ptr); 
 
   lagent = nice_agent_new (g_main_loop_get_context (global_mainloop),
       NICE_COMPATIBILITY_RFC5245);
