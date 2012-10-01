@@ -68,7 +68,7 @@ G_BEGIN_DECLS
  *
  * The maximum size a candidate foundation can have.
  */
-#define NICE_CANDIDATE_MAX_FOUNDATION                32+1
+#define NICE_CANDIDATE_MAX_FOUNDATION                (32+1)
 
 
 /**
