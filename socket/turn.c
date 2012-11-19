@@ -77,7 +77,7 @@ typedef struct {
   GList *pending_bindings;
   ChannelBinding *current_binding;
   TURNMessage *current_binding_msg;
-  TURNMessage *current_create_permission_msg;
+  GList *pending_permissions;
   GSource *tick_source_channel_bind;
   GSource *tick_source_create_permission;
   NiceSocket *base_socket;
@@ -297,7 +297,8 @@ socket_close (NiceSocket *sock)
 
   g_free (priv->current_binding);
   g_free (priv->current_binding_msg);
-  g_free (priv->current_create_permission_msg);
+  g_list_foreach (priv->pending_permissions, (GFunc) g_free, NULL);
+  g_list_free(priv->pending_permissions);
   g_free (priv->username);
   g_free (priv->password);
   g_free (priv);
@@ -942,11 +943,15 @@ nice_turn_socket_parse_recv (NiceSocket *sock, NiceSocket **from_sock,
       } else if (stun_message_get_method (&msg) == STUN_CREATEPERMISSION) {
         StunTransactionId request_id;
         StunTransactionId response_id;
+        GList *i, *next;
+        TURNMessage *current_create_permission_msg;
 
-        if (priv->current_create_permission_msg) {
+        for (i = priv->pending_permissions; i; i = next) {
+          current_create_permission_msg = (TURNMessage *) i->data;
+          next = i->next;
+
           stun_message_id (&msg, response_id);
-          stun_message_id (&priv->current_create_permission_msg->message,
-              request_id);
+          stun_message_id (&current_create_permission_msg->message, request_id);
 
           if (memcmp (request_id, response_id,
                   sizeof(StunTransactionId)) == 0) {
@@ -956,7 +961,7 @@ nice_turn_socket_parse_recv (NiceSocket *sock, NiceSocket **from_sock,
 
             nice_debug ("got response for CreatePermission");
             stun_message_find_xor_addr (
-                &priv->current_create_permission_msg->message,
+                &current_create_permission_msg->message,
                 STUN_ATTRIBUTE_XOR_PEER_ADDRESS, (struct sockaddr *) &peer,
                 &peer_len);
             nice_address_set_from_sockaddr (&to, (struct sockaddr *) &peer);
@@ -971,7 +976,7 @@ nice_turn_socket_parse_recv (NiceSocket *sock, NiceSocket **from_sock,
 
               sent_realm =
                   (uint8_t *) stun_message_find (
-                      &priv->current_create_permission_msg->message,
+                      &current_create_permission_msg->message,
                       STUN_ATTRIBUTE_REALM, &sent_realm_len);
               recv_realm =
                   (uint8_t *) stun_message_find (&msg,
@@ -987,8 +992,11 @@ nice_turn_socket_parse_recv (NiceSocket *sock, NiceSocket **from_sock,
                           sent_realm != NULL &&
                           memcmp (sent_realm, recv_realm,
                               sent_realm_len) == 0)))) {
-                g_free (priv->current_create_permission_msg);
-                priv->current_create_permission_msg = NULL;
+
+                priv->pending_permissions = g_list_delete_link (
+                    priv->pending_permissions, i);
+                g_free (current_create_permission_msg);
+                current_create_permission_msg = NULL;
                 /* resend CreatePermission */
                 priv_send_create_permission (priv, &msg, &to);
                 return 0;
@@ -1013,8 +1021,12 @@ nice_turn_socket_parse_recv (NiceSocket *sock, NiceSocket **from_sock,
             /* send enqued data */
             socket_dequeue_all_data (priv, &to);
 
-            g_free (priv->current_create_permission_msg);
-            priv->current_create_permission_msg = NULL;
+            priv->pending_permissions = g_list_delete_link (
+                priv->pending_permissions, i);
+            g_free (current_create_permission_msg);
+            current_create_permission_msg = NULL;
+
+            break;
           }
         }
 
@@ -1178,12 +1190,15 @@ priv_retransmissions_tick_unlocked (TurnPriv *priv)
 }
 
 static gboolean
-priv_retransmissions_create_permission_tick_unlocked (TurnPriv *priv)
+priv_retransmissions_create_permission_tick_unlocked (TurnPriv *priv, GList *list_element)
 {
   gboolean ret = FALSE;
+  TURNMessage *current_create_permission_msg;
 
-  if (priv->current_create_permission_msg) {
-    switch (stun_timer_refresh (&priv->current_create_permission_msg->timer)) {
+  current_create_permission_msg = (TURNMessage *)list_element->data;
+
+  if (current_create_permission_msg) {
+    switch (stun_timer_refresh (&current_create_permission_msg->timer)) {
       case STUN_USAGE_TIMER_RETURN_TIMEOUT:
         {
           /* Time out */
@@ -1192,17 +1207,19 @@ priv_retransmissions_create_permission_tick_unlocked (TurnPriv *priv)
           struct sockaddr_storage addr;
           socklen_t addr_len = sizeof(addr);
 
-          stun_message_id (&priv->current_create_permission_msg->message, id);
+          stun_message_id (&current_create_permission_msg->message, id);
           stun_agent_forget_transaction (&priv->agent, id);
           stun_message_find_xor_addr (
-              &priv->current_create_permission_msg->message,
+              &current_create_permission_msg->message,
               STUN_ATTRIBUTE_XOR_PEER_ADDRESS, (struct sockaddr *) &addr,
               &addr_len);
           nice_address_set_from_sockaddr (&to, (struct sockaddr *) &addr);
 
           priv_remove_sent_permission_for_peer (priv, &to);
-          g_free (priv->current_create_permission_msg);
-          priv->current_create_permission_msg = NULL;
+          priv->pending_permissions = g_list_delete_link (
+              priv->pending_permissions, list_element);
+          g_free (current_create_permission_msg);
+          current_create_permission_msg = NULL;
 
           /* we got a timeout when retransmitting a CreatePermission
              message, assume we can just send the data, the server
@@ -1217,8 +1234,8 @@ priv_retransmissions_create_permission_tick_unlocked (TurnPriv *priv)
       case STUN_USAGE_TIMER_RETURN_RETRANSMIT:
         /* Retransmit */
         nice_socket_send (priv->base_socket, &priv->server_addr,
-            stun_message_length (&priv->current_create_permission_msg->message),
-            (gchar *)priv->current_create_permission_msg->buffer);
+            stun_message_length (&current_create_permission_msg->message),
+            (gchar *)current_create_permission_msg->buffer);
         ret = TRUE;
         break;
       case STUN_USAGE_TIMER_RETURN_SUCCESS:
@@ -1261,6 +1278,7 @@ static gboolean
 priv_retransmissions_create_permission_tick (gpointer pointer)
 {
   TurnPriv *priv = pointer;
+  GList *i, *next;
 
   agent_lock ();
   if (g_source_is_destroyed (g_main_current_source ())) {
@@ -1270,11 +1288,15 @@ priv_retransmissions_create_permission_tick (gpointer pointer)
     return FALSE;
   }
 
-  if (priv_retransmissions_create_permission_tick_unlocked (priv) == FALSE) {
-    if (priv->tick_source_create_permission != NULL) {
-      g_source_destroy (priv->tick_source_create_permission);
-      g_source_unref (priv->tick_source_create_permission);
-      priv->tick_source_create_permission = NULL;
+  for (i = priv->pending_permissions; i; i = next) {
+    next = i->next;
+
+    if (!priv_retransmissions_create_permission_tick_unlocked (priv, i)) {
+      if (priv->tick_source_create_permission != NULL) {
+        g_source_destroy (priv->tick_source_create_permission);
+        g_source_unref (priv->tick_source_create_permission);
+        priv->tick_source_create_permission = NULL;
+      }
     }
   }
   agent_unlock ();
@@ -1285,6 +1307,9 @@ priv_retransmissions_create_permission_tick (gpointer pointer)
 static void
 priv_schedule_tick (TurnPriv *priv)
 {
+  GList *i, *next;
+  TURNMessage *current_create_permission_msg;
+
   if (priv->tick_source_channel_bind != NULL) {
     g_source_destroy (priv->tick_source_channel_bind);
     g_source_unref (priv->tick_source_channel_bind);
@@ -1302,9 +1327,13 @@ priv_schedule_tick (TurnPriv *priv)
     }
   }
 
-  if (priv->current_create_permission_msg) {
-    guint timeout =
-        stun_timer_remainder (&priv->current_create_permission_msg->timer);
+  for (i = priv->pending_permissions; i; i = next) {
+    guint timeout;
+
+    current_create_permission_msg = (TURNMessage *)i->data;
+    next = i->next;
+
+    timeout = stun_timer_remainder (&current_create_permission_msg->timer);
 
     if (timeout > 0) {
       priv->tick_source_create_permission =
@@ -1313,7 +1342,7 @@ priv_schedule_tick (TurnPriv *priv)
               priv_retransmissions_create_permission_tick,
               priv);
     } else {
-      priv_retransmissions_create_permission_tick_unlocked (priv);
+      priv_retransmissions_create_permission_tick_unlocked (priv, i);
     }
   }
 }
@@ -1396,7 +1425,7 @@ priv_send_create_permission(TurnPriv *priv, StunMessage *resp,
     }
 
     priv_schedule_tick (priv);
-    priv->current_create_permission_msg = msg;
+    priv->pending_permissions = g_list_append (priv->pending_permissions, msg);
   } else {
     g_free(msg);
   }
