@@ -26,6 +26,7 @@ nice_agent_new_reliable
 nice_agent_remove_stream
 nice_agent_restart
 nice_agent_send
+nice_agent_set_port_range
 nice_agent_set_relay_info
 nice_agent_set_remote_candidates
 nice_agent_set_remote_credentials
