@@ -2834,8 +2834,7 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, Stream *stream,
         NiceCandidate *lcand = j->data;
 
         /* If we receive a response, then the username is local:remote */
-        if (agent->compatibility != NICE_COMPATIBILITY_MSN &&
-            agent->compatibility != NICE_COMPATIBILITY_OC2007) {
+        if (agent->compatibility != NICE_COMPATIBILITY_MSN) {
           if (stun_message_get_class (&req) == STUN_REQUEST ||
               stun_message_get_class (&req) == STUN_INDICATION) {
             inbound = TRUE;
