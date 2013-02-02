@@ -275,6 +275,18 @@ G_GNUC_WARN_UNUSED_RESULT
 gboolean
 nice_address_is_valid (const NiceAddress *addr);
 
+/**
+ * nice_address_ip_version:
+ * @addr: The #NiceAddress to query
+ *
+ * Returns the IP version of the address
+ *
+ * Returns: 4 for IPv4, 6 for IPv6 and 0 for undefined address
+ */
+G_GNUC_WARN_UNUSED_RESULT
+int
+nice_address_ip_version (const NiceAddress *addr);
+
 G_END_DECLS
 
 #endif /* _ADDRESS_H */

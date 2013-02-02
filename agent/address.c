@@ -363,3 +363,17 @@ nice_address_is_valid (const NiceAddress *a)
       return FALSE;
     }
 }
+
+NICEAPI_EXPORT int
+nice_address_ip_version (const NiceAddress *addr)
+{
+ switch (addr->s.addr.sa_family)
+    {
+    case AF_INET:
+      return 4;
+    case AF_INET6:
+      return 6;
+    default:
+      return 0;
+    }
+}
