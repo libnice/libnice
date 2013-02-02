@@ -2954,10 +2954,10 @@ _priv_set_socket_tos (NiceAgent *agent, NiceSocket *sock, gint tos)
 }
 
 
-void nice_agent_set_stream_tos (NiceAgent *agent,
+NICEAPI_EXPORT void
+nice_agent_set_stream_tos (NiceAgent *agent,
   guint stream_id, gint tos)
 {
-
   GSList *i, *j, *k;
 
   agent_lock();
@@ -2980,7 +2980,8 @@ void nice_agent_set_stream_tos (NiceAgent *agent,
   agent_unlock();
 }
 
-void nice_agent_set_software (NiceAgent *agent, const gchar *software)
+NICEAPI_EXPORT void
+nice_agent_set_software (NiceAgent *agent, const gchar *software)
 {
   agent_lock();
 

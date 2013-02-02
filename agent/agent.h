@@ -513,8 +513,8 @@ nice_agent_get_local_credentials (
    </para>
  </note>
  *
- * Returns: The number of candidates added, negative on errors (memory allocation
- * or if the local candidates are not done gathering yet)
+ * Returns: The number of candidates added, negative on errors (memory
+ * allocation error or invalid component)
  **/
 int
 nice_agent_set_remote_candidates (
