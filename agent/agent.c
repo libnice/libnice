@@ -2843,6 +2843,32 @@ nice_agent_set_selected_pair (
   return ret;
 }
 
+NICEAPI_EXPORT gboolean
+nice_agent_get_selected_pair (NiceAgent *agent, guint stream_id,
+    guint component_id, NiceCandidate **local, NiceCandidate **remote)
+{
+  Component *component;
+  Stream *stream;
+  gboolean ret = FALSE;
+
+  agent_lock();
+
+  /* step: check that params specify an existing pair */
+  if (!agent_find_component (agent, stream_id, component_id,
+          &stream, &component))
+    goto done;
+
+  if (component->selected_pair.local && component->selected_pair.remote) {
+    *local = component->selected_pair.local;
+    *remote = component->selected_pair.remote;
+    ret = TRUE;
+  }
+
+ done:
+  agent_unlock();
+
+  return ret;
+}
 
 GSource* agent_timeout_add_with_context (NiceAgent *agent, guint interval,
     GSourceFunc function, gpointer data)

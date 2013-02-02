@@ -690,6 +690,27 @@ nice_agent_set_selected_pair (
   const gchar *rfoundation);
 
 /**
+ * nice_agent_get_selected_pair:
+ * @agent: The #NiceAgent Object
+ * @stream_id: The ID of the stream
+ * @component_id: The ID of the component
+ * @local: The local selected candidate
+ * @remote: The remote selected candidate
+ *
+ * Retreive the selected candidate pair for media transmission
+ * for a given stream's component.
+ *
+ * Returns: %TRUE on success, %FALSE if there is no selected candidate pair
+ */
+gboolean
+nice_agent_get_selected_pair (
+  NiceAgent *agent,
+  guint stream_id,
+  guint component_id,
+  NiceCandidate **local,
+  NiceCandidate **remote);
+
+/**
  * nice_agent_set_selected_remote_candidate:
  * @agent: The #NiceAgent Object
  * @stream_id: The ID of the stream
