@@ -27,6 +27,7 @@ AC_CONFIG_FILES([
 	docs/reference/Makefile
 	docs/reference/libnice/Makefile
 	tests/Makefile
+	examples/Makefile
 	])
 
 # Set the libtool C/A/R version info

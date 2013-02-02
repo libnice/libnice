@@ -16,7 +16,8 @@ SUBDIRS = \
 	nice \
 	gst \
 	docs \
-	tests
+	tests \
+	examples
 
 DISTCHECK_CONFIGURE_FLAGS = --disable-assert -enable-gtk-doc
 
