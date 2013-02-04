@@ -4,17 +4,25 @@
  * Copyright 2013 Collabora Ltd.
  *  Contact: Youness Alaoui
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * The contents of this file are subject to the Mozilla Public License Version
+ * 1.1 (the "License"); you may not use this file except in compliance with
+ * the License. You may obtain a copy of the License at
+ * http://www.mozilla.org/MPL/
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ * Software distributed under the License is distributed on an "AS IS" basis,
+ * WITHOUT WARRANTY OF ANY KIND, either express or implied. See the License
+ * for the specific language governing rights and limitations under the
+ * License.
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Alternatively, the contents of this file may be used under the terms of the
+ * the GNU Lesser General Public License Version 2.1 (the "LGPL"), in which
+ * case the provisions of LGPL are applicable instead of those above. If you
+ * wish to allow use of your version of this file only under the terms of the
+ * LGPL and not to allow others to use your version of this file under the
+ * MPL, indicate your decision by deleting the provisions above and replace
+ * them with the notice and other provisions required by the LGPL. If you do
+ * not delete the provisions above, a recipient may use your version of this
+ * file under either the MPL or the LGPL.
  */
 
 /*
@@ -23,11 +31,11 @@
  * firewalls.
  *
  * Build:
- *   gcc -o nicetest nicetest.c `pkg-config --cflags --libs nice`
+ *   gcc -o simple-example simple-example.c `pkg-config --cflags --libs nice`
  *
  * Run two clients, one controlling and one controlled:
- *   nicetest 0 $(host -4 -t A stun.stunprotocol.org | awk '{ print $4 }')
- *   nicetest 1 $(host -4 -t A stun.stunprotocol.org | awk '{ print $4 }')
+ *   simple-example 0 $(host -4 -t A stun.stunprotocol.org | awk '{ print $4 }')
+ *   simple-example 1 $(host -4 -t A stun.stunprotocol.org | awk '{ print $4 }')
  */
 #include <stdlib.h>
 #include <stdio.h>
