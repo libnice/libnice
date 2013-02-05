@@ -18,7 +18,7 @@ AM_CFLAGS = \
 	$(GLIB_CFLAGS) \
         $(GUPNP_CFLAGS)
 
-bin_PROGRAMS = simple-example threaded-example
+bin_PROGRAMS = simple-example threaded-example sdp-example
 
 simple_example_SOURCES = simple-example.c
 simple_example_LDADD = $(top_builddir)/agent/libagent.la \
@@ -26,4 +26,8 @@ simple_example_LDADD = $(top_builddir)/agent/libagent.la \
 
 threaded_example_SOURCES = threaded-example.c
 threaded_example_LDADD = $(top_builddir)/agent/libagent.la \
+	 $(GLIB_LIBS) $(GUPNP_LIBS)
+
+sdp_example_SOURCES = sdp-example.c
+sdp_example_LDADD = $(top_builddir)/agent/libagent.la \
 	 $(GLIB_LIBS) $(GUPNP_LIBS)
