@@ -824,10 +824,38 @@ const gchar *nice_agent_get_stream_name (
     guint stream_id);
 
 /**
+ * nice_agent_get_default_local_candidate:
+ * @agent: The #NiceAgent Object
+ * @stream_id: The ID of the stream
+ * @component_id: The ID of the component
+ *
+ * This helper function will return the recommended default candidate to be
+ * used for non-ICE compatible clients. This will usually be the candidate
+ * with the lowest priority, since it will be the longest path but the one with
+ * the most chances of success.
+ * <note>
+     <para>
+     This function is only useful in order to manually generate the
+     local SDP
+     </para>
+ * </note>
+ *
+ * Returns: The candidate to be used as the default candidate, or %NULL in case
+ * of error. Must be freed with nice_candidate_free() once done.
+ *
+ */
+NiceCandidate *
+nice_agent_get_default_local_candidate (
+    NiceAgent *agent,
+    guint stream_id,
+    guint component_id);
+
+/**
  * nice_agent_generate_local_sdp:
  * @agent: The #NiceAgent Object
  *
- * Generate an SDP string containing the local candidates and credentials.
+ * Generate an SDP string containing the local candidates and credentials for
+ * all streams and components in the agent.
  *
  <note>
    <para>
@@ -842,12 +870,15 @@ const gchar *nice_agent_get_stream_name (
    </para>
    <para>
      The default candidate in the SDP will be selected based on the lowest
-     priority candidate.
+     priority candidate for the first component.
    </para>
  </note>
  *
  * <para>See also: nice_agent_set_stream_name() </para>
  * <para>See also: nice_agent_parse_remote_sdp() </para>
+ * <para>See also: nice_agent_generate_local_stream_sdp() </para>
+ * <para>See also: nice_agent_generate_local_candidate_sdp() </para>
+ * <para>See also: nice_agent_get_default_local_candidate() </para>
  *
  * Returns: A string representing the local SDP. Must be freed with g_free()
  * once done.
@@ -857,6 +888,69 @@ const gchar *nice_agent_get_stream_name (
 gchar *
 nice_agent_generate_local_sdp (
   NiceAgent *agent);
+
+/**
+ * nice_agent_generate_local_stream_sdp:
+ * @agent: The #NiceAgent Object
+ * @stream_id: The ID of the stream
+ * @include_non_ice: Whether or not to include non ICE specific lines
+ * (m=, c= and a=rtcp: lines)
+ *
+ * Generate an SDP string containing the local candidates and credentials
+ * for a stream.
+ *
+ <note>
+   <para>
+     The SDP will not contain any codec lines and the 'm' line will not list
+     any payload types.
+   </para>
+   <para>
+    It is highly recommended to set the name of the stream prior to calling this
+    function. Unnamed streams will show up as '-' in the 'm' line.
+   </para>
+   <para>
+     The default candidate in the SDP will be selected based on the lowest
+     priority candidate.
+   </para>
+ </note>
+ *
+ * <para>See also: nice_agent_set_stream_name() </para>
+ * <para>See also: nice_agent_parse_remote_stream_sdp() </para>
+ * <para>See also: nice_agent_generate_local_sdp() </para>
+ * <para>See also: nice_agent_generate_local_candidate_sdp() </para>
+ * <para>See also: nice_agent_get_default_local_candidate() </para>
+ *
+ * Returns: A string representing the local SDP for the stream. Must be freed
+ * with g_free() once done.
+ *
+ * Since: 0.1.4
+ **/
+gchar *
+nice_agent_generate_local_stream_sdp (
+    NiceAgent *agent,
+    guint stream_id,
+    gboolean include_non_ice);
+
+/**
+ * nice_agent_generate_local_candidate_sdp:
+ * @agent: The #NiceAgent Object
+ * @candidate: The candidate to generate
+ *
+ * Generate an SDP string representing a local candidate.
+ *
+ * <para>See also: nice_agent_parse_remote_candidate_sdp() </para>
+ * <para>See also: nice_agent_generate_local_sdp() </para>
+ * <para>See also: nice_agent_generate_local_stream_sdp() </para>
+ *
+ * Returns: A string representing the SDP for the candidate. Must be freed
+ * with g_free() once done.
+ *
+ * Since: 0.1.4
+ **/
+gchar *
+nice_agent_generate_local_candidate_sdp (
+    NiceAgent *agent,
+    NiceCandidate *candidate);
 
 /**
  * nice_agent_parse_remote_sdp:
@@ -877,6 +971,8 @@ nice_agent_generate_local_sdp (
  *
  * <para>See also: nice_agent_set_stream_name() </para>
  * <para>See also: nice_agent_generate_local_sdp() </para>
+ * <para>See also: nice_agent_parse_remote_stream_sdp() </para>
+ * <para>See also: nice_agent_parse_remote_candidate_sdp() </para>
  *
  * Returns: The number of candidates added, negative on errors
  *
@@ -887,6 +983,59 @@ nice_agent_parse_remote_sdp (
     NiceAgent *agent,
     const gchar *sdp);
 
+
+/**
+ * nice_agent_parse_remote_stream_sdp:
+ * @agent: The #NiceAgent Object
+ * @stream_id: The ID of the stream to parse
+ * @sdp: The remote SDP to parse
+ * @ufrag: Pointer to store the ice ufrag if non %NULL. Must be freed with
+ * g_free() after use
+ * @pwd: Pointer to store the ice password if non %NULL. Must be freed with
+ * g_free() after use
+ *
+ * Parse an SDP string representing a single stream and extracts candidates
+ * and credentials from it.
+ *
+ * <para>See also: nice_agent_generate_local_stream_sdp() </para>
+ * <para>See also: nice_agent_parse_remote_sdp() </para>
+ * <para>See also: nice_agent_parse_remote_candidate_sdp() </para>
+ *
+ * Returns: A #GSList of candidates parsed from the SDP, or %NULL in case of
+ * errors
+ *
+ * Since: 0.1.4
+ **/
+GSList *
+nice_agent_parse_remote_stream_sdp (
+    NiceAgent *agent,
+    guint stream_id,
+    const gchar *sdp,
+    gchar **ufrag,
+    gchar **pwd);
+
+
+/**
+ * nice_agent_parse_remote_candidate_sdp:
+ * @agent: The #NiceAgent Object
+ * @stream_id: The ID of the stream the candidate belongs to
+ * @sdp: The remote SDP to parse
+ *
+ * Parse an SDP string and extracts the candidate from it.
+ *
+ * <para>See also: nice_agent_generate_local_candidate_sdp() </para>
+ * <para>See also: nice_agent_parse_remote_sdp() </para>
+ * <para>See also: nice_agent_parse_remote_stream_sdp() </para>
+ *
+ * Returns: The parsed candidate or %NULL if there was an error.
+ *
+ * Since: 0.1.4
+ **/
+NiceCandidate *
+nice_agent_parse_remote_candidate_sdp (
+    NiceAgent *agent,
+    guint stream_id,
+    const gchar *sdp);
 
 G_END_DECLS
 
