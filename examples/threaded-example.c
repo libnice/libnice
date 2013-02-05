@@ -45,7 +45,6 @@
 #include <agent.h>
 
 static GMainLoop *gloop;
-static GIOChannel* io_stdin;
 static gchar *stun_addr = NULL;
 static guint stun_port;
 static gboolean controlling;
@@ -104,15 +103,14 @@ main(int argc, char *argv[])
   g_type_init();
 
   gloop = g_main_loop_new(NULL, FALSE);
-  io_stdin = g_io_channel_unix_new(fileno(stdin));
 
+  // Run the mainloop and the example thread
   exit_thread = FALSE;
   gloopthread = g_thread_new("example thread", &example_thread, NULL);
   g_main_loop_run (gloop);
   exit_thread = TRUE;
 
   g_main_loop_unref(gloop);
-  g_io_channel_unref (io_stdin);
   g_thread_join (gloopthread);
   g_thread_unref (gloopthread);
 
@@ -124,9 +122,12 @@ example_thread(void *data)
 {
   NiceAgent *agent;
   NiceCandidate *local, *remote;
+  GIOChannel* io_stdin;
   guint stream_id;
   gchar *line = NULL;
   int rval;
+
+  io_stdin = g_io_channel_unix_new(fileno(stdin));
 
   // Create the nice agent
   agent = nice_agent_new(g_main_loop_get_context (gloop),
@@ -188,8 +189,7 @@ example_thread(void *data)
       // Parse remote candidate list and set it on the agent
       rval = parse_remote_data(agent, stream_id, 1, line);
       if (rval == EXIT_SUCCESS) {
-        // Return FALSE so we stop listening to stdin since we parsed the
-        // candidates correctly
+        g_free (line);
         break;
       } else {
         fprintf(stderr, "ERROR: failed to parse remote data\n");
@@ -240,6 +240,7 @@ example_thread(void *data)
   }
 
 end:
+  g_io_channel_unref (io_stdin);
   g_object_unref(agent);
   g_main_loop_quit (gloop);
 
