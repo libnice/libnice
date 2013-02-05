@@ -2958,25 +2958,27 @@ NICEAPI_EXPORT void
 nice_agent_set_stream_tos (NiceAgent *agent,
   guint stream_id, gint tos)
 {
-  GSList *i, *j, *k;
+  GSList *i, *j;
+  Stream *stream;
 
   agent_lock();
 
-  for (i = agent->streams; i; i = i->next) {
-    Stream *stream = i->data;
-    if (stream->id == stream_id) {
-      stream->tos = tos;
-      for (j = stream->components; j; j = j->next) {
-        Component *component = j->data;
+  stream = agent_find_stream (agent, stream_id);
+  if (stream == NULL)
+    goto done;
 
-        for (k = component->local_candidates; k; k = k->next) {
-          NiceCandidate *local_candidate = k->data;
-          _priv_set_socket_tos (agent, local_candidate->sockptr, tos);
-        }
-      }
+  stream->tos = tos;
+  for (i = stream->components; i; i = i->next) {
+    Component *component = i->data;
+
+    for (j = component->local_candidates; j; j = j->next) {
+      NiceCandidate *local_candidate = j->data;
+
+      _priv_set_socket_tos (agent, local_candidate->sockptr, tos);
     }
   }
 
+ done:
   agent_unlock();
 }
 
