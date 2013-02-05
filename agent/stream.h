@@ -61,6 +61,7 @@ G_BEGIN_DECLS
 
 struct _Stream
 {
+  gchar *name;
   guint id;
   guint n_components;
   gboolean initial_binding_request_received;

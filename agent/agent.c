@@ -2996,3 +2996,342 @@ nice_agent_set_software (NiceAgent *agent, const gchar *software)
 
   agent_unlock ();
 }
+
+NICEAPI_EXPORT gboolean
+nice_agent_set_stream_name (NiceAgent *agent, guint stream_id,
+    const gchar *name)
+{
+  Stream *stream_to_name = NULL;
+  GSList *i;
+  gboolean ret = FALSE;
+
+  agent_lock();
+
+  if (name != NULL) {
+    for (i = agent->streams; i; i = i->next) {
+      Stream *stream = i->data;
+
+      if (stream->id != stream_id &&
+          g_strcmp0 (stream->name, name) == 0)
+        goto done;
+      else if (stream->id == stream_id)
+        stream_to_name = stream;
+    }
+  }
+
+  if (stream_to_name == NULL)
+    goto done;
+
+  if (stream_to_name->name)
+    g_free (stream_to_name->name);
+  stream_to_name->name = g_strdup (name);
+  ret = TRUE;
+
+ done:
+  agent_unlock();
+
+  return ret;
+}
+
+NICEAPI_EXPORT const gchar *
+nice_agent_get_stream_name (NiceAgent *agent, guint stream_id)
+{
+  Stream *stream;
+  gchar *name = NULL;
+
+  agent_lock();
+
+  stream = agent_find_stream (agent, stream_id);
+  if (stream == NULL)
+    goto done;
+
+  name = stream->name;
+
+ done:
+  agent_unlock();
+  return name;
+}
+
+static const gchar *
+_cand_type_to_sdp (NiceCandidateType type) {
+  switch(type) {
+    case NICE_CANDIDATE_TYPE_SERVER_REFLEXIVE:
+      return "srflx";
+    case NICE_CANDIDATE_TYPE_PEER_REFLEXIVE:
+      return "prflx";
+    case NICE_CANDIDATE_TYPE_RELAYED:
+      return "relay";
+    case NICE_CANDIDATE_TYPE_HOST:
+    default:
+      return "host";
+  }
+}
+
+
+NICEAPI_EXPORT gchar *
+nice_agent_generate_local_sdp (NiceAgent *agent)
+{
+  GString * sdp = g_string_new (NULL);
+  GSList *i, *j, *k;
+
+  agent_lock();
+  for (i = agent->streams; i; i = i->next) {
+    Stream *stream = i->data;
+    NiceCandidate *default_candidate = NULL;
+    NiceAddress rtp, rtcp;
+    gchar ip4[INET6_ADDRSTRLEN];
+
+    nice_address_init (&rtp);
+    nice_address_set_ipv4 (&rtp, 0);
+    nice_address_init (&rtcp);
+    nice_address_set_ipv4 (&rtcp, 0);
+
+    /* Find default candidates */
+    for (j = stream->components; j; j = j->next) {
+      Component *component = j->data;
+
+      for (k = component->local_candidates; k; k = k->next) {
+        NiceCandidate *local_candidate = k->data;
+
+        if (local_candidate->component_id > 2)
+          continue;
+
+        /* Only check for ipv4 candidates */
+        if (nice_address_ip_version (&local_candidate->addr) != 4)
+          continue;
+        if (component->id == NICE_COMPONENT_TYPE_RTP) {
+          if (default_candidate == NULL ||
+              local_candidate->priority < default_candidate->priority) {
+            default_candidate = local_candidate;
+            rtp = local_candidate->addr;
+          }
+        } else if (component->id == NICE_COMPONENT_TYPE_RTCP &&
+            default_candidate != NULL &&
+            strncmp (local_candidate->foundation, default_candidate->foundation,
+                NICE_CANDIDATE_MAX_FOUNDATION) == 0) {
+          rtcp = local_candidate->addr;
+          break;
+        }
+      }
+    }
+
+    nice_address_to_string (&rtp, ip4);
+    g_string_append_printf (sdp, "m=%s %d RTP/AVP\n",
+        stream->name ? stream->name : "-", nice_address_get_port (&rtp));
+    g_string_append_printf (sdp, "c=IN IP4 %s\n", ip4);
+    if (nice_address_get_port (&rtcp) != 0)
+      g_string_append_printf (sdp, "a=rtcp:%d\n",
+          nice_address_get_port (&rtcp));
+    g_string_append_printf (sdp, "a=ice-ufrag:%s\n", stream->local_ufrag);
+    g_string_append_printf (sdp, "a=ice-pwd:%s\n", stream->local_password);
+
+    for (j = stream->components; j; j = j->next) {
+      Component *component = j->data;
+
+      for (k = component->local_candidates; k; k = k->next) {
+        NiceCandidate *cand = k->data;
+
+        nice_address_to_string (&cand->addr, ip4);
+        g_string_append_printf (sdp, "a=candidate:%.*s %d %s %d %s %d",
+            NICE_CANDIDATE_MAX_FOUNDATION, cand->foundation, cand->component_id,
+            cand->transport == NICE_CANDIDATE_TRANSPORT_UDP ? "UDP" : "???",
+            cand->priority, ip4, nice_address_get_port (&cand->addr));
+        g_string_append_printf (sdp, " typ %s", _cand_type_to_sdp (cand->type));
+        if (nice_address_is_valid (&cand->base_addr) &&
+            !nice_address_equal (&cand->addr, &cand->base_addr)) {
+          nice_address_to_string (&cand->base_addr, ip4);
+          g_string_append_printf (sdp, " raddr %s rport %d", ip4,
+              nice_address_get_port (&cand->base_addr));
+        }
+        g_string_append (sdp, "\n");
+      }
+    }
+  }
+
+  agent_unlock();
+
+  return g_string_free (sdp, FALSE);
+}
+
+NICEAPI_EXPORT gint
+nice_agent_parse_remote_sdp (NiceAgent *agent, const gchar *sdp)
+{
+  Stream *current_stream = NULL;
+  gchar **sdp_lines = NULL;
+  GSList *l;
+  gint i;
+  gint ret = 0;
+
+  agent_lock();
+
+  for (l = agent->streams; l; l = l->next) {
+    Stream *stream = l->data;
+
+    if (stream->name == NULL) {
+      ret = -1;
+      goto done;
+    }
+  }
+
+  sdp_lines = g_strsplit (sdp, "\n", 0);
+  for (i = 0; sdp_lines && sdp_lines[i]; i++) {
+    if (g_str_has_prefix (sdp_lines[i], "m=")) {
+      gchar *name = g_strdup (sdp_lines[i] + 2);
+      gchar *ptr = name;
+
+      while (*ptr != ' ' && *ptr != '\0') ptr++;
+      *ptr = 0;
+
+      current_stream = NULL;
+      for (l = agent->streams; l; l = l->next) {
+        Stream *stream = l->data;
+
+        if (g_strcmp0 (stream->name, name) == 0) {
+          current_stream = stream;
+          break;
+        }
+      }
+      g_free (name);
+    } else if (g_str_has_prefix (sdp_lines[i], "a=ice-ufrag:")) {
+      const gchar *ufrag = sdp_lines[i] + 12;
+
+      if (current_stream == NULL) {
+        ret = -1;
+        goto done;
+      }
+      g_strlcpy (current_stream->remote_ufrag, ufrag, NICE_STREAM_MAX_UFRAG);
+    } else if (g_str_has_prefix (sdp_lines[i], "a=ice-pwd:")) {
+      const gchar *pwd = sdp_lines[i] + 10;
+
+      if (current_stream == NULL) {
+        ret = -1;
+        goto done;
+      }
+      g_strlcpy (current_stream->remote_password, pwd, NICE_STREAM_MAX_PWD);
+    } else if (g_str_has_prefix (sdp_lines[i], "a=candidate:")) {
+      const gchar *candidate = sdp_lines[i] + 12;
+      int ntype = -1;
+      gchar **tokens = NULL;
+      const gchar *foundation = NULL;
+      guint component_id;
+      const gchar *transport = NULL;
+      guint32 priority;
+      const gchar *addr = NULL;
+      guint16 port;
+      const gchar *type = NULL;
+      const gchar *raddr = NULL;
+      guint16 rport;
+      static const gchar *type_names[] = {"host", "srflx", "prflx", "relay"};
+      guint j;
+
+      if (current_stream == NULL) {
+        ret = -1;
+        goto done;
+      }
+
+      tokens = g_strsplit (candidate, " ", 0);
+      for (j = 0; tokens && tokens[j]; j++) {
+        switch (j) {
+          case 0:
+            foundation = tokens[j];
+            break;
+          case 1:
+            component_id = (guint) g_ascii_strtoull (tokens[j], NULL, 10);
+            break;
+          case 2:
+            transport = tokens[j];
+            break;
+          case 3:
+            priority = (guint32) g_ascii_strtoull (tokens[j], NULL, 10);
+            break;
+          case 4:
+            addr = tokens[j];
+            break;
+          case 5:
+            port = (guint16) g_ascii_strtoull (tokens[j], NULL, 10);
+            break;
+          default:
+            if (tokens[j + 1] == NULL) {
+              g_strfreev(tokens);
+              ret = -1;
+              goto done;
+            }
+            if (g_strcmp0 (tokens[j], "typ") == 0) {
+              type = tokens[j + 1];
+            } else if (g_strcmp0 (tokens[j], "raddr") == 0) {
+              raddr = tokens[j + 1];
+            } else if (g_strcmp0 (tokens[j], "rport") == 0) {
+              rport = (guint16) g_ascii_strtoull (tokens[j + 1], NULL, 10);
+            }
+            j++;
+            break;
+        }
+      }
+      if (type == NULL) {
+        g_strfreev(tokens);
+        ret = -1;
+        goto done;
+      }
+
+      ntype = -1;
+      for (j = 0; j < G_N_ELEMENTS (type_names); j++) {
+        if (g_strcmp0 (type, type_names[j]) == 0) {
+          ntype = j;
+          break;
+        }
+      }
+      if (ntype == -1) {
+        g_strfreev(tokens);
+        ret = -1;
+        goto done;
+      }
+
+      if (g_strcmp0 (transport, "UDP") == 0) {
+        NiceCandidate *cand = NULL;
+        GSList *cands = NULL;
+        gint added;
+
+        cand = nice_candidate_new(ntype);
+        cand->component_id = component_id;
+        cand->stream_id = current_stream->id;
+        cand->transport = NICE_CANDIDATE_TRANSPORT_UDP;
+        g_strlcpy(cand->foundation, foundation, NICE_CANDIDATE_MAX_FOUNDATION);
+        cand->priority = priority;
+
+        if (!nice_address_set_from_string (&cand->addr, addr)) {
+          nice_candidate_free (cand);
+          g_strfreev(tokens);
+          ret = -1;
+          goto done;
+        }
+        nice_address_set_port (&cand->addr, port);
+
+        if (raddr && rport) {
+          if (!nice_address_set_from_string (&cand->base_addr, raddr)) {
+            nice_candidate_free (cand);
+            g_strfreev(tokens);
+            ret = -1;
+            goto done;
+          }
+          nice_address_set_port (&cand->base_addr, rport);
+        }
+
+        cands = g_slist_prepend (cands, cand);
+        added = nice_agent_set_remote_candidates (agent, current_stream->id,
+            component_id, cands);
+        g_slist_free_full(cands, (GDestroyNotify)&nice_candidate_free);
+        if (added > 0)
+          ret++;
+      }
+      g_strfreev(tokens);
+    }
+  }
+
+ done:
+  if (sdp_lines)
+    g_strfreev(sdp_lines);
+
+  agent_unlock();
+
+  return ret;
+}

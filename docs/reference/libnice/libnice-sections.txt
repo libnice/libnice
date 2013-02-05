@@ -28,6 +28,10 @@ nice_agent_set_selected_remote_candidate
 nice_agent_set_stream_tos
 nice_agent_set_software
 nice_agent_restart
+nice_agent_set_stream_name
+nice_agent_get_stream_name
+nice_agent_generate_local_sdp
+nice_agent_parse_remote_sdp
 <SUBSECTION Standard>
 NICE_AGENT
 NICE_IS_AGENT
