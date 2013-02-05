@@ -3206,7 +3206,7 @@ _generate_stream_sdp (NiceAgent *agent, Stream *stream,
     }
 
     nice_address_to_string (&rtp, ip4);
-    g_string_append_printf (sdp, "m=%s %d RTP/AVP\n",
+    g_string_append_printf (sdp, "m=%s %d ICE/SDP\n",
         stream->name ? stream->name : "-", nice_address_get_port (&rtp));
     g_string_append_printf (sdp, "c=IN IP4 %s\n", ip4);
     if (nice_address_get_port (&rtcp) != 0)
