@@ -252,6 +252,10 @@ stdin_send_data_cb (GIOChannel *source, GIOCondition cond,
     g_free (line);
     printf("> ");
     fflush (stdout);
+  } else {
+    nice_agent_send(agent, stream_id, 1, 1, "\0");
+    // Ctrl-D was pressed.
+    g_main_loop_quit (gloop);
   }
 
   return TRUE;
@@ -269,6 +273,8 @@ static void
 cb_nice_recv(NiceAgent *agent, guint stream_id, guint component_id,
     guint len, gchar *buf, gpointer data)
 {
+  if (len == 1 && buf[0] == '\0')
+    g_main_loop_quit (gloop);
   printf("%.*s", len, buf);
   fflush(stdout);
 }
