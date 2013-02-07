@@ -110,8 +110,8 @@ main(int argc, char *argv[])
   g_main_loop_run (gloop);
   exit_thread = TRUE;
 
-  g_main_loop_unref(gloop);
   g_thread_join (gexamplethread);
+  g_main_loop_unref(gloop);
 
   return EXIT_SUCCESS;
 }
