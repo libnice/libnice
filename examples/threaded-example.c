@@ -77,7 +77,7 @@ static void * example_thread(void *data);
 int
 main(int argc, char *argv[])
 {
-  GThread *gloopthread;
+  GThread *gexamplethread;
 
   // Parse arguments
   if (argc > 4 || argc < 2 || argv[1][1] != '\0') {
@@ -106,13 +106,12 @@ main(int argc, char *argv[])
 
   // Run the mainloop and the example thread
   exit_thread = FALSE;
-  gloopthread = g_thread_new("example thread", &example_thread, NULL);
+  gexamplethread = g_thread_new("example thread", &example_thread, NULL);
   g_main_loop_run (gloop);
   exit_thread = TRUE;
 
   g_main_loop_unref(gloop);
-  g_thread_join (gloopthread);
-  g_thread_unref (gloopthread);
+  g_thread_join (gexamplethread);
 
   return EXIT_SUCCESS;
 }
