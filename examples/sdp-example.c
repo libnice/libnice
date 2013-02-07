@@ -41,6 +41,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <ctype.h>
+#include <unistd.h>
 
 #include <agent.h>
 
@@ -117,6 +118,7 @@ example_thread(void *data)
   gchar *sdp, *sdp64;
 
   io_stdin = g_io_channel_unix_new(fileno(stdin));
+  g_io_channel_set_flags (io_stdin, G_IO_FLAG_NONBLOCK, NULL);
 
   // Create the nice agent
   agent = nice_agent_new(g_main_loop_get_context (gloop),
@@ -174,8 +176,8 @@ example_thread(void *data)
   printf("> ");
   fflush (stdout);
   while (!exit_thread) {
-    if (g_io_channel_read_line (io_stdin, &line, NULL, NULL, NULL) ==
-        G_IO_STATUS_NORMAL) {
+    GIOStatus s = g_io_channel_read_line (io_stdin, &line, NULL, NULL, NULL);
+    if (s == G_IO_STATUS_NORMAL) {
       gsize sdp_len;
 
       sdp = (gchar *) g_base64_decode (line, &sdp_len);
@@ -193,6 +195,8 @@ example_thread(void *data)
       }
       g_free (sdp);
       g_free (line);
+    } else if (s == G_IO_STATUS_AGAIN) {
+      usleep (100000);
     }
   }
 
@@ -209,12 +213,15 @@ example_thread(void *data)
   printf("> ");
   fflush (stdout);
   while (!exit_thread) {
-    if (g_io_channel_read_line (io_stdin, &line, NULL, NULL, NULL) ==
-        G_IO_STATUS_NORMAL) {
+    GIOStatus s = g_io_channel_read_line (io_stdin, &line, NULL, NULL, NULL);
+
+    if (s == G_IO_STATUS_NORMAL) {
       nice_agent_send(agent, stream_id, 1, strlen(line), line);
       g_free (line);
       printf("> ");
       fflush (stdout);
+    } else if (s == G_IO_STATUS_AGAIN) {
+      usleep (100000);
     } else {
       // Ctrl-D was pressed.
       nice_agent_send(agent, stream_id, 1, 1, "\0");
