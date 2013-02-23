@@ -34,7 +34,7 @@ nice_agent_get_stream_name
 nice_agent_get_default_local_candidate
 nice_agent_generate_local_sdp
 nice_agent_generate_local_stream_sdp
-nice_agent_generate_local_canidate_sdp
+nice_agent_generate_local_candidate_sdp
 nice_agent_parse_remote_sdp
 nice_agent_parse_remote_stream_sdp
 nice_agent_parse_remote_candidate_sdp
@@ -94,6 +94,7 @@ nice_address_equal
 nice_address_to_string
 nice_address_is_private
 nice_address_is_valid
+nice_address_ip_version
 </SECTION>
 
 
