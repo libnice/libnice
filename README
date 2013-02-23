@@ -21,6 +21,18 @@ Requirements
  gupnp-igd >= 0.1.2 (optional)
  gstreamer-0.10 >= 0.10.0 (optional)
 
+Build instructions
+------------------
+
+To build on Linux and Mac, you only need to type the usual commands :
+  ./configure && make && sudo make install
+Please refer to the INSTALL file for more details.
+If you are building from git, you must first run the ./autogen.sh script
+to generate the configure file for you.
+
+To build on Windows, please refer to the README.win32 file for build instructions
+using Microsoft Visual Studio.
+
 Structure
 ---------
 
