@@ -1,3 +1,15 @@
+libnice 0.1.4 (2013-02-22)
+==========================
+
+Fix issue with dribble mode
+Fix issue with TURN permissions
+Fix missing win32 directory from release archive
+Fix support for OC2007
+Added new nice_address_ip_vesion API
+Added new nice_agent_get_selected_pair API
+Added new SDP parsing and generation API
+Added simple examples (simple, threaded and sdp usages examples)
+
 libnice 0.1.3 (2012-09-13)
 ==========================
 
