@@ -1827,11 +1827,16 @@ nice_agent_gather_candidates (
     for (n = 0; n < stream->n_components; n++) {
       Component *component = stream_find_component_by_id (stream, n + 1);
       guint current_port;
+      guint start_port;
 
       if (component == NULL)
         continue;
 
-      current_port = component->min_port;
+      start_port = component->min_port;
+      if(component->min_port != 0) {
+        start_port = nice_rng_generate_int(agent->rng, component->min_port, component->max_port+1);
+      }
+      current_port = start_port;
 
       if (agent->reliable && component->tcp == NULL) {
         nice_debug ("Agent %p: not gathering candidates for s%d:%d because "
@@ -1848,7 +1853,8 @@ nice_agent_gather_candidates (
             n + 1, addr);
         if (current_port > 0)
           current_port++;
-        if (current_port == 0 || current_port > component->max_port)
+        if (current_port > component->max_port) current_port = component->min_port;
+        if (current_port == 0 || current_port == start_port)
           break;
       }
       nice_address_set_port (addr, 0);
