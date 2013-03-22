@@ -90,7 +90,10 @@ AC_CHECK_HEADERS([ifaddrs.h], \
 		      [AC_DEFINE(HAVE_GETIFADDRS, [1], \
 		       [Whether getifaddrs() is available on the system])])
 
-LIBNICE_CFLAGS="-Wall"
+# Also put matching version in LIBNICE_CFLAGS
+GLIB_REQ=2.30
+
+LIBNICE_CFLAGS="-Wall -DGLIB_VERSION_MIN_REQUIRED=GLIB_VERSION_2_30 -DGLIB_VERSION_MAX_ALLOWED=GLIB_VERSION_2_32"
 dnl if asked for, add -Werror if supported
 if test "x$LIBNICE_RELEASE" != "xyes"; then
   LIBNICE_CFLAGS="$LIBNICE_CFLAGS -Werror"
@@ -105,10 +108,10 @@ AC_CHECK_FUNCS([poll])
 AC_SUBST(LIBRT)
 
 PKG_CHECK_MODULES(GLIB, [dnl
-	glib-2.0 >= 2.13 dnl
-	gobject-2.0 >= 2.13 dnl
-	gthread-2.0 >= 2.13 dnl
-	gio-2.0 >= 2.13 dnl
+	glib-2.0 >= $GLIB_REQ dnl
+	gobject-2.0 >= $GLIB_REQ dnl
+	gthread-2.0 >= $GLIB_REQ dnl
+	gio-2.0 >= $GLIB_REQ dnl
 	])
 
 AC_ARG_WITH(gstreamer, 
