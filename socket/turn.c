@@ -1057,6 +1057,13 @@ nice_turn_socket_parse_recv (NiceSocket *sock, NiceSocket **from_sock,
 
         nice_address_set_from_sockaddr (from, (struct sockaddr *) &sa);
 
+        if (priv->compatibility == NICE_TURN_SOCKET_COMPATIBILITY_RFC5766 &&
+                !priv_has_permission_for_peer (priv, from)) {
+          if (!priv_has_sent_permission_for_peer (priv, from)) {
+            priv_send_create_permission (priv, NULL, from);
+          }
+        }
+
         *from_sock = sock;
         memmove (buf, data, len > data_len ? data_len : len);
         return len > data_len ? data_len : len;
