@@ -3450,7 +3450,7 @@ nice_agent_parse_remote_candidate_sdp (NiceAgent *agent, guint stream_id,
   guint16 port;
   const gchar *type = NULL;
   const gchar *raddr = NULL;
-  guint16 rport;
+  guint16 rport = 0;
   static const gchar *type_names[] = {"host", "srflx", "prflx", "relay"};
   guint i;
 
