@@ -3,10 +3,10 @@ AC_PREREQ(2.59c)
 
 dnl releases only do -Wall, cvs and prerelease does -Werror too
 dnl use a three digit version number for releases, and four for cvs/prerelease
-AC_INIT(libnice, 0.1.4.1)
+AC_INIT([libnice],[0.1.4.1])
 LIBNICE_RELEASE="no"
 
-AC_CANONICAL_SYSTEM
+AC_CANONICAL_TARGET
 
 AC_CONFIG_SRCDIR([agent/agent.c])
 AC_CONFIG_HEADER([config.h])
@@ -56,7 +56,7 @@ m4_ifdef([AM_SILENT_RULES],[AM_SILENT_RULES([yes])],
 AC_PROG_CC
 AM_PROG_AR
 AC_USE_SYSTEM_EXTENSIONS
-AC_PROG_LIBTOOL
+LT_INIT
 
 # Check Operating System
 AC_MSG_CHECKING([operating system])
@@ -116,12 +116,12 @@ PKG_CHECK_MODULES(GLIB, [dnl
 	])
 
 AC_ARG_WITH(gstreamer, 
-	AC_HELP_STRING([--with-gstreamer], [build GStreamer plugin]),
+	AS_HELP_STRING([--with-gstreamer],[build GStreamer plugin]),
 	[with_gstreamer=${withval}],
 	[with_gstreamer=auto])
 
 AC_ARG_WITH(gstreamer-0.10, 
-	AC_HELP_STRING([--with-gstreamer-0.10], [build GStreamer 0.10 plugin]),
+	AS_HELP_STRING([--with-gstreamer-0.10],[build GStreamer 0.10 plugin]),
 	[with_gstreamer010=${withval}],
 	[with_gstreamer010=auto])
 
@@ -174,7 +174,7 @@ AM_CONDITIONAL(WITH_GSTREAMER010, test "$with_gstreamer010" = yes)
 GUPNP_IGD_REQUIRED=0.1.2
 
 AC_ARG_ENABLE([gupnp],
-        AC_HELP_STRING([--disable-gupnp], [Disable GUPnP IGD support]),
+        AS_HELP_STRING([--disable-gupnp],[Disable GUPnP IGD support]),
         [case "${enableval}" in
             yes) WANT_GUPNP=yes ;;
             no)  WANT_GUPNP=no ;;
@@ -189,7 +189,7 @@ if test "x$WANT_GUPNP" != "xno"; then
     [ HAVE_GUPNP=no ])
 fi
 if test "x$WANT_GUPNP" = "xyes" && test "x$HAVE_GUPNP" = "xno"; then
-   AC_ERROR([Requested GUPnP IGD, but it is not available])
+   AC_MSG_ERROR(Requested GUPnP IGD, but it is not available)
 fi
 
 if test "x$HAVE_GUPNP" = "xyes"; then
