@@ -99,6 +99,17 @@ dnl if asked for, add -Werror if supported
 if test "x$LIBNICE_RELEASE" != "xyes"; then
   LIBNICE_CFLAGS="$LIBNICE_CFLAGS -Werror"
 fi
+#
+# Fixes for Solaris
+#
+AC_SEARCH_LIBS([inet_pton],[nsl])
+AC_SEARCH_LIBS([socket],[socket inet])
+case $host in
+	*-*-solaris* )
+	AC_DEFINE(_XOPEN_SOURCE,          600, Needed to get declarations for msg_control and msg_controllen on Solaris)
+	AC_DEFINE(__EXTENSIONS__,         1, Needed to get declarations for msg_control and msg_controllen on Solaris)
+     ;;
+esac
 
 AC_SUBST(LIBNICE_CFLAGS)
 AC_MSG_NOTICE([set LIBNICE_CFLAGS to $LIBNICE_CFLAGS])
