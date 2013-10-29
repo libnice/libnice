@@ -53,9 +53,9 @@ m4_ifdef([AM_SILENT_RULES],[AM_SILENT_RULES([yes])],
 
 # Checks for programs.
 
+AC_USE_SYSTEM_EXTENSIONS
 AC_PROG_CC
 AM_PROG_AR
-AC_USE_SYSTEM_EXTENSIONS
 LT_INIT
 
 # Check Operating System
