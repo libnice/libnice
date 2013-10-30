@@ -609,8 +609,8 @@ nice_agent_get_local_candidates (
  *
  <note>
    <para>
-     The caller owns the returned GSList but not the candidates
-     contained within it.
+     The caller owns the returned GSList as well as the candidates contained
+     within it.
    </para>
    <para>
      The list of remote candidates can change during processing.
