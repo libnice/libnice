@@ -1,7 +1,9 @@
 
 AC_PREREQ(2.59c)
 
-dnl releases only do -Wall, cvs and prerelease does -Werror too
+dnl Always compile with -Wall; if --enable-compile-warnings=error is passed,
+dnl also use -Werror. git and pre-releases default to -Werror
+
 dnl use a three digit version number for releases, and four for cvs/prerelease
 AC_INIT([libnice],[0.1.4.1])
 LIBNICE_RELEASE="no"
@@ -94,29 +96,44 @@ AC_CHECK_HEADERS([ifaddrs.h], \
 # Also put matching version in LIBNICE_CFLAGS
 GLIB_REQ=2.30
 
-LIBNICE_CFLAGS="-Wall -DGLIB_VERSION_MIN_REQUIRED=GLIB_VERSION_2_30 -DGLIB_VERSION_MAX_ALLOWED=GLIB_VERSION_2_32"
-dnl if asked for, add -Werror if supported
-if test "x$LIBNICE_RELEASE" != "xyes"; then
-  LIBNICE_CFLAGS="$LIBNICE_CFLAGS -Werror"
-fi
+LIBNICE_CFLAGS="-DGLIB_VERSION_MIN_REQUIRED=GLIB_VERSION_2_30 -DGLIB_VERSION_MAX_ALLOWED=GLIB_VERSION_2_32"
+
+dnl Support different levels of compiler error reporting.
+dnl This configure flag is designed to mimic one from gnome-common,
+dnl Defaults to "error" except for releases where it defaults to "yes"
+AC_ARG_ENABLE(compile-warnings,
+              AS_HELP_STRING([--enable-compile-warnings=@<:@no/minimum/yes/maximum/error@:>@],
+                             [Enable different levels of compiler warnings]),,
+              [AS_IF([test "$LIBNICE_RELEASE" = "yes"],
+                  [enable_compile_warnings="yes"],
+                  [enable_compile_warnings="error"])])
 
 AC_DEFUN([NICE_ADD_FLAG],
   AS_COMPILER_FLAG([$1], LIBNICE_CFLAGS="$LIBNICE_CFLAGS $1", [])
 )
 
 NICE_ADD_FLAG([-fno-strict-aliasing])
-NICE_ADD_FLAG([-Wextra])
-NICE_ADD_FLAG([-Wundef])
-NICE_ADD_FLAG([-Wnested-externs])
-NICE_ADD_FLAG([-Wwrite-strings])
-NICE_ADD_FLAG([-Wpointer-arith])
-NICE_ADD_FLAG([-Wbad-function-cast])
-NICE_ADD_FLAG([-Wmissing-declarations])
-NICE_ADD_FLAG([-Wmissing-prototypes])
-NICE_ADD_FLAG([-Wstrict-prototypes])
-NICE_ADD_FLAG([-Wredundant-decls])
-NICE_ADD_FLAG([-Wno-unused-parameter])
-NICE_ADD_FLAG([-Wno-missing-field-initializers])
+
+AS_IF([test "x$enable_compile_warnings" != "xno"],[
+    NICE_ADD_FLAG([-Wall])
+    AS_IF([test "x$enable_compile_warnings" != "xminimum"],[
+        NICE_ADD_FLAG([-Wextra])
+        NICE_ADD_FLAG([-Wundef])
+        NICE_ADD_FLAG([-Wnested-externs])
+        NICE_ADD_FLAG([-Wwrite-strings])
+        NICE_ADD_FLAG([-Wpointer-arith])
+        NICE_ADD_FLAG([-Wbad-function-cast])
+        NICE_ADD_FLAG([-Wmissing-declarations])
+        NICE_ADD_FLAG([-Wmissing-prototypes])
+        NICE_ADD_FLAG([-Wstrict-prototypes])
+        NICE_ADD_FLAG([-Wredundant-decls])
+        NICE_ADD_FLAG([-Wno-unused-parameter])
+        NICE_ADD_FLAG([-Wno-missing-field-initializers])
+    ])
+])
+AS_IF([test "x$enable_compile_warnings" = "xerror"],[
+    NICE_ADD_FLAG([-Werror])
+])
 
 #
 # Fixes for Solaris
