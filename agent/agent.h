@@ -104,6 +104,7 @@
 
 
 #include <glib-object.h>
+#include <gio/gio.h>
 
 /**
  * NiceAgent:
@@ -713,6 +714,30 @@ nice_agent_get_selected_pair (
   guint component_id,
   NiceCandidate **local,
   NiceCandidate **remote);
+
+/**
+ * nice_agent_get_selected_socket:
+ * @agent: The #NiceAgent Object
+ * @stream_id: The ID of the stream
+ * @component_id: The ID of the component
+ *
+ * Retreive the local socket associated with the selected candidate pair
+ * for media transmission for a given stream's component.
+ *
+ * This is useful for adding ICE support to legacy applications that already
+ * have a protocol that maintains a connection. If the socket is duplicated
+ * before unrefing the agent, the application can take over and continue to use
+ * it. New applications are encouraged to use the built in libnice stream
+ * handling instead and let libnice handle the connection maintenance.
+ *
+ * Returns: pointer to the socket, or NULL if there is no selected candidate
+ * Since: 0.1.5
+ */
+GSocket *
+nice_agent_get_selected_socket (
+  NiceAgent *agent,
+  guint stream_id,
+  guint component_id);
 
 /**
  * nice_agent_set_selected_remote_candidate:

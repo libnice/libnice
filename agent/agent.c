@@ -2889,6 +2889,33 @@ nice_agent_get_selected_pair (NiceAgent *agent, guint stream_id,
   return ret;
 }
 
+NICEAPI_EXPORT GSocket *
+nice_agent_get_selected_socket (NiceAgent *agent, guint stream_id,
+    guint component_id)
+{
+  Component *component;
+  Stream *stream;
+  NiceSocket *nice_socket;
+  GSocket *g_socket = NULL;
+
+  agent_lock();
+
+  /* step: check that params specify an existing pair */
+  if (!agent_find_component (agent, stream_id, component_id,
+          &stream, &component))
+    goto done;
+
+  if (component->selected_pair.local && component->selected_pair.remote) {
+    nice_socket = (NiceSocket *)component->selected_pair.local->sockptr;
+    g_socket = nice_socket->fileno;
+  }
+
+ done:
+  agent_unlock();
+
+  return g_socket;
+}
+
 GSource* agent_timeout_add_with_context (NiceAgent *agent, guint interval,
     GSourceFunc function, gpointer data)
 {
