@@ -2638,52 +2638,60 @@ nice_agent_g_source_cb (
 
   agent_lock();
 
-  if (g_source_is_destroyed (g_main_current_source ())) {
-    agent_unlock ();
-    return FALSE;
-  }
+  for (;;)
+  {
+    if (g_source_is_destroyed (g_main_current_source ())) {
+      agent_unlock ();
+      return FALSE;
+    }
 
-  len = _nice_agent_recv (agent, stream, component, ctx->socket,
+    len = _nice_agent_recv (agent, stream, component, ctx->socket,
 			  MAX_BUFFER_SIZE, buf);
 
-  if (len > 0 && component->tcp) {
-    g_object_add_weak_pointer (G_OBJECT (agent), (gpointer *)&agent);
-    pseudo_tcp_socket_notify_packet (component->tcp, buf, len);
-    if (agent) {
-      adjust_tcp_clock (agent, stream, component);
-      g_object_remove_weak_pointer (G_OBJECT (agent), (gpointer *)&agent);
-    } else {
-      nice_debug ("Our agent got destroyed in notify_packet!!");
+    if (len > 0) {
+      if (component->tcp) {
+        g_object_add_weak_pointer (G_OBJECT (agent), (gpointer *)&agent);
+        pseudo_tcp_socket_notify_packet (component->tcp, buf, len);
+        if (agent) {
+          adjust_tcp_clock (agent, stream, component);
+          g_object_remove_weak_pointer (G_OBJECT (agent), (gpointer *)&agent);
+        } else {
+          nice_debug ("Our agent got destroyed in notify_packet!!");
+        }
+      } else if(agent->reliable) {
+        nice_debug ("Received data on a pseudo tcp FAILED component");
+      } else if (component->g_source_io_cb) {
+        gpointer data = component->data;
+        gint sid = stream->id;
+        gint cid = component->id;
+        NiceAgentRecvFunc callback = component->g_source_io_cb;
+        /* Unlock the agent before calling the callback */
+        agent_unlock();
+        callback (agent, sid, cid, len, buf, data);
+        agent_lock();
+      }
+    } else if (len < 0) {
+      GSource *source = ctx->source;
+
+      nice_debug ("Agent %p: _nice_agent_recv returned %d, errno (%d) : %s",
+          agent, len, errno, g_strerror (errno));
+      component->gsources = g_slist_remove (component->gsources, source);
+      g_source_destroy (source);
+      g_source_unref (source);
+      /* We don't close the socket because it would be way too complicated to
+       * take care of every path where the socket might still be used.. */
+      nice_debug ("Agent %p: unable to recv from socket %p. Detaching", agent,
+          ctx->socket);
+
+      /* Error, stop */
+      break;
+    } else if (len == 0) {
+      /* Nothing left to read, stop */
+      break;
     }
-  } else if(len > 0 && agent->reliable) {
-    nice_debug ("Received data on a pseudo tcp FAILED component");
-  } else if (len > 0 && component->g_source_io_cb) {
-    gpointer data = component->data;
-    gint sid = stream->id;
-    gint cid = component->id;
-    NiceAgentRecvFunc callback = component->g_source_io_cb;
-    /* Unlock the agent before calling the callback */
-    agent_unlock();
-    callback (agent, sid, cid, len, buf, data);
-    goto done;
-  } else if (len < 0) {
-    GSource *source = ctx->source;
-
-    nice_debug ("Agent %p: _nice_agent_recv returned %d, errno (%d) : %s",
-        agent, len, errno, g_strerror (errno));
-    component->gsources = g_slist_remove (component->gsources, source);
-    g_source_destroy (source);
-    g_source_unref (source);
-    /* We don't close the socket because it would be way too complicated to
-     * take care of every path where the socket might still be used.. */
-    nice_debug ("Agent %p: unable to recv from socket %p. Detaching", agent,
-        ctx->socket);
-
   }
 
   agent_unlock();
-
- done:
 
   return TRUE;
 }
