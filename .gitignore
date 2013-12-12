@@ -28,6 +28,7 @@ compile
 depcomp
 diff
 gtk-doc.make
+INSTALL
 install-sh
 libtool
 ltmain.sh
