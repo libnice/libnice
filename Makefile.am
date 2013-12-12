@@ -33,6 +33,8 @@ EXTRA_DIST = \
 	scripts/valgrind.sh \
 	win32
 
+MAINTAINERCLEANFILES = ar-lib
+
 dist_check_SCRIPTS = \
 	scripts/check-symbols.sh \
 	scripts/make-symbol-list.sh
