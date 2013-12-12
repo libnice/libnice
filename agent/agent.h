@@ -53,6 +53,10 @@
  * It will take care of discovering your local candidates and do
  *  connectivity checks to create a stream of data between you and your peer.
  *
+ * Streams and their components are referenced by integer IDs (with respect to a
+ * given #NiceAgent). These IDs are guaranteed to be positive (i.e. non-zero)
+ * for valid streams/components.
+ *
  <example>
    <title>Simple example on how to use libnice</title>
    <programlisting>
@@ -338,7 +342,8 @@ nice_agent_add_local_address (NiceAgent *agent, NiceAddress *addr);
  * @agent: The #NiceAgent Object
  * @n_components: The number of components to add to the stream
  *
- * Adds a data stream to @agent containing @n_components components.
+ * Adds a data stream to @agent containing @n_components components. The
+ * returned stream ID is guaranteed to be positive on success.
  *
  * Returns: The ID of the new stream, 0 on failure
  **/
