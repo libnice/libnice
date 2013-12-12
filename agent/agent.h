@@ -1113,6 +1113,28 @@ nice_agent_parse_remote_candidate_sdp (
     guint stream_id,
     const gchar *sdp);
 
+/**
+ * nice_agent_build_io_stream:
+ * @agent: A #NiceAgent
+ * @stream_id: The ID of the stream to wrap
+ * @component_id: The ID of the component to wrap
+ *
+ * Build a #GIOStream wrapper around the given stream and component in
+ * @agent. The I/O stream will be valid for as long as @stream_id is valid.
+ *
+ * This function may only be called on reliable #NiceAgents. It is an error to
+ * try and create an I/O stream wrapper for an unreliable stream.
+ *
+ * Returns: (transfer full): A new #GIOStream.
+ *
+ * Since: 0.1.5
+ */
+GIOStream *
+nice_agent_build_io_stream (
+    NiceAgent *agent,
+    guint stream_id,
+    guint component_id);
+
 G_END_DECLS
 
 #endif /* _AGENT_H */

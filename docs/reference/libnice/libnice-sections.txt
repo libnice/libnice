@@ -40,6 +40,7 @@ nice_agent_generate_local_candidate_sdp
 nice_agent_parse_remote_sdp
 nice_agent_parse_remote_stream_sdp
 nice_agent_parse_remote_candidate_sdp
+nice_agent_build_io_stream
 <SUBSECTION Standard>
 NICE_AGENT
 NICE_IS_AGENT

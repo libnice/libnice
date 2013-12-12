@@ -75,7 +75,6 @@ GType nice_io_stream_get_type (void);
 struct _NiceIOStreamClass
 {
   GIOStreamClass parent_class;
-
 };
 
 struct _NiceIOStream
