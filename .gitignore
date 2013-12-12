@@ -132,6 +132,12 @@ tests/test-restart
 tests/test-thread
 tests/test-new-dribble
 
+# examples/ stuff
+examples/simple-example
+examples/threaded-example
+examples/sdp-example
+
+# docs/ stuff
 docs/reference/libnice/libnice*.txt
 docs/reference/libnice/libnice.args
 docs/reference/libnice/libnice.hierarchy
@@ -150,3 +156,4 @@ win32/vs9/libnice.suo
 win32/vs9/libnice/
 glib/
 *.exe
+ar-lib
