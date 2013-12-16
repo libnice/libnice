@@ -77,7 +77,7 @@ struct _Stream
 
 
 Stream *
-stream_new (guint n_components);
+stream_new (guint n_components, NiceAgent *agent);
 
 void
 stream_free (Stream *stream);

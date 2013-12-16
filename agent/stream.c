@@ -48,7 +48,7 @@
  * @brief ICE stream functionality
  */
 Stream *
-stream_new (guint n_components)
+stream_new (guint n_components, NiceAgent *agent)
 {
   Stream *stream;
   guint n;
@@ -56,7 +56,7 @@ stream_new (guint n_components)
 
   stream = g_slice_new0 (Stream);
   for (n = 0; n < n_components; n++) {
-    component = component_new (n + 1);
+    component = component_new (n + 1, agent, stream);
     stream->components = g_slist_append (stream->components, component);
   }
 

@@ -75,7 +75,7 @@ socket_source_free (SocketSource *source)
 
 
 Component *
-component_new (guint id)
+component_new (guint id, NiceAgent *agent, Stream *stream)
 {
   Component *component;
 
@@ -84,6 +84,8 @@ component_new (guint id)
   component->state = NICE_COMPONENT_STATE_DISCONNECTED;
   component->restart_candidate = NULL;
   component->tcp = NULL;
+  component->agent = agent;
+  component->stream = stream;
 
   return component;
 }
@@ -142,10 +144,6 @@ component_free (Component *cmp)
     pseudo_tcp_socket_close (cmp->tcp, TRUE);
     g_object_unref (cmp->tcp);
     cmp->tcp = NULL;
-  }
-  if (cmp->tcp_data != NULL) {
-    g_slice_free (TcpUserData, cmp->tcp_data);
-    cmp->tcp_data = NULL;
   }
 
   if (cmp->ctx != NULL) {

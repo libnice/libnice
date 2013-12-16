@@ -95,12 +95,6 @@ struct _IncomingCheck
   uint16_t username_len;
 };
 
-typedef struct {
-  NiceAgent *agent;
-  Stream *stream;
-  Component *component;
-} TcpUserData;
-
 /* A pair of a socket and the GSource which polls it from the main loop. All
  * GSources in a Component must be attached to the same main context:
  * component->ctx.
@@ -130,16 +124,19 @@ struct _Component
   GMainContext *ctx;                /**< context for GSources for this
                                        component */
 
+  NiceAgent *agent;  /* unowned */
+  Stream *stream;  /* unowned */
+
   PseudoTcpSocket *tcp;
   GSource* tcp_clock;
-  TcpUserData *tcp_data;
   gboolean tcp_readable;
+
   guint min_port;
   guint max_port;
 };
 
 Component *
-component_new (guint component_id);
+component_new (guint component_id, NiceAgent *agent, Stream *stream);
 
 void
 component_free (Component *cmp);

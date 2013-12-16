@@ -995,10 +995,6 @@ static void priv_destroy_component_tcp (Component *component)
       g_object_unref (component->tcp);
       component->tcp = NULL;
     }
-    if (component->tcp_data != NULL) {
-      g_slice_free (TcpUserData, component->tcp_data);
-      component->tcp_data = NULL;
-    }
 }
 
 static void priv_pseudo_tcp_error (NiceAgent *agent, Stream *stream,
@@ -1019,12 +1015,11 @@ adjust_tcp_clock (NiceAgent *agent, Stream *stream, Component *component);
 static void
 pseudo_tcp_socket_opened (PseudoTcpSocket *sock, gpointer user_data)
 {
-  TcpUserData *data = (TcpUserData *)user_data;
-  NiceAgent *agent = data->agent;
-  Component *component = data->component;
-  Stream *stream = data->stream;
+  Component *component = user_data;
+  NiceAgent *agent = component->agent;
+  Stream *stream = component->stream;
 
-  nice_debug ("Agent %p: s%d:%d pseudo Tcp socket Opened", data->agent,
+  nice_debug ("Agent %p: s%d:%d pseudo Tcp socket Opened", agent,
       stream->id, component->id);
   g_signal_emit (agent, signals[SIGNAL_RELIABLE_TRANSPORT_WRITABLE], 0,
       stream->id, component->id);
@@ -1033,10 +1028,9 @@ pseudo_tcp_socket_opened (PseudoTcpSocket *sock, gpointer user_data)
 static void
 pseudo_tcp_socket_readable (PseudoTcpSocket *sock, gpointer user_data)
 {
-  TcpUserData *data = (TcpUserData *)user_data;
-  NiceAgent *agent = data->agent;
-  Component *component = data->component;
-  Stream *stream = data->stream;
+  Component *component = user_data;
+  NiceAgent *agent = component->agent;
+  Stream *stream = component->stream;
   guint8 buf[MAX_BUFFER_SIZE];
   gssize len;
 
@@ -1086,13 +1080,12 @@ pseudo_tcp_socket_readable (PseudoTcpSocket *sock, gpointer user_data)
 static void
 pseudo_tcp_socket_writable (PseudoTcpSocket *sock, gpointer user_data)
 {
-  TcpUserData *data = (TcpUserData *)user_data;
-  NiceAgent *agent = data->agent;
-  Component *component = data->component;
-  Stream *stream = data->stream;
+  Component *component = user_data;
+  NiceAgent *agent = component->agent;
+  Stream *stream = component->stream;
 
-  nice_debug ("Agent %p: s%d:%d pseudo Tcp socket writable", data->agent,
-      data->stream->id, data->component->id);
+  nice_debug ("Agent %p: s%d:%d pseudo Tcp socket writable", agent,
+      stream->id, component->id);
   g_signal_emit (agent, signals[SIGNAL_RELIABLE_TRANSPORT_WRITABLE], 0,
       stream->id, component->id);
 }
@@ -1101,10 +1094,9 @@ static void
 pseudo_tcp_socket_closed (PseudoTcpSocket *sock, guint32 err,
     gpointer user_data)
 {
-  TcpUserData *data = (TcpUserData *)user_data;
-  NiceAgent *agent = data->agent;
-  Component *component = data->component;
-  Stream *stream = data->stream;
+  Component *component = user_data;
+  NiceAgent *agent = component->agent;
+  Stream *stream = component->stream;
 
   nice_debug ("Agent %p: s%d:%d pseudo Tcp socket closed",  agent,
       stream->id, component->id);
@@ -1116,8 +1108,7 @@ static PseudoTcpWriteResult
 pseudo_tcp_socket_write_packet (PseudoTcpSocket *socket,
     const gchar *buffer, guint32 len, gpointer user_data)
 {
-  TcpUserData *data = (TcpUserData *)user_data;
-  Component *component = data->component;
+  Component *component = user_data;
 
   if (component->selected_pair.local != NULL) {
     NiceSocket *sock;
@@ -1127,8 +1118,8 @@ pseudo_tcp_socket_write_packet (PseudoTcpSocket *socket,
     gchar tmpbuf[INET6_ADDRSTRLEN];
     nice_address_to_string (&component->selected_pair.remote->addr, tmpbuf);
 
-    nice_debug ("Agent %p : s%d:%d: sending %d bytes to [%s]:%d", data->agent,
-        data->stream->id, component->id, len, tmpbuf,
+    nice_debug ("Agent %p : s%d:%d: sending %d bytes to [%s]:%d",
+        component->agent, component->stream->id, component->id, len, tmpbuf,
         nice_address_get_port (&component->selected_pair.remote->addr));
 #endif
 
@@ -1146,10 +1137,9 @@ pseudo_tcp_socket_write_packet (PseudoTcpSocket *socket,
 static gboolean
 notify_pseudo_tcp_socket_clock (gpointer user_data)
 {
-  TcpUserData *data = (TcpUserData *)user_data;
-  Component *component = data->component;
-  Stream *stream = data->stream;
-  NiceAgent *agent = data->agent;
+  Component *component = user_data;
+  Stream *stream = component->stream;
+  NiceAgent *agent = component->agent;
 
   agent_lock();
 
@@ -1185,7 +1175,7 @@ adjust_tcp_clock (NiceAgent *agent, Stream *stream, Component *component)
         component->tcp_clock = NULL;
       }
       component->tcp_clock = agent_timeout_add_with_context (agent,
-          timeout, notify_pseudo_tcp_socket_clock, component->tcp_data);
+          timeout, notify_pseudo_tcp_socket_clock, component);
     } else {
       nice_debug ("Agent %p: component %d pseudo tcp socket should be destroyed",
           agent, component->id);
@@ -1531,7 +1521,7 @@ nice_agent_add_stream (
   guint i;
 
   agent_lock();
-  stream = stream_new (n_components);
+  stream = stream_new (n_components, agent);
 
   agent->streams = g_slist_append (agent->streams, stream);
   stream->id = agent->next_stream_id++;
@@ -1541,17 +1531,12 @@ nice_agent_add_stream (
     for (i = 0; i < n_components; i++) {
       Component *component = stream_find_component_by_id (stream, i + 1);
       if (component) {
-        TcpUserData *data = g_slice_new0 (TcpUserData);
-        PseudoTcpCallbacks tcp_callbacks = {data,
+        PseudoTcpCallbacks tcp_callbacks = {component,
                                             pseudo_tcp_socket_opened,
                                             pseudo_tcp_socket_readable,
                                             pseudo_tcp_socket_writable,
                                             pseudo_tcp_socket_closed,
                                             pseudo_tcp_socket_write_packet};
-        data->agent = agent;
-        data->stream = stream;
-        data->component = component;
-        component->tcp_data = data;
         component->tcp = pseudo_tcp_socket_new (0, &tcp_callbacks);
         adjust_tcp_clock (agent, stream, component);
         nice_debug ("Agent %p: Create Pseudo Tcp Socket for component %d",
@@ -2807,8 +2792,8 @@ nice_agent_attach_recv (
      * next incoming data.
      * but only do this if we know we're already readable, otherwise we might
      * trigger an error in the initial, pre-connection attach. */
-    if (component->tcp && component->tcp_data && component->tcp_readable)
-      pseudo_tcp_socket_readable (component->tcp, component->tcp_data);
+    if (component->tcp && component->tcp_readable)
+      pseudo_tcp_socket_readable (component->tcp, component);
   }
 
  done:
