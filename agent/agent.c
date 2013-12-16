@@ -1043,7 +1043,9 @@ pseudo_tcp_socket_readable (PseudoTcpSocket *sock, gpointer user_data)
   g_object_add_weak_pointer (G_OBJECT (agent), (gpointer *)&agent);
 
   do {
-    if (component->io_callback != NULL)
+    gboolean has_io_callback = component_has_io_callback (component);
+
+    if (has_io_callback)
       len = pseudo_tcp_socket_recv (sock, (gchar *) buf, sizeof(buf));
     else
       len = 0;
@@ -2696,7 +2698,7 @@ nice_agent_g_source_cb (
     nice_debug ("Agent %p: unable to recv from socket %p. Detaching",
         ctx->agent, ctx->socket);
     component_detach_socket_source (component, ctx->socket);
-  } else if (len > 0 && component->io_callback) {
+  } else if (len > 0) {
     component_emit_io_callback (component, buf, len);
   }
 

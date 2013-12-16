@@ -105,6 +105,31 @@ typedef struct {
   GSource *source;
 } SocketSource;
 
+
+/* A buffer of data which has been received and processed (so is guaranteed not
+ * to be a STUN packet, or to contain pseudo-TCP header bytes, for example), but
+ * which hasn’t yet been sent to the client in an I/O callback. This could be
+ * due to the main context not being run, or due to the I/O callback being
+ * detached.
+ *
+ * The @offset member gives the byte offset into @buf which has already been
+ * sent to the client. #IOCallbackData buffers remain in the
+ * #Component::pending_io_messages queue until all of their bytes have been sent
+ * to the client.
+ *
+ * @offset is guaranteed to be smaller than @buf_len. */
+typedef struct {
+  guint8 *buf;  /* owned */
+  gsize buf_len;
+  gsize offset;
+} IOCallbackData;
+
+IOCallbackData *
+io_callback_data_new (const guint8 *buf, gsize buf_len);
+void
+io_callback_data_free (IOCallbackData *data);
+
+
 struct _Component
 {
   NiceComponentType type;
@@ -119,13 +144,27 @@ struct _Component
 				    see ICE 11.1. "Sending Media" (ID-19) */
   NiceCandidate *restart_candidate; /**< for storing active remote candidate during a restart */
 
+  GMutex io_mutex;                  /**< protects io_callback, io_user_data,
+                                         pending_io_messages and io_callback_id.
+                                         immutable: can be accessed without
+                                         holding the agent lock; if the agent
+                                         lock is to be taken, it must always be
+                                         taken before this one */
   NiceAgentRecvFunc io_callback;    /**< function called on io cb */
   gpointer io_user_data;            /**< data passed to the io function */
   GMainContext *ctx;                /**< context for GSources for this
                                        component */
+  GQueue pending_io_messages;       /**< queue of packets which have been
+                                         received but not passed to the client
+                                         in an I/O callback or recv() call yet.
+                                         each element is an owned
+                                         IOCallbackData */
+  guint io_callback_id;             /* GSource ID of the I/O callback */
 
-  NiceAgent *agent;  /* unowned */
-  Stream *stream;  /* unowned */
+  NiceAgent *agent;  /* unowned, immutable: can be accessed without holding the
+                      * agent lock */
+  Stream *stream;  /* unowned, immutable: can be accessed without holding the
+                    * agent lock */
 
   PseudoTcpSocket *tcp;
   GSource* tcp_clock;
@@ -176,6 +215,9 @@ component_set_io_callback (Component *component, NiceAgentRecvFunc func,
 void
 component_emit_io_callback (Component *component,
     const guint8 *buf, gsize buf_len);
+
+gboolean
+component_has_io_callback (Component *component);
 
 G_END_DECLS
 
