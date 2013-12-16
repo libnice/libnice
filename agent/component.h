@@ -174,8 +174,8 @@ void
 component_set_io_callback (Component *component, NiceAgentRecvFunc func,
     gpointer user_data, GMainContext *context);
 void
-component_emit_io_callback (Component *component, NiceAgent *agent,
-    gint stream_id, gint component_id, const guint8 *buf, gsize buf_len);
+component_emit_io_callback (Component *component,
+    const guint8 *buf, gsize buf_len);
 
 G_END_DECLS
 

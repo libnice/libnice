@@ -1049,10 +1049,7 @@ pseudo_tcp_socket_readable (PseudoTcpSocket *sock, gpointer user_data)
       len = 0;
 
     if (len > 0) {
-      gint sid = stream->id;
-      gint cid = component->id;
-
-      component_emit_io_callback (component, agent, sid, cid, buf, len);
+      component_emit_io_callback (component, buf, len);
       if (sock == NULL) {
         nice_debug ("PseudoTCP socket got destroyed in readable callback!");
         break;
@@ -2700,10 +2697,7 @@ nice_agent_g_source_cb (
         ctx->agent, ctx->socket);
     component_detach_socket_source (component, ctx->socket);
   } else if (len > 0 && component->io_callback) {
-    gint sid = stream->id;
-    gint cid = component->id;
-
-    component_emit_io_callback (component, agent, sid, cid, buf, len);
+    component_emit_io_callback (component, buf, len);
   }
 
   agent_unlock ();

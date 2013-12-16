@@ -473,23 +473,28 @@ component_set_io_callback (Component *component, NiceAgentRecvFunc func,
 
 /* This must be called with the agent lock *held*. */
 void
-component_emit_io_callback (Component *component, NiceAgent *agent,
-    gint stream_id, gint component_id, const guint8 *buf, gsize buf_len)
+component_emit_io_callback (Component *component,
+    const guint8 *buf, gsize buf_len)
 {
+  NiceAgent *agent;
+  guint stream_id, component_id;
   NiceAgentRecvFunc io_callback;
   gpointer io_user_data;
 
   g_assert (component != NULL);
-  g_assert (NICE_IS_AGENT (agent));
-  g_assert (stream_id > 0);
-  g_assert (component_id > 0);
   g_assert (buf != NULL);
   g_assert (buf_len > 0);
 
-  g_assert (component->io_callback != NULL);
-
+  agent = component->agent;
+  stream_id = component->stream->id;
+  component_id = component->id;
   io_callback = component->io_callback;
   io_user_data = component->io_user_data;
+
+  g_assert (NICE_IS_AGENT (agent));
+  g_assert (stream_id > 0);
+  g_assert (component_id > 0);
+  g_assert (io_callback != NULL);
 
   agent_unlock ();
 
