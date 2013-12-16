@@ -150,7 +150,10 @@ struct _Component
 
   /* I/O handling. The main context must always be non-NULL, and is used for all
    * socket recv() operations. All io_callback emissions are invoked in this
-   * context too. */
+   * context too.
+   *
+   * recv_buf and io_callback are mutually exclusive, but it is allowed for both
+   * to be NULL if the Component is not currently ready to receive data. */
   GMutex io_mutex;                  /**< protects io_callback, io_user_data,
                                          pending_io_messages and io_callback_id.
                                          immutable: can be accessed without
@@ -159,14 +162,19 @@ struct _Component
                                          taken before this one */
   NiceAgentRecvFunc io_callback;    /**< function called on io cb */
   gpointer io_user_data;            /**< data passed to the io function */
-  GMainContext *ctx;                /**< context for GSources for this
-                                       component */
   GQueue pending_io_messages;       /**< queue of packets which have been
                                          received but not passed to the client
                                          in an I/O callback or recv() call yet.
                                          each element is an owned
                                          IOCallbackData */
   guint io_callback_id;             /* GSource ID of the I/O callback */
+
+  GMainContext *ctx;                /**< context for GSources for this
+                                       component */
+  guint8 *recv_buf;                 /**< unowned buffer for receiving into */
+  gsize recv_buf_len;               /**< allocated size of recv_buf in bytes */
+  gsize recv_buf_valid_len;         /**< length of valid data in recv_buf */
+  GError **recv_buf_error;          /**< error information about failed reads */
 
   NiceAgent *agent;  /* unowned, immutable: can be accessed without holding the
                       * agent lock */
@@ -212,11 +220,15 @@ component_detach_all_sockets (Component *component);
 void
 component_free_socket_sources (Component *component);
 
+GMainContext *
+component_dup_io_context (Component *component);
 void
 component_set_io_context (Component *component, GMainContext *context);
 void
 component_set_io_callback (Component *component,
-    NiceAgentRecvFunc func, gpointer user_data);
+    NiceAgentRecvFunc func, gpointer user_data,
+    guint8 *recv_buf, gsize recv_buf_len,
+    GError **error);
 void
 component_emit_io_callback (Component *component,
     const guint8 *buf, gsize buf_len);

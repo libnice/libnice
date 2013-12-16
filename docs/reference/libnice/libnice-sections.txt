@@ -23,6 +23,7 @@ nice_agent_get_remote_candidates
 nice_agent_get_local_candidates
 nice_agent_get_selected_pair
 nice_agent_send
+nice_agent_recv
 nice_agent_attach_recv
 nice_agent_set_selected_pair
 nice_agent_set_selected_remote_candidate

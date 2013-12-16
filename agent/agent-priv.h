@@ -178,4 +178,7 @@ component_io_cb (
   GIOCondition condition,
   gpointer data);
 
+gssize agent_recv_locked (NiceAgent *agent, Stream *stream,
+    Component *component, NiceSocket *socket, guint8 *buf, gsize buf_len);
+
 #endif /*_NICE_AGENT_PRIV_H */

@@ -61,7 +61,7 @@ component_deschedule_io_callback (Component *component);
 
 
 /* Must *not* take the agent lock, since it’s called from within
- * component_set_io_callback(), which holds the Component’s I/O lock. */
+ * component_set_io_context(), which holds the Component’s I/O lock. */
 static void
 socket_source_attach (SocketSource *socket_source, GMainContext *context)
 {
@@ -129,7 +129,7 @@ component_new (guint id, NiceAgent *agent, Stream *stream)
    * will be updated when nice_agent_attach_recv() or nice_agent_recv() are
    * called. */
   component_set_io_context (component, NULL);
-  component_set_io_callback (component, NULL, NULL);
+  component_set_io_callback (component, NULL, NULL, NULL, 0, NULL);
 
   return component;
 }
@@ -438,7 +438,7 @@ component_attach_socket (Component *component, NiceSocket *socket)
 /* Reattaches socket handles of @component to the main context.
  *
  * Must *not* take the agent lock, since it’s called from within
- * component_set_io_callback(), which holds the Component’s I/O lock. */
+ * component_set_io_context(), which holds the Component’s I/O lock. */
 static void
 component_reattach_all_sockets (Component *component)
 {
@@ -486,7 +486,7 @@ component_detach_socket (Component *component, NiceSocket *socket)
  * sockets themselves untouched.
  *
  * Must *not* take the agent lock, since it’s called from within
- * component_set_io_callback(), which holds the Component’s I/O lock.
+ * component_set_io_context(), which holds the Component’s I/O lock.
  */
 void
 component_detach_all_sockets (Component *component)
@@ -509,6 +509,12 @@ component_free_socket_sources (Component *component)
   g_slist_free_full (component->socket_sources,
       (GDestroyNotify) socket_source_free);
   component->socket_sources = NULL;
+}
+
+GMainContext *
+component_dup_io_context (Component *component)
+{
+  return g_main_context_ref (component->ctx);
 }
 
 /* If @context is %NULL, a fresh context is used, so component->ctx is always
@@ -534,23 +540,39 @@ component_set_io_context (Component *component, GMainContext *context)
   g_mutex_unlock (&component->io_mutex);
 }
 
+/* (func, user_data) and (recv_buf, recv_buf_len) are mutually exclusive.
+ * At most one of the two must be specified; if both are NULL, the Component
+ * will not receive any data (i.e. reception is paused). */
 void
 component_set_io_callback (Component *component,
-    NiceAgentRecvFunc func, gpointer user_data)
+    NiceAgentRecvFunc func, gpointer user_data,
+    guint8 *recv_buf, gsize recv_buf_len,
+    GError **error)
 {
+  g_assert (func == NULL || recv_buf == NULL);
+  g_assert (recv_buf != NULL || recv_buf_len == 0);
+  g_assert (error == NULL || *error == NULL);
+
   g_mutex_lock (&component->io_mutex);
 
   if (func != NULL) {
     component->io_callback = func;
     component->io_user_data = user_data;
+    component->recv_buf = NULL;
+    component->recv_buf_len = 0;
 
     component_schedule_io_callback (component);
   } else {
     component->io_callback = NULL;
     component->io_user_data = NULL;
+    component->recv_buf = recv_buf;
+    component->recv_buf_len = recv_buf_len;
 
     component_deschedule_io_callback (component);
   }
+
+  component->recv_buf_valid_len = 0;
+  component->recv_buf_error = error;
 
   g_mutex_unlock (&component->io_mutex);
 }
