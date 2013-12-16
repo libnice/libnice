@@ -2319,20 +2319,37 @@ nice_agent_set_remote_candidates (NiceAgent *agent, guint stream_id, guint compo
   return added;
 }
 
-
-static gint
-_nice_agent_recv (
+/*
+ * _nice_agent_recv_locked:
+ * @agent: a #NiceAgent
+ * @stream: the stream to receive from
+ * @component: the component to receive from
+ * @socket: the socket to receive on
+ * @buf: the buffer to write into (must be at least @buf_len bytes long)
+ * @buf_len: the length of @buf
+ *
+ * Receive up to @buf_len bytes of data from the given
+ * @stream/@component/@socket, in a non-blocking fashion.
+ *
+ * NOTE: Must be called with the agent’s lock held.
+ *
+ * Returns: number of bytes stored in @buf, 0 if no data is available, or -1 on
+ * error
+ */
+static gssize
+_nice_agent_recv_locked (
   NiceAgent *agent,
   Stream *stream,
   Component *component,
   NiceSocket *socket,
-  gsize buf_len,
-  guint8 *buf)
+  guint8 *buf,
+  gsize buf_len)
 {
   NiceAddress from;
   gssize len;
   GList *item;
 
+  /* Returns -1 on error, 0 on EWOULDBLOCK, and > 0 on success. */
   len = nice_socket_recv (socket, &from, buf_len, (gchar *) buf);
 
   if (len == 0) {
@@ -2687,8 +2704,8 @@ nice_agent_g_source_cb (
 
   /* Actually read the data. This will return 0 if the data has already been
    * handled. */
-  len = _nice_agent_recv (agent, stream, component, ctx->socket,
-                          MAX_BUFFER_SIZE, buf);
+  len = _nice_agent_recv_locked (agent, stream, component, ctx->socket,
+                                 buf, MAX_BUFFER_SIZE);
 
   if (len < 0) {
     /* Error. Detach the source but don’t close the socket. We don’t close the
