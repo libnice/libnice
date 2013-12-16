@@ -124,10 +124,12 @@ struct _Component
   CandidatePair selected_pair; /**< independent from checklists, 
 				    see ICE 11.1. "Sending Media" (ID-19) */
   NiceCandidate *restart_candidate; /**< for storing active remote candidate during a restart */
-  NiceAgentRecvFunc g_source_io_cb; /**< function called on io cb */
-  gpointer data;                    /**< data passed to the io function */
-  GMainContext *ctx;                /**< context for data callbacks for this
+
+  NiceAgentRecvFunc io_callback;    /**< function called on io cb */
+  gpointer io_user_data;            /**< data passed to the io function */
+  GMainContext *ctx;                /**< context for GSources for this
                                        component */
+
   PseudoTcpSocket *tcp;
   GSource* tcp_clock;
   TcpUserData *tcp_data;
@@ -170,6 +172,13 @@ void
 component_detach_socket_sources (Component *component);
 void
 component_free_socket_sources (Component *component);
+
+void
+component_set_io_callback (Component *component, NiceAgentRecvFunc func,
+    gpointer user_data, GMainContext *context);
+void
+component_emit_io_callback (Component *component, NiceAgent *agent,
+    gint stream_id, gint component_id, const guint8 *buf, gsize buf_len);
 
 G_END_DECLS
 

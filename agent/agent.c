@@ -125,10 +125,6 @@ static GRecMutex agent_mutex;    /* Mutex used for thread-safe lib */
 static GStaticRecMutex agent_mutex = G_STATIC_REC_MUTEX_INIT;
 #endif
 
-static void priv_attach_stream_component (NiceAgent *agent,
-    Stream *stream,
-    Component *component);
-
 static void priv_free_upnp (NiceAgent *agent);
 
 #if GLIB_CHECK_VERSION(2,31,8)
@@ -1053,20 +1049,17 @@ pseudo_tcp_socket_readable (PseudoTcpSocket *sock, gpointer user_data)
   g_object_add_weak_pointer (G_OBJECT (agent), (gpointer *)&agent);
 
   do {
-    if (component->g_source_io_cb)
+    if (component->io_callback != NULL)
       len = pseudo_tcp_socket_recv (sock, buf, sizeof(buf));
     else
       len = 0;
 
     if (len > 0) {
-      gpointer data = component->data;
       gint sid = stream->id;
       gint cid = component->id;
-      NiceAgentRecvFunc callback = component->g_source_io_cb;
-      /* Unlock the agent before calling the callback */
-      agent_unlock();
-      callback (agent, sid, cid, len, buf, data);
-      agent_lock();
+
+      component_emit_io_callback (component, agent, sid, cid,
+          (guint8 *) buf, len);
       if (sock == NULL) {
         nice_debug ("PseudoTCP socket got destroyed in readable callback!");
         break;
@@ -2705,23 +2698,16 @@ nice_agent_g_source_cb (
     nice_debug ("Agent %p: unable to recv from socket %p. Detaching",
         ctx->agent, ctx->socket);
     component_detach_socket_source (component, ctx->socket);
-  } else if (len > 0 && component->g_source_io_cb) {
-    gpointer data = ctx->component->data;
-    gint sid = ctx->stream->id;
-    gint cid = ctx->component->id;
-    NiceAgentRecvFunc callback = ctx->component->g_source_io_cb;
+  } else if (len > 0 && component->io_callback) {
+    gint sid = stream->id;
+    gint cid = component->id;
 
-    /* Unlock the agent before calling the callback */
-    agent_unlock ();
-
-    callback (agent, sid, cid, len, buf, data);
-
-    goto done;
+    component_emit_io_callback (component, agent, sid, cid,
+        (guint8 *) buf, len);
   }
 
   agent_unlock ();
 
-done:
   return TRUE;
 }
 
@@ -2759,30 +2745,6 @@ agent_attach_stream_component_socket (NiceAgent *agent,
   component_add_socket_source (component, socket, source);
 }
 
-
-/*
- * Attaches socket handles of 'stream' to the main eventloop
- * context.
- *
- */
-static void
-priv_attach_stream_component (NiceAgent *agent,
-    Stream *stream,
-    Component *component)
-{
-  GSList *i;
-
-  /* Don’t bother if there is no main context. */
-  if (component->ctx == NULL)
-    return;
-
-  for (i = component->socket_sources; i != NULL; i = i->next) {
-    SocketSource *socket_source = i->data;
-    agent_attach_stream_component_socket (agent, stream, component,
-        socket_source->socket);
-  }
-}
-
 NICEAPI_EXPORT gboolean
 nice_agent_attach_recv (
   NiceAgent *agent,
@@ -2810,25 +2772,19 @@ nice_agent_attach_recv (
     goto done;
   }
 
-  if (component->g_source_io_cb)
-    component_detach_socket_sources (component);
-
+  /* Set the component’s I/O callback. */
+  component_set_io_callback (component, func, data, ctx);
   ret = TRUE;
 
-  component->g_source_io_cb = NULL;
-  component->data = NULL;
-  if (component->ctx)
-    g_main_context_unref (component->ctx);
-  component->ctx = NULL;
-
   if (func) {
-    component->g_source_io_cb = func;
-    component->data = data;
-    component->ctx = ctx;
-    if (ctx)
-      g_main_context_ref (ctx);
+    GSList *i;
 
-    priv_attach_stream_component (agent, stream, component);
+    /* Attach any detached sockets to the new main context. */
+    for (i = component->socket_sources; i != NULL; i = i->next) {
+      SocketSource *socket_source = i->data;
+      agent_attach_stream_component_socket (agent, stream, component,
+          socket_source->socket);
+    }
 
     /* If we got detached, maybe our readable callback didn't finish reading
      * all available data in the pseudotcp, so we need to make sure we free
@@ -2838,7 +2794,6 @@ nice_agent_attach_recv (
      * trigger an error in the initial, pre-connection attach. */
     if (component->tcp && component->tcp_data && component->tcp_readable)
       pseudo_tcp_socket_readable (component->tcp, component->tcp_data);
-
   }
 
  done:

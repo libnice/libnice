@@ -447,3 +447,56 @@ component_free_socket_sources (Component *component)
       (GDestroyNotify) socket_source_free);
   component->socket_sources = NULL;
 }
+
+void
+component_set_io_callback (Component *component, NiceAgentRecvFunc func,
+    gpointer user_data, GMainContext *context)
+{
+  /* Reference the context early so we don’t accidentally free it below. */
+  if (context != NULL && func != NULL)
+    g_main_context_ref (context);
+
+  if (component->io_callback != NULL)
+    component_detach_socket_sources (component);
+
+  component->io_callback = NULL;
+  component->io_user_data = NULL;
+
+  if (component->ctx != NULL)
+    g_main_context_unref (component->ctx);
+  component->ctx = NULL;
+
+  if (func != NULL) {
+    component->io_callback = func;
+    component->io_user_data = user_data;
+    component->ctx = context;  /* referenced above */
+  }
+}
+
+/* This must be called with the agent lock *held*. */
+void
+component_emit_io_callback (Component *component, NiceAgent *agent,
+    gint stream_id, gint component_id, const guint8 *buf, gsize buf_len)
+{
+  NiceAgentRecvFunc io_callback;
+  gpointer io_user_data;
+
+  g_assert (component != NULL);
+  g_assert (NICE_IS_AGENT (agent));
+  g_assert (stream_id > 0);
+  g_assert (component_id > 0);
+  g_assert (buf != NULL);
+  g_assert (buf_len > 0);
+
+  g_assert (component->io_callback != NULL);
+
+  io_callback = component->io_callback;
+  io_user_data = component->io_user_data;
+
+  agent_unlock ();
+
+  io_callback (agent, stream_id, component_id,
+      buf_len, (gchar *) buf, io_user_data);
+
+  agent_lock ();
+}
