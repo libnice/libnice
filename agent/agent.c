@@ -1037,8 +1037,8 @@ pseudo_tcp_socket_readable (PseudoTcpSocket *sock, gpointer user_data)
   NiceAgent *agent = data->agent;
   Component *component = data->component;
   Stream *stream = data->stream;
-  gchar buf[MAX_BUFFER_SIZE];
-  gint len;
+  guint8 buf[MAX_BUFFER_SIZE];
+  gssize len;
 
   nice_debug ("Agent %p: s%d:%d pseudo Tcp socket readable", agent,
       stream->id, component->id);
@@ -1050,7 +1050,7 @@ pseudo_tcp_socket_readable (PseudoTcpSocket *sock, gpointer user_data)
 
   do {
     if (component->io_callback != NULL)
-      len = pseudo_tcp_socket_recv (sock, buf, sizeof(buf));
+      len = pseudo_tcp_socket_recv (sock, (gchar *) buf, sizeof(buf));
     else
       len = 0;
 
@@ -1058,8 +1058,7 @@ pseudo_tcp_socket_readable (PseudoTcpSocket *sock, gpointer user_data)
       gint sid = stream->id;
       gint cid = component->id;
 
-      component_emit_io_callback (component, agent, sid, cid,
-          (guint8 *) buf, len);
+      component_emit_io_callback (component, agent, sid, cid, buf, len);
       if (sock == NULL) {
         nice_debug ("PseudoTCP socket got destroyed in readable callback!");
         break;
@@ -2327,14 +2326,14 @@ _nice_agent_recv (
   Stream *stream,
   Component *component,
   NiceSocket *socket,
-  guint buf_len,
-  gchar *buf)
+  gsize buf_len,
+  guint8 *buf)
 {
   NiceAddress from;
-  gint len;
+  gssize len;
   GList *item;
 
-  len = nice_socket_recv (socket, &from,  buf_len, buf);
+  len = nice_socket_recv (socket, &from, buf_len, (gchar *) buf);
 
   if (len == 0) {
     return 0;
@@ -2355,7 +2354,7 @@ _nice_agent_recv (
 #endif
 
 
-  if ((guint)len > buf_len)
+  if ((gsize) len > buf_len)
     {
       /* buffer is not big enough to accept this packet */
       /* XXX: test this case */
@@ -2376,7 +2375,7 @@ _nice_agent_recv (
             cand->stream_id == stream->id &&
             cand->component_id == component->id) {
           len = nice_turn_socket_parse_recv (cand->sockptr, &socket,
-              &from, len, buf, &from, buf, len);
+              &from, len, (gchar *) buf, &from, (gchar *) buf, len);
         }
       }
       break;
@@ -2393,7 +2392,7 @@ _nice_agent_recv (
 
 
   if (conn_check_handle_inbound_stun (agent, stream, component, socket,
-          &from, buf, len))
+          &from, (gchar *) buf, len))
     /* handled STUN message*/
     return 0;
 
@@ -2402,7 +2401,7 @@ handle_tcp:
   if (len > 0 && component->tcp) {
     /* Received data on a reliable connection. */
     g_object_add_weak_pointer (G_OBJECT (agent), (gpointer *) &agent);
-    pseudo_tcp_socket_notify_packet (component->tcp, buf, len);
+    pseudo_tcp_socket_notify_packet (component->tcp, (gchar *) buf, len);
 
     if (agent) {
       adjust_tcp_clock (agent, stream, component);
@@ -2676,7 +2675,7 @@ nice_agent_g_source_cb (
   NiceAgent *agent = ctx->agent;
   Stream *stream = ctx->stream;
   Component *component = ctx->component;
-  gchar buf[MAX_BUFFER_SIZE];
+  guint8 buf[MAX_BUFFER_SIZE];
   gssize len;
 
   agent_lock ();
@@ -2702,8 +2701,7 @@ nice_agent_g_source_cb (
     gint sid = stream->id;
     gint cid = component->id;
 
-    component_emit_io_callback (component, agent, sid, cid,
-        (guint8 *) buf, len);
+    component_emit_io_callback (component, agent, sid, cid, buf, len);
   }
 
   agent_unlock ();
