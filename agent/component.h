@@ -101,6 +101,16 @@ typedef struct {
   Component *component;
 } TcpUserData;
 
+/* A pair of a socket and the GSource which polls it from the main loop. All
+ * GSources in a Component must be attached to the same main context:
+ * component->ctx.
+ *
+ * Socket must be non-NULL, but source may be NULL if it has been detached. */
+typedef struct {
+  NiceSocket *socket;
+  GSource *source;
+} SocketSource;
+
 struct _Component
 {
   NiceComponentType type;
@@ -108,8 +118,7 @@ struct _Component
   NiceComponentState state;
   GSList *local_candidates;    /**< list of Candidate objs */
   GSList *remote_candidates;   /**< list of Candidate objs */
-  GSList *sockets;             /**< list of NiceSocket objs */
-  GSList *gsources;            /**< list of GSource objs */
+  GSList *socket_sources;      /**< list of SocketSource objs */
   GSList *incoming_checks;     /**< list of IncomingCheck objs */
   GList *turn_servers;             /**< List of TURN servers */
   CandidatePair selected_pair; /**< independent from checklists, 
@@ -148,6 +157,19 @@ component_find_remote_candidate (const Component *component, const NiceAddress *
 NiceCandidate *
 component_set_selected_remote_candidate (NiceAgent *agent, Component *component,
     NiceCandidate *candidate);
+
+void
+component_add_socket_source (Component *component, NiceSocket *socket,
+    GSource *source);
+void
+component_add_detached_socket (Component *component, NiceSocket *socket);
+
+void
+component_detach_socket_source (Component *component, NiceSocket *socket);
+void
+component_detach_socket_sources (Component *component);
+void
+component_free_socket_sources (Component *component);
 
 G_END_DECLS
 

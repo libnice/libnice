@@ -125,10 +125,9 @@ static GRecMutex agent_mutex;    /* Mutex used for thread-safe lib */
 static GStaticRecMutex agent_mutex = G_STATIC_REC_MUTEX_INIT;
 #endif
 
-static gboolean priv_attach_stream_component (NiceAgent *agent,
+static void priv_attach_stream_component (NiceAgent *agent,
     Stream *stream,
     Component *component);
-static void priv_detach_stream_component (Stream *stream, Component *component);
 
 static void priv_free_upnp (NiceAgent *agent);
 
@@ -1012,7 +1011,7 @@ static void priv_pseudo_tcp_error (NiceAgent *agent, Stream *stream,
   if (component->tcp) {
     agent_signal_component_state_change (agent, stream->id,
         component->id, NICE_COMPONENT_STATE_FAILED);
-    priv_detach_stream_component (stream, component);
+    component_detach_socket_sources (component);
   }
   priv_destroy_component_tcp (component);
 }
@@ -1442,7 +1441,6 @@ priv_add_new_candidate_discovery_turn (NiceAgent *agent,
         _priv_set_socket_tos (agent, new_socket, stream->tos);
         agent_attach_stream_component_socket (agent, stream,
             component, new_socket);
-        component->sockets= g_slist_append (component->sockets, new_socket);
         socket = new_socket;
       }
     }
@@ -1492,7 +1490,6 @@ priv_add_new_candidate_discovery_turn (NiceAgent *agent,
 
     agent_attach_stream_component_socket (agent, stream,
         component, cdisco->nicesock);
-    component->sockets = g_slist_append (component->sockets, cdisco->nicesock);
   }
 
   cdisco->turn = turn;
@@ -1971,20 +1968,14 @@ nice_agent_gather_candidates (
     for (n = 0; n < stream->n_components; n++) {
       Component *component = stream_find_component_by_id (stream, n + 1);
 
-      priv_detach_stream_component (stream, component);
+      component_free_socket_sources (component);
 
       for (i = component->local_candidates; i; i = i->next) {
         NiceCandidate *candidate = i->data;
         nice_candidate_free (candidate);
       }
-      for (i = component->sockets; i; i = i->next) {
-        NiceSocket *udpsocket = i->data;
-        nice_socket_free (udpsocket);
-      }
       g_slist_free (component->local_candidates);
       component->local_candidates = NULL;
-      g_slist_free (component->sockets);
-      component->sockets = NULL;
     }
     discovery_prune_stream (agent, stream_id);
   }
@@ -2708,16 +2699,12 @@ nice_agent_g_source_cb (
                           MAX_BUFFER_SIZE, buf);
 
   if (len < 0) {
-    GSource *source = ctx->source;
-
-    component->gsources = g_slist_remove (component->gsources, source);
-    g_source_destroy (source);
-    g_source_unref (source);
-
-    /* We don't close the socket because it would be way too complicated to
-     * take care of every path where the socket might still be used.. */
+    /* Error. Detach the source but don’t close the socket. We don’t close the
+     * socket because it would be way too complicated to take care of every path
+     * where it might still be used. */
     nice_debug ("Agent %p: unable to recv from socket %p. Detaching",
         ctx->agent, ctx->socket);
+    component_detach_socket_source (component, ctx->socket);
   } else if (len > 0 && component->g_source_io_cb) {
     gpointer data = ctx->component->data;
     gint sid = ctx->stream->id;
@@ -2739,7 +2726,9 @@ done:
 }
 
 /*
- * Attaches one socket handle to the main loop event context
+ * Attaches one socket handle to the main loop event context.
+ *
+ * Takes ownership of the socket.
  */
 
 void
@@ -2751,19 +2740,23 @@ agent_attach_stream_component_socket (NiceAgent *agent,
   GSource *source;
   IOCtx *ctx;
 
-  if (!component->ctx)
+  if (!component->ctx) {
+    component_add_detached_socket (component, socket);
     return;
+  }
 
   /* note: without G_IO_ERR the glib mainloop goes into
    *       busyloop if errors are encountered */
-  source = g_socket_create_source(socket->fileno, G_IO_IN | G_IO_ERR, NULL);
+  source = g_socket_create_source (socket->fileno, G_IO_IN | G_IO_ERR, NULL);
 
   ctx = io_ctx_new (agent, stream, component, socket, source);
   g_source_set_callback (source, (GSourceFunc) nice_agent_g_source_cb,
       ctx, (GDestroyNotify) io_ctx_free);
-  nice_debug ("Agent %p : Attach source %p (stream %u).", agent, source, stream->id);
-  g_source_attach (source, component->ctx);
-  component->gsources = g_slist_append (component->gsources, source);
+  nice_debug ("Agent %p : Attach source %p (stream %u).", agent, source,
+      stream->id);
+
+  /* Add the pair to the component. */
+  component_add_socket_source (component, socket, source);
 }
 
 
@@ -2772,37 +2765,22 @@ agent_attach_stream_component_socket (NiceAgent *agent,
  * context.
  *
  */
-static gboolean
+static void
 priv_attach_stream_component (NiceAgent *agent,
     Stream *stream,
     Component *component)
 {
   GSList *i;
 
-  for (i = component->sockets; i; i = i->next)
-    agent_attach_stream_component_socket (agent, stream, component, i->data);
+  /* Don’t bother if there is no main context. */
+  if (component->ctx == NULL)
+    return;
 
-  return TRUE;
-}
-
-/*
- * Detaches socket handles of 'stream' from the main eventloop
- * context.
- *
- */
-static void priv_detach_stream_component (Stream *stream, Component *component)
-{
-  GSList *i;
-
-  for (i = component->gsources; i; i = i->next) {
-    GSource *source = i->data;
-    nice_debug ("Detach source %p (stream %u).", source, stream->id);
-    g_source_destroy (source);
-    g_source_unref (source);
+  for (i = component->socket_sources; i != NULL; i = i->next) {
+    SocketSource *socket_source = i->data;
+    agent_attach_stream_component_socket (agent, stream, component,
+        socket_source->socket);
   }
-
-  g_slist_free (component->gsources);
-  component->gsources = NULL;
 }
 
 NICEAPI_EXPORT gboolean
@@ -2818,6 +2796,9 @@ nice_agent_attach_recv (
   Stream *stream = NULL;
   gboolean ret = FALSE;
 
+  /* ctx must be non-NULL if func is non-NULL. */
+  g_return_val_if_fail (func == NULL || ctx != NULL, FALSE);
+
   agent_lock();
 
   /* attach candidates */
@@ -2830,7 +2811,7 @@ nice_agent_attach_recv (
   }
 
   if (component->g_source_io_cb)
-    priv_detach_stream_component (stream, component);
+    component_detach_socket_sources (component);
 
   ret = TRUE;
 

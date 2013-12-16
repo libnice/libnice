@@ -481,11 +481,6 @@ NiceCandidate *discovery_add_local_host_candidate (
   if (!udp_socket)
     goto errors;
 
-
-  _priv_set_socket_tos (agent, udp_socket, stream->tos);
-  agent_attach_stream_component_socket (agent, stream,
-      component, udp_socket);
-
   candidate->sockptr = udp_socket;
   candidate->addr = udp_socket->addr;
   candidate->base_addr = udp_socket->addr;
@@ -493,7 +488,9 @@ NiceCandidate *discovery_add_local_host_candidate (
   if (!priv_add_local_candidate_pruned (agent, stream_id, component, candidate))
     goto errors;
 
-  component->sockets = g_slist_append (component->sockets, udp_socket);
+  _priv_set_socket_tos (agent, udp_socket, stream->tos);
+  agent_attach_stream_component_socket (agent, stream,
+      component, udp_socket);
 
   return candidate;
 
@@ -624,7 +621,7 @@ discovery_add_relay_candidate (
   if (!priv_add_local_candidate_pruned (agent, stream_id, component, candidate))
     goto errors;
 
-  component->sockets = g_slist_append (component->sockets, relay_socket);
+  component_add_detached_socket (component, relay_socket);
   agent_signal_new_candidate (agent, candidate);
 
   return candidate;
