@@ -270,6 +270,11 @@ gst_nice_sink_change_state (GstElement * element, GstStateChange transition)
           return GST_STATE_CHANGE_FAILURE;
         }
       break;
+    case GST_STATE_CHANGE_READY_TO_PAUSED:
+    case GST_STATE_CHANGE_PAUSED_TO_PLAYING:
+    case GST_STATE_CHANGE_PLAYING_TO_PAUSED:
+    case GST_STATE_CHANGE_PAUSED_TO_READY:
+    case GST_STATE_CHANGE_READY_TO_NULL:
     default:
       break;
   }
