@@ -88,9 +88,9 @@ static void stun_gettime (struct timeval *now)
 
 static void add_delay (struct timeval *ts, unsigned delay)
 {
-  div_t d = div (delay, 1000);
-  ts->tv_sec += d.quot;
-  ts->tv_usec += d.rem * 1000;
+  /* Delay is in ms. */
+  ts->tv_sec += delay / 1000;
+  ts->tv_usec += (delay % 1000) * 1000;
 
   while (ts->tv_usec > 1000000)
   {

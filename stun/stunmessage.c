@@ -524,15 +524,14 @@ stun_message_append_error (StunMessage *msg, StunError code)
 {
   const char *str = stun_strerror (code);
   size_t len = strlen (str);
-  div_t d = div (code, 100);
 
   uint8_t *ptr = stun_message_append (msg, STUN_ATTRIBUTE_ERROR_CODE, 4 + len);
   if (ptr == NULL)
     return STUN_MESSAGE_RETURN_NOT_ENOUGH_SPACE;
 
   memset (ptr, 0, 2);
-  ptr[2] = d.quot;
-  ptr[3] = d.rem;
+  ptr[2] = code / 100;
+  ptr[3] = code % 100;
   memcpy (ptr + 4, str, len);
   return STUN_MESSAGE_RETURN_SUCCESS;
 }
