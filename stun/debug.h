@@ -37,6 +37,8 @@
 #ifndef STUN_DEBUG_H
 #define STUN_DEBUG_H
 
+#include <stddef.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -57,7 +59,12 @@ void stun_debug_enable (void);
 void stun_debug_disable (void);
 
 
+#if defined(__GNUC__) && (__GNUC__ > 2 || (__GNUC__ == 2 && __GNUC_MINOR__ > 4))
+void stun_debug (const char *fmt, ...)
+  __attribute__((__format__ (__printf__, 1, 2)));
+#else
 void stun_debug (const char *fmt, ...);
+#endif
 void stun_debug_bytes (const void *data, size_t len);
 
 
