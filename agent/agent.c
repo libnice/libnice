@@ -2328,7 +2328,7 @@ _nice_agent_recv (
   if (len > 0) {
     gchar tmpbuf[INET6_ADDRSTRLEN];
     nice_address_to_string (&from, tmpbuf);
-    nice_debug ("Agent %p : Packet received on local socket %u from [%s]:%u (%u octets).", agent,
+    nice_debug ("Agent %p : Packet received on local socket %d from [%s]:%u (%d octets).", agent,
         g_socket_get_fd (socket->fileno), tmpbuf, nice_address_get_port (&from), len);
   }
 #endif
