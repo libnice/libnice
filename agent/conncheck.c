@@ -1660,8 +1660,9 @@ int conn_check_send (NiceAgent *agent, CandidateCheckPair *pair)
   size_t buffer_len;
   unsigned int timeout;
 
-  if (agent->compatibility == NICE_COMPATIBILITY_MSN ||
-      agent->compatibility == NICE_COMPATIBILITY_OC2007) {
+  if (password != NULL &&
+      (agent->compatibility == NICE_COMPATIBILITY_MSN ||
+       agent->compatibility == NICE_COMPATIBILITY_OC2007)) {
     password = g_base64_decode ((gchar *) password, &password_len);
   }
 
