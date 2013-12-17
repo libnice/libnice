@@ -124,6 +124,10 @@ stun_message_find (const StunMessage *msg, StunAttribute type,
       case STUN_ATTRIBUTE_FINGERPRINT:
         /* Nothing may come after FPR */
         return NULL;
+
+      default:
+        /* Nothing misordered. */
+        break;
     }
 
     if (!(msg->agent &&
@@ -272,9 +276,10 @@ stun_message_find_addr (const StunMessage *msg, StunAttribute type,
         memcpy (&ip6->sin6_addr, ptr + 4, 16);
         return STUN_MESSAGE_RETURN_SUCCESS;
       }
-  }
 
-  return STUN_MESSAGE_RETURN_UNSUPPORTED_ADDRESS;
+    default:
+      return STUN_MESSAGE_RETURN_UNSUPPORTED_ADDRESS;
+  }
 }
 
 StunMessageReturn

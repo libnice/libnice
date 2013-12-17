@@ -313,6 +313,9 @@ static gboolean priv_conn_check_tick_stream (Stream *stream, NiceAgent *agent, G
               keep_timer_going = TRUE;
               break;
             }
+          default:
+            /* Nothing to do. */
+            break;
         }
       }
     }
@@ -529,6 +532,9 @@ static gboolean priv_conn_keepalive_retransmissions_tick (gpointer pointer)
           agent_timeout_add_with_context (pair->keepalive.agent,
           stun_timer_remainder (&pair->keepalive.timer),
           priv_conn_keepalive_retransmissions_tick, pair);
+      break;
+    default:
+      /* Nothing to do. */
       break;
   }
 
@@ -767,6 +773,9 @@ static gboolean priv_turn_allocate_refresh_retransmissions_tick (gpointer pointe
       cand->tick_source = agent_timeout_add_with_context (cand->agent,
           stun_timer_remainder (&cand->timer),
           priv_turn_allocate_refresh_retransmissions_tick, cand);
+      break;
+    default:
+      /* Nothing to do. */
       break;
   }
 

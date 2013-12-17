@@ -117,6 +117,8 @@ StunMessageReturn stun_xor_address (const StunMessage *msg,
         ip6->sin6_addr.s6_addr[i] ^= msg->buffer[4 + i];
       return STUN_MESSAGE_RETURN_SUCCESS;
     }
+
+    default:
+      return STUN_MESSAGE_RETURN_UNSUPPORTED_ADDRESS;
   }
-  return STUN_MESSAGE_RETURN_UNSUPPORTED_ADDRESS;
 }

@@ -143,6 +143,10 @@ StunUsageBindReturn stun_usage_bind_process (StunMessage *msg,
 
       }
       return STUN_USAGE_BIND_RETURN_ERROR;
+
+    default:
+      /* Fall through. */
+      break;
   }
 
   stun_debug ("Received %u-bytes STUN message\n", stun_message_length (msg));
@@ -256,6 +260,9 @@ static int stun_socket (int family, int type, int proto)
         break;
       case AF_INET6:
         setsockopt (fd, SOL_IPV6, IPV6_RECVERR, &yes, sizeof (yes));
+        break;
+      default:
+        /* Nothing to do. */
         break;
     }
   }
@@ -500,6 +507,8 @@ StunUsageBindReturn stun_usage_bind_run (const struct sockaddr *srv,
             }
             continue;
           case STUN_USAGE_TIMER_RETURN_SUCCESS:
+          default:
+            /* Fall through. */
             break;
         }
       }

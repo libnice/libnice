@@ -1318,10 +1318,9 @@ component_state_to_string (NiceComponentState state)
       case NICE_COMPONENT_STATE_FAILED:
         return "failed";
       case NICE_COMPONENT_STATE_LAST:
-        break;
+      default:
+        return "invalid";
     }
-
-  return "invalid";
 }
 
 void agent_signal_component_state_change (NiceAgent *agent, guint stream_id, guint component_id, NiceComponentState state)

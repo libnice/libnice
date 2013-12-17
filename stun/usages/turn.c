@@ -315,6 +315,10 @@ StunUsageTurnReturn stun_usage_turn_process (StunMessage *msg,
 
       }
       return STUN_USAGE_TURN_RETURN_ERROR;
+
+    default:
+      /* Fall through. */
+      break;
   }
 
   stun_debug ("Received %u-bytes STUN message\n", stun_message_length (msg));
@@ -396,6 +400,10 @@ StunUsageTurnReturn stun_usage_turn_refresh_process (StunMessage *msg,
       }
 
       return STUN_USAGE_TURN_RETURN_ERROR;
+
+    default:
+      /* Fall through. */
+      break;
   }
 
   stun_message_find32 (msg, STUN_ATTRIBUTE_LIFETIME, lifetime);

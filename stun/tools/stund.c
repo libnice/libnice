@@ -46,6 +46,7 @@
 
 #ifndef _WIN32
 
+#include <assert.h>
 #include <stdio.h>
 #include <stdint.h>
 #include <string.h>
@@ -125,6 +126,9 @@ int listen_socket (int fam, int type, int proto, unsigned int port)
 #endif
       addr.in6.sin6_port = htons (port);
       break;
+
+    default:
+      assert (0);  /* should never be reached */
   }
 
   if (bind (fd, (struct sockaddr *)&addr, sizeof (struct sockaddr)))
@@ -148,6 +152,9 @@ int listen_socket (int fam, int type, int proto, unsigned int port)
         setsockopt (fd, SOL_IPV6, IPV6_RECVERR, &yes, sizeof (yes));
 #endif
         break;
+
+      default:
+        assert (0);  /* should never be reached */
     }
   }
   else
@@ -275,6 +282,7 @@ int main (int argc, char *argv[])
 
     switch (c)
     {
+      default:
       case '4':
         family = AF_INET;
         break;

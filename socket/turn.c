@@ -1188,6 +1188,9 @@ priv_retransmissions_tick_unlocked (TurnPriv *priv)
       case STUN_USAGE_TIMER_RETURN_SUCCESS:
         ret = TRUE;
         break;
+      default:
+        /* Nothing to do. */
+        break;
     }
   }
 
@@ -1247,6 +1250,9 @@ priv_retransmissions_create_permission_tick_unlocked (TurnPriv *priv, GList *lis
         break;
       case STUN_USAGE_TIMER_RETURN_SUCCESS:
         ret = TRUE;
+        break;
+      default:
+        /* Nothing to do. */
         break;
     }
   }

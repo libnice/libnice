@@ -149,6 +149,7 @@ StunUsageIceReturn stun_usage_ice_conncheck_process (StunMessage *msg,
       break;
 
     case STUN_ERROR:
+    default:
       if (stun_message_find_error (msg, &code) != STUN_MESSAGE_RETURN_SUCCESS) {
         /* missing ERROR-CODE: ignore message */
         return STUN_USAGE_ICE_RETURN_INVALID;

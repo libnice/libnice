@@ -180,9 +180,9 @@ nice_address_get_port (const NiceAddress *addr)
       return ntohs (addr->s.ip4.sin_port);
     case AF_INET6:
       return ntohs (addr->s.ip6.sin6_port);
+    default:
+      g_return_val_if_reached (0);
     }
-
-  g_return_val_if_reached (0);
 }
 
 
@@ -278,9 +278,10 @@ nice_address_equal (const NiceAddress *a, const NiceAddress *b)
       return IN6_ARE_ADDR_EQUAL (&a->s.ip6.sin6_addr, &b->s.ip6.sin6_addr)
           && (a->s.ip6.sin6_port == b->s.ip6.sin6_port)
           && (a->s.ip6.sin6_scope_id == b->s.ip6.sin6_scope_id);
-    }
 
-  g_return_val_if_reached (FALSE);
+    default:
+      g_return_val_if_reached (FALSE);
+    }
 }
 
 
@@ -345,9 +346,9 @@ nice_address_is_private (const NiceAddress *a)
       return ipv4_address_is_private (a->s.ip4.sin_addr.s_addr);
     case AF_INET6:
       return ipv6_address_is_private (a->s.ip6.sin6_addr.s6_addr);
+    default:
+      g_return_val_if_reached (FALSE);
     }
-
-  g_return_val_if_reached (FALSE);
 }
 
 

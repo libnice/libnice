@@ -987,6 +987,9 @@ static gboolean priv_discovery_tick_unlocked (gpointer pointer)
               ++not_done; /* note: retry later */
               break;
             }
+          default:
+            /* Nothing to do. */
+            break;
 	}
 
       } else {
