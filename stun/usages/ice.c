@@ -347,6 +347,9 @@ failure:
     case STUN_MESSAGE_RETURN_INVALID:
     case STUN_MESSAGE_RETURN_UNSUPPORTED_ADDRESS:
       return STUN_USAGE_ICE_RETURN_INVALID_ADDRESS;
+    case STUN_MESSAGE_RETURN_SUCCESS:
+      assert (0);  /* shouldn’t be reached */
+    case STUN_MESSAGE_RETURN_NOT_FOUND:
     default:
       return STUN_USAGE_ICE_RETURN_ERROR;
   }

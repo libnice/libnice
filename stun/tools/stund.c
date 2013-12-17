@@ -229,6 +229,14 @@ static int dgram_process (int sock, StunAgent *oldagent, StunAgent *newagent)
              &addr.addr, addr_len);
       break;
 
+    case STUN_SHARED_SECRET:
+    case STUN_ALLOCATE:
+    case STUN_SEND:
+    case STUN_CONNECT:
+    case STUN_IND_SEND:
+    case STUN_IND_DATA:
+    case STUN_CREATEPERMISSION:
+    case STUN_CHANNELBIND:
     default:
       if (!stun_agent_init_error (agent, &response, buf, sizeof (buf),
               &request, STUN_ERROR_BAD_REQUEST))
