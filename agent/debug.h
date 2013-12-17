@@ -97,7 +97,7 @@ void nice_debug_enable (gboolean with_stun);
  */
 void nice_debug_disable (gboolean with_stun);
 
-void nice_debug (const char *fmt, ...);
+void nice_debug (const char *fmt, ...) G_GNUC_PRINTF (1, 2);
 
 G_END_DECLS
 
