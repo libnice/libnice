@@ -2929,7 +2929,7 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, Stream *stream,
 	  uname_len = priv_create_username (agent, stream,
               component->id,  remote_candidate2, local_candidate,
 	      uname, sizeof (uname), FALSE);
-	  memcpy (username, uname, username_len);
+	  memcpy (username, uname, MIN (uname_len, username_len));
 
 	  req.key = g_base64_decode ((gchar *) remote_candidate2->password,
               &req.key_len);
