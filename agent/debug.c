@@ -59,7 +59,7 @@ static const GDebugKey keys[] = {
 };
 
 
-void nice_debug_init ()
+void nice_debug_init (void)
 {
   static gboolean debug_initialized = FALSE;
   const gchar *flags_string;
