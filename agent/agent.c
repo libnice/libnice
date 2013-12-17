@@ -1097,7 +1097,7 @@ pseudo_tcp_socket_closed (PseudoTcpSocket *sock, guint32 err,
 
 
 static PseudoTcpWriteResult
-pseudo_tcp_socket_write_packet (PseudoTcpSocket *sock,
+pseudo_tcp_socket_write_packet (PseudoTcpSocket *socket,
     const gchar *buffer, guint32 len, gpointer user_data)
 {
   TcpUserData *data = (TcpUserData *)user_data;
@@ -1870,13 +1870,13 @@ nice_agent_gather_candidates (
 
 #ifdef HAVE_GUPNP
       if (agent->upnp_enabled) {
-        NiceAddress *addr = nice_address_dup (&host_candidate->base_addr);
+        NiceAddress *base_addr = nice_address_dup (&host_candidate->base_addr);
         nice_debug ("Agent %p: Adding UPnP port %s:%d", agent, local_ip,
-            nice_address_get_port (&host_candidate->base_addr));
+            nice_address_get_port (base_addr));
         gupnp_simple_igd_add_port (GUPNP_SIMPLE_IGD (agent->upnp), "UDP",
-            0, local_ip, nice_address_get_port (&host_candidate->base_addr),
+            0, local_ip, nice_address_get_port (base_addr),
             0, PACKAGE_STRING);
-        agent->upnp_mapping = g_slist_prepend (agent->upnp_mapping, addr);
+        agent->upnp_mapping = g_slist_prepend (agent->upnp_mapping, base_addr);
       }
 #endif
 

@@ -155,7 +155,7 @@ main(int argc, char *argv[])
 }
 
 static void
-cb_candidate_gathering_done(NiceAgent *agent, guint stream_id,
+cb_candidate_gathering_done(NiceAgent *agent, guint _stream_id,
     gpointer data)
 {
 
@@ -164,7 +164,7 @@ cb_candidate_gathering_done(NiceAgent *agent, guint stream_id,
   // Candidate gathering is done. Send our local candidates on stdout
   printf("Copy this line to remote client:\n");
   printf("\n  ");
-  print_local_data(agent, stream_id, 1);
+  print_local_data(agent, _stream_id, 1);
   printf("\n");
 
   // Listen on stdin for the remote candidate list
@@ -206,19 +206,19 @@ stdin_remote_info_cb (GIOChannel *source, GIOCondition cond,
 }
 
 static void
-cb_component_state_changed(NiceAgent *agent, guint stream_id,
+cb_component_state_changed(NiceAgent *agent, guint _stream_id,
     guint component_id, guint state,
     gpointer data)
 {
 
   g_debug("SIGNAL: state changed %d %d %s[%d]\n",
-      stream_id, component_id, state_name[state], state);
+      _stream_id, component_id, state_name[state], state);
 
   if (state == NICE_COMPONENT_STATE_READY) {
     NiceCandidate *local, *remote;
 
     // Get current selected candidate pair and print IP address used
-    if (nice_agent_get_selected_pair (agent, stream_id, component_id,
+    if (nice_agent_get_selected_pair (agent, _stream_id, component_id,
                 &local, &remote)) {
       gchar ipaddr[INET6_ADDRSTRLEN];
 
@@ -262,7 +262,7 @@ stdin_send_data_cb (GIOChannel *source, GIOCondition cond,
 }
 
 static void
-cb_new_selected_pair(NiceAgent *agent, guint stream_id,
+cb_new_selected_pair(NiceAgent *agent, guint _stream_id,
     guint component_id, gchar *lfoundation,
     gchar *rfoundation, gpointer data)
 {
@@ -270,7 +270,7 @@ cb_new_selected_pair(NiceAgent *agent, guint stream_id,
 }
 
 static void
-cb_nice_recv(NiceAgent *agent, guint stream_id, guint component_id,
+cb_nice_recv(NiceAgent *agent, guint _stream_id, guint component_id,
     guint len, gchar *buf, gpointer data)
 {
   if (len == 1 && buf[0] == '\0')
@@ -280,7 +280,7 @@ cb_nice_recv(NiceAgent *agent, guint stream_id, guint component_id,
 }
 
 static NiceCandidate *
-parse_candidate(char *scand, guint stream_id)
+parse_candidate(char *scand, guint _stream_id)
 {
   NiceCandidate *cand = NULL;
   NiceCandidateType ntype;
@@ -303,7 +303,7 @@ parse_candidate(char *scand, guint stream_id)
 
   cand = nice_candidate_new(ntype);
   cand->component_id = 1;
-  cand->stream_id = stream_id;
+  cand->stream_id = _stream_id;
   cand->transport = NICE_CANDIDATE_TRANSPORT_UDP;
   strncpy(cand->foundation, tokens[0], NICE_CANDIDATE_MAX_FOUNDATION);
   cand->priority = atoi (tokens[1]);
@@ -325,7 +325,7 @@ parse_candidate(char *scand, guint stream_id)
 
 
 static int
-print_local_data (NiceAgent *agent, guint stream_id, guint component_id)
+print_local_data (NiceAgent *agent, guint _stream_id, guint component_id)
 {
   int result = EXIT_FAILURE;
   gchar *local_ufrag = NULL;
@@ -333,11 +333,11 @@ print_local_data (NiceAgent *agent, guint stream_id, guint component_id)
   gchar ipaddr[INET6_ADDRSTRLEN];
   GSList *cands = NULL, *item;
 
-  if (!nice_agent_get_local_credentials(agent, stream_id,
+  if (!nice_agent_get_local_credentials(agent, _stream_id,
       &local_ufrag, &local_password))
     goto end;
 
-  cands = nice_agent_get_local_candidates(agent, stream_id, component_id);
+  cands = nice_agent_get_local_candidates(agent, _stream_id, component_id);
   if (cands == NULL)
     goto end;
 
@@ -372,7 +372,7 @@ print_local_data (NiceAgent *agent, guint stream_id, guint component_id)
 
 
 static int
-parse_remote_data(NiceAgent *agent, guint stream_id,
+parse_remote_data(NiceAgent *agent, guint _stream_id,
     guint component_id, char *line)
 {
   GSList *remote_candidates = NULL;
@@ -394,7 +394,7 @@ parse_remote_data(NiceAgent *agent, guint stream_id,
       passwd = line_argv[i];
     } else {
       // Remaining args are serialized canidates (at least one is required)
-      NiceCandidate *c = parse_candidate(line_argv[i], stream_id);
+      NiceCandidate *c = parse_candidate(line_argv[i], _stream_id);
 
       if (c == NULL) {
         g_message("failed to parse candidate: %s", line_argv[i]);
@@ -408,13 +408,13 @@ parse_remote_data(NiceAgent *agent, guint stream_id,
     goto end;
   }
 
-  if (!nice_agent_set_remote_credentials(agent, stream_id, ufrag, passwd)) {
+  if (!nice_agent_set_remote_credentials(agent, _stream_id, ufrag, passwd)) {
     g_message("failed to set remote credentials");
     goto end;
   }
 
   // Note: this will trigger the start of negotiation.
-  if (nice_agent_set_remote_candidates(agent, stream_id, component_id,
+  if (nice_agent_set_remote_candidates(agent, _stream_id, component_id,
       remote_candidates) < 1) {
     g_message("failed to set remote candidates");
     goto end;

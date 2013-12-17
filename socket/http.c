@@ -317,17 +317,17 @@ socket_recv (NiceSocket *sock, NiceAddress *from, guint len, gchar *buf)
       break;
     case HTTP_STATE_CONNECTED:
       {
-        guint read = priv->recv_len;
+        guint recv_len = priv->recv_len;
         struct to_be_sent *tbs = NULL;
 
-        if (read > len)
-          read = len;
+        if (recv_len > len)
+          recv_len = len;
 
-        memcpy (buf, priv->recv_buf, read);
+        memcpy (buf, priv->recv_buf, recv_len);
 
         /* consume the data we returned */
-        priv->recv_len -= read;
-        memmove (priv->recv_buf, priv->recv_buf + read, priv->recv_len);
+        priv->recv_len -= recv_len;
+        memmove (priv->recv_buf, priv->recv_buf + recv_len, priv->recv_len);
         priv->recv_buf = g_realloc (priv->recv_buf, priv->recv_len);
 
         /* Send the pending data */
@@ -338,7 +338,7 @@ socket_recv (NiceSocket *sock, NiceAddress *from, guint len, gchar *buf)
           g_slice_free (struct to_be_sent, tbs);
         }
 
-        return read;
+        return recv_len;
       }
       break;
     default:

@@ -146,9 +146,9 @@ priv_nice_address_hash (gconstpointer data)
 }
 
 static void
-priv_send_data_queue_destroy (gpointer data)
+priv_send_data_queue_destroy (gpointer user_data)
 {
-  GQueue *send_queue = (GQueue *) data;
+  GQueue *send_queue = (GQueue *) user_data;
   GList *i;
 
   for (i = g_queue_peek_head_link (send_queue); i; i = i->next) {
@@ -762,9 +762,7 @@ nice_turn_socket_parse_recv (NiceSocket *sock, NiceSocket **from_sock,
   TurnPriv *priv = (TurnPriv *) sock->priv;
   StunValidationStatus valid;
   StunMessage msg;
-  struct sockaddr_storage sa;
-  socklen_t from_len = sizeof (sa);
-  GList *i = priv->channels;
+  GList *l;
   ChannelBinding *binding = NULL;
 
   if (nice_address_equal (&priv->server_addr, recv_from)) {
@@ -1035,6 +1033,8 @@ nice_turn_socket_parse_recv (NiceSocket *sock, NiceSocket **from_sock,
           stun_message_get_method (&msg) == STUN_IND_DATA) {
         uint16_t data_len;
         uint8_t *data;
+        struct sockaddr_storage sa;
+        socklen_t from_len = sizeof (sa);
 
         if (priv->compatibility == NICE_TURN_SOCKET_COMPATIBILITY_DRAFT9 ||
             priv->compatibility == NICE_TURN_SOCKET_COMPATIBILITY_RFC5766) {
@@ -1074,8 +1074,8 @@ nice_turn_socket_parse_recv (NiceSocket *sock, NiceSocket **from_sock,
   }
 
  recv:
-  for (i = priv->channels; i; i = i->next) {
-    ChannelBinding *b = i->data;
+  for (l = priv->channels; l; l = l->next) {
+    ChannelBinding *b = l->data;
     if (priv->compatibility == NICE_TURN_SOCKET_COMPATIBILITY_DRAFT9 ||
         priv->compatibility == NICE_TURN_SOCKET_COMPATIBILITY_RFC5766) {
       if (b->channel == ntohs(((uint16_t *)recv_buf)[0])) {

@@ -160,7 +160,7 @@ socket_close (NiceSocket *sock)
 
 
 static gint
-socket_recv (NiceSocket *sock, NiceAddress *from, guint len, gchar *buf)
+socket_recv (NiceSocket *sock, NiceAddress *from, guint buf_len, gchar *buf)
 {
   Socks5Priv *priv = sock->priv;
 
@@ -170,7 +170,7 @@ socket_recv (NiceSocket *sock, NiceAddress *from, guint len, gchar *buf)
   switch (priv->state) {
     case SOCKS_STATE_CONNECTED:
       if (priv->base_socket)
-        return nice_socket_recv (priv->base_socket, NULL, len, buf);
+        return nice_socket_recv (priv->base_socket, NULL, buf_len, buf);
       break;
     case SOCKS_STATE_INIT:
       {
