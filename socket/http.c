@@ -341,6 +341,7 @@ socket_recv (NiceSocket *sock, NiceAddress *from, guint len, gchar *buf)
         return recv_len;
       }
       break;
+    case HTTP_STATE_ERROR:
     default:
       /* Unknown status */
       goto error;

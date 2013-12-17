@@ -332,6 +332,7 @@ socket_recv (NiceSocket *sock, NiceAddress *from, guint buf_len, gchar *buf)
         }
       }
       break;
+    case SOCKS_STATE_ERROR:
     default:
       /* Unknown status */
       goto error;
