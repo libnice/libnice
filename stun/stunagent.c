@@ -236,9 +236,7 @@ StunValidationStatus stun_agent_validate (StunAgent *agent, StunMessage *msg,
          because you might have a FINGERPRINT attribute after it... */
       if (agent->usage_flags & STUN_AGENT_USAGE_LONG_TERM_CREDENTIALS) {
         uint8_t *realm = NULL;
-        uint8_t *username = NULL;
         uint16_t realm_len;
-        uint16_t username_len;
         uint8_t md5[16];
 
         if (long_term_key_valid) {
