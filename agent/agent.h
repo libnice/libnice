@@ -1131,6 +1131,8 @@ nice_agent_parse_remote_candidate_sdp (
  *
  * Build a #GIOStream wrapper around the given stream and component in
  * @agent. The I/O stream will be valid for as long as @stream_id is valid.
+ * The #GInputStream and #GOutputStream implement #GPollableInputStream and
+ * #GPollableOutputStream.
  *
  * This function may only be called on reliable #NiceAgents. It is an error to
  * try and create an I/O stream wrapper for an unreliable stream.
