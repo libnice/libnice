@@ -131,7 +131,7 @@ int listen_socket (int fam, int type, int proto, unsigned int port)
       assert (0);  /* should never be reached */
   }
 
-  if (bind (fd, (struct sockaddr *)&addr, sizeof (struct sockaddr)))
+  if (bind (fd, &addr.addr, sizeof (struct sockaddr)))
   {
     perror ("Error opening IP port");
     goto error;
@@ -175,7 +175,10 @@ error:
 
 static int dgram_process (int sock, StunAgent *oldagent, StunAgent *newagent)
 {
-  struct sockaddr_storage addr;
+  union {
+    struct sockaddr_storage storage;
+    struct sockaddr addr;
+  } addr;
   socklen_t addr_len;
   uint8_t buf[STUN_MAX_MESSAGE_SIZE];
   size_t buf_len = 0;
@@ -186,8 +189,7 @@ static int dgram_process (int sock, StunAgent *oldagent, StunAgent *newagent)
   StunAgent *agent = NULL;
 
   addr_len = sizeof (struct sockaddr_in);
-  len = recvfrom (sock, buf, sizeof(buf), 0,
-      (struct sockaddr *)&addr, &addr_len);
+  len = recvfrom (sock, buf, sizeof(buf), 0, &addr.addr, &addr_len);
   if (len == (size_t)-1)
     return -1;
 
@@ -221,11 +223,10 @@ static int dgram_process (int sock, StunAgent *oldagent, StunAgent *newagent)
       stun_agent_init_response (agent, &response, buf, sizeof (buf), &request);
       if (stun_message_has_cookie (&request))
         stun_message_append_xor_addr (&response,
-            STUN_ATTRIBUTE_XOR_MAPPED_ADDRESS,
-            (struct sockaddr *)&addr, addr_len);
+            STUN_ATTRIBUTE_XOR_MAPPED_ADDRESS, &addr.addr, addr_len);
       else
          stun_message_append_addr (&response, STUN_ATTRIBUTE_MAPPED_ADDRESS,
-             (struct sockaddr *)&addr, addr_len);
+             &addr.addr, addr_len);
       break;
 
     default:
@@ -236,8 +237,7 @@ static int dgram_process (int sock, StunAgent *oldagent, StunAgent *newagent)
 
   buf_len = stun_agent_finish_message (agent, &response, NULL, 0);
 send_buf:
-  len = sendto (sock, buf, buf_len, 0,
-      (struct sockaddr *)&addr, addr_len);
+  len = sendto (sock, buf, buf_len, 0, &addr.addr, addr_len);
   return (len < buf_len) ? -1 : 0;
 }
 

@@ -99,19 +99,22 @@ static int run (int family, const char *hostname, const char *service)
 
   for (ptr = res; ptr != NULL; ptr = ptr->ai_next)
   {
-    struct sockaddr_storage addr;
+    union {
+      struct sockaddr_storage storage;
+      struct sockaddr addr;
+    } addr;
     socklen_t addrlen = sizeof (addr);
     StunUsageBindReturn val;
 
     printaddr ("Server address", ptr->ai_addr, ptr->ai_addrlen);
 
     val = stun_usage_bind_run (ptr->ai_addr, ptr->ai_addrlen,
-                         (struct sockaddr *)&addr, &addrlen);
+                         &addr.addr, &addrlen);
     if (val)
       fprintf (stderr, "%d\n", val);
     else
     {
-      printaddr ("Mapped address", (struct sockaddr *)&addr, addrlen);
+      printaddr ("Mapped address", &addr.addr, addrlen);
       ret = 0;
     }
   }

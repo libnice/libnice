@@ -54,8 +54,11 @@
 
 typedef struct {
   NiceTurnSocketCompatibility compatibility;
-  gchar recv_buf[65536];
-  guint recv_buf_len;
+  union {
+    guint8 u8[65536];
+    guint16 u16[32768];
+  } recv_buf;
+  gsize recv_buf_len;  /* in bytes */
   guint expecting_len;
   NiceSocket *base_socket;
 } TurnTcpPriv;
@@ -122,7 +125,8 @@ socket_recv (NiceSocket *sock, NiceAddress *from, guint len, gchar *buf)
       return -1;
 
     ret = nice_socket_recv (priv->base_socket, from,
-        headerlen - priv->recv_buf_len, priv->recv_buf + priv->recv_buf_len);
+        headerlen - priv->recv_buf_len,
+        (gchar *) priv->recv_buf.u8 + priv->recv_buf_len);
     if (ret < 0)
         return ret;
 
@@ -133,8 +137,8 @@ socket_recv (NiceSocket *sock, NiceAddress *from, guint len, gchar *buf)
 
     if (priv->compatibility == NICE_TURN_SOCKET_COMPATIBILITY_DRAFT9 ||
         priv->compatibility == NICE_TURN_SOCKET_COMPATIBILITY_RFC5766) {
-      guint16 magic = ntohs (*(guint16*)priv->recv_buf);
-      guint16 packetlen = ntohs (*(guint16*)(priv->recv_buf + 2));
+      guint16 magic = ntohs (*priv->recv_buf.u16);
+      guint16 packetlen = ntohs (*(priv->recv_buf.u16 + 1));
 
       if (magic < 0x4000) {
         /* Its STUN */
@@ -145,8 +149,8 @@ socket_recv (NiceSocket *sock, NiceAddress *from, guint len, gchar *buf)
       }
     }
     else if (priv->compatibility == NICE_TURN_SOCKET_COMPATIBILITY_GOOGLE) {
-      guint len = ntohs (*(guint16*)priv->recv_buf);
-      priv->expecting_len = len;
+      guint compat_len = ntohs (*priv->recv_buf.u16);
+      priv->expecting_len = compat_len;
       priv->recv_buf_len = 0;
     }
   }
@@ -159,7 +163,7 @@ socket_recv (NiceSocket *sock, NiceAddress *from, guint len, gchar *buf)
 
   ret = nice_socket_recv (priv->base_socket, from,
       priv->expecting_len + padlen - priv->recv_buf_len,
-      priv->recv_buf + priv->recv_buf_len);
+      (gchar *) priv->recv_buf.u8 + priv->recv_buf_len);
 
   if (ret < 0)
       return ret;
@@ -168,7 +172,7 @@ socket_recv (NiceSocket *sock, NiceAddress *from, guint len, gchar *buf)
 
   if (priv->recv_buf_len == priv->expecting_len + padlen) {
     guint copy_len = MIN (len, priv->recv_buf_len);
-    memcpy (buf, priv->recv_buf, copy_len);
+    memcpy (buf, priv->recv_buf.u8, copy_len);
     priv->expecting_len = 0;
     priv->recv_buf_len = 0;
 

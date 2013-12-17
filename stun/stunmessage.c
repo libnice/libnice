@@ -475,19 +475,21 @@ stun_message_append_xor_addr (StunMessage *msg, StunAttribute type,
 {
   StunMessageReturn val;
   /* Must be big enough to hold any supported address: */
-  struct sockaddr_storage xor;
+  union {
+    struct sockaddr_storage storage;
+    struct sockaddr addr;
+  } xor;
 
   if ((size_t) addrlen > sizeof (xor))
     addrlen = sizeof (xor);
-  memcpy (&xor, addr, addrlen);
+  memcpy (&xor.storage, addr, addrlen);
 
-  val = stun_xor_address (msg, (struct sockaddr *)&xor, addrlen,
+  val = stun_xor_address (msg, &xor.addr, addrlen,
       STUN_MAGIC_COOKIE);
   if (val)
     return val;
 
-  return stun_message_append_addr (msg, type, (struct sockaddr *)&xor,
-      addrlen);
+  return stun_message_append_addr (msg, type, &xor.addr, addrlen);
 }
 
 StunMessageReturn
@@ -497,18 +499,20 @@ stun_message_append_xor_addr_full (StunMessage *msg, StunAttribute type,
 {
   StunMessageReturn val;
   /* Must be big enough to hold any supported address: */
-  struct sockaddr_storage xor;
+  union {
+    struct sockaddr_storage storage;
+    struct sockaddr addr;
+  } xor;
 
   if ((size_t) addrlen > sizeof (xor))
     addrlen = sizeof (xor);
-  memcpy (&xor, addr, addrlen);
+  memcpy (&xor.storage, addr, addrlen);
 
-  val = stun_xor_address (msg, (struct sockaddr *)&xor, addrlen, magic_cookie);
+  val = stun_xor_address (msg, &xor.addr, addrlen, magic_cookie);
   if (val)
     return val;
 
-  return stun_message_append_addr (msg, type, (struct sockaddr *)&xor,
-      addrlen);
+  return stun_message_append_addr (msg, type, &xor.addr, addrlen);
 }
 
 

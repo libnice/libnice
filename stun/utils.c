@@ -91,11 +91,19 @@ StunMessageReturn stun_xor_address (const StunMessage *msg,
     struct sockaddr *addr, socklen_t addrlen,
     uint32_t magic_cookie)
 {
+  union {
+    struct sockaddr *addr;
+    struct sockaddr_in *in;
+    struct sockaddr_in6 *in6;
+  } addr_ptr;
+
+  addr_ptr.addr = addr;
+
   switch (addr->sa_family)
   {
     case AF_INET:
     {
-      struct sockaddr_in *ip4 = (struct sockaddr_in *)addr;
+      struct sockaddr_in *ip4 = addr_ptr.in;
       if ((size_t) addrlen < sizeof (*ip4))
         return STUN_MESSAGE_RETURN_INVALID;
 
@@ -106,7 +114,7 @@ StunMessageReturn stun_xor_address (const StunMessage *msg,
 
     case AF_INET6:
     {
-      struct sockaddr_in6 *ip6 = (struct sockaddr_in6 *)addr;
+      struct sockaddr_in6 *ip6 = addr_ptr.in6;
       unsigned short i;
 
       if ((size_t) addrlen < sizeof (*ip6))

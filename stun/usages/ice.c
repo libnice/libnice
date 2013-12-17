@@ -168,10 +168,13 @@ StunUsageIceReturn stun_usage_ice_conncheck_process (StunMessage *msg,
   stun_debug ("Received %u-bytes STUN message\n", stun_message_length (msg));
 
   if (compatibility == STUN_USAGE_ICE_COMPATIBILITY_MSN) {
-    StunTransactionId transid;
+    union {
+      StunTransactionId u8;
+      uint32_t u32[STUN_MESSAGE_TRANS_ID_LEN / 4];
+    } transid;
     uint32_t magic_cookie;
-    stun_message_id (msg, transid);
-    magic_cookie = *((uint32_t *) transid);
+    stun_message_id (msg, transid.u8);
+    magic_cookie = *(transid.u32);
 
     val = stun_message_find_xor_addr_full (msg,
         STUN_ATTRIBUTE_XOR_MAPPED_ADDRESS, addr, addrlen, htonl (magic_cookie));
@@ -287,13 +290,15 @@ stun_usage_ice_conncheck_create_reply (StunAgent *agent, StunMessage *req,
     goto failure;
   }
   if (compatibility == STUN_USAGE_ICE_COMPATIBILITY_MSN) {
-    StunTransactionId transid;
-    uint32_t magic_cookie;
-    stun_message_id (msg, transid);
-    magic_cookie = *((uint32_t *) transid);
+    union {
+      StunTransactionId transid;
+      uint32_t magic_cookie;
+    } conv;
+
+    stun_message_id (msg, conv.transid);
 
     val = stun_message_append_xor_addr_full (msg, STUN_ATTRIBUTE_XOR_MAPPED_ADDRESS,
-        src, srclen, htonl (magic_cookie));
+        src, srclen, htonl (conv.magic_cookie));
   } else if (stun_message_has_cookie (msg) &&
       compatibility != STUN_USAGE_ICE_COMPATIBILITY_GOOGLE) {
     val = stun_message_append_xor_addr (msg, STUN_ATTRIBUTE_XOR_MAPPED_ADDRESS,

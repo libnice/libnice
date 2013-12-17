@@ -2096,7 +2096,10 @@ static CandidateCheckPair *priv_process_response_check_for_peer_reflexive(NiceAg
  */
 static gboolean priv_map_reply_to_conn_check_request (NiceAgent *agent, Stream *stream, Component *component, NiceSocket *sockptr, const NiceAddress *from, NiceCandidate *local_candidate, NiceCandidate *remote_candidate, StunMessage *resp)
 {
-  struct sockaddr_storage sockaddr;
+  union {
+    struct sockaddr_storage storage;
+    struct sockaddr addr;
+  } sockaddr;
   socklen_t socklen = sizeof (sockaddr);
   GSList *i;
   StunUsageIceReturn res;
@@ -2113,7 +2116,7 @@ static gboolean priv_map_reply_to_conn_check_request (NiceAgent *agent, Stream *
 
       if (memcmp (discovery_id, response_id, sizeof(StunTransactionId)) == 0) {
         res = stun_usage_ice_conncheck_process (resp,
-            (struct sockaddr *) &sockaddr, &socklen,
+            &sockaddr.addr, &socklen,
             agent_to_ice_compatibility (agent));
         nice_debug ("Agent %p : stun_bind_process/conncheck for %p res %d "
             "(controlling=%d).", agent, p, (int)res, agent->controlling_mode);
@@ -2164,7 +2167,7 @@ static gboolean priv_map_reply_to_conn_check_request (NiceAgent *agent, Stream *
             priv_conn_check_unfreeze_related (agent, stream, p);
           } else {
             ok_pair = priv_process_response_check_for_peer_reflexive(agent,
-                stream, component, p, sockptr, (struct sockaddr *) &sockaddr,
+                stream, component, p, sockptr, &sockaddr.addr,
                 local_candidate, remote_candidate);
           }
 
@@ -2226,10 +2229,18 @@ static gboolean priv_map_reply_to_conn_check_request (NiceAgent *agent, Stream *
  */
 static gboolean priv_map_reply_to_discovery_request (NiceAgent *agent, StunMessage *resp)
 {
-  struct sockaddr_storage sockaddr;
+  union {
+    struct sockaddr_storage storage;
+    struct sockaddr addr;
+  } sockaddr;
   socklen_t socklen = sizeof (sockaddr);
-  struct sockaddr_storage alternate;
+
+  union {
+    struct sockaddr_storage storage;
+    struct sockaddr addr;
+  } alternate;
   socklen_t alternatelen = sizeof (sockaddr);
+
   GSList *i;
   StunUsageBindReturn res;
   gboolean trans_found = FALSE;
@@ -2245,24 +2256,22 @@ static gboolean priv_map_reply_to_discovery_request (NiceAgent *agent, StunMessa
       stun_message_id (&d->stun_message, discovery_id);
 
       if (memcmp (discovery_id, response_id, sizeof(StunTransactionId)) == 0) {
-        res = stun_usage_bind_process (resp, (struct sockaddr *) &sockaddr,
-            &socklen, (struct sockaddr *) &alternate, &alternatelen);
+        res = stun_usage_bind_process (resp, &sockaddr.addr,
+            &socklen, &alternate.addr, &alternatelen);
         nice_debug ("Agent %p : stun_bind_process/disc for %p res %d.",
             agent, d, (int)res);
 
         if (res == STUN_USAGE_BIND_RETURN_ALTERNATE_SERVER) {
           /* handle alternate server */
           NiceAddress niceaddr;
-          nice_address_set_from_sockaddr (&niceaddr,
-              (struct sockaddr *) &alternate);
+          nice_address_set_from_sockaddr (&niceaddr, &alternate.addr);
           d->server = niceaddr;
 
           d->pending = FALSE;
         } else if (res == STUN_USAGE_BIND_RETURN_SUCCESS) {
           /* case: successful binding discovery, create a new local candidate */
           NiceAddress niceaddr;
-          nice_address_set_from_sockaddr (&niceaddr,
-              (struct sockaddr *) &sockaddr);
+          nice_address_set_from_sockaddr (&niceaddr, &sockaddr.addr);
 
           discovery_add_server_reflexive_candidate (
               d->agent,
@@ -2341,12 +2350,24 @@ priv_add_new_turn_refresh (CandidateDiscovery *cdisco, NiceCandidate *relay_cand
  */
 static gboolean priv_map_reply_to_relay_request (NiceAgent *agent, StunMessage *resp)
 {
-  struct sockaddr_storage sockaddr;
+  union {
+    struct sockaddr_storage storage;
+    struct sockaddr addr;
+  } sockaddr;
   socklen_t socklen = sizeof (sockaddr);
-  struct sockaddr_storage alternate;
+
+  union {
+    struct sockaddr_storage storage;
+    struct sockaddr addr;
+  } alternate;
   socklen_t alternatelen = sizeof (alternate);
-  struct sockaddr_storage relayaddr;
+
+  union {
+    struct sockaddr_storage storage;
+    struct sockaddr addr;
+  } relayaddr;
   socklen_t relayaddrlen = sizeof (relayaddr);
+
   uint32_t lifetime;
   uint32_t bandwidth;
   GSList *i;
@@ -2365,19 +2386,17 @@ static gboolean priv_map_reply_to_relay_request (NiceAgent *agent, StunMessage *
 
       if (memcmp (discovery_id, response_id, sizeof(StunTransactionId)) == 0) {
         res = stun_usage_turn_process (resp,
-            (struct sockaddr *) &relayaddr, &relayaddrlen,
-            (struct sockaddr *) &sockaddr, &socklen,
-            (struct sockaddr *) &alternate, &alternatelen,
+            &relayaddr.addr, &relayaddrlen,
+            &sockaddr.addr, &socklen,
+            &alternate.addr, &alternatelen,
             &bandwidth, &lifetime, agent_to_turn_compatibility (agent));
         nice_debug ("Agent %p : stun_turn_process/disc for %p res %d.",
             agent, d, (int)res);
 
         if (res == STUN_USAGE_TURN_RETURN_ALTERNATE_SERVER) {
           /* handle alternate server */
-          nice_address_set_from_sockaddr (&d->server,
-              (struct sockaddr *) &alternate);
-          nice_address_set_from_sockaddr (&d->turn->server,
-              (struct sockaddr *) &alternate);
+          nice_address_set_from_sockaddr (&d->server, &alternate.addr);
+          nice_address_set_from_sockaddr (&d->turn->server, &alternate.addr);
 
           d->pending = FALSE;
         } else if (res == STUN_USAGE_TURN_RETURN_RELAY_SUCCESS ||
@@ -2390,8 +2409,7 @@ static gboolean priv_map_reply_to_relay_request (NiceAgent *agent, StunMessage *
           if (res == STUN_USAGE_TURN_RETURN_MAPPED_SUCCESS &&
               !nice_socket_is_reliable (d->nicesock)) {
             /* We also received our mapped address */
-            nice_address_set_from_sockaddr (&niceaddr,
-                (struct sockaddr *) &sockaddr);
+            nice_address_set_from_sockaddr (&niceaddr, &sockaddr.addr);
 
             discovery_add_server_reflexive_candidate (
                 d->agent,
@@ -2401,8 +2419,7 @@ static gboolean priv_map_reply_to_relay_request (NiceAgent *agent, StunMessage *
                 d->nicesock);
           }
 
-          nice_address_set_from_sockaddr (&niceaddr,
-              (struct sockaddr *) &relayaddr);
+          nice_address_set_from_sockaddr (&niceaddr, &relayaddr.addr);
           relay_cand = discovery_add_relay_candidate (
              d->agent,
              d->stream->id,
@@ -2696,7 +2713,10 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, Stream *stream,
     Component *component, NiceSocket *socket, const NiceAddress *from,
     gchar *buf, guint len)
 {
-  struct sockaddr_storage sockaddr;
+  union {
+    struct sockaddr_storage storage;
+    struct sockaddr addr;
+  } sockaddr;
   uint8_t rbuf[MAX_STUN_DATAGRAM_PAYLOAD];
   ssize_t res;
   size_t rbuf_len = sizeof (rbuf);
@@ -2715,7 +2735,7 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, Stream *stream,
   NiceCandidate *local_candidate = NULL;
   gboolean discovery_msg = FALSE;
 
-  nice_address_copy_to_sockaddr (from, (struct sockaddr *) &sockaddr);
+  nice_address_copy_to_sockaddr (from, &sockaddr.addr);
 
   /* note: contents of 'buf' already validated, so it is
    *       a valid and fully received STUN message */
@@ -2921,7 +2941,7 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, Stream *stream,
 
     rbuf_len = sizeof (rbuf);
     res = stun_usage_ice_conncheck_create_reply (&agent->stun_agent, &req,
-        &msg, rbuf, &rbuf_len, (struct sockaddr *) &sockaddr, sizeof (sockaddr),
+        &msg, rbuf, &rbuf_len, &sockaddr.addr, sizeof (sockaddr),
         &control, agent->tie_breaker,
         agent_to_ice_compatibility (agent));
 

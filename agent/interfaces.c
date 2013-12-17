@@ -143,25 +143,30 @@ nice_interfaces_get_local_interfaces (void)
 
 
 static gboolean
-nice_interfaces_is_private_ip (const struct sockaddr *sa)
+nice_interfaces_is_private_ip (const struct sockaddr *_sa)
 {
-  if (sa->sa_family == AF_INET) {
-    struct sockaddr_in *sa4 = (struct sockaddr_in *) sa;
+  union {
+    const struct sockaddr *addr;
+    const struct sockaddr_in *in;
+  } sa;
 
+  sa.addr = _sa;
+
+  if (sa.addr->sa_family == AF_INET) {
     /* 10.x.x.x/8 */
-    if (sa4->sin_addr.s_addr >> 24 == 0x0A)
+    if (sa.in->sin_addr.s_addr >> 24 == 0x0A)
       return TRUE;
 
     /* 172.16.0.0 - 172.31.255.255 = 172.16.0.0/10 */
-    if (sa4->sin_addr.s_addr >> 20 == 0xAC1)
+    if (sa.in->sin_addr.s_addr >> 20 == 0xAC1)
       return TRUE;
 
     /* 192.168.x.x/16 */
-    if (sa4->sin_addr.s_addr >> 16 == 0xC0A8)
+    if (sa.in->sin_addr.s_addr >> 16 == 0xC0A8)
       return TRUE;
 
     /* 169.254.x.x/16  (for APIPA) */
-    if (sa4->sin_addr.s_addr >> 16 == 0xA9FE)
+    if (sa.in->sin_addr.s_addr >> 16 == 0xA9FE)
       return TRUE;
   }
   
@@ -185,6 +190,14 @@ nice_interfaces_get_local_ips (gboolean include_loopback)
   for (ifa = results; ifa; ifa = ifa->ifa_next) {
     char addr_as_string[INET6_ADDRSTRLEN+1];
 
+    union {
+      struct sockaddr *addr;
+      struct sockaddr_in *in;
+      struct sockaddr_in6 *in6;
+    } sa;
+
+    sa.addr = ifa->ifa_addr;
+
     /* no ip address from interface that is down */
     if ((ifa->ifa_flags & IFF_UP) == 0)
       continue;
@@ -192,19 +205,15 @@ nice_interfaces_get_local_ips (gboolean include_loopback)
     if (ifa->ifa_addr == NULL) {
       continue;
     } else if (ifa->ifa_addr->sa_family == AF_INET) {
-      struct sockaddr_in *sa4 = (struct sockaddr_in *) ifa->ifa_addr;
-
-      if (inet_ntop (AF_INET, &sa4->sin_addr, addr_as_string,
+      if (inet_ntop (AF_INET, &sa.in->sin_addr, addr_as_string,
               INET6_ADDRSTRLEN) == NULL)
         continue;
     } else if (ifa->ifa_addr->sa_family == AF_INET6) {
-      struct sockaddr_in6 *sa6 = (struct sockaddr_in6 *)ifa->ifa_addr;
-
       /* Skip link-local addresses, they require a scope */
-      if (IN6_IS_ADDR_LINKLOCAL (&sa6->sin6_addr))
+      if (IN6_IS_ADDR_LINKLOCAL (&sa.in6->sin6_addr))
         continue;
 
-      if (inet_ntop (AF_INET6, &sa6->sin6_addr, addr_as_string,
+      if (inet_ntop (AF_INET6, &sa.in6->sin6_addr, addr_as_string,
               INET6_ADDRSTRLEN) == NULL)
         continue;
     } else
@@ -318,7 +327,10 @@ gchar *
 nice_interfaces_get_ip_for_interface (gchar *interface_name)
 {
   struct ifreq ifr;
-  struct sockaddr_in *sa;
+  union {
+    struct sockaddr *addr;
+    struct sockaddr_in *in;
+  } sa;
   gint sockfd;
 
 
@@ -339,9 +351,9 @@ nice_interfaces_get_ip_for_interface (gchar *interface_name)
   }
 
   close (sockfd);
-  sa = (struct sockaddr_in *) &ifr.ifr_addr;
-  nice_debug ("Address for %s: %s", interface_name, inet_ntoa (sa->sin_addr));
-  return g_strdup (inet_ntoa (sa->sin_addr));
+  sa.addr = &ifr.ifr_addr;
+  nice_debug ("Address for %s: %s", interface_name, inet_ntoa (sa.in->sin_addr));
+  return g_strdup (inet_ntoa (sa.in->sin_addr));
 }
 
 #else /* G_OS_UNIX */

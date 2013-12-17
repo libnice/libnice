@@ -86,7 +86,10 @@ static gboolean socket_send_more (GSocket *gsocket, GIOCondition condition,
 NiceSocket *
 nice_tcp_bsd_socket_new (GMainContext *ctx, NiceAddress *addr)
 {
-  struct sockaddr_storage name;
+  union {
+    struct sockaddr_storage storage;
+    struct sockaddr addr;
+  } name;
   NiceSocket *sock;
   TcpPriv *priv;
   GSocket *gsock = NULL;
@@ -101,23 +104,23 @@ nice_tcp_bsd_socket_new (GMainContext *ctx, NiceAddress *addr)
 
   sock = g_slice_new0 (NiceSocket);
 
-  nice_address_copy_to_sockaddr (addr, (struct sockaddr *)&name);
+  nice_address_copy_to_sockaddr (addr, &name.addr);
 
   if (gsock == NULL) {
-    if (name.ss_family == AF_UNSPEC || name.ss_family == AF_INET) {
+    if (name.storage.ss_family == AF_UNSPEC || name.storage.ss_family == AF_INET) {
       gsock = g_socket_new (G_SOCKET_FAMILY_IPV4, G_SOCKET_TYPE_STREAM,
           G_SOCKET_PROTOCOL_TCP, NULL);
 
-      name.ss_family = AF_INET;
+      name.storage.ss_family = AF_INET;
 #ifdef HAVE_SA_LEN
-      name.ss_len = sizeof (struct sockaddr_in);
+      name.storage.ss_len = sizeof (struct sockaddr_in);
 #endif
-    } else if (name.ss_family == AF_INET6) {
+    } else if (name.storage.ss_family == AF_INET6) {
       gsock = g_socket_new (G_SOCKET_FAMILY_IPV6, G_SOCKET_TYPE_STREAM,
           G_SOCKET_PROTOCOL_TCP, NULL);
-      name.ss_family = AF_INET6;
+      name.storage.ss_family = AF_INET6;
 #ifdef HAVE_SA_LEN
-      name.ss_len = sizeof (struct sockaddr_in6);
+      name.storage.ss_len = sizeof (struct sockaddr_in6);
 #endif
     }
   }
@@ -130,7 +133,7 @@ nice_tcp_bsd_socket_new (GMainContext *ctx, NiceAddress *addr)
   /* GSocket: All socket file descriptors are set to be close-on-exec. */
   g_socket_set_blocking (gsock, false);
 
-  gaddr = g_socket_address_new_from_native (&name, sizeof (name));
+  gaddr = g_socket_address_new_from_native (&name.addr, sizeof (name));
 
   if (gaddr != NULL) {
     gret = g_socket_connect (gsock, gaddr, NULL, &gerr);
@@ -149,7 +152,7 @@ nice_tcp_bsd_socket_new (GMainContext *ctx, NiceAddress *addr)
 
   gaddr = g_socket_get_local_address (gsock, NULL);
   if (gaddr == NULL ||
-      !g_socket_address_to_native (gaddr, &name, sizeof (name), NULL)) {
+      !g_socket_address_to_native (gaddr, &name.addr, sizeof (name), NULL)) {
     g_slice_free (NiceSocket, sock);
     g_socket_close (gsock, NULL);
     g_object_unref (gsock);
@@ -157,7 +160,7 @@ nice_tcp_bsd_socket_new (GMainContext *ctx, NiceAddress *addr)
   }
   g_object_unref (gaddr);
 
-  nice_address_set_from_sockaddr (&sock->addr, (struct sockaddr *)&name);
+  nice_address_set_from_sockaddr (&sock->addr, &name.addr);
 
   sock->priv = priv = g_slice_new0 (TcpPriv);
 

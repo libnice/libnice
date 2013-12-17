@@ -226,20 +226,25 @@ nice_address_set_from_sockaddr (NiceAddress *addr,
 
 NICEAPI_EXPORT void
 nice_address_copy_to_sockaddr (const NiceAddress *addr,
-                               struct sockaddr *sa)
+                               struct sockaddr *_sa)
 {
-  struct sockaddr_in *sin4 = (struct sockaddr_in *)sa;
-  struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)sa;
+  union {
+    struct sockaddr *addr;
+    struct sockaddr_in *in;
+    struct sockaddr_in6 *in6;
+  } sa;
 
-  g_assert (sa);
+  sa.addr = _sa;
+
+  g_assert (_sa);
 
   switch (addr->s.addr.sa_family)
     {
     case AF_INET:
-      memcpy (sin4, &addr->s.ip4, sizeof (*sin4));
+      memcpy (sa.in, &addr->s.ip4, sizeof (*sa.in));
       break;
     case AF_INET6:
-      memcpy (sin6, &addr->s.ip6, sizeof (*sin6));
+      memcpy (sa.in6, &addr->s.ip6, sizeof (*sa.in6));
       break;
     default:
       g_return_if_reached ();

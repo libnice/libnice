@@ -343,27 +343,32 @@ socket_recv (NiceSocket *sock, NiceAddress *from, guint buf_len, gchar *buf)
   {
     gchar msg[22];
     gint len = 0;
-    struct sockaddr_storage name;
-    nice_address_copy_to_sockaddr(&priv->addr, (struct sockaddr *)&name);
+    union {
+      struct sockaddr_storage storage;
+      struct sockaddr addr;
+      struct sockaddr_in in;
+      struct sockaddr_in6 in6;
+    } name;
+    nice_address_copy_to_sockaddr(&priv->addr, &name.addr);
 
     msg[len++] = 0x05; /* SOCKS version */
     msg[len++] = 0x01; /* connect command */
     msg[len++] = 0x00; /* reserved */
-    if (name.ss_family == AF_INET) {
+    if (name.storage.ss_family == AF_INET) {
       msg[len++] = 0x01; /* IPV4 address type */
       /* Address */
-      memcpy (msg + len, &((struct sockaddr_in *) &name)->sin_addr, 4);
+      memcpy (msg + len, &(&name.in)->sin_addr, 4);
       len += 4;
       /* Port */
-      memcpy (msg + len, &((struct sockaddr_in *) &name)->sin_port, 2);
+      memcpy (msg + len, &(&name.in)->sin_port, 2);
       len += 2;
-    } else if (name.ss_family == AF_INET6) {
+    } else if (name.storage.ss_family == AF_INET6) {
       msg[len++] = 0x04; /* IPV6 address type */
       /* Address */
-      memcpy (msg + len, &((struct sockaddr_in6 *) &name)->sin6_addr, 16);
+      memcpy (msg + len, &(&name.in6)->sin6_addr, 16);
       len += 16;
       /* Port */
-      memcpy (msg + len, &((struct sockaddr_in6 *) &name)->sin6_port, 2);
+      memcpy (msg + len, &(&name.in6)->sin6_port, 2);
       len += 2;
     }
 

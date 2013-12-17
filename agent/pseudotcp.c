@@ -794,32 +794,36 @@ packet(PseudoTcpSocket *self, guint32 seq, guint8 flags,
 {
   PseudoTcpSocketPrivate *priv = self->priv;
   guint32 now = get_current_time();
-  guint8 buffer[MAX_PACKET];
+  union {
+    guint8 u8[MAX_PACKET];
+    guint16 u16[MAX_PACKET / 2];
+    guint32 u32[MAX_PACKET / 4];
+  } buffer;
   PseudoTcpWriteResult wres = WR_SUCCESS;
 
   g_assert(HEADER_SIZE + len <= MAX_PACKET);
 
-  *((guint32 *) buffer) = htonl(priv->conv);
-  *((guint32 *) (buffer + 4)) = htonl(seq);
-  *((guint32 *) (buffer + 8)) = htonl(priv->rcv_nxt);
-  buffer[12] = 0;
-  buffer[13] = flags;
-  *((guint16 *) (buffer + 14)) = htons((guint16)priv->rcv_wnd);
+  *buffer.u32 = htonl(priv->conv);
+  *(buffer.u32 + 1) = htonl(seq);
+  *(buffer.u32 + 2) = htonl(priv->rcv_nxt);
+  buffer.u8[12] = 0;
+  buffer.u8[13] = flags;
+  *(buffer.u16 + 7) = htons((guint16)priv->rcv_wnd);
 
   // Timestamp computations
-  *((guint32 *) (buffer + 16)) = htonl(now);
-  *((guint32 *) (buffer + 20)) = htonl(priv->ts_recent);
+  *(buffer.u32 + 4) = htonl(now);
+  *(buffer.u32 + 5) = htonl(priv->ts_recent);
   priv->ts_lastack = priv->rcv_nxt;
 
   if (data != NULL)
-    memcpy(buffer + HEADER_SIZE, data, len);
+    memcpy(buffer.u8 + HEADER_SIZE, data, len);
 
   DEBUG (PSEUDO_TCP_DEBUG_VERBOSE, "<-- <CONV=%d><FLG=%d><SEQ=%d:%d><ACK=%d>"
       "<WND=%d><TS=%d><TSR=%d><LEN=%d>",
       priv->conv, (unsigned)flags, seq, seq + len, priv->rcv_nxt, priv->rcv_wnd,
       now % 10000, priv->ts_recent % 10000, len);
 
-  wres = priv->callbacks.WritePacket(self, (gchar *) buffer, len + HEADER_SIZE,
+  wres = priv->callbacks.WritePacket(self, (gchar *) buffer.u8, len + HEADER_SIZE,
                                      priv->callbacks.user_data);
   /* Note: When data is NULL, this is an ACK packet.  We don't read the
      return value for those, and thus we won't retry.  So go ahead and treat
@@ -839,23 +843,31 @@ packet(PseudoTcpSocket *self, guint32 seq, guint8 flags,
 }
 
 static gboolean
-parse(PseudoTcpSocket *self, const guint8 * buffer, guint32 size)
+parse(PseudoTcpSocket *self, const guint8 * _buffer, guint32 size)
 {
   Segment seg;
+
+  union {
+    const guint8 *u8;
+    const guint16 *u16;
+    const guint32 *u32;
+  } buffer;
+
+  buffer.u8 = _buffer;
 
   if (size < 12)
     return FALSE;
 
-  seg.conv = ntohl(*(guint32 *)buffer);
-  seg.seq = ntohl(*(guint32 *)(buffer + 4));
-  seg.ack = ntohl(*(guint32 *)(buffer + 8));
-  seg.flags = buffer[13];
-  seg.wnd = ntohs(*(guint16 *)(buffer + 14));
+  seg.conv = ntohl(*buffer.u32);
+  seg.seq = ntohl(*(buffer.u32 + 1));
+  seg.ack = ntohl(*(buffer.u32 + 2));
+  seg.flags = buffer.u8[13];
+  seg.wnd = ntohs(*(buffer.u16 + 7));
 
-  seg.tsval = ntohl(*(guint32 *)(buffer + 16));
-  seg.tsecr = ntohl(*(guint32 *)(buffer + 20));
+  seg.tsval = ntohl(*(buffer.u32 + 4));
+  seg.tsecr = ntohl(*(buffer.u32 + 5));
 
-  seg.data = ((gchar *)buffer) + HEADER_SIZE;
+  seg.data = ((gchar *)buffer.u8) + HEADER_SIZE;
   seg.len = size - HEADER_SIZE;
 
   DEBUG (PSEUDO_TCP_DEBUG_VERBOSE, "--> <CONV=%d><FLG=%d><SEQ=%d:%d><ACK=%d>"
