@@ -46,6 +46,7 @@
 
 #include <string.h>
 #include <stdlib.h>
+#include <inttypes.h>
 
 
 static bool stun_agent_is_unknown (StunAgent *agent, uint16_t type);
@@ -80,7 +81,7 @@ bool stun_agent_default_validater (StunAgent *agent,
     stun_debug_bytes (username, username_len);
     stun_debug ("' (%d) with '", username_len);
     stun_debug_bytes (val[i].username, val[i].username_len);
-    stun_debug ("' (%d) : %d\n",
+    stun_debug ("' (%" PRIuPTR ") : %d\n",
         val[i].username_len, memcmp (username, val[i].username, username_len));
     if (username_len == val[i].username_len &&
         memcmp (username, val[i].username, username_len) == 0) {
