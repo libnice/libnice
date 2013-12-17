@@ -92,7 +92,9 @@ main(int argc, char *argv[])
     g_debug("Using stun server '[%s]:%u'\n", stun_addr, stun_port);
   }
 
+#if !GLIB_CHECK_VERSION(2, 36, 0)
   g_type_init();
+#endif
 
   gloop = g_main_loop_new(NULL, FALSE);
 
