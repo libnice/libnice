@@ -2339,7 +2339,7 @@ _nice_agent_recv_locked (
   if (len == 0) {
     return 0;
   } else if (len < 0) {
-    nice_debug ("Agent %p: %s returned %d, errno (%d) : %s",
+    nice_debug ("Agent %p: %s returned %" G_GSSIZE_FORMAT ", errno (%d) : %s",
         agent, G_STRFUNC, len, errno, g_strerror (errno));
 
     return len;
@@ -2349,7 +2349,7 @@ _nice_agent_recv_locked (
   if (len > 0) {
     gchar tmpbuf[INET6_ADDRSTRLEN];
     nice_address_to_string (&from, tmpbuf);
-    nice_debug ("Agent %p : Packet received on local socket %d from [%s]:%u (%d octets).", agent,
+    nice_debug ("Agent %p : Packet received on local socket %d from [%s]:%u (%" G_GSSIZE_FORMAT " octets).", agent,
         g_socket_get_fd (socket->fileno), tmpbuf, nice_address_get_port (&from), len);
   }
 #endif
