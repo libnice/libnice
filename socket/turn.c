@@ -471,7 +471,8 @@ socket_dequeue_all_data (TurnPriv *priv, const NiceAddress *to)
           (SendData *) g_queue_pop_head(send_queue);
 
       nice_debug ("dequeuing data");
-      nice_socket_send (priv->base_socket, to, data->data_len, data->data);
+      nice_socket_send (priv->base_socket, &priv->server_addr, data->data_len,
+          data->data);
 
       g_free (data->data);
       g_slice_free (SendData, data);
