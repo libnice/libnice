@@ -2397,6 +2397,8 @@ nice_agent_send (
 
   if (!agent_find_component (agent, stream_id, component_id,
           &stream, &component)) {
+    g_critical ("Unknown stream/component combination: %d:%d",
+        stream_id, component_id);
     goto done;
   }
 
