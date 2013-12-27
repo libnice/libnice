@@ -8,7 +8,7 @@
 
 include $(top_srcdir)/common.mk
 
-AM_CFLAGS = $(ERROR_CFLAGS) $(GLIB_CFLAGS)
+AM_CFLAGS = $(LIBNICE_CFLAGS) $(GLIB_CFLAGS)
 
 noinst_LTLIBRARIES = libnice-random.la
 

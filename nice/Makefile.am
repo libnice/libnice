@@ -26,7 +26,7 @@ libnice_la_LDFLAGS = \
 
 
 AM_CFLAGS = \
-	$(ERROR_CFLAGS) \
+	$(LIBNICE_CFLAGS) \
 	$(GLIB_CFLAGS) \
 	-I $(top_srcdir) \
 	-I $(top_srcdir)/agent \

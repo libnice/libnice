@@ -10,7 +10,7 @@ include $(top_srcdir)/common.mk
 
 AM_CFLAGS = \
 	-DG_LOG_DOMAIN=\"libnice-socket\" \
-	$(ERROR_CFLAGS) \
+	$(LIBNICE_CFLAGS) \
 	$(GLIB_CFLAGS) \
 	$(GUPNP_CFLAGS) \
 	-I $(top_srcdir)/random \

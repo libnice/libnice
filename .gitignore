@@ -37,7 +37,6 @@ stamp-h1
 
 # top level stuff
 debian
-m4
 
 # address/ stuff
 address/libaddress.la

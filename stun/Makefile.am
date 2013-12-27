@@ -10,7 +10,7 @@ SUBDIRS = . tools tests
 
 include $(top_srcdir)/common.mk
 
-AM_CFLAGS = -std=gnu99 -DG_LOG_DOMAIN=\"libnice-stun\" $(ERROR_CFLAGS)
+AM_CFLAGS = -std=gnu99 -DG_LOG_DOMAIN=\"libnice-stun\" $(LIBNICE_CFLAGS)
 AM_CPPFLAGS = -I$(top_srcdir)
 
 if WINDOWS

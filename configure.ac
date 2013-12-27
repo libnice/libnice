@@ -99,6 +99,25 @@ dnl if asked for, add -Werror if supported
 if test "x$LIBNICE_RELEASE" != "xyes"; then
   LIBNICE_CFLAGS="$LIBNICE_CFLAGS -Werror"
 fi
+
+AC_DEFUN([NICE_ADD_FLAG],
+  AS_COMPILER_FLAG([$1], LIBNICE_CFLAGS="$LIBNICE_CFLAGS $1", [])
+)
+
+NICE_ADD_FLAG([-fno-strict-aliasing])
+NICE_ADD_FLAG([-Wextra])
+NICE_ADD_FLAG([-Wundef])
+NICE_ADD_FLAG([-Wnested-externs])
+NICE_ADD_FLAG([-Wwrite-strings])
+NICE_ADD_FLAG([-Wpointer-arith])
+NICE_ADD_FLAG([-Wbad-function-cast])
+NICE_ADD_FLAG([-Wmissing-declarations])
+NICE_ADD_FLAG([-Wmissing-prototypes])
+NICE_ADD_FLAG([-Wstrict-prototypes])
+NICE_ADD_FLAG([-Wredundant-decls])
+NICE_ADD_FLAG([-Wno-unused-parameter])
+NICE_ADD_FLAG([-Wno-missing-field-initializers])
+
 #
 # Fixes for Solaris
 #

@@ -14,7 +14,7 @@ AM_CFLAGS = \
 	-I $(top_srcdir)/random \
 	-I $(top_srcdir)/socket \
 	-I $(top_srcdir)/stun \
-	$(ERROR_CFLAGS) \
+	$(LIBNICE_CFLAGS) \
 	$(GLIB_CFLAGS) \
         $(GUPNP_CFLAGS)
 

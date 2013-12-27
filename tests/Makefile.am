@@ -9,7 +9,7 @@
 include $(top_srcdir)/common.mk
 
 AM_CFLAGS = \
-	$(ERROR_CFLAGS) \
+	$(LIBNICE_CFLAGS) \
 	$(GLIB_CFLAGS) \
         $(GUPNP_CFLAGS) \
 	-I $(top_srcdir) \

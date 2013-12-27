@@ -72,7 +72,7 @@ expand_content_files=
 # signals and properties.
 # e.g. INCLUDES=-I$(top_srcdir) -I$(top_builddir) $(GTK_DEBUG_FLAGS)
 # e.g. GTKDOC_LIBS=$(top_builddir)/gtk/$(gtktargetlib)
-AM_CFLAGS =  $(ERROR_CFLAGS) \
+AM_CFLAGS =  $(LIBNICE_CFLAGS) \
         $(GLIB_CFLAGS) \
         -I $(top_srcdir) \
         -I $(top_srcdir)/random \
