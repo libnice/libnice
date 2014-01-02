@@ -118,6 +118,8 @@ gst/libgstnice.la
 gst/jingle-gst-test-server
 
 # tests/ stuff
+tests/rand
+tests/rand-copy
 tests/test
 tests/test-add-remove-stream
 tests/test-address
