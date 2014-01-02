@@ -113,6 +113,7 @@ enum
   SIGNAL_NEW_REMOTE_CANDIDATE,
   SIGNAL_INITIAL_BINDING_REQUEST_RECEIVED,
   SIGNAL_RELIABLE_TRANSPORT_WRITABLE,
+  SIGNAL_STREAMS_REMOVED,
   N_SIGNALS,
 };
 
@@ -669,6 +670,30 @@ nice_agent_class_init (NiceAgentClass *klass)
           G_TYPE_UINT, G_TYPE_UINT,
           G_TYPE_INVALID);
 
+  /**
+   * NiceAgent::streams-removed
+   * @agent: The #NiceAgent object
+   * @stream_ids: (array zero-terminated=1) (element-type uint): An array of
+   * unsigned integer stream IDs, ending with a 0 ID
+   *
+   * This signal is fired whenever one or more streams are removed from the
+   * @agent.
+   *
+   * Since: 0.1.5
+   */
+  signals[SIGNAL_STREAMS_REMOVED] =
+      g_signal_new (
+          "streams-removed",
+          G_OBJECT_CLASS_TYPE (klass),
+          G_SIGNAL_RUN_LAST,
+          0,
+          NULL,
+          NULL,
+          g_cclosure_marshal_VOID__POINTER,
+          G_TYPE_NONE,
+          1,
+          G_TYPE_POINTER,
+          G_TYPE_INVALID);
 
   /* Init debug options depending on env variables */
   nice_debug_init ();
@@ -2008,6 +2033,8 @@ nice_agent_remove_stream (
   NiceAgent *agent,
   guint stream_id)
 {
+  guint stream_ids[] = { stream_id, 0 };
+
   /* note that streams/candidates can be in use by other threads */
 
   Stream *stream;
@@ -2016,7 +2043,8 @@ nice_agent_remove_stream (
   stream = agent_find_stream (agent, stream_id);
 
   if (!stream) {
-    goto done;
+    agent_unlock ();
+    return;
   }
 
   /* note: remove items with matching stream_ids from both lists */
@@ -2024,15 +2052,18 @@ nice_agent_remove_stream (
   discovery_prune_stream (agent, stream_id);
   refresh_prune_stream (agent, stream_id);
 
-  /* remove the stream itself */
+  /* Remove the stream and signal its removal. */
   agent->streams = g_slist_remove (agent->streams, stream);
   stream_free (stream);
 
   if (!agent->streams)
     priv_remove_keepalive_timer (agent);
 
- done:
-  agent_unlock();
+  agent_unlock ();
+
+  g_signal_emit (agent, signals[SIGNAL_STREAMS_REMOVED], 0, stream_ids);
+
+  return;
 }
 
 NICEAPI_EXPORT void
