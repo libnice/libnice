@@ -26,6 +26,12 @@ check_PROGRAMS = \
 	test \
 	test-address \
 	test-add-remove-stream \
+	test-build-io-stream \
+	test-io-stream-thread \
+	test-io-stream-closing \
+	test-io-stream-cancelling \
+	test-io-stream-pollable \
+	test-send-recv \
 	test-priority \
 	test-mainloop \
 	test-fullmode \
@@ -52,6 +58,23 @@ test_thread_LDADD = $(COMMON_LDADD)
 test_address_LDADD = $(COMMON_LDADD)
 
 test_add_remove_stream_LDADD = $(COMMON_LDADD)
+
+test_build_io_stream_LDADD = $(COMMON_LDADD)
+
+test_io_stream_thread_SOURCES = test-io-stream-thread.c test-io-stream-common.c
+test_io_stream_thread_LDADD = $(COMMON_LDADD)
+
+test_io_stream_closing_SOURCES = test-io-stream-closing.c test-io-stream-common.c
+test_io_stream_closing_LDADD = $(COMMON_LDADD)
+
+test_io_stream_cancelling_SOURCES = test-io-stream-cancelling.c test-io-stream-common.c
+test_io_stream_cancelling_LDADD = $(COMMON_LDADD)
+
+test_io_stream_pollable_SOURCES = test-io-stream-pollable.c test-io-stream-common.c
+test_io_stream_pollable_LDADD = $(COMMON_LDADD)
+
+test_send_recv_SOURCES = test-send-recv.c test-io-stream-common.c
+test_send_recv_LDADD = $(COMMON_LDADD)
 
 test_priority_LDADD = $(COMMON_LDADD)
 

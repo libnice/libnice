@@ -129,9 +129,15 @@ tests/test
 tests/test-add-remove-stream
 tests/test-address
 tests/test-bsd
+tests/test-build-io-stream
 tests/test-dribble
 tests/test-fallback
 tests/test-fullmode
+tests/test-io-stream-cancelling
+tests/test-io-stream-closing
+tests/test-io-stream-thread
+tests/test-io-stream-pollable
+tests/test-send-recv
 tests/test-mainloop
 tests/test-priority
 tests/test-pseudotcp
