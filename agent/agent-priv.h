@@ -166,15 +166,16 @@ guint64 agent_candidate_pair_priority (NiceAgent *agent, NiceCandidate *local, N
 
 GSource *agent_timeout_add_with_context (NiceAgent *agent, guint interval, GSourceFunc function, gpointer data);
 
-void agent_attach_stream_component_socket (NiceAgent *agent,
-    Stream *stream,
-    Component *component,
-    NiceSocket *socket);
-
 StunUsageIceCompatibility agent_to_ice_compatibility (NiceAgent *agent);
 StunUsageTurnCompatibility agent_to_turn_compatibility (NiceAgent *agent);
 NiceTurnSocketCompatibility agent_to_turn_socket_compatibility (NiceAgent *agent);
 
 void _priv_set_socket_tos (NiceAgent *agent, NiceSocket *sock, gint tos);
+
+gboolean
+component_io_cb (
+  GSocket *gsocket,
+  GIOCondition condition,
+  gpointer data);
 
 #endif /*_NICE_AGENT_PRIV_H */

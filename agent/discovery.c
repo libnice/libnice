@@ -489,8 +489,7 @@ NiceCandidate *discovery_add_local_host_candidate (
     goto errors;
 
   _priv_set_socket_tos (agent, udp_socket, stream->tos);
-  agent_attach_stream_component_socket (agent, stream,
-      component, udp_socket);
+  component_attach_socket (component, udp_socket);
 
   return candidate;
 
@@ -621,7 +620,7 @@ discovery_add_relay_candidate (
   if (!priv_add_local_candidate_pruned (agent, stream_id, component, candidate))
     goto errors;
 
-  component_add_detached_socket (component, relay_socket);
+  component_attach_socket (component, relay_socket);
   agent_signal_new_candidate (agent, candidate);
 
   return candidate;

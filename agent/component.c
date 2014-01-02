@@ -63,8 +63,35 @@ component_deschedule_io_callback (Component *component);
 /* Must *not* take the agent lock, since it’s called from within
  * component_set_io_callback(), which holds the Component’s I/O lock. */
 static void
+socket_source_attach (SocketSource *socket_source, GMainContext *context)
+{
+  GSource *source;
+
+  /* Create a source. */
+  source = g_socket_create_source (socket_source->socket->fileno,
+      G_IO_IN, NULL);
+  g_source_set_callback (source, (GSourceFunc) component_io_cb,
+      socket_source, NULL);
+
+  /* Add the source. */
+  nice_debug ("Attaching source %p (socket %p, FD %d) to context %p", source,
+      socket_source->socket, g_socket_get_fd (socket_source->socket->fileno),
+      context);
+
+  g_assert (socket_source->source == NULL);
+  socket_source->source = source;
+  g_source_attach (source, context);
+}
+
+static void
 socket_source_detach (SocketSource *source)
 {
+  nice_debug ("Detaching source %p (socket %p, FD %d) from context %p",
+      source->source, source->socket,
+      (source->socket->fileno != NULL) ?
+          g_socket_get_fd (source->socket->fileno) : 0,
+      (source->source != NULL) ? g_source_get_context (source->source) : 0);
+
   if (source->source != NULL) {
     g_source_destroy (source->source);
     g_source_unref (source->source);
@@ -136,7 +163,7 @@ component_free (Component *cmp)
 
   g_slist_free (cmp->local_candidates);
   g_slist_free (cmp->remote_candidates);
-  g_slist_free_full (cmp->socket_sources, (GDestroyNotify) socket_source_free);
+  component_free_socket_sources (cmp);
   g_slist_free (cmp->incoming_checks);
 
   for (item = cmp->turn_servers; item; item = g_list_next (item)) {
@@ -375,20 +402,20 @@ _find_socket_source (gconstpointer a, gconstpointer b)
   return (source_a->socket == socket_b) ? 0 : 1;
 }
 
-/* This takes ownership of socket and source.
- * It attaches the source to the component’s context. */
+/* This takes ownership of the socket.
+ * It creates and attaches a source to the component’s context. */
 void
-component_add_socket_source (Component *component, NiceSocket *socket,
-    GSource *source)
+component_attach_socket (Component *component, NiceSocket *socket)
 {
   GSList *l;
   SocketSource *socket_source;
 
   g_assert (component != NULL);
   g_assert (socket != NULL);
-  g_assert (source != NULL);
 
-  /* Find an existing SocketSource in the component which contains socket, or
+  g_assert (component->ctx != NULL);
+
+  /* Find an existing SocketSource in the component which contains @socket, or
    * create a new one. */
   l = g_slist_find_custom (component->socket_sources, socket,
           _find_socket_source);
@@ -397,31 +424,36 @@ component_add_socket_source (Component *component, NiceSocket *socket,
   } else {
     socket_source = g_slice_new0 (SocketSource);
     socket_source->socket = socket;
+    socket_source->component = component;
     component->socket_sources =
         g_slist_prepend (component->socket_sources, socket_source);
   }
 
-  /* Add the source. */
-  g_assert (socket_source->source == NULL);
-  g_assert (component->ctx != NULL);
-  socket_source->source = source;
-  g_source_attach (source, component->ctx);
+  /* Create and attach a source */
+  nice_debug ("Component %p (agent %p): Attach source (stream %u).",
+      component, component->agent, component->stream->id);
+  socket_source_attach (socket_source, component->ctx);
 }
 
-void
-component_add_detached_socket (Component *component, NiceSocket *socket)
+/* Reattaches socket handles of @component to the main context.
+ *
+ * Must *not* take the agent lock, since it’s called from within
+ * component_set_io_callback(), which holds the Component’s I/O lock. */
+static void
+component_reattach_all_sockets (Component *component)
 {
-  SocketSource *socket_source;
+  GSList *i;
 
-  socket_source = g_slice_new0 (SocketSource);
-  socket_source->socket = socket;
-  socket_source->source = NULL;
-  component->socket_sources =
-      g_slist_prepend (component->socket_sources, socket_source);
+  for (i = component->socket_sources; i != NULL; i = i->next) {
+    SocketSource *socket_source = i->data;
+    nice_debug ("Reattach source %p.", socket_source->source);
+    socket_source_detach (socket_source);
+    socket_source_attach (socket_source, component->ctx);
+  }
 }
 
 /**
- * component_detach_socket_source:
+ * component_detach_socket:
  * @component: a #Component
  * @socket: the socket to detach the source for
  *
@@ -431,10 +463,12 @@ component_add_detached_socket (Component *component, NiceSocket *socket)
  * If the @socket doesn’t exist in this @component, do nothing.
  */
 void
-component_detach_socket_source (Component *component, NiceSocket *socket)
+component_detach_socket (Component *component, NiceSocket *socket)
 {
   GSList *l;
   SocketSource *socket_source;
+
+  nice_debug ("Detach socket %p.", socket);
 
   /* Find the SocketSource for the socket. */
   l = g_slist_find_custom (component->socket_sources, socket,
@@ -455,13 +489,14 @@ component_detach_socket_source (Component *component, NiceSocket *socket)
  * component_set_io_callback(), which holds the Component’s I/O lock.
  */
 void
-component_detach_socket_sources (Component *component)
+component_detach_all_sockets (Component *component)
 {
   GSList *i;
 
   for (i = component->socket_sources; i != NULL; i = i->next) {
     SocketSource *socket_source = i->data;
-    nice_debug ("Detach source %p.", socket_source->source);
+    nice_debug ("Detach source %p, socket %p.", socket_source->source,
+        socket_source->socket);
     socket_source_detach (socket_source);
   }
 }
@@ -469,38 +504,51 @@ component_detach_socket_sources (Component *component)
 void
 component_free_socket_sources (Component *component)
 {
+  nice_debug ("Free socket sources for component %p.", component);
+
   g_slist_free_full (component->socket_sources,
       (GDestroyNotify) socket_source_free);
   component->socket_sources = NULL;
 }
 
+/* If @context is %NULL, a fresh context is used, so component->ctx is always
+ * guaranteed to be non-%NULL. */
 void
-component_set_io_callback (Component *component, NiceAgentRecvFunc func,
-    gpointer user_data, GMainContext *context)
+component_set_io_context (Component *component, GMainContext *context)
 {
   g_mutex_lock (&component->io_mutex);
 
-  /* Reference the context early so we don’t accidentally free it below. */
-  if (context != NULL && func != NULL)
-    g_main_context_ref (context);
+  if (component->ctx != context || component->ctx == NULL) {
+    if (context == NULL)
+      context = g_main_context_new ();
+    else
+      g_main_context_ref (context);
 
-  if (component->io_callback != NULL)
-    component_detach_socket_sources (component);
+    component_detach_all_sockets (component);
+    if (component->ctx != NULL)
+      g_main_context_unref (component->ctx);
+    component->ctx = context;
+    component_reattach_all_sockets (component);
+  }
 
-  component->io_callback = NULL;
-  component->io_user_data = NULL;
+  g_mutex_unlock (&component->io_mutex);
+}
 
-  if (component->ctx != NULL)
-    g_main_context_unref (component->ctx);
-  component->ctx = NULL;
+void
+component_set_io_callback (Component *component,
+    NiceAgentRecvFunc func, gpointer user_data)
+{
+  g_mutex_lock (&component->io_mutex);
 
   if (func != NULL) {
     component->io_callback = func;
     component->io_user_data = user_data;
-    component->ctx = context;  /* referenced above */
 
     component_schedule_io_callback (component);
   } else {
+    component->io_callback = NULL;
+    component->io_user_data = NULL;
+
     component_deschedule_io_callback (component);
   }
 

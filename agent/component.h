@@ -99,10 +99,14 @@ struct _IncomingCheck
  * GSources in a Component must be attached to the same main context:
  * component->ctx.
  *
- * Socket must be non-NULL, but source may be NULL if it has been detached. */
+ * Socket must be non-NULL, but source may be NULL if it has been detached.
+ *
+ * The Component is stored so this may be used as the user data for a GSource
+ * callback. */
 typedef struct {
   NiceSocket *socket;
   GSource *source;
+  Component *component;
 } SocketSource;
 
 
@@ -144,6 +148,9 @@ struct _Component
 				    see ICE 11.1. "Sending Media" (ID-19) */
   NiceCandidate *restart_candidate; /**< for storing active remote candidate during a restart */
 
+  /* I/O handling. The main context must always be non-NULL, and is used for all
+   * socket recv() operations. All io_callback emissions are invoked in this
+   * context too. */
   GMutex io_mutex;                  /**< protects io_callback, io_user_data,
                                          pending_io_messages and io_callback_id.
                                          immutable: can be accessed without
@@ -197,21 +204,19 @@ component_set_selected_remote_candidate (NiceAgent *agent, Component *component,
     NiceCandidate *candidate);
 
 void
-component_add_socket_source (Component *component, NiceSocket *socket,
-    GSource *source);
+component_attach_socket (Component *component, NiceSocket *socket);
 void
-component_add_detached_socket (Component *component, NiceSocket *socket);
-
+component_detach_socket (Component *component, NiceSocket *socket);
 void
-component_detach_socket_source (Component *component, NiceSocket *socket);
-void
-component_detach_socket_sources (Component *component);
+component_detach_all_sockets (Component *component);
 void
 component_free_socket_sources (Component *component);
 
 void
-component_set_io_callback (Component *component, NiceAgentRecvFunc func,
-    gpointer user_data, GMainContext *context);
+component_set_io_context (Component *component, GMainContext *context);
+void
+component_set_io_callback (Component *component,
+    NiceAgentRecvFunc func, gpointer user_data);
 void
 component_emit_io_callback (Component *component,
     const guint8 *buf, gsize buf_len);

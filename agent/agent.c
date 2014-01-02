@@ -1003,7 +1003,7 @@ static void priv_pseudo_tcp_error (NiceAgent *agent, Stream *stream,
   if (component->tcp) {
     agent_signal_component_state_change (agent, stream->id,
         component->id, NICE_COMPONENT_STATE_FAILED);
-    component_detach_socket_sources (component);
+    component_detach_all_sockets (component);
   }
   priv_destroy_component_tcp (component);
 }
@@ -1420,8 +1420,7 @@ priv_add_new_candidate_discovery_turn (NiceAgent *agent,
       new_socket = nice_udp_bsd_socket_new (&addr);
       if (new_socket) {
         _priv_set_socket_tos (agent, new_socket, stream->tos);
-        agent_attach_stream_component_socket (agent, stream,
-            component, new_socket);
+        component_attach_socket (component, new_socket);
         socket = new_socket;
       }
     }
@@ -1469,8 +1468,7 @@ priv_add_new_candidate_discovery_turn (NiceAgent *agent,
     cdisco->nicesock = nice_tcp_turn_socket_new (socket,
         agent_to_turn_socket_compatibility (agent));
 
-    agent_attach_stream_component_socket (agent, stream,
-        component, cdisco->nicesock);
+    component_attach_socket (component, cdisco->nicesock);
   }
 
   cdisco->turn = turn;
@@ -2666,79 +2664,95 @@ io_ctx_free (IOCtx *ctx)
   g_slice_free (IOCtx, ctx);
 }
 
-static gboolean
-nice_agent_g_source_cb (
-  GSocket *gsocket,
-  GIOCondition condition,
-  gpointer data)
+gboolean
+component_io_cb (GSocket *socket, GIOCondition condition, gpointer user_data)
 {
-  IOCtx *ctx = data;
-  NiceAgent *agent = ctx->agent;
-  Stream *stream = ctx->stream;
-  Component *component = ctx->component;
-  guint8 buf[MAX_BUFFER_SIZE];
+  SocketSource *socket_source = user_data;
+  Component *component;
+  NiceAgent *agent;
+  Stream *stream;
+  guint8 local_buf[MAX_BUFFER_SIZE];
   gssize len;
+  guint8 *recv_buf;
+  gsize recv_buf_len;
+  gboolean retval = FALSE;
+  NiceAgentRecvFunc io_callback;
 
   agent_lock ();
 
+  component = socket_source->component;
+  agent = component->agent;
+  stream = component->stream;
+
   if (g_source_is_destroyed (g_main_current_source ())) {
-    agent_unlock ();
-    return FALSE;
+    /* Silently return FALSE. */
+    nice_debug ("%s: source %p destroyed", G_STRFUNC, g_main_current_source ());
+    goto done;
   }
 
-  /* Actually read the data. This will return 0 if the data has already been
-   * handled. */
-  len = _nice_agent_recv_locked (agent, stream, component, ctx->socket,
-                                 buf, MAX_BUFFER_SIZE);
+  /* FIXME: Compartmentalise this in component.c */
+  g_mutex_lock (&component->io_mutex);
+  io_callback = component->io_callback;
+  g_mutex_unlock (&component->io_mutex);
 
-  if (len < 0) {
+  /* Choose which receive buffer to use. If we’re reading for
+   * nice_agent_attach_recv(), use a local static buffer. If we’re reading for
+   * nice_agent_recv(), use the buffer provided by the client. */
+  g_assert (io_callback == NULL || component->recv_buf == NULL);
+
+  if (io_callback != NULL) {
+    recv_buf = local_buf;
+    recv_buf_len = sizeof (local_buf);
+  } else if (component->recv_buf != NULL) {
+    recv_buf = component->recv_buf + component->recv_buf_valid_len;
+    recv_buf_len = component->recv_buf_len - component->recv_buf_valid_len;
+  } else {
+    /* I/O is paused. Try again later. */
+    retval = TRUE;
+    goto done;
+  }
+
+  nice_debug ("Receiving on source %p (socket %p, FD %d).",
+      socket_source->source, socket_source->socket,
+      g_socket_get_fd (socket_source->socket->fileno));
+
+  /* Actually read the data. This will return 0 if the data has already been
+   * handled (e.g. for STUN control packets). */
+  len = agent_recv_locked (agent, stream, component, socket_source->socket,
+      recv_buf, recv_buf_len);
+
+  nice_debug ("\tReceived %" G_GSSIZE_FORMAT " bytes.", len);
+
+  if (len == 0) {
+    /* No data was available, probably due to being a reliable connection and
+     * hence the data is stored in the pseudotcp buffer. */
+    retval = TRUE;
+    goto done;
+  } else if (len < 0) {
     /* Error. Detach the source but don’t close the socket. We don’t close the
      * socket because it would be way too complicated to take care of every path
      * where it might still be used. */
-    nice_debug ("Agent %p: unable to recv from socket %p. Detaching",
-        ctx->agent, ctx->socket);
-    component_detach_socket_source (component, ctx->socket);
-  } else if (len > 0) {
-    component_emit_io_callback (component, buf, len);
+    g_set_error (component->recv_buf_error, G_IO_ERROR, G_IO_ERROR_FAILED,
+        "Unable to receive from socket %p. Detaching.", socket);
+    nice_debug ("%s: error receiving from socket %p", G_STRFUNC, socket);
+    goto done;
   }
 
+  /* Actual data to notify the client about. */
+  if (io_callback != NULL) {
+    component_emit_io_callback (component, recv_buf, len);
+  } else {
+    /* Data has been stored in the component’s receive buffer to be picked up
+     * later by nice_agent_recv(). */
+    component->recv_buf_valid_len += len;
+  }
+
+  retval = TRUE;
+
+done:
   agent_unlock ();
 
-  return TRUE;
-}
-
-/*
- * Attaches one socket handle to the main loop event context.
- *
- * Takes ownership of the socket.
- */
-
-void
-agent_attach_stream_component_socket (NiceAgent *agent,
-    Stream *stream,
-    Component *component,
-    NiceSocket *socket)
-{
-  GSource *source;
-  IOCtx *ctx;
-
-  if (!component->ctx) {
-    component_add_detached_socket (component, socket);
-    return;
-  }
-
-  /* note: without G_IO_ERR the glib mainloop goes into
-   *       busyloop if errors are encountered */
-  source = g_socket_create_source (socket->fileno, G_IO_IN | G_IO_ERR, NULL);
-
-  ctx = io_ctx_new (agent, stream, component, socket, source);
-  g_source_set_callback (source, (GSourceFunc) nice_agent_g_source_cb,
-      ctx, (GDestroyNotify) io_ctx_free);
-  nice_debug ("Agent %p : Attach source %p (stream %u).", agent, source,
-      stream->id);
-
-  /* Add the pair to the component. */
-  component_add_socket_source (component, socket, source);
+  return retval;
 }
 
 NICEAPI_EXPORT gboolean
@@ -2768,20 +2782,12 @@ nice_agent_attach_recv (
     goto done;
   }
 
-  /* Set the component’s I/O callback. */
-  component_set_io_callback (component, func, data, ctx);
+  /* Set the component’s I/O context. */
+  component_set_io_context (component, ctx);
+  component_set_io_callback (component, func, data);
   ret = TRUE;
 
   if (func) {
-    GSList *i;
-
-    /* Attach any detached sockets to the new main context. */
-    for (i = component->socket_sources; i != NULL; i = i->next) {
-      SocketSource *socket_source = i->data;
-      agent_attach_stream_component_socket (agent, stream, component,
-          socket_source->socket);
-    }
-
     /* If we got detached, maybe our readable callback didn't finish reading
      * all available data in the pseudotcp, so we need to make sure we free
      * our recv window, so the readable callback can be triggered again on the
