@@ -288,7 +288,7 @@ struct _PseudoTcpSocketPrivate {
   // Incoming data
   GList *rlist;
   gchar rbuf[kRcvBufSize];
-  guint32 rcv_nxt, rcv_wnd, rlen, lastrecv;
+  guint32 rcv_nxt, rcv_wnd, rpos, rlen, lastrecv;
 
   // Outgoing data
   GList *slist;
@@ -522,7 +522,7 @@ pseudo_tcp_socket_init (PseudoTcpSocket *obj)
   priv->rcv_wnd = sizeof(priv->rbuf);
   priv->snd_nxt = priv->slen = 0;
   priv->snd_wnd = 1;
-  priv->snd_una = priv->rcv_nxt = priv->rlen = 0;
+  priv->snd_una = priv->rcv_nxt = priv->rlen = priv->rpos = 0;
   priv->bReadEnable = TRUE;
   priv->bWriteEnable = FALSE;
   priv->t_ack = 0;
@@ -702,6 +702,31 @@ pseudo_tcp_socket_get_next_clock(PseudoTcpSocket *self, long *timeout)
   return TRUE;
 }
 
+static guint32
+get_receive_buffer_space (PseudoTcpSocket *self)
+{
+  PseudoTcpSocketPrivate *priv = self->priv;
+
+  return sizeof(priv->rbuf) - priv->rlen + priv->rpos;
+}
+
+static guint32
+get_receive_buffer_consecutive_space (PseudoTcpSocket *self)
+{
+  PseudoTcpSocketPrivate *priv = self->priv;
+
+  return sizeof(priv->rbuf) - priv->rlen;
+}
+
+static void
+consolidate_receiver_buffer_space (PseudoTcpSocket *self)
+{
+  PseudoTcpSocketPrivate *priv = self->priv;
+
+  memmove(priv->rbuf, priv->rbuf + priv->rpos, sizeof(priv->rbuf) - priv->rpos);
+  priv->rlen -= priv->rpos;
+  priv->rpos = 0;
+}
 
 gint
 pseudo_tcp_socket_recv(PseudoTcpSocket *self, char * buffer, size_t len)
@@ -714,26 +739,25 @@ pseudo_tcp_socket_recv(PseudoTcpSocket *self, char * buffer, size_t len)
     return -1;
   }
 
-  if (priv->rlen == 0) {
+  // Make sure read position is correct.
+  g_assert (priv->rpos <= priv->rlen);
+  if (priv->rlen == priv->rpos) {
     priv->bReadEnable = TRUE;
     priv->error = EWOULDBLOCK;
     return -1;
   }
 
-  read = min((guint32) len, priv->rlen);
-  memcpy(buffer, priv->rbuf, read);
-  priv->rlen -= read;
+  read = min((guint32) len, priv->rlen - priv->rpos);
+  memcpy(buffer, priv->rbuf + priv->rpos, read);
+  priv->rpos += read;
 
-  /* !?! until we create a circular buffer, we need to move all of the rest
-     of the buffer up! */
-  memmove(priv->rbuf, priv->rbuf + read, sizeof(priv->rbuf) - read);
 
-  if ((sizeof(priv->rbuf) - priv->rlen - priv->rcv_wnd)
-      >= min(sizeof(priv->rbuf) / 2, priv->mss)) {
+  if (get_receive_buffer_space (self) - priv->rcv_wnd >=
+      min(sizeof(priv->rbuf) / 2, priv->mss)) {
     // !?! Not sure about this was closed business
     gboolean bWasClosed = (priv->rcv_wnd == 0);
 
-    priv->rcv_wnd = sizeof(priv->rbuf) - priv->rlen;
+    priv->rcv_wnd = get_receive_buffer_space (self);
 
     if (bWasClosed) {
       attempt_send(self, sfImmediateAck);
@@ -1148,10 +1172,9 @@ process(PseudoTcpSocket *self, Segment *seg)
       seg->len = 0;
     }
   }
-  if ((seg->seq + seg->len - priv->rcv_nxt) >
-      (sizeof(priv->rbuf) - priv->rlen)) {
+  if ((seg->seq + seg->len - priv->rcv_nxt) > get_receive_buffer_space (self)) {
     guint32 nAdjust = seg->seq + seg->len - priv->rcv_nxt -
-        (sizeof(priv->rbuf) - priv->rlen);
+        get_receive_buffer_space (self);
     if (nAdjust < seg->len) {
       seg->len -= nAdjust;
     } else {
@@ -1169,6 +1192,13 @@ process(PseudoTcpSocket *self, Segment *seg)
       }
     } else {
       guint32 nOffset = seg->seq - priv->rcv_nxt;
+
+      if (get_receive_buffer_consecutive_space (self) < seg->len + nOffset) {
+        consolidate_receiver_buffer_space (self);
+        g_assert (get_receive_buffer_consecutive_space (self) >=
+            seg->len + nOffset);
+      }
+
       memcpy(priv->rbuf + priv->rlen + nOffset, seg->data, seg->len);
       if (seg->seq == priv->rcv_nxt) {
         GList *iter = NULL;
