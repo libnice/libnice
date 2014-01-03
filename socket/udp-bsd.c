@@ -158,6 +158,7 @@ socket_close (NiceSocket *sock)
   if (priv->gaddr)
     g_object_unref (priv->gaddr);
   g_slice_free (struct UdpBsdSocketPrivate, sock->priv);
+  sock->priv = NULL;
 
   if (sock->fileno) {
     g_socket_close (sock->fileno, NULL);
@@ -218,9 +219,9 @@ socket_send (NiceSocket *sock, const NiceAddress *to,
       g_object_unref (priv->gaddr);
     nice_address_copy_to_sockaddr (to, &sa.addr);
     gaddr = g_socket_address_new_from_native (&sa.addr, sizeof(sa));
+    priv->gaddr = gaddr;
     if (gaddr == NULL)
       return -1;
-    priv->gaddr = gaddr;
     priv->niceaddr = *to;
   }
 
