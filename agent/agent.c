@@ -2636,39 +2636,106 @@ done:
   return len;
 }
 
-NICEAPI_EXPORT gint
-nice_agent_send (
+/**
+ * nice_agent_send_full:
+ * @agent: a #NiceAgent
+ * @stream_id: the ID of the stream to send to
+ * @component_id: the ID of the component to send to
+ * @buf: (array length=buf_len): data to transmit, of at least @buf_len bytes in
+ * size
+ * @buf_len: length of valid data in @buf, in bytes
+ * @cancellable: (allow-none): a #GCancellable to cancel the operation from
+ * another thread, or %NULL
+ * @error: (allow-none): return location for a #GError, or %NULL
+ *
+ * Sends the data in @buf on the socket identified by the given stream/component
+ * pair. Transmission is non-blocking, so a %G_IO_ERROR_WOULD_BLOCK error may be
+ * returned if the send buffer is full.
+ *
+ * As with nice_agent_send(), the given component must be in
+ * %NICE_COMPONENT_STATE_READY or, as a special case, in any state if it was
+ * previously ready and was then restarted.
+ *
+ * On success, the number of bytes written to the socket will be returned (which
+ * will always be @buf_len when in non-reliable mode, and may be less than
+ * @buf_len when in reliable mode).
+ *
+ * On failure, -1 will be returned and @error will be set. If the #NiceAgent is
+ * reliable and the socket is not yet connected, %G_IO_ERROR_BROKEN_PIPE will be
+ * returned; if the write buffer is full, %G_IO_ERROR_WOULD_BLOCK will be
+ * returned. In both cases, wait for the #NiceAgent::reliable-transport-writable
+ * signal before trying again. If the given @stream_id or @component_id are
+ * invalid or not yet connected, %G_IO_ERROR_BROKEN_PIPE will be returned.
+ * %G_IO_ERROR_FAILED will be returned for other errors.
+ *
+ * Returns: the number of bytes sent (guaranteed to be greater than 0), or -1 on
+ * error
+ *
+ * Since: 0.1.5
+ */
+NICEAPI_EXPORT gssize
+nice_agent_send_full (
   NiceAgent *agent,
   guint stream_id,
   guint component_id,
-  guint len,
-  const gchar *buf)
+  const guint8 *buf,
+  gsize buf_len,
+  GCancellable *cancellable,
+  GError **error)
 {
   Stream *stream;
   Component *component;
-  gint ret = -1;
+  gssize ret = -1;
+  GError *child_error = NULL;
 
-  agent_lock();
+  g_return_val_if_fail (NICE_IS_AGENT (agent), -1);
+  g_return_val_if_fail (stream_id >= 1, -1);
+  g_return_val_if_fail (component_id >= 1, -1);
+  g_return_val_if_fail (buf != NULL, -1);
+  g_return_val_if_fail (
+      cancellable == NULL || G_IS_CANCELLABLE (cancellable), -1);
+  g_return_val_if_fail (error == NULL || *error == NULL, -1);
+
+  agent_lock ();
 
   if (!agent_find_component (agent, stream_id, component_id,
           &stream, &component)) {
-    g_critical ("Unknown stream/component combination: %d:%d",
-        stream_id, component_id);
+    g_set_error (&child_error, G_IO_ERROR, G_IO_ERROR_BROKEN_PIPE,
+                 "Invalid stream/component.");
     goto done;
   }
 
+  /* FIXME: Cancellation isn’t yet supported, but it doesn’t matter because
+   * we only deal with non-blocking writes. */
+
   if (component->tcp != NULL) {
-    ret = pseudo_tcp_socket_send (component->tcp, buf, len);
+    /* Send on the pseudo-TCP socket. */
+    ret = pseudo_tcp_socket_send (component->tcp, (const gchar *) buf, buf_len);
     adjust_tcp_clock (agent, stream, component);
-    /*
-    if (ret == -1 &&
-        pseudo_tcp_socket_get_error (component->tcp) != EWOULDBLOCK) {
-        }
-    */
+
     /* In case of -1, the error is either EWOULDBLOCK or ENOTCONN, which both
        need the user to wait for the reliable-transport-writable signal */
-  } else if(agent->reliable) {
-    nice_debug ("Trying to send on a pseudo tcp FAILED component");
+    if (ret < 0 &&
+        pseudo_tcp_socket_get_error (component->tcp) == EWOULDBLOCK) {
+      g_set_error (&child_error, G_IO_ERROR, G_IO_ERROR_WOULD_BLOCK,
+          "Write would block.");
+      goto done;
+    } else if (ret < 0 &&
+        pseudo_tcp_socket_get_error (component->tcp) == ENOTCONN) {
+      g_set_error (&child_error, G_IO_ERROR, G_IO_ERROR_BROKEN_PIPE,
+          "TCP connection is not yet established.");
+      goto done;
+    } else if (ret < 0) {
+      /* Signal error */
+      priv_pseudo_tcp_error (agent, stream, component);
+
+      g_set_error (&child_error, G_IO_ERROR, G_IO_ERROR_FAILED,
+          "Error writing data to pseudo-TCP socket.");
+      goto done;
+    }
+  } else if (agent->reliable) {
+    g_set_error (&child_error, G_IO_ERROR, G_IO_ERROR_FAILED,
+        "Error writing data to failed pseudo-TCP socket.");
     goto done;
   } else if (component->selected_pair.local != NULL) {
     NiceSocket *sock;
@@ -2678,24 +2745,54 @@ nice_agent_send (
     gchar tmpbuf[INET6_ADDRSTRLEN];
     nice_address_to_string (&component->selected_pair.remote->addr, tmpbuf);
 
-    nice_debug ("Agent %p : s%d:%d: sending %d bytes to [%s]:%d", agent, stream_id, component_id,
-        len, tmpbuf,
+    nice_debug ("Agent %p : s%d:%d: sending %" G_GSIZE_FORMAT " bytes to "
+        "[%s]:%d", agent, stream_id, component_id, buf_len, tmpbuf,
         nice_address_get_port (&component->selected_pair.remote->addr));
 #endif
 
     sock = component->selected_pair.local->sockptr;
     addr = &component->selected_pair.remote->addr;
-    if (nice_socket_send (sock, addr, len, buf)) {
-      ret = len;
+
+    if (nice_socket_send (sock, addr, buf_len, (const gchar *) buf)) {
+      /* Success: sent all the bytes. */
+      ret = buf_len;
+    } else {
+      /* Some error. Since nice_socket_send() provides absolutely no useful
+       * feedback, assume it’s EWOULDBLOCK. */
+      g_set_error (&child_error, G_IO_ERROR, G_IO_ERROR_WOULD_BLOCK,
+          "Error writing data to socket: probably would block.");
+      goto done;
     }
+  } else {
+    /* Socket isn’t properly open yet. */
+    g_set_error (&child_error, G_IO_ERROR, G_IO_ERROR_WOULD_BLOCK,
+        "Can’t send: No selected pair yet.");
     goto done;
   }
 
- done:
-  agent_unlock();
+done:
+  g_assert ((child_error != NULL) == (ret == -1));
+  g_assert (ret != 0);
+
+  if (child_error != NULL)
+    g_propagate_error (error, child_error);
+
+  agent_unlock ();
+
   return ret;
 }
 
+NICEAPI_EXPORT gint
+nice_agent_send (
+  NiceAgent *agent,
+  guint stream_id,
+  guint component_id,
+  guint len,
+  const gchar *buf)
+{
+  return nice_agent_send_full (agent, stream_id, component_id,
+      (const guint8 *) buf, len, NULL, NULL);
+}
 
 NICEAPI_EXPORT GSList *
 nice_agent_get_local_candidates (

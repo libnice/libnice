@@ -579,6 +579,16 @@ nice_agent_send (
   guint len,
   const gchar *buf);
 
+gssize
+nice_agent_send_full (
+    NiceAgent *agent,
+    guint stream_id,
+    guint component_id,
+    const guint8 *buf,
+    gsize buf_len,
+    GCancellable *cancellable,
+    GError **error);
+
 /**
  * nice_agent_get_local_candidates:
  * @agent: The #NiceAgent Object
