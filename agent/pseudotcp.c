@@ -874,11 +874,20 @@ gboolean
 pseudo_tcp_socket_notify_packet(PseudoTcpSocket *self,
     const gchar * buffer, guint32 len)
 {
+  gboolean retval;
+
   if (len > MAX_PACKET) {
     //LOG_F(WARNING) << "packet too large";
     return FALSE;
   }
-  return parse(self, (guint8 *) buffer, len);
+
+  /* Hold a reference to the PseudoTcpSocket during parsing, since it may be
+   * closed from within a callback. */
+  g_object_ref (self);
+  retval = parse (self, (guint8 *) buffer, len);
+  g_object_unref (self);
+
+  return retval;
 }
 
 gboolean
