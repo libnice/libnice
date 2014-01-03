@@ -155,8 +155,8 @@ static void closed (PseudoTcpSocket *sock, guint32 err, gpointer data)
 
 struct notify_data {
   PseudoTcpSocket *sock;
-  gchar *buffer;
   guint32 len;
+  gchar buffer[];
 };
 
 static gboolean notify_packet (gpointer user_data)
@@ -166,7 +166,7 @@ static gboolean notify_packet (gpointer user_data)
     return FALSE;
   pseudo_tcp_socket_notify_packet (data->sock, data->buffer, data->len);
   adjust_clock (data->sock);
-  g_free (data->buffer);
+
   g_free (data);
   return FALSE;
 }
@@ -184,11 +184,10 @@ static PseudoTcpWriteResult write (PseudoTcpSocket *sock,
     return WR_SUCCESS;
   }
 
-  data = g_new0 (struct notify_data,1);
+  data = g_malloc (sizeof(struct notify_data) + len);
 
   g_debug ("Socket %p(%d) Writing : %d bytes", sock, state, len);
 
-  data->buffer = g_malloc (len);
   memcpy (data->buffer, buffer, len);
   data->len = len;
 
