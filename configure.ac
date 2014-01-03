@@ -114,22 +114,52 @@ AC_DEFUN([NICE_ADD_FLAG],
 
 NICE_ADD_FLAG([-fno-strict-aliasing])
 
-AS_IF([test "x$enable_compile_warnings" != "xno"],[
+AS_IF([test "$enable_compile_warnings" != "no"],[
     NICE_ADD_FLAG([-Wall])
-    AS_IF([test "x$enable_compile_warnings" != "xminimum"],[
-        NICE_ADD_FLAG([-Wextra])
-        NICE_ADD_FLAG([-Wundef])
-        NICE_ADD_FLAG([-Wnested-externs])
-        NICE_ADD_FLAG([-Wwrite-strings])
-        NICE_ADD_FLAG([-Wpointer-arith])
-        NICE_ADD_FLAG([-Wbad-function-cast])
-        NICE_ADD_FLAG([-Wmissing-declarations])
-        NICE_ADD_FLAG([-Wmissing-prototypes])
-        NICE_ADD_FLAG([-Wstrict-prototypes])
-        NICE_ADD_FLAG([-Wredundant-decls])
-        NICE_ADD_FLAG([-Wno-unused-parameter])
-        NICE_ADD_FLAG([-Wno-missing-field-initializers])
-    ])
+])
+AS_IF([test "$enable_compile_warnings" != "no" -a
+            "$enable_compile_warnings" != "minimum"],[
+    NICE_ADD_FLAG([-Wextra])
+    NICE_ADD_FLAG([-Wundef])
+    NICE_ADD_FLAG([-Wnested-externs])
+    NICE_ADD_FLAG([-Wwrite-strings])
+    NICE_ADD_FLAG([-Wpointer-arith])
+    NICE_ADD_FLAG([-Wbad-function-cast])
+    NICE_ADD_FLAG([-Wmissing-declarations])
+    NICE_ADD_FLAG([-Wmissing-prototypes])
+    NICE_ADD_FLAG([-Wstrict-prototypes])
+    NICE_ADD_FLAG([-Wredundant-decls])
+    NICE_ADD_FLAG([-Wno-unused-parameter])
+    NICE_ADD_FLAG([-Wno-missing-field-initializers])
+    NICE_ADD_FLAG([-Wdeclaration-after-statement])
+    NICE_ADD_FLAG([-Wformat=2])
+    NICE_ADD_FLAG([-Wold-style-definition])
+    NICE_ADD_FLAG([-Wcast-align])
+    NICE_ADD_FLAG([-Wformat-nonliteral])
+    NICE_ADD_FLAG([-Wformat-security])
+])
+AS_IF([test "$enable_compile_warnings" = "yes" -o \
+            "$enable_compile_warnings" = "maximum" -o \
+            "$enable_compile_warnings" = "error"],[
+    NICE_ADD_FLAG([-Wsign-compare])
+    NICE_ADD_FLAG([-Wstrict-aliasing])
+    NICE_ADD_FLAG([-Wunsafe-loop-optimizations])
+    NICE_ADD_FLAG([-Wshadow])
+    NICE_ADD_FLAG([-Winline])
+    NICE_ADD_FLAG([-Wpacked])
+    NICE_ADD_FLAG([-Wmissing-format-attribute])
+    NICE_ADD_FLAG([-Wmissing-noreturn])
+    NICE_ADD_FLAG([-Winit-self])
+    NICE_ADD_FLAG([-Wredundant-decls])
+    NICE_ADD_FLAG([-Wmissing-include-dirs])
+    NICE_ADD_FLAG([-Wunused-but-set-variable])
+    NICE_ADD_FLAG([-Warray-bounds])
+])
+AS_IF([test "$enable_compile_warnings" = "maximum" -o \
+            "$enable_compile_warnings" = "error"],[
+    NICE_ADD_FLAG([-Wswitch-enum])
+    NICE_ADD_FLAG([-Wswitch-default])
+    NICE_ADD_FLAG([-Waggregate-return])
 ])
 AS_IF([test "x$enable_compile_warnings" = "xerror"],[
     NICE_ADD_FLAG([-Werror])
