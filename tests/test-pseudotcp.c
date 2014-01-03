@@ -52,6 +52,8 @@ int total_read = 0;
 int total_wrote = 0;
 guint left_clock = 0;
 guint right_clock = 0;
+gboolean left_closed;
+gboolean right_closed;
 
 static void adjust_clock (PseudoTcpSocket *sock);
 
@@ -160,8 +162,7 @@ struct notify_data {
 static gboolean notify_packet (gpointer user_data)
 {
   struct notify_data *data = (struct notify_data*) user_data;
-  if (!data->sock || (data->sock != left && data->sock != right))
-    return FALSE;
+
   pseudo_tcp_socket_notify_packet (data->sock, data->buffer, data->len);
   adjust_clock (data->sock);
 
@@ -189,11 +190,10 @@ static PseudoTcpWriteResult write (PseudoTcpSocket *sock,
   memcpy (data->buffer, buffer, len);
   data->len = len;
 
-  if (sock == left) {
+  if (sock == left)
     data->sock = right;
-  } else {
+  else
     data->sock = left;
-  }
 
   g_idle_add (notify_packet, data);
 
@@ -204,8 +204,6 @@ static PseudoTcpWriteResult write (PseudoTcpSocket *sock,
 static gboolean notify_clock (gpointer data)
 {
   PseudoTcpSocket *sock = (PseudoTcpSocket *)data;
-  if (sock != left && sock != right)
-    return FALSE;
   //g_debug ("Socket %p: Notifying clock", sock);
   pseudo_tcp_socket_notify_clock (sock);
   adjust_clock (sock);
@@ -227,13 +225,12 @@ static void adjust_clock (PseudoTcpSocket *sock)
       right_clock = g_timeout_add (timeout, notify_clock, sock);
     }
   } else {
-    g_debug ("Socket %p should be destroyed", sock);
-    g_object_unref (sock);
+    g_debug ("Socket %p should be destroyed, it's done", sock);
     if (sock == left)
-      left = NULL;
+      left_closed = TRUE;
     else
-      right = NULL;
-    if (left == right)
+      right_closed = TRUE;
+    if (left_closed && right_closed)
       g_main_loop_quit (mainloop);
   }
 }
@@ -248,6 +245,8 @@ int main (int argc, char *argv[])
   g_type_init ();
 
   pseudo_tcp_set_debug_level (PSEUDO_TCP_DEBUG_VERBOSE);
+
+  left_closed = right_closed = FALSE;
 
   left = pseudo_tcp_socket_new (0, &cbs);
   right = pseudo_tcp_socket_new (0, &cbs);
@@ -266,6 +265,9 @@ int main (int argc, char *argv[])
   }
 
   g_main_loop_run (mainloop);
+
+  g_object_unref (left);
+  g_object_unref (right);
 
   if (in)
     fclose (in);
