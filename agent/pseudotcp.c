@@ -153,7 +153,8 @@ const guint16 PACKET_MAXIMUMS[] = {
 #define MIN_RTO      250
 #define DEF_RTO     3000 /* 3 seconds (RFC1122, Sec 4.2.3.1) */
 #define MAX_RTO    60000 /* 60 seconds */
-#define ACK_DELAY    100 /* 100 milliseconds */
+#define DEFAULT_ACK_DELAY    100 /* 100 milliseconds */
+#define DEFAULT_NO_DELAY     FALSE
 
 /*
 #define FLAG_FIN 0x01
@@ -310,6 +311,8 @@ struct _PseudoTcpSocketPrivate {
   guint32 recover;
   guint32 t_ack;
 
+  gboolean use_nagling;
+  guint32 ack_delay;
 };
 
 
@@ -319,6 +322,8 @@ enum
   PROP_CONVERSATION = 1,
   PROP_CALLBACKS,
   PROP_STATE,
+  PROP_ACK_DELAY,
+  PROP_NO_DELAY,
   LAST_PROPERTY
 };
 
@@ -393,6 +398,17 @@ pseudo_tcp_socket_class_init (PseudoTcpSocketClass *cls)
           TCP_LISTEN, TCP_CLOSED, TCP_LISTEN,
           G_PARAM_READABLE | G_PARAM_STATIC_STRINGS));
 
+  g_object_class_install_property (object_class, PROP_ACK_DELAY,
+      g_param_spec_uint ("ack-delay", "ACK Delay",
+          "Delayed ACK timeout (in milliseconds)",
+          0, G_MAXUINT, DEFAULT_ACK_DELAY,
+          G_PARAM_READWRITE| G_PARAM_STATIC_STRINGS));
+
+  g_object_class_install_property (object_class, PROP_NO_DELAY,
+      g_param_spec_boolean ("no-delay", "No Delay",
+          "Disable the Nagle algorithm (like the TCP_NODELAY option)",
+          DEFAULT_NO_DELAY,
+          G_PARAM_READWRITE| G_PARAM_STATIC_STRINGS));
 }
 
 
@@ -413,6 +429,12 @@ pseudo_tcp_socket_get_property (GObject *object,
       break;
     case PROP_STATE:
       g_value_set_uint (value, self->priv->state);
+      break;
+    case PROP_ACK_DELAY:
+      g_value_set_uint (value, self->priv->ack_delay);
+      break;
+    case PROP_NO_DELAY:
+      g_value_set_boolean (value, !self->priv->use_nagling);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -437,6 +459,12 @@ pseudo_tcp_socket_set_property (GObject *object,
         PseudoTcpCallbacks *c = g_value_get_pointer (value);
         self->priv->callbacks = *c;
       }
+      break;
+    case PROP_ACK_DELAY:
+      self->priv->ack_delay = g_value_get_uint (value);
+      break;
+    case PROP_NO_DELAY:
+      self->priv->use_nagling = !g_value_get_boolean (value);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -518,6 +546,9 @@ pseudo_tcp_socket_init (PseudoTcpSocket *obj)
 
   priv->rx_rto = DEF_RTO;
   priv->rx_srtt = priv->rx_rttvar = 0;
+
+  priv->ack_delay = DEFAULT_ACK_DELAY;
+  priv->use_nagling = !DEFAULT_NO_DELAY;
 }
 
 PseudoTcpSocket *pseudo_tcp_socket_new (guint32 conversation,
@@ -619,7 +650,7 @@ pseudo_tcp_socket_notify_clock(PseudoTcpSocket *self)
   }
 
   // Check if it's time to send delayed acks
-  if (priv->t_ack && (time_diff(priv->t_ack + ACK_DELAY, now) <= 0)) {
+  if (priv->t_ack && (time_diff(priv->t_ack + priv->ack_delay, now) <= 0)) {
     packet(self, priv->snd_nxt, 0, 0, 0);
   }
 
@@ -659,7 +690,7 @@ pseudo_tcp_socket_get_next_clock(PseudoTcpSocket *self, long *timeout)
   *timeout = DEFAULT_TIMEOUT;
 
   if (priv->t_ack) {
-    *timeout = min(*timeout, time_diff(priv->t_ack + ACK_DELAY, now));
+    *timeout = min(*timeout, time_diff(priv->t_ack + priv->ack_delay, now));
   }
   if (priv->rto_base) {
     *timeout = min(*timeout, time_diff(priv->rto_base + priv->rx_rto, now));
@@ -1092,7 +1123,11 @@ process(PseudoTcpSocket *self, Segment *seg)
   if (seg->seq != priv->rcv_nxt) {
     sflags = sfImmediateAck; // (Fast Recovery)
   } else if (seg->len != 0) {
-    sflags = sfDelayedAck;
+    if (priv->ack_delay == 0) {
+      sflags = sfImmediateAck;
+    } else {
+      sflags = sfDelayedAck;
+    }
   }
   if (sflags == sfImmediateAck) {
     if (seg->seq > priv->rcv_nxt) {
@@ -1322,7 +1357,11 @@ attempt_send(PseudoTcpSocket *self, SendFlags sflags)
     }
 
     // Nagle algorithm
-    if ((priv->snd_nxt > priv->snd_una) && (nAvailable < priv->mss))  {
+    // If there is data already in-flight, and we haven't a full segment of
+    // data ready to send then hold off until we get more to send, or the
+    // in-flight data is acknowledged.
+    if (priv->use_nagling && (priv->snd_nxt > priv->snd_una) &&
+        (nAvailable < priv->mss))  {
       return;
     }
 
