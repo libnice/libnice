@@ -137,8 +137,6 @@ static void readable (PseudoTcpSocket *sock, gpointer data)
         pseudo_tcp_socket_get_error (sock));
     exit (-1);
   }
-
-  adjust_clock (sock);
 }
 
 static void writable (PseudoTcpSocket *sock, gpointer data)
