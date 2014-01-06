@@ -60,8 +60,8 @@ static void adjust_clock (PseudoTcpSocket *sock);
 static void write_to_sock (PseudoTcpSocket *sock)
 {
   gchar buf[1024];
-  guint len;
-  guint wlen;
+  gsize len;
+  gint wlen;
   guint total = 0;
 
   while (TRUE) {
@@ -72,10 +72,10 @@ static void write_to_sock (PseudoTcpSocket *sock)
       break;
     } else {
       wlen = pseudo_tcp_socket_send (sock, buf, len);
-      g_debug ("Sending %d bytes : %d", len, wlen);
+      g_debug ("Sending %" G_GSIZE_FORMAT " bytes : %d", len, wlen);
       total += wlen;
       total_read += wlen;
-      if (wlen < len) {
+      if (wlen < (gint) len) {
         fseek (in, wlen - len, SEEK_CUR);
         g_debug ("Socket queue full after %d bytes written", total);
         break;
