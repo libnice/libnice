@@ -141,7 +141,8 @@ struct _Component
   NiceComponentState state;
   GSList *local_candidates;    /**< list of Candidate objs */
   GSList *remote_candidates;   /**< list of Candidate objs */
-  GSList *socket_sources;      /**< list of SocketSource objs */
+  GSList *socket_sources;      /**< list of SocketSource objs; must only grow monotonically */
+  guint socket_sources_age;    /**< incremented when socket_sources changes */
   GSList *incoming_checks;     /**< list of IncomingCheck objs */
   GList *turn_servers;             /**< List of TURN servers */
   CandidatePair selected_pair; /**< independent from checklists, 
@@ -219,6 +220,10 @@ void
 component_detach_all_sockets (Component *component);
 void
 component_free_socket_sources (Component *component);
+
+GSource *
+component_source_new (Component *component, GObject *pollable_stream,
+    GIOCondition condition, GCancellable *cancellable);
 
 GMainContext *
 component_dup_io_context (Component *component);
