@@ -116,15 +116,13 @@ static void readable (PseudoTcpSocket *sock, gpointer data)
           total_wrote += len;
 
           g_debug ("Written %d bytes, need %d bytes", total_wrote, total_read);
-          if (total_wrote >= total_read && feof (in)) {
-            pseudo_tcp_socket_close (left, FALSE);
-            pseudo_tcp_socket_close (right, FALSE);
+          if (total_wrote == total_read && feof (in)) {
+            pseudo_tcp_socket_close (sock, FALSE);
           }
         }
       } else {
         if (len == 26 && strncmp (buf, "abcdefghijklmnopqrstuvwxyz", len) == 0) {
-          pseudo_tcp_socket_close (left, FALSE);
-          pseudo_tcp_socket_close (right, FALSE);
+          pseudo_tcp_socket_close (sock, FALSE);
         } else {
           g_debug ("Error reading data.. read %d bytes : %s", len, buf);
           exit (-1);
@@ -144,7 +142,7 @@ static void readable (PseudoTcpSocket *sock, gpointer data)
 static void writable (PseudoTcpSocket *sock, gpointer data)
 {
   g_debug ("Socket %p Writable", sock);
-  if (in)
+  if (in && sock == left)
     write_to_sock (sock);
 }
 
