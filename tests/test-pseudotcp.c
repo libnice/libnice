@@ -55,6 +55,8 @@ guint right_clock = 0;
 gboolean left_closed;
 gboolean right_closed;
 
+gboolean reading_done = FALSE;
+
 static void adjust_clock (PseudoTcpSocket *sock);
 
 static void write_to_sock (PseudoTcpSocket *sock)
@@ -68,6 +70,8 @@ static void write_to_sock (PseudoTcpSocket *sock)
     len = fread (buf, 1, sizeof(buf), in);
     if (len == 0) {
       g_debug ("Done reading data from file");
+      g_assert (feof (in));
+      reading_done = TRUE;
       pseudo_tcp_socket_close (sock, FALSE);
       break;
     } else {
@@ -76,7 +80,9 @@ static void write_to_sock (PseudoTcpSocket *sock)
       total += wlen;
       total_read += wlen;
       if (wlen < (gint) len) {
+        g_debug ("seeking  %ld from %lu", wlen - len, ftell (in));
         fseek (in, wlen - len, SEEK_CUR);
+        g_assert (!feof (in));
         g_debug ("Socket queue full after %d bytes written", total);
         break;
       }
@@ -93,6 +99,7 @@ static void opened (PseudoTcpSocket *sock, gpointer data)
       write_to_sock (sock);
     else {
       pseudo_tcp_socket_send (sock, "abcdefghijklmnopqrstuvwxyz", 26);
+      reading_done = TRUE;
       pseudo_tcp_socket_close (sock, FALSE);
     }
   }
@@ -115,8 +122,10 @@ static void readable (PseudoTcpSocket *sock, gpointer data)
         else {
           total_wrote += len;
 
+          g_assert (total_wrote <= total_read);
           g_debug ("Written %d bytes, need %d bytes", total_wrote, total_read);
           if (total_wrote == total_read && feof (in)) {
+            g_assert (reading_done);
             pseudo_tcp_socket_close (sock, FALSE);
           }
         }
@@ -148,7 +157,7 @@ static void writable (PseudoTcpSocket *sock, gpointer data)
 
 static void closed (PseudoTcpSocket *sock, guint32 err, gpointer data)
 {
-  g_debug ("Socket %p Closed : %d", sock, err);
+  g_error ("Socket %p Closed : %d", sock, err);
 }
 
 struct notify_data {
@@ -177,7 +186,8 @@ static PseudoTcpWriteResult write (PseudoTcpSocket *sock,
   g_object_get (sock, "state", &state, NULL);
 
   if (drop_rate < 5) {
-    g_debug ("*********************Dropping packet (%d)", drop_rate);
+    g_debug ("*********************Dropping packet (%d) from %p", drop_rate,
+        sock);
     return WR_SUCCESS;
   }
 
@@ -212,7 +222,7 @@ static void adjust_clock (PseudoTcpSocket *sock)
 {
   long timeout = 0;
   if (pseudo_tcp_socket_get_next_clock (sock, &timeout)) {
-    //g_debug ("Socket %p: Adjuting clock to %ld ms", sock, timeout);
+    g_debug ("Socket %p: Adjuting clock to %ld ms", sock, timeout);
     if (sock == left) {
       if (left_clock != 0)
          g_source_remove (left_clock);
