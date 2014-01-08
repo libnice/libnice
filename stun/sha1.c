@@ -270,7 +270,12 @@ void HMACInit(HMAC_CTX* context, const uint8_t *key, size_t key_len)
 
   /* if key is longer than 64 bytes reset it to key = SHA1(key) */
   if (key_len > 64) {
-    sha1_vector(1, &key, &key_len, tk);
+    SHA1_CTX sha1_ctx;
+
+    SHA1Init(&sha1_ctx);
+    SHA1Update(&sha1_ctx, key, key_len);
+    SHA1Final(tk, &sha1_ctx);
+
     key = tk;
     key_len = 20;
   }
@@ -301,9 +306,8 @@ void HMACFinal(unsigned char digest[20], HMAC_CTX *context)
 
   unsigned char opad[64]; /* padding - key XORd with opad */
   unsigned char sha1_digest[SHA1_MAC_LEN];
-  const uint8_t *_addr[2];
-  size_t _len[2];
   size_t i;
+  SHA1_CTX outer_sha1_ctx;
 
   SHA1Final (sha1_digest, &context->context);
 
@@ -315,11 +319,10 @@ void HMACFinal(unsigned char digest[20], HMAC_CTX *context)
     opad[i] ^= 0x5c;
 
   /* perform outer SHA1 */
-  _addr[0] = opad;
-  _len[0] = 64;
-  _addr[1] = sha1_digest;
-  _len[1] = SHA1_MAC_LEN;
-  sha1_vector(2, _addr, _len, digest);
+  SHA1Init(&outer_sha1_ctx);
+  SHA1Update(&outer_sha1_ctx, opad, 64);
+  SHA1Update(&outer_sha1_ctx, sha1_digest, SHA1_MAC_LEN);
+  SHA1Final(digest, &outer_sha1_ctx);
 }
 
 
@@ -339,20 +342,15 @@ void hmac_sha1_vector(const uint8_t *key, size_t key_len, size_t num_elem,
 {
   unsigned char k_pad[64]; /* padding - key XORd with ipad/opad */
   unsigned char tk[20];
-  const uint8_t *_addr[6];
-  size_t _len[6], i;
-
-  if (num_elem > 5) {
-    /*
-     * Fixed limit on the number of fragments to avoid having to
-     * allocate memory (which could fail).
-     */
-    return;
-  }
+  size_t i;
+  SHA1_CTX sha1_ctx;
 
   /* if key is longer than 64 bytes reset it to key = SHA1(key) */
   if (key_len > 64) {
-    sha1_vector(1, &key, &key_len, tk);
+    SHA1Init(&sha1_ctx);
+    SHA1Update(&sha1_ctx, key, key_len);
+    SHA1Final(tk, &sha1_ctx);
+
     key = tk;
     key_len = 20;
   }
@@ -374,13 +372,11 @@ void hmac_sha1_vector(const uint8_t *key, size_t key_len, size_t num_elem,
     k_pad[i] ^= 0x36;
 
   /* perform inner SHA1 */
-  _addr[0] = k_pad;
-  _len[0] = 64;
-  for (i = 0; i < num_elem; i++) {
-    _addr[i + 1] = addr[i];
-    _len[i + 1] = len[i];
-  }
-  sha1_vector(1 + num_elem, _addr, _len, mac);
+  SHA1Init(&sha1_ctx);
+  SHA1Update(&sha1_ctx, k_pad, 64);
+  for (i = 0; i < num_elem; i++)
+    SHA1Update(&sha1_ctx, addr[i], len[i]);
+  SHA1Final(mac, &sha1_ctx);
 
   memset(k_pad, 0, sizeof(k_pad));
   memcpy(k_pad, key, key_len);
@@ -389,11 +385,10 @@ void hmac_sha1_vector(const uint8_t *key, size_t key_len, size_t num_elem,
     k_pad[i] ^= 0x5c;
 
   /* perform outer SHA1 */
-  _addr[0] = k_pad;
-  _len[0] = 64;
-  _addr[1] = mac;
-  _len[1] = SHA1_MAC_LEN;
-  sha1_vector(2, _addr, _len, mac);
+  SHA1Init(&sha1_ctx);
+  SHA1Update(&sha1_ctx, k_pad, 64);
+  SHA1Update(&sha1_ctx, mac, SHA1_MAC_LEN);
+  SHA1Final(mac, &sha1_ctx);
 }
 
 
@@ -460,25 +455,3 @@ void sha1_prf(const uint8_t *key, size_t key_len, const char *label,
     counter++;
   }
 }
-
-/**
- * sha1_vector:
- * @num_elem: Number of elements in the data vector
- * @addr: Pointers to the data areas
- * @len: Lengths of the data blocks
- * @mac: Buffer for the hash
- *
- * SHA-1 hash for data vector
- */
-void sha1_vector(size_t num_elem, const uint8_t *addr[], const size_t *len,
-    uint8_t *mac)
-{
-  SHA1_CTX ctx;
-  size_t i;
-
-  SHA1Init(&ctx);
-  for (i = 0; i < num_elem; i++)
-    SHA1Update(&ctx, addr[i], len[i]);
-  SHA1Final(mac, &ctx);
-}
-
