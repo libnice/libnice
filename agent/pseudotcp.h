@@ -412,6 +412,34 @@ gboolean pseudo_tcp_socket_notify_packet(PseudoTcpSocket *self,
  */
 void pseudo_tcp_set_debug_level (PseudoTcpDebugLevel level);
 
+
+/**
+ * pseudo_tcp_socket_get_available_bytes:
+ * @self: The #PseudoTcpSocket object.
+ *
+ * Gets the number of bytes of data in the buffer that can be read without
+ * receiving more packets from the network.
+ *
+ * Returns: The number of bytes or -1 if the connection is not established
+ *
+ * Since: 0.1.5
+ */
+
+gint pseudo_tcp_socket_get_available_bytes (PseudoTcpSocket *self);
+
+/**
+ * pseudo_tcp_socket_can_send:
+ * @self: The #PseudoTcpSocket object.
+ *
+ * Returns if there is space in the send buffer to send any data.
+ *
+ * Returns: %TRUE if data can be sent, %FALSE otherwise
+ *
+ * Since: 0.1.5
+ */
+
+gboolean pseudo_tcp_socket_can_send (PseudoTcpSocket *self);
+
 G_END_DECLS
 
 #endif /* _PSEUDOTCP_H */

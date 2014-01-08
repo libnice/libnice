@@ -1796,3 +1796,26 @@ resize_receive_buffer (PseudoTcpSocket *self, guint32 new_size)
   priv->rcv_wnd = available_space;
 }
 
+gint
+pseudo_tcp_socket_get_available_bytes (PseudoTcpSocket *self)
+{
+  PseudoTcpSocketPrivate *priv = self->priv;
+
+  if (priv->state != TCP_ESTABLISHED) {
+    return -1;
+  }
+
+  return pseudo_tcp_fifo_get_buffered (&priv->rbuf);
+}
+
+gboolean
+pseudo_tcp_socket_can_send (PseudoTcpSocket *self)
+{
+  PseudoTcpSocketPrivate *priv = self->priv;
+
+  if (priv->state != TCP_ESTABLISHED) {
+    return FALSE;
+  }
+
+  return (pseudo_tcp_fifo_get_write_remaining (&priv->sbuf) != 0);
+}

@@ -255,4 +255,6 @@ pseudo_tcp_socket_notify_clock
 pseudo_tcp_socket_notify_mtu
 pseudo_tcp_socket_notify_packet
 pseudo_tcp_set_debug_level
+pseudo_tcp_socket_get_available_bytes
+pseudo_tcp_socket_can_send
 </SECTION>
