@@ -1461,7 +1461,10 @@ process(PseudoTcpSocket *self, Segment *seg)
 
   // If we have new data, notify the user
   if (bNewData && priv->bReadEnable) {
-    priv->bReadEnable = FALSE;
+    /* priv->bReadEnable = FALSE; — removed so that we’re always notified of
+     * incoming pseudo-TCP data, rather than having to read the entire buffer
+     * on each readable() callback before the next callback is enabled.
+     * (When client-provided buffers are small, this is not possible.) */
     if (priv->callbacks.PseudoTcpReadable)
       priv->callbacks.PseudoTcpReadable(self, priv->callbacks.user_data);
   }
