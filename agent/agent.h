@@ -711,6 +711,16 @@ nice_agent_recv (
     GCancellable *cancellable,
     GError **error);
 
+gssize
+nice_agent_recv_nonblocking (
+    NiceAgent *agent,
+    guint stream_id,
+    guint component_id,
+    guint8 *buf,
+    gsize buf_len,
+    GCancellable *cancellable,
+    GError **error);
+
 /**
  * nice_agent_set_selected_pair:
  * @agent: The #NiceAgent Object
