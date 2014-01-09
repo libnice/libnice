@@ -69,7 +69,9 @@ mainloop_thread (gpointer data)
 {
   GMainLoop *loop = data;
 
-  g_usleep (100000);
+  /* Synchronise thread starting. */
+  while (!g_main_loop_is_running (error_loop));
+
   g_main_loop_run (loop);
 
   return NULL;
