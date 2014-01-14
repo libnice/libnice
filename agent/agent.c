@@ -1054,7 +1054,7 @@ pseudo_tcp_socket_readable (PseudoTcpSocket *sock, gpointer user_data)
       len = 0;
     }
 
-    nice_debug ("%s: len %" G_GSSIZE_FORMAT, G_STRFUNC, len);
+    nice_debug ("%s: received %" G_GSSIZE_FORMAT " bytes", G_STRFUNC, len);
 
     if (len > 0 && has_io_callback) {
       component_emit_io_callback (component, buf, len);
@@ -3090,16 +3090,15 @@ component_io_cb (GSocket *socket, GIOCondition condition, gpointer user_data)
     goto done;
   }
 
-  nice_debug ("Receiving on source %p (socket %p, FD %d).",
-      socket_source->source, socket_source->socket,
-      g_socket_get_fd (socket_source->socket->fileno));
-
   /* Actually read the data. This will return 0 if the data has already been
    * handled (e.g. for STUN control packets). */
   len = agent_recv_locked (agent, stream, component, socket_source->socket,
       recv_buf, recv_buf_len);
 
-  nice_debug ("\tReceived %" G_GSSIZE_FORMAT " bytes.", len);
+  nice_debug ("Received %" G_GSSIZE_FORMAT " bytes on source %p "
+      "(socket %p, FD %d).", len,
+      socket_source->source, socket_source->socket,
+      g_socket_get_fd (socket_source->socket->fileno));
 
   if (len == 0) {
     /* No data was available, probably due to being a reliable connection and
