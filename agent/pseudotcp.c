@@ -438,7 +438,8 @@ struct _PseudoTcpSocketPrivate {
 
   // Outgoing data
   GList *slist;
-  guint32 sbuf_len, snd_nxt, snd_wnd, lastsend, snd_una;
+  guint32 sbuf_len, snd_nxt, snd_wnd, lastsend;
+  guint32 snd_una;  /* oldest unacknowledged sequence number */
   guint8 swnd_scale; // Window scale factor
   PseudoTcpFifo sbuf;
 
@@ -457,7 +458,7 @@ struct _PseudoTcpSocketPrivate {
   guint32 ssthresh, cwnd;
   guint8 dup_acks;
   guint32 recover;
-  guint32 t_ack;
+  guint32 t_ack;  /* time a delayed ack was scheduled; 0 if no acks scheduled */
 
   gboolean use_nagling;
   guint32 ack_delay;
