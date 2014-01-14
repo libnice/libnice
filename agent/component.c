@@ -555,7 +555,14 @@ component_set_io_context (Component *component, GMainContext *context)
 
 /* (func, user_data) and (recv_buf, recv_buf_len) are mutually exclusive.
  * At most one of the two must be specified; if both are NULL, the Component
- * will not receive any data (i.e. reception is paused). */
+ * will not receive any data (i.e. reception is paused).
+ *
+ * Apart from during setup, this must always be called with the agent lock held,
+ * and the I/O lock released (because it takes the I/O lock itself). Requiring
+ * the agent lock to be held means it can’t be called between a packet being
+ * dequeued from the kernel buffers in agent.c, and an I/O callback being
+ * emitted for it (which could cause data loss if the I/O callback function was
+ * unset in that time). */
 void
 component_set_io_callback (Component *component,
     NiceAgentRecvFunc func, gpointer user_data,

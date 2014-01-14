@@ -690,6 +690,12 @@ nice_agent_restart (
  * This must not be used in combination with nice_agent_recv() (or
  * #NiceIOStream or #NiceInputStream) on the same stream/component pair.
  *
+ * Calling nice_agent_attach_recv() with a %NULL @func will detach any existing
+ * callback and cause reception to be paused for the given stream/component
+ * pair. You must iterate the previously specified #GMainContext sufficiently to
+ * ensure all pending I/O callbacks have been received before calling this
+ * function to unset @func, otherwise data loss of received packets may occur.
+ *
  * Returns: %TRUE on success, %FALSE if the stream or component IDs are invalid.
  */
 gboolean

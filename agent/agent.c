@@ -1019,6 +1019,7 @@ pseudo_tcp_socket_opened (PseudoTcpSocket *sock, gpointer user_data)
       stream->id, component->id);
 }
 
+/* This is called with the agent lock held. */
 static void
 pseudo_tcp_socket_readable (PseudoTcpSocket *sock, gpointer user_data)
 {
@@ -1039,7 +1040,10 @@ pseudo_tcp_socket_readable (PseudoTcpSocket *sock, gpointer user_data)
   has_io_callback = component_has_io_callback (component);
 
   do {
-    /* Only dequeue pseudo-TCP data if we can reliably inform the client. */
+    /* Only dequeue pseudo-TCP data if we can reliably inform the client. The
+     * agent lock is held here, so has_io_callback can only change during
+     * component_emit_io_callback(), after which it’s re-queried. This ensures
+     * no data loss of packets already received and dequeued. */
     if (has_io_callback) {
       len = pseudo_tcp_socket_recv (sock, (gchar *) buf, sizeof(buf));
     } else if (component->recv_buf != NULL) {
@@ -3067,7 +3071,11 @@ component_io_cb (GSocket *socket, GIOCondition condition, gpointer user_data)
 
   /* Choose which receive buffer to use. If we’re reading for
    * nice_agent_attach_recv(), use a local static buffer. If we’re reading for
-   * nice_agent_recv(), use the buffer provided by the client. */
+   * nice_agent_recv(), use the buffer provided by the client.
+   *
+   * has_io_callback cannot change throughout this function, as we operate
+   * entirely with the agent lock held, and component_set_io_callback() would
+   * need to take the agent lock to change the Component’s io_callback. */
   g_assert (!has_io_callback || component->recv_buf == NULL);
 
   if (has_io_callback) {
