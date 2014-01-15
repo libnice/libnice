@@ -185,6 +185,14 @@ recv_packet:
              &addr.addr, addr_len);
       break;
 
+    case STUN_SHARED_SECRET:
+    case STUN_ALLOCATE:
+    case STUN_SET_ACTIVE_DST:
+    case STUN_CONNECT:
+    case STUN_OLD_SET_ACTIVE_DST:
+    case STUN_IND_DATA:
+    case STUN_IND_CONNECT_STATUS:
+    case STUN_CHANNELBIND:
     default:
       if (!stun_agent_init_error (agent, &response, buf, sizeof (buf),
               &request, STUN_ERROR_BAD_REQUEST)) {
