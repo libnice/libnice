@@ -96,7 +96,10 @@ test_ipv6 (void)
 {
   NiceAddress addr, other, v4addr;
   gchar str[NICE_ADDRESS_STRING_LEN];
-  struct sockaddr_in6 sin, sin2;
+  union {
+    struct sockaddr_in6 in6;
+    struct sockaddr addr;
+  } sin, sin2;
 
   g_assert (nice_address_set_from_string (&v4addr, "172.1.0.1") == TRUE);
 
@@ -121,8 +124,8 @@ test_ipv6 (void)
   nice_address_set_from_string (&other, "11:2233:4455:6677:8899:aabb:ccdd:eeff");
   nice_address_set_port (&other, 9876); /* in native byte order */
 
-  nice_address_copy_to_sockaddr (&other, (struct sockaddr*)&sin2);
-  nice_address_copy_to_sockaddr (&addr, (struct sockaddr*)&sin);
+  nice_address_copy_to_sockaddr (&other, &sin2.addr);
+  nice_address_copy_to_sockaddr (&addr, &sin.addr);
   g_assert (nice_address_equal (&addr, &other) == TRUE);
   nice_address_to_string (&addr, str);
   nice_address_to_string (&other, str);

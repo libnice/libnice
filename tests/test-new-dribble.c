@@ -92,7 +92,10 @@ static const uint16_t known_attributes[] =  {
  */
 static int listen_socket (unsigned int port)
 {
-  struct sockaddr_in addr;
+  union {
+    struct sockaddr_in in;
+    struct sockaddr addr;
+  } addr;
   int fd = socket (AF_INET, SOCK_DGRAM, IPPROTO_UDP);
 
   if (fd == -1) {
@@ -101,11 +104,11 @@ static int listen_socket (unsigned int port)
   }
 
   memset (&addr, 0, sizeof (addr));
-  addr.sin_family = AF_INET;
-  inet_pton(AF_INET, "127.0.0.1", &addr.sin_addr);
-  addr.sin_port = htons(port);
+  addr.in.sin_family = AF_INET;
+  inet_pton(AF_INET, "127.0.0.1", &addr.in.sin_addr);
+  addr.in.sin_port = htons(port);
 
-  if (bind (fd, (struct sockaddr *)&addr, sizeof (struct sockaddr_in))) {
+  if (bind (fd, &addr.addr, sizeof (struct sockaddr_in))) {
     perror ("Error opening IP port");
     goto error;
   }
@@ -119,7 +122,10 @@ error:
 
 static int dgram_process (int sock, StunAgent *oldagent, StunAgent *newagent)
 {
-  struct sockaddr_storage addr;
+  union {
+    struct sockaddr_storage storage;
+    struct sockaddr addr;
+  } addr;
   socklen_t addr_len;
   uint8_t buf[STUN_MAX_MESSAGE_SIZE];
   size_t buf_len = 0;
@@ -134,7 +140,7 @@ static int dgram_process (int sock, StunAgent *oldagent, StunAgent *newagent)
 
 recv_packet:
   len = recvfrom (sock, buf, sizeof(buf), 0,
-      (struct sockaddr *)&addr, &addr_len);
+      &addr.addr, &addr_len);
 
   if (drop_stun_packets) {
     g_debug ("Dropping STUN packet as requested");
@@ -173,10 +179,10 @@ recv_packet:
       if (stun_message_has_cookie (&request))
         stun_message_append_xor_addr (&response,
             STUN_ATTRIBUTE_XOR_MAPPED_ADDRESS,
-            (struct sockaddr *)&addr, addr_len);
+            &addr.addr, addr_len);
       else
          stun_message_append_addr (&response, STUN_ATTRIBUTE_MAPPED_ADDRESS,
-             (struct sockaddr *)&addr, addr_len);
+             &addr.addr, addr_len);
       break;
 
     default:
@@ -199,7 +205,7 @@ send_buf:
   }
   g_mutex_unlock (stun_mutex_ptr);
   len = sendto (sock, buf, buf_len, 0,
-      (struct sockaddr *)&addr, addr_len);
+      &addr.addr, addr_len);
   g_debug ("STUN response sent");
   drop_stun_packets = TRUE;
   ret = (len < buf_len) ? -1 : 0;
@@ -630,16 +636,19 @@ static void new_candidate_test(NiceAgent *lagent, NiceAgent *ragent)
 static void send_dummy_data(void)
 {
   int sockfd = listen_socket (4567);
-  struct sockaddr_in addr;
+  union {
+    struct sockaddr_in in;
+    struct sockaddr addr;
+  } addr;
 
   memset (&addr, 0, sizeof (addr));
-  addr.sin_family = AF_INET;
-  inet_pton(AF_INET, "127.0.0.1", &addr.sin_addr);
-  addr.sin_port = htons (IPPORT_STUN);
+  addr.in.sin_family = AF_INET;
+  inet_pton(AF_INET, "127.0.0.1", &addr.in.sin_addr);
+  addr.in.sin_port = htons (IPPORT_STUN);
 
   g_debug ("Sending dummy data to close STUN thread");
   sendto (sockfd, "close socket", 12, 0,
-          (struct sockaddr *)&addr, sizeof (addr));
+          &addr.addr, sizeof (addr));
 }
 
 int main(void)
