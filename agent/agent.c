@@ -2466,40 +2466,41 @@ agent_recv_locked (
 
   for (item = component->turn_servers; item; item = g_list_next (item)) {
     TurnServer *turn = item->data;
-    if (nice_address_equal (&from, &turn->server)) {
-      GSList * i = NULL;
+    GSList *i = NULL;
+
+    if (!nice_address_equal (&from, &turn->server))
+      continue;
+
 #ifndef NDEBUG
-      nice_debug ("Agent %p : Packet received from TURN server candidate.",
-          agent);
+    nice_debug ("Agent %p : Packet received from TURN server candidate.",
+        agent);
 #endif
-      for (i = component->local_candidates; i; i = i->next) {
-        NiceCandidate *cand = i->data;
-        if (cand->type == NICE_CANDIDATE_TYPE_RELAYED &&
-            cand->stream_id == stream->id &&
-            cand->component_id == component->id) {
-          len = nice_turn_socket_parse_recv (cand->sockptr, &socket,
-              &from, len, (gchar *) local_buf, &from, (gchar *) local_buf, len);
-        }
+
+    for (i = component->local_candidates; i; i = i->next) {
+      NiceCandidate *cand = i->data;
+
+      if (cand->type == NICE_CANDIDATE_TYPE_RELAYED &&
+          cand->stream_id == stream->id &&
+          cand->component_id == component->id) {
+        len = nice_turn_socket_parse_recv (cand->sockptr, &socket,
+            &from, len, (gchar *) local_buf, &from, (gchar *) local_buf, len);
       }
-      break;
     }
   }
 
   agent->media_after_tick = TRUE;
 
+  /* If the message’s stated length is equal to its actual length, it’s probably
+   * a STUN message; otherwise it’s probably data. */
   if (stun_message_validate_buffer_length ((uint8_t *) local_buf, (size_t) len,
       (agent->compatibility != NICE_COMPATIBILITY_OC2007 &&
-       agent->compatibility != NICE_COMPATIBILITY_OC2007R2)) != len)
-    /* If the retval is not 0, it’s not a valid STUN packet; probably data. */
-    goto handle_tcp;
-
-
-  if (conn_check_handle_inbound_stun (agent, stream, component, socket,
-          &from, (gchar *) local_buf, len))
-    /* handled STUN message*/
+       agent->compatibility != NICE_COMPATIBILITY_OC2007R2)) == len &&
+      conn_check_handle_inbound_stun (agent, stream, component, socket,
+          &from, (gchar *) local_buf, len)) {
+    /* Handled STUN message. */
     return 0;
+  }
 
-handle_tcp:
   /* Unhandled STUN; try handling TCP data, then pass to the client. */
   if (len > 0 && component->tcp) {
     /* If we don’t yet have an underlying selected socket, queue up the incoming
