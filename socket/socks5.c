@@ -76,8 +76,8 @@ struct to_be_sent {
 
 
 static void socket_close (NiceSocket *sock);
-static gint socket_recv (NiceSocket *sock, NiceAddress *from,
-    guint len, gchar *buf);
+static gint socket_recv_messages (NiceSocket *sock,
+    NiceInputMessage *recv_messages, guint n_recv_messages);
 static gboolean socket_send (NiceSocket *sock, const NiceAddress *to,
     guint len, const gchar *buf);
 static gboolean socket_is_reliable (NiceSocket *sock);
@@ -106,7 +106,7 @@ nice_socks5_socket_new (NiceSocket *base_socket,
     sock->fileno = priv->base_socket->fileno;
     sock->addr = priv->base_socket->addr;
     sock->send = socket_send;
-    sock->recv = socket_recv;
+    sock->recv_messages = socket_recv_messages;
     sock->is_reliable = socket_is_reliable;
     sock->close = socket_close;
 
@@ -160,31 +160,50 @@ socket_close (NiceSocket *sock)
 
 
 static gint
-socket_recv (NiceSocket *sock, NiceAddress *from, guint buf_len, gchar *buf)
+socket_recv_messages (NiceSocket *sock,
+    NiceInputMessage *recv_messages, guint n_recv_messages)
 {
   Socks5Priv *priv = sock->priv;
-
-  if (from)
-    *from = priv->addr;
+  guint i;
+  gint ret = -1;
 
   switch (priv->state) {
     case SOCKS_STATE_CONNECTED:
-      if (priv->base_socket)
-        return nice_socket_recv (priv->base_socket, NULL, buf_len, buf);
-      break;
+      /* Common case: fast pass-through to the base socket once we’re
+       * connected. */
+      if (priv->base_socket) {
+        ret = nice_socket_recv_messages (priv->base_socket,
+            recv_messages, n_recv_messages);
+      }
+
+      if (ret <= 0)
+        return ret;
+
+      /* After successfully receiving into at least one NiceInputMessage,
+       * update the from address in each valid NiceInputMessage. */
+      for (i = 0; i < (guint) ret; i++) {
+        if (recv_messages[i].from != NULL)
+          *recv_messages[i].from = priv->addr;
+      }
+
+      return ret;
+
     case SOCKS_STATE_INIT:
       {
-        gchar data[2];
-        gint ret  = -1;
+        guint8 data[2];
+        GInputVector local_recv_buf = { data, sizeof (data) };
+        NiceInputMessage local_recv_message = { &local_recv_buf, 1, NULL, 0 };
 
         nice_debug ("Socks5 state Init");
 
-        if (priv->base_socket)
-          ret = nice_socket_recv (priv->base_socket, NULL, sizeof(data), data);
+        if (priv->base_socket) {
+          ret = nice_socket_recv_messages (priv->base_socket,
+              &local_recv_message, 1);
+        }
 
         if (ret <= 0) {
           return ret;
-        } else if(ret == sizeof(data)) {
+        } else if (ret == 1 && local_recv_buf.size == sizeof(data)) {
           if (data[0] == 0x05) {
             if (data[1] == 0x02) {
               gchar msg[515];
@@ -242,16 +261,19 @@ socket_recv (NiceSocket *sock, NiceAddress *from, guint buf_len, gchar *buf)
       break;
     case SOCKS_STATE_AUTH:
       {
-        gchar data[2];
-        gint ret  = -1;
+        guint8 data[2];
+        GInputVector local_recv_buf = { data, sizeof (data) };
+        NiceInputMessage local_recv_message = { &local_recv_buf, 1, NULL, 0 };
 
         nice_debug ("Socks5 state auth");
-        if (priv->base_socket)
-          ret = nice_socket_recv (priv->base_socket, NULL, sizeof(data), data);
+        if (priv->base_socket) {
+          ret = nice_socket_recv_messages (priv->base_socket,
+              &local_recv_message, 1);
+        }
 
         if (ret <= 0) {
           return ret;
-        } else if(ret == sizeof(data)) {
+        } else if (ret == 1 && local_recv_buf.size == sizeof(data)) {
           if (data[0] == 0x01 && data[1] == 0x00) {
             /* Authenticated */
             goto send_connect;
@@ -264,16 +286,20 @@ socket_recv (NiceSocket *sock, NiceAddress *from, guint buf_len, gchar *buf)
       break;
     case SOCKS_STATE_CONNECT:
       {
-        gchar data[22];
-        gint ret  = -1;
+        guint8 data[22];
+        GInputVector local_recv_buf = { data, sizeof (data) };
+        NiceInputMessage local_recv_message = { &local_recv_buf, 1, NULL, 0 };
 
         nice_debug ("Socks5 state connect");
-        if (priv->base_socket)
-          ret = nice_socket_recv (priv->base_socket, NULL, 4, data);
+        if (priv->base_socket) {
+          local_recv_buf.size = 4;
+          ret = nice_socket_recv_messages (priv->base_socket,
+              &local_recv_message, 1);
+        }
 
         if (ret <= 0) {
           return ret;
-        } else if(ret == 4) {
+        } else if (ret == 1 && local_recv_buf.size == 4) {
           if (data[0] == 0x05) {
             switch (data[1]) {
               case 0x00:
@@ -281,15 +307,19 @@ socket_recv (NiceSocket *sock, NiceAddress *from, guint buf_len, gchar *buf)
                   struct to_be_sent *tbs = NULL;
                   switch (data[3]) {
                     case 0x01: /* IPV4 bound address */
-                      ret = nice_socket_recv (priv->base_socket, NULL, 6, data);
-                      if (ret != 6) {
+                      local_recv_buf.size = 6;
+                      ret = nice_socket_recv_messages (priv->base_socket,
+                          &local_recv_message, 1);
+                      if (ret != 1 || local_recv_buf.size != 6) {
                         /* Could not read server bound address */
                         goto error;
                       }
                       break;
                     case 0x04: /* IPV6 bound address */
-                      ret = nice_socket_recv (priv->base_socket, NULL, 18, data);
-                      if (ret != 18) {
+                      local_recv_buf.size = 18;
+                      ret = nice_socket_recv_messages (priv->base_socket,
+                          &local_recv_message, 1);
+                      if (ret != 1 || local_recv_buf.size != 18) {
                         /* Could not read server bound address */
                         goto error;
                       }

@@ -43,6 +43,7 @@
 #endif
 
 #include "tcp-turn.h"
+#include "agent-priv.h"
 
 #include <string.h>
 #include <errno.h>
@@ -66,8 +67,8 @@ typedef struct {
 #define MAX_UDP_MESSAGE_SIZE 65535
 
 static void socket_close (NiceSocket *sock);
-static gint socket_recv (NiceSocket *sock, NiceAddress *from,
-    guint len, gchar *buf);
+static gint socket_recv_messages (NiceSocket *sock,
+    NiceInputMessage *recv_messages, guint n_recv_messages);
 static gboolean socket_send (NiceSocket *sock, const NiceAddress *to,
     guint len, const gchar *buf);
 static gboolean socket_is_reliable (NiceSocket *sock);
@@ -86,7 +87,7 @@ nice_tcp_turn_socket_new (NiceSocket *base_socket,
   sock->fileno = priv->base_socket->fileno;
   sock->addr = priv->base_socket->addr;
   sock->send = socket_send;
-  sock->recv = socket_recv;
+  sock->recv_messages = socket_recv_messages;
   sock->is_reliable = socket_is_reliable;
   sock->close = socket_close;
 
@@ -105,13 +106,14 @@ socket_close (NiceSocket *sock)
   g_slice_free(TurnTcpPriv, sock->priv);
 }
 
-
-static gint
-socket_recv (NiceSocket *sock, NiceAddress *from, guint len, gchar *buf)
+static gssize
+socket_recv_message (NiceSocket *sock, NiceInputMessage *recv_message)
 {
   TurnTcpPriv *priv = sock->priv;
-  int ret;
+  gssize ret;
   guint padlen;
+  GInputVector local_recv_buf;
+  NiceInputMessage local_recv_message;
 
   if (priv->expecting_len == 0) {
     guint headerlen = 0;
@@ -124,13 +126,18 @@ socket_recv (NiceSocket *sock, NiceAddress *from, guint len, gchar *buf)
     else
       return -1;
 
-    ret = nice_socket_recv (priv->base_socket, from,
-        headerlen - priv->recv_buf_len,
-        (gchar *) priv->recv_buf.u8 + priv->recv_buf_len);
+    local_recv_buf.buffer = priv->recv_buf.u8 + priv->recv_buf_len;
+    local_recv_buf.size = headerlen - priv->recv_buf_len;
+    local_recv_message.buffers = &local_recv_buf;
+    local_recv_message.n_buffers = 1;
+    local_recv_message.from = recv_message->from;
+    local_recv_message.length = 0;
+
+    ret = nice_socket_recv_messages (priv->base_socket, &local_recv_message, 1);
     if (ret < 0)
         return ret;
 
-    priv->recv_buf_len += ret;
+    priv->recv_buf_len += local_recv_message.length;
 
     if (priv->recv_buf_len < headerlen)
       return 0;
@@ -161,25 +168,58 @@ socket_recv (NiceSocket *sock, NiceAddress *from, guint len, gchar *buf)
   else
     padlen = 0;
 
-  ret = nice_socket_recv (priv->base_socket, from,
-      priv->expecting_len + padlen - priv->recv_buf_len,
-      (gchar *) priv->recv_buf.u8 + priv->recv_buf_len);
+  local_recv_buf.buffer = priv->recv_buf.u8 + priv->recv_buf_len;
+  local_recv_buf.size = priv->expecting_len + padlen - priv->recv_buf_len;
+  local_recv_message.buffers = &local_recv_buf;
+  local_recv_message.n_buffers = 1;
+  local_recv_message.from = recv_message->from;
+  local_recv_message.length = 0;
 
+  ret = nice_socket_recv_messages (priv->base_socket, &local_recv_message, 1);
   if (ret < 0)
       return ret;
 
-  priv->recv_buf_len += ret;
+  priv->recv_buf_len += local_recv_message.length;
 
   if (priv->recv_buf_len == priv->expecting_len + padlen) {
-    guint copy_len = MIN (len, priv->recv_buf_len);
-    memcpy (buf, priv->recv_buf.u8, copy_len);
+    /* FIXME: Eliminate this memcpy(). */
+    ret = memcpy_buffer_to_input_message (recv_message,
+        priv->recv_buf.u8, priv->recv_buf_len);
+
     priv->expecting_len = 0;
     priv->recv_buf_len = 0;
 
-    return copy_len;
+    return ret;
   }
 
   return 0;
+}
+
+static gint
+socket_recv_messages (NiceSocket *socket,
+    NiceInputMessage *recv_messages, guint n_recv_messages)
+{
+  guint i;
+  gboolean error = FALSE;
+
+  for (i = 0; i < n_recv_messages; i++) {
+    gssize len;
+
+    len = socket_recv_message (socket, &recv_messages[i]);
+    recv_messages[i].length = MAX (len, 0);
+
+    if (len < 0)
+      error = TRUE;
+
+    if (len <= 0)
+      break;
+  }
+
+  /* Was there an error processing the first message? */
+  if (error && i == 0)
+    return -1;
+
+  return i;
 }
 
 static gboolean

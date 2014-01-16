@@ -2438,13 +2438,19 @@ agent_recv_locked (
   GList *item;
   guint8 local_buf[MAX_BUFFER_SIZE];
   gsize local_buf_len = MAX_BUFFER_SIZE;
+  GInputVector local_bufs = { local_buf, local_buf_len };
+  NiceInputMessage local_messages = { &local_bufs, 1, &from, 0 };
+  gint n_valid_messages;
 
   /* Returns -1 on error, 0 on EWOULDBLOCK, and > 0 on success.
    *
    * FIXME: We have to receive into a local buffer then copy out because
    * otherwise, if @buf is too small, we could lose data, even when in
    * reliable mode (because reliable streams are packetised). */
-  len = nice_socket_recv (socket, &from, local_buf_len, (gchar *) local_buf);
+  n_valid_messages = nice_socket_recv_messages (socket, &local_messages, 1);
+
+  len = (n_valid_messages == 1) ?
+      (gssize) local_messages.length : n_valid_messages;
 
   if (len == 0) {
     return 0;
@@ -2553,6 +2559,99 @@ agent_recv_locked (
   }
 
   return len;
+}
+
+/* Print the composition of an array of messages. No-op if debugging is
+ * disabled. */
+static void
+nice_debug_message_composition (NiceInputMessage *messages, guint n_messages)
+{
+#ifndef NDEBUG
+  guint i;
+
+  for (i = 0; i < n_messages; i++) {
+    NiceInputMessage *message = &messages[i];
+    guint j;
+
+    nice_debug ("Message %p (from: %p, length: %" G_GSIZE_FORMAT ")", message,
+        message->from, message->length);
+
+    for (j = 0;
+         (message->n_buffers >= 0 && j < (guint) message->n_buffers) ||
+         (message->n_buffers < 0 && message->buffers[j].buffer != NULL);
+         j++) {
+      GInputVector *buffer = &message->buffers[j];
+
+      nice_debug ("\tBuffer %p (length: %" G_GSIZE_FORMAT ")", buffer->buffer,
+          buffer->size);
+    }
+  }
+#endif
+}
+
+/* Concatenate all the buffers in the given @recv_message into a single, newly
+ * allocated, monolithic buffer which is returned. The length of the new buffer
+ * is returned in @buffer_length, and should be equal to the length field of
+ * @recv_message.
+ *
+ * The return value must be freed with g_free(). */
+guint8 *
+compact_input_message (NiceInputMessage *message, gsize *buffer_length)
+{
+  guint8 *buffer;
+  gsize offset = 0;
+  guint i;
+
+  nice_debug ("%s: **WARNING: SLOW PATH**", G_STRFUNC);
+  nice_debug_message_composition (message, 1);
+
+  *buffer_length = message->length;
+  buffer = g_malloc (*buffer_length);
+
+  for (i = 0;
+       (message->n_buffers >= 0 && i < (guint) message->n_buffers) ||
+       (message->n_buffers < 0 && message->buffers[i].buffer != NULL);
+       i++) {
+    gsize len = MIN (*buffer_length - offset, message->buffers[i].size);
+    memcpy (buffer + offset, message->buffers[i].buffer, len);
+    offset += len;
+  }
+
+  return buffer;
+}
+
+/* Returns the number of bytes copied. Silently drops any data from @buffer
+ * which doesn’t fit in @message. */
+gsize
+memcpy_buffer_to_input_message (NiceInputMessage *message,
+    const guint8 *buffer, gsize buffer_length)
+{
+  guint i;
+
+  nice_debug ("%s: **WARNING: SLOW PATH**", G_STRFUNC);
+
+  message->length = 0;
+
+  for (i = 0;
+       buffer_length > 0 &&
+       ((message->n_buffers >= 0 && i < (guint) message->n_buffers) ||
+        (message->n_buffers < 0 && message->buffers[i].buffer != NULL));
+       i++) {
+    gsize len;
+
+    len = MIN (message->buffers[i].size, buffer_length);
+    memcpy (message->buffers[i].buffer, buffer, len);
+
+    buffer += len;
+    buffer_length -= len;
+
+    message->buffers[i].size = len;
+    message->length += len;
+  }
+
+  nice_debug_message_composition (message, 1);
+
+  return message->length;
 }
 
 static gboolean

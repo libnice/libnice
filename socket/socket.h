@@ -37,6 +37,7 @@
 #ifndef _SOCKET_H
 #define _SOCKET_H
 
+#include "agent.h"
 #include "address.h"
 #include <gio/gio.h>
 
@@ -58,8 +59,10 @@ struct _NiceSocket
 {
   NiceAddress addr;
   GSocket *fileno;
-  gint (*recv) (NiceSocket *sock, NiceAddress *from, guint len,
-      gchar *buf);
+  /* Implementations must handle any value of n_recv_messages, including 0. Iff
+   * n_recv_messages is 0, recv_messages may be NULL. */
+  gint (*recv_messages) (NiceSocket *sock,
+      NiceInputMessage *recv_messages, guint n_recv_messages);
   gboolean (*send) (NiceSocket *sock, const NiceAddress *to, guint len,
       const gchar *buf);
   gboolean (*is_reliable) (NiceSocket *sock);
@@ -69,7 +72,8 @@ struct _NiceSocket
 
 G_GNUC_WARN_UNUSED_RESULT
 gint
-nice_socket_recv (NiceSocket *sock, NiceAddress *from, guint len, gchar *buf);
+nice_socket_recv_messages (NiceSocket *sock,
+    NiceInputMessage *recv_messages, guint n_recv_messages);
 
 gboolean
 nice_socket_send (NiceSocket *sock, const NiceAddress *to,

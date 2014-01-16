@@ -114,8 +114,8 @@ typedef struct {
 } SendData;
 
 static void socket_close (NiceSocket *sock);
-static gint socket_recv (NiceSocket *sock, NiceAddress *from,
-    guint len, gchar *buf);
+static gint socket_recv_messages (NiceSocket *sock,
+    NiceInputMessage *recv_messages, guint n_recv_messages);
 static gboolean socket_send (NiceSocket *sock, const NiceAddress *to,
     guint len, const gchar *buf);
 static gboolean socket_is_reliable (NiceSocket *sock);
@@ -230,7 +230,7 @@ nice_turn_socket_new (GMainContext *ctx, NiceAddress *addr,
   sock->addr = *addr;
   sock->fileno = base_socket->fileno;
   sock->send = socket_send;
-  sock->recv = socket_recv;
+  sock->recv_messages = socket_recv_messages;
   sock->is_reliable = socket_is_reliable;
   sock->close = socket_close;
   sock->priv = (void *) priv;
@@ -304,25 +304,89 @@ socket_close (NiceSocket *sock)
 }
 
 static gint
-socket_recv (NiceSocket *sock, NiceAddress *from, guint len, gchar *buf)
+socket_recv_messages (NiceSocket *sock,
+    NiceInputMessage *recv_messages, guint n_recv_messages)
 {
   TurnPriv *priv = (TurnPriv *) sock->priv;
-  uint8_t recv_buf[STUN_MAX_MESSAGE_SIZE];
-  gint recv_len;
-  NiceAddress recv_from;
-  NiceSocket *dummy;
+  gint n_messages;
+  guint i;
+  gboolean error = FALSE;
+  guint n_valid_messages;
 
   nice_debug ("received message on TURN socket");
 
-  recv_len = nice_socket_recv (priv->base_socket, &recv_from,
-      sizeof(recv_buf), (gchar *) recv_buf);
+  n_messages = nice_socket_recv_messages (priv->base_socket,
+      recv_messages, n_recv_messages);
 
-  if (recv_len > 0)
-    return nice_turn_socket_parse_recv (sock, &dummy, from, len, buf,
-        &recv_from, (gchar *) recv_buf,
-        (guint) recv_len);
-  else
-    return recv_len;
+  if (n_messages < 0)
+    return n_messages;
+
+  /* Process all the messages. Those which fail parsing are re-used for the next
+   * message.
+   *
+   * FIXME: This needs a fast path which avoids allocations or memcpy()s.
+   * Implementing such a path means rewriting the TURN parser (and hence the
+   * STUN message code) to operate on vectors of buffers, rather than a
+   * monolithic buffer. */
+  for (i = 0; i < (guint) n_messages; i += n_valid_messages) {
+    NiceInputMessage *message = &recv_messages[i];
+    NiceSocket *dummy;
+    NiceAddress from;
+    guint8 *buffer;
+    gsize buffer_length;
+    gint parsed_buffer_length;
+    gboolean allocated_buffer = FALSE;
+
+    n_valid_messages = 1;
+
+    /* Compact the message’s buffers into a single one for parsing. Avoid this
+     * in the (hopefully) common case of a single-element buffer vector. */
+    if (message->n_buffers == 1 ||
+        (message->n_buffers == -1 &&
+         message->buffers[0].buffer != NULL &&
+         message->buffers[1].buffer == NULL)) {
+      buffer = message->buffers[0].buffer;
+      buffer_length = message->buffers[0].size;
+    } else {
+      nice_debug ("%s: **WARNING: SLOW PATH**", G_STRFUNC);
+
+      buffer = compact_input_message (message, &buffer_length);
+      allocated_buffer = TRUE;
+    }
+
+    /* Parse in-place. */
+    parsed_buffer_length = nice_turn_socket_parse_recv (sock, &dummy,
+        &from, buffer_length, (gchar *) buffer,
+        message->from, (gchar *) buffer, buffer_length);
+    message->length = MAX (parsed_buffer_length, 0);
+
+    if (parsed_buffer_length < 0) {
+      error = TRUE;
+    } else if (parsed_buffer_length == 0) {
+      /* A TURN control message which needs ignoring. Re-use this
+       * NiceInputMessage in the next loop iteration. */
+      n_valid_messages = 0;
+    }
+
+    /* Split up the monolithic buffer again into the caller-provided buffers. */
+    if (parsed_buffer_length > 0 && allocated_buffer) {
+      parsed_buffer_length =
+          memcpy_buffer_to_input_message (message, buffer,
+              parsed_buffer_length);
+    }
+
+    if (allocated_buffer)
+      g_free (buffer);
+
+    if (error)
+      break;
+  }
+
+  /* Was there an error processing the first message? */
+  if (error && i == 0)
+    return -1;
+
+  return i;
 }
 
 static GSource *

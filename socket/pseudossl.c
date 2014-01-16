@@ -89,8 +89,8 @@ static const gchar SSL_CLIENT_HANDSHAKE[] = {
 
 
 static void socket_close (NiceSocket *sock);
-static gint socket_recv (NiceSocket *sock, NiceAddress *from,
-    guint len, gchar *buf);
+static gint socket_recv_messages (NiceSocket *sock,
+    NiceInputMessage *recv_messages, guint n_recv_messages);
 static gboolean socket_send (NiceSocket *sock, const NiceAddress *to,
     guint len, const gchar *buf);
 static gboolean socket_is_reliable (NiceSocket *sock);
@@ -113,7 +113,7 @@ nice_pseudossl_socket_new (NiceSocket *base_socket)
   sock->fileno = priv->base_socket->fileno;
   sock->addr = priv->base_socket->addr;
   sock->send = socket_send;
-  sock->recv = socket_recv;
+  sock->recv_messages = socket_recv_messages;
   sock->is_reliable = socket_is_reliable;
   sock->close = socket_close;
 
@@ -142,23 +142,33 @@ socket_close (NiceSocket *sock)
 
 
 static gint
-socket_recv (NiceSocket *sock, NiceAddress *from, guint len, gchar *buf)
+socket_recv_messages (NiceSocket *sock,
+    NiceInputMessage *recv_messages, guint n_recv_messages)
 {
   PseudoSSLPriv *priv = sock->priv;
 
   if (priv->handshaken) {
-    if (priv->base_socket)
-      return nice_socket_recv (priv->base_socket, from, len, buf);
+    if (priv->base_socket) {
+      /* Fast path: once we’ve done the handshake, pass straight through to the
+       * base socket. */
+      return nice_socket_recv_messages (priv->base_socket,
+          recv_messages, n_recv_messages);
+    }
   } else {
-    gchar data[sizeof(SSL_SERVER_HANDSHAKE)];
-    gint ret  = -1;
+    guint8 data[sizeof(SSL_SERVER_HANDSHAKE)];
+    gint ret = -1;
+    GInputVector local_recv_buf = { data, sizeof (data) };
+    NiceInputMessage local_recv_message = { &local_recv_buf, 1, NULL, 0 };
 
-    if (priv->base_socket)
-      ret = nice_socket_recv (priv->base_socket, from, sizeof(data), data);
+    if (priv->base_socket) {
+      ret = nice_socket_recv_messages (priv->base_socket,
+          &local_recv_message, 1);
+    }
 
     if (ret <= 0) {
       return ret;
-    } else if ((guint) ret == sizeof(SSL_SERVER_HANDSHAKE) &&
+    } else if (ret == 1 &&
+        local_recv_buf.size == sizeof (SSL_SERVER_HANDSHAKE) &&
         memcmp(SSL_SERVER_HANDSHAKE, data, sizeof(SSL_SERVER_HANDSHAKE)) == 0) {
       struct to_be_sent *tbs = NULL;
       priv->handshaken = TRUE;

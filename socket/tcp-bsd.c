@@ -70,8 +70,8 @@ struct to_be_sent {
 #define MAX_QUEUE_LENGTH 20
 
 static void socket_close (NiceSocket *sock);
-static gint socket_recv (NiceSocket *sock, NiceAddress *from,
-    guint len, gchar *buf);
+static gint socket_recv_messages (NiceSocket *sock,
+    NiceInputMessage *recv_messages, guint n_recv_messages);
 static gboolean socket_send (NiceSocket *sock, const NiceAddress *to,
     guint len, const gchar *buf);
 static gboolean socket_is_reliable (NiceSocket *sock);
@@ -170,7 +170,7 @@ nice_tcp_bsd_socket_new (GMainContext *ctx, NiceAddress *addr)
 
   sock->fileno = gsock;
   sock->send = socket_send;
-  sock->recv = socket_recv;
+  sock->recv_messages = socket_recv_messages;
   sock->is_reliable = socket_is_reliable;
   sock->close = socket_close;
 
@@ -202,36 +202,54 @@ socket_close (NiceSocket *sock)
 }
 
 static gint
-socket_recv (NiceSocket *sock, NiceAddress *from, guint len, gchar *buf)
+socket_recv_messages (NiceSocket *sock,
+    NiceInputMessage *recv_messages, guint n_recv_messages)
 {
   TcpPriv *priv = sock->priv;
-  int ret;
-  GError *gerr = NULL;
+  guint i;
 
   /* Don't try to access the socket if it had an error */
   if (priv->error)
     return -1;
 
-  ret = g_socket_receive (sock->fileno, buf, len, NULL, &gerr);
+  for (i = 0; i < n_recv_messages; i++) {
+    gint flags = G_SOCKET_MSG_NONE;
+    GError *gerr = NULL;
+    gssize len;
 
-  /* recv returns 0 when the peer performed a shutdown.. we must return -1 here
-   * so that the agent destroys the g_source */
-  if (ret == 0) {
-    priv->error = TRUE;
+    len = g_socket_receive_message (sock->fileno, NULL,
+        recv_messages[i].buffers, recv_messages[i].n_buffers,
+        NULL, NULL, &flags, NULL, &gerr);
+
+    recv_messages[i].length = MAX (len, 0);
+
+    /* recv returns 0 when the peer performed a shutdown.. we must return -1
+     * here so that the agent destroys the g_source */
+    if (len == 0) {
+      priv->error = TRUE;
+      break;
+    }
+
+    if (len < 0) {
+      if (g_error_matches (gerr, G_IO_ERROR, G_IO_ERROR_WOULD_BLOCK))
+        len = 0;
+
+      g_error_free (gerr);
+      return len;
+    }
+
+    if (recv_messages[i].from)
+      *recv_messages[i].from = priv->server_addr;
+
+    if (len <= 0)
+      break;
+  }
+
+  /* Was there an error processing the first message? */
+  if (priv->error && i == 0)
     return -1;
-  }
 
-  if (ret < 0) {
-    if(g_error_matches (gerr, G_IO_ERROR, G_IO_ERROR_WOULD_BLOCK))
-      ret = 0;
-
-    g_error_free (gerr);
-    return ret;
-  }
-
-  if (from)
-    *from = priv->server_addr;
-  return ret;
+  return i;
 }
 
 /* Data sent to this function must be a single entity because buffers can be

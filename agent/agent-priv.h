@@ -181,4 +181,10 @@ component_io_cb (
 gssize agent_recv_locked (NiceAgent *agent, Stream *stream,
     Component *component, NiceSocket *socket, guint8 *buf, gsize buf_len);
 
+gsize
+memcpy_buffer_to_input_message (NiceInputMessage *message,
+    const guint8 *buffer, gsize buffer_length);
+guint8 *
+compact_input_message (NiceInputMessage *message, gsize *buffer_length);
+
 #endif /*_NICE_AGENT_PRIV_H */

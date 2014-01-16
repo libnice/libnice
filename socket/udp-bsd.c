@@ -57,8 +57,8 @@
 
 
 static void socket_close (NiceSocket *sock);
-static gint socket_recv (NiceSocket *sock, NiceAddress *from,
-    guint len, gchar *buf);
+static gint socket_recv_messages (NiceSocket *sock,
+    NiceInputMessage *recv_messages, guint n_recv_messages);
 static gboolean socket_send (NiceSocket *sock, const NiceAddress *to,
     guint len, const gchar *buf);
 static gboolean socket_is_reliable (NiceSocket *sock);
@@ -143,7 +143,7 @@ nice_udp_bsd_socket_new (NiceAddress *addr)
 
   sock->fileno = gsock;
   sock->send = socket_send;
-  sock->recv = socket_recv;
+  sock->recv_messages = socket_recv_messages;
   sock->is_reliable = socket_is_reliable;
   sock->close = socket_close;
 
@@ -168,36 +168,60 @@ socket_close (NiceSocket *sock)
 }
 
 static gint
-socket_recv (NiceSocket *sock, NiceAddress *from, guint len, gchar *buf)
+socket_recv_messages (NiceSocket *sock,
+    NiceInputMessage *recv_messages, guint n_recv_messages)
 {
-  GSocketAddress *gaddr = NULL;
-  GError *gerr = NULL;
-  gint recvd;
+  guint i;
+  gboolean error = FALSE;
 
-  recvd = g_socket_receive_from (sock->fileno, &gaddr, buf, len, NULL, &gerr);
+  /* Read messages into recv_messages until one fails or would block, or we
+   * reach the end. */
+  for (i = 0; i < n_recv_messages; i++) {
+    NiceInputMessage *recv_message = &recv_messages[i];
+    GSocketAddress *gaddr = NULL;
+    GError *gerr = NULL;
+    gssize recvd;
+    gint flags = G_SOCKET_MSG_NONE;
 
-  if (recvd < 0) {
-    if (g_error_matches(gerr, G_IO_ERROR, G_IO_ERROR_WOULD_BLOCK)
-        || g_error_matches(gerr, G_IO_ERROR, G_IO_ERROR_FAILED))
-      recvd = 0;
+    recvd = g_socket_receive_message (sock->fileno,
+        (recv_message->from != NULL) ? &gaddr : NULL,
+        recv_message->buffers, recv_message->n_buffers, NULL, NULL,
+        &flags, NULL, &gerr);
 
-    g_error_free (gerr);
+    recv_message->length = MAX (recvd, 0);
+
+    if (recvd < 0) {
+      if (g_error_matches (gerr, G_IO_ERROR, G_IO_ERROR_WOULD_BLOCK))
+        recvd = 0;
+      else
+        error = TRUE;
+
+      g_error_free (gerr);
+    }
+
+    if (recvd > 0 && recv_message->from != NULL && gaddr != NULL) {
+      union {
+        struct sockaddr_storage storage;
+        struct sockaddr addr;
+      } sa;
+
+      g_socket_address_to_native (gaddr, &sa.addr, sizeof (sa), NULL);
+      nice_address_set_from_sockaddr (recv_message->from, &sa.addr);
+    }
+
+    if (gaddr != NULL)
+      g_object_unref (gaddr);
+
+    /* Return early on error or EWOULDBLOCK. */
+    if (recvd <= 0)
+      break;
   }
 
-  if (recvd > 0 && from != NULL && gaddr != NULL) {
-    union {
-      struct sockaddr_storage storage;
-      struct sockaddr addr;
-    } sa;
+  /* Was there an error processing the first message? */
+  if (error && i == 0)
+    return -1;
 
-    g_socket_address_to_native (gaddr, &sa.addr, sizeof (sa), NULL);
-    nice_address_set_from_sockaddr (from, &sa.addr);
-  }
-
-  if (gaddr != NULL)
-    g_object_unref (gaddr);
-
-  return recvd;
+  return i;
 }
 
 static gboolean

@@ -43,10 +43,54 @@
 #include "socket.h"
 
 
+/**
+ * nice_socket_recv_messages:
+ * @sock: a #NiceSocket
+ * @recv_messages: (array length=n_recv_messages) (out caller-allocates):
+ * array of #NiceInputMessages to return received messages in
+ * @n_recv_messages: number of elements in the @recv_messages array
+ *
+ * Receive up to @n_recv_messages message on the socket, in a non-reliable,
+ * non-blocking fashion. The total size of the buffers in each #NiceInputMessage
+ * must be big enough to contain an entire message (65536 bytes), or excess
+ * bytes will be silently dropped.
+ *
+ * On success, the number of messages received into @recv_messages is returned,
+ * which may be less than @n_recv_messages if the call would have blocked
+ * part-way through. If the socket would have blocked to begin with, or if
+ * @n_recv_messages is zero, zero is returned. On failure, a negative value is
+ * returned, but no further error information is available. Calling this
+ * function on a socket which has closed is an error, and a negative value is
+ * returned.
+ *
+ * If a positive N is returned, the first N messages in @recv_messages are
+ * valid. Each valid message is guaranteed to have a non-zero
+ * #NiceInputMessage::length, and its buffers are guaranteed to be filled
+ * sequentially up to that number of bytes  If #NiceInputMessage::from was
+ * non-%NULL for a valid message, it may be set to the address of the sender of
+ * that received message.
+ *
+ * If the return value is zero or negative, the from return address and length
+ * in every #NiceInputMessage in @recv_messages are guaranteed to be unmodified.
+ * The buffers may have been modified.
+ *
+ * The base addresses and sizes of the buffers in a #NiceInputMessage are never
+ * modified. Neither is the base address of #NiceInputMessage::from, nor the
+ * base address and length of the #NiceInputMessage::buffers array.
+ *
+ * Returns: number of valid messages returned in @recv_messages, or a negative
+ * value on error
+ *
+ * Since: 0.1.5
+ */
 gint
-nice_socket_recv (NiceSocket *sock, NiceAddress *from, guint len, gchar *buf)
+nice_socket_recv_messages (NiceSocket *sock,
+    NiceInputMessage *recv_messages, guint n_recv_messages)
 {
-  return sock->recv (sock, from, len, buf);
+  g_return_val_if_fail (sock != NULL, -1);
+  g_return_val_if_fail (n_recv_messages == 0 || recv_messages != NULL, -1);
+
+  return sock->recv_messages (sock, recv_messages, n_recv_messages);
 }
 
 gboolean

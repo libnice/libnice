@@ -137,6 +137,40 @@ typedef struct _NiceAgent NiceAgent;
 
 G_BEGIN_DECLS
 
+/**
+ * NiceInputMessage:
+ * @buffers: (array length=n_buffers): unowned array of #GInputVector buffers to
+ * store data in for this message
+ * @n_buffers: number of #GInputVectors in @buffers, or -1 to indicate @buffers
+ * is %NULL-terminated
+ * @from: (allow-none): return location to store the address of the peer who
+ * transmitted the message, or %NULL
+ * @length: total number of valid bytes contiguously stored in @buffers
+ *
+ * Represents a single message received off the network. For reliable
+ * connections, this is essentially just an array of buffers (specifically,
+ * @from can be ignored). for non-reliable connections, it represents a single
+ * packet as received from the OS.
+ *
+ * @n_buffers may be -1 to indicate that @buffers is terminated by a
+ * #GInputVector with a %NULL buffer pointer.
+ *
+ * By providing arrays of #NiceInputMessages to functions like
+ * nice_agent_recv_messages(), multiple messages may be received with a single
+ * call, which is more efficient than making multiple calls in a loop. In this
+ * manner, nice_agent_recv_messages() is analogous to recvmmsg(); and
+ * #NiceInputMessage to struct mmsghdr.
+ *
+ * Since: 0.1.5
+ */
+typedef struct {
+  GInputVector *buffers;
+  gint n_buffers;  /* may be -1 to indicate @buffers is NULL-terminated */
+  NiceAddress *from;  /* return location for address of message sender */
+  gsize length;  /* sum of the lengths of @buffers */
+} NiceInputMessage;
+
+
 #define NICE_TYPE_AGENT nice_agent_get_type()
 
 #define NICE_AGENT(obj) \

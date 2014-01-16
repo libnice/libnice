@@ -7,6 +7,7 @@ NiceComponentType
 NiceProxyType
 NiceCompatibility
 NiceAgentRecvFunc
+NiceInputMessage
 NICE_AGENT_MAX_REMOTE_CANDIDATES
 nice_agent_new
 nice_agent_new_reliable
