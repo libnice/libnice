@@ -126,8 +126,8 @@ component_new (guint id, NiceAgent *agent, Stream *stream)
   component->io_callback_id = 0;
 
   /* Start off with a fresh main context and all I/O paused. This
-   * will be updated when nice_agent_attach_recv() or nice_agent_recv() are
-   * called. */
+   * will be updated when nice_agent_attach_recv() or nice_agent_recv_messages()
+   * are called. */
   component_set_io_context (component, NULL);
   component_set_io_callback (component, NULL, NULL, NULL, 0, NULL);
 
@@ -561,9 +561,9 @@ component_set_io_context (Component *component, GMainContext *context)
   g_mutex_unlock (&component->io_mutex);
 }
 
-/* (func, user_data) and (recv_buf, recv_buf_len) are mutually exclusive.
- * At most one of the two must be specified; if both are NULL, the Component
- * will not receive any data (i.e. reception is paused).
+/* (func, user_data) and (recv_messages, n_recv_messages) are mutually
+ * exclusive. At most one of the two must be specified; if both are NULL, the
+ * Component will not receive any data (i.e. reception is paused).
  *
  * Apart from during setup, this must always be called with the agent lock held,
  * and the I/O lock released (because it takes the I/O lock itself). Requiring
@@ -574,11 +574,11 @@ component_set_io_context (Component *component, GMainContext *context)
 void
 component_set_io_callback (Component *component,
     NiceAgentRecvFunc func, gpointer user_data,
-    guint8 *recv_buf, gsize recv_buf_len,
+    NiceInputMessage *recv_messages, guint n_recv_messages,
     GError **error)
 {
-  g_assert (func == NULL || recv_buf == NULL);
-  g_assert (recv_buf != NULL || recv_buf_len == 0);
+  g_assert (func == NULL || recv_messages == NULL);
+  g_assert (n_recv_messages == 0 || recv_messages != NULL);
   g_assert (error == NULL || *error == NULL);
 
   g_mutex_lock (&component->io_mutex);
@@ -586,20 +586,20 @@ component_set_io_callback (Component *component,
   if (func != NULL) {
     component->io_callback = func;
     component->io_user_data = user_data;
-    component->recv_buf = NULL;
-    component->recv_buf_len = 0;
+    component->recv_messages = NULL;
+    component->n_recv_messages = 0;
 
     component_schedule_io_callback (component);
   } else {
     component->io_callback = NULL;
     component->io_user_data = NULL;
-    component->recv_buf = recv_buf;
-    component->recv_buf_len = recv_buf_len;
+    component->recv_messages = recv_messages;
+    component->n_recv_messages = n_recv_messages;
 
     component_deschedule_io_callback (component);
   }
 
-  component->recv_buf_valid_len = 0;
+  nice_input_message_iter_reset (&component->recv_messages_iter);
   component->recv_buf_error = error;
 
   g_mutex_unlock (&component->io_mutex);

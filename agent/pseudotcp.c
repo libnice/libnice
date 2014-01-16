@@ -74,6 +74,7 @@
 #endif
 
 #include "pseudotcp.h"
+#include "agent-priv.h"
 
 G_DEFINE_TYPE (PseudoTcpSocket, pseudo_tcp_socket, G_TYPE_OBJECT);
 
@@ -497,8 +498,9 @@ static guint32 queue(PseudoTcpSocket *self, const gchar * data,
     guint32 len, gboolean bCtrl);
 static PseudoTcpWriteResult packet(PseudoTcpSocket *self, guint32 seq,
     guint8 flags, guint32 offset, guint32 len);
-static gboolean parse(PseudoTcpSocket *self,
-    const guint8 * buffer, guint32 size);
+static gboolean parse (PseudoTcpSocket *self,
+    const guint8 *_header_buf, gsize header_buf_len,
+    const guint8 *data_buf, gsize data_buf_len);
 static gboolean process(PseudoTcpSocket *self, Segment *seg);
 static gboolean transmit(PseudoTcpSocket *self, const GList *seg, guint32 now);
 static void attempt_send(PseudoTcpSocket *self, SendFlags sflags);
@@ -882,12 +884,45 @@ pseudo_tcp_socket_notify_packet(PseudoTcpSocket *self,
   if (len > MAX_PACKET) {
     //LOG_F(WARNING) << "packet too large";
     return FALSE;
+  } else if (len < HEADER_SIZE) {
+    //LOG_F(WARNING) << "packet too small";
+    return FALSE;
   }
 
   /* Hold a reference to the PseudoTcpSocket during parsing, since it may be
    * closed from within a callback. */
   g_object_ref (self);
-  retval = parse (self, (guint8 *) buffer, len);
+  retval = parse (self, (guint8 *) buffer, HEADER_SIZE,
+      (guint8 *) buffer + HEADER_SIZE, len - HEADER_SIZE);
+  g_object_unref (self);
+
+  return retval;
+}
+
+/* Assume there are two buffers in the given #NiceInputMessage: a 24-byte one
+ * containing the header, and a bigger one for the data. */
+gboolean
+pseudo_tcp_socket_notify_message (PseudoTcpSocket *self,
+    NiceInputMessage *message)
+{
+  gboolean retval;
+
+  g_assert_cmpuint (message->n_buffers, ==, 2);
+  g_assert_cmpuint (message->buffers[0].size, ==, HEADER_SIZE);
+
+  if (message->length > MAX_PACKET) {
+    //LOG_F(WARNING) << "packet too large";
+    return FALSE;
+  } else if (message->length < HEADER_SIZE) {
+    //LOG_F(WARNING) << "packet too small";
+    return FALSE;
+  }
+
+  /* Hold a reference to the PseudoTcpSocket during parsing, since it may be
+   * closed from within a callback. */
+  g_object_ref (self);
+  retval = parse (self, message->buffers[0].buffer, message->buffers[0].size,
+      message->buffers[1].buffer, message->length - message->buffers[0].size);
   g_object_unref (self);
 
   return retval;
@@ -1126,7 +1161,8 @@ packet(PseudoTcpSocket *self, guint32 seq, guint8 flags,
 }
 
 static gboolean
-parse(PseudoTcpSocket *self, const guint8 * _buffer, guint32 size)
+parse (PseudoTcpSocket *self, const guint8 *_header_buf, gsize header_buf_len,
+    const guint8 *data_buf, gsize data_buf_len)
 {
   Segment seg;
 
@@ -1134,24 +1170,24 @@ parse(PseudoTcpSocket *self, const guint8 * _buffer, guint32 size)
     const guint8 *u8;
     const guint16 *u16;
     const guint32 *u32;
-  } buffer;
+  } header_buf;
 
-  buffer.u8 = _buffer;
+  header_buf.u8 = _header_buf;
 
-  if (size < 12)
+  if (header_buf_len != 24)
     return FALSE;
 
-  seg.conv = ntohl(*buffer.u32);
-  seg.seq = ntohl(*(buffer.u32 + 1));
-  seg.ack = ntohl(*(buffer.u32 + 2));
-  seg.flags = buffer.u8[13];
-  seg.wnd = ntohs(*(buffer.u16 + 7));
+  seg.conv = ntohl(*header_buf.u32);
+  seg.seq = ntohl(*(header_buf.u32 + 1));
+  seg.ack = ntohl(*(header_buf.u32 + 2));
+  seg.flags = header_buf.u8[13];
+  seg.wnd = ntohs(*(header_buf.u16 + 7));
 
-  seg.tsval = ntohl(*(buffer.u32 + 4));
-  seg.tsecr = ntohl(*(buffer.u32 + 5));
+  seg.tsval = ntohl(*(header_buf.u32 + 4));
+  seg.tsecr = ntohl(*(header_buf.u32 + 5));
 
-  seg.data = ((gchar *)buffer.u8) + HEADER_SIZE;
-  seg.len = size - HEADER_SIZE;
+  seg.data = (const gchar *) data_buf;
+  seg.len = data_buf_len;
 
   DEBUG (PSEUDO_TCP_DEBUG_VERBOSE, "--> <CONV=%d><FLG=%d><SEQ=%d:%d><ACK=%d>"
       "<WND=%d><TS=%d><TSR=%d><LEN=%d>",

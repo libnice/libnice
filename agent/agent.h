@@ -58,16 +58,16 @@
  * for valid streams/components.
  *
  * Each stream can receive data in one of two ways: using
- * nice_agent_attach_recv() or nice_agent_recv() (and the derived
+ * nice_agent_attach_recv() or nice_agent_recv_messages() (and the derived
  * #NiceInputStream and #NiceIOStream classes accessible using
  * nice_agent_build_io_stream()). nice_agent_attach_recv() is non-blocking: it
  * takes a user-provided callback function and attaches the stream’s socket to
  * the provided #GMainContext, invoking the callback in that context for every
- * packet received. nice_agent_recv() instead blocks on receiving a packet, and
- * writes it directly into a user-provided buffer. This reduces the number of
- * callback invokations and (potentially) buffer copies required to receive
- * packets. nice_agent_recv() (or #NiceInputStream) is designed to be used in a
- * blocking loop in a separate thread.
+ * packet received. nice_agent_recv_messages() instead blocks on receiving a
+ * packet, and writes it directly into a user-provided buffer. This reduces the
+ * number of callback invokations and (potentially) buffer copies required to
+ * receive packets. nice_agent_recv_messages() (or #NiceInputStream) is designed
+ * to be used in a blocking loop in a separate thread.
  *
  <example>
    <title>Simple example on how to use libnice</title>
@@ -721,7 +721,7 @@ nice_agent_restart (
  * Attaches the stream's component's sockets to the Glib Mainloop Context in
  * order to be notified whenever data becomes available for a component.
  *
- * This must not be used in combination with nice_agent_recv() (or
+ * This must not be used in combination with nice_agent_recv_messages() (or
  * #NiceIOStream or #NiceInputStream) on the same stream/component pair.
  *
  * Calling nice_agent_attach_recv() with a %NULL @func will detach any existing
@@ -751,6 +751,16 @@ nice_agent_recv (
     GCancellable *cancellable,
     GError **error);
 
+gint
+nice_agent_recv_messages (
+    NiceAgent *agent,
+    guint stream_id,
+    guint component_id,
+    NiceInputMessage *messages,
+    guint n_messages,
+    GCancellable *cancellable,
+    GError **error);
+
 gssize
 nice_agent_recv_nonblocking (
     NiceAgent *agent,
@@ -758,6 +768,16 @@ nice_agent_recv_nonblocking (
     guint component_id,
     guint8 *buf,
     gsize buf_len,
+    GCancellable *cancellable,
+    GError **error);
+
+gint
+nice_agent_recv_messages_nonblocking (
+    NiceAgent *agent,
+    guint stream_id,
+    guint component_id,
+    NiceInputMessage *messages,
+    guint n_messages,
     GCancellable *cancellable,
     GError **error);
 

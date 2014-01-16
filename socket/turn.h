@@ -52,6 +52,10 @@ typedef enum {
 
 G_BEGIN_DECLS
 
+guint
+nice_turn_socket_parse_recv_message (NiceSocket *sock, NiceSocket **from_sock,
+    NiceInputMessage *message);
+
 gsize
 nice_turn_socket_parse_recv (NiceSocket *sock, NiceSocket **from_sock,
     NiceAddress *from, gsize len, guint8 *buf,

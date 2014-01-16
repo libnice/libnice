@@ -52,11 +52,44 @@
 #include <glib.h>
 
 #include "agent.h"
+
+/**
+ * NiceInputMessageIter:
+ * @message: index of the message currently being written into
+ * @buffer: index of the buffer currently being written into
+ * @offset: byte offset into the buffer
+ *
+ * Iterator for sequentially writing into an array of #NiceInputMessages,
+ * tracking the current write position (i.e. the index of the next byte to be
+ * written).
+ *
+ * If @message is equal to the number of messages in the associated
+ * #NiceInputMessage array, and @buffer and @offset are zero, the iterator is at
+ * the end of the messages array, and the array is (presumably) full.
+ *
+ * Since: 0.1.5
+ */
+typedef struct {
+  guint message;
+  guint buffer;
+  gsize offset;
+} NiceInputMessageIter;
+
+void
+nice_input_message_iter_reset (NiceInputMessageIter *iter);
+gboolean
+nice_input_message_iter_is_at_end (NiceInputMessageIter *iter,
+    NiceInputMessage *messages, guint n_messages);
+guint
+nice_input_message_iter_get_n_valid_messages (NiceInputMessageIter *iter);
+
+
 #include "socket.h"
 #include "candidate.h"
 #include "stream.h"
 #include "conncheck.h"
 #include "component.h"
+#include "random.h"
 #include "stun/stunagent.h"
 #include "stun/usages/turn.h"
 #include "stun/usages/ice.h"
@@ -177,9 +210,6 @@ component_io_cb (
   GSocket *gsocket,
   GIOCondition condition,
   gpointer data);
-
-gssize agent_recv_locked (NiceAgent *agent, Stream *stream,
-    Component *component, NiceSocket *socket, guint8 *buf, gsize buf_len);
 
 gsize
 memcpy_buffer_to_input_message (NiceInputMessage *message,

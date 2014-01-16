@@ -45,6 +45,7 @@
 typedef struct _Component Component;
 
 #include "agent.h"
+#include "agent-priv.h"
 #include "candidate.h"
 #include "stun/stunagent.h"
 #include "stun/usages/timer.h"
@@ -110,7 +111,7 @@ typedef struct {
 } SocketSource;
 
 
-/* A buffer of data which has been received and processed (so is guaranteed not
+/* A message which has been received and processed (so is guaranteed not
  * to be a STUN packet, or to contain pseudo-TCP header bytes, for example), but
  * which hasn’t yet been sent to the client in an I/O callback. This could be
  * due to the main context not being run, or due to the I/O callback being
@@ -153,8 +154,8 @@ struct _Component
    * socket recv() operations. All io_callback emissions are invoked in this
    * context too.
    *
-   * recv_buf and io_callback are mutually exclusive, but it is allowed for both
-   * to be NULL if the Component is not currently ready to receive data. */
+   * recv_messages and io_callback are mutually exclusive, but it is allowed for
+   * both to be NULL if the Component is not currently ready to receive data. */
   GMutex io_mutex;                  /**< protects io_callback, io_user_data,
                                          pending_io_messages and io_callback_id.
                                          immutable: can be accessed without
@@ -163,7 +164,7 @@ struct _Component
                                          taken before this one */
   NiceAgentRecvFunc io_callback;    /**< function called on io cb */
   gpointer io_user_data;            /**< data passed to the io function */
-  GQueue pending_io_messages;       /**< queue of packets which have been
+  GQueue pending_io_messages;       /**< queue of messages which have been
                                          received but not passed to the client
                                          in an I/O callback or recv() call yet.
                                          each element is an owned
@@ -172,9 +173,10 @@ struct _Component
 
   GMainContext *ctx;                /**< context for GSources for this
                                        component */
-  guint8 *recv_buf;                 /**< unowned buffer for receiving into */
-  gsize recv_buf_len;               /**< allocated size of recv_buf in bytes */
-  gsize recv_buf_valid_len;         /**< length of valid data in recv_buf */
+  NiceInputMessage *recv_messages;  /**< unowned messages for receiving into */
+  guint n_recv_messages;            /**< length of recv_messages */
+  NiceInputMessageIter recv_messages_iter; /**< current write position in
+                                                recv_messages */
   GError **recv_buf_error;          /**< error information about failed reads */
 
   NiceAgent *agent;  /* unowned, immutable: can be accessed without holding the
@@ -240,7 +242,7 @@ component_set_io_context (Component *component, GMainContext *context);
 void
 component_set_io_callback (Component *component,
     NiceAgentRecvFunc func, gpointer user_data,
-    guint8 *recv_buf, gsize recv_buf_len,
+    NiceInputMessage *recv_messages, guint n_recv_messages,
     GError **error);
 void
 component_emit_io_callback (Component *component,

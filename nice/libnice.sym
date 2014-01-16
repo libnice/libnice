@@ -18,7 +18,9 @@ nice_agent_add_local_address
 nice_agent_add_stream
 nice_agent_build_io_stream
 nice_agent_recv
+nice_agent_recv_messages
 nice_agent_recv_nonblocking
+nice_agent_recv_messages_nonblocking
 nice_agent_attach_recv
 nice_agent_gather_candidates
 nice_agent_generate_local_candidate_sdp

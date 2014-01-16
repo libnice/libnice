@@ -66,6 +66,8 @@
 #  define ECONNRESET WSAECONNRESET
 #endif
 
+#include "agent.h"
+
 G_BEGIN_DECLS
 
 /**
@@ -400,6 +402,22 @@ void pseudo_tcp_socket_notify_mtu(PseudoTcpSocket *self, guint16 mtu);
  */
 gboolean pseudo_tcp_socket_notify_packet(PseudoTcpSocket *self,
     const gchar * buffer, guint32 len);
+
+
+/**
+ * pseudo_tcp_socket_notify_message:
+ * @self: The #PseudoTcpSocket object.
+ * @message: A #NiceInputMessage containing the received data.
+ *
+ * Notify the #PseudoTcpSocket that a new message has arrived, and enqueue the
+ * data in its buffers to the #PseudoTcpSocket’s receive buffer.
+ *
+ * Returns: %TRUE if the packet was processed successfully, %FALSE otherwise
+ *
+ * Since: 0.1.5
+ */
+gboolean pseudo_tcp_socket_notify_message (PseudoTcpSocket *self,
+    NiceInputMessage *message);
 
 
 /**

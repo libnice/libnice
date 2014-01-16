@@ -822,6 +822,45 @@ priv_binding_timeout (gpointer data)
   return FALSE;
 }
 
+guint
+nice_turn_socket_parse_recv_message (NiceSocket *sock, NiceSocket **from_sock,
+    NiceInputMessage *message)
+{
+  /* TODO: Speed this up in the common reliable case of having a 24-byte header
+   * buffer to begin with, followed by one or more massive buffers. */
+  guint8 *buf;
+  gsize buf_len, len;
+
+  if (message->n_buffers == 1 ||
+      (message->n_buffers == -1 &&
+       message->buffers[0].buffer != NULL &&
+       message->buffers[1].buffer == NULL)) {
+    /* Fast path. Single massive buffer. */
+    g_assert_cmpuint (message->length, <=, message->buffers[0].size);
+
+    len = nice_turn_socket_parse_recv (sock, from_sock,
+        message->from, message->length, message->buffers[0].buffer,
+        message->from, message->buffers[0].buffer, message->length);
+
+    g_assert_cmpuint (len, <=, message->length);
+
+    message->length = len;
+
+    return (len > 0) ? 1 : 0;
+  }
+
+  /* Slow path. */
+  nice_debug ("%s: **WARNING: SLOW PATH**", G_STRFUNC);
+
+  buf = compact_input_message (message, &buf_len);
+  len = nice_turn_socket_parse_recv (sock, from_sock,
+      message->from, buf_len, buf,
+      message->from, buf, buf_len);
+  len = memcpy_buffer_to_input_message (message, buf, len);
+
+  return (len > 0) ? 1 : 0;
+}
+
 gsize
 nice_turn_socket_parse_recv (NiceSocket *sock, NiceSocket **from_sock,
     NiceAddress *from, gsize len, guint8 *buf,

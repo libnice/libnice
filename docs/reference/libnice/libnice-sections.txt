@@ -26,7 +26,9 @@ nice_agent_get_selected_pair
 nice_agent_send
 nice_agent_send_full
 nice_agent_recv
+nice_agent_recv_messages
 nice_agent_recv_nonblocking
+nice_agent_recv_messages_nonblocking
 nice_agent_attach_recv
 nice_agent_set_selected_pair
 nice_agent_set_selected_remote_candidate

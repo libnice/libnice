@@ -83,6 +83,9 @@
 
 #define MAX_TCP_MTU 1400 /* Use 1400 because of VPNs and we assume IEE 802.3 */
 
+static void
+nice_debug_message_composition (NiceInputMessage *messages, guint n_messages);
+
 G_DEFINE_TYPE (NiceAgent, nice_agent, G_TYPE_OBJECT);
 
 enum
@@ -1025,6 +1028,73 @@ pseudo_tcp_socket_opened (PseudoTcpSocket *sock, gpointer user_data)
       stream->id, component->id);
 }
 
+/* Will fill up @messages from the first free byte onwards (as determined using
+ * @iter). This is always used in reliable mode, so it essentially treats
+ * @messages as a massive flat array of buffers.
+ *
+ * Updates @iter in place. @iter and @messages are left in invalid states if
+ * an error is returned.
+ *
+ * Returns the number of valid messages in @messages on success (which may be
+ * zero if reading into the first buffer of the message would have blocked), or
+ * a negative number on error. */
+static gint
+pseudo_tcp_socket_recv_messages (PseudoTcpSocket *self,
+    NiceInputMessage *messages, guint n_messages, NiceInputMessageIter *iter,
+    GError **error)
+{
+  for (; iter->message < n_messages; iter->message++) {
+    NiceInputMessage *message = &messages[iter->message];
+
+    if (iter->buffer == 0 && iter->offset == 0) {
+      message->length = 0;
+    }
+
+    for (;
+         (message->n_buffers >= 0 && iter->buffer < (guint) message->n_buffers) ||
+         (message->n_buffers < 0 && message->buffers[iter->buffer].buffer != NULL);
+         iter->buffer++) {
+      GInputVector *buffer = &message->buffers[iter->buffer];
+
+      do {
+        gssize len;
+
+        len = pseudo_tcp_socket_recv (self,
+            (gchar *) buffer->buffer + iter->offset,
+            buffer->size - iter->offset);
+
+        nice_debug ("%s: Received %" G_GSSIZE_FORMAT " bytes into "
+            "buffer %p (offset %" G_GSIZE_FORMAT ", length %" G_GSIZE_FORMAT
+            ").", G_STRFUNC, len, buffer->buffer, iter->offset, buffer->size);
+
+        if (len < 0 && pseudo_tcp_socket_get_error (self) == EWOULDBLOCK) {
+          len = 0;
+          goto done;
+        } else if (len < 0 && pseudo_tcp_socket_get_error (self) == ENOTCONN) {
+          g_set_error (error, G_IO_ERROR, G_IO_ERROR_WOULD_BLOCK,
+              "Error reading data from pseudo-TCP socket: not connected.");
+          return len;
+        } else if (len < 0) {
+          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+              "Error reading data from pseudo-TCP socket.");
+          return len;
+        } else {
+          /* Got some data! */
+          message->length += len;
+          iter->offset += len;
+        }
+      } while (iter->offset < buffer->size);
+
+      iter->offset = 0;
+    }
+
+    iter->buffer = 0;
+  }
+
+done:
+  return nice_input_message_iter_get_n_valid_messages (iter);
+}
+
 /* This is called with the agent lock held. */
 static void
 pseudo_tcp_socket_readable (PseudoTcpSocket *sock, gpointer user_data)
@@ -1032,8 +1102,6 @@ pseudo_tcp_socket_readable (PseudoTcpSocket *sock, gpointer user_data)
   Component *component = user_data;
   NiceAgent *agent = component->agent;
   Stream *stream = component->stream;
-  guint8 buf[MAX_BUFFER_SIZE];
-  gssize len;
   gboolean has_io_callback;
 
   nice_debug ("Agent %p: s%d:%d pseudo Tcp socket readable", agent,
@@ -1045,59 +1113,81 @@ pseudo_tcp_socket_readable (PseudoTcpSocket *sock, gpointer user_data)
   g_object_add_weak_pointer (G_OBJECT (agent), (gpointer *)&agent);
   has_io_callback = component_has_io_callback (component);
 
-  do {
-    /* Only dequeue pseudo-TCP data if we can reliably inform the client. The
-     * agent lock is held here, so has_io_callback can only change during
-     * component_emit_io_callback(), after which it’s re-queried. This ensures
-     * no data loss of packets already received and dequeued. */
-    if (has_io_callback) {
+  /* Only dequeue pseudo-TCP data if we can reliably inform the client. The
+   * agent lock is held here, so has_io_callback can only change during
+   * component_emit_io_callback(), after which it’s re-queried. This ensures
+   * no data loss of packets already received and dequeued. */
+  if (has_io_callback) {
+    do {
+      guint8 buf[MAX_BUFFER_SIZE];
+      gssize len;
+
+      /* FIXME: Why copy into a temporary buffer here? Why can’t the I/O
+       * callbacks be emitted directly from the pseudo-TCP receive buffer? */
       len = pseudo_tcp_socket_recv (sock, (gchar *) buf, sizeof(buf));
-    } else if (component->recv_buf != NULL) {
-      len = pseudo_tcp_socket_recv (sock,
-          (gchar *) component->recv_buf + component->recv_buf_valid_len,
-          component->recv_buf_len - component->recv_buf_valid_len);
-    } else {
-      len = 0;
-    }
 
-    nice_debug ("%s: received %" G_GSSIZE_FORMAT " bytes", G_STRFUNC, len);
+      nice_debug ("%s: I/O callback case: Received %" G_GSSIZE_FORMAT " bytes",
+          G_STRFUNC, len);
 
-    if (len > 0 && has_io_callback) {
+      if (len == 0) {
+        component->tcp_readable = FALSE;
+        break;
+      } else if (len <= 0) {
+        /* Handle errors. */
+        if (pseudo_tcp_socket_get_error (sock) != EWOULDBLOCK) {
+          nice_debug ("%s: calling priv_pseudo_tcp_error()", G_STRFUNC);
+          priv_pseudo_tcp_error (agent, stream, component);
+
+          if (component->recv_buf_error != NULL) {
+            GIOErrorEnum error_code;
+
+            if (pseudo_tcp_socket_get_error (sock) == ENOTCONN)
+              error_code = G_IO_ERROR_BROKEN_PIPE;
+            else
+              error_code = G_IO_ERROR_FAILED;
+
+            g_set_error (component->recv_buf_error, G_IO_ERROR, error_code,
+                "Error reading data from pseudo-TCP socket.");
+          }
+        }
+
+        break;
+      }
+
       component_emit_io_callback (component, buf, len);
+
       if (sock == NULL) {
         nice_debug ("PseudoTCP socket got destroyed in readable callback!");
         break;
       }
-    } else if (len > 0 && component->recv_buf != NULL) {
-      /* No callback to call. The data has been copied directly into the
-       * client’s receive buffer. */
-      component->recv_buf_valid_len += len;
-    } else if (len < 0 &&
-        pseudo_tcp_socket_get_error (sock) != EWOULDBLOCK) {
-      /* Signal error */
+
+      has_io_callback = component_has_io_callback (component);
+    } while (has_io_callback);
+  } else if (component->recv_messages != NULL) {
+    gint n_valid_messages;
+
+    /* Fill up every buffer in every message until the connection closes or an
+     * error occurs. Copy the data directly into the client’s receive message
+     * array without making any callbacks. Update component->recv_messages_iter
+     * as we go. */
+    n_valid_messages = pseudo_tcp_socket_recv_messages (sock,
+        component->recv_messages, component->n_recv_messages,
+        &component->recv_messages_iter, component->recv_buf_error);
+
+    nice_debug ("%s: Client buffers case: Received %d valid messages:",
+        G_STRFUNC, n_valid_messages);
+    nice_debug_message_composition (component->recv_messages,
+        component->n_recv_messages);
+
+    if (n_valid_messages < 0) {
       nice_debug ("%s: calling priv_pseudo_tcp_error()", G_STRFUNC);
       priv_pseudo_tcp_error (agent, stream, component);
-
-      if (component->recv_buf != NULL) {
-        GIOErrorEnum error_code;
-
-        if (pseudo_tcp_socket_get_error (sock) == ENOTCONN)
-          error_code = G_IO_ERROR_BROKEN_PIPE;
-        else
-          error_code = G_IO_ERROR_FAILED;
-
-        g_set_error (component->recv_buf_error, G_IO_ERROR, error_code,
-            "Error reading data from pseudo-TCP socket.");
-      }
-    } else if (len < 0 &&
-        pseudo_tcp_socket_get_error (sock) == EWOULDBLOCK){
+    } else if (n_valid_messages == 0) {
       component->tcp_readable = FALSE;
     }
-
-    has_io_callback = component_has_io_callback (component);
-  } while (len > 0 &&
-           (has_io_callback ||
-            component->recv_buf_valid_len < component->recv_buf_len));
+  } else {
+    nice_debug ("%s: no data read", G_STRFUNC);
+  }
 
   if (agent) {
     adjust_tcp_clock (agent, stream, component);
@@ -2405,68 +2495,76 @@ nice_agent_set_remote_candidates (NiceAgent *agent, guint stream_id, guint compo
   return added;
 }
 
+/* Return values for agent_recv_message_unlocked(). Needed purely because it
+ * must differentiate between RECV_OOB and RECV_SUCCESS. */
+typedef enum {
+  RECV_ERROR = -2,
+  RECV_WOULD_BLOCK = -1,
+  RECV_OOB = 0,
+  RECV_SUCCESS = 1,
+} RecvStatus;
+
 /*
- * agent_recv_locked:
+ * agent_recv_message_unlocked:
  * @agent: a #NiceAgent
  * @stream: the stream to receive from
  * @component: the component to receive from
  * @socket: the socket to receive on
- * @buf: the buffer to write into (must be at least @buf_len bytes long)
- * @buf_len: the length of @buf
+ * @message: the message to write into (must have at least 65536 bytes of buffer
+ * space)
  *
- * Receive up to @buf_len bytes of data from the given
- * @stream/@component/@socket, in a non-blocking fashion. If the socket is a
- * datagram socket and @buf_len is not big enough to hold an entire packet, the
- * remaining bytes of the packet will be silently dropped.
+ * Receive a single message of data from the given @stream, @component and
+ * @socket tuple, in a non-blocking fashion. The caller must ensure that
+ * @message contains enough buffers to provide at least 65536 bytes of buffer
+ * space, but the buffers may be split as the caller sees fit.
  *
- * NOTE: Must be called with the agent’s lock held.
+ * This must be called with the agent’s lock held.
  *
- * Returns: number of bytes stored in @buf, 0 if no data is available, or -1 on
- * error
+ * Returns: number of valid messages received on success (i.e. %RECV_SUCCESS or
+ * 1), %RECV_OOB if data was successfully received but was handled out-of-band
+ * (e.g. due to being a STUN control packet), %RECV_WOULD_BLOCK if no data is
+ * available and the call would block, or %RECV_ERROR on error
  */
-gssize
-agent_recv_locked (
+static RecvStatus
+agent_recv_message_unlocked (
   NiceAgent *agent,
   Stream *stream,
   Component *component,
   NiceSocket *socket,
-  guint8 *buf,
-  gsize buf_len)
+  NiceInputMessage *message)
 {
   NiceAddress from;
-  gssize len;
   GList *item;
-  guint8 local_buf[MAX_BUFFER_SIZE];
-  gsize local_buf_len = MAX_BUFFER_SIZE;
-  GInputVector local_bufs = { local_buf, local_buf_len };
-  NiceInputMessage local_messages = { &local_bufs, 1, &from, 0 };
-  gint n_valid_messages;
+  gint retval;
 
-  /* Returns -1 on error, 0 on EWOULDBLOCK, and > 0 on success.
-   *
-   * FIXME: We have to receive into a local buffer then copy out because
-   * otherwise, if @buf is too small, we could lose data, even when in
-   * reliable mode (because reliable streams are packetised). */
-  n_valid_messages = nice_socket_recv_messages (socket, &local_messages, 1);
+  /* We need an address for packet parsing, below. */
+  if (message->from == NULL) {
+    message->from = &from;
+  }
 
-  len = (n_valid_messages == 1) ?
-      (gssize) local_messages.length : n_valid_messages;
+  retval = nice_socket_recv_messages (socket, message, 1);
 
-  if (len == 0) {
-    return 0;
-  } else if (len < 0) {
-    nice_debug ("Agent %p: %s returned %" G_GSSIZE_FORMAT ", errno (%d) : %s",
-        agent, G_STRFUNC, len, errno, g_strerror (errno));
+  nice_debug ("%s: Received %d valid messages of length %" G_GSIZE_FORMAT
+      " from base socket %p.", G_STRFUNC, retval, message->length, socket);
 
-    return len;
+  if (retval == 0) {
+    retval = RECV_WOULD_BLOCK;  /* EWOULDBLOCK */
+    goto done;
+  } else if (retval < 0) {
+    nice_debug ("Agent %p: %s returned %d, errno (%d) : %s",
+        agent, G_STRFUNC, retval, errno, g_strerror (errno));
+
+    retval = RECV_ERROR;
+    goto done;
   }
 
 #ifndef NDEBUG
-  if (len > 0) {
+  if (message->length > 0) {
     gchar tmpbuf[INET6_ADDRSTRLEN];
-    nice_address_to_string (&from, tmpbuf);
+    nice_address_to_string (message->from, tmpbuf);
     nice_debug ("Agent %p : Packet received on local socket %d from [%s]:%u (%" G_GSSIZE_FORMAT " octets).", agent,
-        g_socket_get_fd (socket->fileno), tmpbuf, nice_address_get_port (&from), len);
+        g_socket_get_fd (socket->fileno), tmpbuf,
+        nice_address_get_port (message->from), message->length);
   }
 #endif
 
@@ -2474,7 +2572,7 @@ agent_recv_locked (
     TurnServer *turn = item->data;
     GSList *i = NULL;
 
-    if (!nice_address_equal (&from, &turn->server))
+    if (!nice_address_equal (message->from, &turn->server))
       continue;
 
 #ifndef NDEBUG
@@ -2488,8 +2586,7 @@ agent_recv_locked (
       if (cand->type == NICE_CANDIDATE_TYPE_RELAYED &&
           cand->stream_id == stream->id &&
           cand->component_id == component->id) {
-        len = nice_turn_socket_parse_recv (cand->sockptr, &socket,
-            &from, len, (gchar *) local_buf, &from, (gchar *) local_buf, len);
+        nice_turn_socket_parse_recv_message (cand->sockptr, &socket, message);
       }
     }
   }
@@ -2498,17 +2595,39 @@ agent_recv_locked (
 
   /* If the message’s stated length is equal to its actual length, it’s probably
    * a STUN message; otherwise it’s probably data. */
-  if (stun_message_validate_buffer_length ((uint8_t *) local_buf, (size_t) len,
+  if (stun_message_validate_buffer_length_fast (
+      (StunInputVector *) message->buffers, message->n_buffers, message->length,
       (agent->compatibility != NICE_COMPATIBILITY_OC2007 &&
-       agent->compatibility != NICE_COMPATIBILITY_OC2007R2)) == len &&
-      conn_check_handle_inbound_stun (agent, stream, component, socket,
-          &from, (gchar *) local_buf, len)) {
-    /* Handled STUN message. */
-    return 0;
+       agent->compatibility != NICE_COMPATIBILITY_OC2007R2)) == (ssize_t) message->length) {
+    /* Slow path: If this message isn’t obviously *not* a STUN packet, compact
+     * its buffers
+     * into a single monolithic one and parse the packet properly. */
+    guint8 *big_buf;
+    gsize big_buf_len;
+
+    big_buf = compact_input_message (message, &big_buf_len);
+
+    if (stun_message_validate_buffer_length (big_buf, big_buf_len,
+        (agent->compatibility != NICE_COMPATIBILITY_OC2007 &&
+         agent->compatibility != NICE_COMPATIBILITY_OC2007R2)) == (gint) big_buf_len &&
+        conn_check_handle_inbound_stun (agent, stream, component, socket,
+            message->from, (gchar *) big_buf, big_buf_len)) {
+      /* Handled STUN message. */
+      nice_debug ("%s: Valid STUN packet received.", G_STRFUNC);
+
+      retval = RECV_OOB;
+      g_free (big_buf);
+      goto done;
+    }
+
+    nice_debug ("%s: WARNING: Packet passed fast STUN validation but failed "
+        "slow validation.", G_STRFUNC);
+
+    g_free (big_buf);
   }
 
   /* Unhandled STUN; try handling TCP data, then pass to the client. */
-  if (len > 0 && component->tcp) {
+  if (message->length > 0 && component->tcp) {
     /* If we don’t yet have an underlying selected socket, queue up the incoming
      * data to handle later. This is because we can’t send ACKs (or, more
      * importantly for the first few packets, SYNACKs) without an underlying
@@ -2518,11 +2637,10 @@ agent_recv_locked (
      * machine. */
     if (component->selected_pair.local == NULL) {
       GOutputVector *vec = g_slice_new (GOutputVector);
-      vec->buffer = g_memdup (local_buf, len);
-      vec->size = len;
+      vec->buffer = compact_input_message (message, &vec->size);
       g_queue_push_tail (&component->queued_tcp_packets, vec);
       nice_debug ("%s: Queued %" G_GSSIZE_FORMAT " bytes for agent %p.",
-          G_STRFUNC, len, agent);
+          G_STRFUNC, vec->size, agent);
 
       return 0;
     } else {
@@ -2532,9 +2650,9 @@ agent_recv_locked (
     /* Received data on a reliable connection. */
     g_object_add_weak_pointer (G_OBJECT (agent), (gpointer *) &agent);
 
-    nice_debug ("%s: notifying pseudo-TCP of packet, length %" G_GSSIZE_FORMAT,
-        G_STRFUNC, len);
-    pseudo_tcp_socket_notify_packet (component->tcp, (gchar *) local_buf, len);
+    nice_debug ("%s: notifying pseudo-TCP of packet, length %" G_GSIZE_FORMAT,
+        G_STRFUNC, message->length);
+    pseudo_tcp_socket_notify_message (component->tcp, message);
 
     if (agent) {
       adjust_tcp_clock (agent, stream, component);
@@ -2543,22 +2661,24 @@ agent_recv_locked (
       nice_debug ("Our agent got destroyed in notify_packet!!");
     }
 
-    /* Data’s already been handled, so return 0. */
-    return 0;
-  } else if (len > 0 && !component->tcp && agent->reliable) {
+    /* Success! Handled out-of-band. */
+    retval = RECV_OOB;
+    goto done;
+  } else if (message->length > 0 && !component->tcp && agent->reliable) {
     /* Received data on a reliable connection which has no TCP component. */
     nice_debug ("Received data on a pseudo tcp FAILED component. Ignoring.");
 
-    return 0;
+    retval = RECV_OOB;
+    goto done;
   }
 
-  /* Yay for poor performance! */
-  if (len >= 0) {
-    len = MIN (buf_len, (gsize) len);
-    memcpy (buf, local_buf, len);
+done:
+  /* Clear local modifications. */
+  if (message->from == &from) {
+    message->from = NULL;
   }
 
-  return len;
+  return retval;
 }
 
 /* Print the composition of an array of messages. No-op if debugging is
@@ -2661,6 +2781,137 @@ memcpy_buffer_to_input_message (NiceInputMessage *message,
   return message->length;
 }
 
+/**
+ * nice_input_message_iter_reset:
+ * @iter: a #NiceInputMessageIter
+ *
+ * Reset the given @iter to point to the beginning of the array of messages.
+ * This may be used both to initialise it and to reset it after use.
+ *
+ * Since: 0.1.5
+ */
+void
+nice_input_message_iter_reset (NiceInputMessageIter *iter)
+{
+  iter->message = 0;
+  iter->buffer = 0;
+  iter->offset = 0;
+}
+
+/**
+ * nice_input_message_iter_is_at_end:
+ * @iter: a #NiceInputMessageIter
+ * @messages: (array length=n_messages): an array of #NiceInputMessages
+ * @n_messages: number of entries in @messages
+ *
+ * Determine whether @iter points to the end of the given @messages array. If it
+ * does, the array is full: every buffer in every message is full of valid
+ * bytes.
+ *
+ * Returns: %TRUE if the messages’ buffers are full, %FALSE otherwise
+ *
+ * Since: 0.1.5
+ */
+gboolean
+nice_input_message_iter_is_at_end (NiceInputMessageIter *iter,
+    NiceInputMessage *messages, guint n_messages)
+{
+  return (iter->message == n_messages &&
+      iter->buffer == 0 && iter->offset == 0);
+}
+
+/**
+ * nice_input_message_iter_get_n_valid_messages:
+ * @iter: a #NiceInputMessageIter
+ *
+ * Calculate the number of valid messages in the messages array. A valid message
+ * is one which contains at least one valid byte of data in its buffers.
+ *
+ * Returns: number of valid messages (may be zero)
+ *
+ * Since: 0.1.5
+ */
+guint
+nice_input_message_iter_get_n_valid_messages (NiceInputMessageIter *iter)
+{
+  if (iter->buffer == 0 && iter->offset == 0)
+    return iter->message;
+  else
+    return iter->message + 1;
+}
+
+/* Will fill up @messages from the first free byte onwards (as determined using
+ * @iter). This may be used in reliable or non-reliable mode; in non-reliable
+ * mode it will always increment the message index after each buffer is
+ * consumed.
+ *
+ * Updates @iter in place. No errors can occur.
+ *
+ * Returns the number of valid messages in @messages on success (which may be
+ * zero if reading into the first buffer of the message would have blocked).
+ *
+ * Must be called with the io_mutex held. */
+static gint
+pending_io_messages_recv_messages (Component *component, gboolean reliable,
+    NiceInputMessage *messages, guint n_messages, NiceInputMessageIter *iter)
+{
+  gsize len;
+  IOCallbackData *data;
+  NiceInputMessage *message = &messages[iter->message];
+
+  g_assert (component->io_callback_id == 0);
+
+  data = g_queue_peek_head (&component->pending_io_messages);
+  if (data == NULL)
+    goto done;
+
+  if (iter->buffer == 0 && iter->offset == 0) {
+    message->length = 0;
+  }
+
+  for (;
+       (message->n_buffers >= 0 && iter->buffer < (guint) message->n_buffers) ||
+       (message->n_buffers < 0 && message->buffers[iter->buffer].buffer != NULL);
+       iter->buffer++) {
+    GInputVector *buffer = &message->buffers[iter->buffer];
+
+    do {
+      len = MIN (data->buf_len - data->offset, buffer->size - iter->offset);
+      memcpy ((guint8 *) buffer->buffer + iter->offset,
+          data->buf + data->offset, len);
+
+      nice_debug ("%s: Unbuffered %" G_GSIZE_FORMAT " bytes into "
+          "buffer %p (offset %" G_GSIZE_FORMAT ", length %" G_GSIZE_FORMAT
+          ").", G_STRFUNC, len, buffer->buffer, iter->offset, buffer->size);
+
+      message->length += len;
+      iter->offset += len;
+      data->offset += len;
+    } while (iter->offset < buffer->size);
+
+    iter->offset = 0;
+  }
+
+  /* Only if we managed to consume the whole buffer should it be popped off the
+   * queue; otherwise we’ll have another go at it later. */
+  if (data->offset == data->buf_len) {
+    g_queue_pop_head (&component->pending_io_messages);
+    io_callback_data_free (data);
+
+    /* If we’ve consumed an entire message from pending_io_messages, and
+     * are in non-reliable mode, move on to the next message in
+     * @messages. */
+    if (!reliable) {
+      iter->offset = 0;
+      iter->buffer = 0;
+      iter->message++;
+    }
+  }
+
+done:
+  return nice_input_message_iter_get_n_valid_messages (iter);
+}
+
 static gboolean
 nice_agent_recv_cancelled_cb (GCancellable *cancellable, gpointer user_data)
 {
@@ -2668,15 +2919,16 @@ nice_agent_recv_cancelled_cb (GCancellable *cancellable, gpointer user_data)
   return !g_cancellable_set_error_if_cancelled (cancellable, error);
 }
 
-static gssize
-nice_agent_recv_blocking_or_nonblocking (NiceAgent *agent, guint stream_id,
-  guint component_id, gboolean blocking, guint8 *buf, gsize buf_len,
+static gint
+nice_agent_recv_messages_blocking_or_nonblocking (NiceAgent *agent,
+  guint stream_id, guint component_id, gboolean blocking,
+  NiceInputMessage *messages, guint n_messages,
   GCancellable *cancellable, GError **error)
 {
   GMainContext *context;
   Stream *stream;
   Component *component;
-  gssize len = -1;
+  gint n_valid_messages = -1;
   GSource *cancellable_source = NULL;
   gboolean received_enough = FALSE, error_reported = FALSE;
   gboolean all_sockets_would_block = FALSE;
@@ -2685,21 +2937,15 @@ nice_agent_recv_blocking_or_nonblocking (NiceAgent *agent, guint stream_id,
   g_return_val_if_fail (NICE_IS_AGENT (agent), -1);
   g_return_val_if_fail (stream_id >= 1, -1);
   g_return_val_if_fail (component_id >= 1, -1);
-  g_return_val_if_fail (buf != NULL, -1);
+  g_return_val_if_fail (n_messages == 0 || messages != NULL, -1);
   g_return_val_if_fail (
       cancellable == NULL || G_IS_CANCELLABLE (cancellable), -1);
   g_return_val_if_fail (error == NULL || *error == NULL, -1);
 
-  if (buf_len == 0)
+  if (n_messages == 0)
     return 0;
 
   agent_lock ();
-
-  /* We’re not going to do the
-   * implement-a-ring-buffer-to-cater-for-tiny-input-buffers game, so just warn
-   * if the buffer size is too small, and silently drop any overspilling
-   * bytes. */
-  g_warn_if_fail (agent->reliable || buf_len >= MAX_BUFFER_SIZE);
 
   if (!agent_find_component (agent, stream_id, component_id,
           &stream, &component)) {
@@ -2708,9 +2954,13 @@ nice_agent_recv_blocking_or_nonblocking (NiceAgent *agent, guint stream_id,
     goto done;
   }
 
+  nice_debug ("%s: (%s):", G_STRFUNC, blocking ? "blocking" : "non-blocking");
+  nice_debug_message_composition (messages, n_messages);
+
   /* Set the component’s receive buffer. */
   context = component_dup_io_context (component);
-  component_set_io_callback (component, NULL, NULL, buf, buf_len, &child_error);
+  component_set_io_callback (component, NULL, NULL, messages, n_messages,
+      &child_error);
 
   /* Add the cancellable as a source. */
   if (cancellable != NULL) {
@@ -2728,31 +2978,13 @@ nice_agent_recv_blocking_or_nonblocking (NiceAgent *agent, guint stream_id,
 
   while (!received_enough &&
          !g_queue_is_empty (&component->pending_io_messages)) {
-    IOCallbackData *data;
-    gsize copied_len;
-
-    g_assert (component->io_callback_id == 0);
-
-    data = g_queue_peek_head (&component->pending_io_messages);
-    copied_len = MIN (data->buf_len - data->offset,
-        component->recv_buf_len - component->recv_buf_valid_len);
-
-    memcpy (component->recv_buf + component->recv_buf_valid_len,
-        data->buf + data->offset, len);
-    component->recv_buf_valid_len += copied_len;
-
-    /* If we only managed to grab part of the buffer, leave the buffer in the
-     * queue and have another go at it later. */
-    if (copied_len < data->buf_len - data->offset) {
-      data->offset += copied_len;
-    } else {
-      g_queue_pop_head (&component->pending_io_messages);
-      io_callback_data_free (data);
-    }
+    pending_io_messages_recv_messages (component, agent->reliable,
+        component->recv_messages, component->n_recv_messages,
+        &component->recv_messages_iter);
 
     received_enough =
-        ((agent->reliable && component->recv_buf_valid_len >= buf_len) ||
-         (!agent->reliable && component->recv_buf_valid_len > 0));
+        nice_input_message_iter_is_at_end (&component->recv_messages_iter,
+            component->recv_messages, component->n_recv_messages);
   }
 
   g_mutex_unlock (&component->io_mutex);
@@ -2761,58 +2993,52 @@ nice_agent_recv_blocking_or_nonblocking (NiceAgent *agent, guint stream_id,
    * before trying the sockets. */
   if (agent->reliable && component->tcp != NULL &&
       pseudo_tcp_socket_get_available_bytes (component->tcp) > 0) {
-    len = pseudo_tcp_socket_recv (component->tcp, (gchar *) component->recv_buf,
-        component->recv_buf_len);
+    pseudo_tcp_socket_recv_messages (component->tcp,
+        component->recv_messages, component->n_recv_messages,
+        &component->recv_messages_iter, &child_error);
     adjust_tcp_clock (agent, stream, component);
 
-    nice_debug ("%s: Received %" G_GSSIZE_FORMAT " bytes from pseudo-TCP read "
-        "buffer.", G_STRFUNC, len);
+    nice_debug ("%s: Received %d valid messages from pseudo-TCP read buffer.",
+        G_STRFUNC, n_valid_messages);
 
-    if (len < 0 &&
-        pseudo_tcp_socket_get_error (component->tcp) == EWOULDBLOCK) {
-      len = 0;
-    } else if (len < 0 &&
-        pseudo_tcp_socket_get_error (component->tcp) == ENOTCONN) {
-      g_set_error (&child_error, G_IO_ERROR, G_IO_ERROR_WOULD_BLOCK,
-          "Error reading data from pseudo-TCP socket: not connected.");
-    } else if (len < 0) {
-      g_set_error (&child_error, G_IO_ERROR, G_IO_ERROR_FAILED,
-          "Error reading data from pseudo-TCP socket.");
-    } else if (len > 0) {
-      /* Got some data! */
-      component->recv_buf_valid_len += len;
-    }
-
-    received_enough = (component->recv_buf_valid_len == buf_len);
+    received_enough =
+        nice_input_message_iter_is_at_end (&component->recv_messages_iter,
+            component->recv_messages, component->n_recv_messages);
     error_reported = (child_error != NULL);
   }
 
   /* Each iteration of the main context will either receive some data, a
-   * cancellation error or a socket error.
+   * cancellation error or a socket error. In non-reliable mode, the iter’s
+   * @message counter will be incremented after each read.
    *
-   * In blocking, reliable mode, iterate the loop enough to receive exactly
-   * @buf_len bytes. In blocking, non-reliable mode, iterate the loop to receive
-   * a single message. In non-blocking mode, stop iterating the loop if all
-   * sockets would block (i.e. if no data was received for an iteration).
+   * In blocking, reliable mode, iterate the loop enough to fill exactly
+   * @n_messages messages. In blocking, non-reliable mode, iterate the loop to
+   * receive @n_messages messages (which may not fill all the buffers). In
+   * non-blocking mode, stop iterating the loop if all sockets would block (i.e.
+   * if no data was received for an iteration).
    */
   while (!received_enough && !error_reported && !all_sockets_would_block) {
-    gsize prev_recv_buf_valid_len = component->recv_buf_valid_len;
+    NiceInputMessageIter prev_recv_messages_iter;
+
+    memcpy (&prev_recv_messages_iter, &component->recv_messages_iter,
+        sizeof (NiceInputMessageIter));
 
     agent_unlock ();
     g_main_context_iteration (context, blocking);
     agent_lock ();
 
     received_enough =
-        ((agent->reliable && component->recv_buf_valid_len == buf_len) ||
-         (!agent->reliable && component->recv_buf_valid_len > 0));
+        nice_input_message_iter_is_at_end (&component->recv_messages_iter,
+            component->recv_messages, component->n_recv_messages);
     error_reported = (child_error != NULL);
-    all_sockets_would_block =
-        !blocking && (component->recv_buf_valid_len == prev_recv_buf_valid_len);
+    all_sockets_would_block = (!blocking &&
+        memcmp (&prev_recv_messages_iter, &component->recv_messages_iter,
+            sizeof (NiceInputMessageIter)) == 0);
   }
 
-  len = component->recv_buf_valid_len;
-  nice_debug ("%s: len: %" G_GSIZE_FORMAT ", buf_len: %" G_GSIZE_FORMAT,
-      G_STRFUNC, len, buf_len);
+  n_valid_messages =
+      nice_input_message_iter_get_n_valid_messages (
+          &component->recv_messages_iter);  /* grab before resetting the iter */
 
   /* Tidy up. */
   if (cancellable_source != NULL) {
@@ -2825,24 +3051,83 @@ nice_agent_recv_blocking_or_nonblocking (NiceAgent *agent, guint stream_id,
 
   /* Handle errors and cancellations. */
   if (error_reported) {
-    len = -1;
-  } else if (len == 0 && all_sockets_would_block) {
+    n_valid_messages = -1;
+  } else if (n_valid_messages == 0 && all_sockets_would_block) {
     g_set_error_literal (&child_error, G_IO_ERROR, G_IO_ERROR_WOULD_BLOCK,
         g_strerror (EAGAIN));
-    len = -1;
+    n_valid_messages = -1;
   }
 
+  nice_debug ("%s: n_valid_messages: %d, n_messages: %u", G_STRFUNC,
+      n_valid_messages, n_messages);
+
 done:
-  g_assert ((child_error != NULL) == (len == -1));
-  g_assert (len != 0);
-  g_assert (len < 0 || (gsize) len <= buf_len);
+  g_assert ((child_error != NULL) == (n_valid_messages == -1));
+  g_assert (n_valid_messages != 0);
+  g_assert (n_valid_messages < 0 || (guint) n_valid_messages <= n_messages);
 
   if (child_error != NULL)
     g_propagate_error (error, child_error);
 
   agent_unlock ();
 
-  return len;
+  return n_valid_messages;
+}
+
+/**
+ * nice_agent_recv_messages:
+ * @agent: a #NiceAgent
+ * @stream_id: the ID of the stream to receive on
+ * @component_id: the ID of the component to receive on
+ * @messages: (array length=n_messages) (out caller-allocates): caller-allocated
+ * array of #NiceInputMessages to write the received messages into, of length at
+ * least @n_messages
+ * @n_messages: number of entries in @messages
+ * @cancellable: (allow-none): a #GCancellable to allow the operation to be
+ * cancelled from another thread, or %NULL
+ * @error: (allow-none): return location for a #GError, or %NULL
+ *
+ * Block on receiving data from the given stream/component combination on
+ * @agent, returning only once exactly @n_messages messages have been received
+ * and written into @messages, the stream is closed by the other end or by
+ * calling nice_agent_remove_stream(), or @cancellable is cancelled.
+ *
+ * In the non-error case, in reliable mode, this will block until all buffers in
+ * all @n_messages have been filled with received data (i.e. @messages is
+ * treated as a large, flat array of buffers). In non-reliable mode, it will
+ * block until @n_messages messages have been received, each of which does not
+ * have to fill all the buffers in its #NiceInputMessage. In the non-reliable
+ * case, each #NiceInputMessage must have enough buffers to contain an entire
+ * message (65536 bytes), or any excess data may be silently dropped.
+ *
+ * For each received message, #NiceInputMessage::length will be set to the
+ * number of valid bytes stored in the message’s buffers. The bytes are stored
+ * sequentially in the buffers; there are no gaps apart from at the end of the
+ * buffer array (in non-reliable mode). If non-%NULL on input,
+ * #NiceInputMessage::from will have the address of the sending peer stored in
+ * it. The base addresses, sizes, and number of buffers in each message will not
+ * be modified in any case.
+ *
+ * This must not be used in combination with nice_agent_attach_recv() on the
+ * same stream/component pair.
+ *
+ * If the stream/component pair doesn’t exist, or if a suitable candidate socket
+ * hasn’t yet been selected for it, a %G_IO_ERROR_BROKEN_PIPE error will be
+ * returned. A %G_IO_ERROR_CANCELLED error will be returned if the operation was
+ * cancelled. %G_IO_ERROR_FAILED will be returned for other errors.
+ *
+ * Returns: the number of valid messages written to @messages on success
+ * (guaranteed to be greater than 0 unless @n_messages is 0), or -1 on error
+ *
+ * Since: 0.1.5
+ */
+NICEAPI_EXPORT gint
+nice_agent_recv_messages (NiceAgent *agent, guint stream_id, guint component_id,
+  NiceInputMessage *messages, guint n_messages, GCancellable *cancellable,
+  GError **error)
+{
+  return nice_agent_recv_messages_blocking_or_nonblocking (agent, stream_id,
+      component_id, TRUE, messages, n_messages, cancellable, error);
 }
 
 /**
@@ -2857,26 +3142,7 @@ done:
  * cancelled from another thread, or %NULL
  * @error: (allow-none): return location for a #GError, or %NULL
  *
- * Block on receiving data from the given stream/component combination on
- * @agent, returning only once at least 1 byte has been received and written
- * into @buf, the stream is closed by the other end or by calling
- * nice_agent_remove_stream(), or @cancellable is cancelled.
- *
- * In the non-error case, in reliable mode, this will block until exactly
- * @buf_len bytes have been received. In non-reliable mode, it will block until
- * a single message has been received. In this case, @buf must be big enough to
- * contain an entire message (65535 bytes), or any excess data may be silently
- * dropped.
- *
- * This must not be used in combination with nice_agent_attach_recv() on the
- * same stream/component pair.
- *
- * Internally, this may iterate the current thread’s default main context.
- *
- * If the stream/component pair doesn’t exist, or if a suitable candidate socket
- * hasn’t yet been selected for it, a %G_IO_ERROR_BROKEN_PIPE error will be
- * returned. A %G_IO_ERROR_CANCELLED error will be returned if the operation was
- * cancelled. %G_IO_ERROR_FAILED will be returned for other errors.
+ * A single-message version of nice_agent_recv_messages().
  *
  * Returns: the number of bytes written to @buf on success (guaranteed to be
  * greater than 0 unless @buf_len is 0), or -1 on error
@@ -2887,8 +3153,65 @@ NICEAPI_EXPORT gssize
 nice_agent_recv (NiceAgent *agent, guint stream_id, guint component_id,
   guint8 *buf, gsize buf_len, GCancellable *cancellable, GError **error)
 {
-  return nice_agent_recv_blocking_or_nonblocking (agent, stream_id,
-      component_id, TRUE, buf, buf_len, cancellable, error);
+  gint n_valid_messages;
+  GInputVector local_bufs = { buf, buf_len };
+  NiceInputMessage local_messages = { &local_bufs, 1, NULL, 0 };
+
+  n_valid_messages = nice_agent_recv_messages (agent, stream_id, component_id,
+      &local_messages, 1, cancellable, error);
+
+  if (n_valid_messages <= 0)
+    return n_valid_messages;
+
+  return local_messages.length;
+}
+
+/**
+ * nice_agent_recv_messages_nonblocking:
+ * @agent: a #NiceAgent
+ * @stream_id: the ID of the stream to receive on
+ * @component_id: the ID of the component to receive on
+ * @messages: (array length=n_messages) (out caller-allocates): caller-allocated
+ * array of #NiceInputMessages to write the received messages into, of length at
+ * least @n_messages
+ * @n_messages: number of entries in @messages
+ * @cancellable: (allow-none): a #GCancellable to allow the operation to be
+ * cancelled from another thread, or %NULL
+ * @error: (allow-none): return location for a #GError, or %NULL
+ *
+ * Try to receive data from the given stream/component combination on @agent,
+ * without blocking. If receiving data would block, -1 is returned and
+ * %G_IO_ERROR_WOULD_BLOCK is set in @error. If any other error occurs, -1 is
+ * returned and @error is set accordingly. Otherwise, 0 is returned if (and only
+ * if) @n_messages is 0. In all other cases, the number of valid messages stored
+ * in @messages is returned, and will be greater than 0.
+ *
+ * This function behaves similarly to nice_agent_recv_messages(), except that it
+ * will not block on filling (in reliable mode) or receiving (in non-reliable
+ * mode) exactly @n_messages messages. In reliable mode, it will receive bytes
+ * into @messages until it would block; in non-reliable mode, it will receive
+ * messages until it would block.
+ *
+ * As this function is non-blocking, @cancellable is included only for parity
+ * with nice_agent_recv_messages(). If @cancellable is cancelled before this
+ * function is called, a %G_IO_ERROR_CANCELLED error will be returned
+ * immediately.
+ *
+ * This must not be used in combination with nice_agent_attach_recv() on the
+ * same stream/component pair.
+ *
+ * Returns: the number of valid messages written to @messages on success
+ * (guaranteed to be greater than 0 unless @n_messages is 0), or -1 on error
+ *
+ * Since: 0.1.5
+ */
+NICEAPI_EXPORT gint
+nice_agent_recv_messages_nonblocking (NiceAgent *agent, guint stream_id,
+    guint component_id, NiceInputMessage *messages, guint n_messages,
+    GCancellable *cancellable, GError **error)
+{
+  return nice_agent_recv_messages_blocking_or_nonblocking (agent, stream_id,
+      component_id, FALSE, messages, n_messages, cancellable, error);
 }
 
 /**
@@ -2903,31 +3226,7 @@ nice_agent_recv (NiceAgent *agent, guint stream_id, guint component_id,
  * cancelled from another thread, or %NULL
  * @error: (allow-none): return location for a #GError, or %NULL
  *
- * Try to receive data from the given stream/component combination on @agent,
- * without blocking. If receiving data would block, -1 is returned and a
- * %G_IO_ERROR_WOULD_BLOCK is set in @error. If any other error occurs, -1 is
- * returned. Otherwise, 0 is returned if (and only if) @buf_len is 0. In all
- * other cases, the number of bytes read into @buf is returned, and will be
- * greater than 0.
- *
- * For a reliable @agent, this function will receive as many bytes as possible
- * up to @buf_len. For a non-reliable @agent, it will receive a single message.
- * In this case, @buf must be big enough to contain the entire message (65535
- * bytes), or any excess data may be silently dropped.
- *
- * As this function is non-blocking, @cancellable is included only for parity
- * with nice_agent_recv(). If @cancellable is cancelled before this function is
- * called, a %G_IO_ERROR_CANCELLED error will be returned immediately.
- *
- * This must not be used in combination with nice_agent_attach_recv() on the
- * same stream/component pair.
- *
- * Internally, this may iterate the current thread’s default main context.
- *
- * If the stream/component pair doesn’t exist, or if a suitable candidate socket
- * hasn’t yet been selected for it, a %G_IO_ERROR_BROKEN_PIPE error will be
- * returned. A %G_IO_ERROR_CANCELLED error will be returned if the operation was
- * cancelled. %G_IO_ERROR_FAILED will be returned for other errors.
+ * A single-message version of nice_agent_recv_messages_nonblocking().
  *
  * Returns: the number of bytes received into @buf on success (guaranteed to be
  * greater than 0 unless @buf_len is 0), or -1 on error
@@ -2939,8 +3238,17 @@ nice_agent_recv_nonblocking (NiceAgent *agent, guint stream_id,
     guint component_id, guint8 *buf, gsize buf_len, GCancellable *cancellable,
     GError **error)
 {
-  return nice_agent_recv_blocking_or_nonblocking (agent, stream_id,
-      component_id, FALSE, buf, buf_len, cancellable, error);
+  gint n_valid_messages;
+  GInputVector local_bufs = { buf, buf_len };
+  NiceInputMessage local_messages = { &local_bufs, 1, NULL, 0 };
+
+  n_valid_messages = nice_agent_recv_messages_nonblocking (agent, stream_id,
+      component_id, &local_messages, 1, cancellable, error);
+
+  if (n_valid_messages <= 0)
+    return n_valid_messages;
+
+  return local_messages.length;
 }
 
 /**
@@ -3255,12 +3563,8 @@ component_io_cb (GSocket *socket, GIOCondition condition, gpointer user_data)
   Component *component;
   NiceAgent *agent;
   Stream *stream;
-  guint8 local_buf[MAX_BUFFER_SIZE];
-  gssize len;
-  guint8 *recv_buf;
-  gsize recv_buf_len;
-  gboolean retval = FALSE;
   gboolean has_io_callback;
+  gboolean remove_source = FALSE;
 
   agent_lock ();
 
@@ -3271,6 +3575,7 @@ component_io_cb (GSocket *socket, GIOCondition condition, gpointer user_data)
   if (g_source_is_destroyed (g_main_current_source ())) {
     /* Silently return FALSE. */
     nice_debug ("%s: source %p destroyed", G_STRFUNC, g_main_current_source ());
+    remove_source = TRUE;
     goto done;
   }
 
@@ -3278,65 +3583,145 @@ component_io_cb (GSocket *socket, GIOCondition condition, gpointer user_data)
 
   /* Choose which receive buffer to use. If we’re reading for
    * nice_agent_attach_recv(), use a local static buffer. If we’re reading for
-   * nice_agent_recv(), use the buffer provided by the client.
+   * nice_agent_recv_messages(), use the buffer provided by the client.
    *
    * has_io_callback cannot change throughout this function, as we operate
    * entirely with the agent lock held, and component_set_io_callback() would
    * need to take the agent lock to change the Component’s io_callback. */
-  g_assert (!has_io_callback || component->recv_buf == NULL);
+  g_assert (!has_io_callback || component->recv_messages == NULL);
 
-  if (has_io_callback) {
-    recv_buf = local_buf;
-    recv_buf_len = sizeof (local_buf);
-  } else if (component->recv_buf != NULL) {
-    recv_buf = component->recv_buf + component->recv_buf_valid_len;
-    recv_buf_len = component->recv_buf_len - component->recv_buf_valid_len;
-  } else {
-    /* I/O is paused. Try again later. */
-    retval = TRUE;
-    goto done;
+  if (agent->reliable) {
+#define TCP_HEADER_SIZE 24 /* bytes */
+    guint8 local_header_buf[TCP_HEADER_SIZE];
+    /* FIXME: Currently, the critical path for reliable packet delivery has two
+     * memcpy()s: one into the pseudo-TCP receive buffer, and one out of it.
+     * This could moderately easily be reduced to one memcpy() in the common
+     * case of in-order packet delivery, by replacing local_body_buf with a
+     * pointer into the pseudo-TCP receive buffer. If it turns out the packet
+     * is out-of-order (which we can only know after parsing its header), the
+     * data will need to be moved in the buffer. If the packet *is* in order,
+     * however, the only memcpy() then needed is from the pseudo-TCP receive
+     * buffer to the client’s message buffers.
+     *
+     * In fact, in the case of a reliable agent with I/O callbacks, zero
+     * memcpy()s can be achieved (for in-order packet delivery) by emittin the
+     * I/O callback directly from the pseudo-TCP receive buffer. */
+    guint8 local_body_buf[MAX_BUFFER_SIZE];
+    GInputVector local_bufs[] = {
+      { local_header_buf, sizeof (local_header_buf) },
+      { local_body_buf, sizeof (local_body_buf) },
+    };
+    NiceInputMessage local_message = {
+      local_bufs, G_N_ELEMENTS (local_bufs), NULL, 0
+    };
+    RecvStatus retval = 0;
+
+    if (component->tcp == NULL) {
+      nice_debug ("Agent %p: not handling incoming packet for s%d:%d "
+          "because pseudo-TCP socket does not exist in reliable mode.", agent,
+          stream->id, component->id);
+      remove_source = TRUE;
+      goto done;
+    }
+
+    while (has_io_callback ||
+           (component->recv_messages != NULL &&
+            !nice_input_message_iter_is_at_end (&component->recv_messages_iter,
+                component->recv_messages, component->n_recv_messages))) {
+      /* Receive a single message. This will receive it into the given
+       * @local_bufs then, for pseudo-TCP, emit I/O callbacks or copy it into
+       * component->recv_messages in pseudo_tcp_socket_readable(). STUN packets
+       * will be parsed in-place. */
+      retval = agent_recv_message_unlocked (agent, stream, component,
+          socket_source->socket, &local_message);
+
+      nice_debug ("%s: received %d valid messages with %" G_GSSIZE_FORMAT
+           " bytes", G_STRFUNC, retval, local_message.length);
+
+      /* Don’t expect any valid messages to escape pseudo_tcp_socket_readable()
+       * when in reliable mode. */
+      g_assert_cmpint (retval, !=, RECV_SUCCESS);
+
+      if (retval == RECV_WOULD_BLOCK) {
+        /* EWOULDBLOCK. */
+        break;
+      } else if (retval == RECV_ERROR) {
+        /* Other error. */
+        nice_debug ("%s: error receiving message", G_STRFUNC);
+        remove_source = TRUE;
+        break;
+      }
+
+      has_io_callback = component_has_io_callback (component);
+    }
+  } else if (!agent->reliable && has_io_callback) {
+    while (has_io_callback) {
+      guint8 local_buf[MAX_BUFFER_SIZE];
+      GInputVector local_bufs = { local_buf, sizeof (local_buf) };
+      NiceInputMessage local_message = { &local_bufs, 1, NULL, 0 };
+      RecvStatus retval;
+
+      /* Receive a single message. */
+      retval = agent_recv_message_unlocked (agent, stream, component,
+          socket_source->socket, &local_message);
+
+      nice_debug ("%s: received %d valid messages with %" G_GSSIZE_FORMAT
+           " bytes", G_STRFUNC, retval, local_message.length);
+
+      if (retval == RECV_WOULD_BLOCK) {
+        /* EWOULDBLOCK. */
+        break;
+      } else if (retval == RECV_ERROR) {
+        /* Other error. */
+        nice_debug ("%s: error receiving message", G_STRFUNC);
+        remove_source = TRUE;
+        break;
+      }
+
+      if (retval == RECV_SUCCESS && local_message.length > 0)
+        component_emit_io_callback (component, local_buf, local_message.length);
+
+      has_io_callback = component_has_io_callback (component);
+    }
+  } else if (!agent->reliable && component->recv_messages != NULL) {
+    RecvStatus retval;
+
+    /* Don’t want to trample over partially-valid buffers. */
+    g_assert (component->recv_messages_iter.buffer == 0);
+    g_assert (component->recv_messages_iter.offset == 0);
+
+    while (!nice_input_message_iter_is_at_end (&component->recv_messages_iter,
+        component->recv_messages, component->n_recv_messages)) {
+      /* Receive a single message. This will receive it into the given
+       * user-provided #NiceInputMessage, which it’s the user’s responsibility
+       * to ensure is big enough to avoid data loss (since we’re in non-reliable
+       * mode). Iterate to receive as many messages as possible.
+       *
+       * STUN packets will be parsed in-place. */
+      retval = agent_recv_message_unlocked (agent, stream, component,
+          socket_source->socket,
+          &component->recv_messages[component->recv_messages_iter.message]);
+
+      nice_debug ("%s: received %d valid messages", G_STRFUNC, retval);
+
+      if (retval == RECV_SUCCESS) {
+        /* Successfully received a single message. */
+        component->recv_messages_iter.message++;
+      } else if (retval == RECV_WOULD_BLOCK) {
+        /* EWOULDBLOCK. */
+        break;
+      } else if (retval == RECV_ERROR) {
+        /* Other error. */
+        remove_source = TRUE;
+        break;
+      }
+    }
   }
-
-  /* Actually read the data. This will return 0 if the data has already been
-   * handled (e.g. for STUN control packets). */
-  len = agent_recv_locked (agent, stream, component, socket_source->socket,
-      recv_buf, recv_buf_len);
-
-  nice_debug ("Received %" G_GSSIZE_FORMAT " bytes on source %p "
-      "(socket %p, FD %d).", len,
-      socket_source->source, socket_source->socket,
-      g_socket_get_fd (socket_source->socket->fileno));
-
-  if (len == 0) {
-    /* No data was available, probably due to being a reliable connection and
-     * hence the data is stored in the pseudotcp buffer. */
-    retval = TRUE;
-    goto done;
-  } else if (len < 0) {
-    /* Error. Detach the source but don’t close the socket. We don’t close the
-     * socket because it would be way too complicated to take care of every path
-     * where it might still be used. */
-    g_set_error (component->recv_buf_error, G_IO_ERROR, G_IO_ERROR_FAILED,
-        "Unable to receive from socket %p. Detaching.", socket);
-    nice_debug ("%s: error receiving from socket %p", G_STRFUNC, socket);
-    goto done;
-  }
-
-  /* Actual data to notify the client about. */
-  if (has_io_callback) {
-    component_emit_io_callback (component, recv_buf, len);
-  } else {
-    /* Data has been stored in the component’s receive buffer to be picked up
-     * later by nice_agent_recv(). */
-    component->recv_buf_valid_len += len;
-  }
-
-  retval = TRUE;
 
 done:
   agent_unlock ();
 
-  return retval;
+  return !remove_source;
 }
 
 NICEAPI_EXPORT gboolean
