@@ -52,10 +52,10 @@ typedef enum {
 
 G_BEGIN_DECLS
 
-gint
+gsize
 nice_turn_socket_parse_recv (NiceSocket *sock, NiceSocket **from_sock,
-    NiceAddress *from, guint len, gchar *buf,
-    NiceAddress *recv_from, gchar *recv_buf, guint recv_len);
+    NiceAddress *from, gsize len, guint8 *buf,
+    NiceAddress *recv_from, guint8 *recv_buf, gsize recv_len);
 
 gboolean
 nice_turn_socket_set_peer (NiceSocket *sock, NiceAddress *peer);

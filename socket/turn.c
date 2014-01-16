@@ -356,8 +356,8 @@ socket_recv_messages (NiceSocket *sock,
 
     /* Parse in-place. */
     parsed_buffer_length = nice_turn_socket_parse_recv (sock, &dummy,
-        &from, buffer_length, (gchar *) buffer,
-        message->from, (gchar *) buffer, buffer_length);
+        &from, buffer_length, buffer,
+        message->from, buffer, buffer_length);
     message->length = MAX (parsed_buffer_length, 0);
 
     if (parsed_buffer_length < 0) {
@@ -822,10 +822,10 @@ priv_binding_timeout (gpointer data)
   return FALSE;
 }
 
-gint
+gsize
 nice_turn_socket_parse_recv (NiceSocket *sock, NiceSocket **from_sock,
-    NiceAddress *from, guint len, gchar *buf,
-    NiceAddress *recv_from, gchar *_recv_buf, guint recv_len)
+    NiceAddress *from, gsize len, guint8 *buf,
+    NiceAddress *recv_from, guint8 *_recv_buf, gsize recv_len)
 {
 
   TurnPriv *priv = (TurnPriv *) sock->priv;
@@ -843,7 +843,7 @@ nice_turn_socket_parse_recv (NiceSocket *sock, NiceSocket **from_sock,
 
   if (nice_address_equal (&priv->server_addr, recv_from)) {
     valid = stun_agent_validate (&priv->agent, &msg,
-        recv_buf.u8, (size_t) recv_len, NULL, NULL);
+        recv_buf.u8, recv_len, NULL, NULL);
 
     if (valid == STUN_VALIDATION_SUCCESS) {
       if (priv->compatibility != NICE_TURN_SOCKET_COMPATIBILITY_DRAFT9 &&
