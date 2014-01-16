@@ -177,7 +177,7 @@ static gboolean notify_packet (gpointer user_data)
   return FALSE;
 }
 
-static PseudoTcpWriteResult write (PseudoTcpSocket *sock,
+static PseudoTcpWriteResult write_packet (PseudoTcpSocket *sock,
     const gchar *buffer, guint32 len, gpointer user_data)
 {
   struct notify_data *data;
@@ -247,7 +247,9 @@ static void adjust_clock (PseudoTcpSocket *sock)
 
 int main (int argc, char *argv[])
 {
-  PseudoTcpCallbacks cbs = {NULL, opened, readable, writable, closed, write};
+  PseudoTcpCallbacks cbs = {
+    NULL, opened, readable, writable, closed, write_packet
+  };
 
   mainloop = g_main_loop_new (NULL, FALSE);
 
