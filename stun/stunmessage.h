@@ -879,6 +879,53 @@ int stun_message_validate_buffer_length (const uint8_t *msg, size_t length,
     bool has_padding);
 
 /**
+ * StunInputVector:
+ * @buffer: a buffer containing already-received binary data
+ * @size: length of @buffer, in bytes
+ *
+ * Container for a single buffer which also stores its length. This is designed
+ * for vectored I/O: typically an array of #StunInputVectors is passed to
+ * functions, providing multiple buffers which store logically contiguous
+ * received data.
+ *
+ * This is guaranteed to be layed out identically in memory to #GInputVector.
+ *
+ * Since: 0.1.5
+ */
+typedef struct {
+  const uint8_t *buffer;
+  size_t size;
+} StunInputVector;
+
+/**
+ * stun_message_validate_buffer_length_fast:
+ * @buffers: (array length=n_buffers) (in caller-allocated): array of contiguous
+ * #StunInputVectors containing already-received message data
+ * @n_buffers: number of entries in @buffers
+ * @total_length: total number of valid bytes stored consecutively in @buffers
+ * @has_padding: %TRUE if attributes should be padded to 4-byte boundaries
+ *
+ * Quickly validate whether the message in the given @buffers is potentially a
+ * valid STUN message, an incomplete STUN message, or if it’s definitely not one
+ * at all.
+ *
+ * This is designed as a first-pass validation only, and does not check the
+ * message’s attributes for validity. If this function returns success, the
+ * buffers can be compacted and a more thorough validation can be performed
+ * using stun_message_validate_buffer_length(). If it fails, the buffers
+ * definitely do not contain a complete, valid STUN message.
+ *
+ * Returns: The length of the valid STUN message in the buffer, or zero or -1 on
+ * failure
+ * <para> See also: #STUN_MESSAGE_BUFFER_INCOMPLETE </para>
+ * <para> See also: #STUN_MESSAGE_BUFFER_INVALID </para>
+ *
+ * Since: 0.1.5
+ */
+ssize_t stun_message_validate_buffer_length_fast (StunInputVector *buffers,
+    unsigned int n_buffers, size_t total_length, bool has_padding);
+
+/**
  * stun_message_id:
  * @msg: The #StunMessage
  * @id: The #StunTransactionId to fill

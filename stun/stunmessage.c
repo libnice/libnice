@@ -538,46 +538,93 @@ stun_message_append_error (StunMessage *msg, StunError code)
   return STUN_MESSAGE_RETURN_SUCCESS;
 }
 
-int stun_message_validate_buffer_length (const uint8_t *msg, size_t length,
-    bool has_padding)
+/* Fast validity check for a potential STUN packet. Examines the type and
+ * length, but none of the attributes. Designed to allow vectored I/O on all
+ * incoming packets, filtering packets for closer inspection as to whether
+ * they’re STUN packets. If they look like they might be, their buffers are
+ * compacted to allow a more thorough check. */
+ssize_t stun_message_validate_buffer_length_fast (StunInputVector *buffers,
+    unsigned int n_buffers, size_t total_length, bool has_padding)
 {
   size_t mlen;
-  size_t len;
 
-  if (length < 1)
+  if (total_length < 1 || n_buffers < 1)
   {
     stun_debug ("STUN error: No data!\n");
     return STUN_MESSAGE_BUFFER_INVALID;
   }
 
-  if (msg[0] >> 6)
+  if (buffers[0].buffer[0] >> 6)
   {
     stun_debug ("STUN error: RTP or other non-protocol packet!\n");
     return STUN_MESSAGE_BUFFER_INVALID; // RTP or other non-STUN packet
   }
 
-  if (length < 4)
+  if (total_length < STUN_MESSAGE_LENGTH_POS + STUN_MESSAGE_LENGTH_LEN)
   {
     stun_debug ("STUN error: Incomplete STUN message header!\n");
     return STUN_MESSAGE_BUFFER_INCOMPLETE;
   }
 
-  mlen = stun_getw (msg + STUN_MESSAGE_LENGTH_POS) +
-      STUN_MESSAGE_HEADER_LENGTH;
+  if (buffers[0].size >= STUN_MESSAGE_LENGTH_POS + STUN_MESSAGE_LENGTH_LEN) {
+    /* Fast path. */
+    mlen = stun_getw (buffers[0].buffer + STUN_MESSAGE_LENGTH_POS);
+  } else {
+    /* Slow path. Tiny buffers abound. */
+    size_t skip_remaining = STUN_MESSAGE_LENGTH_POS;
+    unsigned int i;
 
-  if (has_padding && stun_padding (mlen))
-  {
+    /* Skip bytes. */
+    for (i = 0; i < n_buffers; i++) {
+      if (buffers[i].size <= skip_remaining)
+        skip_remaining -= buffers[i].size;
+      else
+        break;
+    }
+
+    /* Read bytes. May be split over two buffers. We’ve already checked that
+     * @total_length is long enough, so @n_buffers should be too. */
+    if (buffers[i].size - skip_remaining > 1) {
+      mlen = stun_getw (buffers[i].buffer + skip_remaining);
+    } else {
+      mlen = (*(buffers[i].buffer + skip_remaining) << 8) |
+             (*(buffers[i + 1].buffer));
+    }
+  }
+
+  mlen += STUN_MESSAGE_HEADER_LENGTH;
+
+  if (has_padding && stun_padding (mlen)) {
     stun_debug ("STUN error: Invalid message length: %u!\n", (unsigned)mlen);
     return STUN_MESSAGE_BUFFER_INVALID; // wrong padding
   }
 
-  if (length < mlen)
-  {
+  if (total_length < mlen) {
     stun_debug ("STUN error: Incomplete message: %u of %u bytes!\n",
-        (unsigned)length, (unsigned)mlen);
+        (unsigned) total_length, (unsigned) mlen);
     return STUN_MESSAGE_BUFFER_INCOMPLETE; // partial message
   }
 
+  return mlen;
+}
+
+int stun_message_validate_buffer_length (const uint8_t *msg, size_t length,
+    bool has_padding)
+{
+  ssize_t fast_retval;
+  size_t mlen;
+  size_t len;
+  StunInputVector input_buffer = { msg, length };
+
+  /* Fast pre-check first. */
+  fast_retval = stun_message_validate_buffer_length_fast (&input_buffer, 1,
+      length, has_padding);
+  if (fast_retval <= 0)
+    return fast_retval;
+
+  mlen = fast_retval;
+
+  /* Skip past the header (validated above). */
   msg += 20;
   len = mlen - 20;
 

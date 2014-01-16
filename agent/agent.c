@@ -2651,6 +2651,13 @@ memcpy_buffer_to_input_message (NiceInputMessage *message,
 
   nice_debug_message_composition (message, 1);
 
+  if (buffer_length > 0) {
+    g_warning ("Dropped %" G_GSIZE_FORMAT " bytes of data from the end of "
+        "buffer %p (length: %" G_GSIZE_FORMAT ") due to not fitting in "
+        "message %p", buffer_length, buffer - message->length,
+        message->length + buffer_length, message);
+  }
+
   return message->length;
 }
 
