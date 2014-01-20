@@ -469,12 +469,8 @@ main (void)
   WSAStartup (0x0202, &w);
 #endif
   nice_address_init (&addr);
-#if !GLIB_CHECK_VERSION(2, 36, 0)
   g_type_init ();
-#endif
-#if !GLIB_CHECK_VERSION(2, 31, 8)
   g_thread_init (NULL);
-#endif
 
   g_assert (nice_address_set_from_string (&addr, "127.0.0.1"));
 

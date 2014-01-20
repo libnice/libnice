@@ -73,9 +73,7 @@ main (void)
 
   nice_address_init (&addr);
   g_type_init ();
-#if !GLIB_CHECK_VERSION(2,31,8)
   g_thread_init(NULL);
-#endif
 
   loop = g_main_loop_new (NULL, FALSE);
 

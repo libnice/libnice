@@ -153,12 +153,8 @@ int main (void)
   WSADATA w;
   WSAStartup (0x0202, &w);
 #endif
-#if !GLIB_CHECK_VERSION(2, 36, 0)
   g_type_init ();
-#endif
-#if !GLIB_CHECK_VERSION(2, 31, 8)
   g_thread_init (NULL);
-#endif
 
   l_data = g_malloc0 (sizeof (ClosingData));
   r_data = g_malloc0 (sizeof (ClosingData));
