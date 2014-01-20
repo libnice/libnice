@@ -59,8 +59,8 @@
 static void socket_close (NiceSocket *sock);
 static gint socket_recv_messages (NiceSocket *sock,
     NiceInputMessage *recv_messages, guint n_recv_messages);
-static gboolean socket_send (NiceSocket *sock, const NiceAddress *to,
-    guint len, const gchar *buf);
+static gint socket_send_messages (NiceSocket *sock,
+    const NiceOutputMessage *messages, guint n_messages);
 static gboolean socket_is_reliable (NiceSocket *sock);
 
 struct UdpBsdSocketPrivate
@@ -142,7 +142,7 @@ nice_udp_bsd_socket_new (NiceAddress *addr)
   nice_address_init (&priv->niceaddr);
 
   sock->fileno = gsock;
-  sock->send = socket_send;
+  sock->send_messages = socket_send_messages;
   sock->recv_messages = socket_recv_messages;
   sock->is_reliable = socket_is_reliable;
   sock->close = socket_close;
@@ -224,34 +224,71 @@ socket_recv_messages (NiceSocket *sock,
   return i;
 }
 
-static gboolean
-socket_send (NiceSocket *sock, const NiceAddress *to,
-    guint len, const gchar *buf)
+static gssize
+socket_send_message (NiceSocket *sock, const NiceOutputMessage *message)
 {
   struct UdpBsdSocketPrivate *priv = sock->priv;
-  ssize_t sent;
+  GError *child_error = NULL;
+  gssize len;
 
   if (!nice_address_is_valid (&priv->niceaddr) ||
-      !nice_address_equal (&priv->niceaddr, to)) {
+      !nice_address_equal (&priv->niceaddr, message->to)) {
     union {
       struct sockaddr_storage storage;
       struct sockaddr addr;
     } sa;
     GSocketAddress *gaddr;
 
+    g_assert (message->to != NULL);
+
     if (priv->gaddr)
       g_object_unref (priv->gaddr);
-    nice_address_copy_to_sockaddr (to, &sa.addr);
+
+    nice_address_copy_to_sockaddr (message->to, &sa.addr);
     gaddr = g_socket_address_new_from_native (&sa.addr, sizeof(sa));
     priv->gaddr = gaddr;
+
     if (gaddr == NULL)
       return -1;
-    priv->niceaddr = *to;
+
+    priv->niceaddr = *message->to;
   }
 
-  sent = g_socket_send_to (sock->fileno, priv->gaddr, buf, len, NULL, NULL);
+  len = g_socket_send_message (sock->fileno, priv->gaddr, message->buffers,
+      message->n_buffers, NULL, 0, G_SOCKET_MSG_NONE, NULL, &child_error);
 
-  return sent == (ssize_t)len;
+  if (len < 0) {
+    if (g_error_matches (child_error, G_IO_ERROR, G_IO_ERROR_WOULD_BLOCK))
+      len = 0;
+
+    g_error_free (child_error);
+  }
+
+  return len;
+}
+
+static gint
+socket_send_messages (NiceSocket *sock, const NiceOutputMessage *messages,
+    guint n_messages)
+{
+  guint i;
+
+  for (i = 0; i < n_messages; i++) {
+    const NiceOutputMessage *message = &messages[i];
+    gssize len;
+
+    len = socket_send_message (sock, message);
+
+    if (len < 0) {
+      /* Error. */
+      return len;
+    } else if (len == 0) {
+      /* EWOULDBLOCK. */
+      break;
+    }
+  }
+
+  return i;
 }
 
 static gboolean

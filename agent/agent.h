@@ -170,6 +170,39 @@ typedef struct {
   gsize length;  /* sum of the lengths of @buffers */
 } NiceInputMessage;
 
+/**
+ * NiceOutputMessage:
+ * @buffers: (array length=n_buffers): unowned array of #GOutputVector buffers
+ * which contain data to transmit for this message
+ * @n_buffers: number of #GOutputVectors in @buffers, or -1 to indicate @buffers
+ * is %NULL-terminated
+ * @to: (allow-none): address of the peer to transmit the message to, or %NULL
+ * to use the default address for the outbound socket
+ * @length: total number of valid bytes contiguously stored in @buffers
+ *
+ * Represents a single message to transmit on the network. For reliable
+ * connections, this is essentially just an array of buffers (specifically,
+ * @to can be ignored). for non-reliable connections, it represents a single
+ * packet to send to the OS.
+ *
+ * @n_buffers may be -1 to indicate that @buffers is terminated by a
+ * #GOutputVector with a %NULL buffer pointer.
+ *
+ * By providing arrays of #NiceOutputMessages to functions like
+ * nice_agent_send_messages_nonblocking(), multiple messages may be transmitted
+ * with a single call, which is more efficient than making multiple calls in a
+ * loop. In this manner, nice_agent_send_messages_nonblocking() is analogous to
+ * sendmmsg(); and #NiceOutputMessage to struct mmsghdr.
+ *
+ * Since: 0.1.5
+ */
+typedef struct {
+  GOutputVector *buffers;
+  gint n_buffers;
+  const NiceAddress *to;
+  gsize length;
+} NiceOutputMessage;
+
 
 #define NICE_TYPE_AGENT nice_agent_get_type()
 

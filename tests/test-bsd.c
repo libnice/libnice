@@ -104,12 +104,12 @@ test_simple_send_recv (void)
   nice_address_set_port (&tmp, nice_address_get_port (&server->addr));
 
   /* Send and receive stuff. */
-  g_assert (nice_socket_send (client, &tmp, 5, "hello"));
+  g_assert_cmpint (nice_socket_send (client, &tmp, 5, "hello"), ==, 5);
 
   g_assert_cmpint (socket_recv (server, &tmp, 5, buf), ==, 5);
   g_assert_cmpint (strncmp (buf, "hello", 5), ==, 0);
 
-  g_assert (nice_socket_send (server, &tmp, 5, "uryyb"));
+  g_assert_cmpint (nice_socket_send (server, &tmp, 5, "uryyb"), ==, 5);
 
   g_assert_cmpint (socket_recv (client, &tmp, 5, buf), ==, 5);
   g_assert_cmpint (strncmp (buf, "uryyb", 5), ==, 0);
@@ -126,6 +126,8 @@ test_zero_send_recv (void)
   NiceSocket *sock;
   NiceAddress tmp;
   gchar buf[5];
+  NiceOutputMessage local_out_message;
+  NiceInputMessage local_in_message;
 
   sock = nice_udp_bsd_socket_new (NULL);
   g_assert (sock != NULL);
@@ -135,11 +137,20 @@ test_zero_send_recv (void)
   nice_address_set_port (&tmp, nice_address_get_port (&sock->addr));
   g_assert_cmpuint (nice_address_get_port (&tmp), !=, 0);
 
-  g_assert (nice_socket_send (sock, &tmp, 0, "some-buffer-to-be-ignored"));
-  g_assert (nice_socket_send (sock, &tmp, 0, NULL));
+  g_assert_cmpint (nice_socket_send (sock, &tmp, 0, "ignore-me"), ==, 0);
+  g_assert_cmpint (nice_socket_send (sock, &tmp, 0, NULL), ==, 0);
 
   g_assert_cmpint (socket_recv (sock, &tmp, 0, buf), ==, 0);
   g_assert_cmpint (socket_recv (sock, &tmp, 0, NULL), ==, 0);
+
+  /* And again with messages. */
+  g_assert_cmpint (nice_socket_send_messages (sock,
+      &local_out_message, 0), ==, 0);
+  g_assert_cmpint (nice_socket_send_messages (sock, NULL, 0), ==, 0);
+
+  g_assert_cmpint (nice_socket_recv_messages (sock,
+      &local_in_message, 0), ==, 0);
+  g_assert_cmpint (nice_socket_recv_messages (sock, NULL, 0), ==, 0);
 
   nice_socket_free (sock);
 }
@@ -181,7 +192,7 @@ test_multi_buffer_recv (void)
     memset (dummy_buf, 0xaa, sizeof (dummy_buf));
 
     /* Send and receive. */
-    g_assert (nice_socket_send (client, &tmp, 11, "hello-world"));
+    g_assert_cmpint (nice_socket_send (client, &tmp, 11, "hello-world"), ==, 11);
     g_assert_cmpuint (nice_socket_recv_messages (server, &message, 1), ==, 1);
     g_assert_cmpuint (message.length, ==, 11);
 
@@ -219,7 +230,7 @@ fill_send_buf (guint8 *buf, gsize buf_len, guint seed)
 static void
 test_multi_message_recv (guint n_sends, guint n_receives,
     guint n_bufs_per_message, gsize send_buf_size, gsize recv_buf_size,
-    guint expected_n_received_messages)
+    guint expected_n_received_messages, guint expected_n_sent_messages)
 {
   NiceSocket *server;
   NiceSocket *client;
@@ -236,45 +247,66 @@ test_multi_message_recv (guint n_sends, guint n_receives,
 
   /* Send and receive stuff. */
   {
-    GInputVector *bufs;
-    NiceInputMessage *messages;
+    GInputVector *recv_bufs;
+    NiceInputMessage *recv_messages;
+    GOutputVector *send_bufs;
+    NiceOutputMessage *send_messages;
     guint i, j;
-    guint8 *_expected_recv_buf, *send_buf;
+    guint8 *_expected_recv_buf;
     gsize expected_recv_buf_len;
 
+    /* Set up the send buffers. */
+    send_bufs = g_malloc0_n (n_sends * n_bufs_per_message,
+        sizeof (GOutputVector));
+    send_messages = g_malloc0_n (n_sends, sizeof (NiceOutputMessage));
+
+    for (i = 0; i < n_sends; i++) {
+      for (j = 0; j < n_bufs_per_message; j++) {
+        guint8 *buf = g_slice_alloc (send_buf_size);
+
+        send_bufs[i * n_bufs_per_message + j].buffer = buf;
+        send_bufs[i * n_bufs_per_message + j].size = send_buf_size;
+
+        /* Set up the buffer data. */
+        fill_send_buf (buf, send_buf_size, i);
+      }
+
+      send_messages[i].buffers = send_bufs + i * n_bufs_per_message;
+      send_messages[i].n_buffers = n_bufs_per_message;
+      send_messages[i].to = &tmp;
+      send_messages[i].length = 0;
+    }
+
     /* Set up the receive buffers. Yay for dynamic tests! */
-    bufs = g_malloc0_n (n_receives * n_bufs_per_message, sizeof (GInputVector));
-    messages = g_malloc0_n (n_receives, sizeof (NiceInputMessage));
+    recv_bufs = g_malloc0_n (n_receives * n_bufs_per_message,
+        sizeof (GInputVector));
+    recv_messages = g_malloc0_n (n_receives, sizeof (NiceInputMessage));
 
     for (i = 0; i < n_receives; i++) {
       for (j = 0; j < n_bufs_per_message; j++) {
-        bufs[i * n_bufs_per_message + j].buffer = g_slice_alloc (recv_buf_size);
-        bufs[i * n_bufs_per_message + j].size = recv_buf_size;
+        recv_bufs[i * n_bufs_per_message + j].buffer =
+            g_slice_alloc (recv_buf_size);
+        recv_bufs[i * n_bufs_per_message + j].size = recv_buf_size;
 
         /* Initialise the buffer to try to catch out-of-bounds accesses. */
-        memset (bufs[i * n_bufs_per_message + j].buffer, 0xaa, recv_buf_size);
+        memset (recv_bufs[i * n_bufs_per_message + j].buffer, 0xaa,
+            recv_buf_size);
       }
 
-      messages[i].buffers = bufs + i * n_bufs_per_message;
-      messages[i].n_buffers = n_bufs_per_message;
-      messages[i].from = NULL;
-      messages[i].length = 0;
+      recv_messages[i].buffers = recv_bufs + i * n_bufs_per_message;
+      recv_messages[i].n_buffers = n_bufs_per_message;
+      recv_messages[i].from = NULL;
+      recv_messages[i].length = 0;
     }
 
     /* Send multiple packets. */
-    send_buf = g_slice_alloc (send_buf_size);
-
-    for (i = 0; i < n_sends; i++) {
-      fill_send_buf (send_buf, send_buf_size, i);
-      g_assert (nice_socket_send (client, &tmp, send_buf_size,
-          (gchar *) send_buf));
-    }
-
-    g_slice_free1 (send_buf_size, send_buf);
+    g_assert_cmpint (
+        nice_socket_send_messages (client, send_messages, n_sends), ==,
+        expected_n_sent_messages);
 
     /* Receive things. */
-    g_assert_cmpuint (
-        nice_socket_recv_messages (server, messages, n_receives), ==,
+    g_assert_cmpint (
+        nice_socket_recv_messages (server, recv_messages, n_receives), ==,
         expected_n_received_messages);
 
     /* Check all of the things. The sizes should not have been modified. */
@@ -282,20 +314,18 @@ test_multi_message_recv (guint n_sends, guint n_receives,
     _expected_recv_buf = g_slice_alloc (expected_recv_buf_len);
 
     for (i = 0; i < expected_n_received_messages; i++) {
-      NiceInputMessage *message = &messages[i];
+      NiceInputMessage *message = &recv_messages[i];
       guint8 *expected_recv_buf = _expected_recv_buf;
       gsize expected_len;
 
-      expected_len = MIN (send_buf_size, expected_recv_buf_len);
+      expected_len = MIN (send_buf_size * n_bufs_per_message,
+          expected_recv_buf_len);
       g_assert_cmpuint (message->length, ==, expected_len);
 
       /* Build the expected buffer as a concatenation of the expected values of
        * all receive buffers in the message. */
+      memset (expected_recv_buf, 0xaa, expected_recv_buf_len);
       fill_send_buf (expected_recv_buf, expected_len, i);
-      if (expected_recv_buf_len > send_buf_size) {
-        memset (expected_recv_buf + expected_len, 0xaa,
-            expected_recv_buf_len - send_buf_size);
-      }
 
       for (j = 0; j < n_bufs_per_message; j++) {
         g_assert_cmpuint (message->buffers[j].size, ==, recv_buf_size);
@@ -329,25 +359,34 @@ main (void)
   {
     guint i;
     struct {
-      guint n_sends;
-      guint n_receives;
+      guint n_sends;  /* messages */
+      guint expected_n_sent_messages;
+
+      guint n_receives;  /* messages */
+      guint expected_n_received_messages;
+
       guint n_bufs_per_message;
       gsize send_buf_size;
       gsize recv_buf_size;
-      guint expected_n_received_messages;
     } test_cases[] = {
-      { 2, 2, 1, 100, 100, 2 },  /* same number of sends and receives */
-      { 4, 2, 2, 100, 77, 2 },  /* more sends than receives */
-      { 1, 4, 4, 10, 100, 1 },  /* more receives than sends */
-      { 100, 100, 1, 100, 64, 100 },  /* small receive buffer (data loss) */
-      { 100, 100, 10, 100, 8, 100 },  /* small receive buffers (data loss) */
+      /* same number of sends and receives */
+      {   2,   2,   2,   2,   1, 100, 100 },  /* send 200B, receive 200B */
+      /* more sends than receives */
+      {   4,   4,   2,   2,   2, 100,  77 },  /* send 800B, receive 308B */
+      /* more receives than sends */
+      {   1,   1,   4,   1,   4,  10, 100 },  /* send 40B, receive 1600B */
+      /* small receive buffer (data loss) */
+      { 100, 100, 100, 100,   1, 100,  64 },  /* send 10000B, receive 6400B */
+      /* small receive buffers (data loss) */
+      {  50,  50,  50,  50,  10, 100,   8 },  /* send 50000B, receive 4000B */
     };
 
     for (i = 0; i < G_N_ELEMENTS (test_cases); i++) {
       test_multi_message_recv (test_cases[i].n_sends, test_cases[i].n_receives,
           test_cases[i].n_bufs_per_message, test_cases[i].send_buf_size,
           test_cases[i].recv_buf_size,
-          test_cases[i].expected_n_received_messages);
+          test_cases[i].expected_n_received_messages,
+          test_cases[i].expected_n_sent_messages);
     }
   }
 

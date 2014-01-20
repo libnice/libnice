@@ -58,8 +58,8 @@ typedef struct {
 
 
 struct to_be_sent {
-  guint length;
-  gchar *buf;
+  guint8 *buf;  /* owned */
+  gsize length;
   NiceAddress to;
 };
 
@@ -91,12 +91,12 @@ static const gchar SSL_CLIENT_HANDSHAKE[] = {
 static void socket_close (NiceSocket *sock);
 static gint socket_recv_messages (NiceSocket *sock,
     NiceInputMessage *recv_messages, guint n_recv_messages);
-static gboolean socket_send (NiceSocket *sock, const NiceAddress *to,
-    guint len, const gchar *buf);
+static gint socket_send_messages (NiceSocket *sock,
+    const NiceOutputMessage *messages, guint n_messages);
 static gboolean socket_is_reliable (NiceSocket *sock);
 
-static void add_to_be_sent (NiceSocket *sock, const NiceAddress *to,
-    const gchar *buf, guint len);
+static void add_to_be_sent (NiceSocket *sock, const NiceOutputMessage *messages,
+    guint n_messages);
 static void free_to_be_sent (struct to_be_sent *tbs);
 
 
@@ -112,7 +112,7 @@ nice_pseudossl_socket_new (NiceSocket *base_socket)
 
   sock->fileno = priv->base_socket->fileno;
   sock->addr = priv->base_socket->addr;
-  sock->send = socket_send;
+  sock->send_messages = socket_send_messages;
   sock->recv_messages = socket_recv_messages;
   sock->is_reliable = socket_is_reliable;
   sock->close = socket_close;
@@ -173,7 +173,8 @@ socket_recv_messages (NiceSocket *sock,
       struct to_be_sent *tbs = NULL;
       priv->handshaken = TRUE;
       while ((tbs = g_queue_pop_head (&priv->send_queue))) {
-        nice_socket_send (priv->base_socket, &tbs->to, tbs->length, tbs->buf);
+        nice_socket_send (priv->base_socket, &tbs->to, tbs->length,
+            (const gchar *) tbs->buf);
         g_free (tbs->buf);
         g_slice_free (struct to_be_sent, tbs);
       }
@@ -188,19 +189,21 @@ socket_recv_messages (NiceSocket *sock,
   return 0;
 }
 
-static gboolean
-socket_send (NiceSocket *sock, const NiceAddress *to,
-    guint len, const gchar *buf)
+static gint
+socket_send_messages (NiceSocket *sock, const NiceOutputMessage *messages,
+    guint n_messages)
 {
   PseudoSSLPriv *priv = sock->priv;
 
   if (priv->handshaken) {
-    if (priv->base_socket)
-      return nice_socket_send (priv->base_socket, to, len, buf);
-    else
+    /* Fast path: pass directly through to the base socket once the handshake is
+     * complete. */
+    if (priv->base_socket == NULL)
       return FALSE;
+
+    return nice_socket_send_messages (priv->base_socket, messages, n_messages);
   } else {
-    add_to_be_sent (sock, to, buf, len);
+    add_to_be_sent (sock, messages, n_messages);
   }
   return TRUE;
 }
@@ -214,22 +217,41 @@ socket_is_reliable (NiceSocket *sock)
 
 
 static void
-add_to_be_sent (NiceSocket *sock, const NiceAddress *to,
-    const gchar *buf, guint len)
+add_to_be_sent (NiceSocket *sock, const NiceOutputMessage *messages,
+    guint n_messages)
 {
   PseudoSSLPriv *priv = sock->priv;
-  struct to_be_sent *tbs = NULL;
+  guint i;
 
-  if (len <= 0)
-    return;
+  for (i = 0; i < n_messages; i++) {
+    struct to_be_sent *tbs;
+    const NiceOutputMessage *message = &messages[i];
+    guint j;
+    gsize offset = 0;
 
-  tbs = g_slice_new0 (struct to_be_sent);
-  tbs->buf = g_memdup (buf, len);
-  tbs->length = len;
-  if (to)
-    tbs->to = *to;
-  g_queue_push_tail (&priv->send_queue, tbs);
+    tbs = g_slice_new0 (struct to_be_sent);
 
+    /* Compact the buffer. */
+    tbs->buf = g_malloc (message->length);
+    tbs->length = message->length;
+    if (message->to != NULL)
+      tbs->to = *message->to;
+    g_queue_push_tail (&priv->send_queue, tbs);
+
+    for (j = 0;
+         (message->n_buffers >= 0 && j < (guint) message->n_buffers) ||
+         (message->n_buffers < 0 && message->buffers[j].buffer != NULL);
+         j++) {
+      const GOutputVector *buffer = &message->buffers[j];
+      gsize len;
+
+      len = MIN (message->length - offset, buffer->size);
+      memcpy (tbs->buf + offset, buffer->buffer, len);
+      offset += len;
+    }
+
+    g_assert_cmpuint (offset, ==, message->length);
+  }
 }
 
 static void

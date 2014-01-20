@@ -116,8 +116,8 @@ typedef struct {
 static void socket_close (NiceSocket *sock);
 static gint socket_recv_messages (NiceSocket *sock,
     NiceInputMessage *recv_messages, guint n_recv_messages);
-static gboolean socket_send (NiceSocket *sock, const NiceAddress *to,
-    guint len, const gchar *buf);
+static gint socket_send_messages (NiceSocket *sock,
+    const NiceOutputMessage *messages, guint n_messages);
 static gboolean socket_is_reliable (NiceSocket *sock);
 
 static void priv_process_pending_bindings (TurnPriv *priv);
@@ -229,7 +229,7 @@ nice_turn_socket_new (GMainContext *ctx, NiceAddress *addr,
           priv_send_data_queue_destroy);
   sock->addr = *addr;
   sock->fileno = base_socket->fileno;
-  sock->send = socket_send;
+  sock->send_messages = socket_send_messages;
   sock->recv_messages = socket_recv_messages;
   sock->is_reliable = socket_is_reliable;
   sock->close = socket_close;
@@ -547,9 +547,8 @@ socket_dequeue_all_data (TurnPriv *priv, const NiceAddress *to)
 }
 
 
-static gboolean
-socket_send (NiceSocket *sock, const NiceAddress *to,
-    guint len, const gchar *buf)
+static gssize
+socket_send_message (NiceSocket *sock, const NiceOutputMessage *message)
 {
   TurnPriv *priv = (TurnPriv *) sock->priv;
   StunMessage msg;
@@ -561,34 +560,67 @@ socket_send (NiceSocket *sock, const NiceAddress *to,
   } sa;
   GList *i = priv->channels;
   ChannelBinding *binding = NULL;
+  gint ret;
 
   for (; i; i = i->next) {
     ChannelBinding *b = i->data;
-    if (nice_address_equal (&b->peer, to)) {
+    if (nice_address_equal (&b->peer, message->to)) {
       binding = b;
       break;
     }
   }
 
-  nice_address_copy_to_sockaddr (to, &sa.addr);
+  nice_address_copy_to_sockaddr (message->to, &sa.addr);
 
   if (binding) {
     if (priv->compatibility == NICE_TURN_SOCKET_COMPATIBILITY_DRAFT9 ||
         priv->compatibility == NICE_TURN_SOCKET_COMPATIBILITY_RFC5766) {
-      if (len + sizeof(uint32_t) <= sizeof(buffer)) {
-        uint16_t len16 = htons ((uint16_t) len);
-        uint16_t channel16 = htons (binding->channel);
+      if (message->length + sizeof(uint32_t) <= sizeof(buffer)) {
+        guint j;
+        uint16_t len16, channel16;
+        gsize message_offset = 0;
+
+        len16 = htons ((uint16_t) message->length);
+        channel16 = htons (binding->channel);
+
         memcpy (buffer, &channel16, sizeof(uint16_t));
         memcpy (buffer + sizeof(uint16_t), &len16,sizeof(uint16_t));
-        memcpy (buffer + sizeof(uint32_t), buf, len);
-        msg_len = len + sizeof(uint32_t);
+
+        /* FIXME: Slow path! This should be replaced by code which manipulates
+         * the GOutputVector array, rather than the buffer contents
+         * themselves. */
+        for (j = 0;
+             (message->n_buffers >= 0 && j < (guint) message->n_buffers) ||
+             (message->n_buffers < 0 && message->buffers[j].buffer != NULL);
+             j++) {
+          const GOutputVector *out_buf = &message->buffers[j];
+          gsize out_len;
+
+          out_len = MIN (message->length - message_offset, out_buf->size);
+          memcpy (buffer + sizeof (uint32_t) + message_offset,
+              out_buf->buffer, out_len);
+          message_offset += out_len;
+        }
+
+        msg_len = message->length + sizeof(uint32_t);
       } else {
         return 0;
       }
     } else {
-      return nice_socket_send (priv->base_socket, &priv->server_addr, len, buf);
+      NiceOutputMessage local_message = {
+        message->buffers, message->n_buffers, &priv->server_addr,
+        message->length
+      };
+
+      ret = nice_socket_send_messages (priv->base_socket, &local_message, 1);
+      if (ret == 1)
+        return message->length;
+      return ret;
     }
   } else {
+    guint8 *compacted_buf;
+    gsize compacted_buf_len;
+
     if (priv->compatibility == NICE_TURN_SOCKET_COMPATIBILITY_DRAFT9 ||
         priv->compatibility == NICE_TURN_SOCKET_COMPATIBILITY_RFC5766) {
       if (!stun_agent_init_indication (&priv->agent, &msg,
@@ -619,7 +651,7 @@ socket_send (NiceSocket *sock, const NiceAddress *to,
 
       if (priv->compatibility == NICE_TURN_SOCKET_COMPATIBILITY_GOOGLE &&
           priv->current_binding &&
-          nice_address_equal (&priv->current_binding->peer, to)) {
+          nice_address_equal (&priv->current_binding->peer, message->to)) {
         stun_message_append32 (&msg, STUN_ATTRIBUTE_OPTIONS, 1);
       }
     }
@@ -634,10 +666,20 @@ socket_send (NiceSocket *sock, const NiceAddress *to,
       stun_message_ensure_ms_realm(&msg, priv->ms_realm);
     }
 
-    if (stun_message_append_bytes (&msg, STUN_ATTRIBUTE_DATA,
-            buf, len) != STUN_MESSAGE_RETURN_SUCCESS)
-      goto send;
+    /* Slow path! We have to compact the buffers to append them to the message.
+     * FIXME: This could be improved by adding vectored I/O support to
+      * stun_message_append_bytes(). */
+    compacted_buf = compact_output_message (message, &compacted_buf_len);
 
+    if (stun_message_append_bytes (&msg, STUN_ATTRIBUTE_DATA,
+            compacted_buf, compacted_buf_len) != STUN_MESSAGE_RETURN_SUCCESS) {
+      g_free (compacted_buf);
+      goto send;
+    }
+
+    g_free (compacted_buf);
+
+    /* Finish the message. */
     msg_len = stun_agent_finish_message (&priv->agent, &msg,
         priv->password, priv->password_len);
     if (msg_len > 0 && stun_message_get_class (&msg) == STUN_REQUEST) {
@@ -653,22 +695,59 @@ socket_send (NiceSocket *sock, const NiceAddress *to,
 
   if (msg_len > 0) {
     if (priv->compatibility == NICE_TURN_SOCKET_COMPATIBILITY_RFC5766 &&
-        !priv_has_permission_for_peer (priv, to)) {
-      if (!priv_has_sent_permission_for_peer (priv, to)) {
-        priv_send_create_permission (priv, NULL, to);
+        !priv_has_permission_for_peer (priv, message->to)) {
+      if (!priv_has_sent_permission_for_peer (priv, message->to)) {
+        priv_send_create_permission (priv, NULL, message->to);
       }
 
       /* enque data */
       nice_debug ("enqueuing data");
-      socket_enqueue_data(priv, to, msg_len, (gchar *)buffer);
-      return TRUE;
+      socket_enqueue_data(priv, message->to, msg_len, (gchar *)buffer);
+
+      return msg_len;
     } else {
-      return nice_socket_send (priv->base_socket, &priv->server_addr,
-          msg_len, (gchar *)buffer);
+      GOutputVector local_buf = { buffer, msg_len };
+      NiceOutputMessage local_message = {
+        &local_buf, 1, &priv->server_addr, msg_len
+      };
+
+      ret = nice_socket_send_messages (priv->base_socket, &local_message, 1);
+      if (ret == 1)
+        return msg_len;
+      return ret;
     }
   }
- send:
-  return nice_socket_send (priv->base_socket, to, len, buf);
+
+send:
+  /* Error condition pass through to the base socket. */
+  ret = nice_socket_send_messages (priv->base_socket, message, 1);
+  if (ret == 1)
+    return message->length;
+  return ret;
+}
+
+static gint
+socket_send_messages (NiceSocket *sock, const NiceOutputMessage *messages,
+    guint n_messages)
+{
+  guint i;
+
+  for (i = 0; i < n_messages; i++) {
+    const NiceOutputMessage *message = &messages[i];
+    gssize len;
+
+    len = socket_send_message (sock, message);
+
+    if (len < 0) {
+      /* Error. */
+      return len;
+    } else if (len == 0) {
+      /* EWOULDBLOCK. */
+      break;
+    }
+  }
+
+  return i;
 }
 
 static gboolean

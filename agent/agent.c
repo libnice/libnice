@@ -2781,6 +2781,20 @@ memcpy_buffer_to_input_message (NiceInputMessage *message,
   return message->length;
 }
 
+/* Concatenate all the buffers in the given @message into a single, newly
+ * allocated, monolithic buffer which is returned. The length of the new buffer
+ * is returned in @buffer_length, and should be equal to the length field of
+ * @recv_message.
+ *
+ * The return value must be freed with g_free(). */
+guint8 *
+compact_output_message (const NiceOutputMessage *message, gsize *buffer_length)
+{
+  /* This works as long as NiceInputMessage and NiceOutputMessage are layed out
+   * identically. */
+  return compact_input_message ((NiceInputMessage *) message, buffer_length);
+}
+
 /**
  * nice_input_message_iter_reset:
  * @iter: a #NiceInputMessageIter

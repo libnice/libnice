@@ -92,12 +92,12 @@ struct to_be_sent {
 static void socket_close (NiceSocket *sock);
 static gint socket_recv_messages (NiceSocket *sock,
     NiceInputMessage *recv_messages, guint n_recv_messages);
-static gboolean socket_send (NiceSocket *sock, const NiceAddress *to,
-    guint len, const gchar *buf);
+static gint socket_send_messages (NiceSocket *sock,
+    const NiceOutputMessage *messages, guint n_messages);
 static gboolean socket_is_reliable (NiceSocket *sock);
 
-static void add_to_be_sent (NiceSocket *sock, const NiceAddress *to,
-    const gchar *buf, guint len);
+static void add_to_be_sent (NiceSocket *sock, const NiceOutputMessage *messages,
+    guint n_messages);
 static void free_to_be_sent (struct to_be_sent *tbs);
 
 
@@ -125,7 +125,7 @@ nice_http_socket_new (NiceSocket *base_socket,
 
     sock->fileno = priv->base_socket->fileno;
     sock->addr = priv->base_socket->addr;
-    sock->send = socket_send;
+    sock->send_messages = socket_send_messages;
     sock->recv_messages = socket_recv_messages;
     sock->is_reliable = socket_is_reliable;
     sock->close = socket_close;
@@ -136,6 +136,9 @@ nice_http_socket_new (NiceSocket *base_socket,
       gchar *credential = NULL;
       gchar host[INET6_ADDRSTRLEN];
       gint port = nice_address_get_port (&priv->addr);
+      GOutputVector local_bufs;
+      NiceOutputMessage local_messages;
+
       nice_address_to_string (&priv->addr, host);
 
       if (username) {
@@ -158,7 +161,14 @@ nice_http_socket_new (NiceSocket *base_socket,
           credential? credential : "" );
       g_free (credential);
 
-      nice_socket_send (priv->base_socket, NULL, strlen (msg), msg);
+      local_bufs.buffer = msg;
+      local_bufs.size = strlen (msg);
+      local_messages.buffers = &local_bufs;
+      local_messages.n_buffers = 1;
+      local_messages.to = NULL;
+      local_messages.length = local_bufs.size;
+
+      nice_socket_send_messages (priv->base_socket, &local_messages, 1);
       priv->state = HTTP_STATE_INIT;
       g_free (msg);
     }
@@ -565,23 +575,25 @@ retry:
   return -1;
 }
 
-static gboolean
-socket_send (NiceSocket *sock, const NiceAddress *to,
-    guint len, const gchar *buf)
+static gint
+socket_send_messages (NiceSocket *sock, const NiceOutputMessage *messages,
+    guint n_messages)
 {
   HttpPriv *priv = sock->priv;
 
   if (priv->state == HTTP_STATE_CONNECTED) {
-    if (priv->base_socket)
-      return nice_socket_send (priv->base_socket, to, len, buf);
-    else
-      return FALSE;
+    /* Fast path. */
+    if (!priv->base_socket)
+      return -1;
+
+    return nice_socket_send_messages (priv->base_socket, messages, n_messages);
   } else if (priv->state == HTTP_STATE_ERROR) {
-    return FALSE;
+    return -1;
   } else {
-    add_to_be_sent (sock, to, buf, len);
+    add_to_be_sent (sock, messages, n_messages);
   }
-  return TRUE;
+
+  return n_messages;
 }
 
 
@@ -593,22 +605,46 @@ socket_is_reliable (NiceSocket *sock)
 
 
 static void
-add_to_be_sent (NiceSocket *sock, const NiceAddress *to,
-    const gchar *buf, guint len)
+add_to_be_sent (NiceSocket *sock, const NiceOutputMessage *messages,
+    guint n_messages)
 {
   HttpPriv *priv = sock->priv;
-  struct to_be_sent *tbs = NULL;
+  guint i;
 
-  if (len <= 0)
+  if (n_messages == 0)
     return;
 
-  tbs = g_slice_new0 (struct to_be_sent);
-  tbs->buf = g_memdup (buf, len);
-  tbs->length = len;
-  if (to)
-    tbs->to = *to;
-  g_queue_push_tail (&priv->send_queue, tbs);
+  /* Compact the message’s buffers before queueing. */
+  for (i = 0; i < n_messages; i++) {
+    const NiceOutputMessage *message = &messages[i];
+    struct to_be_sent *tbs = NULL;
+    guint j;
+    gsize message_len_remaining = message->length;
+    gsize offset = 0;
 
+    if (message->length == 0)
+      continue;
+
+    tbs = g_slice_new0 (struct to_be_sent);
+    tbs->buf = g_malloc (message->length);
+    tbs->length = message->length;
+    if (message->to)
+      tbs->to = *message->to;
+    g_queue_push_tail (&priv->send_queue, tbs);
+
+    for (j = 0;
+         (message->n_buffers >= 0 && j < (guint) message->n_buffers) ||
+         (message->n_buffers < 0 && message->buffers[j].buffer != NULL);
+         j++) {
+      const GOutputVector *buffer = &message->buffers[j];
+      gsize len;
+
+      len = MIN (buffer->size, message_len_remaining);
+      memcpy (tbs->buf + offset, buffer->buffer, len);
+      message_len_remaining -= len;
+      offset += len;
+    }
+  }
 }
 
 

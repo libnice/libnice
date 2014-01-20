@@ -63,8 +63,9 @@ struct _NiceSocket
    * n_recv_messages is 0, recv_messages may be NULL. */
   gint (*recv_messages) (NiceSocket *sock,
       NiceInputMessage *recv_messages, guint n_recv_messages);
-  gboolean (*send) (NiceSocket *sock, const NiceAddress *to, guint len,
-      const gchar *buf);
+  /* As above, @n_messages may be zero. Iff so, @messages may be %NULL. */
+  gint (*send_messages) (NiceSocket *sock, const NiceOutputMessage *messages,
+      guint n_messages);
   gboolean (*is_reliable) (NiceSocket *sock);
   void (*close) (NiceSocket *sock);
   void *priv;
@@ -75,9 +76,12 @@ gint
 nice_socket_recv_messages (NiceSocket *sock,
     NiceInputMessage *recv_messages, guint n_recv_messages);
 
-gboolean
-nice_socket_send (NiceSocket *sock, const NiceAddress *to,
-  guint len, const gchar *buf);
+gint
+nice_socket_send_messages (NiceSocket *sock, const NiceOutputMessage *messages,
+    guint n_messages);
+gssize
+nice_socket_send (NiceSocket *sock, const NiceAddress *addr, gsize len,
+    const gchar *buf);
 
 gboolean
 nice_socket_is_reliable (NiceSocket *sock);

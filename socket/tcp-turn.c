@@ -69,8 +69,8 @@ typedef struct {
 static void socket_close (NiceSocket *sock);
 static gint socket_recv_messages (NiceSocket *sock,
     NiceInputMessage *recv_messages, guint n_recv_messages);
-static gboolean socket_send (NiceSocket *sock, const NiceAddress *to,
-    guint len, const gchar *buf);
+static gint socket_send_messages (NiceSocket *sock,
+    const NiceOutputMessage *messages, guint n_messages);
 static gboolean socket_is_reliable (NiceSocket *sock);
 
 NiceSocket *
@@ -86,7 +86,7 @@ nice_tcp_turn_socket_new (NiceSocket *base_socket,
 
   sock->fileno = priv->base_socket->fileno;
   sock->addr = priv->base_socket->addr;
-  sock->send = socket_send;
+  sock->send_messages = socket_send_messages;
   sock->recv_messages = socket_recv_messages;
   sock->is_reliable = socket_is_reliable;
   sock->close = socket_close;
@@ -222,36 +222,99 @@ socket_recv_messages (NiceSocket *socket,
   return i;
 }
 
-static gboolean
-socket_send (NiceSocket *sock, const NiceAddress *to,
-    guint len, const gchar *buf)
+static gssize
+socket_send_message (NiceSocket *sock, const NiceOutputMessage *message)
 {
   TurnTcpPriv *priv = sock->priv;
-  gchar padbuf[3] = {0, 0, 0};
-  int padlen = (len%4) ? 4 - (len%4) : 0;
-  gchar buffer[MAX_UDP_MESSAGE_SIZE + sizeof(guint16) + sizeof(padbuf)];
-  guint buffer_len = 0;
+  guint8 padbuf[3] = {0, 0, 0};
+  GOutputVector *local_bufs;
+  NiceOutputMessage local_message;
+  guint j;
+  gint ret;
+  guint n_bufs;
+  guint16 header_buf;
 
-  if (priv->compatibility != NICE_TURN_SOCKET_COMPATIBILITY_DRAFT9 &&
-      priv->compatibility != NICE_TURN_SOCKET_COMPATIBILITY_RFC5766)
-    padlen = 0;
+  /* Count the number of buffers. */
+  if (message->n_buffers == -1) {
+    n_bufs = 0;
 
-  if (priv->compatibility == NICE_TURN_SOCKET_COMPATIBILITY_GOOGLE) {
-    guint16 tmpbuf = htons (len);
-    memcpy (buffer + buffer_len, (gchar *)&tmpbuf, sizeof(guint16));
-    buffer_len += sizeof(guint16);
+    for (j = 0; message->buffers[j].buffer != NULL; j++)
+      n_bufs++;
+  } else {
+    n_bufs = message->n_buffers;
   }
 
-  memcpy (buffer + buffer_len, buf, len);
-  buffer_len += len;
+  /* Allocate a new array of buffers, covering all the buffers in the input
+   * @message, but with an additional one for a header and one for a footer. */
+  local_bufs = g_malloc_n (n_bufs + 2, sizeof (GOutputVector));
+  local_message.buffers = local_bufs;
+  local_message.n_buffers = n_bufs + 2;
+  local_message.to = message->to;
+  local_message.length = message->length;
 
+  /* Copy the existing buffers across. */
+  for (j = 0; j < n_bufs; j++) {
+    local_bufs[j + 1].buffer = message->buffers[j].buffer;
+    local_bufs[j + 1].size = message->buffers[j].size;
+  }
+
+  /* Header buffer. */
+  if (priv->compatibility == NICE_TURN_SOCKET_COMPATIBILITY_GOOGLE) {
+    header_buf = htons (message->length);
+
+    local_bufs[0].buffer = &header_buf;
+    local_bufs[0].size = sizeof (header_buf);
+    local_message.length += sizeof (header_buf);
+  } else {
+    /* Skip over the allocated header buffer. */
+    local_message.buffers++;
+    local_message.n_buffers--;
+  }
+
+  /* Tail buffer. */
   if (priv->compatibility == NICE_TURN_SOCKET_COMPATIBILITY_DRAFT9 ||
       priv->compatibility == NICE_TURN_SOCKET_COMPATIBILITY_RFC5766) {
-    memcpy (buffer + buffer_len, padbuf, padlen);
-    buffer_len += padlen;
-  }
-  return nice_socket_send (priv->base_socket, to, buffer_len, buffer);
+    gsize padlen = (message->length % 4) ? 4 - (message->length % 4) : 0;
 
+    local_bufs[n_bufs].buffer = &padbuf;
+    local_bufs[n_bufs].size = padlen;
+    local_message.length += padlen;
+  } else {
+    /* Skip over the allocated tail buffer. */
+    local_message.n_buffers--;
+  }
+
+  ret = nice_socket_send_messages (priv->base_socket, &local_message, 1);
+
+  g_free (local_bufs);
+
+  if (ret == 1)
+    return local_message.length;
+  return ret;
+}
+
+static gint
+socket_send_messages (NiceSocket *sock, const NiceOutputMessage *messages,
+    guint n_messages)
+{
+  guint i;
+
+  for (i = 0; i < n_messages; i++) {
+    const NiceOutputMessage *message = &messages[i];
+    gssize len;
+
+    len = socket_send_message (sock, message);
+
+    if (len < 0) {
+      /* Error. */
+      return len;
+    } else if (len == 0) {
+      /* EWOULDBLOCK. */
+      break;
+    }
+  }
+
+  return i;
 }
 
 

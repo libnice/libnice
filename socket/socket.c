@@ -93,11 +93,66 @@ nice_socket_recv_messages (NiceSocket *sock,
   return sock->recv_messages (sock, recv_messages, n_recv_messages);
 }
 
-gboolean
-nice_socket_send (NiceSocket *sock, const NiceAddress *to,
-    guint len, const gchar *buf)
+/**
+ * nice_socket_send_messages:
+ * @sock: a #NiceSocket
+ * @messages: (array length=n_messages) (in caller-allocates):
+ * array of #NiceOutputMessages containing the messages to send
+ * @n_messages: number of elements in the @messages array
+ *
+ * Send up to @n_messages on the socket, in a non-reliable, non-blocking
+ * fashion. The total size of the buffers in each #NiceOutputMessage
+ * must be at most the maximum UDP payload size (65535 bytes), or excess
+ * bytes will be silently dropped.
+ *
+ * On success, the number of messages transmitted from @messages is returned,
+ * which may be less than @n_messages if the call would have blocked
+ * part-way through. If the socket would have blocked to begin with, or if
+ * @n_messages is zero, zero is returned. On failure, a negative value is
+ * returned, but no further error information is available. Calling this
+ * function on a socket which has closed is an error, and a negative value is
+ * returned.
+ *
+ * If a positive N is returned, the first N messages in @messages have been
+ * sent in full, and the remaining messages have not been sent at all.
+ *
+ * If #NiceOutputMessage::to is specified for a message, that will be used as
+ * the destination address for the message. Otherwise, if %NULL, the default
+ * destination for @sock will be used.
+ *
+ * Every field of every #NiceOutputMessage is guaranteed to be unmodified when
+ * this function returns.
+ *
+ * Returns: number of messages successfully sent from @messages, or a negative
+ * value on error
+ *
+ * Since: 0.1.5
+ */
+gint
+nice_socket_send_messages (NiceSocket *sock, const NiceOutputMessage *messages,
+    guint n_messages)
 {
-  return sock->send (sock, to, len, buf);
+  g_return_val_if_fail (sock != NULL, -1);
+  g_return_val_if_fail (n_messages == 0 || messages != NULL, -1);
+
+  return sock->send_messages (sock, messages, n_messages);
+}
+
+/* Convenience wrapper around nice_socket_send_messages(). Returns the number of
+ * bytes sent on success (which will be @len), zero if sending would block, or
+ * -1 on error. */
+gssize
+nice_socket_send (NiceSocket *sock, const NiceAddress *to, gsize len,
+    const gchar *buf)
+{
+  GOutputVector local_buf = { buf, len };
+  NiceOutputMessage local_message = { &local_buf, 1, to, len };
+  gint ret;
+
+  ret = nice_socket_send_messages (sock, &local_message, 1);
+  if (ret == 1)
+    return len;
+  return ret;
 }
 
 gboolean
