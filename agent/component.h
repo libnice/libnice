@@ -188,6 +188,11 @@ struct _Component
 
   guint min_port;
   guint max_port;
+
+  /* Queue of messages received before a selected socket was available to send
+   * ACKs on. The messages are dequeued to the pseudo-TCP socket once a selected
+   * UDP socket is available. This is only used for reliable Components. */
+  GQueue queued_tcp_packets;
 };
 
 Component *

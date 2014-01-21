@@ -131,6 +131,8 @@ component_new (guint id, NiceAgent *agent, Stream *stream)
   component_set_io_context (component, NULL);
   component_set_io_callback (component, NULL, NULL, NULL, 0, NULL);
 
+  g_queue_init (&component->queued_tcp_packets);
+
   return component;
 }
 
@@ -140,6 +142,7 @@ component_free (Component *cmp)
   GSList *i;
   GList *item;
   IOCallbackData *data;
+  GOutputVector *vec;
 
   for (i = cmp->local_candidates; i; i = i->next) {
     NiceCandidate *candidate = i->data;
@@ -199,6 +202,11 @@ component_free (Component *cmp)
   if (cmp->ctx != NULL) {
     g_main_context_unref (cmp->ctx);
     cmp->ctx = NULL;
+  }
+
+  while ((vec = g_queue_pop_head (&cmp->queued_tcp_packets)) != NULL) {
+    g_free ((gpointer) vec->buffer);
+    g_slice_free (GOutputVector, vec);
   }
 
   g_mutex_clear (&cmp->io_mutex);
