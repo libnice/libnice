@@ -1875,3 +1875,15 @@ pseudo_tcp_socket_can_send (PseudoTcpSocket *self)
 
   return (pseudo_tcp_fifo_get_write_remaining (&priv->sbuf) != 0);
 }
+
+gsize
+pseudo_tcp_socket_get_available_send_space (PseudoTcpSocket *self)
+{
+  PseudoTcpSocketPrivate *priv = self->priv;
+
+  if (priv->state != TCP_ESTABLISHED) {
+    return 0;
+  }
+
+  return pseudo_tcp_fifo_get_write_remaining (&priv->sbuf);
+}

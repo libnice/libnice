@@ -1028,6 +1028,62 @@ pseudo_tcp_socket_opened (PseudoTcpSocket *sock, gpointer user_data)
       stream->id, component->id);
 }
 
+/* Will attempt to queue all @n_messages into the pseudo-TCP transmission
+ * buffer. This is always used in reliable mode, so essentially treats @messages
+ * as a massive flat array of buffers.
+ *
+ * Returns the number of messages successfully sent on success (which may be
+ * zero if sending the first buffer of the message would have blocked), or
+ * a negative number on error. */
+static gint
+pseudo_tcp_socket_send_messages (PseudoTcpSocket *self,
+    const NiceOutputMessage *messages, guint n_messages, GError **error)
+{
+  guint i;
+
+  for (i = 0; i < n_messages; i++) {
+    const NiceOutputMessage *message = &messages[i];
+    guint j;
+
+    /* If there’s not enough space for the entire message, bail now before
+     * queuing anything. This doesn’t gel with the fact this function is only
+     * used in reliable mode, and there is no concept of a ‘message’, but is
+     * necessary because the calling API has no way of returning to the client
+     * and indicating that a message was partially sent. */
+    if (message->length > pseudo_tcp_socket_get_available_send_space (self)) {
+      return i;
+    }
+
+    for (j = 0;
+         (message->n_buffers >= 0 && j < (guint) message->n_buffers) ||
+         (message->n_buffers < 0 && message->buffers[j].buffer != NULL);
+         j++) {
+      const GOutputVector *buffer = &message->buffers[j];
+      gssize ret;
+
+      /* Send on the pseudo-TCP socket. */
+      ret = pseudo_tcp_socket_send (self, buffer->buffer, buffer->size);
+
+      /* In case of -1, the error is either EWOULDBLOCK or ENOTCONN, which both
+       * need the user to wait for the reliable-transport-writable signal */
+      if (ret < 0 && pseudo_tcp_socket_get_error (self) == EWOULDBLOCK) {
+        ret = 0;
+        return i;
+      } else if (ret < 0 && pseudo_tcp_socket_get_error (self) == ENOTCONN) {
+        g_set_error (error, G_IO_ERROR, G_IO_ERROR_WOULD_BLOCK,
+            "TCP connection is not yet established.");
+        return ret;
+      } else if (ret < 0) {
+        g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+            "Error writing data to pseudo-TCP socket.");
+        return ret;
+      }
+    }
+  }
+
+  return i;
+}
+
 /* Will fill up @messages from the first free byte onwards (as determined using
  * @iter). This is always used in reliable mode, so it essentially treats
  * @messages as a massive flat array of buffers.
@@ -1236,6 +1292,8 @@ pseudo_tcp_socket_write_packet (PseudoTcpSocket *socket,
   if (component->selected_pair.local != NULL) {
     NiceSocket *sock;
     NiceAddress *addr;
+    GOutputVector local_buf;
+    NiceOutputMessage local_message;
 
     sock = component->selected_pair.local->sockptr;
 
@@ -1253,7 +1311,15 @@ pseudo_tcp_socket_write_packet (PseudoTcpSocket *socket,
 #endif
 
     addr = &component->selected_pair.remote->addr;
-    if (nice_socket_send (sock, addr, len, buffer)) {
+
+    local_buf.buffer = buffer;
+    local_buf.size = len;
+    local_message.buffers = &local_buf;
+    local_message.n_buffers = 1;
+    local_message.to = addr;
+    local_message.length = len;
+
+    if (nice_socket_send_messages (sock, &local_message, 1)) {
       return WR_SUCCESS;
     }
   } else {
@@ -3141,62 +3207,25 @@ nice_agent_recv_nonblocking (NiceAgent *agent, guint stream_id,
   return local_messages.length;
 }
 
-/**
- * nice_agent_send_full:
- * @agent: a #NiceAgent
- * @stream_id: the ID of the stream to send to
- * @component_id: the ID of the component to send to
- * @buf: (array length=buf_len): data to transmit, of at least @buf_len bytes in
- * size
- * @buf_len: length of valid data in @buf, in bytes
- * @cancellable: (allow-none): a #GCancellable to cancel the operation from
- * another thread, or %NULL
- * @error: (allow-none): return location for a #GError, or %NULL
- *
- * Sends the data in @buf on the socket identified by the given stream/component
- * pair. Transmission is non-blocking, so a %G_IO_ERROR_WOULD_BLOCK error may be
- * returned if the send buffer is full.
- *
- * As with nice_agent_send(), the given component must be in
- * %NICE_COMPONENT_STATE_READY or, as a special case, in any state if it was
- * previously ready and was then restarted.
- *
- * On success, the number of bytes written to the socket will be returned (which
- * will always be @buf_len when in non-reliable mode, and may be less than
- * @buf_len when in reliable mode).
- *
- * On failure, -1 will be returned and @error will be set. If the #NiceAgent is
- * reliable and the socket is not yet connected, %G_IO_ERROR_BROKEN_PIPE will be
- * returned; if the write buffer is full, %G_IO_ERROR_WOULD_BLOCK will be
- * returned. In both cases, wait for the #NiceAgent::reliable-transport-writable
- * signal before trying again. If the given @stream_id or @component_id are
- * invalid or not yet connected, %G_IO_ERROR_BROKEN_PIPE will be returned.
- * %G_IO_ERROR_FAILED will be returned for other errors.
- *
- * Returns: the number of bytes sent (guaranteed to be greater than 0), or -1 on
- * error
- *
- * Since: 0.1.5
- */
-NICEAPI_EXPORT gssize
-nice_agent_send_full (
+NICEAPI_EXPORT gint
+nice_agent_send_messages_nonblocking (
   NiceAgent *agent,
   guint stream_id,
   guint component_id,
-  const guint8 *buf,
-  gsize buf_len,
+  const NiceOutputMessage *messages,
+  guint n_messages,
   GCancellable *cancellable,
   GError **error)
 {
   Stream *stream;
   Component *component;
-  gssize ret = -1;
+  gint n_sent_messages = -1;
   GError *child_error = NULL;
 
   g_return_val_if_fail (NICE_IS_AGENT (agent), -1);
   g_return_val_if_fail (stream_id >= 1, -1);
   g_return_val_if_fail (component_id >= 1, -1);
-  g_return_val_if_fail (buf != NULL, -1);
+  g_return_val_if_fail (n_messages == 0 || messages != NULL, -1);
   g_return_val_if_fail (
       cancellable == NULL || G_IS_CANCELLABLE (cancellable), -1);
   g_return_val_if_fail (error == NULL || *error == NULL, -1);
@@ -3218,79 +3247,75 @@ nice_agent_send_full (
 
   if (component->tcp != NULL) {
     /* Send on the pseudo-TCP socket. */
-    ret = pseudo_tcp_socket_send (component->tcp, (const gchar *) buf, buf_len);
+    n_sent_messages = pseudo_tcp_socket_send_messages (component->tcp, messages,
+        n_messages, &child_error);
     adjust_tcp_clock (agent, stream, component);
 
     if (!pseudo_tcp_socket_can_send (component->tcp))
       g_cancellable_reset (component->tcp_writable_cancellable);
 
-    /* In case of -1, the error is either EWOULDBLOCK or ENOTCONN, which both
-       need the user to wait for the reliable-transport-writable signal */
-    if (ret < 0 &&
-        pseudo_tcp_socket_get_error (component->tcp) == EWOULDBLOCK) {
-      g_set_error (&child_error, G_IO_ERROR, G_IO_ERROR_WOULD_BLOCK,
-          "Write would block.");
-      goto done;
-    } else if (ret < 0 &&
-        pseudo_tcp_socket_get_error (component->tcp) == ENOTCONN) {
-      g_set_error (&child_error, G_IO_ERROR, G_IO_ERROR_WOULD_BLOCK,
-          "TCP connection is not yet established.");
-      goto done;
-    } else if (ret < 0) {
+    if (n_sent_messages < 0) {
       /* Signal error */
       priv_pseudo_tcp_error (agent, stream, component);
-
-      g_set_error (&child_error, G_IO_ERROR, G_IO_ERROR_FAILED,
-          "Error writing data to pseudo-TCP socket.");
-      goto done;
     }
   } else if (agent->reliable) {
     g_set_error (&child_error, G_IO_ERROR, G_IO_ERROR_FAILED,
         "Error writing data to failed pseudo-TCP socket.");
-    goto done;
   } else if (component->selected_pair.local != NULL) {
     NiceSocket *sock;
     NiceAddress *addr;
+    guint i;
 
 #ifndef NDEBUG
     gchar tmpbuf[INET6_ADDRSTRLEN];
     nice_address_to_string (&component->selected_pair.remote->addr, tmpbuf);
 
-    nice_debug ("Agent %p : s%d:%d: sending %" G_GSIZE_FORMAT " bytes to "
-        "[%s]:%d", agent, stream_id, component_id, buf_len, tmpbuf,
+    nice_debug ("Agent %p : s%d:%d: sending %u messages to "
+        "[%s]:%d", agent, stream_id, component_id, n_messages, tmpbuf,
         nice_address_get_port (&component->selected_pair.remote->addr));
 #endif
 
     sock = component->selected_pair.local->sockptr;
     addr = &component->selected_pair.remote->addr;
 
-    if (nice_socket_send (sock, addr, buf_len, (const gchar *) buf)) {
-      /* Success: sent all the bytes. */
-      ret = buf_len;
-    } else {
-      /* Some error. Since nice_socket_send() provides absolutely no useful
-       * feedback, assume it’s EWOULDBLOCK. */
-      g_set_error (&child_error, G_IO_ERROR, G_IO_ERROR_WOULD_BLOCK,
-          "Error writing data to socket: probably would block.");
-      goto done;
+    /* Set the destination address. FIXME: This is ugly. */
+    for (i = 0; i < n_messages; i++) {
+      NiceOutputMessage *message = (NiceOutputMessage *) &messages[i];
+      message->to = addr;
+    }
+
+    n_sent_messages = nice_socket_send_messages (sock, messages, n_messages);
+
+    if (n_sent_messages < 0) {
+      g_set_error (&child_error, G_IO_ERROR, G_IO_ERROR_FAILED,
+          "Error writing data to socket.");
     }
   } else {
     /* Socket isn’t properly open yet. */
-    g_set_error (&child_error, G_IO_ERROR, G_IO_ERROR_WOULD_BLOCK,
-        "Can’t send: No selected pair yet.");
-    goto done;
+    n_sent_messages = 0;  /* EWOULDBLOCK */
   }
 
+  /* Handle errors and cancellations. */
+  if (n_sent_messages == 0) {
+    g_set_error_literal (&child_error, G_IO_ERROR, G_IO_ERROR_WOULD_BLOCK,
+        g_strerror (EAGAIN));
+    n_sent_messages = -1;
+  }
+
+  nice_debug ("%s: n_sent_messages: %d, n_messages: %u", G_STRFUNC,
+      n_sent_messages, n_messages);
+
 done:
-  g_assert ((child_error != NULL) == (ret == -1));
-  g_assert (ret != 0);
+  g_assert ((child_error != NULL) == (n_sent_messages == -1));
+  g_assert (n_sent_messages != 0);
+  g_assert (n_sent_messages < 0 || (guint) n_sent_messages <= n_messages);
 
   if (child_error != NULL)
     g_propagate_error (error, child_error);
 
   agent_unlock ();
 
-  return ret;
+  return n_sent_messages;
 }
 
 NICEAPI_EXPORT gint
@@ -3301,8 +3326,16 @@ nice_agent_send (
   guint len,
   const gchar *buf)
 {
-  return nice_agent_send_full (agent, stream_id, component_id,
-      (const guint8 *) buf, len, NULL, NULL);
+  GOutputVector local_buf = { buf, len };
+  NiceOutputMessage local_message = { &local_buf, 1, NULL, len };
+  gint n_sent_messages;
+
+  n_sent_messages = nice_agent_send_messages_nonblocking (agent, stream_id,
+      component_id, &local_message, 1, NULL, NULL);
+
+  if (n_sent_messages == 1)
+    return len;
+  return n_sent_messages;
 }
 
 NICEAPI_EXPORT GSList *

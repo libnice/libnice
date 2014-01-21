@@ -348,7 +348,8 @@ nice_output_stream_write (GOutputStream *stream, const void *buffer, gsize count
     GCancellable *cancellable, GError **error)
 {
   NiceOutputStream *self = NICE_OUTPUT_STREAM (stream);
-  gssize len = -1, _len;
+  gssize len = -1;
+  gint n_sent_messages;
   GError *child_error = NULL;
   NiceAgent *agent = NULL;  /* owned */
   gulong cancel_id = 0, writeable_id;
@@ -401,6 +402,11 @@ nice_output_stream_write (GOutputStream *stream, const void *buffer, gsize count
 
 
   do {
+    GOutputVector local_buf = { (const guint8 *) buffer + len, count - len };
+    NiceOutputMessage local_message = {
+      &local_buf, 1, NULL, count - len
+    };
+
     /* Have to unlock while calling into the agent because
      * it will take the agent lock which will cause a deadlock if one of
      * the callbacks is called.
@@ -408,23 +414,24 @@ nice_output_stream_write (GOutputStream *stream, const void *buffer, gsize count
     write_data->writable = FALSE;
     g_mutex_unlock (&write_data->mutex);
 
-    _len = nice_agent_send_full (agent, self->priv->stream_id,
-        self->priv->component_id, (guint8 *) buffer + len, count - len,
+    n_sent_messages = nice_agent_send_messages_nonblocking (agent,
+        self->priv->stream_id, self->priv->component_id, &local_message, 1,
         cancellable, &child_error);
+
     g_mutex_lock (&write_data->mutex);
 
-    if (_len == -1 &&
+    if (n_sent_messages == -1 &&
         g_error_matches (child_error, G_IO_ERROR, G_IO_ERROR_WOULD_BLOCK)) {
       /* EWOULDBLOCK. */
       g_clear_error (&child_error);
       if (!write_data->writable && !write_data->error)
         g_cond_wait (&write_data->cond, &write_data->mutex);
-    } else if (_len > 0) {
+    } else if (n_sent_messages > 0) {
       /* Success. */
-      len += _len;
+      len = count;
     } else {
       /* Other error. */
-      len = _len;
+      len = n_sent_messages;
       break;
     }
   } while ((gsize) len < count);
@@ -517,7 +524,9 @@ nice_output_stream_write_nonblocking (GPollableOutputStream *stream,
 {
   NiceOutputStreamPrivate *priv = NICE_OUTPUT_STREAM (stream)->priv;
   NiceAgent *agent;  /* owned */
-  gssize len;
+  GOutputVector local_buf = { buffer, count };
+  NiceOutputMessage local_message = { &local_buf, 1, NULL, count };
+  gint n_sent_messages;
 
   /* Closed streams are not writeable. */
   if (g_output_stream_is_closed (G_OUTPUT_STREAM (stream))) {
@@ -544,12 +553,12 @@ nice_output_stream_write_nonblocking (GPollableOutputStream *stream,
     return -1;
   }
 
-  len = nice_agent_send_full (agent, priv->stream_id, priv->component_id,
-      buffer, count, NULL, error);
+  n_sent_messages = nice_agent_send_messages_nonblocking (agent,
+      priv->stream_id, priv->component_id, &local_message, 1, NULL, error);
 
   g_object_unref (agent);
 
-  return len;
+  return (n_sent_messages == 1) ? (gssize) count : n_sent_messages;
 }
 
 static GSource *

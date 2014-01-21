@@ -458,6 +458,18 @@ gint pseudo_tcp_socket_get_available_bytes (PseudoTcpSocket *self);
 
 gboolean pseudo_tcp_socket_can_send (PseudoTcpSocket *self);
 
+/**
+ * pseudo_tcp_socket_get_available_send_space:
+ * @self: The #PseudoTcpSocket object.
+ *
+ * Gets the number of bytes of space available in the transmission buffer.
+ *
+ * Returns: The numbero f bytes, or 0 if the connection is not established.
+ *
+ * Since: 0.1.5
+ */
+gsize pseudo_tcp_socket_get_available_send_space (PseudoTcpSocket *self);
+
 G_END_DECLS
 
 #endif /* _PSEUDOTCP_H */

@@ -659,28 +659,29 @@ nice_agent_send (
   const gchar *buf);
 
 /**
- * nice_agent_send_full:
+ * nice_agent_send_messages_nonblocking:
  * @agent: a #NiceAgent
  * @stream_id: the ID of the stream to send to
  * @component_id: the ID of the component to send to
- * @buf: (array length=buf_len): data to transmit, of at least @buf_len bytes in
- * size
- * @buf_len: length of valid data in @buf, in bytes
+ * @messages: (array length=n_messages): array of messages to send, of at least
+ * @n_messages entries in length
+ * @n_messages: number of entries in @messages
  * @cancellable: (allow-none): a #GCancellable to cancel the operation from
  * another thread, or %NULL
  * @error: (allow-none): return location for a #GError, or %NULL
  *
- * Sends the data in @buf on the socket identified by the given stream/component
- * pair. Transmission is non-blocking, so a %G_IO_ERROR_WOULD_BLOCK error may be
- * returned if the send buffer is full.
+ * Sends multiple messages on the socket identified by the given
+ * stream/component pair. Transmission is non-blocking, so a
+ * %G_IO_ERROR_WOULD_BLOCK error may be returned if the send buffer is full.
  *
  * As with nice_agent_send(), the given component must be in
  * %NICE_COMPONENT_STATE_READY or, as a special case, in any state if it was
  * previously ready and was then restarted.
  *
- * On success, the number of bytes written to the socket will be returned (which
- * will always be @buf_len when in non-reliable mode, and may be less than
- * @buf_len when in reliable mode).
+ * On success, the number of messages written to the socket will be returned,
+ * which may be less than @n_messages if transmission would have blocked
+ * part-way through. Zero will be returned if @n_messages is zero, or if
+ * transmission would have blocked on the first message.
  *
  * On failure, -1 will be returned and @error will be set. If the #NiceAgent is
  * reliable and the socket is not yet connected, %G_IO_ERROR_BROKEN_PIPE will be
@@ -690,18 +691,17 @@ nice_agent_send (
  * invalid or not yet connected, %G_IO_ERROR_BROKEN_PIPE will be returned.
  * %G_IO_ERROR_FAILED will be returned for other errors.
  *
- * Returns: the number of bytes sent (guaranteed to be greater than 0), or -1 on
- * error
+ * Returns: the number of messages sent (may be zero), or -1 on error
  *
  * Since: 0.1.5
  */
-gssize
-nice_agent_send_full (
+gint
+nice_agent_send_messages_nonblocking (
     NiceAgent *agent,
     guint stream_id,
     guint component_id,
-    const guint8 *buf,
-    gsize buf_len,
+    const NiceOutputMessage *messages,
+    guint n_messages,
     GCancellable *cancellable,
     GError **error);
 
