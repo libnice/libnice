@@ -73,10 +73,10 @@
 
 #include "pseudotcp.h"
 
-/* This is the max size of a UDP packet
- * will it work tcp relaying??
- */
-#define MAX_BUFFER_SIZE 65536
+/* Maximum size of a UDP packet’s payload, as the packet’s length field is 16b
+ * wide. */
+#define MAX_BUFFER_SIZE ((1 << 16) - 1)  /* 65535 */
+
 #define DEFAULT_STUN_PORT  3478
 #define DEFAULT_UPNP_TIMEOUT 200
 
@@ -2664,7 +2664,7 @@ done:
  * In the non-error case, in reliable mode, this will block until exactly
  * @buf_len bytes have been received. In non-reliable mode, it will block until
  * a single message has been received. In this case, @buf must be big enough to
- * contain an entire message (65536 bytes), or any excess data may be silently
+ * contain an entire message (65535 bytes), or any excess data may be silently
  * dropped.
  *
  * This must not be used in combination with nice_agent_attach_recv() on the
@@ -2711,7 +2711,7 @@ nice_agent_recv (NiceAgent *agent, guint stream_id, guint component_id,
  *
  * For a reliable @agent, this function will receive as many bytes as possible
  * up to @buf_len. For a non-reliable @agent, it will receive a single message.
- * In this case, @buf must be big enough to contain the entire message (65536
+ * In this case, @buf must be big enough to contain the entire message (65535
  * bytes), or any excess data may be silently dropped.
  *
  * As this function is non-blocking, @cancellable is included only for parity
