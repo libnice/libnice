@@ -3074,53 +3074,6 @@ done:
   return n_valid_messages;
 }
 
-/**
- * nice_agent_recv_messages:
- * @agent: a #NiceAgent
- * @stream_id: the ID of the stream to receive on
- * @component_id: the ID of the component to receive on
- * @messages: (array length=n_messages) (out caller-allocates): caller-allocated
- * array of #NiceInputMessages to write the received messages into, of length at
- * least @n_messages
- * @n_messages: number of entries in @messages
- * @cancellable: (allow-none): a #GCancellable to allow the operation to be
- * cancelled from another thread, or %NULL
- * @error: (allow-none): return location for a #GError, or %NULL
- *
- * Block on receiving data from the given stream/component combination on
- * @agent, returning only once exactly @n_messages messages have been received
- * and written into @messages, the stream is closed by the other end or by
- * calling nice_agent_remove_stream(), or @cancellable is cancelled.
- *
- * In the non-error case, in reliable mode, this will block until all buffers in
- * all @n_messages have been filled with received data (i.e. @messages is
- * treated as a large, flat array of buffers). In non-reliable mode, it will
- * block until @n_messages messages have been received, each of which does not
- * have to fill all the buffers in its #NiceInputMessage. In the non-reliable
- * case, each #NiceInputMessage must have enough buffers to contain an entire
- * message (65536 bytes), or any excess data may be silently dropped.
- *
- * For each received message, #NiceInputMessage::length will be set to the
- * number of valid bytes stored in the message’s buffers. The bytes are stored
- * sequentially in the buffers; there are no gaps apart from at the end of the
- * buffer array (in non-reliable mode). If non-%NULL on input,
- * #NiceInputMessage::from will have the address of the sending peer stored in
- * it. The base addresses, sizes, and number of buffers in each message will not
- * be modified in any case.
- *
- * This must not be used in combination with nice_agent_attach_recv() on the
- * same stream/component pair.
- *
- * If the stream/component pair doesn’t exist, or if a suitable candidate socket
- * hasn’t yet been selected for it, a %G_IO_ERROR_BROKEN_PIPE error will be
- * returned. A %G_IO_ERROR_CANCELLED error will be returned if the operation was
- * cancelled. %G_IO_ERROR_FAILED will be returned for other errors.
- *
- * Returns: the number of valid messages written to @messages on success
- * (guaranteed to be greater than 0 unless @n_messages is 0), or -1 on error
- *
- * Since: 0.1.5
- */
 NICEAPI_EXPORT gint
 nice_agent_recv_messages (NiceAgent *agent, guint stream_id, guint component_id,
   NiceInputMessage *messages, guint n_messages, GCancellable *cancellable,
@@ -3130,25 +3083,6 @@ nice_agent_recv_messages (NiceAgent *agent, guint stream_id, guint component_id,
       component_id, TRUE, messages, n_messages, cancellable, error);
 }
 
-/**
- * nice_agent_recv:
- * @agent: a #NiceAgent
- * @stream_id: the ID of the stream to receive on
- * @component_id: the ID of the component to receive on
- * @buf: (array length=buf_len) (out caller-allocates): caller-allocated buffer
- * to write the received data into, of length at least @buf_len
- * @buf_len: length of @buf
- * @cancellable: (allow-none): a #GCancellable to allow the operation to be
- * cancelled from another thread, or %NULL
- * @error: (allow-none): return location for a #GError, or %NULL
- *
- * A single-message version of nice_agent_recv_messages().
- *
- * Returns: the number of bytes written to @buf on success (guaranteed to be
- * greater than 0 unless @buf_len is 0), or -1 on error
- *
- * Since: 0.1.5
- */
 NICEAPI_EXPORT gssize
 nice_agent_recv (NiceAgent *agent, guint stream_id, guint component_id,
   guint8 *buf, gsize buf_len, GCancellable *cancellable, GError **error)
@@ -3166,45 +3100,6 @@ nice_agent_recv (NiceAgent *agent, guint stream_id, guint component_id,
   return local_messages.length;
 }
 
-/**
- * nice_agent_recv_messages_nonblocking:
- * @agent: a #NiceAgent
- * @stream_id: the ID of the stream to receive on
- * @component_id: the ID of the component to receive on
- * @messages: (array length=n_messages) (out caller-allocates): caller-allocated
- * array of #NiceInputMessages to write the received messages into, of length at
- * least @n_messages
- * @n_messages: number of entries in @messages
- * @cancellable: (allow-none): a #GCancellable to allow the operation to be
- * cancelled from another thread, or %NULL
- * @error: (allow-none): return location for a #GError, or %NULL
- *
- * Try to receive data from the given stream/component combination on @agent,
- * without blocking. If receiving data would block, -1 is returned and
- * %G_IO_ERROR_WOULD_BLOCK is set in @error. If any other error occurs, -1 is
- * returned and @error is set accordingly. Otherwise, 0 is returned if (and only
- * if) @n_messages is 0. In all other cases, the number of valid messages stored
- * in @messages is returned, and will be greater than 0.
- *
- * This function behaves similarly to nice_agent_recv_messages(), except that it
- * will not block on filling (in reliable mode) or receiving (in non-reliable
- * mode) exactly @n_messages messages. In reliable mode, it will receive bytes
- * into @messages until it would block; in non-reliable mode, it will receive
- * messages until it would block.
- *
- * As this function is non-blocking, @cancellable is included only for parity
- * with nice_agent_recv_messages(). If @cancellable is cancelled before this
- * function is called, a %G_IO_ERROR_CANCELLED error will be returned
- * immediately.
- *
- * This must not be used in combination with nice_agent_attach_recv() on the
- * same stream/component pair.
- *
- * Returns: the number of valid messages written to @messages on success
- * (guaranteed to be greater than 0 unless @n_messages is 0), or -1 on error
- *
- * Since: 0.1.5
- */
 NICEAPI_EXPORT gint
 nice_agent_recv_messages_nonblocking (NiceAgent *agent, guint stream_id,
     guint component_id, NiceInputMessage *messages, guint n_messages,
@@ -3214,25 +3109,6 @@ nice_agent_recv_messages_nonblocking (NiceAgent *agent, guint stream_id,
       component_id, FALSE, messages, n_messages, cancellable, error);
 }
 
-/**
- * nice_agent_recv_nonblocking:
- * @agent: a #NiceAgent
- * @stream_id: the ID of the stream to receive on
- * @component_id: the ID of the component to receive on
- * @buf: (array length=buf_len) (out caller-allocates): caller-allocated buffer
- * to write the received data into, of length at least @buf_len
- * @buf_len: length of @buf
- * @cancellable: (allow-none): a #GCancellable to allow the operation to be
- * cancelled from another thread, or %NULL
- * @error: (allow-none): return location for a #GError, or %NULL
- *
- * A single-message version of nice_agent_recv_messages_nonblocking().
- *
- * Returns: the number of bytes received into @buf on success (guaranteed to be
- * greater than 0 unless @buf_len is 0), or -1 on error
- *
- * Since: 0.1.5
- */
 NICEAPI_EXPORT gssize
 nice_agent_recv_nonblocking (NiceAgent *agent, guint stream_id,
     guint component_id, guint8 *buf, gsize buf_len, GCancellable *cancellable,
