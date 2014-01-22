@@ -355,7 +355,6 @@ static int run_restart_test (NiceAgent *lagent, NiceAgent *ragent, NiceAddress *
   global_lagent_ibr_received = FALSE;
   global_ragent_ibr_received = FALSE;
   global_components_ready = 0;
-  global_ragent_read_exit = 32;
 
   /* step: exchange remote candidates */
   cdes.component_id = NICE_COMPONENT_TYPE_RTP;
