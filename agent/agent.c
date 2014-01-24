@@ -1217,10 +1217,15 @@ adjust_tcp_clock (NiceAgent *agent, Stream *stream, Component *component)
           component->tcp_clock = NULL;
 #endif
         }
-        if (!component->tcp_clock)
-          component->tcp_clock = agent_timeout_add_with_context (agent,
-              timeout - (g_get_monotonic_time () / 1000),
+        if (!component->tcp_clock) {
+          long interval = timeout - (g_get_monotonic_time () / 1000);
+
+          /* Prevent integer overflows */
+          if (interval < 0 || interval > G_MAXINT)
+            interval = 0;
+          component->tcp_clock = agent_timeout_add_with_context (agent, interval,
               notify_pseudo_tcp_socket_clock, component);
+        }
       }
     } else {
       nice_debug ("Agent %p: component %d pseudo-TCP socket should be "
