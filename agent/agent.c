@@ -2879,6 +2879,9 @@ nice_agent_send_full (
       cancellable == NULL || G_IS_CANCELLABLE (cancellable), -1);
   g_return_val_if_fail (error == NULL || *error == NULL, -1);
 
+  if (g_cancellable_set_error_if_cancelled (cancellable, error))
+    return -1;
+
   agent_lock ();
 
   if (!agent_find_component (agent, stream_id, component_id,
