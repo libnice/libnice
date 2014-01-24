@@ -203,9 +203,7 @@ bound(guint32 lower, guint32 middle, guint32 upper)
 static guint32
 get_current_time(void)
 {
-  GTimeVal tv;
-  g_get_current_time (&tv);
-  return tv.tv_sec * 1000 + tv.tv_usec / 1000;
+  return g_get_monotonic_time () / 1000;
 }
 
 static gboolean
