@@ -2649,7 +2649,7 @@ nice_agent_recv_blocking_or_nonblocking (NiceAgent *agent, guint stream_id,
       len = 0;
     } else if (len < 0 &&
         pseudo_tcp_socket_get_error (component->tcp) == ENOTCONN) {
-      g_set_error (&child_error, G_IO_ERROR, G_IO_ERROR_BROKEN_PIPE,
+      g_set_error (&child_error, G_IO_ERROR, G_IO_ERROR_WOULD_BLOCK,
           "Error reading data from pseudo-TCP socket: not connected.");
     } else if (len < 0) {
       g_set_error (&child_error, G_IO_ERROR, G_IO_ERROR_FAILED,
@@ -2908,7 +2908,7 @@ nice_agent_send_full (
       goto done;
     } else if (ret < 0 &&
         pseudo_tcp_socket_get_error (component->tcp) == ENOTCONN) {
-      g_set_error (&child_error, G_IO_ERROR, G_IO_ERROR_BROKEN_PIPE,
+      g_set_error (&child_error, G_IO_ERROR, G_IO_ERROR_WOULD_BLOCK,
           "TCP connection is not yet established.");
       goto done;
     } else if (ret < 0) {
