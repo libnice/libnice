@@ -305,6 +305,8 @@ typedef struct {
   GCond cond;
   GMutex mutex;
   GError *error;
+
+  gboolean writable;
 } WriteData;
 
 static void
@@ -324,10 +326,9 @@ write_cancelled_cb (GCancellable *cancellable, gpointer user_data)
   WriteData *write_data = user_data;
 
   g_mutex_lock (&write_data->mutex);
+  g_cancellable_set_error_if_cancelled (cancellable, &write_data->error);
   g_cond_broadcast (&write_data->cond);
   g_mutex_unlock (&write_data->mutex);
-
-  g_cancellable_set_error_if_cancelled (cancellable, &write_data->error);
 }
 
 static void
@@ -337,6 +338,7 @@ reliable_transport_writeable_cb (NiceAgent *agent, guint stream_id,
   WriteData *write_data = user_data;
 
   g_mutex_lock (&write_data->mutex);
+  write_data->writable = TRUE;
   g_cond_broadcast (&write_data->cond);
   g_mutex_unlock (&write_data->mutex);
 }
@@ -403,6 +405,7 @@ nice_output_stream_write (GOutputStream *stream, const void *buffer, gsize count
      * it will take the agent lock which will cause a deadlock if one of
      * the callbacks is called.
      */
+    write_data->writable = FALSE;
     g_mutex_unlock (&write_data->mutex);
 
     _len = nice_agent_send_full (agent, self->priv->stream_id,
@@ -414,7 +417,8 @@ nice_output_stream_write (GOutputStream *stream, const void *buffer, gsize count
         g_error_matches (child_error, G_IO_ERROR, G_IO_ERROR_WOULD_BLOCK)) {
       /* EWOULDBLOCK. */
       g_clear_error (&child_error);
-      g_cond_wait (&write_data->cond, &write_data->mutex);
+      if (!write_data->writable && !write_data->error)
+        g_cond_wait (&write_data->cond, &write_data->mutex);
     } else if (_len > 0) {
       /* Success. */
       len += _len;
