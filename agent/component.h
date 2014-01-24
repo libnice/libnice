@@ -184,6 +184,7 @@ struct _Component
 
   PseudoTcpSocket *tcp;
   GSource* tcp_clock;
+  long last_clock_timeout;
   gboolean tcp_readable;
 
   guint min_port;

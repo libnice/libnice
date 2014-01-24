@@ -1184,33 +1184,38 @@ notify_pseudo_tcp_socket_clock (gpointer user_data)
     agent_unlock ();
     return FALSE;
   }
-  if (component->tcp_clock) {
-    g_source_destroy (component->tcp_clock);
-    g_source_unref (component->tcp_clock);
-    component->tcp_clock = NULL;
-  }
 
   pseudo_tcp_socket_notify_clock (component->tcp);
   adjust_tcp_clock (agent, stream, component);
 
   agent_unlock();
 
-  return FALSE;
+  return G_SOURCE_CONTINUE;
 }
 
 static void
 adjust_tcp_clock (NiceAgent *agent, Stream *stream, Component *component)
 {
-  long timeout = 0;
   if (component->tcp) {
+    long timeout = component->last_clock_timeout;
+
     if (pseudo_tcp_socket_get_next_clock (component->tcp, &timeout)) {
-      if (component->tcp_clock) {
-        g_source_destroy (component->tcp_clock);
-        g_source_unref (component->tcp_clock);
-        component->tcp_clock = NULL;
+      if (timeout != component->last_clock_timeout) {
+        component->last_clock_timeout = timeout;
+        if (component->tcp_clock) {
+#if GLIB_CHECK_VERSION (2, 36, 0)
+          g_source_set_ready_time (component->tcp_clock, timeout * 1000);
+#else
+          g_source_destroy (component->tcp_clock);
+          g_source_unref (component->tcp_clock);
+          component->tcp_clock = NULL;
+#endif
+        }
+        if (!component->tcp_clock)
+          component->tcp_clock = agent_timeout_add_with_context (agent,
+              timeout - (g_get_monotonic_time () / 1000),
+              notify_pseudo_tcp_socket_clock, component);
       }
-      component->tcp_clock = agent_timeout_add_with_context (agent,
-          timeout, notify_pseudo_tcp_socket_clock, component);
     } else {
       nice_debug ("Agent %p: component %d pseudo-TCP socket should be "
           "destroyed. Calling priv_pseudo_tcp_error().",

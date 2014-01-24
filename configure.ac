@@ -96,7 +96,7 @@ AC_CHECK_HEADERS([ifaddrs.h], \
 # Also put matching version in LIBNICE_CFLAGS
 GLIB_REQ=2.30
 
-LIBNICE_CFLAGS="-DGLIB_VERSION_MIN_REQUIRED=GLIB_VERSION_2_30 -DGLIB_VERSION_MAX_ALLOWED=GLIB_VERSION_2_32"
+LIBNICE_CFLAGS="-DGLIB_VERSION_MIN_REQUIRED=GLIB_VERSION_2_30 -DGLIB_VERSION_MAX_ALLOWED=GLIB_VERSION_2_36"
 
 dnl Support different levels of compiler error reporting.
 dnl This configure flag is designed to mimic one from gnome-common,

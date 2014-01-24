@@ -906,21 +906,24 @@ pseudo_tcp_socket_get_next_clock(PseudoTcpSocket *self, long *timeout)
     return FALSE;
   }
 
+  if (*timeout == 0 || *timeout < now)
+    *timeout = now + CLOSED_TIMEOUT;
+
   if (priv->state == TCP_CLOSED) {
-    *timeout = CLOSED_TIMEOUT;
+    *timeout = min (*timeout, now + CLOSED_TIMEOUT);
     return TRUE;
   }
 
-  *timeout = DEFAULT_TIMEOUT;
+  *timeout = min (*timeout, now + DEFAULT_TIMEOUT);
 
   if (priv->t_ack) {
-    *timeout = min(*timeout, time_diff(priv->t_ack + priv->ack_delay, now));
+    *timeout = min(*timeout, priv->t_ack + priv->ack_delay);
   }
   if (priv->rto_base) {
-    *timeout = min(*timeout, time_diff(priv->rto_base + priv->rx_rto, now));
+    *timeout = min(*timeout, priv->rto_base + priv->rx_rto);
   }
   if (priv->snd_wnd == 0) {
-    *timeout = min(*timeout, time_diff(priv->lastsend + priv->rx_rto, now));
+    *timeout = min(*timeout, priv->lastsend + priv->rx_rto);
   }
 
   return TRUE;

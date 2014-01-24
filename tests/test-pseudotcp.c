@@ -222,6 +222,7 @@ static void adjust_clock (PseudoTcpSocket *sock)
 {
   long timeout = 0;
   if (pseudo_tcp_socket_get_next_clock (sock, &timeout)) {
+    timeout -= g_get_monotonic_time () / 1000;
     g_debug ("Socket %p: Adjuting clock to %ld ms", sock, timeout);
     if (sock == left) {
       if (left_clock != 0)
