@@ -67,6 +67,7 @@
 #include "agent.h"
 #include "agent-priv.h"
 #include "agent-signals-marshal.h"
+#include "iostream.h"
 
 #include "stream.h"
 #include "interfaces.h"

@@ -40,11 +40,13 @@
 
 #include "agent.h"
 
+#include "iostream.h"
+
 static void
 test_invalid_stream (NiceAddress *addr)
 {
   NiceAgent *agent;
-  NiceIOStream *io_stream;
+  GIOStream *io_stream;
   GInputStream *input_stream;
   GOutputStream *output_stream;
   uint8_t data[65536];
@@ -81,7 +83,7 @@ test_io_stream_properties (NiceAddress *addr, gboolean add_stream_first)
 {
   NiceAgent *agent;
   guint stream_id;
-  NiceIOStream *io_stream;
+  GIOStream *io_stream;
   GInputStream *input_stream;
   GOutputStream *output_stream;
 
@@ -145,7 +147,7 @@ test_pollable_properties (NiceAddress *addr)
 {
   NiceAgent *agent;
   guint stream_id;
-  NiceIOStream *io_stream;
+  GIOStream *io_stream;
   GInputStream *input_stream;
   GOutputStream *output_stream;
   GPollableInputStream *pollable_input_stream;
@@ -315,7 +317,7 @@ test_pollable_cancellation (NiceAddress *addr)
 {
   NiceAgent *agent;
   guint stream_id;
-  NiceIOStream *io_stream;
+  GIOStream *io_stream;
   GInputStream *input_stream;
   GOutputStream *output_stream;
   GPollableInputStream *pollable_input_stream;
@@ -393,7 +395,7 @@ test_zero_length_reads_writes (NiceAddress *addr)
 {
   NiceAgent *agent;
   guint stream_id;
-  NiceIOStream *io_stream;
+  GIOStream *io_stream;
   GInputStream *input_stream;
   GOutputStream *output_stream;
   GPollableInputStream *pollable_input_stream;
