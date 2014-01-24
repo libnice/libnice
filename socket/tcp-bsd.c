@@ -285,6 +285,9 @@ socket_send_message (NiceSocket *sock, const NiceOutputMessage *message)
       ret = message->length;
     }
   } else {
+    /* FIXME: This dropping will break http/socks5/etc
+     * We probably need a way to the upper layer to control reliability
+     */
     /* If the queue is too long, drop whatever packets we can. */
     if (g_queue_get_length (&priv->send_queue) >= MAX_QUEUE_LENGTH) {
       guint peek_idx = 0;
