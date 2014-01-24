@@ -830,9 +830,10 @@ typedef struct {
   GSource parent;
 
   GObject *pollable_stream;  /* owned */
-  GIOCondition condition;
 
-  Component *component;  /* unowned */
+  GWeakRef agent_ref;
+  guint stream_id;
+  guint component_id;
   guint component_socket_sources_age;
 } ComponentSource;
 
@@ -841,12 +842,24 @@ component_source_prepare (GSource *source, gint *timeout_)
 {
   ComponentSource *component_source = (ComponentSource *) source;
   gint age_diff;
+  NiceAgent *agent;
+  Component *component;
+
+  agent = g_weak_ref_get (&component_source->agent_ref);
+  if (!agent)
+    return FALSE;
 
   /* Needed due to accessing the Component. */
   agent_lock ();
 
+  if (!agent_find_component (agent,
+          component_source->stream_id, component_source->component_id, NULL,
+          &component))
+    goto done;
+
+
   age_diff =
-      component_source->component->socket_sources_age -
+      component->socket_sources_age -
       component_source->component_socket_sources_age;
 
   /* If the age has changed, either:
@@ -867,7 +880,7 @@ component_source_prepare (GSource *source, gint *timeout_)
     guint i;
     GSList *l;
 
-    for (i = 0, l = component_source->component->socket_sources;
+    for (i = 0, l = component->socket_sources;
          i < (guint) age_diff && l != NULL;
          i++, l = l->next) {
       GSource *child_source;
@@ -876,7 +889,7 @@ component_source_prepare (GSource *source, gint *timeout_)
       socket_source = l->data;
 
       child_source = g_socket_create_source (socket_source->socket->fileno,
-          component_source->condition, NULL);
+          G_IO_IN, NULL);
       g_source_set_dummy_callback (child_source);
       g_source_add_child_source (source, child_source);
       g_source_unref (child_source);
@@ -884,8 +897,9 @@ component_source_prepare (GSource *source, gint *timeout_)
   }
 
   /* Update the age. */
-  component_source->component_socket_sources_age =
-      component_source->component->socket_sources_age;
+  component_source->component_socket_sources_age = component->socket_sources_age;
+
+ done:
 
   agent_unlock ();
 
@@ -909,6 +923,7 @@ component_source_finalize (GSource *source)
 {
   ComponentSource *component_source = (ComponentSource *) source;
 
+  g_weak_ref_clear (&component_source->agent_ref);
   g_object_unref (component_source->pollable_stream);
   component_source->pollable_stream = NULL;
 }
@@ -944,10 +959,11 @@ static GSourceFuncs component_source_funcs = {
 
 /**
  * component_source_new:
- * @component: a #Component
+ * @agent: a #NiceAgent
+ * @stream_id: The stream's id
+ * @component_id: The component's number
  * @pollable_stream: a #GPollableInputStream or #GPollableOutputStream to pass
  * to dispatched callbacks
- * @condition: the I/O condition to poll for (e.g. %G_IO_IN or %G_IO_OUT)
  * @cancellable: (allow-none): a #GCancellable, or %NULL
  *
  * Create a new #ComponentSource, a type of #GSource which proxies poll events
@@ -964,24 +980,24 @@ static GSourceFuncs component_source_funcs = {
  * Returns: (transfer full): a new #ComponentSource; unref with g_source_unref()
  */
 GSource *
-component_source_new (Component *component, GObject *pollable_stream,
-    GIOCondition condition, GCancellable *cancellable)
+component_input_source_new (NiceAgent *agent, guint stream_id,
+    guint component_id, GPollableInputStream *pollable_istream,
+    GCancellable *cancellable)
 {
   ComponentSource *component_source;
 
-  g_assert (component != NULL);
-  g_assert (G_IS_POLLABLE_INPUT_STREAM (pollable_stream) ||
-            G_IS_POLLABLE_OUTPUT_STREAM (pollable_stream));
+  g_assert (G_IS_POLLABLE_INPUT_STREAM (pollable_istream));
 
   component_source =
       (ComponentSource *)
           g_source_new (&component_source_funcs, sizeof (ComponentSource));
   g_source_set_name ((GSource *) component_source, "ComponentSource");
 
-  component_source->component = component;
   component_source->component_socket_sources_age = 0;
-  component_source->pollable_stream = g_object_ref (pollable_stream);
-  component_source->condition = condition;
+  component_source->pollable_stream = g_object_ref (pollable_istream);
+  g_weak_ref_init (&component_source->agent_ref, agent);
+  component_source->stream_id = stream_id;
+  component_source->component_id = component_id;
 
   /* Add a cancellable source. */
   if (cancellable != NULL) {

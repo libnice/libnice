@@ -413,37 +413,35 @@ nice_input_stream_create_source (GPollableInputStream *stream,
 {
   NiceInputStreamPrivate *priv = NICE_INPUT_STREAM (stream)->priv;
   GSource *component_source = NULL;
-  Component *component = NULL;
-  Stream *_stream = NULL;
   NiceAgent *agent;  /* owned */
 
   /* Closed streams cannot have sources. */
   if (g_input_stream_is_closed (G_INPUT_STREAM (stream)))
-    return g_pollable_source_new (G_OBJECT (stream));  /* dummy */
+    goto dummy_source;
 
   /* Has the agent disappeared? */
   agent = g_weak_ref_get (&priv->agent_ref);
   if (agent == NULL)
-    return g_pollable_source_new (G_OBJECT (stream));  /* dummy */
+    goto dummy_source;
 
-  agent_lock ();
-
-  /* Grab the socket for this component. */
-  if (!agent_find_component (agent, priv->stream_id, priv->component_id,
-          &_stream, &component)) {
-    g_warning ("Could not find component %u in stream %u", priv->component_id,
-        priv->stream_id);
-    component_source = g_pollable_source_new (G_OBJECT (stream));  /* dummy */
-    goto done;
-  }
-
-  component_source = component_source_new (component, G_OBJECT (stream),
-      G_IO_IN, cancellable);
-
-done:
-  agent_unlock ();
+  component_source = component_input_source_new (agent, priv->stream_id,
+      priv->component_id, stream, cancellable);
 
   g_object_unref (agent);
+
+  return component_source;
+
+ dummy_source:
+
+  component_source = g_pollable_source_new (G_OBJECT (stream));
+
+  if (cancellable) {
+    GSource *cancellable_source = g_cancellable_source_new (cancellable);
+
+    g_source_set_dummy_callback (cancellable_source);
+    g_source_add_child_source (component_source, cancellable_source);
+    g_source_unref (cancellable_source);
+  }
 
   return component_source;
 }

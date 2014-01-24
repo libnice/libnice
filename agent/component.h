@@ -229,8 +229,9 @@ void
 component_free_socket_sources (Component *component);
 
 GSource *
-component_source_new (Component *component, GObject *pollable_stream,
-    GIOCondition condition, GCancellable *cancellable);
+component_input_source_new (NiceAgent *agent, guint stream_id,
+    guint component_id, GPollableInputStream *pollable_istream,
+    GCancellable *cancellable);
 
 GMainContext *
 component_dup_io_context (Component *component);
