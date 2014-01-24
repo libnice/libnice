@@ -558,14 +558,24 @@ nice_output_stream_create_source (GPollableOutputStream *stream,
   Stream *_stream = NULL;
   NiceAgent *agent;  /* owned */
 
+  component_source = g_pollable_source_new (G_OBJECT (stream));
+
+  if (cancellable) {
+    GSource *cancellable_source = g_cancellable_source_new (cancellable);
+
+    g_source_set_dummy_callback (cancellable_source);
+    g_source_add_child_source (component_source, cancellable_source);
+    g_source_unref (cancellable_source);
+  }
+
   /* Closed streams cannot have sources. */
   if (g_output_stream_is_closed (G_OUTPUT_STREAM (stream)))
-    return g_pollable_source_new (G_OBJECT (stream));  /* dummy */
+    return component_source;
 
   /* Has the agent disappeared? */
   agent = g_weak_ref_get (&priv->agent_ref);
   if (agent == NULL)
-    return g_pollable_source_new (G_OBJECT (stream));  /* dummy */
+    return component_source;
 
   agent_lock ();
 
@@ -574,17 +584,17 @@ nice_output_stream_create_source (GPollableOutputStream *stream,
           &_stream, &component)) {
     g_warning ("Could not find component %u in stream %u", priv->component_id,
         priv->stream_id);
-    component_source = g_pollable_source_new (G_OBJECT (stream));  /* dummy */
     goto done;
   }
 
-  /* Note: We need G_IO_IN here to handle pseudo-TCP streams. If our TCP
-   * transmit buffer is full, but the kernel's receive buffer has pending ACKs
-   * sitting in it, we need to receive those ACKs so we can transmit the head
-   * bytes in the transmit buffer, and hence free up space in the tail of the
-   * buffer so the stream is writeable again. */
-  component_source = component_source_new (component, G_OBJECT (stream),
-      G_IO_IN | G_IO_OUT, cancellable);
+   if (component->tcp_writable_cancellable) {
+    GSource *cancellable_source =
+        g_cancellable_source_new (component->tcp_writable_cancellable);
+
+    g_source_set_dummy_callback (cancellable_source);
+    g_source_add_child_source (component_source, cancellable_source);
+    g_source_unref (cancellable_source);
+  }
 
 done:
   agent_unlock ();

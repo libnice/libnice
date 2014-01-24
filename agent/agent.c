@@ -987,13 +987,17 @@ nice_agent_set_property (
 static void priv_pseudo_tcp_error (NiceAgent *agent, Stream *stream,
     Component *component)
 {
+  if (component->tcp_writable_cancellable) {
+    g_cancellable_reset (component->tcp_writable_cancellable);
+    g_clear_object (&component->tcp_writable_cancellable);
+  }
+
   if (component->tcp) {
     agent_signal_component_state_change (agent, stream->id,
         component->id, NICE_COMPONENT_STATE_FAILED);
     component_detach_all_sockets (component);
     pseudo_tcp_socket_close (component->tcp, TRUE);
-    g_object_unref (component->tcp);
-    component->tcp = NULL;
+    g_clear_object (&component->tcp);
   }
 
   if (component->tcp_clock) {
@@ -1016,6 +1020,7 @@ pseudo_tcp_socket_opened (PseudoTcpSocket *sock, gpointer user_data)
 
   nice_debug ("Agent %p: s%d:%d pseudo Tcp socket Opened", agent,
       stream->id, component->id);
+  g_cancellable_cancel (component->tcp_writable_cancellable);
   g_signal_emit (agent, signals[SIGNAL_RELIABLE_TRANSPORT_WRITABLE], 0,
       stream->id, component->id);
 }
@@ -1113,6 +1118,7 @@ pseudo_tcp_socket_writable (PseudoTcpSocket *sock, gpointer user_data)
 
   nice_debug ("Agent %p: s%d:%d pseudo Tcp socket writable", agent,
       stream->id, component->id);
+  g_cancellable_cancel (component->tcp_writable_cancellable);
   g_signal_emit (agent, signals[SIGNAL_RELIABLE_TRANSPORT_WRITABLE], 0,
       stream->id, component->id);
 }
@@ -1627,6 +1633,7 @@ nice_agent_add_stream (
                                             pseudo_tcp_socket_closed,
                                             pseudo_tcp_socket_write_packet};
         component->tcp = pseudo_tcp_socket_new (0, &tcp_callbacks);
+        component->tcp_writable_cancellable = g_cancellable_new ();
         adjust_tcp_clock (agent, stream, component);
         nice_debug ("Agent %p: Create Pseudo Tcp Socket for component %d",
             agent, i+1);
@@ -2903,6 +2910,9 @@ nice_agent_send_full (
     /* Send on the pseudo-TCP socket. */
     ret = pseudo_tcp_socket_send (component->tcp, (const gchar *) buf, buf_len);
     adjust_tcp_clock (agent, stream, component);
+
+    if (!pseudo_tcp_socket_can_send (component->tcp))
+      g_cancellable_reset (component->tcp_writable_cancellable);
 
     /* In case of -1, the error is either EWOULDBLOCK or ENOTCONN, which both
        need the user to wait for the reliable-transport-writable signal */
