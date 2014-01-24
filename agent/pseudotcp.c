@@ -466,6 +466,10 @@ struct _PseudoTcpSocketPrivate {
   gboolean support_wnd_scale;
 };
 
+#define LARGER(a,b) (((a) - (b) - 1) < (G_MAXUINT32 >> 1))
+#define LARGER_OR_EQUAL(a,b) (((a) - (b)) < (G_MAXUINT32 >> 1))
+#define SMALLER(a,b) LARGER ((b),(a))
+#define SMALLER_OR_EQUAL(a,b) LARGER_OR_EQUAL ((b),(a))
 
 /* properties */
 enum
@@ -1226,13 +1230,14 @@ process(PseudoTcpSocket *self, Segment *seg)
   }
 
   // Update timestamp
-  if ((seg->seq <= priv->ts_lastack) &&
-      (priv->ts_lastack < seg->seq + seg->len)) {
+  if (SMALLER_OR_EQUAL (seg->seq, priv->ts_lastack) &&
+      SMALLER (priv->ts_lastack, seg->seq + seg->len)) {
     priv->ts_recent = seg->tsval;
   }
 
   // Check if this is a valuable ack
-  if ((seg->ack > priv->snd_una) && (seg->ack <= priv->snd_nxt)) {
+  if (LARGER(seg->ack, priv->snd_una) &&
+      SMALLER_OR_EQUAL(seg->ack, priv->snd_nxt)) {
     guint32 nAcked;
     guint32 nFree;
 
@@ -1287,7 +1292,7 @@ process(PseudoTcpSocket *self, Segment *seg)
     }
 
     if (priv->dup_acks >= 3) {
-      if (priv->snd_una >= priv->recover) { // NewReno
+      if (LARGER_OR_EQUAL (priv->snd_una, priv->recover)) { // NewReno
         guint32 nInFlight = priv->snd_nxt - priv->snd_una;
         // (Fast Retransmit)
         priv->cwnd = min(priv->ssthresh, nInFlight + priv->mss);
@@ -1383,13 +1388,13 @@ process(PseudoTcpSocket *self, Segment *seg)
   if (sflags == sfImmediateAck) {
     if (seg->seq > priv->rcv_nxt) {
       DEBUG (PSEUDO_TCP_DEBUG_NORMAL, "too new");
-    } else if (seg->seq + seg->len <= priv->rcv_nxt) {
+    } else if (SMALLER_OR_EQUAL(seg->seq + seg->len, priv->rcv_nxt)) {
       DEBUG (PSEUDO_TCP_DEBUG_NORMAL, "too old");
     }
   }
 
   // Adjust the incoming segment to fit our receive buffer
-  if (seg->seq < priv->rcv_nxt) {
+  if (SMALLER(seg->seq, priv->rcv_nxt)) {
     guint32 nAdjust = priv->rcv_nxt - seg->seq;
     if (nAdjust < seg->len) {
       seg->seq += nAdjust;
@@ -1436,9 +1441,10 @@ process(PseudoTcpSocket *self, Segment *seg)
         bNewData = TRUE;
 
         iter = priv->rlist;
-        while (iter && (((RSegment *)iter->data)->seq <= priv->rcv_nxt)) {
+        while (iter &&
+            SMALLER_OR_EQUAL(((RSegment *)iter->data)->seq, priv->rcv_nxt)) {
           RSegment *data = (RSegment *)(iter->data);
-          if (data->seq + data->len > priv->rcv_nxt) {
+          if (LARGER (data->seq + data->len, priv->rcv_nxt)) {
             guint32 nAdjust = (data->seq + data->len) - priv->rcv_nxt;
             sflags = sfImmediateAck; // (Fast Recovery)
             DEBUG (PSEUDO_TCP_DEBUG_NORMAL, "Recovered %d bytes (%d -> %d)",
@@ -1460,7 +1466,7 @@ process(PseudoTcpSocket *self, Segment *seg)
         rseg->seq = seg->seq;
         rseg->len = seg->len;
         iter = priv->rlist;
-        while (iter && (((RSegment*)iter->data)->seq < rseg->seq)) {
+        while (iter && SMALLER (((RSegment*)iter->data)->seq, rseg->seq)) {
           iter = g_list_next (iter);
         }
         priv->rlist = g_list_insert_before(priv->rlist, iter, rseg);
