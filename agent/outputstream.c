@@ -399,9 +399,16 @@ nice_output_stream_write (GOutputStream *stream, const void *buffer, gsize count
 
 
   do {
+    /* Have to unlock while calling into the agent because
+     * it will take the agent lock which will cause a deadlock if one of
+     * the callbacks is called.
+     */
+    g_mutex_unlock (&write_data->mutex);
+
     _len = nice_agent_send_full (agent, self->priv->stream_id,
         self->priv->component_id, (guint8 *) buffer + len, count - len,
         cancellable, &child_error);
+    g_mutex_lock (&write_data->mutex);
 
     if (_len == -1 &&
         g_error_matches (child_error, G_IO_ERROR, G_IO_ERROR_WOULD_BLOCK)) {
