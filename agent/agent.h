@@ -404,6 +404,8 @@ nice_agent_set_port_range (
  * @type: The type of relay to use
  *
  * Sets the settings for using a relay server during the candidate discovery.
+ * This may be called multiple times to add multiple relay servers to the
+ * discovery process; one TCP and one UDP, for example.
  *
  * Returns: %TRUE if the TURN settings were accepted.
  * %FALSE if the address was invalid.
