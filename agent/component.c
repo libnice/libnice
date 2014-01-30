@@ -102,8 +102,8 @@ socket_source_detach (SocketSource *source)
 static void
 socket_source_free (SocketSource *source)
 {
-  nice_socket_free (source->socket);
   socket_source_detach (source);
+  nice_socket_free (source->socket);
 
   g_slice_free (SocketSource, source);
 }
