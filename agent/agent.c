@@ -3660,9 +3660,6 @@ nice_agent_attach_recv (
   Stream *stream = NULL;
   gboolean ret = FALSE;
 
-  /* ctx must be non-NULL if func is non-NULL. */
-  g_return_val_if_fail (func == NULL || ctx != NULL, FALSE);
-
   agent_lock();
 
   /* attach candidates */
@@ -3673,6 +3670,9 @@ nice_agent_attach_recv (
         stream_id);
     goto done;
   }
+
+  if (ctx == NULL)
+    ctx = g_main_context_default ();
 
   /* Set the component’s I/O context. */
   component_set_io_context (component, ctx);
