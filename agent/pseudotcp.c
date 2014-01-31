@@ -498,7 +498,7 @@ static void queue_connect_message (PseudoTcpSocket *self);
 static guint32 queue(PseudoTcpSocket *self, const gchar * data,
     guint32 len, gboolean bCtrl);
 static PseudoTcpWriteResult packet(PseudoTcpSocket *self, guint32 seq,
-    guint8 flags, guint32 offset, guint32 len);
+    guint8 flags, guint32 offset, guint32 len, guint32 now);
 static gboolean parse (PseudoTcpSocket *self,
     const guint8 *_header_buf, gsize header_buf_len,
     const guint8 *data_buf, gsize data_buf_len);
@@ -862,7 +862,7 @@ pseudo_tcp_socket_notify_clock(PseudoTcpSocket *self)
     }
 
     // probe the window
-    packet(self, priv->snd_nxt - 1, 0, 0, 0);
+    packet(self, priv->snd_nxt - 1, 0, 0, 0, now);
     priv->lastsend = now;
 
     // back off retransmit timer
@@ -871,7 +871,7 @@ pseudo_tcp_socket_notify_clock(PseudoTcpSocket *self)
 
   // Check if it's time to send delayed acks
   if (priv->t_ack && (time_diff(priv->t_ack + priv->ack_delay, now) <= 0)) {
-    packet(self, priv->snd_nxt, 0, 0, 0);
+    packet(self, priv->snd_nxt, 0, 0, 0, now);
   }
 
 }
@@ -1105,10 +1105,9 @@ queue(PseudoTcpSocket *self, const gchar * data, guint32 len, gboolean bCtrl)
 
 static PseudoTcpWriteResult
 packet(PseudoTcpSocket *self, guint32 seq, guint8 flags,
-    guint32 offset, guint32 len)
+    guint32 offset, guint32 len, guint32 now)
 {
   PseudoTcpSocketPrivate *priv = self->priv;
-  guint32 now = get_current_time();
   union {
     guint8 u8[MAX_PACKET];
     guint16 u16[MAX_PACKET / 2];
@@ -1542,7 +1541,7 @@ transmit(PseudoTcpSocket *self, SSegment *segment, guint32 now)
     guint32 seq = segment->seq;
     guint8 flags = (segment->bCtrl ? FLAG_CTL : 0);
     PseudoTcpWriteResult wres = packet(self, seq, flags,
-        segment->seq - priv->snd_una, nTransmit);
+        segment->seq - priv->snd_una, nTransmit, now);
 
     if (wres == WR_SUCCESS)
       break;
@@ -1662,9 +1661,9 @@ attempt_send(PseudoTcpSocket *self, SendFlags sflags)
 
       // If this is an immediate ack, or the second delayed ack
       if ((sflags == sfImmediateAck) || priv->t_ack) {
-        packet(self, priv->snd_nxt, 0, 0, 0);
+        packet(self, priv->snd_nxt, 0, 0, 0, now);
       } else {
-        priv->t_ack = get_current_time();
+        priv->t_ack = now;
       }
       return;
     }
