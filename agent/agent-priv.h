@@ -236,8 +236,8 @@ void nice_debug_init (void);
 
 
 #ifdef NDEBUG
-static inline gboolean nice_debug_is_enabled (void) { return FALSE };
-static inline void nice_debug (const char *fmt, ...) G_GNUC_PRINTF (1, 2) { }
+static inline gboolean nice_debug_is_enabled (void) { return FALSE; }
+static inline void nice_debug (const char *fmt, ...) { }
 #else
 gboolean nice_debug_is_enabled (void);
 void nice_debug (const char *fmt, ...) G_GNUC_PRINTF (1, 2);

@@ -93,10 +93,14 @@ void nice_debug_init (void)
   }
 }
 
+#ifndef NDEBUG
 gboolean nice_debug_is_enabled (void)
 {
   return debug_enabled;
 }
+#else
+/* Defined in agent-priv.h. */
+#endif
 
 void nice_debug_enable (gboolean with_stun)
 {
@@ -113,6 +117,7 @@ void nice_debug_disable (gboolean with_stun)
     stun_debug_disable ();
 }
 
+#ifndef NDEBUG
 void nice_debug (const char *fmt, ...)
 {
   va_list ap;
@@ -122,3 +127,6 @@ void nice_debug (const char *fmt, ...)
     va_end (ap);
   }
 }
+#else
+/* Defined in agent-priv.h. */
+#endif
