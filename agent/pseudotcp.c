@@ -436,7 +436,7 @@ struct _PseudoTcpSocketPrivate {
   PseudoTcpFifo rbuf;
 
   // Outgoing data
-  GList *slist;
+  GQueue slist;
   guint32 sbuf_len, snd_nxt, snd_wnd, lastsend;
   guint32 snd_una;  /* oldest unacknowledged sequence number */
   guint8 swnd_scale; // Window scale factor
@@ -502,7 +502,7 @@ static gboolean parse (PseudoTcpSocket *self,
     const guint8 *_header_buf, gsize header_buf_len,
     const guint8 *data_buf, gsize data_buf_len);
 static gboolean process(PseudoTcpSocket *self, Segment *seg);
-static gboolean transmit(PseudoTcpSocket *self, const GList *seg, guint32 now);
+static gboolean transmit(PseudoTcpSocket *self, GList *seg, guint32 now);
 static void attempt_send(PseudoTcpSocket *self, SendFlags sflags);
 static void closedown(PseudoTcpSocket *self, guint32 err);
 static void adjustMTU(PseudoTcpSocket *self);
@@ -668,20 +668,17 @@ pseudo_tcp_socket_finalize (GObject *object)
   PseudoTcpSocket *self = PSEUDO_TCP_SOCKET (object);
   PseudoTcpSocketPrivate *priv = self->priv;
   GList *i;
+  SSegment *sseg;
 
   if (priv == NULL)
     return;
 
-  for (i = priv->slist; i; i = i->next) {
-    SSegment *sseg = i->data;
+  while ((sseg = g_queue_pop_head (&priv->slist)))
     g_slice_free (SSegment, sseg);
-  }
   for (i = priv->rlist; i; i = i->next) {
     RSegment *rseg = i->data;
     g_slice_free (RSegment, rseg);
   }
-  g_list_free (priv->slist);
-  priv->slist = NULL;
   g_list_free (priv->rlist);
   priv->rlist = NULL;
 
@@ -717,6 +714,7 @@ pseudo_tcp_socket_init (PseudoTcpSocket *obj)
 
   priv->state = TCP_LISTEN;
   priv->conv = 0;
+  g_queue_init (&priv->slist);
   priv->rcv_wnd = priv->rbuf_len;
   priv->rwnd_scale = priv->swnd_scale = 0;
   priv->snd_nxt = 0;
@@ -823,7 +821,7 @@ pseudo_tcp_socket_notify_clock(PseudoTcpSocket *self)
   // Check if it's time to retransmit a segment
   if (priv->rto_base &&
       (time_diff(priv->rto_base + priv->rx_rto, now) <= 0)) {
-    if (g_list_length (priv->slist) == 0) {
+    if (g_queue_get_length (&priv->slist) == 0) {
       g_assert_not_reached ();
     } else {
       // Note: (priv->slist.front().xmit == 0)) {
@@ -835,7 +833,7 @@ pseudo_tcp_socket_notify_clock(PseudoTcpSocket *self)
           "(rto_base: %d) (now: %d) (dup_acks: %d)",
           priv->rx_rto, priv->rto_base, now, (guint) priv->dup_acks);
 
-      if (!transmit(self, priv->slist, now)) {
+      if (!transmit(self, g_queue_peek_head_link (&priv->slist), now)) {
         closedown(self, ECONNABORTED);
         return;
       }
@@ -1074,10 +1072,10 @@ queue(PseudoTcpSocket *self, const gchar * data, guint32 len, gboolean bCtrl)
 
   // We can concatenate data if the last segment is the same type
   // (control v. regular data), and has not been transmitted yet
-  if (g_list_length (priv->slist) > 0 &&
-      (((SSegment *)g_list_last (priv->slist)->data)->bCtrl == bCtrl) &&
-      (((SSegment *)g_list_last (priv->slist)->data)->xmit == 0)) {
-    ((SSegment *)g_list_last (priv->slist)->data)->len += len;
+  if (g_queue_get_length (&priv->slist) &&
+      (((SSegment *)g_queue_peek_tail (&priv->slist))->bCtrl == bCtrl) &&
+      (((SSegment *)g_queue_peek_tail (&priv->slist))->xmit == 0)) {
+    ((SSegment *)g_queue_peek_tail (&priv->slist))->len += len;
   } else {
     SSegment *sseg = g_slice_new0 (SSegment);
     gsize snd_buffered = pseudo_tcp_fifo_get_buffered (&priv->sbuf);
@@ -1085,7 +1083,7 @@ queue(PseudoTcpSocket *self, const gchar * data, guint32 len, gboolean bCtrl)
     sseg->seq = priv->snd_una + snd_buffered;
     sseg->len = len;
     sseg->bCtrl = bCtrl;
-    priv->slist = g_list_append (priv->slist, sseg);
+    g_queue_push_tail (&priv->slist, sseg);
   }
 
   //LOG(LS_INFO) << "PseudoTcp::queue - priv->slen = " << priv->slen;
@@ -1311,8 +1309,8 @@ process(PseudoTcpSocket *self, Segment *seg)
     for (nFree = nAcked; nFree > 0; ) {
       SSegment *data;
 
-      g_assert(priv->slist != NULL);
-      data = (SSegment *) (priv->slist->data);
+      g_assert(g_queue_get_length (&priv->slist) != 0);
+      data = (SSegment *) g_queue_peek_head (&priv->slist);
 
       if (nFree < data->len) {
         data->len -= nFree;
@@ -1322,8 +1320,8 @@ process(PseudoTcpSocket *self, Segment *seg)
           priv->largest = data->len;
         }
         nFree -= data->len;
-        g_slice_free (SSegment, priv->slist->data);
-        priv->slist = g_list_delete_link (priv->slist, priv->slist);
+        g_slice_free (SSegment, data);
+        g_queue_pop_head (&priv->slist);
       }
     }
 
@@ -1336,7 +1334,7 @@ process(PseudoTcpSocket *self, Segment *seg)
         priv->dup_acks = 0;
       } else {
         DEBUG (PSEUDO_TCP_DEBUG_NORMAL, "recovery retransmit");
-        if (!transmit(self, priv->slist, now)) {
+        if (!transmit(self, g_queue_peek_head_link (&priv->slist), now)) {
           closedown(self, ECONNABORTED);
           return FALSE;
         }
@@ -1366,7 +1364,7 @@ process(PseudoTcpSocket *self, Segment *seg)
       if (priv->dup_acks == 3) { // (Fast Retransmit)
         DEBUG (PSEUDO_TCP_DEBUG_NORMAL, "enter recovery");
         DEBUG (PSEUDO_TCP_DEBUG_NORMAL, "recovery retransmit");
-        if (!transmit(self, priv->slist, now)) {
+        if (!transmit(self, g_queue_peek_head_link (&priv->slist), now)) {
           closedown(self, ECONNABORTED);
           return FALSE;
         }
@@ -1526,7 +1524,7 @@ process(PseudoTcpSocket *self, Segment *seg)
 }
 
 static gboolean
-transmit(PseudoTcpSocket *self, const GList *seg, guint32 now)
+transmit(PseudoTcpSocket *self, GList *seg, guint32 now)
 {
   PseudoTcpSocketPrivate *priv = self->priv;
   SSegment *segment = (SSegment*)(seg->data);
@@ -1583,7 +1581,7 @@ transmit(PseudoTcpSocket *self, const GList *seg, guint32 now)
     DEBUG (PSEUDO_TCP_DEBUG_NORMAL, "mss reduced to %d", priv->mss);
 
     segment->len = nTransmit;
-    priv->slist = g_list_insert_before(priv->slist, seg->next, subseg);
+    g_queue_insert_after (&priv->slist, seg, subseg);
   }
 
   if (segment->xmit == 0) {
@@ -1671,7 +1669,7 @@ attempt_send(PseudoTcpSocket *self, SendFlags sflags)
     }
 
     // Find the next segment to transmit
-    iter = priv->slist;
+    iter = g_queue_peek_head_link (&priv->slist);
     while (((SSegment*)iter->data)->xmit > 0) {
       iter = g_list_next (iter);
       g_assert(iter);
@@ -1685,7 +1683,7 @@ attempt_send(PseudoTcpSocket *self, SendFlags sflags)
       subseg->bCtrl = ((SSegment*)iter->data)->bCtrl;
 
       ((SSegment*)iter->data)->len = nAvailable;
-      priv->slist = g_list_insert_before(priv->slist, iter->next, subseg);
+      g_queue_insert_after (&priv->slist, iter, subseg);
     }
 
     if (!transmit(self, iter, now)) {
