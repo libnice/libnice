@@ -3127,6 +3127,10 @@ nice_agent_recv_messages_blocking_or_nonblocking (NiceAgent *agent,
       blocking ? "blocking" : "non-blocking");
   nice_debug_input_message_composition (messages, n_messages);
 
+  /* Disallow re-entrant reads. */
+  g_assert (component->n_recv_messages == 0 &&
+      component->recv_messages == NULL);
+
   /* Set the component’s receive buffer. */
   context = component_dup_io_context (component);
   component_set_io_callback (component, NULL, NULL, messages, n_messages,
