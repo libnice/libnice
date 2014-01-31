@@ -82,6 +82,9 @@ nice_input_message_iter_is_at_end (NiceInputMessageIter *iter,
     NiceInputMessage *messages, guint n_messages);
 guint
 nice_input_message_iter_get_n_valid_messages (NiceInputMessageIter *iter);
+gboolean
+nice_input_message_iter_compare (const NiceInputMessageIter *a,
+    const NiceInputMessageIter *b);
 
 
 #include "socket.h"

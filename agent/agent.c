@@ -2970,6 +2970,25 @@ nice_input_message_iter_get_n_valid_messages (NiceInputMessageIter *iter)
     return iter->message + 1;
 }
 
+/**
+ * nice_input_message_iter_compare:
+ * @a: a #NiceInputMessageIter
+ * @b: another #NiceInputMessageIter
+ *
+ * Compare two #NiceInputMessageIters for equality, returning %TRUE if they
+ * point to the same place in the receive message array.
+ *
+ * Returns: %TRUE if the iters match, %FALSE otherwise
+ *
+ * Since: 0.1.5
+ */
+gboolean
+nice_input_message_iter_compare (const NiceInputMessageIter *a,
+    const NiceInputMessageIter *b)
+{
+  return (a->message == b->message && a->buffer == b->buffer && a->offset == b->offset);
+}
+
 /* Will fill up @messages from the first free byte onwards (as determined using
  * @iter). This may be used in reliable or non-reliable mode; in non-reliable
  * mode it will always increment the message index after each buffer is
@@ -3182,8 +3201,8 @@ nice_agent_recv_messages_blocking_or_nonblocking (NiceAgent *agent,
             component->recv_messages, component->n_recv_messages);
     error_reported = (child_error != NULL);
     all_sockets_would_block = (!blocking &&
-        memcmp (&prev_recv_messages_iter, &component->recv_messages_iter,
-            sizeof (NiceInputMessageIter)) == 0);
+        nice_input_message_iter_compare (&prev_recv_messages_iter,
+            &component->recv_messages_iter));
   }
 
   n_valid_messages =
