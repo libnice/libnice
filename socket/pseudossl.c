@@ -91,12 +91,12 @@ static const gchar SSL_CLIENT_HANDSHAKE[] = {
 static void socket_close (NiceSocket *sock);
 static gint socket_recv_messages (NiceSocket *sock,
     NiceInputMessage *recv_messages, guint n_recv_messages);
-static gint socket_send_messages (NiceSocket *sock,
+static gint socket_send_messages (NiceSocket *sock, const NiceAddress *to,
     const NiceOutputMessage *messages, guint n_messages);
 static gboolean socket_is_reliable (NiceSocket *sock);
 
-static void add_to_be_sent (NiceSocket *sock, const NiceOutputMessage *messages,
-    guint n_messages);
+static void add_to_be_sent (NiceSocket *sock, const NiceAddress *to,
+    const NiceOutputMessage *messages, guint n_messages);
 static void free_to_be_sent (struct to_be_sent *tbs);
 
 
@@ -190,8 +190,8 @@ socket_recv_messages (NiceSocket *sock,
 }
 
 static gint
-socket_send_messages (NiceSocket *sock, const NiceOutputMessage *messages,
-    guint n_messages)
+socket_send_messages (NiceSocket *sock, const NiceAddress *to,
+    const NiceOutputMessage *messages, guint n_messages)
 {
   PseudoSSLPriv *priv = sock->priv;
 
@@ -201,9 +201,10 @@ socket_send_messages (NiceSocket *sock, const NiceOutputMessage *messages,
     if (priv->base_socket == NULL)
       return FALSE;
 
-    return nice_socket_send_messages (priv->base_socket, messages, n_messages);
+    return nice_socket_send_messages (priv->base_socket, to, messages,
+        n_messages);
   } else {
-    add_to_be_sent (sock, messages, n_messages);
+    add_to_be_sent (sock, to, messages, n_messages);
   }
   return TRUE;
 }
@@ -217,8 +218,8 @@ socket_is_reliable (NiceSocket *sock)
 
 
 static void
-add_to_be_sent (NiceSocket *sock, const NiceOutputMessage *messages,
-    guint n_messages)
+add_to_be_sent (NiceSocket *sock, const NiceAddress *to,
+    const NiceOutputMessage *messages, guint n_messages)
 {
   PseudoSSLPriv *priv = sock->priv;
   guint i;
@@ -234,8 +235,8 @@ add_to_be_sent (NiceSocket *sock, const NiceOutputMessage *messages,
     /* Compact the buffer. */
     tbs->buf = g_malloc (message->length);
     tbs->length = message->length;
-    if (message->to != NULL)
-      tbs->to = *message->to;
+    if (to != NULL)
+      tbs->to = *to;
     g_queue_push_tail (&priv->send_queue, tbs);
 
     for (j = 0;

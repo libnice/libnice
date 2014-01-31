@@ -554,7 +554,6 @@ generate_messages_to_transmit (TestIOStreamThreadData *data,
         generate_buffer_count (test_data->transmit.buffer_count_strategy,
             test_data->transmit_size_rand, buffer_offset);
     message->buffers = g_malloc_n (message->n_buffers, sizeof (GOutputVector));
-    message->to = NULL;
     message->length = 0;
 
     /* Limit the overall message size to the smaller of (n_bytes / n_messages)

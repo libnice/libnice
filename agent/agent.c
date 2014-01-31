@@ -1316,10 +1316,9 @@ pseudo_tcp_socket_write_packet (PseudoTcpSocket *socket,
     local_buf.size = len;
     local_message.buffers = &local_buf;
     local_message.n_buffers = 1;
-    local_message.to = addr;
     local_message.length = len;
 
-    if (nice_socket_send_messages (sock, &local_message, 1)) {
+    if (nice_socket_send_messages (sock, addr, &local_message, 1)) {
       return WR_SUCCESS;
     }
   } else {
@@ -3264,7 +3263,6 @@ nice_agent_send_messages_nonblocking (
   } else if (component->selected_pair.local != NULL) {
     NiceSocket *sock;
     NiceAddress *addr;
-    guint i;
 
 #ifndef NDEBUG
     gchar tmpbuf[INET6_ADDRSTRLEN];
@@ -3278,13 +3276,8 @@ nice_agent_send_messages_nonblocking (
     sock = component->selected_pair.local->sockptr;
     addr = &component->selected_pair.remote->addr;
 
-    /* Set the destination address. FIXME: This is ugly. */
-    for (i = 0; i < n_messages; i++) {
-      NiceOutputMessage *message = (NiceOutputMessage *) &messages[i];
-      message->to = addr;
-    }
-
-    n_sent_messages = nice_socket_send_messages (sock, messages, n_messages);
+    n_sent_messages = nice_socket_send_messages (sock, addr, messages,
+        n_messages);
 
     if (n_sent_messages < 0) {
       g_set_error (&child_error, G_IO_ERROR, G_IO_ERROR_FAILED,
@@ -3327,7 +3320,7 @@ nice_agent_send (
   const gchar *buf)
 {
   GOutputVector local_buf = { buf, len };
-  NiceOutputMessage local_message = { &local_buf, 1, NULL, len };
+  NiceOutputMessage local_message = { &local_buf, 1, len };
   gint n_sent_messages;
 
   n_sent_messages = nice_agent_send_messages_nonblocking (agent, stream_id,

@@ -129,13 +129,13 @@ nice_socket_recv_messages (NiceSocket *sock,
  * Since: 0.1.5
  */
 gint
-nice_socket_send_messages (NiceSocket *sock, const NiceOutputMessage *messages,
-    guint n_messages)
+nice_socket_send_messages (NiceSocket *sock, const NiceAddress *to,
+    const NiceOutputMessage *messages, guint n_messages)
 {
   g_return_val_if_fail (sock != NULL, -1);
   g_return_val_if_fail (n_messages == 0 || messages != NULL, -1);
 
-  return sock->send_messages (sock, messages, n_messages);
+  return sock->send_messages (sock, to, messages, n_messages);
 }
 
 /* Convenience wrapper around nice_socket_send_messages(). Returns the number of
@@ -146,10 +146,10 @@ nice_socket_send (NiceSocket *sock, const NiceAddress *to, gsize len,
     const gchar *buf)
 {
   GOutputVector local_buf = { buf, len };
-  NiceOutputMessage local_message = { &local_buf, 1, to, len };
+  NiceOutputMessage local_message = { &local_buf, 1, len };
   gint ret;
 
-  ret = nice_socket_send_messages (sock, &local_message, 1);
+  ret = sock->send_messages (sock, to, &local_message, 1);
   if (ret == 1)
     return len;
   return ret;

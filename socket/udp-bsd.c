@@ -59,7 +59,7 @@
 static void socket_close (NiceSocket *sock);
 static gint socket_recv_messages (NiceSocket *sock,
     NiceInputMessage *recv_messages, guint n_recv_messages);
-static gint socket_send_messages (NiceSocket *sock,
+static gint socket_send_messages (NiceSocket *sock, const NiceAddress *to,
     const NiceOutputMessage *messages, guint n_messages);
 static gboolean socket_is_reliable (NiceSocket *sock);
 
@@ -225,33 +225,32 @@ socket_recv_messages (NiceSocket *sock,
 }
 
 static gssize
-socket_send_message (NiceSocket *sock, const NiceOutputMessage *message)
+socket_send_message (NiceSocket *sock, const NiceAddress *to,
+    const NiceOutputMessage *message)
 {
   struct UdpBsdSocketPrivate *priv = sock->priv;
   GError *child_error = NULL;
   gssize len;
 
   if (!nice_address_is_valid (&priv->niceaddr) ||
-      !nice_address_equal (&priv->niceaddr, message->to)) {
+      !nice_address_equal (&priv->niceaddr, to)) {
     union {
       struct sockaddr_storage storage;
       struct sockaddr addr;
     } sa;
     GSocketAddress *gaddr;
 
-    g_assert (message->to != NULL);
-
     if (priv->gaddr)
       g_object_unref (priv->gaddr);
 
-    nice_address_copy_to_sockaddr (message->to, &sa.addr);
+    nice_address_copy_to_sockaddr (to, &sa.addr);
     gaddr = g_socket_address_new_from_native (&sa.addr, sizeof(sa));
     priv->gaddr = gaddr;
 
     if (gaddr == NULL)
       return -1;
 
-    priv->niceaddr = *message->to;
+    priv->niceaddr = *to;
   }
 
   len = g_socket_send_message (sock->fileno, priv->gaddr, message->buffers,
@@ -268,8 +267,8 @@ socket_send_message (NiceSocket *sock, const NiceOutputMessage *message)
 }
 
 static gint
-socket_send_messages (NiceSocket *sock, const NiceOutputMessage *messages,
-    guint n_messages)
+socket_send_messages (NiceSocket *sock, const NiceAddress *to,
+    const NiceOutputMessage *messages, guint n_messages)
 {
   guint i;
 
@@ -277,7 +276,7 @@ socket_send_messages (NiceSocket *sock, const NiceOutputMessage *messages,
     const NiceOutputMessage *message = &messages[i];
     gssize len;
 
-    len = socket_send_message (sock, message);
+    len = socket_send_message (sock, to, message);
 
     if (len < 0) {
       /* Error. */

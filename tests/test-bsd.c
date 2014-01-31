@@ -144,9 +144,9 @@ test_zero_send_recv (void)
   g_assert_cmpint (socket_recv (sock, &tmp, 0, NULL), ==, 0);
 
   /* And again with messages. */
-  g_assert_cmpint (nice_socket_send_messages (sock,
+  g_assert_cmpint (nice_socket_send_messages (sock, &tmp,
       &local_out_message, 0), ==, 0);
-  g_assert_cmpint (nice_socket_send_messages (sock, NULL, 0), ==, 0);
+  g_assert_cmpint (nice_socket_send_messages (sock, &tmp, NULL, 0), ==, 0);
 
   g_assert_cmpint (nice_socket_recv_messages (sock,
       &local_in_message, 0), ==, 0);
@@ -273,7 +273,6 @@ test_multi_message_recv (guint n_sends, guint n_receives,
 
       send_messages[i].buffers = send_bufs + i * n_bufs_per_message;
       send_messages[i].n_buffers = n_bufs_per_message;
-      send_messages[i].to = &tmp;
       send_messages[i].length = 0;
     }
 
@@ -301,7 +300,7 @@ test_multi_message_recv (guint n_sends, guint n_receives,
 
     /* Send multiple packets. */
     g_assert_cmpint (
-        nice_socket_send_messages (client, send_messages, n_sends), ==,
+        nice_socket_send_messages (client, &tmp, send_messages, n_sends), ==,
         expected_n_sent_messages);
 
     /* Receive things. */

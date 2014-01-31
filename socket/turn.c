@@ -116,7 +116,7 @@ typedef struct {
 static void socket_close (NiceSocket *sock);
 static gint socket_recv_messages (NiceSocket *sock,
     NiceInputMessage *recv_messages, guint n_recv_messages);
-static gint socket_send_messages (NiceSocket *sock,
+static gint socket_send_messages (NiceSocket *sock, const NiceAddress *to,
     const NiceOutputMessage *messages, guint n_messages);
 static gboolean socket_is_reliable (NiceSocket *sock);
 
@@ -548,7 +548,8 @@ socket_dequeue_all_data (TurnPriv *priv, const NiceAddress *to)
 
 
 static gssize
-socket_send_message (NiceSocket *sock, const NiceOutputMessage *message)
+socket_send_message (NiceSocket *sock, const NiceAddress *to,
+    const NiceOutputMessage *message)
 {
   TurnPriv *priv = (TurnPriv *) sock->priv;
   StunMessage msg;
@@ -564,13 +565,13 @@ socket_send_message (NiceSocket *sock, const NiceOutputMessage *message)
 
   for (; i; i = i->next) {
     ChannelBinding *b = i->data;
-    if (nice_address_equal (&b->peer, message->to)) {
+    if (nice_address_equal (&b->peer, to)) {
       binding = b;
       break;
     }
   }
 
-  nice_address_copy_to_sockaddr (message->to, &sa.addr);
+  nice_address_copy_to_sockaddr (to, &sa.addr);
 
   if (binding) {
     if (priv->compatibility == NICE_TURN_SOCKET_COMPATIBILITY_DRAFT9 ||
@@ -608,11 +609,11 @@ socket_send_message (NiceSocket *sock, const NiceOutputMessage *message)
       }
     } else {
       NiceOutputMessage local_message = {
-        message->buffers, message->n_buffers, &priv->server_addr,
-        message->length
+        message->buffers, message->n_buffers, message->length
       };
 
-      ret = nice_socket_send_messages (priv->base_socket, &local_message, 1);
+      ret = nice_socket_send_messages (priv->base_socket, &priv->server_addr,
+          &local_message, 1);
       if (ret == 1)
         return message->length;
       return ret;
@@ -651,7 +652,7 @@ socket_send_message (NiceSocket *sock, const NiceOutputMessage *message)
 
       if (priv->compatibility == NICE_TURN_SOCKET_COMPATIBILITY_GOOGLE &&
           priv->current_binding &&
-          nice_address_equal (&priv->current_binding->peer, message->to)) {
+          nice_address_equal (&priv->current_binding->peer, to)) {
         stun_message_append32 (&msg, STUN_ATTRIBUTE_OPTIONS, 1);
       }
     }
@@ -695,23 +696,22 @@ socket_send_message (NiceSocket *sock, const NiceOutputMessage *message)
 
   if (msg_len > 0) {
     if (priv->compatibility == NICE_TURN_SOCKET_COMPATIBILITY_RFC5766 &&
-        !priv_has_permission_for_peer (priv, message->to)) {
-      if (!priv_has_sent_permission_for_peer (priv, message->to)) {
-        priv_send_create_permission (priv, NULL, message->to);
+        !priv_has_permission_for_peer (priv, to)) {
+      if (!priv_has_sent_permission_for_peer (priv, to)) {
+        priv_send_create_permission (priv, NULL, to);
       }
 
       /* enque data */
       nice_debug ("enqueuing data");
-      socket_enqueue_data(priv, message->to, msg_len, (gchar *)buffer);
+      socket_enqueue_data(priv, to, msg_len, (gchar *)buffer);
 
       return msg_len;
     } else {
       GOutputVector local_buf = { buffer, msg_len };
-      NiceOutputMessage local_message = {
-        &local_buf, 1, &priv->server_addr, msg_len
-      };
+      NiceOutputMessage local_message = {&local_buf, 1, msg_len};
 
-      ret = nice_socket_send_messages (priv->base_socket, &local_message, 1);
+      ret = nice_socket_send_messages (priv->base_socket, &priv->server_addr,
+          &local_message, 1);
       if (ret == 1)
         return msg_len;
       return ret;
@@ -720,15 +720,15 @@ socket_send_message (NiceSocket *sock, const NiceOutputMessage *message)
 
 send:
   /* Error condition pass through to the base socket. */
-  ret = nice_socket_send_messages (priv->base_socket, message, 1);
+  ret = nice_socket_send_messages (priv->base_socket, to, message, 1);
   if (ret == 1)
     return message->length;
   return ret;
 }
 
 static gint
-socket_send_messages (NiceSocket *sock, const NiceOutputMessage *messages,
-    guint n_messages)
+socket_send_messages (NiceSocket *sock, const NiceAddress *to,
+    const NiceOutputMessage *messages, guint n_messages)
 {
   guint i;
 
@@ -736,7 +736,7 @@ socket_send_messages (NiceSocket *sock, const NiceOutputMessage *messages,
     const NiceOutputMessage *message = &messages[i];
     gssize len;
 
-    len = socket_send_message (sock, message);
+    len = socket_send_message (sock, to, message);
 
     if (len < 0) {
       /* Error. */

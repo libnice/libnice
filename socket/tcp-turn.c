@@ -69,7 +69,7 @@ typedef struct {
 static void socket_close (NiceSocket *sock);
 static gint socket_recv_messages (NiceSocket *sock,
     NiceInputMessage *recv_messages, guint n_recv_messages);
-static gint socket_send_messages (NiceSocket *sock,
+static gint socket_send_messages (NiceSocket *sock, const NiceAddress *to,
     const NiceOutputMessage *messages, guint n_messages);
 static gboolean socket_is_reliable (NiceSocket *sock);
 
@@ -223,7 +223,8 @@ socket_recv_messages (NiceSocket *socket,
 }
 
 static gssize
-socket_send_message (NiceSocket *sock, const NiceOutputMessage *message)
+socket_send_message (NiceSocket *sock, const NiceAddress *to,
+    const NiceOutputMessage *message)
 {
   TurnTcpPriv *priv = sock->priv;
   guint8 padbuf[3] = {0, 0, 0};
@@ -249,7 +250,6 @@ socket_send_message (NiceSocket *sock, const NiceOutputMessage *message)
   local_bufs = g_malloc_n (n_bufs + 2, sizeof (GOutputVector));
   local_message.buffers = local_bufs;
   local_message.n_buffers = n_bufs + 2;
-  local_message.to = message->to;
   local_message.length = message->length;
 
   /* Copy the existing buffers across. */
@@ -284,7 +284,7 @@ socket_send_message (NiceSocket *sock, const NiceOutputMessage *message)
     local_message.n_buffers--;
   }
 
-  ret = nice_socket_send_messages (priv->base_socket, &local_message, 1);
+  ret = nice_socket_send_messages (priv->base_socket, to, &local_message, 1);
 
   g_free (local_bufs);
 
@@ -294,8 +294,8 @@ socket_send_message (NiceSocket *sock, const NiceOutputMessage *message)
 }
 
 static gint
-socket_send_messages (NiceSocket *sock, const NiceOutputMessage *messages,
-    guint n_messages)
+socket_send_messages (NiceSocket *sock, const NiceAddress *to,
+    const NiceOutputMessage *messages, guint n_messages)
 {
   guint i;
 
@@ -303,7 +303,7 @@ socket_send_messages (NiceSocket *sock, const NiceOutputMessage *messages,
     const NiceOutputMessage *message = &messages[i];
     gssize len;
 
-    len = socket_send_message (sock, message);
+    len = socket_send_message (sock, to, message);
 
     if (len < 0) {
       /* Error. */

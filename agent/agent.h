@@ -176,14 +176,12 @@ typedef struct {
  * which contain data to transmit for this message
  * @n_buffers: number of #GOutputVectors in @buffers, or -1 to indicate @buffers
  * is %NULL-terminated
- * @to: (allow-none): address of the peer to transmit the message to, or %NULL
- * to use the default address for the outbound socket
  * @length: total number of valid bytes contiguously stored in @buffers
  *
- * Represents a single message to transmit on the network. For reliable
- * connections, this is essentially just an array of buffers (specifically,
- * @to can be ignored). for non-reliable connections, it represents a single
- * packet to send to the OS.
+ * Represents a single message to transmit on the network. For
+ * reliable connections, this is essentially just an array of
+ * buffer. for non-reliable connections, it represents a single packet
+ * to send to the OS.
  *
  * @n_buffers may be -1 to indicate that @buffers is terminated by a
  * #GOutputVector with a %NULL buffer pointer.
@@ -199,7 +197,6 @@ typedef struct {
 typedef struct {
   GOutputVector *buffers;
   gint n_buffers;
-  const NiceAddress *to;
   gsize length;
 } NiceOutputMessage;
 

@@ -72,7 +72,7 @@ struct to_be_sent {
 static void socket_close (NiceSocket *sock);
 static gint socket_recv_messages (NiceSocket *sock,
     NiceInputMessage *recv_messages, guint n_recv_messages);
-static gint socket_send_messages (NiceSocket *sock,
+static gint socket_send_messages (NiceSocket *sock, const NiceAddress *to,
     const NiceOutputMessage *messages, guint n_messages);
 static gboolean socket_is_reliable (NiceSocket *sock);
 
@@ -316,8 +316,8 @@ socket_send_message (NiceSocket *sock, const NiceOutputMessage *message)
  * dropped if the bandwidth isn't fast enough. So do not send a message in
  * multiple chunks. */
 static gint
-socket_send_messages (NiceSocket *sock, const NiceOutputMessage *messages,
-    guint n_messages)
+socket_send_messages (NiceSocket *sock, const NiceAddress *to,
+    const NiceOutputMessage *messages, guint n_messages)
 {
   guint i;
 
@@ -389,9 +389,7 @@ socket_send_more (
       if (gerr != NULL &&
           g_error_matches (gerr, G_IO_ERROR, G_IO_ERROR_WOULD_BLOCK)) {
         GOutputVector local_buf = { tbs->buf, tbs->length };
-        NiceOutputMessage local_message = {
-          &local_buf, 1, NULL, local_buf.size
-        };
+        NiceOutputMessage local_message = {&local_buf, 1, local_buf.size};
 
         add_to_be_sent (sock, &local_message, 0, TRUE);
         free_to_be_sent (tbs);
@@ -401,9 +399,7 @@ socket_send_more (
       g_error_free (gerr);
     } else if (ret < (int) tbs->length) {
       GOutputVector local_buf = { tbs->buf + ret, tbs->length - ret };
-      NiceOutputMessage local_message = {
-        &local_buf, 1, NULL, local_buf.size
-      };
+      NiceOutputMessage local_message = {&local_buf, 1, local_buf.size};
 
       add_to_be_sent (sock, &local_message, 0, TRUE);
       free_to_be_sent (tbs);
