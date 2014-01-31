@@ -209,6 +209,8 @@ component_free (Component *cmp)
     g_slice_free (GOutputVector, vec);
   }
 
+  g_clear_object (&cmp->iostream);
+
   g_mutex_clear (&cmp->io_mutex);
 
   g_slice_free (Component, cmp);

@@ -60,7 +60,7 @@
  * Each stream can receive data in one of two ways: using
  * nice_agent_attach_recv() or nice_agent_recv_messages() (and the derived
  * #NiceInputStream and #NiceIOStream classes accessible using
- * nice_agent_build_io_stream()). nice_agent_attach_recv() is non-blocking: it
+ * nice_agent_get_io_stream()). nice_agent_attach_recv() is non-blocking: it
  * takes a user-provided callback function and attaches the stream’s socket to
  * the provided #GMainContext, invoking the callback in that context for every
  * packet received. nice_agent_recv_messages() instead blocks on receiving a
@@ -1373,25 +1373,26 @@ nice_agent_parse_remote_candidate_sdp (
     const gchar *sdp);
 
 /**
- * nice_agent_build_io_stream:
+ * nice_agent_get_io_stream:
  * @agent: A #NiceAgent
  * @stream_id: The ID of the stream to wrap
  * @component_id: The ID of the component to wrap
  *
- * Build a #GIOStream wrapper around the given stream and component in
+ * Gets a #GIOStream wrapper around the given stream and component in
  * @agent. The I/O stream will be valid for as long as @stream_id is valid.
  * The #GInputStream and #GOutputStream implement #GPollableInputStream and
  * #GPollableOutputStream.
  *
- * This function may only be called on reliable #NiceAgents. It is an error to
- * try and create an I/O stream wrapper for an unreliable stream.
+ * This function may only be called on reliable #NiceAgents. It is a
+ * programming error to try and create an I/O stream wrapper for an
+ * unreliable stream.
  *
- * Returns: (transfer full): A new #GIOStream.
+ * Returns: (transfer full): A #GIOStream.
  *
  * Since: 0.1.5
  */
 GIOStream *
-nice_agent_build_io_stream (
+nice_agent_get_io_stream (
     NiceAgent *agent,
     guint stream_id,
     guint component_id);

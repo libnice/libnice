@@ -292,7 +292,7 @@ run_agent (TestIOStreamThreadData *data, NiceAgent *agent)
 
   if (data->reliable) {
     data->io_stream =
-        G_IO_STREAM (nice_agent_build_io_stream (agent, stream_id, 1));
+        G_IO_STREAM (nice_agent_get_io_stream (agent, stream_id, 1));
     g_object_set_data (G_OBJECT (agent), "io-stream", data->io_stream);
   } else {
     data->io_stream = NULL;

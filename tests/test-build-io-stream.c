@@ -47,39 +47,18 @@ test_invalid_stream (NiceAddress *addr)
 {
   NiceAgent *agent;
   GIOStream *io_stream;
-  GInputStream *input_stream;
-  GOutputStream *output_stream;
-  uint8_t data[65536];
-  GError *error = NULL;
 
   agent = nice_agent_new_reliable (NULL, NICE_COMPATIBILITY_RFC5245);
   nice_agent_add_local_address (agent, addr);
 
   /* Try building an I/O stream for an invalid stream. All its operations should
    * return G_IO_ERROR_BROKEN_PIPE. */
-  io_stream = nice_agent_build_io_stream (agent, 5, 5);
-  g_assert (G_IS_IO_STREAM (io_stream));
-  g_assert (NICE_IS_IO_STREAM (io_stream));
-
-  input_stream = g_io_stream_get_input_stream (G_IO_STREAM (io_stream));
-  g_assert (
-     g_input_stream_read (input_stream, data, G_N_ELEMENTS (data),
-         NULL, &error) == -1);
-  g_assert_error (error, G_IO_ERROR, G_IO_ERROR_BROKEN_PIPE);
-  g_clear_error (&error);
-
-  output_stream = g_io_stream_get_output_stream (G_IO_STREAM (io_stream));
-  g_assert (
-     g_output_stream_write (output_stream, data, G_N_ELEMENTS (data),
-         NULL, &error) == -1);
-  g_assert_error (error, G_IO_ERROR, G_IO_ERROR_BROKEN_PIPE);
-  g_clear_error (&error);
-
-  g_object_unref (io_stream);
+  io_stream = nice_agent_get_io_stream (agent, 5, 5);
+  g_assert (io_stream == NULL);
 }
 
 static void
-test_io_stream_properties (NiceAddress *addr, gboolean add_stream_first)
+test_io_stream_properties (NiceAddress *addr)
 {
   NiceAgent *agent;
   guint stream_id;
@@ -90,25 +69,12 @@ test_io_stream_properties (NiceAddress *addr, gboolean add_stream_first)
   agent = nice_agent_new_reliable (NULL, NICE_COMPATIBILITY_RFC5245);
   nice_agent_add_local_address (agent, addr);
 
-  if (add_stream_first) {
-    /* Add a stream. */
-    stream_id = nice_agent_add_stream (agent, 1);
-  } else {
-    /* Guess at the stream ID, then check it later. This tests the case where
-     * the I/O stream is built before the stream is created in the NiceAgent
-     * (but no I/O operations are performed on it until after both have been
-     * created). */
-    stream_id = 1;
-  }
+  stream_id = nice_agent_add_stream (agent, 1);
 
   /* Try building an I/O stream around it. */
-  io_stream = nice_agent_build_io_stream (agent, stream_id, 1);
+  io_stream = nice_agent_get_io_stream (agent, stream_id, 1);
   g_assert (G_IS_IO_STREAM (io_stream));
   g_assert (NICE_IS_IO_STREAM (io_stream));
-
-  if (!add_stream_first) {
-    g_assert (stream_id == nice_agent_add_stream (agent, 1));
-  }
 
   /* Check various initial properties. */
   g_assert (!g_io_stream_is_closed (G_IO_STREAM (io_stream)));
@@ -163,7 +129,7 @@ test_pollable_properties (NiceAddress *addr)
   stream_id = nice_agent_add_stream (agent, 1);
 
   /* Try building an I/O stream around it. */
-  io_stream = nice_agent_build_io_stream (agent, stream_id, 1);
+  io_stream = nice_agent_get_io_stream (agent, stream_id, 1);
   g_assert (G_IS_IO_STREAM (io_stream));
   g_assert (NICE_IS_IO_STREAM (io_stream));
 
@@ -334,7 +300,7 @@ test_pollable_cancellation (NiceAddress *addr)
   stream_id = nice_agent_add_stream (agent, 1);
 
   /* Try building an I/O stream around it. */
-  io_stream = nice_agent_build_io_stream (agent, stream_id, 1);
+  io_stream = nice_agent_get_io_stream (agent, stream_id, 1);
   g_assert (G_IS_IO_STREAM (io_stream));
   g_assert (NICE_IS_IO_STREAM (io_stream));
 
@@ -410,7 +376,7 @@ test_zero_length_reads_writes (NiceAddress *addr)
   stream_id = nice_agent_add_stream (agent, 1);
 
   /* Try building an I/O stream around it. */
-  io_stream = nice_agent_build_io_stream (agent, stream_id, 1);
+  io_stream = nice_agent_get_io_stream (agent, stream_id, 1);
   g_assert (G_IS_IO_STREAM (io_stream));
   g_assert (NICE_IS_IO_STREAM (io_stream));
 
@@ -477,8 +443,7 @@ main (void)
   g_assert (nice_address_set_from_string (&addr, "127.0.0.1"));
 
   test_invalid_stream (&addr);
-  test_io_stream_properties (&addr, TRUE);
-  test_io_stream_properties (&addr, FALSE);
+  test_io_stream_properties (&addr);
   test_pollable_properties (&addr);
   test_pollable_cancellation (&addr);
   test_zero_length_reads_writes (&addr);

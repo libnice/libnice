@@ -4465,33 +4465,32 @@ nice_agent_parse_remote_candidate_sdp (NiceAgent *agent, guint stream_id,
   return candidate;
 }
 
-/**
- * nice_agent_build_io_stream:
- * @agent: A reliable #NiceAgent
- * @stream_id: The ID of the agent’s stream to wrap
- * @component_id: The ID of the agent’s component to wrap
- *
- * Create a new #NiceIOStream wrapping the given stream/component from @agent,
- * which must be a reliable #NiceAgent. The given stream/component must be
- * created using nice_agent_add_stream() before any I/O operations are performed
- * on the #NiceIOStream.
- *
- * Note that if multiple I/O streams are created for a single stream/component,
- * only one of them may be used at any time.
- *
- * Returns: (transfer full): The new #NiceIOStream object
- *
- * Since: 0.1.5
- */
+
 NICEAPI_EXPORT GIOStream *
-nice_agent_build_io_stream (NiceAgent *agent, guint stream_id,
+nice_agent_get_io_stream (NiceAgent *agent, guint stream_id,
     guint component_id)
 {
+  GIOStream *iostream = NULL;
+  Component *component;
+
   g_return_val_if_fail (NICE_IS_AGENT (agent), NULL);
   g_return_val_if_fail (stream_id >= 1, NULL);
   g_return_val_if_fail (component_id >= 1, NULL);
 
   g_return_val_if_fail (agent->reliable, NULL);
 
-  return nice_io_stream_new (agent, stream_id, component_id);
+  agent_lock ();
+
+  if (!agent_find_component (agent, stream_id, component_id, NULL, &component))
+    goto done;
+
+  if (component->iostream == NULL)
+    component->iostream = nice_io_stream_new (agent, stream_id, component_id);
+
+  iostream = g_object_ref (component->iostream);
+
+ done:
+  agent_unlock ();
+
+  return iostream;
 }

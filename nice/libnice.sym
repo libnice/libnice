@@ -16,7 +16,6 @@ nice_address_set_port
 nice_address_to_string
 nice_agent_add_local_address
 nice_agent_add_stream
-nice_agent_build_io_stream
 nice_agent_recv
 nice_agent_recv_messages
 nice_agent_recv_nonblocking
@@ -27,6 +26,7 @@ nice_agent_generate_local_candidate_sdp
 nice_agent_generate_local_sdp
 nice_agent_generate_local_stream_sdp
 nice_agent_get_default_local_candidate
+nice_agent_get_io_stream
 nice_agent_get_local_candidates
 nice_agent_get_local_credentials
 nice_agent_get_remote_candidates

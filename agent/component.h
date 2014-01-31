@@ -190,6 +190,8 @@ struct _Component
   gboolean tcp_readable;
   GCancellable *tcp_writable_cancellable;
 
+  GIOStream *iostream;
+
   guint min_port;
   guint max_port;
 
