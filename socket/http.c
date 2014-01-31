@@ -43,6 +43,7 @@
 #endif
 
 #include "http.h"
+#include "agent-priv.h"
 
 #include <string.h>
 #include <stdlib.h>
@@ -165,7 +166,6 @@ nice_http_socket_new (NiceSocket *base_socket,
       local_bufs.size = strlen (msg);
       local_messages.buffers = &local_bufs;
       local_messages.n_buffers = 1;
-      local_messages.length = local_bufs.size;
 
       nice_socket_send_messages (priv->base_socket, NULL, &local_messages, 1);
       priv->state = HTTP_STATE_INIT;
@@ -266,7 +266,6 @@ memcpy_ring_buffer_to_input_messages (HttpPriv *priv,
       message->buffers[j].size =
           memcpy_ring_buffer_to_buffer (priv,
               message->buffers[j].buffer, message->buffers[j].size);
-      message->length += message->buffers[j].size;
     }
   }
 
@@ -618,15 +617,15 @@ add_to_be_sent (NiceSocket *sock, const NiceAddress *to,
     const NiceOutputMessage *message = &messages[i];
     struct to_be_sent *tbs = NULL;
     guint j;
-    gsize message_len_remaining = message->length;
+    gsize message_len_remaining = output_message_get_size (message);
     gsize offset = 0;
 
-    if (message->length == 0)
+    if (message_len_remaining == 0)
       continue;
 
     tbs = g_slice_new0 (struct to_be_sent);
-    tbs->buf = g_malloc (message->length);
-    tbs->length = message->length;
+    tbs->buf = g_malloc (message_len_remaining);
+    tbs->length = message_len_remaining;
     if (to)
       tbs->to = *to;
     g_queue_push_tail (&priv->send_queue, tbs);

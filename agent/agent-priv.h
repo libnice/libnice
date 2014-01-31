@@ -215,9 +215,13 @@ gsize
 memcpy_buffer_to_input_message (NiceInputMessage *message,
     const guint8 *buffer, gsize buffer_length);
 guint8 *
-compact_input_message (NiceInputMessage *message, gsize *buffer_length);
+compact_input_message (const NiceInputMessage *message, gsize *buffer_length);
 
 guint8 *
 compact_output_message (const NiceOutputMessage *message, gsize *buffer_length);
+
+gsize
+output_message_get_size (const NiceOutputMessage *message);
+
 
 #endif /*_NICE_AGENT_PRIV_H */

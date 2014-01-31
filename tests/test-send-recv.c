@@ -549,12 +549,12 @@ generate_messages_to_transmit (TestIOStreamThreadData *data,
     NiceOutputMessage *message = &((*messages)[i]);
     guint j;
     gsize max_message_size;
+    gsize message_len = 0;
 
     message->n_buffers =
         generate_buffer_count (test_data->transmit.buffer_count_strategy,
             test_data->transmit_size_rand, buffer_offset);
     message->buffers = g_malloc_n (message->n_buffers, sizeof (GOutputVector));
-    message->length = 0;
 
     /* Limit the overall message size to the smaller of (n_bytes / n_messages)
      * and MAX_MESSAGE_SIZE, to ensure each message is non-empty. */
@@ -572,12 +572,12 @@ generate_messages_to_transmit (TestIOStreamThreadData *data,
       buf_len =
           MIN (buf_len,
               test_data->n_bytes - test_data->transmitted_bytes - total_buf_len);
-      buf_len = MIN (buf_len, max_message_size - message->length);
+      buf_len = MIN (buf_len, max_message_size - message_len);
 
       buffer->size = buf_len;
       buf = g_malloc (buffer->size);
       buffer->buffer = buf;
-      message->length += buf_len;
+      message_len += buf_len;
       total_buf_len += buf_len;
 
       /* Fill it with data. */
@@ -587,13 +587,13 @@ generate_messages_to_transmit (TestIOStreamThreadData *data,
       buffer_offset += buf_len;
 
       /* Reached the maximum UDP payload size? */
-      if (message->length >= max_message_size) {
+      if (message_len >= max_message_size) {
         message->n_buffers = j + 1;
         break;
       }
     }
 
-    g_assert_cmpuint (message->length, <=, max_message_size);
+    g_assert_cmpuint (message_len, <=, max_message_size);
   }
 }
 
@@ -611,6 +611,22 @@ notify_transmitted_buffer (TestIOStreamThreadData *data, gsize buffer_offset,
   test_data->transmitted_bytes += len;
 
   g_free (*buf);
+}
+
+static gsize
+output_message_get_size (const NiceOutputMessage *message)
+{
+  guint i;
+  gsize message_len = 0;
+
+  /* Find the total size of the message */
+  for (i = 0;
+       (message->n_buffers >= 0 && i < (guint) message->n_buffers) ||
+           (message->n_buffers < 0 && message->buffers[i].buffer != NULL);
+       i++)
+    message_len += message->buffers[i].size;
+
+  return message_len;
 }
 
 /* Similar to notify_transmitted_buffer(), except it operates on an array of
@@ -632,7 +648,7 @@ notify_transmitted_messages (TestIOStreamThreadData *data, gsize buffer_offset,
     guint j;
 
     if (i < (guint) n_sent_messages)
-      test_data->transmitted_bytes += message->length;
+      test_data->transmitted_bytes += output_message_get_size (message);
 
     for (j = 0; j < (guint) message->n_buffers; j++) {
       GOutputVector *buffer = &message->buffers[j];

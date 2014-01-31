@@ -176,7 +176,6 @@ typedef struct {
  * which contain data to transmit for this message
  * @n_buffers: number of #GOutputVectors in @buffers, or -1 to indicate @buffers
  * is %NULL-terminated
- * @length: total number of valid bytes contiguously stored in @buffers
  *
  * Represents a single message to transmit on the network. For
  * reliable connections, this is essentially just an array of
@@ -197,7 +196,6 @@ typedef struct {
 typedef struct {
   GOutputVector *buffers;
   gint n_buffers;
-  gsize length;
 } NiceOutputMessage;
 
 

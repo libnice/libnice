@@ -84,7 +84,8 @@
 #define MAX_TCP_MTU 1400 /* Use 1400 because of VPNs and we assume IEE 802.3 */
 
 static void
-nice_debug_message_composition (NiceInputMessage *messages, guint n_messages);
+nice_debug_input_message_composition (const NiceInputMessage *messages,
+    guint n_messages);
 
 G_DEFINE_TYPE (NiceAgent, nice_agent, G_TYPE_OBJECT);
 
@@ -1050,7 +1051,8 @@ pseudo_tcp_socket_send_messages (PseudoTcpSocket *self,
      * used in reliable mode, and there is no concept of a ‘message’, but is
      * necessary because the calling API has no way of returning to the client
      * and indicating that a message was partially sent. */
-    if (message->length > pseudo_tcp_socket_get_available_send_space (self)) {
+    if (output_message_get_size (message) >
+        pseudo_tcp_socket_get_available_send_space (self)) {
       return i;
     }
 
@@ -1232,7 +1234,7 @@ pseudo_tcp_socket_readable (PseudoTcpSocket *sock, gpointer user_data)
 
     nice_debug ("%s: Client buffers case: Received %d valid messages:",
         G_STRFUNC, n_valid_messages);
-    nice_debug_message_composition (component->recv_messages,
+    nice_debug_input_message_composition (component->recv_messages,
         component->n_recv_messages);
 
     if (n_valid_messages < 0) {
@@ -1292,8 +1294,6 @@ pseudo_tcp_socket_write_packet (PseudoTcpSocket *socket,
   if (component->selected_pair.local != NULL) {
     NiceSocket *sock;
     NiceAddress *addr;
-    GOutputVector local_buf;
-    NiceOutputMessage local_message;
 
     sock = component->selected_pair.local->sockptr;
 
@@ -1312,15 +1312,8 @@ pseudo_tcp_socket_write_packet (PseudoTcpSocket *socket,
 
     addr = &component->selected_pair.remote->addr;
 
-    local_buf.buffer = buffer;
-    local_buf.size = len;
-    local_message.buffers = &local_buf;
-    local_message.n_buffers = 1;
-    local_message.length = len;
-
-    if (nice_socket_send_messages (sock, addr, &local_message, 1)) {
+    if (nice_socket_send (sock, addr, len, buffer))
       return WR_SUCCESS;
-    }
   } else {
     nice_debug ("%s: WARNING: Failed to send pseudo-TCP packet from agent %p "
         "as no pair has been selected yet.", G_STRFUNC, component->agent);
@@ -2749,13 +2742,14 @@ done:
 /* Print the composition of an array of messages. No-op if debugging is
  * disabled. */
 static void
-nice_debug_message_composition (NiceInputMessage *messages, guint n_messages)
+nice_debug_input_message_composition (const NiceInputMessage *messages,
+    guint n_messages)
 {
 #ifndef NDEBUG
   guint i;
 
   for (i = 0; i < n_messages; i++) {
-    NiceInputMessage *message = &messages[i];
+    const NiceInputMessage *message = &messages[i];
     guint j;
 
     nice_debug ("Message %p (from: %p, length: %" G_GSIZE_FORMAT ")", message,
@@ -2774,6 +2768,27 @@ nice_debug_message_composition (NiceInputMessage *messages, guint n_messages)
 #endif
 }
 
+static guint8 *
+compact_message (const NiceOutputMessage *message, gsize buffer_length)
+{
+  guint8 *buffer;
+  gsize offset = 0;
+  guint i;
+
+  buffer = g_malloc (buffer_length);
+
+  for (i = 0;
+       (message->n_buffers >= 0 && i < (guint) message->n_buffers) ||
+       (message->n_buffers < 0 && message->buffers[i].buffer != NULL);
+       i++) {
+    gsize len = MIN (buffer_length - offset, message->buffers[i].size);
+    memcpy (buffer + offset, message->buffers[i].buffer, len);
+    offset += len;
+  }
+
+  return buffer;
+}
+
 /* Concatenate all the buffers in the given @recv_message into a single, newly
  * allocated, monolithic buffer which is returned. The length of the new buffer
  * is returned in @buffer_length, and should be equal to the length field of
@@ -2781,28 +2796,16 @@ nice_debug_message_composition (NiceInputMessage *messages, guint n_messages)
  *
  * The return value must be freed with g_free(). */
 guint8 *
-compact_input_message (NiceInputMessage *message, gsize *buffer_length)
+compact_input_message (const NiceInputMessage *message, gsize *buffer_length)
 {
-  guint8 *buffer;
-  gsize offset = 0;
-  guint i;
-
   nice_debug ("%s: **WARNING: SLOW PATH**", G_STRFUNC);
-  nice_debug_message_composition (message, 1);
+  nice_debug_input_message_composition (message, 1);
+
+  /* This works as long as NiceInputMessage is a subset of eNiceOutputMessage */
 
   *buffer_length = message->length;
-  buffer = g_malloc (*buffer_length);
 
-  for (i = 0;
-       (message->n_buffers >= 0 && i < (guint) message->n_buffers) ||
-       (message->n_buffers < 0 && message->buffers[i].buffer != NULL);
-       i++) {
-    gsize len = MIN (*buffer_length - offset, message->buffers[i].size);
-    memcpy (buffer + offset, message->buffers[i].buffer, len);
-    offset += len;
-  }
-
-  return buffer;
+  return compact_message ((NiceOutputMessage *) message, *buffer_length);
 }
 
 /* Returns the number of bytes copied. Silently drops any data from @buffer
@@ -2834,7 +2837,7 @@ memcpy_buffer_to_input_message (NiceInputMessage *message,
     message->length += len;
   }
 
-  nice_debug_message_composition (message, 1);
+  nice_debug_input_message_composition (message, 1);
 
   if (buffer_length > 0) {
     g_warning ("Dropped %" G_GSIZE_FORMAT " bytes of data from the end of "
@@ -2855,9 +2858,27 @@ memcpy_buffer_to_input_message (NiceInputMessage *message,
 guint8 *
 compact_output_message (const NiceOutputMessage *message, gsize *buffer_length)
 {
-  /* This works as long as NiceInputMessage and NiceOutputMessage are layed out
-   * identically. */
-  return compact_input_message ((NiceInputMessage *) message, buffer_length);
+  nice_debug ("%s: **WARNING: SLOW PATH**", G_STRFUNC);
+
+  *buffer_length = output_message_get_size (message);
+
+  return compact_message (message, *buffer_length);
+}
+
+gsize
+output_message_get_size (const NiceOutputMessage *message)
+{
+  guint i;
+  gsize message_len = 0;
+
+  /* Find the total size of the message */
+  for (i = 0;
+       (message->n_buffers >= 0 && i < (guint) message->n_buffers) ||
+           (message->n_buffers < 0 && message->buffers[i].buffer != NULL);
+       i++)
+    message_len += message->buffers[i].size;
+
+  return message_len;
 }
 
 /**
@@ -3034,7 +3055,7 @@ nice_agent_recv_messages_blocking_or_nonblocking (NiceAgent *agent,
   }
 
   nice_debug ("%s: (%s):", G_STRFUNC, blocking ? "blocking" : "non-blocking");
-  nice_debug_message_composition (messages, n_messages);
+  nice_debug_input_message_composition (messages, n_messages);
 
   /* Set the component’s receive buffer. */
   context = component_dup_io_context (component);
@@ -3320,8 +3341,8 @@ nice_agent_send (
   const gchar *buf)
 {
   GOutputVector local_buf = { buf, len };
-  NiceOutputMessage local_message = { &local_buf, 1, len };
   gint n_sent_messages;
+  NiceOutputMessage local_message = { &local_buf, 1 };
 
   n_sent_messages = nice_agent_send_messages_nonblocking (agent, stream_id,
       component_id, &local_message, 1, NULL, NULL);

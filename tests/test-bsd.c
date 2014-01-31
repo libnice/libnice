@@ -273,7 +273,6 @@ test_multi_message_recv (guint n_sends, guint n_receives,
 
       send_messages[i].buffers = send_bufs + i * n_bufs_per_message;
       send_messages[i].n_buffers = n_bufs_per_message;
-      send_messages[i].length = 0;
     }
 
     /* Set up the receive buffers. Yay for dynamic tests! */

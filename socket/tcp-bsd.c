@@ -78,7 +78,7 @@ static gboolean socket_is_reliable (NiceSocket *sock);
 
 
 static void add_to_be_sent (NiceSocket *sock, const NiceOutputMessage *message,
-    gsize message_offset, gboolean head);
+    gsize message_offset, gsize message_len, gboolean head);
 static void free_to_be_sent (struct to_be_sent *tbs);
 static gboolean socket_send_more (GSocket *gsocket, GIOCondition condition,
     gpointer data);
@@ -258,11 +258,14 @@ socket_send_message (NiceSocket *sock, const NiceOutputMessage *message)
   TcpPriv *priv = sock->priv;
   gssize ret;
   GError *gerr = NULL;
+  gsize message_len;
 
   /* Don't try to access the socket if it had an error, otherwise we risk a
    * crash with SIGPIPE (Broken pipe) */
   if (priv->error)
     return -1;
+
+  message_len = output_message_get_size (message);
 
   /* First try to send the data, don't send it later if it can be sent now
    * this way we avoid allocating memory on every send */
@@ -274,15 +277,15 @@ socket_send_message (NiceSocket *sock, const NiceOutputMessage *message)
       if (g_error_matches (gerr, G_IO_ERROR, G_IO_ERROR_WOULD_BLOCK) ||
           g_error_matches (gerr, G_IO_ERROR, G_IO_ERROR_FAILED)) {
         /* Queue the message and send it later. */
-        add_to_be_sent (sock, message, 0, FALSE);
-        ret = message->length;
+        add_to_be_sent (sock, message, 0, message_len, FALSE);
+        ret = message_len;
       }
 
       g_error_free (gerr);
-    } else if ((gsize) ret < message->length) {
+    } else if ((gsize) ret < message_len) {
       /* Partial send. */
-      add_to_be_sent (sock, message, ret, TRUE);
-      ret = message->length;
+      add_to_be_sent (sock, message, ret, message_len, TRUE);
+      ret = message_len;
     }
   } else {
     /* FIXME: This dropping will break http/socks5/etc
@@ -305,8 +308,8 @@ socket_send_message (NiceSocket *sock, const NiceOutputMessage *message)
     }
 
     /* Queue the message and send it later. */
-    add_to_be_sent (sock, message, 0, FALSE);
-    ret = message->length;
+    add_to_be_sent (sock, message, 0, message_len, FALSE);
+    ret = message_len;
   }
 
   return ret;
@@ -389,9 +392,9 @@ socket_send_more (
       if (gerr != NULL &&
           g_error_matches (gerr, G_IO_ERROR, G_IO_ERROR_WOULD_BLOCK)) {
         GOutputVector local_buf = { tbs->buf, tbs->length };
-        NiceOutputMessage local_message = {&local_buf, 1, local_buf.size};
+        NiceOutputMessage local_message = {&local_buf, 1};
 
-        add_to_be_sent (sock, &local_message, 0, TRUE);
+        add_to_be_sent (sock, &local_message, 0, local_buf.size, TRUE);
         free_to_be_sent (tbs);
         g_error_free (gerr);
         break;
@@ -399,9 +402,9 @@ socket_send_more (
       g_error_free (gerr);
     } else if (ret < (int) tbs->length) {
       GOutputVector local_buf = { tbs->buf + ret, tbs->length - ret };
-      NiceOutputMessage local_message = {&local_buf, 1, local_buf.size};
+      NiceOutputMessage local_message = {&local_buf, 1};
 
-      add_to_be_sent (sock, &local_message, 0, TRUE);
+      add_to_be_sent (sock, &local_message, 0, local_buf.size, TRUE);
       free_to_be_sent (tbs);
       break;
     }
@@ -424,22 +427,24 @@ socket_send_more (
 
 
 /* Queue data starting at byte offset @message_offset from @message’s
- * buffers. */
+ * buffers.
+ *
+ * Returns the message's length */
 static void
 add_to_be_sent (NiceSocket *sock, const NiceOutputMessage *message,
-    gsize message_offset, gboolean head)
+    gsize message_offset, gsize message_len, gboolean head)
 {
   TcpPriv *priv = sock->priv;
   struct to_be_sent *tbs;
   guint j;
   gsize offset = 0;
 
-  if (message_offset >= message->length)
+  if (message_offset >= message_len)
     return;
 
   tbs = g_slice_new0 (struct to_be_sent);
-  tbs->buf = g_malloc (message->length - message_offset);
-  tbs->length = message->length - message_offset;
+  tbs->length = message_len - message_offset;
+  tbs->buf = g_malloc (tbs->length);
   tbs->can_drop = !head;
 
   if (head)

@@ -403,7 +403,7 @@ nice_output_stream_write (GOutputStream *stream, const void *buffer, gsize count
 
   do {
     GOutputVector local_buf = { (const guint8 *) buffer + len, count - len };
-    NiceOutputMessage local_message = {&local_buf, 1, count - len};
+    NiceOutputMessage local_message = {&local_buf, 1};
 
     /* Have to unlock while calling into the agent because
      * it will take the agent lock which will cause a deadlock if one of
@@ -523,7 +523,7 @@ nice_output_stream_write_nonblocking (GPollableOutputStream *stream,
   NiceOutputStreamPrivate *priv = NICE_OUTPUT_STREAM (stream)->priv;
   NiceAgent *agent;  /* owned */
   GOutputVector local_buf = { buffer, count };
-  NiceOutputMessage local_message = { &local_buf, 1, count };
+  NiceOutputMessage local_message = { &local_buf, 1 };
   gint n_sent_messages;
 
   /* Closed streams are not writeable. */

@@ -250,7 +250,6 @@ socket_send_message (NiceSocket *sock, const NiceAddress *to,
   local_bufs = g_malloc_n (n_bufs + 2, sizeof (GOutputVector));
   local_message.buffers = local_bufs;
   local_message.n_buffers = n_bufs + 2;
-  local_message.length = message->length;
 
   /* Copy the existing buffers across. */
   for (j = 0; j < n_bufs; j++) {
@@ -260,11 +259,10 @@ socket_send_message (NiceSocket *sock, const NiceAddress *to,
 
   /* Header buffer. */
   if (priv->compatibility == NICE_TURN_SOCKET_COMPATIBILITY_GOOGLE) {
-    header_buf = htons (message->length);
+    header_buf = htons (output_message_get_size (message));
 
     local_bufs[0].buffer = &header_buf;
     local_bufs[0].size = sizeof (header_buf);
-    local_message.length += sizeof (header_buf);
   } else {
     /* Skip over the allocated header buffer. */
     local_message.buffers++;
@@ -274,11 +272,11 @@ socket_send_message (NiceSocket *sock, const NiceAddress *to,
   /* Tail buffer. */
   if (priv->compatibility == NICE_TURN_SOCKET_COMPATIBILITY_DRAFT9 ||
       priv->compatibility == NICE_TURN_SOCKET_COMPATIBILITY_RFC5766) {
-    gsize padlen = (message->length % 4) ? 4 - (message->length % 4) : 0;
+    gsize message_len = output_message_get_size (message);
+    gsize padlen = (message_len % 4) ? 4 - (message_len % 4) : 0;
 
     local_bufs[n_bufs].buffer = &padbuf;
     local_bufs[n_bufs].size = padlen;
-    local_message.length += padlen;
   } else {
     /* Skip over the allocated tail buffer. */
     local_message.n_buffers--;
@@ -289,7 +287,7 @@ socket_send_message (NiceSocket *sock, const NiceAddress *to,
   g_free (local_bufs);
 
   if (ret == 1)
-    return local_message.length;
+    return output_message_get_size (&local_message);
   return ret;
 }
 

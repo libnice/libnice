@@ -43,6 +43,7 @@
 #endif
 
 #include "pseudossl.h"
+#include "agent-priv.h"
 
 #include <string.h>
 
@@ -229,12 +230,15 @@ add_to_be_sent (NiceSocket *sock, const NiceAddress *to,
     const NiceOutputMessage *message = &messages[i];
     guint j;
     gsize offset = 0;
+    gsize message_len;
 
     tbs = g_slice_new0 (struct to_be_sent);
 
-    /* Compact the buffer. */
-    tbs->buf = g_malloc (message->length);
-    tbs->length = message->length;
+    message_len = output_message_get_size (message);
+
+   /* Compact the buffer. */
+    tbs->buf = g_malloc (message_len);
+    tbs->length = message_len;
     if (to != NULL)
       tbs->to = *to;
     g_queue_push_tail (&priv->send_queue, tbs);
@@ -246,12 +250,12 @@ add_to_be_sent (NiceSocket *sock, const NiceAddress *to,
       const GOutputVector *buffer = &message->buffers[j];
       gsize len;
 
-      len = MIN (message->length - offset, buffer->size);
+      len = MIN (message_len - offset, buffer->size);
       memcpy (tbs->buf + offset, buffer->buffer, len);
       offset += len;
     }
 
-    g_assert_cmpuint (offset, ==, message->length);
+    g_assert (offset == message_len);
   }
 }
 

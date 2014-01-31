@@ -146,7 +146,7 @@ nice_socket_send (NiceSocket *sock, const NiceAddress *to, gsize len,
     const gchar *buf)
 {
   GOutputVector local_buf = { buf, len };
-  NiceOutputMessage local_message = { &local_buf, 1, len };
+  NiceOutputMessage local_message = { &local_buf, 1};
   gint ret;
 
   ret = sock->send_messages (sock, to, &local_message, 1);
@@ -169,4 +169,3 @@ nice_socket_free (NiceSocket *sock)
     g_slice_free (NiceSocket,sock);
   }
 }
-

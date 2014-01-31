@@ -576,16 +576,18 @@ socket_send_message (NiceSocket *sock, const NiceAddress *to,
   if (binding) {
     if (priv->compatibility == NICE_TURN_SOCKET_COMPATIBILITY_DRAFT9 ||
         priv->compatibility == NICE_TURN_SOCKET_COMPATIBILITY_RFC5766) {
-      if (message->length + sizeof(uint32_t) <= sizeof(buffer)) {
+      gsize message_len = output_message_get_size (message);
+
+      if (message_len + sizeof(uint32_t) <= sizeof(buffer)) {
         guint j;
         uint16_t len16, channel16;
         gsize message_offset = 0;
 
-        len16 = htons ((uint16_t) message->length);
+        len16 = htons ((uint16_t) message_len);
         channel16 = htons (binding->channel);
 
         memcpy (buffer, &channel16, sizeof(uint16_t));
-        memcpy (buffer + sizeof(uint16_t), &len16,sizeof(uint16_t));
+        memcpy (buffer + sizeof(uint16_t), &len16, sizeof(uint16_t));
 
         /* FIXME: Slow path! This should be replaced by code which manipulates
          * the GOutputVector array, rather than the buffer contents
@@ -597,25 +599,21 @@ socket_send_message (NiceSocket *sock, const NiceAddress *to,
           const GOutputVector *out_buf = &message->buffers[j];
           gsize out_len;
 
-          out_len = MIN (message->length - message_offset, out_buf->size);
+          out_len = MIN (message_len - message_offset, out_buf->size);
           memcpy (buffer + sizeof (uint32_t) + message_offset,
               out_buf->buffer, out_len);
           message_offset += out_len;
         }
 
-        msg_len = message->length + sizeof(uint32_t);
+        msg_len = message_len + sizeof(uint32_t);
       } else {
         return 0;
       }
     } else {
-      NiceOutputMessage local_message = {
-        message->buffers, message->n_buffers, message->length
-      };
-
       ret = nice_socket_send_messages (priv->base_socket, &priv->server_addr,
-          &local_message, 1);
+          message, 1);
       if (ret == 1)
-        return message->length;
+        return output_message_get_size (message);
       return ret;
     }
   } else {
@@ -708,7 +706,7 @@ socket_send_message (NiceSocket *sock, const NiceAddress *to,
       return msg_len;
     } else {
       GOutputVector local_buf = { buffer, msg_len };
-      NiceOutputMessage local_message = {&local_buf, 1, msg_len};
+      NiceOutputMessage local_message = {&local_buf, 1};
 
       ret = nice_socket_send_messages (priv->base_socket, &priv->server_addr,
           &local_message, 1);
@@ -722,7 +720,7 @@ send:
   /* Error condition pass through to the base socket. */
   ret = nice_socket_send_messages (priv->base_socket, to, message, 1);
   if (ret == 1)
-    return message->length;
+    return output_message_get_size (message);
   return ret;
 }
 
@@ -915,8 +913,6 @@ nice_turn_socket_parse_recv_message (NiceSocket *sock, NiceSocket **from_sock,
        message->buffers[0].buffer != NULL &&
        message->buffers[1].buffer == NULL)) {
     /* Fast path. Single massive buffer. */
-    g_assert_cmpuint (message->length, <=, message->buffers[0].size);
-
     len = nice_turn_socket_parse_recv (sock, from_sock,
         message->from, message->length, message->buffers[0].buffer,
         message->from, message->buffers[0].buffer, message->length);

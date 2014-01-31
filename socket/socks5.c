@@ -43,6 +43,7 @@
 #endif
 
 #include "socks5.h"
+#include "agent-priv.h"
 
 #include <string.h>
 
@@ -463,8 +464,8 @@ add_to_be_sent (NiceSocket *sock, const NiceAddress *to,
     tbs = g_slice_new0 (struct to_be_sent);
 
     /* Compact the buffer. */
-    tbs->buf = g_malloc (message->length);
-    tbs->length = message->length;
+    tbs->length = output_message_get_size (message);
+    tbs->buf = g_malloc (tbs->length);
     if (to != NULL)
       tbs->to = *to;
     g_queue_push_tail (&priv->send_queue, tbs);
@@ -476,12 +477,12 @@ add_to_be_sent (NiceSocket *sock, const NiceAddress *to,
       const GOutputVector *buffer = &message->buffers[j];
       gsize len;
 
-      len = MIN (message->length - offset, buffer->size);
+      len = MIN (tbs->length - offset, buffer->size);
       memcpy (tbs->buf + offset, buffer->buffer, len);
       offset += len;
     }
 
-    g_assert_cmpuint (offset, ==, message->length);
+    g_assert (offset == tbs->length);
   }
 }
 
