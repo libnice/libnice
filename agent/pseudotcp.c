@@ -1828,6 +1828,9 @@ resize_receive_buffer (PseudoTcpSocket *self, guint32 new_size)
   gboolean result;
   gsize available_space;
 
+  if (priv->rbuf_len == new_size)
+    return;
+
   // Determine the scale factor such that the scaled window size can fit
   // in a 16-bit unsigned integer.
   while (new_size > 0xFFFF) {
