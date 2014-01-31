@@ -652,7 +652,8 @@ emit_io_callback_cb (gpointer user_data)
   NiceAgent *agent;
 
   agent = component->agent;
-  g_object_add_weak_pointer (G_OBJECT (agent), (gpointer *) &agent);
+
+  g_object_ref (agent);
 
   stream_id = component->stream->id;
   component_id = component->id;
@@ -690,11 +691,10 @@ emit_io_callback_cb (gpointer user_data)
         io_user_data);
 
     /* Check for the user destroying things underneath our feet. */
-    if (agent == NULL ||
-        !agent_find_component (agent, stream_id, component_id,
+    if (!agent_find_component (agent, stream_id, component_id,
             NULL, &component)) {
       nice_debug ("%s: Agent or component destroyed.", G_STRFUNC);
-      return G_SOURCE_REMOVE;
+      goto done;
     }
 
     g_queue_pop_head (&component->pending_io_messages);
@@ -706,7 +706,8 @@ emit_io_callback_cb (gpointer user_data)
   component->io_callback_id = 0;
   g_mutex_unlock (&component->io_mutex);
 
-  g_object_remove_weak_pointer (G_OBJECT (agent), (gpointer *) &agent);
+ done:
+  g_object_unref (agent);
 
   return G_SOURCE_REMOVE;
 }

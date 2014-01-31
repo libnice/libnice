@@ -1171,14 +1171,16 @@ pseudo_tcp_socket_readable (PseudoTcpSocket *sock, gpointer user_data)
   NiceAgent *agent = component->agent;
   Stream *stream = component->stream;
   gboolean has_io_callback;
+  guint stream_id = stream->id;
+  guint component_id = component->id;
+
+  g_object_ref (agent);
 
   nice_debug ("Agent %p: s%d:%d pseudo Tcp socket readable", agent,
       stream->id, component->id);
 
   component->tcp_readable = TRUE;
 
-  g_object_add_weak_pointer (G_OBJECT (sock), (gpointer *)&sock);
-  g_object_add_weak_pointer (G_OBJECT (agent), (gpointer *)&agent);
   has_io_callback = component_has_io_callback (component);
 
   /* Only dequeue pseudo-TCP data if we can reliably inform the client. The
@@ -1224,9 +1226,14 @@ pseudo_tcp_socket_readable (PseudoTcpSocket *sock, gpointer user_data)
 
       component_emit_io_callback (component, buf, len);
 
-      if (sock == NULL) {
+      if (!agent_find_component (agent, stream_id, component_id,
+              &stream, &component)) {
+        nice_debug ("Stream or Component disappeared during the callback");
+        goto out;
+      }
+      if (!component->tcp) {
         nice_debug ("PseudoTCP socket got destroyed in readable callback!");
-        break;
+        goto out;
       }
 
       has_io_callback = component_has_io_callback (component);
@@ -1257,14 +1264,13 @@ pseudo_tcp_socket_readable (PseudoTcpSocket *sock, gpointer user_data)
     nice_debug ("%s: no data read", G_STRFUNC);
   }
 
-  if (agent) {
+  if (stream && component)
     adjust_tcp_clock (agent, stream, component);
-    g_object_remove_weak_pointer (G_OBJECT (agent), (gpointer *)&agent);
-  } else {
-    nice_debug ("Not calling adjust_tcp_clock.. agent got destroyed!");
-  }
-  if (sock)
-    g_object_remove_weak_pointer (G_OBJECT (sock), (gpointer *)&sock);
+
+out:
+
+  g_object_unref (agent);
+
 }
 
 static void
@@ -1473,6 +1479,8 @@ process_queued_tcp_packets (NiceAgent *agent, Stream *stream,
     Component *component)
 {
   GOutputVector *vec;
+  guint stream_id = stream->id;
+  guint component_id = component->id;
 
   if (component->selected_pair.local == NULL || component->tcp == NULL)
     return;
@@ -1483,20 +1491,24 @@ process_queued_tcp_packets (NiceAgent *agent, Stream *stream,
   while ((vec = g_queue_peek_head (&component->queued_tcp_packets)) != NULL) {
     gboolean retval;
 
-    g_object_add_weak_pointer (G_OBJECT (agent), (gpointer *) &agent);
-
     nice_debug ("%s: Sending %" G_GSIZE_FORMAT " bytes.", G_STRFUNC, vec->size);
     retval =
         pseudo_tcp_socket_notify_packet (component->tcp, vec->buffer,
             vec->size);
 
-    if (agent != NULL) {
-      adjust_tcp_clock (agent, stream, component);
-      g_object_remove_weak_pointer (G_OBJECT (agent), (gpointer *) &agent);
-    } else {
-      nice_debug ("%s: Agent %p was destroyed in "
-          "pseudo_tcp_socket_notify_packet().", G_STRFUNC, agent);
+    if (!agent_find_component (agent, stream_id, component_id,
+            &stream, &component)) {
+      nice_debug ("Stream or Component disappeared during "
+          "pseudo_tcp_socket_notify_packet()");
+      return;
     }
+    if (!component->tcp) {
+      nice_debug ("PseudoTCP socket got destroyed in"
+          " pseudo_tcp_socket_notify_packet()!");
+      return;
+    }
+
+    adjust_tcp_clock (agent, stream, component);
 
     if (!retval) {
       /* Failed to send; try again later. */
@@ -2713,18 +2725,12 @@ agent_recv_message_unlocked (
     }
 
     /* Received data on a reliable connection. */
-    g_object_add_weak_pointer (G_OBJECT (agent), (gpointer *) &agent);
 
     nice_debug ("%s: notifying pseudo-TCP of packet, length %" G_GSIZE_FORMAT,
         G_STRFUNC, message->length);
     pseudo_tcp_socket_notify_message (component->tcp, message);
 
-    if (agent) {
-      adjust_tcp_clock (agent, stream, component);
-      g_object_remove_weak_pointer (G_OBJECT (agent), (gpointer *) &agent);
-    } else {
-      nice_debug ("Our agent got destroyed in notify_packet!!");
-    }
+    adjust_tcp_clock (agent, stream, component);
 
     /* Success! Handled out-of-band. */
     retval = RECV_OOB;
@@ -3544,16 +3550,18 @@ component_io_cb (GSocket *socket, GIOCondition condition, gpointer user_data)
 
   agent_lock ();
 
-  component = socket_source->component;
-  agent = component->agent;
-  stream = component->stream;
-
   if (g_source_is_destroyed (g_main_current_source ())) {
     /* Silently return FALSE. */
     nice_debug ("%s: source %p destroyed", G_STRFUNC, g_main_current_source ());
     remove_source = TRUE;
     goto done;
   }
+
+  component = socket_source->component;
+  agent = component->agent;
+  stream = component->stream;
+
+  g_object_ref (agent);
 
   has_io_callback = component_has_io_callback (component);
 
@@ -3695,6 +3703,8 @@ component_io_cb (GSocket *socket, GIOCondition condition, gpointer user_data)
   }
 
 done:
+  g_object_unref (agent);
+
   agent_unlock ();
 
   return !remove_source;
