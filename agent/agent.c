@@ -1035,23 +1035,29 @@ pseudo_tcp_socket_opened (PseudoTcpSocket *sock, gpointer user_data)
  *
  * Returns the number of messages successfully sent on success (which may be
  * zero if sending the first buffer of the message would have blocked), or
- * a negative number on error. */
+ * a negative number on error. If "allow_partial" is TRUE, then it returns
+ * the number of bytes sent
+ */
 static gint
 pseudo_tcp_socket_send_messages (PseudoTcpSocket *self,
-    const NiceOutputMessage *messages, guint n_messages, GError **error)
+    const NiceOutputMessage *messages, guint n_messages, gboolean allow_partial,
+    GError **error)
 {
   guint i;
+  gint bytes_sent = 0;
 
   for (i = 0; i < n_messages; i++) {
     const NiceOutputMessage *message = &messages[i];
     guint j;
 
-    /* If there’s not enough space for the entire message, bail now before
-     * queuing anything. This doesn’t gel with the fact this function is only
-     * used in reliable mode, and there is no concept of a ‘message’, but is
-     * necessary because the calling API has no way of returning to the client
+    /* If allow_partial is FALSE and there’s not enough space for the
+     * entire message, bail now before queuing anything. This doesn’t
+     * gel with the fact this function is only used in reliable mode,
+     * and there is no concept of a ‘message’, but is necessary
+     * because the calling API has no way of returning to the client
      * and indicating that a message was partially sent. */
-    if (output_message_get_size (message) >
+    if (!allow_partial &&
+        output_message_get_size (message) >
         pseudo_tcp_socket_get_available_send_space (self)) {
       return i;
     }
@@ -1068,22 +1074,26 @@ pseudo_tcp_socket_send_messages (PseudoTcpSocket *self,
 
       /* In case of -1, the error is either EWOULDBLOCK or ENOTCONN, which both
        * need the user to wait for the reliable-transport-writable signal */
-      if (ret < 0 && pseudo_tcp_socket_get_error (self) == EWOULDBLOCK) {
-        ret = 0;
-        return i;
-      } else if (ret < 0 && pseudo_tcp_socket_get_error (self) == ENOTCONN) {
-        g_set_error (error, G_IO_ERROR, G_IO_ERROR_WOULD_BLOCK,
-            "TCP connection is not yet established.");
-        return ret;
-      } else if (ret < 0) {
-        g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+      if (ret < 0) {
+        if (pseudo_tcp_socket_get_error (self) == EWOULDBLOCK)
+          goto out;
+
+        if (pseudo_tcp_socket_get_error (self) == ENOTCONN)
+          g_set_error (error, G_IO_ERROR, G_IO_ERROR_WOULD_BLOCK,
+              "TCP connection is not yet established.");
+        else
+          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
             "Error writing data to pseudo-TCP socket.");
-        return ret;
+        return -1;
+      } else {
+        bytes_sent += ret;
       }
     }
   }
 
-  return i;
+ out:
+
+  return allow_partial ? bytes_sent : (gint) i;
 }
 
 /* Will fill up @messages from the first free byte onwards (as determined using
@@ -2881,7 +2891,7 @@ output_message_get_size (const NiceOutputMessage *message)
   return message_len;
 }
 
-/**
+/*
  * nice_input_message_iter_reset:
  * @iter: a #NiceInputMessageIter
  *
@@ -2898,7 +2908,7 @@ nice_input_message_iter_reset (NiceInputMessageIter *iter)
   iter->offset = 0;
 }
 
-/**
+/*
  * nice_input_message_iter_is_at_end:
  * @iter: a #NiceInputMessageIter
  * @messages: (array length=n_messages): an array of #NiceInputMessages
@@ -2920,7 +2930,7 @@ nice_input_message_iter_is_at_end (NiceInputMessageIter *iter,
       iter->buffer == 0 && iter->offset == 0);
 }
 
-/**
+/*
  * nice_input_message_iter_get_n_valid_messages:
  * @iter: a #NiceInputMessageIter
  *
@@ -3227,31 +3237,29 @@ nice_agent_recv_nonblocking (NiceAgent *agent, guint stream_id,
   return local_messages.length;
 }
 
-NICEAPI_EXPORT gint
-nice_agent_send_messages_nonblocking (
+/* nice_agent_send_messages_nonblocking_internal:
+ *
+ * Returns: number of bytes sent if allow_partial is %TRUE, the number
+ * of messages otherwise.
+ */
+
+static gint
+nice_agent_send_messages_nonblocking_internal (
   NiceAgent *agent,
   guint stream_id,
   guint component_id,
   const NiceOutputMessage *messages,
   guint n_messages,
-  GCancellable *cancellable,
+  gboolean allow_partial,
   GError **error)
 {
   Stream *stream;
   Component *component;
-  gint n_sent_messages = -1;
+  gint n_sent = -1; /* is in bytes if allow_partial is TRUE,
+                       otherwise in messages */
   GError *child_error = NULL;
 
-  g_return_val_if_fail (NICE_IS_AGENT (agent), -1);
-  g_return_val_if_fail (stream_id >= 1, -1);
-  g_return_val_if_fail (component_id >= 1, -1);
-  g_return_val_if_fail (n_messages == 0 || messages != NULL, -1);
-  g_return_val_if_fail (
-      cancellable == NULL || G_IS_CANCELLABLE (cancellable), -1);
-  g_return_val_if_fail (error == NULL || *error == NULL, -1);
-
-  if (g_cancellable_set_error_if_cancelled (cancellable, error))
-    return -1;
+  g_assert (n_messages == 1 || !allow_partial);
 
   agent_lock ();
 
@@ -3267,15 +3275,15 @@ nice_agent_send_messages_nonblocking (
 
   if (component->tcp != NULL) {
     /* Send on the pseudo-TCP socket. */
-    n_sent_messages = pseudo_tcp_socket_send_messages (component->tcp, messages,
-        n_messages, &child_error);
+    n_sent = pseudo_tcp_socket_send_messages (component->tcp, messages,
+        n_messages, allow_partial, &child_error);
     adjust_tcp_clock (agent, stream, component);
 
     if (!pseudo_tcp_socket_can_send (component->tcp))
       g_cancellable_reset (component->tcp_writable_cancellable);
-
-    if (n_sent_messages < 0) {
-      /* Signal error */
+    if (n_sent < 0 && !g_error_matches (child_error, G_IO_ERROR,
+            G_IO_ERROR_WOULD_BLOCK)) {
+      /* Signal errors */
       priv_pseudo_tcp_error (agent, stream, component);
     }
   } else if (agent->reliable) {
@@ -3297,39 +3305,69 @@ nice_agent_send_messages_nonblocking (
     sock = component->selected_pair.local->sockptr;
     addr = &component->selected_pair.remote->addr;
 
-    n_sent_messages = nice_socket_send_messages (sock, addr, messages,
-        n_messages);
+    n_sent = nice_socket_send_messages (sock, addr, messages, n_messages);
 
-    if (n_sent_messages < 0) {
+    if (n_sent < 0) {
       g_set_error (&child_error, G_IO_ERROR, G_IO_ERROR_FAILED,
           "Error writing data to socket.");
+    } else if (allow_partial) {
+      g_assert (n_messages == 1);
+      n_sent = output_message_get_size (messages);
     }
   } else {
     /* Socket isn’t properly open yet. */
-    n_sent_messages = 0;  /* EWOULDBLOCK */
+    n_sent = 0;  /* EWOULDBLOCK */
   }
 
   /* Handle errors and cancellations. */
-  if (n_sent_messages == 0) {
+  if (n_sent == 0) {
     g_set_error_literal (&child_error, G_IO_ERROR, G_IO_ERROR_WOULD_BLOCK,
         g_strerror (EAGAIN));
-    n_sent_messages = -1;
+    n_sent = -1;
   }
 
-  nice_debug ("%s: n_sent_messages: %d, n_messages: %u", G_STRFUNC,
-      n_sent_messages, n_messages);
+  nice_debug ("%s: n_sent: %d, n_messages: %u", G_STRFUNC,
+      n_sent, n_messages);
 
 done:
-  g_assert ((child_error != NULL) == (n_sent_messages == -1));
-  g_assert (n_sent_messages != 0);
-  g_assert (n_sent_messages < 0 || (guint) n_sent_messages <= n_messages);
+  g_assert ((child_error != NULL) == (n_sent == -1));
+  g_assert (n_sent != 0);
+  g_assert (n_sent < 0 ||
+      (!allow_partial && (guint) n_sent <= n_messages) ||
+      (allow_partial && n_messages == 1 &&
+          (gsize) n_sent <= output_message_get_size (&messages[0])));
 
   if (child_error != NULL)
     g_propagate_error (error, child_error);
 
   agent_unlock ();
 
-  return n_sent_messages;
+  return n_sent;
+}
+
+NICEAPI_EXPORT gint
+nice_agent_send_messages_nonblocking (
+  NiceAgent *agent,
+  guint stream_id,
+  guint component_id,
+  const NiceOutputMessage *messages,
+  guint n_messages,
+  GCancellable *cancellable,
+  GError **error)
+{
+  g_return_val_if_fail (NICE_IS_AGENT (agent), -1);
+  g_return_val_if_fail (stream_id >= 1, -1);
+  g_return_val_if_fail (component_id >= 1, -1);
+  g_return_val_if_fail (n_messages == 0 || messages != NULL, -1);
+  g_return_val_if_fail (
+      cancellable == NULL || G_IS_CANCELLABLE (cancellable), -1);
+  g_return_val_if_fail (error == NULL || *error == NULL, -1);
+
+  if (g_cancellable_set_error_if_cancelled (cancellable, error))
+    return -1;
+
+  return nice_agent_send_messages_nonblocking_internal (agent, stream_id,
+      component_id, messages, n_messages, FALSE, error);
 }
 
 NICEAPI_EXPORT gint
@@ -3341,15 +3379,18 @@ nice_agent_send (
   const gchar *buf)
 {
   GOutputVector local_buf = { buf, len };
-  gint n_sent_messages;
   NiceOutputMessage local_message = { &local_buf, 1 };
+  gint n_sent_bytes;
 
-  n_sent_messages = nice_agent_send_messages_nonblocking (agent, stream_id,
-      component_id, &local_message, 1, NULL, NULL);
+  g_return_val_if_fail (NICE_IS_AGENT (agent), -1);
+  g_return_val_if_fail (stream_id >= 1, -1);
+  g_return_val_if_fail (component_id >= 1, -1);
+  g_return_val_if_fail (buf != NULL, -1);
 
-  if (n_sent_messages == 1)
-    return len;
-  return n_sent_messages;
+  n_sent_bytes = nice_agent_send_messages_nonblocking_internal (agent,
+      stream_id, component_id, &local_message, 1, TRUE, NULL);
+
+  return n_sent_bytes;
 }
 
 NICEAPI_EXPORT GSList *

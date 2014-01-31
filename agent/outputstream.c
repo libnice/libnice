@@ -304,9 +304,9 @@ typedef struct {
 
   GCond cond;
   GMutex mutex;
-  GError *error;
 
   gboolean writable;
+  gboolean cancelled;
 } WriteData;
 
 static void
@@ -315,7 +315,6 @@ write_data_unref (WriteData *write_data)
   if (g_atomic_int_dec_and_test (&write_data->ref_count)) {
     g_cond_clear (&write_data->cond);
     g_mutex_clear (&write_data->mutex);
-    g_clear_error (&write_data->error);
     g_slice_free (WriteData, write_data);
   }
 }
@@ -326,8 +325,8 @@ write_cancelled_cb (GCancellable *cancellable, gpointer user_data)
   WriteData *write_data = user_data;
 
   g_mutex_lock (&write_data->mutex);
-  g_cancellable_set_error_if_cancelled (cancellable, &write_data->error);
   g_cond_broadcast (&write_data->cond);
+  write_data->cancelled = TRUE;
   g_mutex_unlock (&write_data->mutex);
 }
 
@@ -349,8 +348,7 @@ nice_output_stream_write (GOutputStream *stream, const void *buffer, gsize count
 {
   NiceOutputStream *self = NICE_OUTPUT_STREAM (stream);
   gssize len = -1;
-  gint n_sent_messages;
-  GError *child_error = NULL;
+  gint n_sent;
   NiceAgent *agent = NULL;  /* owned */
   gulong cancel_id = 0, writeable_id;
   WriteData *write_data;
@@ -375,14 +373,13 @@ nice_output_stream_write (GOutputStream *stream, const void *buffer, gsize count
     return 0;
   }
 
-  /* FIXME: nice_agent_send_full() is non-blocking, which is a bit unexpected
+  /* FIXME: nice_agent_send() is non-blocking, which is a bit unexpected
    * since nice_agent_recv() is blocking. Currently this uses a fairly dodgy
    * GCond solution; would be much better for nice_agent_send() to block
    * properly in the main loop. */
   len = 0;
   write_data = g_slice_new0 (WriteData);
   g_atomic_int_set (&write_data->ref_count, 3);
-  write_data->error = NULL;
 
   g_mutex_init (&write_data->mutex);
   g_cond_init (&write_data->cond);
@@ -402,58 +399,42 @@ nice_output_stream_write (GOutputStream *stream, const void *buffer, gsize count
 
 
   do {
-    GOutputVector local_buf = { (const guint8 *) buffer + len, count - len };
-    NiceOutputMessage local_message = {&local_buf, 1};
-
     /* Have to unlock while calling into the agent because
      * it will take the agent lock which will cause a deadlock if one of
      * the callbacks is called.
      */
+    if (g_cancellable_is_cancelled (cancellable))
+      break;
+
     write_data->writable = FALSE;
     g_mutex_unlock (&write_data->mutex);
 
-    n_sent_messages = nice_agent_send_messages_nonblocking (agent,
-        self->priv->stream_id, self->priv->component_id, &local_message, 1,
-        cancellable, &child_error);
+    n_sent = nice_agent_send (agent, self->priv->stream_id,
+        self->priv->component_id, count - len, buffer + len);
 
     g_mutex_lock (&write_data->mutex);
 
-    if (n_sent_messages == -1 &&
-        g_error_matches (child_error, G_IO_ERROR, G_IO_ERROR_WOULD_BLOCK)) {
-      /* EWOULDBLOCK. */
-      g_clear_error (&child_error);
-      if (!write_data->writable && !write_data->error)
+    if (n_sent <= 0) {
+      if (!write_data->writable && !write_data->cancelled)
         g_cond_wait (&write_data->cond, &write_data->mutex);
-    } else if (n_sent_messages > 0) {
+    } else if (n_sent > 0) {
       /* Success. */
-      len = count;
-    } else {
-      /* Other error. */
-      len = n_sent_messages;
-      break;
+      len += n_sent;
     }
   } while ((gsize) len < count);
 
   g_signal_handler_disconnect (G_OBJECT (agent), writeable_id);
   g_mutex_unlock (&write_data->mutex);
 
-  if (cancellable != NULL) {
+  if (cancel_id)
     g_cancellable_disconnect (cancellable, cancel_id);
-    /* If we were cancelled, but we have no other errors can couldn't write
-     * anything, return the cancellation error. If we could write
-     * something partial, there is no error.
-     */
-    if (write_data->error && !child_error && len == 0) {
-      g_propagate_error (&child_error, write_data->error);
-      len = -1;
-    }
+
+  if (len == 0) {
+    g_cancellable_set_error_if_cancelled (cancellable, error);
+    len = -1;
   }
 
   write_data_unref (write_data);
-
-  g_assert ((child_error != NULL) == (len == -1));
-  if (child_error)
-    g_propagate_error (error, child_error);
 
   g_object_unref (agent);
   g_assert (len != 0);
@@ -522,9 +503,7 @@ nice_output_stream_write_nonblocking (GPollableOutputStream *stream,
 {
   NiceOutputStreamPrivate *priv = NICE_OUTPUT_STREAM (stream)->priv;
   NiceAgent *agent;  /* owned */
-  GOutputVector local_buf = { buffer, count };
-  NiceOutputMessage local_message = { &local_buf, 1 };
-  gint n_sent_messages;
+  gint n_sent;
 
   /* Closed streams are not writeable. */
   if (g_output_stream_is_closed (G_OUTPUT_STREAM (stream))) {
@@ -551,12 +530,18 @@ nice_output_stream_write_nonblocking (GPollableOutputStream *stream,
     return -1;
   }
 
-  n_sent_messages = nice_agent_send_messages_nonblocking (agent,
-      priv->stream_id, priv->component_id, &local_message, 1, NULL, error);
+  n_sent = nice_agent_send (agent, priv->stream_id, priv->component_id,
+      count, buffer);
+
+  if (n_sent == -1)
+    g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_WOULD_BLOCK,
+        g_strerror (EAGAIN));
+
+
 
   g_object_unref (agent);
 
-  return (n_sent_messages == 1) ? (gssize) count : n_sent_messages;
+  return n_sent;
 }
 
 static GSource *

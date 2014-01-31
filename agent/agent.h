@@ -678,6 +678,13 @@ nice_agent_send (
  * part-way through. Zero will be returned if @n_messages is zero, or if
  * transmission would have blocked on the first message.
  *
+ * In reliable mode, it is instead recommended to use
+ * nice_agent_send().  The return value can be less than @n_messages
+ * or 0 even if it is still possible to send a partial message. In
+ * this case, "nice-agent-writable" will never be triggered, so the
+ * application would have to use nice_agent_sent() to fill the buffer or have
+ * to retry sending at a later point.
+ *
  * On failure, -1 will be returned and @error will be set. If the #NiceAgent is
  * reliable and the socket is not yet connected, %G_IO_ERROR_BROKEN_PIPE will be
  * returned; if the write buffer is full, %G_IO_ERROR_WOULD_BLOCK will be
