@@ -3123,7 +3123,8 @@ nice_agent_recv_messages_blocking_or_nonblocking (NiceAgent *agent,
     goto done;
   }
 
-  nice_debug ("%s: (%s):", G_STRFUNC, blocking ? "blocking" : "non-blocking");
+  nice_debug ("%s: %p: (%s):", G_STRFUNC, agent,
+      blocking ? "blocking" : "non-blocking");
   nice_debug_input_message_composition (messages, n_messages);
 
   /* Set the component’s receive buffer. */
@@ -3151,6 +3152,11 @@ nice_agent_recv_messages_blocking_or_nonblocking (NiceAgent *agent,
         component->recv_messages, component->n_recv_messages,
         &component->recv_messages_iter);
 
+    nice_debug ("%s: %p: Received %d valid messages from pending I/O buffer.",
+        G_STRFUNC, agent,
+        nice_input_message_iter_get_n_valid_messages (
+            &component->recv_messages_iter));
+
     received_enough =
         nice_input_message_iter_is_at_end (&component->recv_messages_iter,
             component->recv_messages, component->n_recv_messages);
@@ -3167,8 +3173,10 @@ nice_agent_recv_messages_blocking_or_nonblocking (NiceAgent *agent,
         &component->recv_messages_iter, &child_error);
     adjust_tcp_clock (agent, stream, component);
 
-    nice_debug ("%s: Received %d valid messages from pseudo-TCP read buffer.",
-        G_STRFUNC, n_valid_messages);
+    nice_debug ("%s: %p: Received %d valid messages from pseudo-TCP read "
+        "buffer.", G_STRFUNC, agent,
+        nice_input_message_iter_get_n_valid_messages (
+            &component->recv_messages_iter));
 
     received_enough =
         nice_input_message_iter_is_at_end (&component->recv_messages_iter,
@@ -3227,7 +3235,7 @@ nice_agent_recv_messages_blocking_or_nonblocking (NiceAgent *agent,
     n_valid_messages = -1;
   }
 
-  nice_debug ("%s: n_valid_messages: %d, n_messages: %u", G_STRFUNC,
+  nice_debug ("%s: %p: n_valid_messages: %d, n_messages: %u", G_STRFUNC, agent,
       n_valid_messages, n_messages);
 
 done:
@@ -3692,8 +3700,8 @@ component_io_cb (GSocket *socket, GIOCondition condition, gpointer user_data)
       retval = agent_recv_message_unlocked (agent, stream, component,
           socket_source->socket, &local_message);
 
-      nice_debug ("%s: received %d valid messages with %" G_GSSIZE_FORMAT
-           " bytes", G_STRFUNC, retval, local_message.length);
+      nice_debug ("%s: %p: received %d valid messages with %" G_GSSIZE_FORMAT
+           " bytes", G_STRFUNC, agent, retval, local_message.length);
 
       /* Don’t expect any valid messages to escape pseudo_tcp_socket_readable()
        * when in reliable mode. */
@@ -3722,8 +3730,8 @@ component_io_cb (GSocket *socket, GIOCondition condition, gpointer user_data)
       retval = agent_recv_message_unlocked (agent, stream, component,
           socket_source->socket, &local_message);
 
-      nice_debug ("%s: received %d valid messages with %" G_GSSIZE_FORMAT
-           " bytes", G_STRFUNC, retval, local_message.length);
+      nice_debug ("%s: %p: received %d valid messages with %" G_GSSIZE_FORMAT
+           " bytes", G_STRFUNC, agent, retval, local_message.length);
 
       if (retval == RECV_WOULD_BLOCK) {
         /* EWOULDBLOCK. */
@@ -3759,7 +3767,8 @@ component_io_cb (GSocket *socket, GIOCondition condition, gpointer user_data)
           socket_source->socket,
           &component->recv_messages[component->recv_messages_iter.message]);
 
-      nice_debug ("%s: received %d valid messages", G_STRFUNC, retval);
+      nice_debug ("%s: %p: received %d valid messages", G_STRFUNC, agent,
+          retval);
 
       if (retval == RECV_SUCCESS) {
         /* Successfully received a single message. */
