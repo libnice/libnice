@@ -737,7 +737,13 @@ nice_agent_get_selected_pair (
  * it. New applications are encouraged to use the built in libnice stream
  * handling instead and let libnice handle the connection maintenance.
  *
- * Returns: pointer to the socket, or NULL if there is no selected candidate
+ * Users of this method are encouraged to not use a TURN relay or any kind
+ * of proxy, as in this case, the socket will not be available to the
+ * application because the packets are encapsulated.
+ *
+ * Returns: (transfer full) pointer to the #GSocket, or NULL if there is no
+ * selected candidate or if the selected candidate is a relayed candidate.
+ *
  * Since: 0.1.5
  */
 GSocket *

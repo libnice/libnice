@@ -2914,10 +2914,15 @@ nice_agent_get_selected_socket (NiceAgent *agent, guint stream_id,
           &stream, &component))
     goto done;
 
-  if (component->selected_pair.local && component->selected_pair.remote) {
-    nice_socket = (NiceSocket *)component->selected_pair.local->sockptr;
-    g_socket = nice_socket->fileno;
-  }
+  if (!component->selected_pair.local || !component->selected_pair.remote)
+    goto done;
+
+  if (component->selected_pair.local->type == NICE_CANDIDATE_TYPE_RELAYED)
+    goto done;
+
+  nice_socket = (NiceSocket *)component->selected_pair.local->sockptr;
+  if (nice_socket->fileno)
+    g_socket = g_object_ref (nice_socket->fileno);
 
  done:
   agent_unlock();
