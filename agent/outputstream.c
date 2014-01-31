@@ -356,7 +356,7 @@ nice_output_stream_write (GOutputStream *stream, const void *buffer, gsize count
 
   /* Closed streams are not writeable. */
   if (g_output_stream_is_closed (stream)) {
-    g_set_error_literal (&child_error, G_IO_ERROR, G_IO_ERROR_CLOSED,
+    g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_CLOSED,
         "Stream is closed.");
     return -1;
   }
@@ -364,7 +364,7 @@ nice_output_stream_write (GOutputStream *stream, const void *buffer, gsize count
   /* Has the agent disappeared? */
   agent = g_weak_ref_get (&self->priv->agent_ref);
   if (agent == NULL) {
-    g_set_error_literal (&child_error, G_IO_ERROR, G_IO_ERROR_CLOSED,
+    g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_CLOSED,
         "Stream is closed due to the NiceAgent being finalised.");
     return -1;
   }
