@@ -581,16 +581,18 @@ static gboolean priv_conn_keepalive_tick_unlocked (NiceAgent *agent)
           uint8_t *password = NULL;
           size_t password_len = priv_get_password (agent,
               agent_find_stream (agent, stream->id), p->remote, &password);
-          gchar tmpbuf[INET6_ADDRSTRLEN];
 
-          nice_address_to_string (&p->remote->addr, tmpbuf);
-          nice_debug ("Agent %p : Keepalive STUN-CC REQ to '%s:%u', "
-              "socket=%u (c-id:%u), username='%s' (%" G_GSIZE_FORMAT "), "
-              "password='%s' (%" G_GSIZE_FORMAT "), priority=%u.", agent,
-              tmpbuf, nice_address_get_port (&p->remote->addr),
-              g_socket_get_fd(((NiceSocket *)p->local->sockptr)->fileno), component->id,
-              uname, uname_len, password, password_len, priority);
-
+          if (nice_debug_is_enabled ()) {
+            gchar tmpbuf[INET6_ADDRSTRLEN];
+            nice_address_to_string (&p->remote->addr, tmpbuf);
+            nice_debug ("Agent %p : Keepalive STUN-CC REQ to '%s:%u', "
+                "socket=%u (c-id:%u), username='%s' (%" G_GSIZE_FORMAT "), "
+                "password='%s' (%" G_GSIZE_FORMAT "), priority=%u.", agent,
+                tmpbuf, nice_address_get_port (&p->remote->addr),
+                g_socket_get_fd(((NiceSocket *)p->local->sockptr)->fileno),
+                component->id, uname, uname_len, password, password_len,
+                priority);
+          }
           if (uname_len > 0) {
             buf_len = stun_usage_ice_conncheck_create (&agent->stun_agent,
                 &p->keepalive.stun_message, p->keepalive.stun_buffer,
@@ -1666,7 +1668,7 @@ int conn_check_send (NiceAgent *agent, CandidateCheckPair *pair)
     password = g_base64_decode ((gchar *) password, &password_len);
   }
 
-  {
+  if (nice_debug_is_enabled ()) {
     gchar tmpbuf[INET6_ADDRSTRLEN];
     nice_address_to_string (&pair->remote->addr, tmpbuf);
     nice_debug ("Agent %p : STUN-CC REQ to '%s:%u', socket=%u, "
@@ -1904,7 +1906,7 @@ static void priv_reply_to_conn_check (NiceAgent *agent, Stream *stream, Componen
 {
   g_assert (rcand == NULL || nice_address_equal(&rcand->addr, toaddr) == TRUE);
 
-  {
+  if (nice_debug_is_enabled ()) {
     gchar tmpbuf[INET6_ADDRSTRLEN];
     nice_address_to_string (toaddr, tmpbuf);
     nice_debug ("Agent %p : STUN-CC RESP to '%s:%u', socket=%u, len=%u, cand=%p (c-id:%u), use-cand=%d.", agent,
@@ -1917,7 +1919,7 @@ static void priv_reply_to_conn_check (NiceAgent *agent, Stream *stream, Componen
   }
 
   nice_socket_send (socket, toaddr, rbuf_len, (const gchar*)rbuf);
-  
+
   if (rcand) {
     /* note: upon successful check, make the reserve check immediately */
     priv_schedule_triggered_check (agent, stream, component, socket, rcand, use_candidate);
@@ -2140,18 +2142,19 @@ static gboolean priv_map_reply_to_conn_check_request (NiceAgent *agent, Stream *
            *       sent the original request to (see 7.1.2.1. "Failure
            *       Cases") */
           if (nice_address_equal (from, &p->remote->addr) != TRUE) {
-            gchar tmpbuf[INET6_ADDRSTRLEN];
-            gchar tmpbuf2[INET6_ADDRSTRLEN];
 
             p->state = NICE_CHECK_FAILED;
-            nice_debug ("Agent %p : conncheck %p FAILED"
-                " (mismatch of source address).", agent, p);
-            nice_address_to_string (&p->remote->addr, tmpbuf);
-            nice_address_to_string (from, tmpbuf2);
-            nice_debug ("Agent %p : '%s:%u' != '%s:%u'", agent,
-                tmpbuf, nice_address_get_port (&p->remote->addr),
-                tmpbuf2, nice_address_get_port (from));
-
+            if (nice_debug_is_enabled ()) {
+              gchar tmpbuf[INET6_ADDRSTRLEN];
+              gchar tmpbuf2[INET6_ADDRSTRLEN];
+              nice_debug ("Agent %p : conncheck %p FAILED"
+                  " (mismatch of source address).", agent, p);
+              nice_address_to_string (&p->remote->addr, tmpbuf);
+              nice_address_to_string (from, tmpbuf2);
+              nice_debug ("Agent %p : '%s:%u' != '%s:%u'", agent,
+                  tmpbuf, nice_address_get_port (&p->remote->addr),
+                  tmpbuf2, nice_address_get_port (from));
+            }
             trans_found = TRUE;
             break;
           }
@@ -2746,14 +2749,12 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, Stream *stream,
   /* note: contents of 'buf' already validated, so it is
    *       a valid and fully received STUN message */
 
-#ifndef NDEBUG
-  {
+  if (nice_debug_is_enabled ()) {
     gchar tmpbuf[INET6_ADDRSTRLEN];
     nice_address_to_string (from, tmpbuf);
     nice_debug ("Agent %p: inbound STUN packet for %u/%u (stream/component) from [%s]:%u (%u octets) :",
         agent, stream->id, component->id, tmpbuf, nice_address_get_port (from), len);
   }
-#endif
 
   /* note: ICE  7.2. "STUN Server Procedures" (ID-19) */
 

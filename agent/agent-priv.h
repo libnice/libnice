@@ -223,5 +223,21 @@ compact_output_message (const NiceOutputMessage *message, gsize *buffer_length);
 gsize
 output_message_get_size (const NiceOutputMessage *message);
 
+/*
+ * nice_debug_init:
+ *
+ * Initialize the debugging system. Uses the NICE_DEBUG environment variable
+ * to set the appropriate debugging flags
+ */
+void nice_debug_init (void);
+
+
+#ifdef NDEBUG
+static inline gboolean nice_debug_is_enabled (void) { return FALSE };
+static inline void nice_debug (const char *fmt, ...) G_GNUC_PRINTF (1, 2) { }
+#else
+gboolean nice_debug_is_enabled (void);
+void nice_debug (const char *fmt, ...) G_GNUC_PRINTF (1, 2);
+#endif
 
 #endif /*_NICE_AGENT_PRIV_H */

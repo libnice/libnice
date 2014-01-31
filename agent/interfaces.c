@@ -27,7 +27,7 @@
 #endif
 
 #include "interfaces.h"
-#include "debug.h"
+#include "agent-priv.h"
 
 #ifdef G_OS_UNIX
 

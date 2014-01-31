@@ -43,6 +43,8 @@
 #include "stunagent.h"
 #include "pseudotcp.h"
 
+#include "agent-priv.h"
+
 static int debug_enabled = 0;
 
 #define NICE_DEBUG_STUN 1
@@ -89,6 +91,11 @@ void nice_debug_init (void)
         pseudo_tcp_set_debug_level (PSEUDO_TCP_DEBUG_NORMAL);
     }
   }
+}
+
+gboolean nice_debug_is_enabled (void)
+{
+  return debug_enabled;
 }
 
 void nice_debug_enable (gboolean with_stun)

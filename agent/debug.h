@@ -74,14 +74,6 @@
 G_BEGIN_DECLS
 
 /**
- * nice_debug_init:
- *
- * Initialize the debugging system. Uses the NICE_DEBUG environment variable
- * to set the appropriate debugging flags
- */
-void nice_debug_init (void);
-
-/**
  * nice_debug_enable:
  * @with_stun: Also enable stun debugging messages
  *
@@ -96,8 +88,6 @@ void nice_debug_enable (gboolean with_stun);
  * Disables libnice debug output to the terminal
  */
 void nice_debug_disable (gboolean with_stun);
-
-void nice_debug (const char *fmt, ...) G_GNUC_PRINTF (1, 2);
 
 G_END_DECLS
 

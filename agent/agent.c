@@ -1307,18 +1307,16 @@ pseudo_tcp_socket_write_packet (PseudoTcpSocket *socket,
 
     sock = component->selected_pair.local->sockptr;
 
-#ifndef NDEBUG
-{
-    gchar tmpbuf[INET6_ADDRSTRLEN];
-    nice_address_to_string (&component->selected_pair.remote->addr, tmpbuf);
+    if (nice_debug_is_enabled ()) {
+      gchar tmpbuf[INET6_ADDRSTRLEN];
+      nice_address_to_string (&component->selected_pair.remote->addr, tmpbuf);
 
-    nice_debug (
-        "Agent %p : s%d:%d: sending %d bytes on socket %p (FD %d) to [%s]:%d",
-        component->agent, component->stream->id, component->id, len,
-        sock->fileno, g_socket_get_fd (sock->fileno), tmpbuf,
-        nice_address_get_port (&component->selected_pair.remote->addr));
-}
-#endif
+      nice_debug (
+          "Agent %p : s%d:%d: sending %d bytes on socket %p (FD %d) to [%s]:%d",
+          component->agent, component->stream->id, component->id, len,
+          sock->fileno, g_socket_get_fd (sock->fileno), tmpbuf,
+          nice_address_get_port (&component->selected_pair.remote->addr));
+    }
 
     addr = &component->selected_pair.remote->addr;
 
@@ -1407,7 +1405,7 @@ void agent_gathering_done (NiceAgent *agent)
 
       for (k = component->local_candidates; k; k = k->next) {
         NiceCandidate *local_candidate = k->data;
-	{
+	if (nice_debug_is_enabled ()) {
 	  gchar tmpbuf[INET6_ADDRSTRLEN];
 	  nice_address_to_string (&local_candidate->addr, tmpbuf);
           nice_debug ("Agent %p: gathered local candidate : [%s]:%u"
@@ -2117,10 +2115,13 @@ nice_agent_gather_candidates (
       nice_address_set_port (addr, 0);
 
       if (!host_candidate) {
-        gchar ip[NICE_ADDRESS_STRING_LEN];
-        nice_address_to_string (addr, ip);
-        nice_debug ("Agent %p: Unable to add local host candidate %s for s%d:%d"
-            ". Invalid interface?", agent, ip, stream->id, component->id);
+        if (nice_debug_is_enabled ()) {
+          gchar ip[NICE_ADDRESS_STRING_LEN];
+          nice_address_to_string (addr, ip);
+          nice_debug ("Agent %p: Unable to add local host candidate %s for"
+              " s%d:%d. Invalid interface?", agent, ip, stream->id,
+              component->id);
+        }
         ret = FALSE;
         goto error;
       }
@@ -2346,7 +2347,7 @@ static gboolean priv_add_remote_candidate (
   /* step: check whether the candidate already exists */
   candidate = component_find_remote_candidate(component, addr, transport);
   if (candidate) {
-    {
+    if (nice_debug_is_enabled ()) {
       gchar tmpbuf[INET6_ADDRSTRLEN];
       nice_address_to_string (addr, tmpbuf);
       nice_debug ("Agent %p : Updating existing remote candidate with addr [%s]:%u"
@@ -2397,9 +2398,9 @@ static gboolean priv_add_remote_candidate (
     if (addr)
       candidate->addr = *addr;
 
-    {
+    if (nice_debug_is_enabled ()) {
       gchar tmpbuf[INET6_ADDRSTRLEN] = {0};
-      if(addr)
+      if (addr)
         nice_address_to_string (addr, tmpbuf);
       nice_debug ("Agent %p : Adding remote candidate with addr [%s]:%u"
           " for s%d/c%d. U/P '%s'/'%s' prio: %u", agent, tmpbuf,
@@ -2626,15 +2627,13 @@ agent_recv_message_unlocked (
     goto done;
   }
 
-#ifndef NDEBUG
-  if (message->length > 0) {
+  if (nice_debug_is_enabled () && message->length > 0) {
     gchar tmpbuf[INET6_ADDRSTRLEN];
     nice_address_to_string (message->from, tmpbuf);
     nice_debug ("Agent %p : Packet received on local socket %d from [%s]:%u (%" G_GSSIZE_FORMAT " octets).", agent,
         g_socket_get_fd (socket->fileno), tmpbuf,
         nice_address_get_port (message->from), message->length);
   }
-#endif
 
   for (item = component->turn_servers; item; item = g_list_next (item)) {
     TurnServer *turn = item->data;
@@ -2643,10 +2642,8 @@ agent_recv_message_unlocked (
     if (!nice_address_equal (message->from, &turn->server))
       continue;
 
-#ifndef NDEBUG
     nice_debug ("Agent %p : Packet received from TURN server candidate.",
         agent);
-#endif
 
     for (i = component->local_candidates; i; i = i->next) {
       NiceCandidate *cand = i->data;
@@ -2755,7 +2752,9 @@ static void
 nice_debug_input_message_composition (const NiceInputMessage *messages,
     guint n_messages)
 {
-#ifndef NDEBUG
+  if (!nice_debug_is_enabled ())
+    return;
+
   guint i;
 
   for (i = 0; i < n_messages; i++) {
@@ -2775,7 +2774,6 @@ nice_debug_input_message_composition (const NiceInputMessage *messages,
           buffer->size);
     }
   }
-#endif
 }
 
 static guint8 *
@@ -3293,14 +3291,14 @@ nice_agent_send_messages_nonblocking_internal (
     NiceSocket *sock;
     NiceAddress *addr;
 
-#ifndef NDEBUG
-    gchar tmpbuf[INET6_ADDRSTRLEN];
-    nice_address_to_string (&component->selected_pair.remote->addr, tmpbuf);
+    if (nice_debug_is_enabled ()) {
+      gchar tmpbuf[INET6_ADDRSTRLEN];
+      nice_address_to_string (&component->selected_pair.remote->addr, tmpbuf);
 
-    nice_debug ("Agent %p : s%d:%d: sending %u messages to "
-        "[%s]:%d", agent, stream_id, component_id, n_messages, tmpbuf,
-        nice_address_get_port (&component->selected_pair.remote->addr));
-#endif
+      nice_debug ("Agent %p : s%d:%d: sending %u messages to "
+          "[%s]:%d", agent, stream_id, component_id, n_messages, tmpbuf,
+          nice_address_get_port (&component->selected_pair.remote->addr));
+    }
 
     sock = component->selected_pair.local->sockptr;
     addr = &component->selected_pair.remote->addr;
