@@ -117,8 +117,8 @@ NICE_ADD_FLAG([-fno-strict-aliasing])
 AS_IF([test "$enable_compile_warnings" != "no"],[
     NICE_ADD_FLAG([-Wall])
 ])
-AS_IF([test "$enable_compile_warnings" != "no" -a
-            "$enable_compile_warnings" != "minimum"],[
+AS_IF([test "x$enable_compile_warnings" != "xno" -a \
+	    "x$enable_compile_warnings" != "xminimum"],[
     NICE_ADD_FLAG([-Wextra])
     NICE_ADD_FLAG([-Wundef])
     NICE_ADD_FLAG([-Wnested-externs])
