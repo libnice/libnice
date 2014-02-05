@@ -143,7 +143,6 @@ AS_IF([test "$enable_compile_warnings" = "yes" -o \
             "$enable_compile_warnings" = "error"],[
     NICE_ADD_FLAG([-Wsign-compare])
     NICE_ADD_FLAG([-Wstrict-aliasing])
-    NICE_ADD_FLAG([-Wunsafe-loop-optimizations])
     NICE_ADD_FLAG([-Wshadow])
     NICE_ADD_FLAG([-Winline])
     NICE_ADD_FLAG([-Wpacked])
@@ -159,6 +158,7 @@ AS_IF([test "$enable_compile_warnings" = "maximum" -o \
             "$enable_compile_warnings" = "error"],[
     NICE_ADD_FLAG([-Wswitch-enum])
     NICE_ADD_FLAG([-Wswitch-default])
+    NICE_ADD_FLAG([-Wunsafe-loop-optimizations])
     NICE_ADD_FLAG([-Waggregate-return])
 ])
 AS_IF([test "x$enable_compile_warnings" = "xerror"],[
