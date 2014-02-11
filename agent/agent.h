@@ -496,17 +496,23 @@ gboolean nice_agent_set_relay_info(
 
 /**
  * nice_agent_gather_candidates:
- * @agent: The #NiceAgent Object
- * @stream_id: The id of the stream to start
+ * @agent: The #NiceAgent object
+ * @stream_id: The ID of the stream to start
  *
- * Start the candidate gathering process.
- * Once done, #NiceAgent::candidate-gathering-done is called for the stream
+ * Allocate and start listening on local candidate ports and start the remote
+ * candidate gathering process.
+ * Once done, #NiceAgent::candidate-gathering-done is called for the stream.
+ * As soon as this function is called, #NiceAgent::new-candidate signals may be
+ * emitted, even before this function returns.
+ *
+ * nice_agent_get_local_candidates() will only return non-empty results after
+ * calling this function.
  *
  * <para>See also: nice_agent_add_local_address()</para>
  * <para>See also: nice_agent_set_port_range()</para>
  *
- * Returns: %FALSE if the stream id is invalid or if a host candidate couldn't be allocated
- * on the requested interfaces/ports.
+ * Returns: %FALSE if the stream ID is invalid or if a host candidate couldn't
+ * be allocated on the requested interfaces/ports; %TRUE otherwise
  *
  <note>
    <para>
@@ -555,14 +561,16 @@ nice_agent_set_remote_credentials (
  * nice_agent_get_local_credentials:
  * @agent: The #NiceAgent Object
  * @stream_id: The ID of the stream
- * @ufrag: a pointer to a NULL-terminated string containing
- * an ICE username fragment [OUT].
- * This string must be freed with g_free()
- * @pwd: a pointer to a NULL-terminated string containing an ICE
- * password [OUT]
- * This string must be freed with g_free()
+ * @ufrag: (out callee-allocates): return location for a nul-terminated string
+ * containing an ICE username fragment; must be freed with g_free()
+ * @pwd: (out callee-allocates): return location for a nul-terminated string
+ * containing an ICE password; must be freed with g_free()
  *
- * Gets the local credentials for stream @stream_id.
+ * Gets the local credentials for stream @stream_id. This may be called any time
+ * after creating a stream using nice_agent_add_stream().
+ *
+ * An error will be returned if this is called for a non-existent stream, or if
+ * either of @ufrag or @pwd are %NULL.
  *
  * Returns: %TRUE on success, %FALSE on error.
  */
