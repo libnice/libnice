@@ -124,7 +124,6 @@ AS_IF([test "x$enable_compile_warnings" != "xno" -a \
     NICE_ADD_FLAG([-Wnested-externs])
     NICE_ADD_FLAG([-Wwrite-strings])
     NICE_ADD_FLAG([-Wpointer-arith])
-    NICE_ADD_FLAG([-Wbad-function-cast])
     NICE_ADD_FLAG([-Wmissing-declarations])
     NICE_ADD_FLAG([-Wmissing-prototypes])
     NICE_ADD_FLAG([-Wstrict-prototypes])

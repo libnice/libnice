@@ -2758,10 +2758,10 @@ static void
 nice_debug_input_message_composition (const NiceInputMessage *messages,
     guint n_messages)
 {
+  guint i;
+
   if (!nice_debug_is_enabled ())
     return;
-
-  guint i;
 
   for (i = 0; i < n_messages; i++) {
     const NiceInputMessage *message = &messages[i];

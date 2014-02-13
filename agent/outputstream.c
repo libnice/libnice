@@ -347,7 +347,8 @@ nice_output_stream_write (GOutputStream *stream, const void *buffer, gsize count
     GCancellable *cancellable, GError **error)
 {
   NiceOutputStream *self = NICE_OUTPUT_STREAM (stream);
-  gssize len = -1;
+  const gchar* buf = buffer;
+  gssize len = 0;
   gint n_sent;
   NiceAgent *agent = NULL;  /* owned */
   gulong cancel_id = 0, writeable_id;
@@ -377,7 +378,6 @@ nice_output_stream_write (GOutputStream *stream, const void *buffer, gsize count
    * since nice_agent_recv() is blocking. Currently this uses a fairly dodgy
    * GCond solution; would be much better for nice_agent_send() to block
    * properly in the main loop. */
-  len = 0;
   write_data = g_slice_new0 (WriteData);
   g_atomic_int_set (&write_data->ref_count, 3);
 
@@ -410,7 +410,7 @@ nice_output_stream_write (GOutputStream *stream, const void *buffer, gsize count
     g_mutex_unlock (&write_data->mutex);
 
     n_sent = nice_agent_send (agent, self->priv->stream_id,
-        self->priv->component_id, count - len, buffer + len);
+        self->priv->component_id, count - len, buf + len);
 
     g_mutex_lock (&write_data->mutex);
 
