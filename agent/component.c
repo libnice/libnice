@@ -188,7 +188,10 @@ component_free (Component *cmp)
     g_source_unref (cmp->tcp_clock);
     cmp->tcp_clock = NULL;
   }
-  g_clear_object (&cmp->tcp_writable_cancellable);
+  if (cmp->tcp_writable_cancellable) {
+    g_cancellable_cancel (cmp->tcp_writable_cancellable);
+    g_clear_object (&cmp->tcp_writable_cancellable);
+  }
   if (cmp->tcp) {
     pseudo_tcp_socket_close (cmp->tcp, TRUE);
     g_clear_object(&cmp->tcp);

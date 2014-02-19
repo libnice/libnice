@@ -992,7 +992,7 @@ static void priv_pseudo_tcp_error (NiceAgent *agent, Stream *stream,
     Component *component)
 {
   if (component->tcp_writable_cancellable) {
-    g_cancellable_reset (component->tcp_writable_cancellable);
+    g_cancellable_cancel (component->tcp_writable_cancellable);
     g_clear_object (&component->tcp_writable_cancellable);
   }
 
