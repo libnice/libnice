@@ -2895,6 +2895,22 @@ output_message_get_size (const NiceOutputMessage *message)
   return message_len;
 }
 
+static gsize
+input_message_get_size (const NiceInputMessage *message)
+{
+  guint i;
+  gsize message_len = 0;
+
+  /* Find the total size of the message */
+  for (i = 0;
+       (message->n_buffers >= 0 && i < (guint) message->n_buffers) ||
+           (message->n_buffers < 0 && message->buffers[i].buffer != NULL);
+       i++)
+    message_len += message->buffers[i].size;
+
+  return message_len;
+}
+
 /*
  * nice_input_message_iter_reset:
  * @iter: a #NiceInputMessageIter
@@ -3047,6 +3063,8 @@ nice_agent_recv_messages_blocking_or_nonblocking (NiceAgent *agent,
   gboolean received_enough = FALSE, error_reported = FALSE;
   gboolean all_sockets_would_block = FALSE;
   GError *child_error = NULL;
+  NiceInputMessage *messages_orig = NULL;
+  guint i;
 
   g_return_val_if_fail (NICE_IS_AGENT (agent), -1);
   g_return_val_if_fail (stream_id >= 1, -1);
@@ -3058,6 +3076,24 @@ nice_agent_recv_messages_blocking_or_nonblocking (NiceAgent *agent,
 
   if (n_messages == 0)
     return 0;
+
+  /* Receive buffer size must be at least 1280 for STUN */
+  if (!agent->reliable) {
+    for (i = 0; i < n_messages; i++) {
+      if (input_message_get_size (&messages[i]) < 1280) {
+        GInputVector *vec;
+
+        if (messages_orig == NULL)
+          messages_orig = g_memdup (messages,
+              sizeof (NiceInputMessage) * n_messages);
+        vec = g_slice_new (GInputVector);
+        vec->buffer = g_slice_alloc (1280);
+        vec->size = 1280;
+        messages[i].buffers = vec;
+        messages[i].n_buffers = 1;
+      }
+    }
+  }
 
   agent_lock ();
 
@@ -3184,6 +3220,25 @@ done:
     g_propagate_error (error, child_error);
 
   agent_unlock ();
+
+  if (messages_orig) {
+    for (i = 0; i < n_messages; i++) {
+      if (messages[i].buffers != messages_orig[i].buffers) {
+        g_assert_cmpint (messages[i].n_buffers, ==, 1);
+
+        memcpy_buffer_to_input_message (&messages_orig[i],
+            messages[i].buffers[0].buffer, messages[i].length);
+
+        g_slice_free1 (1280, messages[i].buffers[0].buffer);
+        g_slice_free (GInputVector, messages[i].buffers);
+
+        messages[i].buffers = messages_orig[i].buffers;
+        messages[i].n_buffers = messages_orig[i].n_buffers;
+        messages[i].length = messages_orig[i].length;
+      }
+    }
+    g_free (messages_orig);
+  }
 
   return n_valid_messages;
 }
