@@ -472,8 +472,7 @@ nice_output_stream_is_writable (GPollableOutputStream *stream)
 
   /* If it’s a reliable agent, see if there’s any space in the pseudo-TCP output
    * buffer. */
-  if (agent->reliable && component->tcp != NULL &&
-      pseudo_tcp_socket_can_send (component->tcp)) {
+  if (component->tcp != NULL && pseudo_tcp_socket_can_send (component->tcp)) {
     retval = TRUE;
     goto done;
   }

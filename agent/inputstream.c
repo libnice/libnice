@@ -351,7 +351,7 @@ nice_input_stream_is_readable (GPollableInputStream *stream)
 
   /* If it’s a reliable agent, see if there’s any pending data in the pseudo-TCP
    * buffer. */
-  if (agent->reliable && component->tcp != NULL &&
+  if (component->tcp != NULL &&
       pseudo_tcp_socket_get_available_bytes (component->tcp) > 0) {
     retval = TRUE;
     goto done;
