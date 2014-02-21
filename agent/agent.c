@@ -3213,7 +3213,6 @@ nice_agent_recv_messages_blocking_or_nonblocking (NiceAgent *agent,
 
 done:
   g_assert ((child_error != NULL) == (n_valid_messages == -1));
-  g_assert (n_valid_messages != 0);
   g_assert (n_valid_messages < 0 || (guint) n_valid_messages <= n_messages);
 
   if (child_error != NULL)
