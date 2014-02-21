@@ -47,16 +47,14 @@ HFILE_GLOB=$(DOC_SOURCE_DIR)/agent/agent.h $(DOC_SOURCE_DIR)/agent/address.h \
 	$(DOC_SOURCE_DIR)/stun/usages/ice.h \
 	$(DOC_SOURCE_DIR)/stun/usages/timer.h \
 	$(DOC_SOURCE_DIR)/stun/usages/turn.h \
-	$(DOC_SOURCE_DIR)/agent/pseudotcp.h \
-	$(DOC_SOURCE_DIR)/agent/iostream.h
+	$(DOC_SOURCE_DIR)/agent/pseudotcp.h
 
 CFILE_GLOB=$(DOC_SOURCE_DIR)/agent/agent.c \
-	$(DOC_SOURCE_DIR)/agent/pseudotcp.c \
-	$(DOC_SOURCE_DIR)/agent/iostream.c
+	$(DOC_SOURCE_DIR)/agent/pseudotcp.c
 
 # Header files to ignore when scanning.
 # e.g. IGNORE_HFILES=gtkdebug.h gtkintl.h
-IGNORE_HFILES= conncheck.h discovery.h stream.h gstnice.h gstnicesrc.h gstnicesink.h
+IGNORE_HFILES= conncheck.h discovery.h stream.h gstnice.h gstnicesrc.h gstnicesink.h component.h iostream.h inputstream.h outputstream.h
 
 # Images to copy into HTML directory.
 # e.g. HTML_IMAGES=$(top_srcdir)/gtk/stock-icons/stock_about_24.png

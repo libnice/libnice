@@ -19,10 +19,7 @@
       <xi:include href="xml/candidate.xml"/>
     </chapter>
     <chapter>
-      <title>Libnice helper objects and functions </title>
-      <xi:include href="xml/nice_io_stream.xml"/>
-      <xi:include href="xml/nice_input_stream.xml"/>
-      <xi:include href="xml/nice_output_stream.xml"/>
+      <title>Libnice helper functions</title>
       <xi:include href="xml/debug.xml"/>
       <xi:include href="xml/interfaces.xml"/>
     </chapter>
