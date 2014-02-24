@@ -3724,8 +3724,9 @@ component_io_cb (GSocket *socket, GIOCondition condition, gpointer user_data)
   if (g_source_is_destroyed (g_main_current_source ())) {
     /* Silently return FALSE. */
     nice_debug ("%s: source %p destroyed", G_STRFUNC, g_main_current_source ());
-    remove_source = TRUE;
-    goto done;
+
+    agent_unlock ();
+    return G_SOURCE_REMOVE;
   }
 
   component = socket_source->component;
@@ -3875,9 +3876,10 @@ component_io_cb (GSocket *socket, GIOCondition condition, gpointer user_data)
   }
 
 done:
-  g_object_unref (agent);
 
   agent_unlock_and_emit (agent);
+
+  g_object_unref (agent);
 
   return !remove_source;
 }
