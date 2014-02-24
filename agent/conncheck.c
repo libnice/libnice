@@ -388,10 +388,9 @@ static gboolean priv_conn_check_tick_stream (Stream *stream, NiceAgent *agent, G
  *
  * @return will return FALSE when no more pending timers.
  */
-static gboolean priv_conn_check_tick_unlocked (gpointer pointer)
+static gboolean priv_conn_check_tick_unlocked (NiceAgent *agent)
 {
   CandidateCheckPair *pair = NULL;
-  NiceAgent *agent = pointer;
   gboolean keep_timer_going = FALSE;
   GSList *i, *j;
   GTimeVal now;
@@ -454,6 +453,7 @@ static gboolean priv_conn_check_tick_unlocked (gpointer pointer)
 static gboolean priv_conn_check_tick (gpointer pointer)
 {
   gboolean ret;
+  NiceAgent *agent = pointer;
 
   agent_lock();
   if (g_source_is_destroyed (g_main_current_source ())) {
@@ -462,8 +462,9 @@ static gboolean priv_conn_check_tick (gpointer pointer)
     agent_unlock ();
     return FALSE;
   }
-  ret = priv_conn_check_tick_unlocked (pointer);
-  agent_unlock();
+
+  ret = priv_conn_check_tick_unlocked (agent);
+  agent_unlock_and_emit (agent);
 
   return ret;
 }
@@ -539,7 +540,7 @@ static gboolean priv_conn_keepalive_retransmissions_tick (gpointer pointer)
   }
 
 
-  agent_unlock ();
+  agent_unlock_and_emit (pair->keepalive.agent);
   return FALSE;
 }
 
@@ -723,7 +724,7 @@ static gboolean priv_conn_keepalive_tick (gpointer pointer)
       agent->keepalive_timer_source = NULL;
     }
   }
-  agent_unlock();
+  agent_unlock_and_emit (agent);
   return ret;
 }
 
@@ -782,7 +783,7 @@ static gboolean priv_turn_allocate_refresh_retransmissions_tick (gpointer pointe
   }
 
 
-  agent_unlock ();
+  agent_unlock_and_emit (cand->agent);
   return FALSE;
 }
 
@@ -867,7 +868,7 @@ static gboolean priv_turn_allocate_refresh_tick (gpointer pointer)
   }
 
   priv_turn_allocate_refresh_tick_unlocked (cand);
-  agent_unlock ();
+  agent_unlock_and_emit (cand->agent);
 
   return FALSE;
 }
@@ -887,7 +888,7 @@ gboolean conn_check_schedule_next (NiceAgent *agent)
     nice_debug ("Agent %p : WARN: starting conn checks before local candidate gathering is finished.", agent);
 
   /* step: call once imediately */
-  res = priv_conn_check_tick_unlocked ((gpointer) agent);
+  res = priv_conn_check_tick_unlocked (agent);
   nice_debug ("Agent %p : priv_conn_check_tick_unlocked returned %d", agent, res);
 
   /* step: schedule timer if not running yet */

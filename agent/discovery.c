@@ -1029,7 +1029,7 @@ static gboolean priv_discovery_tick (gpointer pointer)
       agent->discovery_timer_source = NULL;
     }
   }
-  agent_unlock();
+  agent_unlock_and_emit (agent);
 
   return ret;
 }
@@ -1045,7 +1045,7 @@ void discovery_schedule (NiceAgent *agent)
   g_assert (agent->discovery_list != NULL);
 
   if (agent->discovery_unsched_items > 0) {
-    
+
     if (agent->discovery_timer_source == NULL) {
       /* step: run first iteration immediately */
       gboolean res = priv_discovery_tick_unlocked (agent);

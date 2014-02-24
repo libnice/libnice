@@ -752,7 +752,7 @@ component_emit_io_callback (Component *component,
    * handler. */
   if (g_main_context_is_owner (component->ctx)) {
     /* Thread owns the main context, so invoke the callback directly. */
-    agent_unlock ();
+    agent_unlock_and_emit (agent);
     io_callback (agent, stream_id,
         component_id, buf_len, (gchar *) buf, io_user_data);
     agent_lock ();
@@ -907,7 +907,7 @@ component_source_prepare (GSource *source, gint *timeout_)
 
  done:
 
-  agent_unlock ();
+  agent_unlock_and_emit (agent);
 
   /* We can’t be sure if the ComponentSource itself needs to be dispatched until
    * poll() is called on all the child sources. */

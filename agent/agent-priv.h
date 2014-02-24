@@ -158,6 +158,8 @@ struct _NiceAgent
 #endif
   gchar *software_attribute;       /* SOFTWARE attribute */
   gboolean reliable;               /* property: reliable */
+
+  GQueue pending_signals;
   /* XXX: add pointer to internal data struct for ABI-safe extensions */
 };
 
@@ -176,6 +178,7 @@ void agent_signal_gathering_done (NiceAgent *agent);
 
 void agent_lock (void);
 void agent_unlock (void);
+void agent_unlock_and_emit (NiceAgent *agent);
 
 void agent_signal_new_selected_pair (
   NiceAgent *agent,
