@@ -279,14 +279,9 @@ nice_io_stream_set_property (GObject *object, guint prop_id,
 GIOStream *
 nice_io_stream_new (NiceAgent *agent, guint stream_id, guint component_id)
 {
-  gboolean reliable_agent;
-
   g_return_val_if_fail (NICE_IS_AGENT (agent), NULL);
   g_return_val_if_fail (stream_id > 0, NULL);
   g_return_val_if_fail (component_id > 0, NULL);
-
-  g_object_get (agent, "reliable", &reliable_agent, NULL);
-  g_return_val_if_fail (reliable_agent, NULL);
 
   return g_object_new (NICE_TYPE_IO_STREAM,
       "agent", agent,
