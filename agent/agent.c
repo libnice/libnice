@@ -127,9 +127,9 @@ enum
 static guint signals[N_SIGNALS];
 
 #if GLIB_CHECK_VERSION(2,31,8)
-static GRecMutex agent_mutex;    /* Mutex used for thread-safe lib */
+static GMutex agent_mutex;    /* Mutex used for thread-safe lib */
 #else
-static GStaticRecMutex agent_mutex = G_STATIC_REC_MUTEX_INIT;
+static GStaticMutex agent_mutex = G_STATIC_REC_MUTEX_INIT;
 #endif
 
 static void priv_free_upnp (NiceAgent *agent);
@@ -137,23 +137,23 @@ static void priv_free_upnp (NiceAgent *agent);
 #if GLIB_CHECK_VERSION(2,31,8)
 void agent_lock (void)
 {
-  g_rec_mutex_lock (&agent_mutex);
+  g_mutex_lock (&agent_mutex);
 }
 
 void agent_unlock (void)
 {
-  g_rec_mutex_unlock (&agent_mutex);
+  g_mutex_unlock (&agent_mutex);
 }
 
 #else
 void agent_lock(void)
 {
-  g_static_rec_mutex_lock (&agent_mutex);
+  g_static_mutex_lock (&agent_mutex);
 }
 
 void agent_unlock(void)
 {
-  g_static_rec_mutex_unlock (&agent_mutex);
+  g_static_mutex_unlock (&agent_mutex);
 }
 
 #endif
