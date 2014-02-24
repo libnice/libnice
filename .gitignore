@@ -12,6 +12,8 @@ Makefile.in
 *#
 .#*
 *.stamp
+*.trs
+*.log
 m4/gtk-doc.m4
 m4/libtool.m4
 m4/ltoptions.m4
