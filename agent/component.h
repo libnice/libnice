@@ -186,6 +186,8 @@ struct _Component
   Stream *stream;  /* unowned, immutable: can be accessed without holding the
                     * agent lock */
 
+  GCancellable *stop_cancellable;
+
   PseudoTcpSocket *tcp;
   GSource* tcp_clock;
   long last_clock_timeout;
