@@ -45,103 +45,77 @@
 #include <unistd.h>
 #endif
 
-typedef struct {
-  gint recv_count;
-  gint *other_recv_count;
-} ClosingData;
-
 #define NUM_MESSAGES 10
+
+guint count = 0;
+GMutex count_lock;
+GCond count_cond;
 
 static void
 read_thread_cb (GInputStream *input_stream, TestIOStreamThreadData *data)
 {
-  ClosingData *user_data = data->user_data;
-  GOutputStream *output_stream;
   gpointer tmp;
   guint stream_id;
   GError *error = NULL;
+  gssize len;
+  guint8 buf[MESSAGE_SIZE];
 
-  while (user_data->recv_count < NUM_MESSAGES) {
-    gchar expected_data[MESSAGE_SIZE];
-    guint8 buf[MESSAGE_SIZE];
-    gssize len;
-    gsize offset;
+  /* Block on receiving some data. */
+  len = g_input_stream_read (input_stream, buf, sizeof (buf), NULL, &error);
+  g_assert_cmpint (len, ==, sizeof(buf));
 
-    /* Block on receiving some data. */
-    len = g_input_stream_read (input_stream, buf, sizeof (buf), NULL, &error);
-    g_assert_no_error (error);
-
-    offset = 0;
-    while (len > 0) {
-      g_assert (len == MESSAGE_SIZE);
-      g_assert (user_data->recv_count < NUM_MESSAGES);
-
-      memset (expected_data, user_data->recv_count + '1', MESSAGE_SIZE);
-      g_assert (
-          memcmp (buf + offset, expected_data, sizeof (expected_data)) == 0);
-
-      user_data->recv_count++;
-
-      len -= MESSAGE_SIZE;
-      offset += MESSAGE_SIZE;
-    }
-
-    g_assert (len == 0);
+  g_mutex_lock (&count_lock);
+  count++;
+  g_cond_broadcast (&count_cond);
+  if (data->user_data) {
+    g_mutex_unlock (&count_lock);
+    return;
   }
 
-  /* Signal completion. */
-  output_stream = g_io_stream_get_output_stream (data->io_stream);
-  g_output_stream_write (output_stream, "Done", strlen ("Done"), NULL, &error);
-  g_assert_no_error (error);
+  while (count != 4)
+    g_cond_wait (&count_cond, &count_lock);
+  g_mutex_unlock (&count_lock);
 
-  /* Wait for a done packet. */
-  while (TRUE) {
-    guint8 buf[4];
-    gssize len;
+  /* Now we remove the stream, lets see how the writer handles that */
 
-    len = g_input_stream_read (input_stream, buf, sizeof (buf), NULL, &error);
-    g_assert_no_error (error);
-
-    g_assert (len == 4);
-    g_assert (memcmp (buf, "Done", strlen ("Done")) == 0);
-
-    break;
-  }
-
-  user_data->recv_count = -1;
-
-  tmp = g_object_get_data (G_OBJECT (data->agent), "stream-id");
+  tmp = g_object_get_data (G_OBJECT (data->other->agent), "stream-id");
   stream_id = GPOINTER_TO_UINT (tmp);
 
-  nice_agent_remove_stream (data->agent, stream_id);
-
-  /* Have both threads finished? */
-  if (user_data->recv_count == -1 &&
-      *user_data->other_recv_count == -1) {
-    g_main_loop_quit (data->error_loop);
-  }
+  nice_agent_remove_stream (data->other->agent, stream_id);
 }
 
 static void
 write_thread_cb (GOutputStream *output_stream, TestIOStreamThreadData *data)
 {
-  gchar buf[MESSAGE_SIZE];
-  guint i;
+  gchar buf[MESSAGE_SIZE] = {0};
+  gssize ret;
+  GError *error = NULL;
 
-  for (i = 0; i < NUM_MESSAGES; i++) {
-    GError *error = NULL;
+  g_mutex_lock (&count_lock);
+  count++;
+  g_cond_broadcast (&count_cond);
+  g_mutex_unlock (&count_lock);
 
-    memset (buf, i + '1', MESSAGE_SIZE);
-
-    g_output_stream_write (output_stream, buf, sizeof (buf), NULL, &error);
+  do {
     g_assert_no_error (error);
-  }
+    ret = g_output_stream_write (output_stream, buf, sizeof (buf), NULL,
+        &error);
+
+    if (!data->user_data) {
+      g_assert_cmpint (ret, ==, sizeof (buf));
+      return;
+    }
+  } while (ret > 0);
+  g_assert_cmpint (ret, ==, -1);
+
+  g_assert_error (error, G_IO_ERROR, G_IO_ERROR_CLOSED);
+  g_clear_error (&error);
+
+  stop_main_loop (data->error_loop);
 }
 
 int main (void)
 {
-  ClosingData *l_data, *r_data;
-
   const TestIOStreamCallbacks callbacks = {
     read_thread_cb,
     write_thread_cb,
@@ -156,19 +130,7 @@ int main (void)
   g_type_init ();
   g_thread_init (NULL);
 
-  l_data = g_malloc0 (sizeof (ClosingData));
-  r_data = g_malloc0 (sizeof (ClosingData));
-
-  l_data->recv_count = 0;
-  l_data->other_recv_count = &r_data->recv_count;
-
-  r_data->recv_count = 0;
-  r_data->other_recv_count = &l_data->recv_count;
-
-  run_io_stream_test (30, TRUE, &callbacks, l_data, NULL, r_data, NULL);
-
-  g_free (r_data);
-  g_free (l_data);
+  run_io_stream_test (30, TRUE, &callbacks, (gpointer) TRUE, NULL, NULL, NULL);
 
 #ifdef G_OS_WIN32
   WSACleanup ();

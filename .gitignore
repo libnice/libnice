@@ -136,7 +136,8 @@ tests/test-dribble
 tests/test-fallback
 tests/test-fullmode
 tests/test-io-stream-cancelling
-tests/test-io-stream-closing
+tests/test-io-stream-closing-read
+tests/test-io-stream-closing-write
 tests/test-io-stream-thread
 tests/test-io-stream-pollable
 tests/test-send-recv

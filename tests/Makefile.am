@@ -28,7 +28,8 @@ check_PROGRAMS = \
 	test-add-remove-stream \
 	test-build-io-stream \
 	test-io-stream-thread \
-	test-io-stream-closing \
+	test-io-stream-closing-write \
+	test-io-stream-closing-read \
 	test-io-stream-cancelling \
 	test-io-stream-pollable \
 	test-send-recv \
@@ -64,8 +65,11 @@ test_build_io_stream_LDADD = $(COMMON_LDADD)
 test_io_stream_thread_SOURCES = test-io-stream-thread.c test-io-stream-common.c
 test_io_stream_thread_LDADD = $(COMMON_LDADD)
 
-test_io_stream_closing_SOURCES = test-io-stream-closing.c test-io-stream-common.c
-test_io_stream_closing_LDADD = $(COMMON_LDADD)
+test_io_stream_closing_write_SOURCES = test-io-stream-closing-write.c test-io-stream-common.c
+test_io_stream_closing_write_LDADD = $(COMMON_LDADD)
+
+test_io_stream_closing_read_SOURCES = test-io-stream-closing-read.c test-io-stream-common.c
+test_io_stream_closing_read_LDADD = $(COMMON_LDADD)
 
 test_io_stream_cancelling_SOURCES = test-io-stream-cancelling.c test-io-stream-common.c
 test_io_stream_cancelling_LDADD = $(COMMON_LDADD)
