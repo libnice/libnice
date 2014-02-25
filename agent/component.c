@@ -125,6 +125,9 @@ component_new (guint id, NiceAgent *agent, Stream *stream)
   g_queue_init (&component->pending_io_messages);
   component->io_callback_id = 0;
 
+  component->own_ctx = g_main_context_new ();
+  component->ctx = g_main_context_ref (component->own_ctx);
+
   /* Start off with a fresh main context and all I/O paused. This
    * will be updated when nice_agent_attach_recv() or nice_agent_recv_messages()
    * are called. */
@@ -206,6 +209,8 @@ component_free (Component *cmp)
     g_main_context_unref (cmp->ctx);
     cmp->ctx = NULL;
   }
+
+  g_main_context_unref (cmp->own_ctx);
 
   while ((vec = g_queue_pop_head (&cmp->queued_tcp_packets)) != NULL) {
     g_free ((gpointer) vec->buffer);
@@ -540,25 +545,25 @@ component_free_socket_sources (Component *component)
 GMainContext *
 component_dup_io_context (Component *component)
 {
-  return g_main_context_ref (component->ctx);
+  return g_main_context_ref (component->own_ctx);
 }
 
-/* If @context is %NULL, a fresh context is used, so component->ctx is always
+/* If @context is %NULL, it's own context is used, so component->ctx is always
  * guaranteed to be non-%NULL. */
 void
 component_set_io_context (Component *component, GMainContext *context)
 {
   g_mutex_lock (&component->io_mutex);
 
-  if (component->ctx != context || component->ctx == NULL) {
+  if (component->ctx != context) {
     if (context == NULL)
-      context = g_main_context_new ();
+      context = g_main_context_ref (component->own_ctx);
     else
       g_main_context_ref (context);
 
     component_detach_all_sockets (component);
-    if (component->ctx != NULL)
-      g_main_context_unref (component->ctx);
+    g_main_context_unref (component->ctx);
+
     component->ctx = context;
     component_reattach_all_sockets (component);
   }

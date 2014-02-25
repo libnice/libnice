@@ -171,8 +171,10 @@ struct _Component
                                          IOCallbackData */
   guint io_callback_id;             /* GSource ID of the I/O callback */
 
-  GMainContext *ctx;                /**< context for GSources for this
+  GMainContext *own_ctx;            /**< own context for GSources for this
                                        component */
+  GMainContext *ctx;                /**< context for GSources for this
+                                       component (possibly set from the app) */
   NiceInputMessage *recv_messages;  /**< unowned messages for receiving into */
   guint n_recv_messages;            /**< length of recv_messages */
   NiceInputMessageIter recv_messages_iter; /**< current write position in
