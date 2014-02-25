@@ -79,6 +79,8 @@ struct _TestIOStreamThreadData {
   gpointer user_data;
   GDestroyNotify user_data_free;
 
+  TestIOStreamThreadData *other;
+
   /*< private >*/
   const TestIOStreamCallbacks *callbacks;
 
@@ -87,6 +89,10 @@ struct _TestIOStreamThreadData {
   gboolean stream_ready;
   GCond write_cond;
   GMutex write_mutex;
+
+  GMutex *start_mutex;
+  GCond *start_cond;
+  guint *start_count;
 };
 
 GThread *spawn_thread (const gchar *thread_name, GThreadFunc thread_func,
@@ -97,3 +103,5 @@ void run_io_stream_test (guint deadlock_timeout, gboolean reliable,
     gpointer r_user_data, GDestroyNotify r_user_data_free);
 void check_for_termination (TestIOStreamThreadData *data, gsize *recv_count,
     gsize *other_recv_count, gsize *send_count, gsize expected_recv_count);
+
+void stop_main_loop (GMainLoop *loop);

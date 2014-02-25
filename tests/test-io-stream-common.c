@@ -45,6 +45,10 @@
 #include <unistd.h>
 #endif
 
+GMutex start_mutex;
+GCond start_cond;
+gboolean started;
+
 static gboolean timer_cb (gpointer pointer)
 {
   g_debug ("test-thread:%s: %p", G_STRFUNC, pointer);
@@ -52,6 +56,17 @@ static gboolean timer_cb (gpointer pointer)
   /* note: should not be reached, abort */
   g_debug ("ERROR: test has got stuck, aborting...");
   exit (-1);
+}
+
+static void
+wait_for_start (TestIOStreamThreadData *data)
+{
+  g_mutex_lock (data->start_mutex);
+  (*data->start_count)--;
+  g_cond_broadcast (data->start_cond);
+  while (*data->start_count > 0)
+    g_cond_wait (data->start_cond, data->start_mutex);
+  g_mutex_unlock (data->start_mutex);
 }
 
 static gpointer
@@ -65,7 +80,7 @@ write_thread_cb (gpointer user_data)
   g_main_context_push_thread_default (main_context);
 
   /* Synchronise thread starting. */
-  while (!g_main_loop_is_running (data->error_loop));
+  wait_for_start (data);
 
   /* Wait for the stream to be writeable. */
   g_mutex_lock (&data->write_mutex);
@@ -94,7 +109,7 @@ read_thread_cb (gpointer user_data)
   g_main_context_push_thread_default (main_context);
 
   /* Synchronise thread starting. */
-  while (!g_main_loop_is_running (data->error_loop));
+  wait_for_start (data);
 
   if (data->reliable)
     input_stream = g_io_stream_get_input_stream (data->io_stream);
@@ -114,7 +129,7 @@ main_thread_cb (gpointer user_data)
   g_main_context_push_thread_default (data->main_context);
 
   /* Synchronise thread starting. */
-  while (!g_main_loop_is_running (data->error_loop));
+  wait_for_start (data);
 
   /* Run the main context. */
   g_main_loop_run (data->main_loop);
@@ -316,14 +331,6 @@ spawn_thread (const gchar *thread_name, GThreadFunc thread_func,
   return thread;
 }
 
-static void
-join_main_loop (GMainLoop *main_loop)
-{
-  while (!g_main_loop_is_running (main_loop));
-  while (g_main_loop_is_running (main_loop))
-    g_main_loop_quit (main_loop);
-}
-
 void
 run_io_stream_test (guint deadlock_timeout, gboolean reliable,
     const TestIOStreamCallbacks *callbacks,
@@ -334,6 +341,12 @@ run_io_stream_test (guint deadlock_timeout, gboolean reliable,
   GThread *l_main_thread, *r_main_thread;
   GThread *l_write_thread, *l_read_thread, *r_write_thread, *r_read_thread;
   TestIOStreamThreadData l_data, r_data;
+  GMutex mutex;
+  GCond cond;
+  guint start_count = 6;
+
+  g_mutex_init (&mutex);
+  g_cond_init (&cond);
 
   error_loop = g_main_loop_new (NULL, FALSE);
 
@@ -348,6 +361,9 @@ run_io_stream_test (guint deadlock_timeout, gboolean reliable,
   g_mutex_init (&l_data.write_mutex);
   l_data.stream_open = FALSE;
   l_data.stream_ready = FALSE;
+  l_data.start_mutex = &mutex;
+  l_data.start_cond = &cond;
+  l_data.start_count = &start_count;
 
   r_data.reliable = reliable;
   r_data.error_loop = error_loop;
@@ -359,6 +375,12 @@ run_io_stream_test (guint deadlock_timeout, gboolean reliable,
   g_mutex_init (&r_data.write_mutex);
   r_data.stream_open = FALSE;
   r_data.stream_ready = FALSE;
+  r_data.start_mutex = &mutex;
+  r_data.start_cond = &cond;
+  r_data.start_count = &start_count;
+
+  l_data.other = &r_data;
+  r_data.other = &l_data;
 
   /* Create the L and R agents. */
   l_data.agent = create_agent (TRUE, &l_data,
@@ -387,6 +409,11 @@ run_io_stream_test (guint deadlock_timeout, gboolean reliable,
     l_write_thread = spawn_thread ("libnice L write", write_thread_cb, &l_data);
     r_write_thread = spawn_thread ("libnice R write", write_thread_cb, &r_data);
   } else {
+    g_mutex_lock (&mutex);
+    start_count -= 2;
+    g_cond_broadcast (&cond);
+    g_mutex_unlock (&mutex);
+
     l_write_thread = NULL;
     r_write_thread = NULL;
   }
@@ -395,8 +422,8 @@ run_io_stream_test (guint deadlock_timeout, gboolean reliable,
   g_main_loop_run (error_loop);
 
   /* Clean up the main loops and threads. */
-  join_main_loop (l_data.main_loop);
-  join_main_loop (r_data.main_loop);
+  stop_main_loop (l_data.main_loop);
+  stop_main_loop (r_data.main_loop);
 
   g_thread_join (l_read_thread);
   g_thread_join (r_read_thread);
@@ -434,6 +461,9 @@ run_io_stream_test (guint deadlock_timeout, gboolean reliable,
   g_main_context_unref (l_data.main_context);
 
   g_main_loop_unref (error_loop);
+
+  g_mutex_clear (&mutex);
+  g_cond_clear (&cond);
 }
 
 /* Once we’ve received all the expected bytes, wait to finish sending all bytes,
@@ -484,4 +514,14 @@ check_for_termination (TestIOStreamThreadData *data, gsize *recv_count,
       *other_recv_count > expected_recv_count) {
     g_main_loop_quit (data->error_loop);
   }
+}
+
+void
+stop_main_loop (GMainLoop *loop)
+{
+  GSource *src = g_idle_source_new ();
+  g_source_set_callback (src, (GSourceFunc) g_main_loop_quit,
+      g_main_loop_ref (loop), (GDestroyNotify) g_main_loop_unref);
+  g_source_attach (src, g_main_loop_get_context (loop));
+  g_source_unref (src);
 }
