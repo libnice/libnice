@@ -52,7 +52,6 @@
 #include "agent-priv.h"
 #include "agent.h"
 
-#define IPPORT_STUN 3456
 #define USE_UPNP 0
 #define LEFT_AGENT GINT_TO_POINTER(1)
 #define RIGHT_AGENT GINT_TO_POINTER(2)
@@ -84,6 +83,7 @@ static gboolean data_received = FALSE;
 static gboolean drop_stun_packets = FALSE;
 static gboolean got_stun_packet = FALSE;
 static gboolean send_stun = FALSE;
+static guint stun_port;
 
 static const uint16_t known_attributes[] =  {
   0
@@ -92,7 +92,7 @@ static const uint16_t known_attributes[] =  {
 /*
  * Creates a listening socket
  */
-static int listen_socket (unsigned int port)
+static int listen_socket (unsigned int *port)
 {
   union {
     struct sockaddr_in in;
@@ -108,11 +108,22 @@ static int listen_socket (unsigned int port)
   memset (&addr, 0, sizeof (addr));
   addr.in.sin_family = AF_INET;
   inet_pton(AF_INET, "127.0.0.1", &addr.in.sin_addr);
-  addr.in.sin_port = htons(port);
+  addr.in.sin_port = 0;
 
   if (bind (fd, &addr.addr, sizeof (struct sockaddr_in))) {
     perror ("Error opening IP port");
     goto error;
+  }
+
+  if (port) {
+    socklen_t socklen = sizeof(addr);
+
+    if (getsockname (fd, &addr.addr, &socklen) < 0)
+      g_error ("getsockname failed: %s", strerror (errno));
+
+    g_assert (socklen == sizeof(struct sockaddr_in));
+    *port = ntohs (addr.in.sin_port);
+    g_assert (*port != 0);
   }
 
   return fd;
@@ -228,14 +239,8 @@ static gpointer stun_thread_func (const gpointer user_data)
 {
   StunAgent oldagent;
   StunAgent newagent;
-  int sock;
+  int sock = GPOINTER_TO_INT (user_data);
   int exit_code = -1;
-
-  sock = listen_socket (IPPORT_STUN);
-
-  if (sock == -1) {
-    g_assert_not_reached ();
-  }
 
   g_mutex_lock (stun_thread_mutex_ptr);
   g_cond_signal (stun_thread_signal_ptr);
@@ -681,7 +686,7 @@ static void new_candidate_test(NiceAgent *lagent, NiceAgent *ragent)
 
 static void send_dummy_data(void)
 {
-  int sockfd = listen_socket (4567);
+  int sockfd = listen_socket (NULL);
   union {
     struct sockaddr_in in;
     struct sockaddr addr;
@@ -690,7 +695,7 @@ static void send_dummy_data(void)
   memset (&addr, 0, sizeof (addr));
   addr.in.sin_family = AF_INET;
   inet_pton(AF_INET, "127.0.0.1", &addr.in.sin_addr);
-  addr.in.sin_port = htons (IPPORT_STUN);
+  addr.in.sin_port = htons (stun_port);
 
   g_debug ("Sending dummy data to close STUN thread");
   sendto (sockfd, "close socket", 12, 0,
@@ -703,6 +708,7 @@ int main(void)
   GThread *stun_thread = NULL;
   NiceAddress baseaddr;
   GSource *src;
+  int sock;
 
   g_type_init();
 
@@ -712,14 +718,22 @@ int main(void)
   g_source_attach (src, NULL);
   g_source_unref (src);
 
+  sock = listen_socket (&stun_port);
+
+  if (sock == -1) {
+    g_assert_not_reached ();
+  }
+
+
 #if !GLIB_CHECK_VERSION(2,31,8)
   g_thread_init (NULL);
-  stun_thread = g_thread_create (stun_thread_func, NULL,  TRUE, NULL);
+  stun_thread = g_thread_create (stun_thread_func, GINT_TO_POINTER (sock),
+      TRUE, NULL);
  stun_mutex_ptr = g_mutex_new ();
  stun_signal_ptr = g_cond_new ();
 #else
   stun_thread = g_thread_new ("listen for STUN requests",
-                              stun_thread_func, NULL);
+      stun_thread_func, GINT_TO_POINTER (sock));
 #endif
 
   // Once the the thread is forked, we want to listen for a signal 
@@ -737,7 +751,7 @@ int main(void)
   g_object_set (G_OBJECT (ragent), "upnp", USE_UPNP, NULL);
 
   g_object_set (G_OBJECT (lagent), "stun-server", "127.0.0.1", NULL);
-  g_object_set (G_OBJECT (lagent), "stun-server-port", IPPORT_STUN, NULL);
+  g_object_set (G_OBJECT (lagent), "stun-server-port", stun_port, NULL);
 
   g_object_set_data (G_OBJECT (lagent), "other-agent", ragent);
   g_object_set_data (G_OBJECT (ragent), "other-agent", lagent);
