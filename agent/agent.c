@@ -3876,8 +3876,14 @@ component_io_cb (GSocket *socket, GIOCondition condition, gpointer user_data)
   }
 
 done:
-
-  agent_unlock_and_emit (agent);
+  /* If we’re in the middle of a read, don’t emit any signals, or we could cause
+   * re-entrancy by (e.g.) emitting component-state-changed and having the
+   * client perform a read. */
+  if (component->n_recv_messages == 0 && component->recv_messages == NULL) {
+    agent_unlock_and_emit (agent);
+  } else {
+    agent_unlock ();
+  }
 
   g_object_unref (agent);
 
