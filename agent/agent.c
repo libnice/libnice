@@ -3649,6 +3649,7 @@ static void
 nice_agent_dispose (GObject *object)
 {
   GSList *i;
+  QueuedSignal *sig;
   NiceAgent *agent = NICE_AGENT (object);
 
   /* step: free resources for the binding discovery timers */
@@ -3681,6 +3682,10 @@ nice_agent_dispose (GObject *object)
 
   g_slist_free (agent->streams);
   agent->streams = NULL;
+
+  while ((sig = g_queue_pop_head (&agent->pending_signals))) {
+    free_queued_signal (sig);
+  }
 
   g_free (agent->stun_server_ip);
   agent->stun_server_ip = NULL;
