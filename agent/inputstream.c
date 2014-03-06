@@ -34,7 +34,7 @@
  * file under either the MPL or the LGPL.
  */
 
-/**
+/***
  * SECTION:nice_input_stream
  * @short_description: #GInputStream implementation for libnice
  * @see_also: #NiceAgent
@@ -116,7 +116,7 @@ nice_input_stream_class_init (NiceInputStreamClass *klass)
 
   stream_class->read_fn = nice_input_stream_read;
 
-  /**
+  /***
    * NiceInputStream:agent:
    *
    * The #NiceAgent to wrap with an input stream. This must be an existing
@@ -135,7 +135,7 @@ nice_input_stream_class_init (NiceInputStreamClass *klass)
           NICE_TYPE_AGENT,
           G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
 
-  /**
+  /***
    * NiceInputStream:stream-id:
    *
    * ID of the stream to use in the #NiceInputStream:agent.
@@ -151,7 +151,7 @@ nice_input_stream_class_init (NiceInputStreamClass *klass)
           0,
           G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
 
-  /**
+  /***
    * NiceInputStream:component-id:
    *
    * ID of the component to use in the #NiceInputStream:agent.
@@ -259,7 +259,7 @@ nice_input_stream_init_pollable (GPollableInputStreamInterface *iface)
   iface->create_source = nice_input_stream_create_source;
 }
 
-/**
+/***
  * nice_input_stream_new:
  * @agent: A #NiceAgent
  * @stream_id: The ID of the agent’s stream to wrap

@@ -34,7 +34,7 @@
  * file under either the MPL or the LGPL.
  */
 
-/**
+/***
  * SECTION:nice_io_stream
  * @short_description: #GIOStream implementation for libnice
  * @see_also: #NiceAgent
@@ -110,7 +110,7 @@ nice_io_stream_class_init (NiceIOStreamClass *klass)
   stream_class->get_input_stream = nice_io_stream_get_input_stream;
   stream_class->get_output_stream = nice_io_stream_get_output_stream;
 
-  /**
+  /*
    * NiceIOStream:agent:
    *
    * The #NiceAgent to wrap with an I/O stream. This must be an existing
@@ -129,7 +129,7 @@ nice_io_stream_class_init (NiceIOStreamClass *klass)
           NICE_TYPE_AGENT,
           G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
 
-  /**
+  /*
    * NiceIOStream:stream-id:
    *
    * ID of the stream to use in the #NiceIOStream:agent.
@@ -145,7 +145,7 @@ nice_io_stream_class_init (NiceIOStreamClass *klass)
           0,
           G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
 
-  /**
+  /*
    * NiceIOStream:component-id:
    *
    * ID of the component to use in the #NiceIOStream:agent.
@@ -259,7 +259,7 @@ nice_io_stream_set_property (GObject *object, guint prop_id,
     }
 }
 
-/**
+/***
  * nice_io_stream_new:
  * @agent: A #NiceAgent
  * @stream_id: The ID of the agent’s stream to wrap

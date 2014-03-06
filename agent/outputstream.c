@@ -34,7 +34,7 @@
  * file under either the MPL or the LGPL.
  */
 
-/**
+/***
  * SECTION:nice_output_stream
  * @short_description: #GOutputStream implementation for libnice
  * @see_also: #NiceAgent
@@ -127,7 +127,7 @@ nice_output_stream_class_init (NiceOutputStreamClass *klass)
   gobject_class->get_property = nice_output_stream_get_property;
   gobject_class->dispose = nice_output_stream_dispose;
 
-  /**
+  /***
    * NiceOutputStream:agent:
    *
    * The #NiceAgent to wrap with an output stream. This must be an existing
@@ -146,7 +146,7 @@ nice_output_stream_class_init (NiceOutputStreamClass *klass)
           NICE_TYPE_AGENT,
           G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
 
-  /**
+  /***
    * NiceOutputStream:stream-id:
    *
    * ID of the stream to use in the #NiceOutputStream:agent.
@@ -162,7 +162,7 @@ nice_output_stream_class_init (NiceOutputStreamClass *klass)
           0,
           G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
 
-  /**
+  /***
    * NiceOutputStream:component-id:
    *
    * ID of the component to use in the #NiceOutputStream:agent.
@@ -273,7 +273,7 @@ nice_output_stream_init_pollable (GPollableOutputStreamInterface *iface)
   iface->create_source = nice_output_stream_create_source;
 }
 
-/**
+/***
  * nice_output_stream_new:
  * @agent: A #NiceAgent
  * @stream_id: The ID of the agent’s stream to wrap
