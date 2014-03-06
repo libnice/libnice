@@ -51,7 +51,6 @@
 #endif
 
 #include <net/if.h>
-#include <net/if_arp.h>
 #include <arpa/inet.h>
 
 #ifdef HAVE_GETIFADDRS
