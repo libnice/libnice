@@ -8,6 +8,7 @@ NiceProxyType
 NiceCompatibility
 NiceAgentRecvFunc
 NiceInputMessage
+NiceOutputMessage
 NICE_AGENT_MAX_REMOTE_CANDIDATES
 nice_agent_new
 nice_agent_new_reliable
@@ -111,9 +112,6 @@ nice_address_ip_version
 <TITLE>Debug messages</TITLE>
 nice_debug_enable
 nice_debug_disable
-<SUBSECTION Private>
-nice_debug_init
-nice_debug
 </SECTION>
 
 <SECTION>
@@ -185,6 +183,8 @@ stun_message_append_xor_addr
 stun_message_append_xor_addr_full
 stun_message_append_error
 stun_message_validate_buffer_length
+StunInputVector
+stun_message_validate_buffer_length_fast
 stun_message_id
 stun_message_get_class
 stun_message_get_method
@@ -194,7 +194,32 @@ stun_optional
 stun_strerror
 </SECTION>
 
-
+<SECTION>
+<FILE>stunconstants</FILE>
+<TITLE>STUN Constants</TITLE>
+STUN_AGENT_MAX_SAVED_IDS
+STUN_AGENT_MAX_UNKNOWN_ATTRIBUTES
+STUN_ATTRIBUTE_HEADER_LENGTH
+STUN_ATTRIBUTE_LENGTH_LEN
+STUN_ATTRIBUTE_LENGTH_POS
+STUN_ATTRIBUTE_TYPE_LEN
+STUN_ATTRIBUTE_TYPE_POS
+STUN_ATTRIBUTE_VALUE_POS
+STUN_ID_LEN
+STUN_MAGIC_COOKIE
+STUN_MAX_MESSAGE_SIZE
+STUN_MAX_MESSAGE_SIZE_IPV4
+STUN_MAX_MESSAGE_SIZE_IPV6
+STUN_MESSAGE_ATTRIBUTES_POS
+STUN_MESSAGE_HEADER_LENGTH
+STUN_MESSAGE_LENGTH_LEN
+STUN_MESSAGE_LENGTH_POS
+STUN_MESSAGE_TRANS_ID_LEN
+STUN_MESSAGE_TRANS_ID_POS
+STUN_MESSAGE_TYPE_LEN
+STUN_MESSAGE_TYPE_POS
+TURN_MAGIC_COOKIE
+</SECTION>
 
 <SECTION>
 <FILE>turn</FILE>
@@ -206,6 +231,7 @@ stun_usage_turn_create
 stun_usage_turn_create_refresh
 stun_usage_turn_process
 stun_usage_turn_refresh_process
+stun_usage_turn_create_permission
 </SECTION>
 
 <SECTION>
@@ -265,4 +291,17 @@ pseudo_tcp_socket_notify_packet
 pseudo_tcp_set_debug_level
 pseudo_tcp_socket_get_available_bytes
 pseudo_tcp_socket_can_send
+pseudo_tcp_socket_get_available_send_space
+pseudo_tcp_socket_notify_message
+<SUBSECTION Standard>
+pseudo_tcp_socket_get_type
+PseudoTcpSocketClass
+PSEUDOTCP_SOCKET_GET_CLASS
+PSEUDO_TCP_SOCKET
+PSEUDO_TCP_SOCKET_CLASS
+PSEUDO_TCP_SOCKET_TYPE
+IS_PSEUDO_TCP_SOCKET
+IS_PSEUDO_TCP_SOCKET_CLASS
+<SUBSECTION Private>
+PseudoTcpSocketPrivate
 </SECTION>

@@ -13,7 +13,7 @@ DOC_MAIN_SGML_FILE=$(DOC_MODULE)-docs.sgml
 # gtk-doc will search all .c & .h files beneath here for inline comments
 # documenting the functions and macros.
 # e.g. DOC_SOURCE_DIR=../../../gtk
-DOC_SOURCE_DIR=$(top_srcdir)
+DOC_SOURCE_DIR=$(top_srcdir)/agent $(top_srcdir)/stun
 
 # Extra options to pass to gtkdoc-scangobj. Not normally needed.
 SCANGOBJ_OPTIONS=
@@ -37,24 +37,27 @@ FIXXREF_OPTIONS=
 # Used for dependencies. The docs will be rebuilt if any of these change.
 # e.g. HFILE_GLOB=$(top_srcdir)/gtk/*.h
 # e.g. CFILE_GLOB=$(top_srcdir)/gtk/*.c
-HFILE_GLOB=$(DOC_SOURCE_DIR)/agent/agent.h $(DOC_SOURCE_DIR)/agent/address.h \
-	$(DOC_SOURCE_DIR)/agent/debug.h $(DOC_SOURCE_DIR)/agent/candidate.h \
-	$(DOC_SOURCE_DIR)/agent/interfaces.h \
-	$(DOC_SOURCE_DIR)/stun/stunagent.h  \
-	$(DOC_SOURCE_DIR)/stun/stunmessage.h 
-	$(DOC_SOURCE_DIR)/stun/debug.h \
-	$(DOC_SOURCE_DIR)/stun/usages/bind.h \
-	$(DOC_SOURCE_DIR)/stun/usages/ice.h \
-	$(DOC_SOURCE_DIR)/stun/usages/timer.h \
-	$(DOC_SOURCE_DIR)/stun/usages/turn.h \
-	$(DOC_SOURCE_DIR)/agent/pseudotcp.h
+HFILE_GLOB=$(top_srcdir)/agent/agent.h $(top_srcdir)/agent/address.h \
+	$(top_srcdir)/agent/debug.h $(top_srcdir)/agent/candidate.h \
+	$(top_srcdir)/agent/interfaces.h \
+	$(top_srcdir)/agent/pseudotcp.h \
+	$(top_srcdir)/stun/stunagent.h  \
+	$(top_srcdir)/stun/stunmessage.h \
+	$(top_srcdir)/stun/debug.h \
+	$(top_srcdir)/stun/usages/bind.h \
+	$(top_srcdir)/stun/usages/ice.h \
+	$(top_srcdir)/stun/usages/timer.h \
+	$(top_srcdir)/stun/usages/turn.h
 
-CFILE_GLOB=$(DOC_SOURCE_DIR)/agent/agent.c \
-	$(DOC_SOURCE_DIR)/agent/pseudotcp.c
+CFILE_GLOB=$(top_srcdir)/agent/agent.c \
+	$(top_srcdir)/agent/pseudotcp.c
 
 # Header files to ignore when scanning.
 # e.g. IGNORE_HFILES=gtkdebug.h gtkintl.h
-IGNORE_HFILES= conncheck.h discovery.h stream.h gstnice.h gstnicesrc.h gstnicesink.h component.h iostream.h inputstream.h outputstream.h
+IGNORE_HFILES= conncheck.h discovery.h stream.h component.h agent-priv.h \
+	agent-signals-marshal.h	iostream.h inputstream.h outputstream.h \
+	gstnice.h gstnicesrc.h gstnicesink.h  \
+	md5.h sha1.h stunhmac.h utils.h rand.h stun5389.h stuncrc32.h
 
 # Images to copy into HTML directory.
 # e.g. HTML_IMAGES=$(top_srcdir)/gtk/stock-icons/stock_about_24.png

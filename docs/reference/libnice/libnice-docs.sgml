@@ -29,7 +29,8 @@
     <chapter>
       <xi:include href="xml/stunagent.xml"/>
       <xi:include href="xml/stunmessage.xml"/>
-    </chapter>
+      <xi:include href="xml/stunconstants.xml"/>
+   </chapter>
     <chapter>
       <title>STUN usages</title>
       <xi:include href="xml/bind.xml"/>
@@ -49,4 +50,49 @@
   <para>The libnice library contains the ICE library and the
     STUN library as well as a Pseudo TCP socket implementation.
   </para>
+
+  <part>
+    <title>Appendices</title>
+    <index id="api-index-full">
+      <title>API Index</title>
+      <xi:include href="xml/api-index-full.xml"><xi:fallback/></xi:include>
+    </index>
+    <index id="api-index-deprecated">
+      <title>Index of deprecated symbols</title>
+      <xi:include href="xml/api-index-deprecated.xml"><xi:fallback/></xi:include>
+    </index>
+    <index role="0.0.4">
+      <title>Index of new symbols in 0.0.4</title>
+      <xi:include href="xml/api-index-0.0.4.xml"><xi:fallback/></xi:include>
+    </index>
+    <index role="0.0.6">
+      <title>Index of new symbols in 0.0.6</title>
+      <xi:include href="xml/api-index-0.0.6.xml"><xi:fallback/></xi:include>
+    </index>
+    <index role="0.0.7">
+      <title>Index of new symbols in 0.0.7</title>
+      <xi:include href="xml/api-index-0.0.7.xml"><xi:fallback/></xi:include>
+    </index>
+    <index role="0.0.9">
+      <title>Index of new symbols in 0.0.9</title>
+      <xi:include href="xml/api-index-0.0.9.xml"><xi:fallback/></xi:include>
+    </index>
+    <index role="0.0.10">
+      <title>Index of new symbols in 0.0.10</title>
+      <xi:include href="xml/api-index-0.0.10.xml"><xi:fallback/></xi:include>
+    </index>
+    <index role="0.0.11">
+      <title>Index of new symbols in 0.0.11</title>
+      <xi:include href="xml/api-index-0.0.11.xml"><xi:fallback/></xi:include>
+    </index>
+    <index role="0.1.4">
+      <title>Index of new symbols in 0.1.4</title>
+      <xi:include href="xml/api-index-0.1.4.xml"><xi:fallback/></xi:include>
+    </index>
+    <index role="0.1.5">
+      <title>Index of new symbols in 0.1.5</title>
+      <xi:include href="xml/api-index-0.1.5.xml"><xi:fallback/></xi:include>
+    </index>
+    <xi:include href="xml/annotation-glossary.xml"><xi:fallback /></xi:include>
+  </part>
 </book>
