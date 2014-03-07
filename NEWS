@@ -1,3 +1,19 @@
+libnice 0.1.5 (2014-03-06)
+==========================
+
+
+API: nice_agent_recv() and nice_agent_recv_nonblocking() as an alternative to
+  the nice_agent_attach_recv()
+API: nice_agent_recv_messages() and nice_agent_recv_messages_nonblocking() to
+  receive multiple messages at the same time
+API: nice_agent_get_io_stream() to get a GIOStream in reliable mode
+API: nice_agent_get_selected_socket() to extract the selected GSocket
+Import Google's newer PseudoTCP code including window scaling
+Improve PseudoTCP performance
+Improve performance
+Build fixes
+
+
 libnice 0.1.4 (2013-02-22)
 ==========================
 
