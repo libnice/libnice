@@ -48,6 +48,8 @@ dist_check_SCRIPTS = \
 
 TESTS = $(check_PROGRAMS) $(dist_check_SCRIPTS)
 
+noinst_HEADERS = test-io-stream-common.h
+
 test_pseudotcp_LDADD = $(COMMON_LDADD)
 
 test_bsd_LDADD = $(COMMON_LDADD)
