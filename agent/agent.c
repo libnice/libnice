@@ -658,7 +658,7 @@ nice_agent_class_init (NiceAgentClass *klass)
    * @component_id: The ID of the component
    * @foundation: The foundation of the new candidate
    *
-   * This signal is fired when the agent discovers a new candidate
+   * This signal is fired when the agent discovers a new local candidate.
    * <para> See also: #NiceAgent::candidate-gathering-done </para>
    */
   signals[SIGNAL_NEW_CANDIDATE] =
