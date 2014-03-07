@@ -3167,12 +3167,19 @@ nice_agent_recv_messages_blocking_or_nonblocking (NiceAgent *agent,
   g_return_val_if_fail (stream_id >= 1, -1);
   g_return_val_if_fail (component_id >= 1, -1);
   g_return_val_if_fail (n_messages == 0 || messages != NULL, -1);
+  g_return_val_if_fail (n_messages <= G_MAXINT, -1);
   g_return_val_if_fail (
       cancellable == NULL || G_IS_CANCELLABLE (cancellable), -1);
   g_return_val_if_fail (error == NULL || *error == NULL, -1);
 
   if (n_messages == 0)
     return 0;
+
+  if (n_messages > G_MAXINT) {
+    g_set_error (error, G_IO_ERROR, G_IO_ERROR_INVALID_ARGUMENT,
+        "The number of messages can't exceed G_MAXINT: %d", G_MAXINT);
+    return -1;
+  }
 
   /* Receive buffer size must be at least 1280 for STUN */
   if (!agent->reliable) {
@@ -3376,6 +3383,13 @@ nice_agent_recv (NiceAgent *agent, guint stream_id, guint component_id,
   GInputVector local_bufs = { buf, buf_len };
   NiceInputMessage local_messages = { &local_bufs, 1, NULL, 0 };
 
+  if (buf_len > G_MAXSSIZE) {
+    g_set_error (error, G_IO_ERROR, G_IO_ERROR_INVALID_ARGUMENT,
+        "The buffer length can't exceed G_MAXSSIZE: %" G_GSSIZE_FORMAT,
+        G_MAXSSIZE);
+    return -1;
+  }
+
   n_valid_messages = nice_agent_recv_messages (agent, stream_id, component_id,
       &local_messages, 1, cancellable, error);
 
@@ -3402,6 +3416,13 @@ nice_agent_recv_nonblocking (NiceAgent *agent, guint stream_id,
   gint n_valid_messages;
   GInputVector local_bufs = { buf, buf_len };
   NiceInputMessage local_messages = { &local_bufs, 1, NULL, 0 };
+
+  if (buf_len > G_MAXSSIZE) {
+    g_set_error (error, G_IO_ERROR, G_IO_ERROR_INVALID_ARGUMENT,
+        "The buffer length can't exceed G_MAXSSIZE: %" G_GSSIZE_FORMAT,
+        G_MAXSSIZE);
+    return -1;
+  }
 
   n_valid_messages = nice_agent_recv_messages_nonblocking (agent, stream_id,
       component_id, &local_messages, 1, cancellable, error);
@@ -3876,7 +3897,7 @@ component_io_cb (GSocket *socket, GIOCondition condition, gpointer user_data)
         /* Other error. */
         remove_source = TRUE;
         break;
-      }
+      } /* else if (retval == RECV_OOB) { ignore me and continue; } */
     }
   }
 
