@@ -476,12 +476,6 @@ check_for_termination (TestIOStreamThreadData *data, gsize *recv_count,
 {
   guint stream_id;
   gpointer tmp;
-  guint8 buf[65536];
-  gsize buf_len;
-  gssize len;
-  GError *error = NULL;
-
-  g_assert_cmpuint (*recv_count, ==, expected_recv_count);
 
   /* Wait for transmission to complete. */
   while (*send_count < expected_recv_count);
@@ -490,21 +484,32 @@ check_for_termination (TestIOStreamThreadData *data, gsize *recv_count,
   tmp = g_object_get_data (G_OBJECT (data->agent), "stream-id");
   stream_id = GPOINTER_TO_UINT (tmp);
 
-  buf_len = strlen ("Done");
-  memcpy (buf, "Done", buf_len);
-  len = nice_agent_send (data->agent, stream_id, 1, buf_len, (gchar *) buf);
-  g_assert_cmpint (len, ==, buf_len);
+  /* Can't be certain enough to test for termination on non-reliable streams.
+   * There may be packet losses, etc
+   */
+  if (data->reliable) {
+    guint8 buf[65536];
+    gsize buf_len;
+    gssize len;
+    GError *error = NULL;
 
-  /* Wait for a done packet. */
-  buf_len = data->reliable ? strlen ("Done") : sizeof (buf);
-  len = nice_agent_recv (data->agent, stream_id, 1, buf, buf_len, NULL,
-      &error);
-  g_assert_no_error (error);
+    g_assert_cmpuint (*recv_count, >=, expected_recv_count);
 
-  g_assert_cmpint (len, ==, strlen ("Done"));
-  g_assert_cmpint (memcmp (buf, "Done", strlen ("Done")), ==, 0);
+    buf_len = strlen ("Done");
+    memcpy (buf, "Done", buf_len);
+    len = nice_agent_send (data->agent, stream_id, 1, buf_len, (gchar *) buf);
+    g_assert_cmpint (len, ==, buf_len);
 
-  *recv_count = *recv_count + 1;
+    /* Wait for a done packet. */
+    len = nice_agent_recv (data->agent, stream_id, 1, buf, buf_len, NULL,
+        &error);
+    g_assert_no_error (error);
+
+    g_assert_cmpint (len, ==, strlen ("Done"));
+    g_assert_cmpint (memcmp (buf, "Done", strlen ("Done")), ==, 0);
+
+    *recv_count = *recv_count + 1;
+  }
 
   /* Remove the stream and run away. */
   nice_agent_remove_stream (data->agent, stream_id);

@@ -440,7 +440,7 @@ validate_received_buffer (TestIOStreamThreadData *data, gsize buffer_offset,
  * instead of a single buffer. This consumes @messages. */
 static void
 validate_received_messages (TestIOStreamThreadData *data, gsize buffer_offset,
-    NiceInputMessage **messages, guint n_messages, gint n_valid_messages)
+    NiceInputMessage *messages, guint n_messages, gint n_valid_messages)
 {
   TestData *test_data = data->user_data;
   guint i;
@@ -456,7 +456,7 @@ validate_received_messages (TestIOStreamThreadData *data, gsize buffer_offset,
 
   /* Validate the message contents. */
   for (i = 0; i < (guint) n_valid_messages; i++) {
-    NiceInputMessage *message = &((*messages)[i]);
+    NiceInputMessage *message = &messages[i];
     guint j;
     gsize total_buf_len = 0;
     gsize message_len_remaining = message->length;
@@ -465,23 +465,29 @@ validate_received_messages (TestIOStreamThreadData *data, gsize buffer_offset,
 
     for (j = 0; j < (guint) message->n_buffers; j++) {
       GInputVector *buffer = &message->buffers[j];
-      guint8 *expected_buf;
       gsize valid_len;
 
       /* See note above about valid_len. */
       total_buf_len += buffer->size;
       valid_len = MIN (message_len_remaining, buffer->size);
 
-      expected_buf = g_malloc (buffer->size);
-      memset (expected_buf, 0xaa, buffer->size);
-      generate_buffer_data (test_data->buffer_data_strategy, buffer_offset,
-          expected_buf, valid_len);
-      g_assert (memcmp (buffer->buffer, expected_buf, valid_len) == 0);
-      g_free (expected_buf);
+      /* Only validate buffer content for reliable mode, anything could
+       * be received in UDP mode
+       */
+      if (test_data->reliable) {
+        guint8 *expected_buf;
 
+        expected_buf = g_malloc (buffer->size);
+        memset (expected_buf, 0xaa, buffer->size);
+        generate_buffer_data (test_data->buffer_data_strategy, buffer_offset,
+            expected_buf, valid_len);
+        g_assert_cmpint (memcmp (buffer->buffer, expected_buf, valid_len), ==,
+            0);
+        g_free (expected_buf);
+        buffer_offset += valid_len;
+        message_len_remaining -= valid_len;
+      }
       test_data->received_bytes += valid_len;
-      buffer_offset += valid_len;
-      message_len_remaining -= valid_len;
 
       g_free (buffer->buffer);
     }
@@ -503,7 +509,7 @@ validate_received_messages (TestIOStreamThreadData *data, gsize buffer_offset,
     g_free (message->buffers);
   }
 
-  g_free (*messages);
+  g_free (messages);
 }
 
 /* Determine a size for the next transmit buffer, allocate it, and fill it with
@@ -693,7 +699,7 @@ read_thread_agent_cb (GInputStream *input_stream, TestIOStreamThreadData *data)
     g_assert_no_error (error);
 
     /* Check the messages and update the test’s state machine. */
-    validate_received_messages (data, test_data->received_bytes, &messages,
+    validate_received_messages (data, test_data->received_bytes, messages,
         n_messages, n_valid_messages);
   }
 
@@ -780,7 +786,7 @@ read_thread_agent_nonblocking_cb (GInputStream *input_stream,
     g_assert_no_error (error);
 
     /* Check the messages and update the test’s state machine. */
-    validate_received_messages (data, test_data->received_bytes, &messages,
+    validate_received_messages (data, test_data->received_bytes, messages,
         n_messages, n_valid_messages);
   }
 
