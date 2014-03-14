@@ -2509,8 +2509,6 @@ static gboolean priv_add_remote_candidate (
       g_free (candidate->password);
       candidate->password = g_strdup (password);
     }
-    if (conn_check_add_for_candidate (agent, stream_id, component, candidate) < 0)
-      goto errors;
   }
   else {
     /* case 2: add a new candidate */
@@ -2547,9 +2545,10 @@ static gboolean priv_add_remote_candidate (
     if (foundation)
       g_strlcpy (candidate->foundation, foundation,
           NICE_CANDIDATE_MAX_FOUNDATION);
+  }
 
-    if (conn_check_add_for_candidate (agent, stream_id, component, candidate) < 0)
-      goto errors;
+  if (conn_check_add_for_candidate (agent, stream_id, component, candidate) < 0) {
+    goto errors;
   }
 
   return TRUE;
