@@ -587,12 +587,12 @@ static gboolean priv_conn_keepalive_tick_unlocked (NiceAgent *agent)
             gchar tmpbuf[INET6_ADDRSTRLEN];
             nice_address_to_string (&p->remote->addr, tmpbuf);
             nice_debug ("Agent %p : Keepalive STUN-CC REQ to '%s:%u', "
-                "socket=%u (c-id:%u), username='%s' (%zd), "
-                "password='%s' (%zd), priority=%u.", agent,
+                "socket=%u (c-id:%u), username='%.*s' (%" G_GSIZE_FORMAT "), "
+                "password='%.*s' (%" G_GSIZE_FORMAT "), priority=%u.", agent,
                 tmpbuf, nice_address_get_port (&p->remote->addr),
                 g_socket_get_fd(((NiceSocket *)p->local->sockptr)->fileno),
-                component->id, uname, uname_len, password, password_len,
-                priority);
+                component->id, (int) uname_len, uname, uname_len,
+                (int) password_len, password, password_len, priority);
           }
           if (uname_len > 0) {
             buf_len = stun_usage_ice_conncheck_create (&agent->stun_agent,
@@ -1673,14 +1673,16 @@ int conn_check_send (NiceAgent *agent, CandidateCheckPair *pair)
     gchar tmpbuf[INET6_ADDRSTRLEN];
     nice_address_to_string (&pair->remote->addr, tmpbuf);
     nice_debug ("Agent %p : STUN-CC REQ to '%s:%u', socket=%u, "
-        "pair=%s (c-id:%u), tie=%llu, username='%s' (%" G_GSIZE_FORMAT "), "
-        "password='%s' (%" G_GSIZE_FORMAT "), priority=%u.", agent,
+        "pair=%s (c-id:%u), tie=%llu, username='%.*s' (%" G_GSIZE_FORMAT "), "
+        "password='%.*s' (%" G_GSIZE_FORMAT "), priority=%u.", agent,
 	     tmpbuf,
              nice_address_get_port (&pair->remote->addr),
              g_socket_get_fd(((NiceSocket *)pair->local->sockptr)->fileno),
 	     pair->foundation, pair->component_id,
 	     (unsigned long long)agent->tie_breaker,
-        uname, uname_len, password, password_len, priority);
+        (int) uname_len, uname, uname_len,
+        (int) password_len, password, password_len,
+        priority);
 
   }
 
