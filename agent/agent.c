@@ -158,6 +158,12 @@ void agent_unlock(void)
 
 #endif
 
+static GType _nice_agent_stream_ids_get_type (void);
+
+G_DEFINE_POINTER_TYPE (_NiceAgentStreamIds, _nice_agent_stream_ids);
+
+#define NICE_TYPE_AGENT_STREAM_IDS _nice_agent_stream_ids_get_type ()
+
 typedef struct {
   guint signal_id;
   GSignalQuery query;
@@ -171,9 +177,9 @@ free_queued_signal (QueuedSignal *sig)
   guint i;
 
   for (i = 0; i < sig->query.n_params; i++) {
-    if (G_VALUE_HOLDS_POINTER (&sig->params[i]))
       g_free (g_value_get_pointer (&sig->params[i]));
     g_value_unset (&sig->params[i]);
+    if (G_VALUE_HOLDS(&sig->params[i + 1], NICE_TYPE_AGENT_STREAM_IDS))
   }
 
   g_slice_free1 (sizeof(GValue) * (sig->query.n_params + 1), sig->params);
@@ -771,7 +777,7 @@ nice_agent_class_init (NiceAgentClass *klass)
           g_cclosure_marshal_VOID__POINTER,
           G_TYPE_NONE,
           1,
-          G_TYPE_POINTER,
+          NICE_TYPE_AGENT_STREAM_IDS,
           G_TYPE_INVALID);
 
   /* Init debug options depending on env variables */
@@ -2378,7 +2384,8 @@ nice_agent_remove_stream (
   if (!agent->streams)
     priv_remove_keepalive_timer (agent);
 
-  agent_queue_signal (agent, signals[SIGNAL_STREAMS_REMOVED], stream_ids);
+  agent_queue_signal (agent, signals[SIGNAL_STREAMS_REMOVED],
+      g_memdup (stream_ids, sizeof(stream_ids)));
 
   agent_unlock_and_emit (agent);
   return;
