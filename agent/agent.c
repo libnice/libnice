@@ -176,10 +176,12 @@ free_queued_signal (QueuedSignal *sig)
 {
   guint i;
 
+  g_value_unset (&sig->params[0]);
+
   for (i = 0; i < sig->query.n_params; i++) {
-      g_free (g_value_get_pointer (&sig->params[i]));
-    g_value_unset (&sig->params[i]);
     if (G_VALUE_HOLDS(&sig->params[i + 1], NICE_TYPE_AGENT_STREAM_IDS))
+      g_free (g_value_get_pointer (&sig->params[i + 1]));
+    g_value_unset (&sig->params[i + 1]);
   }
 
   g_slice_free1 (sizeof(GValue) * (sig->query.n_params + 1), sig->params);
