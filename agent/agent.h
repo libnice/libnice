@@ -114,7 +114,7 @@
  </example>
  *
  * Refer to the examples in the examples/ subdirectory of the libnice source for
- * complete examples.
+ * more complete examples.
  *
  */
 
