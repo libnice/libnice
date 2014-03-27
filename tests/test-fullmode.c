@@ -373,7 +373,7 @@ static int run_full_test (NiceAgent *lagent, NiceAgent *ragent, NiceAddress *bas
   nice_agent_set_port_range (ragent, rs_id, 2, 10000, 10002);
   g_assert (nice_agent_gather_candidates (ragent, rs_id) == TRUE);
 
-#ifdef USE_LOOPBACK
+#if USE_LOOPBACK
   {
     GSList *cands = NULL, *i;
     NiceCandidate *cand = NULL;
