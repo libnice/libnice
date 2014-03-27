@@ -339,6 +339,9 @@ socket_recv_messages (NiceSocket *sock,
 
     n_valid_messages = 1;
 
+    if (message->length == 0)
+      continue;
+
     /* Compact the message’s buffers into a single one for parsing. Avoid this
      * in the (hopefully) common case of a single-element buffer vector. */
     if (message->n_buffers == 1 ||
