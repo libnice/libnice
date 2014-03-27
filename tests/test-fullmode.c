@@ -176,6 +176,9 @@ static void cb_nice_recv (NiceAgent *agent, guint stream_id, guint component_id,
   if (strncmp ("12345678", buf, 8))
     return;
 
+  if (component_id == 2)
+    return;
+
   if (GPOINTER_TO_UINT (user_data) == 2) {
     g_debug ("right agent received %d bytes, stopping mainloop", len);
     global_ragent_read = len;
