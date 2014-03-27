@@ -908,6 +908,12 @@ pseudo_tcp_socket_notify_message (PseudoTcpSocket *self,
 {
   gboolean retval;
 
+  g_assert_cmpuint (message->n_buffers, >, 0);
+
+  if (message->n_buffers == 1)
+    return pseudo_tcp_socket_notify_packet (self, message->buffers[0].buffer,
+        message->buffers[0].size);
+
   g_assert_cmpuint (message->n_buffers, ==, 2);
   g_assert_cmpuint (message->buffers[0].size, ==, HEADER_SIZE);
 
