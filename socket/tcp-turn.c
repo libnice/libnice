@@ -234,6 +234,7 @@ socket_send_message (NiceSocket *sock, const NiceAddress *to,
   gint ret;
   guint n_bufs;
   guint16 header_buf;
+  guint offset = 0;
 
   /* Count the number of buffers. */
   if (message->n_buffers == -1) {
@@ -247,30 +248,15 @@ socket_send_message (NiceSocket *sock, const NiceAddress *to,
 
   /* Allocate a new array of buffers, covering all the buffers in the input
    * @message, but with an additional one for a header and one for a footer. */
-  local_bufs = g_malloc_n (n_bufs + 2, sizeof (GOutputVector));
+  local_bufs = g_malloc_n (n_bufs + 1, sizeof (GOutputVector));
   local_message.buffers = local_bufs;
-  local_message.n_buffers = n_bufs + 2;
+  local_message.n_buffers = n_bufs + 1;
 
-  /* Copy the existing buffers across. */
-  for (j = 0; j < n_bufs; j++) {
-    local_bufs[j + 1].buffer = message->buffers[j].buffer;
-    local_bufs[j + 1].size = message->buffers[j].size;
-  }
-
-  /* Header buffer. */
   if (priv->compatibility == NICE_TURN_SOCKET_COMPATIBILITY_GOOGLE) {
-    header_buf = htons (output_message_get_size (message));
-
     local_bufs[0].buffer = &header_buf;
     local_bufs[0].size = sizeof (header_buf);
-  } else {
-    /* Skip over the allocated header buffer. */
-    local_message.buffers++;
-    local_message.n_buffers--;
-  }
-
-  /* Tail buffer. */
-  if (priv->compatibility == NICE_TURN_SOCKET_COMPATIBILITY_DRAFT9 ||
+    offset = 1;
+  } else if (priv->compatibility == NICE_TURN_SOCKET_COMPATIBILITY_DRAFT9 ||
       priv->compatibility == NICE_TURN_SOCKET_COMPATIBILITY_RFC5766) {
     gsize message_len = output_message_get_size (message);
     gsize padlen = (message_len % 4) ? 4 - (message_len % 4) : 0;
@@ -278,9 +264,15 @@ socket_send_message (NiceSocket *sock, const NiceAddress *to,
     local_bufs[n_bufs].buffer = &padbuf;
     local_bufs[n_bufs].size = padlen;
   } else {
-    /* Skip over the allocated tail buffer. */
-    local_message.n_buffers--;
+    local_message.n_buffers = n_bufs;
   }
+
+  /* Copy the existing buffers across. */
+  for (j = 0; j < n_bufs; j++) {
+    local_bufs[j + offset].buffer = message->buffers[j].buffer;
+    local_bufs[j + offset].size = message->buffers[j].size;
+  }
+
 
   ret = nice_socket_send_messages (priv->base_socket, to, &local_message, 1);
 
