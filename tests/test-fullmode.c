@@ -155,10 +155,15 @@ static gboolean timer_cb (gpointer pointer)
   return FALSE;
 }
 
-static void cb_writable (NiceAgent*agent, guint stream_id, guint component_id)
+static void cb_writable (NiceAgent*agent, guint stream_id, guint component_id,
+    gpointer user_data)
 {
+  guint *ls_id = user_data;
+
+  if (stream_id == *ls_id && component_id == 1) {
     g_debug ("Transport is now writable, stopping mainloop");
-    g_main_loop_quit (global_mainloop);
+    *ls_id = 0;
+  }
 }
 
 static void cb_nice_recv (NiceAgent *agent, guint stream_id, guint component_id, guint len, gchar *buf, gpointer user_data)
@@ -469,10 +474,13 @@ static int run_full_test (NiceAgent *lagent, NiceAgent *ragent, NiceAddress *bas
     g_debug ("Sending data returned -1 in %s mode", reliable?"Reliable":"Non-reliable");
     if (reliable) {
       gulong signal_handler;
+      guint ls_id_copy = ls_id;
+
       signal_handler = g_signal_connect (G_OBJECT (lagent),
-          "reliable-transport-writable", G_CALLBACK (cb_writable), NULL);
+          "reliable-transport-writable", G_CALLBACK (cb_writable), &ls_id_copy);
       g_debug ("Running mainloop until transport is writable");
-      g_main_loop_run (global_mainloop);
+      while (ls_id_copy == ls_id)
+        g_main_context_iteration (NULL, TRUE);
       g_signal_handler_disconnect(G_OBJECT (lagent), signal_handler);
 
       ret = nice_agent_send (lagent, ls_id, 1, 16, "1234567812345678");
@@ -480,7 +488,8 @@ static int run_full_test (NiceAgent *lagent, NiceAgent *ragent, NiceAddress *bas
   }
   g_debug ("Sent %d bytes", ret);
   g_assert (ret == 16);
-  g_main_loop_run (global_mainloop);
+  while (global_ragent_read != 16)
+    g_main_context_iteration (NULL, TRUE);
   g_assert (global_ragent_read == 16);
 
   g_debug ("test-fullmode: Ran mainloop, removing streams...");
@@ -592,14 +601,18 @@ static int run_full_test_delayed_answer (NiceAgent *lagent, NiceAgent *ragent, N
   /* note: test payload send and receive */
   global_ragent_read = 0;
   ret = nice_agent_send (lagent, ls_id, 1, 16, "1234567812345678");
-  {
+  if (ret == -1) {
     gboolean reliable = FALSE;
     g_object_get (G_OBJECT (lagent), "reliable", &reliable, NULL);
     if (reliable) {
       gulong signal_handler;
+      guint ls_id_copy = ls_id;
+
       signal_handler = g_signal_connect (G_OBJECT (lagent),
-          "reliable-transport-writable", G_CALLBACK (cb_writable), NULL);
-      g_main_loop_run (global_mainloop);
+          "reliable-transport-writable", G_CALLBACK (cb_writable), &ls_id_copy);
+      g_debug ("Running mainloop until transport is writable");
+      while (ls_id_copy == ls_id)
+        g_main_context_iteration (NULL, TRUE);
       g_signal_handler_disconnect(G_OBJECT (lagent), signal_handler);
 
       ret = nice_agent_send (lagent, ls_id, 1, 16, "1234567812345678");
