@@ -2726,7 +2726,12 @@ agent_recv_message_unlocked (
     goto done;
   }
 
-  if (nice_debug_is_enabled () && message->length > 0) {
+  if (retval == RECV_OOB || message->length == 0) {
+    retval = RECV_OOB;
+    goto done;
+  }
+
+  if (nice_debug_is_enabled ()) {
     gchar tmpbuf[INET6_ADDRSTRLEN];
     nice_address_to_string (message->from, tmpbuf);
     nice_debug ("Agent %p : Packet received on local socket %d from [%s]:%u (%" G_GSSIZE_FORMAT " octets).", agent,
@@ -2750,10 +2755,15 @@ agent_recv_message_unlocked (
       if (cand->type == NICE_CANDIDATE_TYPE_RELAYED &&
           cand->stream_id == stream->id &&
           cand->component_id == component->id) {
-        nice_turn_socket_parse_recv_message (cand->sockptr, &socket, message);
+        retval = nice_turn_socket_parse_recv_message (cand->sockptr, &socket,
+            message);
+        break;
       }
     }
   }
+
+  if (retval == RECV_OOB)
+    goto done;
 
   agent->media_after_tick = TRUE;
 
@@ -2806,7 +2816,7 @@ agent_recv_message_unlocked (
       nice_debug ("%s: Queued %" G_GSSIZE_FORMAT " bytes for agent %p.",
           G_STRFUNC, vec->size, agent);
 
-      return 0;
+      return RECV_OOB;
     } else {
       process_queued_tcp_packets (agent, stream, component);
     }
