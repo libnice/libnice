@@ -164,6 +164,8 @@ nice_tcp_bsd_socket_new (GMainContext *ctx, NiceAddress *addr)
 
   sock->priv = priv = g_slice_new0 (TcpPriv);
 
+  if (ctx == NULL)
+    ctx = g_main_context_default ();
   priv->context = g_main_context_ref (ctx);
   priv->server_addr = *addr;
   priv->error = FALSE;
