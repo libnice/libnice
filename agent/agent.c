@@ -2934,7 +2934,6 @@ memcpy_buffer_to_input_message (NiceInputMessage *message,
     buffer += len;
     buffer_length -= len;
 
-    message->buffers[i].size = len;
     message->length += len;
   }
 
