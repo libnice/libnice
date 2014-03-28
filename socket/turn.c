@@ -67,7 +67,7 @@ typedef struct {
   NiceAddress peer;
   uint16_t channel;
   gboolean renew;
-  guint timeout_source;
+  GSource *timeout_source;
 } ChannelBinding;
 
 typedef struct {
@@ -96,7 +96,7 @@ typedef struct {
                                    there is an installed permission */
   GList *sent_permissions; /* ongoing permission installed */
   GHashTable *send_data_queues; /* stores a send data queue for per peer */
-  guint permission_timeout_source;      /* timer used to invalidate
+  GSource *permission_timeout_source;      /* timer used to invalidate
                                            permissions */
 } TurnPriv;
 
@@ -247,8 +247,10 @@ socket_close (NiceSocket *sock)
 
   for (i = priv->channels; i; i = i->next) {
     ChannelBinding *b = i->data;
-    if (b->timeout_source)
-      g_source_remove (b->timeout_source);
+    if (b->timeout_source) {
+      g_source_destroy (b->timeout_source);
+      g_source_unref (b->timeout_source);
+    }
     g_free (b);
   }
   g_list_free (priv->channels);
@@ -288,8 +290,11 @@ socket_close (NiceSocket *sock)
   g_list_free (priv->sent_permissions);
   g_hash_table_destroy (priv->send_data_queues);
 
-  if (priv->permission_timeout_source)
-    g_source_remove (priv->permission_timeout_source);
+  if (priv->permission_timeout_source) {
+    g_source_destroy (priv->permission_timeout_source);
+    g_source_unref (priv->permission_timeout_source);
+    priv->permission_timeout_source = NULL;
+  }
 
   if (priv->ctx)
     g_main_context_unref (priv->ctx);
@@ -394,13 +399,16 @@ socket_recv_messages (NiceSocket *sock,
 
 static GSource *
 priv_timeout_add_with_context (TurnPriv *priv, guint interval,
-    GSourceFunc function, gpointer data)
+    gboolean seconds, GSourceFunc function, gpointer data)
 {
   GSource *source;
 
   g_return_val_if_fail (function != NULL, NULL);
 
-  source = g_timeout_source_new (interval);
+  if (seconds)
+    source = g_timeout_source_new_seconds (interval);
+  else
+    source = g_timeout_source_new (interval);
 
   g_source_set_callback (source, function, data, NULL);
   g_source_attach (source, priv->ctx);
@@ -690,7 +698,7 @@ socket_send_message (NiceSocket *sock, const NiceAddress *to,
       req->priv = priv;
       stun_message_id (&msg, req->id);
       req->source = priv_timeout_add_with_context (priv,
-          STUN_END_TIMEOUT, priv_forget_send_request, req);
+          STUN_END_TIMEOUT, FALSE, priv_forget_send_request, req);
       g_queue_push_tail (priv->send_requests, req);
     }
   }
@@ -825,7 +833,7 @@ priv_binding_expired_timeout (gpointer data)
   /* find current binding and destroy it */
   for (i = priv->channels ; i; i = i->next) {
     ChannelBinding *b = i->data;
-    if (b->timeout_source == g_source_get_id (source)) {
+    if (b->timeout_source == source) {
       priv->channels = g_list_remove (priv->channels, b);
       /* Make sure we don't free a currently being-refreshed binding */
       if (priv->current_binding_msg && !priv->current_binding) {
@@ -885,11 +893,12 @@ priv_binding_timeout (gpointer data)
   /* find current binding and mark it for renewal */
   for (i = priv->channels ; i; i = i->next) {
     ChannelBinding *b = i->data;
-    if (b->timeout_source == g_source_get_id (source)) {
+    if (b->timeout_source == source) {
       b->renew = TRUE;
       /* Install timer to expire the permission */
-      b->timeout_source = g_timeout_add_seconds (STUN_EXPIRE_TIMEOUT,
-              priv_binding_expired_timeout, priv);
+      b->timeout_source = priv_timeout_add_with_context (priv,
+          STUN_EXPIRE_TIMEOUT, TRUE, priv_binding_expired_timeout, priv);
+
       /* Send renewal */
       if (!priv->current_binding_msg)
         priv_send_channel_bind (priv, NULL, b->channel, &b->peer);
@@ -1121,12 +1130,14 @@ nice_turn_socket_parse_recv (NiceSocket *sock, NiceSocket **from_sock,
                 binding->renew = FALSE;
 
                 /* Remove any existing timer */
-                if (binding->timeout_source)
-                  g_source_remove (binding->timeout_source);
+                if (binding->timeout_source) {
+                  g_source_destroy (binding->timeout_source);
+                  g_source_unref (binding->timeout_source);
+                }
                 /* Install timer to schedule refresh of the permission */
                 binding->timeout_source =
-                    g_timeout_add_seconds (STUN_BINDING_TIMEOUT,
-                        priv_binding_timeout, priv);
+                    priv_timeout_add_with_context (priv, STUN_BINDING_TIMEOUT,
+                        TRUE, priv_binding_timeout, priv);
               }
               priv_process_pending_bindings (priv);
             }
@@ -1209,8 +1220,8 @@ nice_turn_socket_parse_recv (NiceSocket *sock, NiceSocket **from_sock,
             if (stun_message_get_class (&msg) == STUN_RESPONSE &&
                 !priv->permission_timeout_source) {
               priv->permission_timeout_source =
-                  g_timeout_add_seconds (STUN_PERMISSION_TIMEOUT,
-                      priv_permission_timeout, priv);
+                  priv_timeout_add_with_context (priv, STUN_PERMISSION_TIMEOUT,
+                      TRUE, priv_permission_timeout, priv);
             }
 
             /* send enqued data */
@@ -1535,7 +1546,7 @@ priv_schedule_tick (TurnPriv *priv)
     guint timeout = stun_timer_remainder (&priv->current_binding_msg->timer);
     if (timeout > 0) {
       priv->tick_source_channel_bind =
-          priv_timeout_add_with_context (priv, timeout,
+          priv_timeout_add_with_context (priv, timeout, FALSE,
               priv_retransmissions_tick, priv);
     } else {
       priv_retransmissions_tick_unlocked (priv);
@@ -1552,7 +1563,7 @@ priv_schedule_tick (TurnPriv *priv)
 
     if (timeout > 0) {
       priv->tick_source_create_permission =
-          priv_timeout_add_with_context (priv,
+          priv_timeout_add_with_context (priv, FALSE,
               timeout,
               priv_retransmissions_create_permission_tick,
               priv);
