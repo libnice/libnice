@@ -2411,13 +2411,19 @@ NICEAPI_EXPORT void
 nice_agent_set_port_range (NiceAgent *agent, guint stream_id, guint component_id,
     guint min_port, guint max_port)
 {
+  Stream *stream;
   Component *component;
 
   agent_lock();
 
-  if (agent_find_component (agent, stream_id, component_id, NULL, &component)) {
-    component->min_port = min_port;
-    component->max_port = max_port;
+  if (agent_find_component (agent, stream_id, component_id, &stream,
+          &component)) {
+    if (stream->gathering_started) {
+      g_critical ("nice_agent_gather_candidates (stream_id=%u) already called for this stream", stream_id);
+    } else {
+      component->min_port = min_port;
+      component->max_port = max_port;
+    }
   }
 
   agent_unlock_and_emit (agent);
