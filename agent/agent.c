@@ -2123,6 +2123,12 @@ nice_agent_gather_candidates (
     return FALSE;
   }
 
+  if (stream->gathering_started) {
+    /* Stream is already gathering, ignore this call */
+    agent_unlock_and_emit (agent);
+    return TRUE;
+  }
+
   nice_debug ("Agent %p : In %s mode, starting candidate gathering.", agent,
       agent->full_mode ? "ICE-FULL" : "ICE-LITE");
 
@@ -2276,7 +2282,7 @@ nice_agent_gather_candidates (
   }
 
   stream->gathering = TRUE;
-
+  stream->gathering_started = TRUE;
 
   /* Only signal the new candidates after we're sure that the gathering was
    * succesfful. But before sending gathering-done */

@@ -72,6 +72,7 @@ struct _Stream
   gchar remote_ufrag[NICE_STREAM_MAX_UFRAG];
   gchar remote_password[NICE_STREAM_MAX_PWD];
   gboolean gathering;
+  gboolean gathering_started;
   gint tos;
 };
 
