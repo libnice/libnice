@@ -1921,6 +1921,8 @@ nice_agent_set_relay_info(NiceAgent *agent,
 {
 
   Component *component = NULL;
+  gboolean ret = TRUE;
+  TurnServer *turn;
 
   g_return_val_if_fail (server_ip, FALSE);
   g_return_val_if_fail (server_port, FALSE);
@@ -1930,31 +1932,37 @@ nice_agent_set_relay_info(NiceAgent *agent,
 
   agent_lock();
 
-  if (agent_find_component (agent, stream_id, component_id, NULL, &component)) {
-    TurnServer *turn = g_slice_new0 (TurnServer);
-    nice_address_init (&turn->server);
-
-    if (nice_address_set_from_string (&turn->server, server_ip)) {
-      nice_address_set_port (&turn->server, server_port);
-    } else {
-      g_slice_free (TurnServer, turn);
-      agent_unlock_and_emit (agent);
-      return FALSE;
-    }
-
-
-    turn->username = g_strdup (username);
-    turn->password = g_strdup (password);
-    turn->type = type;
-
-    nice_debug ("Agent %p: added relay server [%s]:%d of type %d", agent,
-        server_ip, server_port, type);
-
-    component->turn_servers = g_list_append (component->turn_servers, turn);
+  if (!agent_find_component (agent, stream_id, component_id, NULL,
+          &component)) {
+    ret = FALSE;
+    goto done;
   }
 
+  turn = g_slice_new0 (TurnServer);
+
+  nice_address_init (&turn->server);
+
+  if (nice_address_set_from_string (&turn->server, server_ip)) {
+    nice_address_set_port (&turn->server, server_port);
+  } else {
+    g_slice_free (TurnServer, turn);
+    ret = FALSE;
+    goto done;
+  }
+
+  turn->username = g_strdup (username);
+  turn->password = g_strdup (password);
+  turn->type = type;
+
+  nice_debug ("Agent %p: added relay server [%s]:%d of type %d", agent,
+      server_ip, server_port, type);
+
+  component->turn_servers = g_list_append (component->turn_servers, turn);
+
+ done:
+
   agent_unlock_and_emit (agent);
-  return TRUE;
+  return ret;
 }
 
 #ifdef HAVE_GUPNP
