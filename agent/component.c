@@ -129,6 +129,7 @@ component_new (guint id, NiceAgent *agent, Stream *stream)
   component->own_ctx = g_main_context_new ();
   component->stop_cancellable = g_cancellable_new ();
   src = g_cancellable_source_new (component->stop_cancellable);
+  g_source_set_dummy_callback (src);
   g_source_attach (src, component->own_ctx);
   g_source_unref (src);
   component->ctx = g_main_context_ref (component->own_ctx);
