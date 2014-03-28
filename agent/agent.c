@@ -1921,6 +1921,7 @@ nice_agent_set_relay_info(NiceAgent *agent,
 {
 
   Component *component = NULL;
+  Stream *stream = NULL;
   gboolean ret = TRUE;
   TurnServer *turn;
 
@@ -1932,7 +1933,7 @@ nice_agent_set_relay_info(NiceAgent *agent,
 
   agent_lock();
 
-  if (!agent_find_component (agent, stream_id, component_id, NULL,
+  if (!agent_find_component (agent, stream_id, component_id, &stream,
           &component)) {
     ret = FALSE;
     goto done;
@@ -1958,6 +1959,23 @@ nice_agent_set_relay_info(NiceAgent *agent,
       server_ip, server_port, type);
 
   component->turn_servers = g_list_append (component->turn_servers, turn);
+
+ if (stream->gathering_started) {
+    GSList *i;
+
+    for (i = component->local_candidates; i; i = i->next) {
+      NiceCandidate *candidate = i->data;
+
+      if  (candidate->type == NICE_CANDIDATE_TYPE_HOST)
+        priv_add_new_candidate_discovery_turn (agent,
+            candidate->sockptr, turn, stream,
+            component_id);
+    }
+
+    if (agent->discovery_unsched_items)
+      discovery_schedule (agent);
+  }
+
 
  done:
 
