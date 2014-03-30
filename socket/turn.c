@@ -1567,6 +1567,10 @@ priv_schedule_tick (TurnPriv *priv)
     timeout = stun_timer_remainder (&current_create_permission_msg->timer);
 
     if (timeout > 0) {
+      if (priv->tick_source_create_permission) {
+        g_source_destroy (priv->tick_source_create_permission);
+        g_source_unref (priv->tick_source_create_permission);
+      }
       priv->tick_source_create_permission =
           priv_timeout_add_with_context (priv, FALSE,
               timeout,
