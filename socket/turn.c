@@ -493,8 +493,13 @@ priv_remove_peer_from_list (GList *list, const NiceAddress *peer)
     NiceAddress *address = (NiceAddress *) iter->data;
 
     if (nice_address_equal (address, peer)) {
+      GList *prev = iter->prev;
+
       nice_address_free (address);
       list = g_list_delete_link (list, iter);
+      iter = prev;
+      if (iter)
+        iter = list;
     }
   }
 
