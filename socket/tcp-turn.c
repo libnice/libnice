@@ -276,10 +276,11 @@ socket_send_message (NiceSocket *sock, const NiceAddress *to,
 
   ret = nice_socket_send_messages (priv->base_socket, to, &local_message, 1);
 
+  if (ret == 1)
+    ret = output_message_get_size (&local_message);
+
   g_free (local_bufs);
 
-  if (ret == 1)
-    return output_message_get_size (&local_message);
   return ret;
 }
 
