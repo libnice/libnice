@@ -70,21 +70,23 @@ int main (void)
   struct sockaddr_in ip4;
   uint8_t req_buf[STUN_MAX_MESSAGE_SIZE];
   uint8_t resp_buf[STUN_MAX_MESSAGE_SIZE];
-  const uint64_t tie = 0x8000000000000000LL;
+  const const uint64_t tie = 0x8000000000000000LL;
   StunMessageReturn val;
   StunUsageIceReturn val2;
   size_t len;
   size_t rlen;
-  static char username[] = "L:R", ufrag[] = "L", pass[] = "secret";
+  static char username[] = "L:R";
+  static uint8_t ufrag[] = "L", pass[] = "secret";
+  size_t ufrag_len = strlen ((char*) ufrag);
+  size_t pass_len = strlen ((char*) pass);
   int code;
-  uint16_t alen;
   bool control = false;
   StunAgent agent;
   StunMessage req;
   StunMessage resp;
   StunDefaultValidaterData validater_data[] = {
-    {ufrag, strlen (ufrag), pass, strlen (pass)},
-    {username, strlen (username), pass, strlen (pass)},
+    {ufrag, ufrag_len, pass, pass_len},
+    {(uint8_t *) username, strlen (username), pass, pass_len},
     {NULL, 0, NULL, 0}};
   StunValidationStatus valid;
 
@@ -119,7 +121,7 @@ int main (void)
   assert (stun_agent_init_request (&agent, &req, req_buf, sizeof(req_buf), 0x666));
   val = stun_message_append_string (&req, STUN_ATTRIBUTE_USERNAME, username);
   assert (val == STUN_MESSAGE_RETURN_SUCCESS);
-  rlen = stun_agent_finish_message (&agent, &req, pass, strlen (pass));
+  rlen = stun_agent_finish_message (&agent, &req, pass, pass_len);
   assert (rlen > 0);
 
   len = sizeof (resp_buf);
@@ -135,7 +137,7 @@ int main (void)
   assert (val == STUN_MESSAGE_RETURN_SUCCESS);
   val = stun_message_append_string (&req, STUN_ATTRIBUTE_USERNAME, username);
   assert (val == STUN_MESSAGE_RETURN_SUCCESS);
-  rlen = stun_agent_finish_message (&agent, &req, pass, strlen (pass));
+  rlen = stun_agent_finish_message (&agent, &req, pass, pass_len);
   assert (rlen > 0);
 
   valid = stun_agent_validate (&agent, &req, req_buf, rlen,
@@ -155,7 +157,7 @@ int main (void)
 
   /* No username */
   assert (stun_agent_init_request (&agent, &req, req_buf, sizeof(req_buf), STUN_BINDING));
-  rlen = stun_agent_finish_message (&agent, &req, pass, strlen (pass));
+  rlen = stun_agent_finish_message (&agent, &req, pass, pass_len);
   assert (rlen > 0);
 
   valid = stun_agent_validate (&agent, &req, req_buf, rlen,
@@ -171,16 +173,17 @@ int main (void)
   assert (val == STUN_MESSAGE_RETURN_SUCCESS);
   val = stun_message_append_flag (&req, STUN_ATTRIBUTE_USE_CANDIDATE);
   assert (val == STUN_MESSAGE_RETURN_SUCCESS);
-  val = stun_message_append_string (&req, STUN_ATTRIBUTE_USERNAME, ufrag);
+  val = stun_message_append_string (&req, STUN_ATTRIBUTE_USERNAME,
+      (char*) ufrag);
   assert (val == STUN_MESSAGE_RETURN_SUCCESS);
-  rlen = stun_agent_finish_message (&agent, &req, pass, strlen (pass));
+  rlen = stun_agent_finish_message (&agent, &req, pass, pass_len);
   assert (rlen > 0);
 
   len = sizeof (resp_buf);
   val2 = stun_usage_ice_conncheck_create_reply (&agent, &req,
       &resp, resp_buf, &len, (struct sockaddr *)&ip4,
       sizeof (ip4), &control, tie, STUN_USAGE_ICE_COMPATIBILITY_RFC5245);
-  assert (val == STUN_USAGE_ICE_RETURN_SUCCESS);
+  assert (val2 == STUN_USAGE_ICE_RETURN_SUCCESS);
   assert (len > 0);
   assert (stun_agent_validate (&agent, &resp, resp_buf, len,
           stun_agent_default_validater, validater_data) == STUN_VALIDATION_SUCCESS);
@@ -192,7 +195,7 @@ int main (void)
   assert (stun_agent_init_request (&agent, &req, req_buf, sizeof(req_buf), STUN_BINDING));
   val = stun_message_append_string (&req, STUN_ATTRIBUTE_USERNAME, ufrag);
   assert (val == STUN_MESSAGE_RETURN_SUCCESS);
-  rlen = stun_agent_finish_message (&agent, &req, pass, strlen (pass));
+  rlen = stun_agent_finish_message (&agent, &req, pass, pass_len);
   assert (rlen > 0);
 
   ip4.sin_family = AF_UNSPEC;
@@ -211,7 +214,7 @@ int main (void)
   assert (val == STUN_MESSAGE_RETURN_SUCCESS);
   val = stun_message_append_string (&req, STUN_ATTRIBUTE_USERNAME, ufrag);
   assert (val == STUN_MESSAGE_RETURN_SUCCESS);
-  rlen = stun_agent_finish_message (&agent, &req, pass, strlen (pass));
+  rlen = stun_agent_finish_message (&agent, &req, pass, pass_len);
   assert (rlen > 0);
 
 
@@ -233,7 +236,7 @@ int main (void)
   assert (val == STUN_MESSAGE_RETURN_SUCCESS);
   val = stun_message_append_string (&req, STUN_ATTRIBUTE_USERNAME, ufrag);
   assert (val == STUN_MESSAGE_RETURN_SUCCESS);
-  rlen = stun_agent_finish_message (&agent, &req, pass, strlen (pass));
+  rlen = stun_agent_finish_message (&agent, &req, pass, pass_len);
   assert (rlen > 0);
 
   len = sizeof (resp_buf);

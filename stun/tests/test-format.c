@@ -66,20 +66,20 @@ static void fatal (const char *msg, ...)
   exit (1);
 }
 
-static const char usr[] = "admin";
-static const char pwd[] = "s3kr3t";
+static const uint8_t usr[] = "admin";
+static const uint8_t pwd[] = "s3kr3t";
 
-bool dynamic_check_validater (StunAgent *agent,
+static bool dynamic_check_validater (StunAgent *agent,
     StunMessage *message, uint8_t *username, uint16_t username_len,
     uint8_t **password, size_t *password_len, void *user_data)
 {
 
-  if (username_len != strlen (usr) ||
-      memcmp (username, usr, strlen (usr)) != 0)
+  if (username_len != strlen ((char *) usr) ||
+      memcmp (username, usr, strlen ((char *) usr)) != 0)
     fatal ("vector test : Validater received wrong username!");
 
   *password = (uint8_t *) pwd;
-  *password_len = strlen (pwd);
+  *password_len = strlen ((char *) pwd);
 
 
   return true;
@@ -117,9 +117,9 @@ finish_check (StunAgent *agent, StunMessage *msg)
   if (stun_message_find (&msg2, STUN_ATTRIBUTE_MESSAGE_INTEGRITY, &plen) != NULL)
     fatal ("Missing HMAC test failed");
 
-  stun_message_append_string (&msg2, STUN_ATTRIBUTE_USERNAME, usr);
+  stun_message_append_string (&msg2, STUN_ATTRIBUTE_USERNAME, (char *) usr);
 
-  len = stun_agent_finish_message (agent, &msg2, pwd, strlen (pwd));
+  len = stun_agent_finish_message (agent, &msg2, pwd, strlen ((char *) pwd));
 
   if (len <= 0)
     fatal ("Cannot finish message with short-term creds");
@@ -250,7 +250,7 @@ int main (void)
   len = sizeof (msg);
   if (stun_agent_finish_message (&agent, &msg, NULL, 0) != 0)
     fatal ("Fingerprint overflow test failed");
-  if (stun_agent_finish_message (&agent, &msg, pwd, strlen (pwd)) != 0)
+  if (stun_agent_finish_message (&agent, &msg, pwd, strlen ((char *) pwd)) != 0)
     fatal ("Message integrity overflow test failed");
 
   /* Address attributes tests */

@@ -285,18 +285,18 @@ static void test_message (void)
 }
 
 
-bool test_attribute_validater (StunAgent *agent,
+static bool test_attribute_validater (StunAgent *agent,
     StunMessage *message, uint8_t *username, uint16_t username_len,
     uint8_t **password, size_t *password_len, void *user_data)
 {
-  char *pwd = (char *) user_data;
+  uint8_t *pwd = user_data;
 
   if (username_len != 4 ||
       memcmp (username, "ABCD", 4) != 0)
     return false;
 
   *password = pwd;
-  *password_len = strlen (pwd);
+  *password_len = strlen ((char *) pwd);
 
   return true;
 }
@@ -368,7 +368,7 @@ static void test_attribute (void)
   StunMessage msg;
   uint16_t known_attributes[] = {STUN_ATTRIBUTE_MESSAGE_INTEGRITY, STUN_ATTRIBUTE_USERNAME, 0};
 
-  printf ("Attribute test message length: %lu\n", sizeof (acme));
+  printf ("Attribute test message length: %zd\n", sizeof (acme));
 
   stun_agent_init (&agent, known_attributes,
       STUN_COMPATIBILITY_RFC5389, STUN_AGENT_USAGE_SHORT_TERM_CREDENTIALS);
@@ -378,11 +378,11 @@ static void test_attribute (void)
     fatal ("Unauthorized validation failed");
 
   if (stun_agent_validate (&agent, &msg, acme, sizeof(acme),
-          test_attribute_validater, "bad__guy") != STUN_VALIDATION_UNAUTHORIZED)
+          test_attribute_validater, (void *) "bad__guy") != STUN_VALIDATION_UNAUTHORIZED)
     fatal ("invalid password validation failed");
 
   if (stun_agent_validate (&agent, &msg, acme, sizeof(acme),
-          test_attribute_validater, "good_guy") != STUN_VALIDATION_SUCCESS)
+          test_attribute_validater, (void *) "good_guy") != STUN_VALIDATION_SUCCESS)
     fatal ("good password validation failed");
 
   if (stun_message_has_attribute (&msg, 0xff00))
@@ -451,9 +451,9 @@ static void test_attribute (void)
 }
 
 static const char vector_username[] = "evtj:h6vY";
-static const char vector_password[] = "VOkJxbRl1RmTxUk/WvJxBt";
+static uint8_t vector_password[] = "VOkJxbRl1RmTxUk/WvJxBt";
 
-bool test_vector_validater (StunAgent *agent,
+static bool test_vector_validater (StunAgent *agent,
     StunMessage *message, uint8_t *username, uint16_t username_len,
     uint8_t **password, size_t *password_len, void *user_data)
 {
@@ -466,8 +466,8 @@ bool test_vector_validater (StunAgent *agent,
       memcmp (username, vector_username, strlen (vector_username)) != 0)
     fatal ("vector test : Validater received wrong username!");
 
-  *password = (uint8_t *) vector_password;
-  *password_len = strlen (vector_password);
+  *password = vector_password;
+  *password_len = strlen ((char *) vector_password);
 
 
   return true;
@@ -635,7 +635,8 @@ static void test_vectors (void)
   if (stun_message_length (&msg) != sizeof(req) - 32)
     fatal ("vector test: removing attributes failed");
 
-  stun_agent_finish_message (&agent, &msg, vector_password, strlen (vector_password));
+  stun_agent_finish_message (&agent, &msg, vector_password,
+      strlen ((char *) vector_password));
 
   if (stun_message_length (&msg) != stun_message_length (&msg2) ||
       memcmp (req, req2, sizeof(req)) != 0)
@@ -710,9 +711,9 @@ static void test_hash_creds (void)
   puts ("Testing long term credentials hash algorithm...");
 
 
-  stun_hash_creds ("realm", strlen ("realm"),
-      "user",  strlen ("user"),
-      "pass", strlen ("pass"), md5);
+  stun_hash_creds ((uint8_t *) "realm", strlen ("realm"),
+      (uint8_t *) "user",  strlen ("user"),
+      (uint8_t *) "pass", strlen ("pass"), md5);
 
   stun_debug ("key for user:realm:pass is : ");
   stun_debug_bytes (md5, 16);

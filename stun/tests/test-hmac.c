@@ -45,7 +45,7 @@
 #include <stdlib.h>
 #include <assert.h>
 
-void print_bytes (uint8_t *bytes, int len)
+static void print_bytes (const uint8_t *bytes, int len)
 {
   int i;
 
@@ -55,12 +55,12 @@ void print_bytes (uint8_t *bytes, int len)
   printf ("\n");
 }
 
-void test_sha1 (uint8_t *str, uint8_t *expected) {
+static void test_sha1 (const uint8_t *str, const uint8_t *expected) {
   SHA1_CTX ctx;
   uint8_t sha1[20];
 
   SHA1Init(&ctx);
-  SHA1Update(&ctx, str, strlen (str));
+  SHA1Update(&ctx, str, strlen ((char *) str));
   SHA1Final(sha1, &ctx);
 
   printf ("SHA1 of '%s' : ", str);
@@ -73,10 +73,11 @@ void test_sha1 (uint8_t *str, uint8_t *expected) {
 
 }
 
-void test_hmac (uint8_t *key, uint8_t *str, uint8_t *expected) {
+static void test_hmac (const uint8_t *key, const uint8_t *str,
+    const uint8_t *expected) {
   uint8_t hmac[20];
 
-  hmac_sha1(key, strlen (key), str, strlen (str), hmac);
+  hmac_sha1(key, strlen ((char *) key), str, strlen ((char *) str), hmac);
   printf ("HMAC of '%s' with key '%s' is : ", str, key);
   print_bytes (hmac, SHA1_MAC_LEN);
   printf ("Expected : ");
@@ -86,13 +87,12 @@ void test_hmac (uint8_t *key, uint8_t *str, uint8_t *expected) {
     exit (1);
 }
 
-void test_md5 (uint8_t *str, uint8_t *expected) {
+static void test_md5 (const uint8_t *str,  const uint8_t *expected) {
   MD5_CTX ctx;
   uint8_t md5[20];
-  int i;
 
   MD5Init(&ctx);
-  MD5Update(&ctx, str, strlen (str));
+  MD5Update(&ctx, str, strlen ((char *) str));
   MD5Final(md5, &ctx);
 
   printf ("MD5 of '%s' : 0x", str);
@@ -128,15 +128,16 @@ int main (void)
                             0xaa, 0xe1, 0x16, 0xd3,
                             0x87, 0x6c, 0x66, 0x4a};
 
-  test_hmac ("hello", "world", hello_world_hmac);
+  test_hmac ((const uint8_t *) "hello", (const uint8_t*) "world",
+      hello_world_hmac);
 
-  test_sha1 ("abc", abc_sha1);
-  test_md5 ("abc", abc_md5);
+  test_sha1 ((const uint8_t *) "abc", abc_sha1);
+  test_md5 ((const uint8_t *) "abc", abc_md5);
 
-  test_sha1 ("abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq",
-      abcd_etc_sha1);
-  test_md5 ("abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq",
-      abcd_etc_md5);
+  test_sha1 ((const uint8_t *)
+      "abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq", abcd_etc_sha1);
+  test_md5 ((const uint8_t *)
+      "abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq", abcd_etc_md5);
 
   return 0;
 }
