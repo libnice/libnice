@@ -980,7 +980,7 @@ gint
 pseudo_tcp_socket_recv(PseudoTcpSocket *self, char * buffer, size_t len)
 {
   PseudoTcpSocketPrivate *priv = self->priv;
-  gsize read;
+  gsize bytesread;
   gsize available_space;
 
   if (priv->state != TCP_ESTABLISHED) {
@@ -991,10 +991,10 @@ pseudo_tcp_socket_recv(PseudoTcpSocket *self, char * buffer, size_t len)
   if (len == 0)
     return 0;
 
-  read = pseudo_tcp_fifo_read (&priv->rbuf, (guint8 *) buffer, len);
+  bytesread = pseudo_tcp_fifo_read (&priv->rbuf, (guint8 *) buffer, len);
 
  // If there's no data in |m_rbuf|.
-  if (read == 0) {
+  if (bytesread == 0) {
     priv->bReadEnable = TRUE;
     priv->error = EWOULDBLOCK;
     return -1;
@@ -1014,7 +1014,7 @@ pseudo_tcp_socket_recv(PseudoTcpSocket *self, char * buffer, size_t len)
     }
   }
 
-  return read;
+  return bytesread;
 }
 
 gint

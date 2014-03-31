@@ -186,7 +186,7 @@ stream_api_supports_vectored_io (StreamApi stream_api)
  * Guaranteed to be in the interval [1, 1 << 16). ((1 << 16) is the maximum
  * message size.) */
 static gsize
-generate_buffer_size (BufferSizeStrategy strategy, GRand *rand,
+generate_buffer_size (BufferSizeStrategy strategy, GRand *grand,
     gsize buffer_offset)
 {
   switch (strategy) {
@@ -203,7 +203,7 @@ generate_buffer_size (BufferSizeStrategy strategy, GRand *rand,
     return CLAMP (1L << buffer_offset, 1, (1 << 16) - 1);
 
   case BUFFER_SIZE_RANDOM:
-    return g_rand_int_range (rand, 1, 1 << 16);
+    return g_rand_int_range (grand, 1, 1 << 16);
 
   default:
     g_assert_not_reached ();
@@ -214,7 +214,7 @@ generate_buffer_size (BufferSizeStrategy strategy, GRand *rand,
  * byte. Guaranteed to be in the interval [1, 100], where 100 was chosen
  * arbitrarily.*/
 static guint
-generate_buffer_count (BufferCountStrategy strategy, GRand *rand,
+generate_buffer_count (BufferCountStrategy strategy, GRand *grand,
     gsize buffer_offset)
 {
   switch (strategy) {
@@ -225,7 +225,7 @@ generate_buffer_count (BufferCountStrategy strategy, GRand *rand,
     return 2;
 
   case BUFFER_COUNT_RANDOM:
-    return g_rand_int_range (rand, 1, 100 + 1);
+    return g_rand_int_range (grand, 1, 100 + 1);
 
   default:
     g_assert_not_reached ();
@@ -236,7 +236,7 @@ generate_buffer_count (BufferCountStrategy strategy, GRand *rand,
  * @buffer_offset-th byte. Guaranteed to be in the interval [1, 100], where 100
  * was chosen arbitrarily.*/
 static guint
-generate_message_count (MessageCountStrategy strategy, GRand *rand,
+generate_message_count (MessageCountStrategy strategy, GRand *grand,
     guint buffer_index)
 {
   switch (strategy) {
@@ -247,7 +247,7 @@ generate_message_count (MessageCountStrategy strategy, GRand *rand,
     return 2;
 
   case MESSAGE_COUNT_RANDOM:
-    return g_rand_int_range (rand, 1, 100 + 1);
+    return g_rand_int_range (grand, 1, 100 + 1);
 
   default:
     g_assert_not_reached ();

@@ -196,7 +196,7 @@ socket_recv_message (NiceSocket *sock, NiceInputMessage *recv_message)
 }
 
 static gint
-socket_recv_messages (NiceSocket *socket,
+socket_recv_messages (NiceSocket *nicesock,
     NiceInputMessage *recv_messages, guint n_recv_messages)
 {
   guint i;
@@ -205,7 +205,7 @@ socket_recv_messages (NiceSocket *socket,
   for (i = 0; i < n_recv_messages; i++) {
     gssize len;
 
-    len = socket_recv_message (socket, &recv_messages[i]);
+    len = socket_recv_message (nicesock, &recv_messages[i]);
     recv_messages[i].length = MAX (len, 0);
 
     if (len < 0)

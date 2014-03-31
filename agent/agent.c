@@ -1391,7 +1391,7 @@ pseudo_tcp_socket_closed (PseudoTcpSocket *sock, guint32 err,
 
 
 static PseudoTcpWriteResult
-pseudo_tcp_socket_write_packet (PseudoTcpSocket *socket,
+pseudo_tcp_socket_write_packet (PseudoTcpSocket *psocket,
     const gchar *buffer, guint32 len, gpointer user_data)
 {
   Component *component = user_data;
@@ -1726,7 +1726,7 @@ agent_candidate_pair_priority (NiceAgent *agent, NiceCandidate *local, NiceCandi
 
 static void
 priv_add_new_candidate_discovery_stun (NiceAgent *agent,
-    NiceSocket *socket, NiceAddress server,
+    NiceSocket *nicesock, NiceAddress server,
     Stream *stream, guint component_id)
 {
   CandidateDiscovery *cdisco;
@@ -1737,7 +1737,7 @@ priv_add_new_candidate_discovery_stun (NiceAgent *agent,
   cdisco = g_slice_new0 (CandidateDiscovery);
 
   cdisco->type = NICE_CANDIDATE_TYPE_SERVER_REFLEXIVE;
-  cdisco->nicesock = socket;
+  cdisco->nicesock = nicesock;
   cdisco->server = server;
   cdisco->stream = stream;
   cdisco->component = stream_find_component_by_id (stream, component_id);
@@ -1757,7 +1757,7 @@ priv_add_new_candidate_discovery_stun (NiceAgent *agent,
 
 static void
 priv_add_new_candidate_discovery_turn (NiceAgent *agent,
-    NiceSocket *socket, TurnServer *turn,
+    NiceSocket *nicesock, TurnServer *turn,
     Stream *stream, guint component_id)
 {
   CandidateDiscovery *cdisco;
@@ -1771,7 +1771,7 @@ priv_add_new_candidate_discovery_turn (NiceAgent *agent,
 
   if (turn->type ==  NICE_RELAY_TYPE_TURN_UDP) {
     if (agent->compatibility == NICE_COMPATIBILITY_GOOGLE) {
-      NiceAddress addr = socket->addr;
+      NiceAddress addr = nicesock->addr;
       NiceSocket *new_socket;
       nice_address_set_port (&addr, 0);
 
@@ -1779,51 +1779,51 @@ priv_add_new_candidate_discovery_turn (NiceAgent *agent,
       if (new_socket) {
         _priv_set_socket_tos (agent, new_socket, stream->tos);
         component_attach_socket (component, new_socket);
-        socket = new_socket;
+        nicesock = new_socket;
       }
     }
-    cdisco->nicesock = socket;
+    cdisco->nicesock = nicesock;
   } else {
     NiceAddress proxy_server;
-    socket = NULL;
+    nicesock = NULL;
 
     if (agent->proxy_type != NICE_PROXY_TYPE_NONE &&
         agent->proxy_ip != NULL &&
         nice_address_set_from_string (&proxy_server, agent->proxy_ip)) {
       nice_address_set_port (&proxy_server, agent->proxy_port);
-      socket = nice_tcp_bsd_socket_new (agent->main_context, &proxy_server);
+      nicesock = nice_tcp_bsd_socket_new (agent->main_context, &proxy_server);
 
-      if (socket) {
-        _priv_set_socket_tos (agent, socket, stream->tos);
+      if (nicesock) {
+        _priv_set_socket_tos (agent, nicesock, stream->tos);
         if (agent->proxy_type == NICE_PROXY_TYPE_SOCKS5) {
-          socket = nice_socks5_socket_new (socket, &turn->server,
+          nicesock = nice_socks5_socket_new (nicesock, &turn->server,
               agent->proxy_username, agent->proxy_password);
         } else if (agent->proxy_type == NICE_PROXY_TYPE_HTTP){
-          socket = nice_http_socket_new (socket, &turn->server,
+          nicesock = nice_http_socket_new (nicesock, &turn->server,
               agent->proxy_username, agent->proxy_password);
         } else {
-          nice_socket_free (socket);
-          socket = NULL;
+          nice_socket_free (nicesock);
+          nicesock = NULL;
         }
       }
 
     }
-    if (socket == NULL) {
-      socket = nice_tcp_bsd_socket_new (agent->main_context, &turn->server);
+    if (nicesock == NULL) {
+      nicesock = nice_tcp_bsd_socket_new (agent->main_context, &turn->server);
 
-      if (socket)
-        _priv_set_socket_tos (agent, socket, stream->tos);
+      if (nicesock)
+        _priv_set_socket_tos (agent, nicesock, stream->tos);
     }
 
     /* The TURN server may be invalid or not listening */
-    if (socket == NULL)
+    if (nicesock == NULL)
       return;
 
     if (turn->type ==  NICE_RELAY_TYPE_TURN_TLS &&
         agent->compatibility == NICE_COMPATIBILITY_GOOGLE) {
-      socket = nice_pseudossl_socket_new (socket);
+      nicesock = nice_pseudossl_socket_new (nicesock);
     }
-    cdisco->nicesock = nice_tcp_turn_socket_new (socket,
+    cdisco->nicesock = nice_tcp_turn_socket_new (nicesock,
         agent_to_turn_socket_compatibility (agent));
 
     component_attach_socket (component, cdisco->nicesock);
@@ -2194,9 +2194,9 @@ nice_agent_gather_candidates (
   } else {
     for (i = agent->local_addresses; i; i = i->next) {
       NiceAddress *addr = i->data;
-      NiceAddress *dup = nice_address_dup (addr);
+      NiceAddress *dupaddr = nice_address_dup (addr);
 
-      local_addresses = g_slist_append (local_addresses, dup);
+      local_addresses = g_slist_append (local_addresses, dupaddr);
     }
   }
 
@@ -2450,13 +2450,13 @@ nice_agent_set_port_range (NiceAgent *agent, guint stream_id, guint component_id
 NICEAPI_EXPORT gboolean
 nice_agent_add_local_address (NiceAgent *agent, NiceAddress *addr)
 {
-  NiceAddress *dup;
+  NiceAddress *dupaddr;
 
   agent_lock();
 
-  dup = nice_address_dup (addr);
-  nice_address_set_port (dup, 0);
-  agent->local_addresses = g_slist_append (agent->local_addresses, dup);
+  dupaddr = nice_address_dup (addr);
+  nice_address_set_port (dupaddr, 0);
+  agent->local_addresses = g_slist_append (agent->local_addresses, dupaddr);
 
   agent_unlock_and_emit (agent);
   return TRUE;
@@ -2736,7 +2736,7 @@ agent_recv_message_unlocked (
   NiceAgent *agent,
   Stream *stream,
   Component *component,
-  NiceSocket *socket,
+  NiceSocket *nicesock,
   NiceInputMessage *message)
 {
   NiceAddress from;
@@ -2748,10 +2748,10 @@ agent_recv_message_unlocked (
     message->from = &from;
   }
 
-  retval = nice_socket_recv_messages (socket, message, 1);
+  retval = nice_socket_recv_messages (nicesock, message, 1);
 
   nice_debug ("%s: Received %d valid messages of length %" G_GSIZE_FORMAT
-      " from base socket %p.", G_STRFUNC, retval, message->length, socket);
+      " from base socket %p.", G_STRFUNC, retval, message->length, nicesock);
 
   if (retval == 0) {
     retval = RECV_WOULD_BLOCK;  /* EWOULDBLOCK */
@@ -2773,7 +2773,7 @@ agent_recv_message_unlocked (
     gchar tmpbuf[INET6_ADDRSTRLEN];
     nice_address_to_string (message->from, tmpbuf);
     nice_debug ("Agent %p : Packet received on local socket %d from [%s]:%u (%" G_GSSIZE_FORMAT " octets).", agent,
-        g_socket_get_fd (socket->fileno), tmpbuf,
+        g_socket_get_fd (nicesock->fileno), tmpbuf,
         nice_address_get_port (message->from), message->length);
   }
 
@@ -2793,7 +2793,7 @@ agent_recv_message_unlocked (
       if (cand->type == NICE_CANDIDATE_TYPE_RELAYED &&
           cand->stream_id == stream->id &&
           cand->component_id == component->id) {
-        retval = nice_turn_socket_parse_recv_message (cand->sockptr, &socket,
+        retval = nice_turn_socket_parse_recv_message (cand->sockptr, &nicesock,
             message);
         break;
       }
@@ -2822,7 +2822,7 @@ agent_recv_message_unlocked (
     if (stun_message_validate_buffer_length (big_buf, big_buf_len,
         (agent->compatibility != NICE_COMPATIBILITY_OC2007 &&
          agent->compatibility != NICE_COMPATIBILITY_OC2007R2)) == (gint) big_buf_len &&
-        conn_check_handle_inbound_stun (agent, stream, component, socket,
+        conn_check_handle_inbound_stun (agent, stream, component, nicesock,
             message->from, (gchar *) big_buf, big_buf_len)) {
       /* Handled STUN message. */
       nice_debug ("%s: Valid STUN packet received.", G_STRFUNC);
@@ -3792,7 +3792,7 @@ nice_agent_dispose (GObject *object)
 }
 
 gboolean
-component_io_cb (GSocket *socket, GIOCondition condition, gpointer user_data)
+component_io_cb (GSocket *gsocket, GIOCondition condition, gpointer user_data)
 {
   SocketSource *socket_source = user_data;
   Component *component;

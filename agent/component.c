@@ -432,13 +432,13 @@ _find_socket_source (gconstpointer a, gconstpointer b)
 /* This takes ownership of the socket.
  * It creates and attaches a source to the component’s context. */
 void
-component_attach_socket (Component *component, NiceSocket *socket)
+component_attach_socket (Component *component, NiceSocket *nicesock)
 {
   GSList *l;
   SocketSource *socket_source;
 
   g_assert (component != NULL);
-  g_assert (socket != NULL);
+  g_assert (nicesock != NULL);
 
   g_assert (component->ctx != NULL);
 
@@ -455,13 +455,13 @@ component_attach_socket (Component *component, NiceSocket *socket)
    * or discovery failure, which are both unrecoverable states.
    *
    * An empty socket_sources corresponds to age 0. */
-  l = g_slist_find_custom (component->socket_sources, socket,
+  l = g_slist_find_custom (component->socket_sources, nicesock,
           _find_socket_source);
   if (l != NULL) {
     socket_source = l->data;
   } else {
     socket_source = g_slice_new0 (SocketSource);
-    socket_source->socket = socket;
+    socket_source->socket = nicesock;
     socket_source->component = component;
     component->socket_sources =
         g_slist_prepend (component->socket_sources, socket_source);
@@ -502,12 +502,12 @@ component_reattach_all_sockets (Component *component)
  * If the @socket doesn’t exist in this @component, do nothing.
  */
 void
-component_detach_socket (Component *component, NiceSocket *socket)
+component_detach_socket (Component *component, NiceSocket *nicesock)
 {
   GSList *l;
   SocketSource *socket_source;
 
-  nice_debug ("Detach socket %p.", socket);
+  nice_debug ("Detach socket %p.", nicesock);
 
   /* Find the SocketSource for the socket. */
   l = g_slist_find_custom (component->socket_sources, socket,

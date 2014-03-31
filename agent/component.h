@@ -228,9 +228,9 @@ component_set_selected_remote_candidate (NiceAgent *agent, Component *component,
     NiceCandidate *candidate);
 
 void
-component_attach_socket (Component *component, NiceSocket *socket);
+component_attach_socket (Component *component, NiceSocket *nsocket);
 void
-component_detach_socket (Component *component, NiceSocket *socket);
+component_detach_socket (Component *component, NiceSocket *nsocket);
 void
 component_detach_all_sockets (Component *component);
 void

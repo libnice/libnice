@@ -1903,7 +1903,7 @@ static gboolean priv_schedule_triggered_check (NiceAgent *agent, Stream *stream,
  * 
  * @pre (rcand == NULL || nice_address_equal(rcand->addr, toaddr) == TRUE)
  */
-static void priv_reply_to_conn_check (NiceAgent *agent, Stream *stream, Component *component, NiceCandidate *rcand, const NiceAddress *toaddr, NiceSocket *socket, size_t  rbuf_len, uint8_t *rbuf, gboolean use_candidate)
+static void priv_reply_to_conn_check (NiceAgent *agent, Stream *stream, Component *component, NiceCandidate *rcand, const NiceAddress *toaddr, NiceSocket *sockptr, size_t  rbuf_len, uint8_t *rbuf, gboolean use_candidate)
 {
   g_assert (rcand == NULL || nice_address_equal(&rcand->addr, toaddr) == TRUE);
 
@@ -1913,17 +1913,17 @@ static void priv_reply_to_conn_check (NiceAgent *agent, Stream *stream, Componen
     nice_debug ("Agent %p : STUN-CC RESP to '%s:%u', socket=%u, len=%u, cand=%p (c-id:%u), use-cand=%d.", agent,
 	     tmpbuf,
 	     nice_address_get_port (toaddr),
-	     g_socket_get_fd(socket->fileno),
+	     g_socket_get_fd(sockptr->fileno),
 	     (unsigned)rbuf_len,
 	     rcand, component->id,
 	     (int)use_candidate);
   }
 
-  nice_socket_send (socket, toaddr, rbuf_len, (const gchar*)rbuf);
+  nice_socket_send (sockptr, toaddr, rbuf_len, (const gchar*)rbuf);
 
   if (rcand) {
     /* note: upon successful check, make the reserve check immediately */
-    priv_schedule_triggered_check (agent, stream, component, socket, rcand, use_candidate);
+    priv_schedule_triggered_check (agent, stream, component, sockptr, rcand, use_candidate);
 
     if (use_candidate)
       priv_mark_pair_nominated (agent, stream, component, rcand);
@@ -1939,7 +1939,7 @@ static void priv_reply_to_conn_check (NiceAgent *agent, Stream *stream, Componen
  * @return non-zero on error, zero on success
  */
 static int priv_store_pending_check (NiceAgent *agent, Component *component,
-    const NiceAddress *from, NiceSocket *socket, uint8_t *username,
+    const NiceAddress *from, NiceSocket *sockptr, uint8_t *username,
     uint16_t username_len, uint32_t priority, gboolean use_candidate)
 {
   IncomingCheck *icheck;
@@ -1955,7 +1955,7 @@ static int priv_store_pending_check (NiceAgent *agent, Component *component,
   icheck = g_slice_new0 (IncomingCheck);
   component->incoming_checks = g_slist_append (component->incoming_checks, icheck);
   icheck->from = *from;
-  icheck->local_socket = socket;
+  icheck->local_socket = sockptr;
   icheck->priority = priority;
   icheck->use_candidate = use_candidate;
   icheck->username_len = username_len;
@@ -2713,7 +2713,7 @@ static bool conncheck_stun_validater (StunAgent *agent,
  * @param agent self pointer
  * @param stream stream the packet is related to
  * @param component component the packet is related to
- * @param socket socket from which the packet was received
+ * @param nicesock socket from which the packet was received
  * @param from address of the sender
  * @param buf message contents
  * @param buf message length
@@ -2723,7 +2723,7 @@ static bool conncheck_stun_validater (StunAgent *agent,
  * @return XXX (what FALSE means exactly?)
  */
 gboolean conn_check_handle_inbound_stun (NiceAgent *agent, Stream *stream,
-    Component *component, NiceSocket *socket, const NiceAddress *from,
+    Component *component, NiceSocket *nicesock, const NiceAddress *from,
     gchar *buf, guint len)
 {
   union {
@@ -2771,7 +2771,7 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, Stream *stream,
     for (i = agent->discovery_list; i; i = i->next) {
       CandidateDiscovery *d = i->data;
       if (d->stream == stream && d->component == component &&
-          d->nicesock == socket) {
+          d->nicesock == nicesock) {
         valid = stun_agent_validate (&d->stun_agent, &req,
             (uint8_t *) buf, len, conncheck_stun_validater, &validater_data);
 
@@ -2789,9 +2789,9 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, Stream *stream,
     for (i = agent->refresh_list; i; i = i->next) {
       CandidateRefresh *r = i->data;
       nice_debug ("Comparing %p to %p, %p to %p and %p and %p to %p", r->stream,
-          stream, r->component, component, r->nicesock, r->relay_socket, socket);
+          stream, r->component, component, r->nicesock, r->relay_socket, nicesock);
       if (r->stream == stream && r->component == component &&
-          (r->nicesock == socket || r->relay_socket == socket)) {
+          (r->nicesock == nicesock || r->relay_socket == nicesock)) {
         valid = stun_agent_validate (&r->stun_agent, &req,
             (uint8_t *) buf, len, conncheck_stun_validater, &validater_data);
         nice_debug ("Validating gave %d", valid);
@@ -2822,7 +2822,7 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, Stream *stream,
       rbuf_len = stun_agent_build_unknown_attributes_error (&agent->stun_agent,
           &msg, rbuf, rbuf_len, &req);
       if (rbuf_len != 0)
-        nice_socket_send (socket, from, rbuf_len, (const gchar*)rbuf);
+        nice_socket_send (nicesock, from, rbuf_len, (const gchar*)rbuf);
     }
     return TRUE;
   }
@@ -2835,7 +2835,7 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, Stream *stream,
       rbuf_len = stun_agent_finish_message (&agent->stun_agent, &msg, NULL, 0);
       if (rbuf_len > 0 && agent->compatibility != NICE_COMPATIBILITY_MSN &&
           agent->compatibility != NICE_COMPATIBILITY_OC2007)
-        nice_socket_send (socket, from, rbuf_len, (const gchar*)rbuf);
+        nice_socket_send (nicesock, from, rbuf_len, (const gchar*)rbuf);
     }
     return TRUE;
   }
@@ -2846,7 +2846,7 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, Stream *stream,
       rbuf_len = stun_agent_finish_message (&agent->stun_agent, &msg, NULL, 0);
       if (rbuf_len > 0 && agent->compatibility != NICE_COMPATIBILITY_MSN &&
 	  agent->compatibility != NICE_COMPATIBILITY_OC2007)
-        nice_socket_send (socket, from, rbuf_len, (const gchar*)rbuf);
+        nice_socket_send (nicesock, from, rbuf_len, (const gchar*)rbuf);
     }
     return TRUE;
   }
@@ -2988,7 +2988,7 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, Stream *stream,
 	nice_debug ("Agent %p : No matching remote candidate for incoming check ->"
             "peer-reflexive candidate.", agent);
 	remote_candidate = discovery_learn_remote_peer_reflexive_candidate (
-            agent, stream, component, priority, from, socket,
+            agent, stream, component, priority, from, nicesock,
             local_candidate,
             remote_candidate2 ? remote_candidate2 : remote_candidate);
         if(remote_candidate)
@@ -2996,7 +2996,7 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, Stream *stream,
       }
 
       priv_reply_to_conn_check (agent, stream, component, remote_candidate,
-          from, socket, rbuf_len, rbuf, use_candidate);
+          from, nicesock, rbuf_len, rbuf, use_candidate);
 
       if (component->remote_candidates == NULL) {
         /* case: We've got a valid binding request to a local candidate
@@ -3006,7 +3006,7 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, Stream *stream,
          *       we get information about the remote candidates */
 
         /* step: send a reply immediately but postpone other processing */
-        priv_store_pending_check (agent, component, from, socket,
+        priv_store_pending_check (agent, component, from, nicesock,
             username, username_len, priority, use_candidate);
       }
     } else {
@@ -3023,7 +3023,7 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, Stream *stream,
       /* step: let's try to match the response to an existing check context */
       if (trans_found != TRUE)
         trans_found = priv_map_reply_to_conn_check_request (agent, stream,
-	    component, socket, from, local_candidate, remote_candidate, &req);
+	    component, nicesock, from, local_candidate, remote_candidate, &req);
 
       /* step: let's try to match the response to an existing discovery */
       if (trans_found != TRUE)

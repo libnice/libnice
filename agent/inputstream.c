@@ -360,9 +360,9 @@ nice_input_stream_is_readable (GPollableInputStream *stream)
   /* Check whether any of the component’s FDs are pollable. */
   for (i = component->socket_sources; i != NULL; i = i->next) {
     SocketSource *socket_source = i->data;
-    NiceSocket *socket = socket_source->socket;
+    NiceSocket *nicesock = socket_source->socket;
 
-    if (g_socket_condition_check (socket->fileno, G_IO_IN) != 0) {
+    if (g_socket_condition_check (nicesock->fileno, G_IO_IN) != 0) {
       retval = TRUE;
       break;
     }
