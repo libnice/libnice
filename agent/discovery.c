@@ -137,9 +137,9 @@ void refresh_free_item (gpointer data, gpointer user_data)
   CandidateRefresh *cand = data;
   NiceAgent *agent = cand->agent;
   uint8_t *username;
-  size_t username_len;
+  gsize username_len;
   uint8_t *password;
-  size_t password_len;
+  gsize password_len;
   size_t buffer_len = 0;
   StunUsageTurnCompatibility turn_compat = agent_to_turn_compatibility (agent);
 
@@ -866,9 +866,9 @@ static gboolean priv_discovery_tick_unlocked (gpointer pointer)
               &cand->stun_message, cand->stun_buffer, sizeof(cand->stun_buffer));
         } else if (cand->type == NICE_CANDIDATE_TYPE_RELAYED) {
           uint8_t *username = (uint8_t *)cand->turn->username;
-          size_t username_len = (size_t) strlen (cand->turn->username);
+          gsize username_len = strlen (cand->turn->username);
           uint8_t *password = (uint8_t *)cand->turn->password;
-          size_t password_len = (size_t) strlen (cand->turn->password);
+          gsize password_len = strlen (cand->turn->password);
           StunUsageTurnCompatibility turn_compat =
               agent_to_turn_compatibility (agent);
 

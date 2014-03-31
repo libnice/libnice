@@ -587,8 +587,8 @@ static gboolean priv_conn_keepalive_tick_unlocked (NiceAgent *agent)
             gchar tmpbuf[INET6_ADDRSTRLEN];
             nice_address_to_string (&p->remote->addr, tmpbuf);
             nice_debug ("Agent %p : Keepalive STUN-CC REQ to '%s:%u', "
-                "socket=%u (c-id:%u), username='%s' (%" G_GSIZE_FORMAT "), "
-                "password='%s' (%" G_GSIZE_FORMAT "), priority=%u.", agent,
+                "socket=%u (c-id:%u), username='%s' (%zd), "
+                "password='%s' (%zd), priority=%u.", agent,
                 tmpbuf, nice_address_get_port (&p->remote->addr),
                 g_socket_get_fd(((NiceSocket *)p->local->sockptr)->fileno),
                 component->id, uname, uname_len, password, password_len,
@@ -604,7 +604,7 @@ static gboolean priv_conn_keepalive_tick_unlocked (NiceAgent *agent)
                 NULL,
                 agent_to_ice_compatibility (agent));
 
-            nice_debug ("Agent %p: conncheck created %" G_GSIZE_FORMAT " - %p",
+            nice_debug ("Agent %p: conncheck created %zd - %p",
                 agent, buf_len, p->keepalive.stun_message.buffer);
 
             if (buf_len > 0) {
@@ -790,9 +790,9 @@ static gboolean priv_turn_allocate_refresh_retransmissions_tick (gpointer pointe
 static void priv_turn_allocate_refresh_tick_unlocked (CandidateRefresh *cand)
 {
   uint8_t *username;
-  size_t username_len;
+  gsize username_len;
   uint8_t *password;
-  size_t password_len;
+  gsize password_len;
   size_t buffer_len = 0;
   StunUsageTurnCompatibility turn_compat =
       agent_to_turn_compatibility (cand->agent);
@@ -823,8 +823,8 @@ static void priv_turn_allocate_refresh_tick_unlocked (CandidateRefresh *cand)
     cand->msn_turn_password = password;
   }
 
-  nice_debug ("Agent %p : Sending allocate Refresh %" G_GSIZE_FORMAT,
-      cand->agent, buffer_len);
+  nice_debug ("Agent %p : Sending allocate Refresh %zd", cand->agent,
+      buffer_len);
 
   if (cand->tick_source != NULL) {
     g_source_destroy (cand->tick_source);
@@ -1650,11 +1650,11 @@ int conn_check_send (NiceAgent *agent, CandidateCheckPair *pair)
       pair->local->component_id);
 
   uint8_t uname[NICE_STREAM_MAX_UNAME];
-  size_t uname_len =
+  gsize uname_len =
       priv_create_username (agent, agent_find_stream (agent, pair->stream_id),
           pair->component_id, pair->remote, pair->local, uname, sizeof (uname), FALSE);
   uint8_t *password = NULL;
-  size_t password_len = priv_get_password (agent,
+  gsize password_len = priv_get_password (agent,
       agent_find_stream (agent, pair->stream_id), pair->remote, &password);
 
   bool controlling = agent->controlling_mode;
@@ -1697,8 +1697,8 @@ int conn_check_send (NiceAgent *agent, CandidateCheckPair *pair)
         pair->foundation,
         agent_to_ice_compatibility (agent));
 
-    nice_debug ("Agent %p: conncheck created %" G_GSIZE_FORMAT " - %p",
-        agent, buffer_len, pair->stun_message.buffer);
+    nice_debug ("Agent %p: conncheck created %zd - %p", agent, buffer_len,
+        pair->stun_message.buffer);
 
     if (agent->compatibility == NICE_COMPATIBILITY_MSN ||
         agent->compatibility == NICE_COMPATIBILITY_OC2007) {
@@ -2684,8 +2684,11 @@ static bool conncheck_stun_validater (StunAgent *agent,
         *password_len = strlen (pass);
 
         if (msn_msoc_nice_compatibility) {
-          data->password = g_base64_decode (pass, password_len);
+          gsize pass_len;
+
+          data->password = g_base64_decode (pass, &pass_len);
           *password = data->password;
+          *password_len = pass_len;
         }
       }
 
@@ -2926,6 +2929,8 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, Stream *stream,
     if (   agent->compatibility == NICE_COMPATIBILITY_MSN
         || agent->compatibility == NICE_COMPATIBILITY_OC2007) {
       if (local_candidate && remote_candidate2) {
+        gsize key_len;
+
 	if (agent->compatibility == NICE_COMPATIBILITY_MSN) {
           username = (uint8_t *) stun_message_find (&req,
 	  STUN_ATTRIBUTE_USERNAME, &username_len);
@@ -2935,10 +2940,12 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, Stream *stream,
 	  memcpy (username, uname, MIN (uname_len, username_len));
 
 	  req.key = g_base64_decode ((gchar *) remote_candidate2->password,
-              &req.key_len);
+              &key_len);
+          req.key_len = key_len;
 	} else if (agent->compatibility == NICE_COMPATIBILITY_OC2007) {
           req.key = g_base64_decode ((gchar *) local_candidate->password,
-              &req.key_len);
+              &key_len);
+          req.key_len = key_len;
 	}
       } else {
         nice_debug ("Agent %p : received MSN incoming check from unknown remote candidate. "

@@ -83,9 +83,9 @@ typedef struct {
   NiceSocket *base_socket;
   NiceAddress server_addr;
   uint8_t *username;
-  size_t username_len;
+  gsize username_len;
   uint8_t *password;
-  size_t password_len;
+  gsize password_len;
   NiceTurnSocketCompatibility compatibility;
   GQueue *send_requests;
   uint8_t ms_realm[STUN_MAX_MS_REALM_LEN + 1];
@@ -209,13 +209,13 @@ nice_turn_socket_new (GMainContext *ctx, NiceAddress *addr,
     priv->password = g_base64_decode (password, &priv->password_len);
   } else {
     priv->username = (uint8_t *)g_strdup (username);
-    priv->username_len = (size_t) strlen (username);
+    priv->username_len = (gsize) strlen (username);
     if (compatibility == NICE_TURN_SOCKET_COMPATIBILITY_GOOGLE) {
       priv->password = NULL;
       priv->password_len = 0;
     } else {
       priv->password = (uint8_t *)g_strdup (password);
-      priv->password_len = (size_t) strlen (password);
+      priv->password_len = (gsize) strlen (password);
     }
   }
   priv->server_addr = *server_addr;
