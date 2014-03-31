@@ -642,7 +642,7 @@ socket_send_message (NiceSocket *sock, const NiceAddress *to,
               buffer, sizeof(buffer), STUN_IND_SEND))
         goto send;
       if (stun_message_append_xor_addr (&msg, STUN_ATTRIBUTE_PEER_ADDRESS,
-              &sa.addr, sizeof(sa)) !=
+              &sa.storage, sizeof(sa)) !=
           STUN_MESSAGE_RETURN_SUCCESS)
         goto send;
     } else {
@@ -660,7 +660,7 @@ socket_send_message (NiceSocket *sock, const NiceAddress *to,
           goto send;
       }
       if (stun_message_append_addr (&msg, STUN_ATTRIBUTE_DESTINATION_ADDRESS,
-              &sa.addr, sizeof(sa)) !=
+              &sa.storage, sizeof(sa)) !=
           STUN_MESSAGE_RETURN_SUCCESS)
         goto send;
 
@@ -852,7 +852,7 @@ priv_binding_expired_timeout (gpointer data)
         /* look up binding associated with peer */
         stun_message_find_xor_addr (
             &priv->current_binding_msg->message,
-            STUN_ATTRIBUTE_XOR_PEER_ADDRESS, &sa.addr, &sa_len);
+            STUN_ATTRIBUTE_XOR_PEER_ADDRESS, &sa.storage, &sa_len);
         nice_address_set_from_sockaddr (&to, &sa.addr);
 
         /* If the binding is being refreshed, then move it to
@@ -1071,7 +1071,7 @@ nice_turn_socket_parse_recv (NiceSocket *sock, NiceSocket **from_sock,
               /* look up binding associated with peer */
               stun_message_find_xor_addr (
                   &priv->current_binding_msg->message,
-                  STUN_ATTRIBUTE_XOR_PEER_ADDRESS, &sa.addr, &sa_len);
+                  STUN_ATTRIBUTE_XOR_PEER_ADDRESS, &sa.storage, &sa_len);
               nice_address_set_from_sockaddr (&to, &sa.addr);
 
               for (i = priv->channels; i; i = i->next) {
@@ -1174,7 +1174,7 @@ nice_turn_socket_parse_recv (NiceSocket *sock, NiceSocket **from_sock,
             nice_debug ("got response for CreatePermission");
             stun_message_find_xor_addr (
                 &current_create_permission_msg->message,
-                STUN_ATTRIBUTE_XOR_PEER_ADDRESS, &peer.addr, &peer_len);
+                STUN_ATTRIBUTE_XOR_PEER_ADDRESS, &peer.storage, &peer_len);
             nice_address_set_from_sockaddr (&to, &peer.addr);
 
             /* unathorized => resend with realm and nonce */
@@ -1255,12 +1255,12 @@ nice_turn_socket_parse_recv (NiceSocket *sock, NiceSocket **from_sock,
         if (priv->compatibility == NICE_TURN_SOCKET_COMPATIBILITY_DRAFT9 ||
             priv->compatibility == NICE_TURN_SOCKET_COMPATIBILITY_RFC5766) {
           if (stun_message_find_xor_addr (&msg, STUN_ATTRIBUTE_REMOTE_ADDRESS,
-                  &sa.addr, &from_len) !=
+                  &sa.storage, &from_len) !=
               STUN_MESSAGE_RETURN_SUCCESS)
             goto recv;
         } else {
           if (stun_message_find_addr (&msg, STUN_ATTRIBUTE_REMOTE_ADDRESS,
-                  &sa.addr, &from_len) !=
+                  &sa.storage, &from_len) !=
               STUN_MESSAGE_RETURN_SUCCESS)
             goto recv;
         }
@@ -1440,7 +1440,7 @@ priv_retransmissions_create_permission_tick_unlocked (TurnPriv *priv, GList *lis
           stun_agent_forget_transaction (&priv->agent, id);
           stun_message_find_xor_addr (
               &current_create_permission_msg->message,
-              STUN_ATTRIBUTE_XOR_PEER_ADDRESS, &addr.addr, &addr_len);
+              STUN_ATTRIBUTE_XOR_PEER_ADDRESS, &addr.storage, &addr_len);
           nice_address_set_from_sockaddr (&to, &addr.addr);
 
           priv_remove_sent_permission_for_peer (priv, &to);
@@ -1647,7 +1647,7 @@ priv_send_create_permission(TurnPriv *priv, StunMessage *resp,
       priv->password_len,
       realm, realm_len,
       nonce, nonce_len,
-      &addr.addr,
+      &addr.storage,
       STUN_USAGE_TURN_COMPATIBILITY_RFC5766);
 
   if (msg_buf_len > 0) {
@@ -1699,7 +1699,7 @@ priv_send_channel_bind (TurnPriv *priv,  StunMessage *resp,
   }
 
   if (stun_message_append_xor_addr (&msg->message, STUN_ATTRIBUTE_PEER_ADDRESS,
-          &sa.addr,
+          &sa.storage,
           sizeof(sa))
       != STUN_MESSAGE_RETURN_SUCCESS) {
     g_free (msg);
@@ -1829,7 +1829,7 @@ priv_add_channel_binding (TurnPriv *priv, const NiceAddress *peer)
 
     if (stun_message_append_addr (&msg->message,
             STUN_ATTRIBUTE_DESTINATION_ADDRESS,
-            &sa.addr, sizeof(sa))
+            &sa.storage, sizeof(sa))
         != STUN_MESSAGE_RETURN_SUCCESS) {
       g_free (msg);
       return FALSE;

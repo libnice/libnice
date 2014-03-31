@@ -146,29 +146,29 @@ check_af (const char *name, int family, socklen_t addrlen)
   stun_agent_init_request (&agent, &msg, buf, sizeof(buf), STUN_BINDING);
 
   if (stun_message_append_addr (&msg, STUN_ATTRIBUTE_MAPPED_ADDRESS,
-          (struct sockaddr *)&addr, addrlen) !=
+          &addr, addrlen) !=
       STUN_MESSAGE_RETURN_UNSUPPORTED_ADDRESS)
     fatal ("Unknown address family test failed");
   if (stun_message_append_xor_addr (&msg, STUN_ATTRIBUTE_XOR_MAPPED_ADDRESS,
-          (struct sockaddr *)&addr, addrlen) !=
+          &addr, addrlen) !=
       STUN_MESSAGE_RETURN_UNSUPPORTED_ADDRESS)
     fatal ("Unknown address family xor test failed");
 
   addr.ss_family = family;
   if (stun_message_append_addr (&msg, STUN_ATTRIBUTE_MAPPED_ADDRESS,
-          (struct sockaddr *)&addr, addrlen - 1) != STUN_MESSAGE_RETURN_INVALID)
+          &addr, addrlen - 1) != STUN_MESSAGE_RETURN_INVALID)
     fatal ("Too small %s sockaddr test failed", name);
 
   if (stun_message_append_xor_addr (&msg, STUN_ATTRIBUTE_XOR_MAPPED_ADDRESS,
-          (struct sockaddr *)&addr, addrlen - 1) != STUN_MESSAGE_RETURN_INVALID)
+          &addr, addrlen - 1) != STUN_MESSAGE_RETURN_INVALID)
     fatal ("Too small %s sockaddr xor test failed", name);
 
   if (stun_message_append_addr (&msg, STUN_ATTRIBUTE_MAPPED_ADDRESS,
-          (struct sockaddr *)&addr, addrlen) != STUN_MESSAGE_RETURN_SUCCESS)
+          &addr, addrlen) != STUN_MESSAGE_RETURN_SUCCESS)
     fatal ("%s sockaddr test failed", name);
 
   if (stun_message_append_xor_addr (&msg, STUN_ATTRIBUTE_XOR_MAPPED_ADDRESS,
-          (struct sockaddr *)&addr, addrlen) != STUN_MESSAGE_RETURN_SUCCESS)
+          &addr, addrlen) != STUN_MESSAGE_RETURN_SUCCESS)
     fatal ("%s sockaddr xor test failed", name);
 }
 
@@ -176,7 +176,10 @@ int main (void)
 {
   uint8_t buf[100];
   size_t len;
-  struct sockaddr addr;
+  union {
+    struct sockaddr_storage storage;
+    struct sockaddr addr;
+  } addr;
 
   StunAgent agent;
   StunMessage msg;
@@ -240,11 +243,11 @@ int main (void)
     fatal ("String overflow test failed");
 
   memset (&addr, 0, sizeof (addr));
-  addr.sa_family = AF_INET;
-#ifdef HAVE_SA_LEN
-  addr.sa_len = sizeof (addr);
+  addr.addr.sa_family = AF_INET;
+#ifdef HAVE_SS_LEN
+  addr.addr.ss_len = sizeof (addr);
 #endif
-  if (stun_message_append_xor_addr (&msg, 0xffff, &addr,
+  if (stun_message_append_xor_addr (&msg, 0xffff, &addr.storage,
           sizeof (addr)) != STUN_MESSAGE_RETURN_NOT_ENOUGH_SPACE)
     fatal ("Address overflow test failed");
   len = sizeof (msg);

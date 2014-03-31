@@ -356,7 +356,7 @@ static void test_attribute (void)
 
   union
   {
-    struct sockaddr sa;
+    struct sockaddr_storage st;
     struct sockaddr_in6 s6;
   } addr;
   socklen_t addrlen;
@@ -422,27 +422,27 @@ static void test_attribute (void)
     fatal ("String test failed");
 
   addrlen = sizeof (addr);
-  if (stun_message_find_addr (&msg, 0xff01, &addr.sa, &addrlen) !=
+  if (stun_message_find_addr (&msg, 0xff01, &addr.st, &addrlen) !=
       STUN_MESSAGE_RETURN_INVALID)
     fatal ("Too short addres test failed");
   addrlen = sizeof (addr);
-  if (stun_message_find_addr (&msg, 0xff02, &addr.sa, &addrlen) !=
+  if (stun_message_find_addr (&msg, 0xff02, &addr.st, &addrlen) !=
       STUN_MESSAGE_RETURN_UNSUPPORTED_ADDRESS)
     fatal ("Unknown address family test failed");
   addrlen = sizeof (addr);
-  if (stun_message_find_addr (&msg, 0xff03, &addr.sa, &addrlen) !=
+  if (stun_message_find_addr (&msg, 0xff03, &addr.st, &addrlen) !=
       STUN_MESSAGE_RETURN_INVALID)
     fatal ("Too short IPv6 address test failed");
   addrlen = sizeof (addr);
-  if (stun_message_find_addr (&msg, 0xff04, &addr.sa, &addrlen) !=
+  if (stun_message_find_addr (&msg, 0xff04, &addr.st, &addrlen) !=
       STUN_MESSAGE_RETURN_SUCCESS)
     fatal ("IPv4 address test failed");
   addrlen = sizeof (addr);
-  if (stun_message_find_addr (&msg, 0xff05, &addr.sa, &addrlen) !=
+  if (stun_message_find_addr (&msg, 0xff05, &addr.st, &addrlen) !=
       STUN_MESSAGE_RETURN_INVALID)
     fatal ("Too big IPv4 address test failed");
   addrlen = sizeof (addr);
-  if (stun_message_find_xor_addr (&msg, 0xff06, &addr.sa, &addrlen) !=
+  if (stun_message_find_xor_addr (&msg, 0xff06, &addr.st, &addrlen) !=
       STUN_MESSAGE_RETURN_SUCCESS ||
       memcmp (&addr.s6.sin6_addr, "\x20\x01\x0d\xb8""\xde\xad\xbe\xef"
                                   "\xde\xfa\xce\xd0""\xfa\xce\xde\xed", 16))
@@ -598,8 +598,11 @@ static void test_vectors (void)
 
        0x80, 0x28, 0x00, 0x04, // FINGERPRINT
        0xec, 0x27, 0xae, 0xb7};
-  struct sockaddr_in ip4;
-  struct sockaddr_in6 ip6;
+  union {
+    struct sockaddr_storage st;
+    struct sockaddr_in ip4;
+    struct sockaddr_in6 ip6;
+  } addr;
   socklen_t addrlen;
 
   StunAgent agent;
@@ -616,8 +619,7 @@ static void test_vectors (void)
       STUN_AGENT_USAGE_SHORT_TERM_CREDENTIALS |
       STUN_AGENT_USAGE_USE_FINGERPRINT);
 
-  memset (&ip4, 0, sizeof (ip4));
-  memset (&ip6, 0, sizeof (ip6));
+  memset (&addr, 0, sizeof (addr));
 
   puts ("Checking test vectors...");
 
@@ -650,15 +652,15 @@ static void test_vectors (void)
           test_vector_validater, (void *) 0) != STUN_VALIDATION_UNMATCHED_RESPONSE)
     fatal ("Response ipv4 test vector authentication failed");
 
-  addrlen = sizeof (ip4);
+  addrlen = sizeof (addr.ip4);
   if (stun_message_find_xor_addr (&msg, STUN_ATTRIBUTE_XOR_MAPPED_ADDRESS,
-          (struct sockaddr *)&ip4, &addrlen) != STUN_MESSAGE_RETURN_SUCCESS)
+          &addr.st, &addrlen) != STUN_MESSAGE_RETURN_SUCCESS)
     fatal ("Response test vector IPv4 extraction failed");
-  if (ip4.sin_family != AF_INET)
+  if (addr.ip4.sin_family != AF_INET)
     fatal ("Response test vector IPv4 family failed");
-  if (ntohl (ip4.sin_addr.s_addr) != 0xC0000201)
+  if (ntohl (addr.ip4.sin_addr.s_addr) != 0xC0000201)
     fatal ("Response test vector IPv4 address failed");
-  if (ntohs (ip4.sin_port) != 32853)
+  if (ntohs (addr.ip4.sin_port) != 32853)
     fatal ("Response test vector IPv6 port failed");
 
   if (stun_agent_validate (&agent, &msg, req, sizeof(req),
@@ -683,16 +685,16 @@ static void test_vectors (void)
           test_vector_validater, (void *) 1) != STUN_VALIDATION_SUCCESS)
     fatal ("Response ipv6 test vector authentication failed");
 
-  addrlen = sizeof (ip6);
+  addrlen = sizeof (addr.ip6);
   if (stun_message_find_xor_addr (&msg, STUN_ATTRIBUTE_XOR_MAPPED_ADDRESS,
-          (struct sockaddr *)&ip6, &addrlen) != STUN_MESSAGE_RETURN_SUCCESS)
+          &addr.st, &addrlen) != STUN_MESSAGE_RETURN_SUCCESS)
     fatal ("Response test vector IPv6 extraction failed");
-  if (ip6.sin6_family != AF_INET6)
+  if (addr.ip6.sin6_family != AF_INET6)
     fatal ("Response test vector IPv6 family failed");
-  if (memcmp (ip6.sin6_addr.s6_addr, "\x20\x01\x0d\xb8\x12\x34\x56\x78"
+  if (memcmp (addr.ip6.sin6_addr.s6_addr, "\x20\x01\x0d\xb8\x12\x34\x56\x78"
               "\x00\x11\x22\x33\x44\x55\x66\x77", 16) != 0)
     fatal ("Response test vector IPv6 address failed");
-  if (ntohs (ip6.sin6_port) != 32853)
+  if (ntohs (addr.ip6.sin6_port) != 32853)
     fatal ("Response test vector IPv6 port failed");
 
 

@@ -192,10 +192,10 @@ recv_packet:
       if (stun_message_has_cookie (&request))
         stun_message_append_xor_addr (&response,
             STUN_ATTRIBUTE_XOR_MAPPED_ADDRESS,
-            &addr.addr, addr_len);
+            &addr.storage, addr_len);
       else
          stun_message_append_addr (&response, STUN_ATTRIBUTE_MAPPED_ADDRESS,
-             &addr.addr, addr_len);
+             &addr.storage, addr_len);
       break;
 
     case STUN_SHARED_SECRET:

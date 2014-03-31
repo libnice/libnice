@@ -67,7 +67,11 @@
 
 int main (void)
 {
-  struct sockaddr_in ip4;
+  union {
+    struct sockaddr sa;
+    struct sockaddr_storage storage;
+    struct sockaddr_in ip4;
+  } addr;
   uint8_t req_buf[STUN_MAX_MESSAGE_SIZE];
   uint8_t resp_buf[STUN_MAX_MESSAGE_SIZE];
   const const uint64_t tie = 0x8000000000000000LL;
@@ -95,13 +99,13 @@ int main (void)
       STUN_AGENT_USAGE_USE_FINGERPRINT |
       STUN_AGENT_USAGE_SHORT_TERM_CREDENTIALS);
 
-  memset (&ip4, 0, sizeof (ip4));
-  ip4.sin_family = AF_INET;
+  memset (&addr, 0, sizeof (addr));
+  addr.ip4.sin_family = AF_INET;
 #ifdef HAVE_SA_LEN
-  ip4.sin_len = sizeof (addr);
+  addr.ip4.sin_len = sizeof (addr);
 #endif
-  ip4.sin_port = htons (12345);
-  ip4.sin_addr.s_addr = htonl (0x7f000001);
+  addr.ip4.sin_port = htons (12345);
+  addr.ip4.sin_addr.s_addr = htonl (0x7f000001);
 
   /* Incorrect message class */
   assert (stun_agent_init_request (&agent, &req, req_buf, sizeof(req_buf), STUN_BINDING));
@@ -112,8 +116,8 @@ int main (void)
 
   len = sizeof (resp_buf);
   val2 = stun_usage_ice_conncheck_create_reply (&agent, &req,
-      &resp, resp_buf, &len, (struct sockaddr *)&ip4,
-      sizeof (ip4), &control, tie, STUN_USAGE_ICE_COMPATIBILITY_RFC5245);
+      &resp, resp_buf, &len, &addr.storage,
+      sizeof (addr.ip4), &control, tie, STUN_USAGE_ICE_COMPATIBILITY_RFC5245);
   assert (val2 == STUN_USAGE_ICE_RETURN_INVALID_REQUEST);
   assert (len == 0);
 
@@ -126,8 +130,8 @@ int main (void)
 
   len = sizeof (resp_buf);
   val2 = stun_usage_ice_conncheck_create_reply (&agent, &req,
-      &resp, resp_buf, &len, (struct sockaddr *)&ip4,
-      sizeof (ip4), &control, tie, STUN_USAGE_ICE_COMPATIBILITY_RFC5245);
+      &resp, resp_buf, &len, &addr.storage,
+      sizeof (addr.ip4), &control, tie, STUN_USAGE_ICE_COMPATIBILITY_RFC5245);
   assert (val2 == STUN_USAGE_ICE_RETURN_INVALID_METHOD);
   assert (len > 0);
 
@@ -181,8 +185,8 @@ int main (void)
 
   len = sizeof (resp_buf);
   val2 = stun_usage_ice_conncheck_create_reply (&agent, &req,
-      &resp, resp_buf, &len, (struct sockaddr *)&ip4,
-      sizeof (ip4), &control, tie, STUN_USAGE_ICE_COMPATIBILITY_RFC5245);
+      &resp, resp_buf, &len, &addr.storage,
+      sizeof (addr.ip4), &control, tie, STUN_USAGE_ICE_COMPATIBILITY_RFC5245);
   assert (val2 == STUN_USAGE_ICE_RETURN_SUCCESS);
   assert (len > 0);
   assert (stun_agent_validate (&agent, &resp, resp_buf, len,
@@ -198,15 +202,15 @@ int main (void)
   rlen = stun_agent_finish_message (&agent, &req, pass, pass_len);
   assert (rlen > 0);
 
-  ip4.sin_family = AF_UNSPEC;
+  addr.ip4.sin_family = AF_UNSPEC;
   len = sizeof (resp_buf);
   val2 = stun_usage_ice_conncheck_create_reply (&agent, &req,
-      &resp, resp_buf, &len, (struct sockaddr *)&ip4,
-      sizeof (ip4), &control, tie, STUN_USAGE_ICE_COMPATIBILITY_RFC5245);
+      &resp, resp_buf, &len, &addr.storage,
+      sizeof (addr.ip4), &control, tie, STUN_USAGE_ICE_COMPATIBILITY_RFC5245);
   assert (val2 == STUN_USAGE_ICE_RETURN_INVALID_ADDRESS);
   assert (len == 0);
 
-  ip4.sin_family = AF_INET;
+  addr.ip4.sin_family = AF_INET;
 
   /* Lost role conflict */
   assert (stun_agent_init_request (&agent, &req, req_buf, sizeof(req_buf), STUN_BINDING));
@@ -221,8 +225,8 @@ int main (void)
   len = sizeof (resp_buf);
   control = true;
   val2 = stun_usage_ice_conncheck_create_reply (&agent, &req,
-      &resp, resp_buf, &len, (struct sockaddr *)&ip4,
-      sizeof (ip4), &control, tie, STUN_USAGE_ICE_COMPATIBILITY_RFC5245);
+      &resp, resp_buf, &len, &addr.storage,
+      sizeof (addr.ip4), &control, tie, STUN_USAGE_ICE_COMPATIBILITY_RFC5245);
   assert (val2 == STUN_USAGE_ICE_RETURN_ROLE_CONFLICT);
   assert (len > 0);
   assert (control == false);
@@ -242,8 +246,8 @@ int main (void)
   len = sizeof (resp_buf);
   control = false;
   val2 = stun_usage_ice_conncheck_create_reply (&agent, &req,
-      &resp, resp_buf, &len, (struct sockaddr *)&ip4,
-      sizeof (ip4), &control, tie, STUN_USAGE_ICE_COMPATIBILITY_RFC5245);
+      &resp, resp_buf, &len, &addr.storage,
+      sizeof (addr.ip4), &control, tie, STUN_USAGE_ICE_COMPATIBILITY_RFC5245);
   assert (val2 == STUN_USAGE_ICE_RETURN_SUCCESS);
   assert (len > 0);
   assert (control == false);

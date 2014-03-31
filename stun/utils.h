@@ -68,7 +68,7 @@ void *stun_setw (uint8_t *ptr, uint16_t value);
 void stun_set_type (uint8_t *h, StunClass c, StunMethod m);
 
 StunMessageReturn stun_xor_address (const StunMessage *msg,
-    struct sockaddr *addr, socklen_t addrlen,
+    struct sockaddr_storage *addr, socklen_t addrlen,
     uint32_t magic_cookie);
 
 

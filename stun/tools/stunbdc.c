@@ -108,8 +108,8 @@ static int run (int family, const char *hostname, const char *service)
 
     printaddr ("Server address", ptr->ai_addr, ptr->ai_addrlen);
 
-    val = stun_usage_bind_run (ptr->ai_addr, ptr->ai_addrlen,
-                         &addr.addr, &addrlen);
+    val = stun_usage_bind_run (ptr->ai_addr, ptr->ai_addrlen, &addr.storage,
+        &addrlen);
     if (val)
       fprintf (stderr, "%d\n", val);
     else

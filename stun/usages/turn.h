@@ -212,7 +212,7 @@ size_t stun_usage_turn_create_permission (StunAgent *agent, StunMessage *msg,
     uint8_t *password, size_t password_len,
     uint8_t *realm, size_t realm_len,
     uint8_t *nonce, size_t nonce_len,
-    struct sockaddr *peer,
+    struct sockaddr_storage *peer,
     StunUsageTurnCompatibility compatibility);
 
 /**
@@ -242,9 +242,9 @@ size_t stun_usage_turn_create_permission (StunAgent *agent, StunMessage *msg,
  * Returns: A #StunUsageTurnReturn value
  */
 StunUsageTurnReturn stun_usage_turn_process (StunMessage *msg,
-    struct sockaddr *relay_addr, socklen_t *relay_addrlen,
-    struct sockaddr *addr, socklen_t *addrlen,
-    struct sockaddr *alternate_server, socklen_t *alternate_server_len,
+    struct sockaddr_storage *relay_addr, socklen_t *relay_addrlen,
+    struct sockaddr_storage *addr, socklen_t *addrlen,
+    struct sockaddr_storage *alternate_server, socklen_t *alternate_server_len,
     uint32_t *bandwidth, uint32_t *lifetime,
     StunUsageTurnCompatibility compatibility);
 

@@ -130,7 +130,7 @@ stun_usage_ice_conncheck_create (StunAgent *agent, StunMessage *msg,
 
 
 StunUsageIceReturn stun_usage_ice_conncheck_process (StunMessage *msg,
-    struct sockaddr *addr, socklen_t *addrlen,
+    struct sockaddr_storage *addr, socklen_t *addrlen,
     StunUsageIceCompatibility compatibility)
 {
   int code = -1;
@@ -226,7 +226,7 @@ stun_bind_error (StunAgent *agent, StunMessage *msg,
 StunUsageIceReturn
 stun_usage_ice_conncheck_create_reply (StunAgent *agent, StunMessage *req,
     StunMessage *msg, uint8_t *buf, size_t *plen,
-    const struct sockaddr *src, socklen_t srclen,
+    const struct sockaddr_storage *src, socklen_t srclen,
     bool *control, uint64_t tie,
     StunUsageIceCompatibility compatibility)
 {

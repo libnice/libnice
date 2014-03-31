@@ -94,8 +94,8 @@ size_t stun_usage_bind_create (StunAgent *agent, StunMessage *msg,
 }
 
 StunUsageBindReturn stun_usage_bind_process (StunMessage *msg,
-    struct sockaddr *addr, socklen_t *addrlen,
-    struct sockaddr *alternate_server, socklen_t *alternate_server_len)
+    struct sockaddr_storage *addr, socklen_t *addrlen,
+    struct sockaddr_storage *alternate_server, socklen_t *alternate_server_len)
 {
   int code = -1;
   StunMessageReturn val;
@@ -355,7 +355,7 @@ static int stun_err_dequeue (int fd)
 
 static ssize_t
 stun_trans_sendto (StunTransport *tr, const uint8_t *buf, size_t len,
-                     const struct sockaddr *dst, socklen_t dstlen)
+    const struct sockaddr *dst, socklen_t dstlen)
 {
   static const int flags = MSG_DONTWAIT | MSG_NOSIGNAL;
   ssize_t val;
@@ -375,14 +375,15 @@ stun_trans_sendto (StunTransport *tr, const uint8_t *buf, size_t len,
 
 static ssize_t
 stun_trans_recvfrom (StunTransport *tr, uint8_t *buf, size_t maxlen,
-                       struct sockaddr * dst,
+                       struct sockaddr_storage * dst,
                        socklen_t * dstlen)
 {
   static const int flags = MSG_DONTWAIT | MSG_NOSIGNAL;
   ssize_t val;
 
   if (dstlen != NULL)
-    val = recvfrom (tr->fd, (void *)buf, maxlen, flags, dst, dstlen);
+    val = recvfrom (tr->fd, (void *)buf, maxlen, flags, (struct sockaddr *) dst,
+        dstlen);
   else
     val = recv (tr->fd, (void *)buf, maxlen, flags);
 
@@ -396,14 +397,11 @@ stun_trans_recvfrom (StunTransport *tr, uint8_t *buf, size_t maxlen,
 static ssize_t
 stun_trans_send (StunTransport *tr, const uint8_t *buf, size_t len)
 {
-  union {
-    struct sockaddr_storage *storage;
-    struct sockaddr *addr;
-  } conv;
+  struct sockaddr *conv;
 
-  conv.storage = &tr->dst;
+  conv = (struct sockaddr *) &tr->dst;
 
-  return stun_trans_sendto (tr, buf, len, conv.addr, tr->dstlen);
+  return stun_trans_sendto (tr, buf, len, conv, tr->dstlen);
 }
 
 static ssize_t
@@ -454,7 +452,7 @@ stun_trans_poll (StunTransport *tr, unsigned int delay)
 
 /** Blocking mode STUN binding discovery */
 StunUsageBindReturn stun_usage_bind_run (const struct sockaddr *srv,
-    socklen_t srvlen, struct sockaddr *addr, socklen_t *addrlen)
+    socklen_t srvlen, struct sockaddr_storage *addr, socklen_t *addrlen)
 {
   StunTimer timer;
   StunTransport trans;
@@ -467,10 +465,7 @@ StunUsageBindReturn stun_usage_bind_run (const struct sockaddr *srv,
   size_t len;
   StunUsageTransReturn ret;
   int val;
-  union {
-    struct sockaddr_storage storage;
-    struct sockaddr addr;
-  } alternate_server;
+  struct sockaddr_storage alternate_server;
   socklen_t alternate_server_len = sizeof (alternate_server);
   StunUsageBindReturn bind_ret;
 
@@ -535,12 +530,12 @@ StunUsageBindReturn stun_usage_bind_run (const struct sockaddr *srv,
       ret = STUN_USAGE_TRANS_RETURN_RETRY;
     } else {
       bind_ret = stun_usage_bind_process (&msg, addr, addrlen,
-          &alternate_server.addr, &alternate_server_len);
+          &alternate_server, &alternate_server_len);
       if (bind_ret == STUN_USAGE_BIND_RETURN_ALTERNATE_SERVER) {
         stun_trans_deinit (&trans);
 
         ret = stun_trans_create (&trans, SOCK_DGRAM, 0,
-            &alternate_server.addr, alternate_server_len);
+            (struct sockaddr *) &alternate_server, alternate_server_len);
 
         if (ret != STUN_USAGE_TRANS_RETURN_SUCCESS) {
           return STUN_USAGE_BIND_RETURN_ERROR;

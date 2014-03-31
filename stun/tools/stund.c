@@ -223,10 +223,10 @@ static int dgram_process (int sock, StunAgent *oldagent, StunAgent *newagent)
       stun_agent_init_response (agent, &response, buf, sizeof (buf), &request);
       if (stun_message_has_cookie (&request))
         stun_message_append_xor_addr (&response,
-            STUN_ATTRIBUTE_XOR_MAPPED_ADDRESS, &addr.addr, addr_len);
+            STUN_ATTRIBUTE_XOR_MAPPED_ADDRESS, &addr.storage, addr_len);
       else
          stun_message_append_addr (&response, STUN_ATTRIBUTE_MAPPED_ADDRESS,
-             &addr.addr, addr_len);
+             &addr.storage, addr_len);
       break;
 
     case STUN_SHARED_SECRET:

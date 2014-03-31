@@ -2124,7 +2124,7 @@ static gboolean priv_map_reply_to_conn_check_request (NiceAgent *agent, Stream *
 
       if (memcmp (discovery_id, response_id, sizeof(StunTransactionId)) == 0) {
         res = stun_usage_ice_conncheck_process (resp,
-            &sockaddr.addr, &socklen,
+            &sockaddr.storage, &socklen,
             agent_to_ice_compatibility (agent));
         nice_debug ("Agent %p : stun_bind_process/conncheck for %p res %d "
             "(controlling=%d).", agent, p, (int)res, agent->controlling_mode);
@@ -2175,7 +2175,7 @@ static gboolean priv_map_reply_to_conn_check_request (NiceAgent *agent, Stream *
                 " conncheck %p SUCCEEDED.", agent, p);
             priv_conn_check_unfreeze_related (agent, stream, p);
           } else {
-            ok_pair = priv_process_response_check_for_peer_reflexive(agent,
+            ok_pair = priv_process_response_check_for_peer_reflexive (agent,
                 stream, component, p, sockptr, &sockaddr.addr,
                 local_candidate, remote_candidate);
           }
@@ -2265,8 +2265,8 @@ static gboolean priv_map_reply_to_discovery_request (NiceAgent *agent, StunMessa
       stun_message_id (&d->stun_message, discovery_id);
 
       if (memcmp (discovery_id, response_id, sizeof(StunTransactionId)) == 0) {
-        res = stun_usage_bind_process (resp, &sockaddr.addr,
-            &socklen, &alternate.addr, &alternatelen);
+        res = stun_usage_bind_process (resp, &sockaddr.storage,
+            &socklen, &alternate.storage, &alternatelen);
         nice_debug ("Agent %p : stun_bind_process/disc for %p res %d.",
             agent, d, (int)res);
 
@@ -2395,9 +2395,9 @@ static gboolean priv_map_reply_to_relay_request (NiceAgent *agent, StunMessage *
 
       if (memcmp (discovery_id, response_id, sizeof(StunTransactionId)) == 0) {
         res = stun_usage_turn_process (resp,
-            &relayaddr.addr, &relayaddrlen,
-            &sockaddr.addr, &socklen,
-            &alternate.addr, &alternatelen,
+            &relayaddr.storage, &relayaddrlen,
+            &sockaddr.storage, &socklen,
+            &alternate.storage, &alternatelen,
             &bandwidth, &lifetime, agent_to_turn_compatibility (agent));
         nice_debug ("Agent %p : stun_turn_process/disc for %p res %d.",
             agent, d, (int)res);
@@ -2956,7 +2956,7 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, Stream *stream,
 
     rbuf_len = sizeof (rbuf);
     res = stun_usage_ice_conncheck_create_reply (&agent->stun_agent, &req,
-        &msg, rbuf, &rbuf_len, &sockaddr.addr, sizeof (sockaddr),
+        &msg, rbuf, &rbuf_len, &sockaddr.storage, sizeof (sockaddr),
         &control, agent->tie_breaker,
         agent_to_ice_compatibility (agent));
 

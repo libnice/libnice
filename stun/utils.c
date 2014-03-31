@@ -88,18 +88,18 @@ void stun_set_type (uint8_t *h, StunClass c, StunMethod m)
 
 
 StunMessageReturn stun_xor_address (const StunMessage *msg,
-    struct sockaddr *addr, socklen_t addrlen,
+    struct sockaddr_storage *addr, socklen_t addrlen,
     uint32_t magic_cookie)
 {
   union {
-    struct sockaddr *addr;
+    struct sockaddr_storage *addr;
     struct sockaddr_in *in;
     struct sockaddr_in6 *in6;
   } addr_ptr;
 
   addr_ptr.addr = addr;
 
-  switch (addr->sa_family)
+  switch (addr->ss_family)
   {
     case AF_INET:
     {
