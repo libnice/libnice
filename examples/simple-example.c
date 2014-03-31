@@ -77,7 +77,7 @@ main(int argc, char *argv[])
 {
   NiceAgent *agent;
   gchar *stun_addr = NULL;
-  guint stun_port;
+  guint stun_port = 0;
   gboolean controlling;
 
   // Parse arguments

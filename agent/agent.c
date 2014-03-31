@@ -4681,11 +4681,11 @@ nice_agent_parse_remote_candidate_sdp (NiceAgent *agent, guint stream_id,
   int ntype = -1;
   gchar **tokens = NULL;
   const gchar *foundation = NULL;
-  guint component_id;
+  guint component_id = 0;
   const gchar *transport = NULL;
-  guint32 priority;
+  guint32 priority = 0;
   const gchar *addr = NULL;
-  guint16 port;
+  guint16 port = 0;
   const gchar *type = NULL;
   const gchar *raddr = NULL;
   guint16 rport = 0;
