@@ -357,7 +357,8 @@ int pseudo_tcp_socket_get_error(PseudoTcpSocket *self);
  *
  * Since: 0.0.11
  */
-gboolean pseudo_tcp_socket_get_next_clock(PseudoTcpSocket *self, long *timeout);
+gboolean pseudo_tcp_socket_get_next_clock(PseudoTcpSocket *self,
+    guint64 *timeout);
 
 
 /**

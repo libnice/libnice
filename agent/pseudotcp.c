@@ -936,7 +936,7 @@ pseudo_tcp_socket_notify_message (PseudoTcpSocket *self,
 }
 
 gboolean
-pseudo_tcp_socket_get_next_clock(PseudoTcpSocket *self, long *timeout)
+pseudo_tcp_socket_get_next_clock(PseudoTcpSocket *self, guint64 *timeout)
 {
   PseudoTcpSocketPrivate *priv = self->priv;
   guint32 now = get_current_time ();

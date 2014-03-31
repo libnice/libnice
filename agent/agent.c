@@ -1454,7 +1454,7 @@ static void
 adjust_tcp_clock (NiceAgent *agent, Stream *stream, Component *component)
 {
   if (component->tcp) {
-    long timeout = component->last_clock_timeout;
+    guint64 timeout = component->last_clock_timeout;
 
     if (pseudo_tcp_socket_get_next_clock (component->tcp, &timeout)) {
       if (timeout != component->last_clock_timeout) {
