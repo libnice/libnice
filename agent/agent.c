@@ -67,7 +67,6 @@
 #include "discovery.h"
 #include "agent.h"
 #include "agent-priv.h"
-#include "agent-signals-marshal.h"
 #include "iostream.h"
 
 #include "stream.h"
@@ -607,7 +606,7 @@ nice_agent_class_init (NiceAgentClass *klass)
           0,
           NULL,
           NULL,
-          agent_marshal_VOID__UINT_UINT_UINT,
+          NULL,
           G_TYPE_NONE,
           3,
           G_TYPE_UINT, G_TYPE_UINT, G_TYPE_UINT,
@@ -629,7 +628,7 @@ nice_agent_class_init (NiceAgentClass *klass)
           0,
           NULL,
           NULL,
-          agent_marshal_VOID__UINT,
+          NULL,
           G_TYPE_NONE,
           1,
           G_TYPE_UINT, G_TYPE_INVALID);
@@ -653,7 +652,7 @@ nice_agent_class_init (NiceAgentClass *klass)
           0,
           NULL,
           NULL,
-          agent_marshal_VOID__UINT_UINT_STRING_STRING,
+          NULL,
           G_TYPE_NONE,
           4,
           G_TYPE_UINT, G_TYPE_UINT, G_TYPE_STRING, G_TYPE_STRING,
@@ -677,7 +676,7 @@ nice_agent_class_init (NiceAgentClass *klass)
           0,
           NULL,
           NULL,
-          agent_marshal_VOID__UINT_UINT_STRING,
+          NULL,
           G_TYPE_NONE,
           3,
           G_TYPE_UINT, G_TYPE_UINT, G_TYPE_STRING,
@@ -701,7 +700,7 @@ nice_agent_class_init (NiceAgentClass *klass)
           0,
           NULL,
           NULL,
-          agent_marshal_VOID__UINT_UINT_STRING,
+          NULL,
           G_TYPE_NONE,
           3,
           G_TYPE_UINT, G_TYPE_UINT, G_TYPE_STRING,
@@ -723,7 +722,7 @@ nice_agent_class_init (NiceAgentClass *klass)
           0,
           NULL,
           NULL,
-          agent_marshal_VOID__UINT,
+          NULL,
           G_TYPE_NONE,
           1,
           G_TYPE_UINT,
@@ -751,7 +750,7 @@ nice_agent_class_init (NiceAgentClass *klass)
           0,
           NULL,
           NULL,
-          agent_marshal_VOID__UINT_UINT,
+          NULL,
           G_TYPE_NONE,
           2,
           G_TYPE_UINT, G_TYPE_UINT,

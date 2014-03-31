@@ -65,8 +65,6 @@ agent/test-fallback
 agent/test-fullmode
 agent/test-restart
 agent/test-thread
-agent/agent-signals-marshal.h
-agent/agent-signals-marshal.c
 
 
 # stun/ stuff
