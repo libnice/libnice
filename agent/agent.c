@@ -1610,7 +1610,8 @@ process_queued_tcp_packets (NiceAgent *agent, Stream *stream,
   }
 }
 
-void agent_signal_new_selected_pair (NiceAgent *agent, guint stream_id, guint component_id, const gchar *local_foundation, const gchar *remote_foundation)
+void agent_signal_new_selected_pair (NiceAgent *agent, guint stream_id,
+    guint component_id, NiceCandidate *lcandidate, NiceCandidate *rcandidate)
 {
   Component *component;
   Stream *stream;
@@ -1620,23 +1621,29 @@ void agent_signal_new_selected_pair (NiceAgent *agent, guint stream_id, guint co
     return;
 
   if (component->selected_pair.local->type == NICE_CANDIDATE_TYPE_RELAYED) {
-    nice_turn_socket_set_peer (component->selected_pair.local->sockptr,
-                                   &component->selected_pair.remote->addr);
+    nice_turn_socket_set_peer (lcandidate->sockptr, &rcandidate->addr);
   }
 
-  if (component->tcp) {
-    process_queued_tcp_packets (agent, stream, component);
+  if(agent->reliable) {
+    if (lcandidate->transport == NICE_CANDIDATE_TRANSPORT_UDP) {
+      if (component->tcp) {
+        process_queued_tcp_packets (agent, stream, component);
 
-    pseudo_tcp_socket_connect (component->tcp);
-    pseudo_tcp_socket_notify_mtu (component->tcp, MAX_TCP_MTU);
-    adjust_tcp_clock (agent, stream, component);
-  } else if(agent->reliable) {
-    nice_debug ("New selected pair received when pseudo tcp socket in error");
-    return;
+        pseudo_tcp_socket_connect (component->tcp);
+        pseudo_tcp_socket_notify_mtu (component->tcp, MAX_TCP_MTU);
+        adjust_tcp_clock (agent, stream, component);
+      } else {
+        nice_debug ("New reliable UDP pair selected but pseudo tcp socket in error");
+        return;
+      }
+    } else {
+      nice_debug ("ICE-TCP not yet supported");
+      return;
+    }
   }
 
   agent_queue_signal (agent, signals[SIGNAL_NEW_SELECTED_PAIR],
-      stream_id, component_id, local_foundation, remote_foundation);
+      stream_id, component_id, lcandidate->foundation, rcandidate->foundation);
 }
 
 void agent_signal_new_candidate (NiceAgent *agent, NiceCandidate *candidate)
@@ -3505,27 +3512,7 @@ nice_agent_send_messages_nonblocking_internal (
 
   /* FIXME: Cancellation isn’t yet supported, but it doesn’t matter because
    * we only deal with non-blocking writes. */
-
-  if (component->tcp != NULL) {
-    /* Send on the pseudo-TCP socket. */
-    n_sent = pseudo_tcp_socket_send_messages (component->tcp, messages,
-        n_messages, allow_partial, &child_error);
-    adjust_tcp_clock (agent, stream, component);
-
-    if (!pseudo_tcp_socket_can_send (component->tcp))
-      g_cancellable_reset (component->tcp_writable_cancellable);
-    if (n_sent < 0 && !g_error_matches (child_error, G_IO_ERROR,
-            G_IO_ERROR_WOULD_BLOCK)) {
-      /* Signal errors */
-      priv_pseudo_tcp_error (agent, stream, component);
-    }
-  } else if (agent->reliable) {
-    g_set_error (&child_error, G_IO_ERROR, G_IO_ERROR_FAILED,
-        "Error writing data to failed pseudo-TCP socket.");
-  } else if (component->selected_pair.local != NULL) {
-    NiceSocket *sock;
-    NiceAddress *addr;
-
+  if (component->selected_pair.local != NULL) {
     if (nice_debug_is_enabled ()) {
       gchar tmpbuf[INET6_ADDRSTRLEN];
       nice_address_to_string (&component->selected_pair.remote->addr, tmpbuf);
@@ -3535,17 +3522,45 @@ nice_agent_send_messages_nonblocking_internal (
           nice_address_get_port (&component->selected_pair.remote->addr));
     }
 
-    sock = component->selected_pair.local->sockptr;
-    addr = &component->selected_pair.remote->addr;
+    if(agent->reliable) {
+      if (component->selected_pair.local->transport == NICE_CANDIDATE_TRANSPORT_UDP) {
+        if (component->tcp != NULL) {
+          /* Send on the pseudo-TCP socket. */
+          n_sent = pseudo_tcp_socket_send_messages (component->tcp, messages,
+              n_messages, allow_partial, &child_error);
+          adjust_tcp_clock (agent, stream, component);
 
-    n_sent = nice_socket_send_messages (sock, addr, messages, n_messages);
+          if (!pseudo_tcp_socket_can_send (component->tcp))
+            g_cancellable_reset (component->tcp_writable_cancellable);
+          if (n_sent < 0 && !g_error_matches (child_error, G_IO_ERROR,
+                  G_IO_ERROR_WOULD_BLOCK)) {
+            /* Signal errors */
+            priv_pseudo_tcp_error (agent, stream, component);
+          }
+        } else {
+          g_set_error (&child_error, G_IO_ERROR, G_IO_ERROR_FAILED,
+              "Error writing data to failed pseudo-TCP socket.");
+        }
+      } else {
+          g_set_error (&child_error, G_IO_ERROR, G_IO_ERROR_FAILED,
+              "ICE-TCP not yet supported.");
+      }
+    } else {
+      NiceSocket *sock;
+      NiceAddress *addr;
 
-    if (n_sent < 0) {
-      g_set_error (&child_error, G_IO_ERROR, G_IO_ERROR_FAILED,
-          "Error writing data to socket.");
-    } else if (allow_partial) {
-      g_assert (n_messages == 1);
-      n_sent = output_message_get_size (messages);
+      sock = component->selected_pair.local->sockptr;
+      addr = &component->selected_pair.remote->addr;
+
+      n_sent = nice_socket_send_messages (sock, addr, messages, n_messages);
+
+      if (n_sent < 0) {
+        g_set_error (&child_error, G_IO_ERROR, G_IO_ERROR_FAILED,
+            "Error writing data to socket.");
+      } else if (allow_partial) {
+        g_assert (n_messages == 1);
+        n_sent = output_message_get_size (messages);
+      }
     }
   } else {
     /* Socket isn’t properly open yet. */
@@ -4061,7 +4076,8 @@ nice_agent_set_selected_pair (
 
   /* step: set the selected pair */
   component_update_selected_pair (component, &pair);
-  agent_signal_new_selected_pair (agent, stream_id, component_id, lfoundation, rfoundation);
+  agent_signal_new_selected_pair (agent, stream_id, component_id,
+      pair.local, pair.remote);
 
   ret = TRUE;
 
@@ -4189,8 +4205,7 @@ nice_agent_set_selected_remote_candidate (
   agent_signal_component_state_change (agent, stream_id, component_id, NICE_COMPONENT_STATE_READY);
 
   agent_signal_new_selected_pair (agent, stream_id, component_id,
-      lcandidate->foundation,
-      candidate->foundation);
+      lcandidate, candidate);
 
   ret = TRUE;
 

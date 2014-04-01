@@ -1115,35 +1115,23 @@ static GSList *priv_limit_conn_check_list_size (GSList *conncheck_list, guint up
  */
 static gboolean priv_update_selected_pair (NiceAgent *agent, Component *component, CandidateCheckPair *pair)
 {
+  CandidatePair cpair;
+
   g_assert (component);
   g_assert (pair);
-  if (pair->priority > component->selected_pair.priority) {
+  if (pair->priority > component->selected_pair.priority &&
+      component_find_pair (component, agent, pair->local->foundation,
+          pair->remote->foundation, &cpair)) {
     nice_debug ("Agent %p : changing SELECTED PAIR for component %u: %s:%s "
-        "(prio:%" G_GUINT64_FORMAT ").", agent, component->id, pair->local->foundation,
-        pair->remote->foundation, pair->priority);
+        "(prio:%" G_GUINT64_FORMAT ").", agent, component->id,
+        pair->local->foundation, pair->remote->foundation, pair->priority);
 
-    if (component->selected_pair.keepalive.tick_source != NULL) {
-      g_source_destroy (component->selected_pair.keepalive.tick_source);
-      g_source_unref (component->selected_pair.keepalive.tick_source);
-      component->selected_pair.keepalive.tick_source = NULL;
-    }
-
-    if (component->selected_pair.local &&
-        component->selected_pair.local == component->turn_candidate) {
-      refresh_prune_candidate (agent, component->turn_candidate);
-      component_detach_socket (component, component->turn_candidate->sockptr);
-      nice_candidate_free (component->turn_candidate);
-      component->turn_candidate = NULL;
-    }
-
-    memset (&component->selected_pair, 0, sizeof(CandidatePair));
-    component->selected_pair.local = pair->local;
-    component->selected_pair.remote = pair->remote;
-    component->selected_pair.priority = pair->priority;
+    component_update_selected_pair (component, &cpair);
 
     priv_conn_keepalive_tick_unlocked (agent);
 
-    agent_signal_new_selected_pair (agent, pair->stream_id, component->id, pair->local->foundation, pair->remote->foundation);
+    agent_signal_new_selected_pair (agent, pair->stream_id, component->id,
+        pair->local, pair->remote);
 
   }
 
