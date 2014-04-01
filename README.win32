@@ -44,12 +44,7 @@ libnice
     |-------- src
     |--- ...
 
-3) Generate agent-signals-marshal files
-
-Launch script win32/dogenmarshal.cmd on the win32 folder to generate agent/agent-signals-marshal.h and
-agent/agent-signals-marshal.c
-
-4) Open win32/libnice.sln with Microsoft Visual Studio 2008
+3) Open win32/libnice.sln with Microsoft Visual Studio 2008
 
 Build solution, output will be on libnice/win32/vs9/libnice/bin/Win32_Debug or libnice/win32/vs9/libnice/bin/Win32_Release
 depending on the configuration chosen.

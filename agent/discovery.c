@@ -55,7 +55,6 @@
 
 #include "agent.h"
 #include "agent-priv.h"
-#include "agent-signals-marshal.h"
 #include "component.h"
 #include "discovery.h"
 #include "stun/usages/bind.h"

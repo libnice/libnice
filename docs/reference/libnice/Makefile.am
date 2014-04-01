@@ -55,7 +55,7 @@ CFILE_GLOB=$(top_srcdir)/agent/agent.c \
 # Header files to ignore when scanning.
 # e.g. IGNORE_HFILES=gtkdebug.h gtkintl.h
 IGNORE_HFILES= conncheck.h discovery.h stream.h component.h agent-priv.h \
-	agent-signals-marshal.h	iostream.h inputstream.h outputstream.h \
+	iostream.h inputstream.h outputstream.h \
 	gstnice.h gstnicesrc.h gstnicesink.h  \
 	md5.h sha1.h stunhmac.h utils.h rand.h stun5389.h stuncrc32.h
 

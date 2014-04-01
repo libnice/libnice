@@ -191,14 +191,6 @@
 				>
 			</File>
 			<File
-				RelativePath="..\..\agent\agent-signals-marshal.c"
-				>
-			</File>
-			<File
-				RelativePath="..\..\agent\agent-signals-marshal.h"
-				>
-			</File>
-			<File
 				RelativePath="..\..\agent\agent.c"
 				>
 			</File>
