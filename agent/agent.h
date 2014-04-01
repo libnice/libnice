@@ -291,7 +291,8 @@ typedef enum
 
 /**
  * NiceCompatibility:
- * @NICE_COMPATIBILITY_RFC5245: Use compatibility with the RFC5245 ICE specs
+ * @NICE_COMPATIBILITY_RFC5245: Use compatibility with the RFC5245 ICE-UDP specs
+ * and RFC6544 ICE-TCP specs
  * @NICE_COMPATIBILITY_GOOGLE: Use compatibility for Google Talk specs
  * @NICE_COMPATIBILITY_MSN: Use compatibility for MSN Messenger specs
  * @NICE_COMPATIBILITY_WLM2009: Use compatibility with Windows Live Messenger
@@ -307,16 +308,26 @@ typedef enum
  * <warning>@NICE_COMPATIBILITY_DRAFT19 is deprecated and should not be used
  * in newly-written code. It is kept for compatibility reasons and
  * represents the same compatibility as @NICE_COMPATIBILITY_RFC5245 </warning>
+ <note>
+   <para>
+   If @NICE_COMPATIBILITY_RFC5245 compatibility mode is used for a non-reliable
+   agent, then ICE-UDP will be used with higher priority and ICE-TCP will also
+   be used when the UDP connectivity fails. If it is used with a reliable agent,
+   then ICE-UDP will be used with the TCP-Over-UDP (#PseudoTcpSocket) if ICE-TCP
+   fails and ICE-UDP succeeds.
+  </para>
+ </note>
+ *
  */
 typedef enum
 {
   NICE_COMPATIBILITY_RFC5245 = 0,
+  NICE_COMPATIBILITY_DRAFT19 = NICE_COMPATIBILITY_RFC5245,
   NICE_COMPATIBILITY_GOOGLE,
   NICE_COMPATIBILITY_MSN,
   NICE_COMPATIBILITY_WLM2009,
   NICE_COMPATIBILITY_OC2007,
   NICE_COMPATIBILITY_OC2007R2,
-  NICE_COMPATIBILITY_DRAFT19 = NICE_COMPATIBILITY_RFC5245,
   NICE_COMPATIBILITY_LAST = NICE_COMPATIBILITY_OC2007R2,
 } NiceCompatibility;
 
@@ -379,8 +390,9 @@ nice_agent_new (GMainContext *ctx, NiceCompatibility compat);
  * @ctx: The Glib Mainloop Context to use for timers
  * @compat: The compatibility mode of the agent
  *
- * Create a new #NiceAgent in reliable mode, which uses #PseudoTcpSocket to
- * assure reliability of the messages.
+ * Create a new #NiceAgent in reliable mode. If the connectivity is established
+ * through ICE-UDP, then a #PseudoTcpSocket will be transparently used to
+ * ensure reliability of the messages.
  * The returned object must be freed with g_object_unref()
  * <para> See also: #NiceAgent::reliable-transport-writable </para>
  *

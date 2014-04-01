@@ -573,8 +573,8 @@ nice_agent_class_init (NiceAgentClass *klass)
   /**
    * NiceAgent:reliable:
    *
-   * Whether the agent should use PseudoTcp to ensure a reliable transport
-   * of messages
+   * Whether the agent is providing a reliable transport of messages (through
+   * ICE-TCP or PseudoTCP over ICE-UDP)
    *
    * Since: 0.0.11
    */
@@ -582,8 +582,7 @@ nice_agent_class_init (NiceAgentClass *klass)
       g_param_spec_boolean (
         "reliable",
         "reliable mode",
-        "Whether the agent should use PseudoTcp to ensure a reliable transport"
-        "of messages",
+        "Whether the agent provides a reliable transport of messages",
 	FALSE,
         G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY));
 
