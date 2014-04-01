@@ -104,6 +104,7 @@ nice_socks5_socket_new (NiceSocket *base_socket,
     priv->username = g_strdup (username);
     priv->password = g_strdup (password);
 
+    sock->type = NICE_SOCKET_TYPE_SOCKS5;
     sock->fileno = priv->base_socket->fileno;
     sock->addr = priv->base_socket->addr;
     sock->send_messages = socket_send_messages;

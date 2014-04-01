@@ -123,7 +123,7 @@ nice_http_socket_new (NiceSocket *base_socket,
     priv->recv_buf_fill = 0;
     priv->content_length = 0;
 
-
+    sock->type = NICE_SOCKET_TYPE_HTTP;
     sock->fileno = priv->base_socket->fileno;
     sock->addr = priv->base_socket->addr;
     sock->send_messages = socket_send_messages;

@@ -141,6 +141,7 @@ nice_udp_bsd_socket_new (NiceAddress *addr)
   priv = sock->priv = g_slice_new0 (struct UdpBsdSocketPrivate);
   nice_address_init (&priv->niceaddr);
 
+  sock->type = NICE_SOCKET_TYPE_UDP_BSD;
   sock->fileno = gsock;
   sock->send_messages = socket_send_messages;
   sock->recv_messages = socket_recv_messages;

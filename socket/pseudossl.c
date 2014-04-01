@@ -111,6 +111,7 @@ nice_pseudossl_socket_new (NiceSocket *base_socket)
   priv->handshaken = FALSE;
   priv->base_socket = base_socket;
 
+  sock->type = NICE_SOCKET_TYPE_PSEUDOSSL;
   sock->fileno = priv->base_socket->fileno;
   sock->addr = priv->base_socket->addr;
   sock->send_messages = socket_send_messages;

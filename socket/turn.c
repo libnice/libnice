@@ -227,13 +227,16 @@ nice_turn_socket_new (GMainContext *ctx, NiceAddress *addr,
           (GEqualFunc) nice_address_equal,
           (GDestroyNotify) nice_address_free,
           priv_send_data_queue_destroy);
-  sock->addr = *addr;
+
+  sock->type = NICE_SOCKET_TYPE_TURN;
   sock->fileno = base_socket->fileno;
+  sock->addr = *addr;
   sock->send_messages = socket_send_messages;
   sock->recv_messages = socket_recv_messages;
   sock->is_reliable = socket_is_reliable;
   sock->close = socket_close;
   sock->priv = (void *) priv;
+
   return sock;
 }
 

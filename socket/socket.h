@@ -55,9 +55,23 @@ G_BEGIN_DECLS
 
 typedef struct _NiceSocket NiceSocket;
 
+typedef enum {
+  NICE_SOCKET_TYPE_UDP_BSD,
+  NICE_SOCKET_TYPE_TCP_BSD,
+  NICE_SOCKET_TYPE_PSEUDOSSL,
+  NICE_SOCKET_TYPE_HTTP,
+  NICE_SOCKET_TYPE_SOCKS5,
+  NICE_SOCKET_TYPE_TURN,
+  NICE_SOCKET_TYPE_TCP_TURN,
+  NICE_SOCKET_TYPE_TCP_ACTIVE,
+  NICE_SOCKET_TYPE_TCP_PASSIVE,
+  NICE_SOCKET_TYPE_TCP_SO
+} NiceSocketType;
+
 struct _NiceSocket
 {
   NiceAddress addr;
+  NiceSocketType type;
   GSocket *fileno;
   /* Implementations must handle any value of n_recv_messages, including 0. Iff
    * n_recv_messages is 0, recv_messages may be NULL. */

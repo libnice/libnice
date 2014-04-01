@@ -84,6 +84,7 @@ nice_tcp_turn_socket_new (NiceSocket *base_socket,
   priv->compatibility = compatibility;
   priv->base_socket = base_socket;
 
+  sock->type = NICE_SOCKET_TYPE_TCP_TURN;
   sock->fileno = priv->base_socket->fileno;
   sock->addr = priv->base_socket->addr;
   sock->send_messages = socket_send_messages;

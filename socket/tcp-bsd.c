@@ -172,6 +172,7 @@ nice_tcp_bsd_socket_new (GMainContext *ctx, NiceAddress *addr)
   priv->server_addr = *addr;
   priv->error = FALSE;
 
+  sock->type = NICE_SOCKET_TYPE_TCP_BSD;
   sock->fileno = gsock;
   sock->send_messages = socket_send_messages;
   sock->recv_messages = socket_recv_messages;
