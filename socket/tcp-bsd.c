@@ -393,8 +393,7 @@ socket_send_more (
     }
 
     if (ret < 0) {
-      if (gerr != NULL &&
-          g_error_matches (gerr, G_IO_ERROR, G_IO_ERROR_WOULD_BLOCK)) {
+      if (g_error_matches (gerr, G_IO_ERROR, G_IO_ERROR_WOULD_BLOCK)) {
         GOutputVector local_buf = { tbs->buf, tbs->length };
         NiceOutputMessage local_message = {&local_buf, 1};
 
@@ -403,7 +402,7 @@ socket_send_more (
         g_error_free (gerr);
         break;
       }
-      g_error_free (gerr);
+      g_clear_error (&gerr);
     } else if (ret < (int) tbs->length) {
       GOutputVector local_buf = { tbs->buf + ret, tbs->length - ret };
       NiceOutputMessage local_message = {&local_buf, 1};
