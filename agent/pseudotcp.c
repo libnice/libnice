@@ -1782,6 +1782,9 @@ parse_options (PseudoTcpSocket *self, const guint8 *data, guint32 len)
     guint8 kind = TCP_OPT_EOL;
     guint8 opt_len;
 
+    if (len < pos + 1)
+      return;
+
     kind = data[pos];
     pos++;
 
@@ -1793,10 +1796,15 @@ parse_options (PseudoTcpSocket *self, const guint8 *data, guint32 len)
       continue;
     }
 
+    if (len < pos + 1)
+      return;
+
     // Length of this option.
-    g_assert(len);
     opt_len = data[pos];
     pos++;
+
+    if (len < pos + opt_len)
+      return;
 
     // Content of this option.
     if (opt_len <= len - pos) {
