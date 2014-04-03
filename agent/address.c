@@ -50,6 +50,14 @@
 #define inet_pton inet_pton_win32
 #define inet_ntop inet_ntop_win32
 
+/* Defined in recent versions of mingw:
+ * https://github.com/mirror/mingw-w64/commit/0f4899473c4ba2e34fa447b1931a04e38c1f105e
+ */
+#ifndef IN6_ARE_ADDR_EQUAL
+#define IN6_ARE_ADDR_EQUAL(a, b) \
+  (memcmp ((const void *) (a), (const void *) (b), sizeof (struct in6_addr)) == 0)
+#endif
+
 
 static const char *
 inet_ntop_win32 (int af, const void *src, char *dst, socklen_t cnt)
