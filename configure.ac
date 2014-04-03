@@ -92,6 +92,7 @@ AC_CHECK_HEADERS([arpa/inet.h net/in.h])
 AC_CHECK_HEADERS([ifaddrs.h], \
 		      [AC_DEFINE(HAVE_GETIFADDRS, [1], \
 		       [Whether getifaddrs() is available on the system])])
+AC_CHECK_TYPES([size_t, ssize_t])
 
 # Also put matching version in LIBNICE_CFLAGS
 GLIB_REQ=2.30

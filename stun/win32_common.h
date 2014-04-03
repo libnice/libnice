@@ -57,6 +57,7 @@
 #ifndef _WIN32_COMMON_H
 #define _WIN32_COMMON_H
 
+#include "config.h"
 #include <sys/types.h>
 
 /* 7.18.1.1  Exact-width integer types */
@@ -69,8 +70,10 @@ typedef unsigned   uint32_t;
 typedef long long  int64_t;
 typedef unsigned long long   uint64_t;
 
-#ifndef _SSIZE_T_
+#ifndef HAVE_SIZE_T
 typedef unsigned int size_t;
+#endif
+#ifndef HAVE_SSIZE_T
 typedef unsigned long ssize_t;
 #endif
 
