@@ -445,7 +445,9 @@ socket_send_messages (NiceSocket *sock, const NiceAddress *to,
 static gboolean
 socket_is_reliable (NiceSocket *sock)
 {
-  return TRUE;
+  Socks5Priv *priv = sock->priv;
+
+  return nice_socket_is_reliable (priv->base_socket);
 }
 
 

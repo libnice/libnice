@@ -201,21 +201,23 @@ socket_send_messages (NiceSocket *sock, const NiceAddress *to,
     /* Fast path: pass directly through to the base socket once the handshake is
      * complete. */
     if (priv->base_socket == NULL)
-      return FALSE;
+      return -1;
 
     return nice_socket_send_messages (priv->base_socket, to, messages,
         n_messages);
   } else {
     add_to_be_sent (sock, to, messages, n_messages);
   }
-  return TRUE;
+  return n_messages;
 }
 
 
 static gboolean
 socket_is_reliable (NiceSocket *sock)
 {
-  return TRUE;
+  PseudoSSLPriv *priv = sock->priv;
+
+  return nice_socket_is_reliable (priv->base_socket);
 }
 
 

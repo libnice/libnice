@@ -59,6 +59,7 @@ typedef struct {
   GMainContext *context;
   GSource *io_source;
   gboolean error;
+  gboolean reliable;
 } TcpPriv;
 
 struct to_be_sent {
@@ -84,7 +85,7 @@ static gboolean socket_send_more (GSocket *gsocket, GIOCondition condition,
     gpointer data);
 
 NiceSocket *
-nice_tcp_bsd_socket_new (GMainContext *ctx, NiceAddress *addr)
+nice_tcp_bsd_socket_new (GMainContext *ctx, NiceAddress *addr, gboolean reliable)
 {
   union {
     struct sockaddr_storage storage;
@@ -171,6 +172,7 @@ nice_tcp_bsd_socket_new (GMainContext *ctx, NiceAddress *addr)
   priv->context = g_main_context_ref (ctx);
   priv->server_addr = *addr;
   priv->error = FALSE;
+  priv->reliable = reliable;
 
   sock->type = NICE_SOCKET_TYPE_TCP_BSD;
   sock->fileno = gsock;
@@ -292,6 +294,9 @@ socket_send_message (NiceSocket *sock, const NiceOutputMessage *message)
       add_to_be_sent (sock, message, ret, message_len, TRUE);
       ret = message_len;
     }
+  } else if (priv->reliable) {
+    /* Reliable TCP, so we shouldn't drop any messages or queue them */
+    ret = 0;
   } else {
     /* FIXME: This dropping will break http/socks5/etc
      * We probably need a way to the upper layer to control reliability
@@ -350,7 +355,9 @@ socket_send_messages (NiceSocket *sock, const NiceAddress *to,
 static gboolean
 socket_is_reliable (NiceSocket *sock)
 {
-  return TRUE;
+  TcpPriv *priv = sock->priv;
+
+  return priv->reliable;
 }
 
 

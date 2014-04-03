@@ -773,6 +773,7 @@ static gboolean
 socket_is_reliable (NiceSocket *sock)
 {
   TurnPriv *priv = (TurnPriv *) sock->priv;
+
   return nice_socket_is_reliable (priv->base_socket);
 }
 
