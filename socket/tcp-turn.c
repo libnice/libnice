@@ -253,6 +253,7 @@ socket_send_message (NiceSocket *sock, const NiceAddress *to,
   local_message.n_buffers = n_bufs + 1;
 
   if (priv->compatibility == NICE_TURN_SOCKET_COMPATIBILITY_GOOGLE) {
+    header_buf = htons (output_message_get_size (message));
     local_bufs[0].buffer = &header_buf;
     local_bufs[0].size = sizeof (header_buf);
     offset = 1;
