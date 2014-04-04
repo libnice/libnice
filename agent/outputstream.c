@@ -490,22 +490,24 @@ nice_output_stream_is_writable (GPollableOutputStream *stream)
         priv->stream_id);
     goto done;
   }
+  if (component->selected_pair.local != NULL) {
+    /* If it’s a reliable agent, see if there’s any space in the pseudo-TCP
+     * output buffer. */
+    if (!nice_socket_is_reliable (component->selected_pair.local->sockptr) &&
+        component->tcp != NULL) {
+      retval = pseudo_tcp_socket_can_send (component->tcp);
+      goto done;
+    }
 
-  /* If it’s a reliable agent, see if there’s any space in the pseudo-TCP output
-   * buffer. */
-  if (component->tcp != NULL) {
-    retval = pseudo_tcp_socket_can_send (component->tcp);
-    goto done;
-  }
+    /* Check whether any of the component’s FDs are pollable. */
+    for (i = component->socket_sources; i != NULL; i = i->next) {
+      SocketSource *socket_source = i->data;
+      NiceSocket *nicesock = socket_source->socket;
 
-  /* Check whether any of the component’s FDs are pollable. */
-  for (i = component->socket_sources; i != NULL; i = i->next) {
-    SocketSource *socket_source = i->data;
-    NiceSocket *nicesock = socket_source->socket;
-
-    if (g_socket_condition_check (nicesock->fileno, G_IO_OUT) != 0) {
-      retval = TRUE;
-      break;
+      if (g_socket_condition_check (nicesock->fileno, G_IO_OUT) != 0) {
+        retval = TRUE;
+        break;
+      }
     }
   }
 
