@@ -64,7 +64,15 @@ typedef struct {
   NiceSocket *base_socket;
 } TurnTcpPriv;
 
+typedef enum {
+  MS_TURN_CONTROL_MESSAGE = 2,
+  MS_TURN_END_TO_END_DATA = 3
+} MsTurnPayloadType;
+
 #define MAX_UDP_MESSAGE_SIZE 65535
+
+#define MAGIC_COOKIE_OFFSET \
+  STUN_MESSAGE_HEADER_LENGTH + STUN_MESSAGE_TYPE_LEN + STUN_MESSAGE_LENGTH_LEN
 
 static void socket_close (NiceSocket *sock);
 static gint socket_recv_messages (NiceSocket *sock,
@@ -123,7 +131,8 @@ socket_recv_message (NiceSocket *sock, NiceInputMessage *recv_message)
     guint headerlen = 0;
 
     if (priv->compatibility == NICE_TURN_SOCKET_COMPATIBILITY_DRAFT9 ||
-        priv->compatibility == NICE_TURN_SOCKET_COMPATIBILITY_RFC5766)
+        priv->compatibility == NICE_TURN_SOCKET_COMPATIBILITY_RFC5766 ||
+        priv->compatibility == NICE_TURN_SOCKET_COMPATIBILITY_OC2007)
       headerlen = 4;
     else if (priv->compatibility == NICE_TURN_SOCKET_COMPATIBILITY_GOOGLE)
       headerlen = 2;
@@ -162,6 +171,18 @@ socket_recv_message (NiceSocket *sock, NiceInputMessage *recv_message)
     else if (priv->compatibility == NICE_TURN_SOCKET_COMPATIBILITY_GOOGLE) {
       guint compat_len = ntohs (*priv->recv_buf.u16);
       priv->expecting_len = compat_len;
+      priv->recv_buf_len = 0;
+    }
+    else if (priv->compatibility == NICE_TURN_SOCKET_COMPATIBILITY_OC2007) {
+      guint8 pt = *priv->recv_buf.u8;
+      guint16 packetlen = ntohs (priv->recv_buf.u16[1]);
+
+      if (pt != MS_TURN_CONTROL_MESSAGE &&
+          pt != MS_TURN_END_TO_END_DATA) {
+        /* Unexpected data, error in stream */
+        return -1;
+      }
+      priv->expecting_len = packetlen;
       priv->recv_buf_len = 0;
     }
   }
@@ -237,7 +258,14 @@ socket_send_message (NiceSocket *sock, const NiceAddress *to,
   guint j;
   gint ret;
   guint n_bufs;
-  guint16 header_buf;
+  union {
+    guint16 google_len;
+    struct {
+      guint8 pt;
+      guint8 zero;
+      guint16 packet_len;
+    } msoc;
+  } header_buf;
   guint offset = 0;
 
   /* Count the number of buffers. */
@@ -257,9 +285,9 @@ socket_send_message (NiceSocket *sock, const NiceAddress *to,
   local_message.n_buffers = n_bufs + 1;
 
   if (priv->compatibility == NICE_TURN_SOCKET_COMPATIBILITY_GOOGLE) {
-    header_buf = htons (output_message_get_size (message));
+    header_buf.google_len = htons (output_message_get_size (message));
     local_bufs[0].buffer = &header_buf;
-    local_bufs[0].size = sizeof (header_buf);
+    local_bufs[0].size = sizeof (guint16);
     offset = 1;
   } else if (priv->compatibility == NICE_TURN_SOCKET_COMPATIBILITY_DRAFT9 ||
       priv->compatibility == NICE_TURN_SOCKET_COMPATIBILITY_RFC5766) {
@@ -268,6 +296,49 @@ socket_send_message (NiceSocket *sock, const NiceAddress *to,
 
     local_bufs[n_bufs].buffer = &padbuf;
     local_bufs[n_bufs].size = padlen;
+  } else if (priv->compatibility == NICE_TURN_SOCKET_COMPATIBILITY_OC2007) {
+    union {
+      guint32 u32;
+      guint8 u8[4];
+    } cookie;
+    guint16 len = output_message_get_size (message);
+    guint16 header_len;
+
+    /* Copy the cookie from possibly split messages */
+    cookie.u32 = 0;
+    if (len > sizeof (TURN_MAGIC_COOKIE) + MAGIC_COOKIE_OFFSET) {
+      guint16 buf_offset = 0;
+      guint i;
+
+      for (i = 0; i < n_bufs; i++) {
+        if (message->buffers[i].size >
+            (gsize) (MAGIC_COOKIE_OFFSET - buf_offset)) {
+          /* If the cookie is split, we assume it's data */
+          if (message->buffers[i].size > sizeof (TURN_MAGIC_COOKIE) +
+              MAGIC_COOKIE_OFFSET - buf_offset) {
+            const guint8 *buf = message->buffers[i].buffer;
+            memcpy (&cookie.u8, buf + MAGIC_COOKIE_OFFSET - buf_offset,
+                sizeof (TURN_MAGIC_COOKIE));
+          }
+          break;
+        } else {
+          buf_offset += message->buffers[i].size;
+        }
+      }
+    }
+
+    cookie.u32 = ntohl(cookie.u32);
+    header_buf.msoc.packet_len = htons (len);
+    header_buf.msoc.zero = 0;
+    header_len = sizeof(header_buf.msoc);
+    if (cookie.u32 == TURN_MAGIC_COOKIE)
+      header_buf.msoc.pt = MS_TURN_CONTROL_MESSAGE;
+    else
+      header_buf.msoc.pt = MS_TURN_END_TO_END_DATA;
+
+    local_bufs[0].buffer = &header_buf;
+    local_bufs[0].size = header_len;
+    offset = 1;
   } else {
     local_message.n_buffers = n_bufs;
   }
