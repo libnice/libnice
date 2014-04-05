@@ -3546,7 +3546,7 @@ nice_agent_send_messages_nonblocking_internal (
       if (n_sent < 0) {
         g_set_error (&child_error, G_IO_ERROR, G_IO_ERROR_FAILED,
             "Error writing data to socket.");
-      } else if (allow_partial) {
+      } else if (n_sent > 0 && allow_partial) {
         g_assert (n_messages == 1);
         n_sent = output_message_get_size (messages);
       }
