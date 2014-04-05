@@ -2112,7 +2112,7 @@ nice_agent_gather_candidates (
   NiceAgent *agent,
   guint stream_id)
 {
-  guint n;
+  guint cid;
   GSList *i;
   Stream *stream;
   GSList *local_addresses = NULL;
@@ -2195,8 +2195,8 @@ nice_agent_gather_candidates (
     nice_address_to_string (addr, local_ip);
 #endif
 
-    for (n = 0; n < stream->n_components; n++) {
-      Component *component = stream_find_component_by_id (stream, n + 1);
+    for (cid = 1; cid <= stream->n_components; cid++) {
+      Component *component = stream_find_component_by_id (stream, cid);
       guint current_port;
       guint start_port;
 
@@ -2209,19 +2209,12 @@ nice_agent_gather_candidates (
       }
       current_port = start_port;
 
-      if (agent->reliable && component->tcp == NULL) {
-        nice_debug ("Agent %p: not gathering candidates for s%d:%d because "
-            "pseudo tcp socket does not exist in reliable mode", agent,
-            stream->id, component->id);
-        continue;
-      }
-
       host_candidate = NULL;
       while (host_candidate == NULL) {
         nice_debug ("Agent %p: Trying to create host candidate on port %d", agent, current_port);
         nice_address_set_port (addr, current_port);
         host_candidate = discovery_add_local_host_candidate (agent, stream->id,
-            n + 1, addr);
+            cid, addr);
         if (current_port > 0)
           current_port++;
         if (current_port > component->max_port) current_port = component->min_port;
@@ -2264,7 +2257,7 @@ nice_agent_gather_candidates (
               host_candidate->sockptr,
               stun_server,
               stream,
-              n + 1);
+              cid);
         }
       }
 
@@ -2278,7 +2271,7 @@ nice_agent_gather_candidates (
               host_candidate->sockptr,
               turn,
               stream,
-              n + 1);
+              cid);
         }
       }
     }
@@ -2289,8 +2282,8 @@ nice_agent_gather_candidates (
 
   /* Only signal the new candidates after we're sure that the gathering was
    * succesfful. But before sending gathering-done */
-  for (n = 0; n < stream->n_components; n++) {
-    Component *component = stream_find_component_by_id (stream, n + 1);
+  for (cid = 1; cid <= stream->n_components; cid++) {
+    Component *component = stream_find_component_by_id (stream, cid);
     for (i = component->local_candidates; i; i = i->next) {
       NiceCandidate *candidate = i->data;
       agent_signal_new_candidate (agent, candidate);
@@ -2318,8 +2311,8 @@ nice_agent_gather_candidates (
 
   if (ret == FALSE) {
     priv_free_upnp (agent);
-    for (n = 0; n < stream->n_components; n++) {
-      Component *component = stream_find_component_by_id (stream, n + 1);
+    for (cid = 1; cid <= stream->n_components; cid++) {
+      Component *component = stream_find_component_by_id (stream, cid);
 
       component_free_socket_sources (component);
 
