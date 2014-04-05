@@ -81,6 +81,8 @@ static gint socket_recv_messages (NiceSocket *sock,
     NiceInputMessage *recv_messages, guint n_recv_messages);
 static gint socket_send_messages (NiceSocket *sock, const NiceAddress *to,
     const NiceOutputMessage *messages, guint n_messages);
+static gint socket_send_messages_reliable (NiceSocket *sock,
+    const NiceAddress *to, const NiceOutputMessage *messages, guint n_messages);
 static gboolean socket_is_reliable (NiceSocket *sock);
 
 static void add_to_be_sent (NiceSocket *sock, const NiceAddress *to,
@@ -108,6 +110,7 @@ nice_socks5_socket_new (NiceSocket *base_socket,
     sock->fileno = priv->base_socket->fileno;
     sock->addr = priv->base_socket->addr;
     sock->send_messages = socket_send_messages;
+    sock->send_messages_reliable = socket_send_messages_reliable;
     sock->recv_messages = socket_recv_messages;
     sock->is_reliable = socket_is_reliable;
     sock->close = socket_close;
@@ -131,7 +134,7 @@ nice_socks5_socket_new (NiceSocket *base_socket,
 
       /* We send 'to' NULL because it will always be to an already connected
        * TCP base socket, which ignores the destination */
-      nice_socket_send (priv->base_socket, NULL, len, msg);
+      nice_socket_send_reliable (priv->base_socket, NULL, len, msg);
       priv->state = SOCKS_STATE_INIT;
     }
   }
@@ -239,7 +242,7 @@ socket_recv_messages (NiceSocket *sock,
                   memcpy (msg + len, priv->password, plen); /* Password */
                 len += plen;
 
-                nice_socket_send (priv->base_socket, NULL, len, msg);
+                nice_socket_send_reliable (priv->base_socket, NULL, len, msg);
                 priv->state = SOCKS_STATE_AUTH;
               } else {
                 /* Authentication required but no auth info available */
@@ -331,7 +334,8 @@ socket_recv_messages (NiceSocket *sock,
                       goto error;
                   }
                   while ((tbs = g_queue_pop_head (&priv->send_queue))) {
-                    nice_socket_send (priv->base_socket, &tbs->to,
+                    /* We only queue reliable data */
+                    nice_socket_send_reliable (priv->base_socket, &tbs->to,
                         tbs->length, (const gchar *) tbs->buf);
                     g_free (tbs->buf);
                     g_slice_free (struct to_be_sent, tbs);
@@ -405,7 +409,7 @@ socket_recv_messages (NiceSocket *sock,
       len += 2;
     }
 
-    nice_socket_send (priv->base_socket, NULL, len, msg);
+    nice_socket_send_reliable (priv->base_socket, NULL, len, msg);
     priv->state = SOCKS_STATE_CONNECT;
 
     return 0;
@@ -432,6 +436,28 @@ socket_send_messages (NiceSocket *sock, const NiceAddress *to,
       return FALSE;
 
     return nice_socket_send_messages (priv->base_socket, to, messages,
+        n_messages);
+  } else if (priv->state == SOCKS_STATE_ERROR) {
+    return -1;
+  } else {
+    return 0;
+  }
+  return n_messages;
+}
+
+
+static gint
+socket_send_messages_reliable (NiceSocket *sock, const NiceAddress *to,
+    const NiceOutputMessage *messages, guint n_messages)
+{
+  Socks5Priv *priv = sock->priv;
+
+  if (priv->state == SOCKS_STATE_CONNECTED) {
+    /* Fast path: pass through to the base socket once connected. */
+    if (priv->base_socket == NULL)
+      return -1;
+
+    return nice_socket_send_messages_reliable (priv->base_socket, to, messages,
         n_messages);
   } else if (priv->state == SOCKS_STATE_ERROR) {
     return -1;

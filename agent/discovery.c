@@ -177,10 +177,10 @@ static void refresh_free_item (CandidateRefresh *cand)
     stun_agent_forget_transaction (&cand->stun_agent, id);
 
     /* send the refresh twice since we won't do retransmissions */
-    nice_socket_send (cand->nicesock, &cand->server,
+    agent_socket_send (cand->nicesock, &cand->server,
         buffer_len, (gchar *)cand->stun_buffer);
     if (!nice_socket_is_reliable (cand->nicesock)) {
-      nice_socket_send (cand->nicesock, &cand->server,
+      agent_socket_send (cand->nicesock, &cand->server,
           buffer_len, (gchar *)cand->stun_buffer);
     }
 
@@ -918,7 +918,7 @@ static gboolean priv_discovery_tick_unlocked (gpointer pointer)
           }
 
           /* send the conncheck */
-          nice_socket_send (cand->nicesock, &cand->server,
+          agent_socket_send (cand->nicesock, &cand->server,
               buffer_len, (gchar *)cand->stun_buffer);
 
 	  /* case: success, start waiting for the result */
@@ -974,7 +974,7 @@ static gboolean priv_discovery_tick_unlocked (gpointer pointer)
                   timeout);
 
               /* retransmit */
-              nice_socket_send (cand->nicesock, &cand->server,
+              agent_socket_send (cand->nicesock, &cand->server,
                   stun_message_length (&cand->stun_message),
                   (gchar *)cand->stun_buffer);
 

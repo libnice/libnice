@@ -4853,3 +4853,29 @@ nice_agent_forget_relays (NiceAgent *agent, guint stream_id, guint component_id)
 
   return ret;
 }
+
+/* Helper function to allow us to send connchecks reliably.
+ * If the transport is reliable, then we request a reliable send, which will
+ * either send the data, or queue it in the case of unestablished http/socks5
+ * proxies or tcp-turn. If the transport is not reliable, then it could be an
+ * unreliable tcp-bsd, so we still try a reliable send to see if it can succeed
+ * meaning the message was queued, or if it failed, then it was either udp-bsd
+ * or turn and so we retry with a non reliable send and let the retransmissions
+ * take care of the rest.
+ * This is in order to avoid having to retransmit something if the underlying
+ * socket layer can queue the message and send it once a connection is
+ * established.
+ */
+gssize
+agent_socket_send (NiceSocket *sock, const NiceAddress *addr, gsize len,
+    const gchar *buf)
+{
+  if (nice_socket_is_reliable (sock)) {
+    return nice_socket_send_reliable (sock, addr, len, buf);
+  } else {
+    gssize ret = nice_socket_send_reliable (sock, addr, len, buf);
+    if (ret < 0)
+      ret = nice_socket_send (sock, addr, len, buf);
+    return ret;
+  }
+}

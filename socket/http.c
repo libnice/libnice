@@ -95,6 +95,8 @@ static gint socket_recv_messages (NiceSocket *sock,
     NiceInputMessage *recv_messages, guint n_recv_messages);
 static gint socket_send_messages (NiceSocket *sock, const NiceAddress *to,
     const NiceOutputMessage *messages, guint n_messages);
+static gint socket_send_messages_reliable (NiceSocket *sock,
+    const NiceAddress *to, const NiceOutputMessage *messages, guint n_messages);
 static gboolean socket_is_reliable (NiceSocket *sock);
 
 static void add_to_be_sent (NiceSocket *sock, const NiceAddress *to,
@@ -127,6 +129,7 @@ nice_http_socket_new (NiceSocket *base_socket,
     sock->fileno = priv->base_socket->fileno;
     sock->addr = priv->base_socket->addr;
     sock->send_messages = socket_send_messages;
+    sock->send_messages_reliable = socket_send_messages_reliable;
     sock->recv_messages = socket_recv_messages;
     sock->is_reliable = socket_is_reliable;
     sock->close = socket_close;
@@ -167,7 +170,8 @@ nice_http_socket_new (NiceSocket *base_socket,
       local_messages.buffers = &local_bufs;
       local_messages.n_buffers = 1;
 
-      nice_socket_send_messages (priv->base_socket, NULL, &local_messages, 1);
+      nice_socket_send_messages_reliable (priv->base_socket, NULL,
+          &local_messages, 1);
       priv->state = HTTP_STATE_INIT;
       g_free (msg);
     }
@@ -545,7 +549,9 @@ retry:
 
         /* Send the pending data */
         while ((tbs = g_queue_pop_head (&priv->send_queue))) {
-          nice_socket_send (priv->base_socket, &tbs->to, tbs->length, tbs->buf);
+          /* We only queue reliable data */
+          nice_socket_send_reliable (priv->base_socket, &tbs->to,
+              tbs->length, tbs->buf);
           g_free (tbs->buf);
           g_slice_free (struct to_be_sent, tbs);
         }
@@ -588,12 +594,33 @@ socket_send_messages (NiceSocket *sock, const NiceAddress *to,
   } else if (priv->state == HTTP_STATE_ERROR) {
     return -1;
   } else {
-    add_to_be_sent (sock, to, messages, n_messages);
+    return 0;
   }
 
   return n_messages;
 }
 
+static gint
+socket_send_messages_reliable (NiceSocket *sock, const NiceAddress *to,
+    const NiceOutputMessage *messages, guint n_messages)
+{
+  HttpPriv *priv = sock->priv;
+
+  if (priv->state == HTTP_STATE_CONNECTED) {
+    /* Fast path. */
+    if (!priv->base_socket)
+      return -1;
+
+    return nice_socket_send_messages_reliable (priv->base_socket, to, messages,
+        n_messages);
+  } else if (priv->state == HTTP_STATE_ERROR) {
+    return -1;
+  } else {
+    add_to_be_sent (sock, to, messages, n_messages);
+  }
+
+  return n_messages;
+}
 
 static gboolean
 socket_is_reliable (NiceSocket *sock)

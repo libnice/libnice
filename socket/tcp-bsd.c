@@ -65,7 +65,6 @@ typedef struct {
 struct to_be_sent {
   guint8 *buf;
   gsize length;
-  gboolean can_drop;
 };
 
 #define MAX_QUEUE_LENGTH 20
@@ -75,6 +74,8 @@ static gint socket_recv_messages (NiceSocket *sock,
     NiceInputMessage *recv_messages, guint n_recv_messages);
 static gint socket_send_messages (NiceSocket *sock, const NiceAddress *to,
     const NiceOutputMessage *messages, guint n_messages);
+static gint socket_send_messages_reliable (NiceSocket *sock,
+    const NiceAddress *to, const NiceOutputMessage *messages, guint n_messages);
 static gboolean socket_is_reliable (NiceSocket *sock);
 
 
@@ -177,6 +178,7 @@ nice_tcp_bsd_socket_new (GMainContext *ctx, NiceAddress *addr, gboolean reliable
   sock->type = NICE_SOCKET_TYPE_TCP_BSD;
   sock->fileno = gsock;
   sock->send_messages = socket_send_messages;
+  sock->send_messages_reliable = socket_send_messages_reliable;
   sock->recv_messages = socket_recv_messages;
   sock->is_reliable = socket_is_reliable;
   sock->close = socket_close;
@@ -260,7 +262,8 @@ socket_recv_messages (NiceSocket *sock,
 }
 
 static gssize
-socket_send_message (NiceSocket *sock, const NiceOutputMessage *message)
+socket_send_message (NiceSocket *sock,
+    const NiceOutputMessage *message, gboolean reliable)
 {
   TcpPriv *priv = sock->priv;
   gssize ret;
@@ -294,32 +297,16 @@ socket_send_message (NiceSocket *sock, const NiceOutputMessage *message)
       add_to_be_sent (sock, message, ret, message_len, TRUE);
       ret = message_len;
     }
-  } else if (priv->reliable) {
-    /* Reliable TCP, so we shouldn't drop any messages or queue them */
-    ret = 0;
   } else {
-    /* FIXME: This dropping will break http/socks5/etc
-     * We probably need a way to the upper layer to control reliability
-     */
-    /* If the queue is too long, drop whatever packets we can. */
-    if (g_queue_get_length (&priv->send_queue) >= MAX_QUEUE_LENGTH) {
-      guint peek_idx = 0;
-      struct to_be_sent *tbs = NULL;
-
-      while ((tbs = g_queue_peek_nth (&priv->send_queue, peek_idx)) != NULL) {
-        if (tbs->can_drop) {
-          tbs = g_queue_pop_nth (&priv->send_queue, peek_idx);
-          free_to_be_sent (tbs);
-          break;
-        } else {
-          peek_idx++;
-        }
-      }
+    /* Only queue if we're sending reliably  */
+    if (reliable) {
+      /* Queue the message and send it later. */
+      add_to_be_sent (sock, message, 0, message_len, FALSE);
+      ret = message_len;
+    } else {
+      /* non reliable send, so we shouldn't queue the message */
+      ret = 0;
     }
-
-    /* Queue the message and send it later. */
-    add_to_be_sent (sock, message, 0, message_len, FALSE);
-    ret = message_len;
   }
 
   return ret;
@@ -338,7 +325,7 @@ socket_send_messages (NiceSocket *sock, const NiceAddress *to,
     const NiceOutputMessage *message = &messages[i];
     gssize len;
 
-    len = socket_send_message (sock, message);
+    len = socket_send_message (sock, message, FALSE);
 
     if (len < 0) {
       /* Error. */
@@ -348,6 +335,22 @@ socket_send_messages (NiceSocket *sock, const NiceAddress *to,
     } else if (len == 0) {
       /* EWOULDBLOCK. */
       break;
+    }
+  }
+
+  return i;
+}
+
+static gint
+socket_send_messages_reliable (NiceSocket *sock, const NiceAddress *to,
+    const NiceOutputMessage *messages, guint n_messages)
+{
+  guint i;
+
+  for (i = 0; i < n_messages; i++) {
+    if (socket_send_message (sock, &messages[i], TRUE) < 0) {
+      /* Error. */
+      return -1;
     }
   }
 
@@ -458,7 +461,6 @@ add_to_be_sent (NiceSocket *sock, const NiceOutputMessage *message,
   tbs = g_slice_new0 (struct to_be_sent);
   tbs->length = message_len - message_offset;
   tbs->buf = g_malloc (tbs->length);
-  tbs->can_drop = !head;
 
   if (head)
     g_queue_push_head (&priv->send_queue, tbs);

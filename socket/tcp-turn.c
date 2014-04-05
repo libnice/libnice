@@ -71,6 +71,8 @@ static gint socket_recv_messages (NiceSocket *sock,
     NiceInputMessage *recv_messages, guint n_recv_messages);
 static gint socket_send_messages (NiceSocket *sock, const NiceAddress *to,
     const NiceOutputMessage *messages, guint n_messages);
+static gint socket_send_messages_reliable (NiceSocket *sock,
+    const NiceAddress *to, const NiceOutputMessage *messages, guint n_messages);
 static gboolean socket_is_reliable (NiceSocket *sock);
 
 NiceSocket *
@@ -88,6 +90,7 @@ nice_tcp_turn_socket_new (NiceSocket *base_socket,
   sock->fileno = priv->base_socket->fileno;
   sock->addr = priv->base_socket->addr;
   sock->send_messages = socket_send_messages;
+  sock->send_messages_reliable = socket_send_messages_reliable;
   sock->recv_messages = socket_recv_messages;
   sock->is_reliable = socket_is_reliable;
   sock->close = socket_close;
@@ -225,7 +228,7 @@ socket_recv_messages (NiceSocket *nicesock,
 
 static gssize
 socket_send_message (NiceSocket *sock, const NiceAddress *to,
-    const NiceOutputMessage *message)
+    const NiceOutputMessage *message, gboolean reliable)
 {
   TurnTcpPriv *priv = sock->priv;
   guint8 padbuf[3] = {0, 0, 0};
@@ -276,7 +279,11 @@ socket_send_message (NiceSocket *sock, const NiceAddress *to,
   }
 
 
-  ret = nice_socket_send_messages (priv->base_socket, to, &local_message, 1);
+  if (reliable)
+    ret = nice_socket_send_messages_reliable (priv->base_socket, to,
+        &local_message, 1);
+  else
+    ret = nice_socket_send_messages (priv->base_socket, to, &local_message, 1);
 
   if (ret == 1)
     ret = output_message_get_size (&local_message);
@@ -296,7 +303,7 @@ socket_send_messages (NiceSocket *sock, const NiceAddress *to,
     const NiceOutputMessage *message = &messages[i];
     gssize len;
 
-    len = socket_send_message (sock, to, message);
+    len = socket_send_message (sock, to, message, FALSE);
 
     if (len < 0) {
       /* Error. */
@@ -306,6 +313,27 @@ socket_send_messages (NiceSocket *sock, const NiceAddress *to,
     } else if (len == 0) {
       /* EWOULDBLOCK. */
       break;
+    }
+  }
+
+  return i;
+}
+
+static gint
+socket_send_messages_reliable (NiceSocket *sock, const NiceAddress *to,
+    const NiceOutputMessage *messages, guint n_messages)
+{
+  guint i;
+
+  for (i = 0; i < n_messages; i++) {
+    const NiceOutputMessage *message = &messages[i];
+    gssize len;
+
+    len = socket_send_message (sock, to, message, TRUE);
+
+    if (len < 0) {
+      /* Error. */
+      return len;
     }
   }
 

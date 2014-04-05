@@ -291,7 +291,7 @@ static gboolean priv_conn_check_tick_stream (Stream *stream, NiceAgent *agent, G
               nice_debug ("Agent %p :STUN transaction retransmitted (timeout %dms).",
                   agent, timeout);
 
-              nice_socket_send (p->local->sockptr, &p->remote->addr,
+              agent_socket_send (p->local->sockptr, &p->remote->addr,
                   stun_message_length (&p->stun_message),
                   (gchar *)p->stun_buffer);
 
@@ -518,7 +518,7 @@ static gboolean priv_conn_keepalive_retransmissions_tick (gpointer pointer)
       }
     case STUN_USAGE_TIMER_RETURN_RETRANSMIT:
       /* Retransmit */
-      nice_socket_send (pair->local->sockptr, &pair->remote->addr,
+      agent_socket_send (pair->local->sockptr, &pair->remote->addr,
           stun_message_length (&pair->keepalive.stun_message),
           (gchar *)pair->keepalive.stun_buffer);
 
@@ -615,7 +615,7 @@ static gboolean priv_conn_keepalive_tick_unlocked (NiceAgent *agent)
               agent->media_after_tick = FALSE;
 
               /* send the conncheck */
-              nice_socket_send (p->local->sockptr, &p->remote->addr,
+              agent_socket_send (p->local->sockptr, &p->remote->addr,
                   buf_len, (gchar *)p->keepalive.stun_buffer);
 
               if (p->keepalive.tick_source != NULL) {
@@ -642,7 +642,7 @@ static gboolean priv_conn_keepalive_tick_unlocked (NiceAgent *agent)
               sizeof(p->keepalive.stun_buffer));
 
           if (buf_len > 0) {
-            nice_socket_send (p->local->sockptr, &p->remote->addr, buf_len,
+            agent_socket_send (p->local->sockptr, &p->remote->addr, buf_len,
                 (gchar *)p->keepalive.stun_buffer);
 
             nice_debug ("Agent %p : stun_bind_keepalive for pair %p res %d.",
@@ -684,7 +684,7 @@ static gboolean priv_conn_keepalive_tick_unlocked (NiceAgent *agent)
               /* send the conncheck */
               nice_debug ("Agent %p : resending STUN on %s to keep the "
                   "candidate alive.", agent, candidate->foundation);
-              nice_socket_send (candidate->sockptr, &stun_server,
+              agent_socket_send (candidate->sockptr, &stun_server,
                   buffer_len, (gchar *)stun_buffer);
             }
           }
@@ -766,7 +766,7 @@ static gboolean priv_turn_allocate_refresh_retransmissions_tick (gpointer pointe
       }
     case STUN_USAGE_TIMER_RETURN_RETRANSMIT:
       /* Retransmit */
-      nice_socket_send (cand->nicesock, &cand->server,
+      agent_socket_send (cand->nicesock, &cand->server,
           stun_message_length (&cand->stun_message), (gchar *)cand->stun_buffer);
 
       cand->tick_source = agent_timeout_add_with_context (cand->agent,
@@ -836,7 +836,7 @@ static void priv_turn_allocate_refresh_tick_unlocked (CandidateRefresh *cand)
         STUN_TIMER_DEFAULT_MAX_RETRANSMISSIONS);
 
     /* send the refresh */
-    nice_socket_send (cand->nicesock, &cand->server,
+    agent_socket_send (cand->nicesock, &cand->server,
         buffer_len, (gchar *)cand->stun_buffer);
 
     cand->tick_source = agent_timeout_add_with_context (cand->agent,
@@ -1717,7 +1717,7 @@ int conn_check_send (NiceAgent *agent, CandidateCheckPair *pair)
           STUN_TIMER_DEFAULT_MAX_RETRANSMISSIONS);
 
       /* send the conncheck */
-      nice_socket_send (pair->local->sockptr, &pair->remote->addr,
+      agent_socket_send (pair->local->sockptr, &pair->remote->addr,
           buffer_len, (gchar *)pair->stun_buffer);
 
       timeout = stun_timer_remainder (&pair->timer);
@@ -1926,7 +1926,7 @@ static void priv_reply_to_conn_check (NiceAgent *agent, Stream *stream, Componen
 	     (int)use_candidate);
   }
 
-  nice_socket_send (sockptr, toaddr, rbuf_len, (const gchar*)rbuf);
+  agent_socket_send (sockptr, toaddr, rbuf_len, (const gchar*)rbuf);
 
   if (rcand) {
     /* note: upon successful check, make the reserve check immediately */
@@ -2829,7 +2829,7 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, Stream *stream,
       rbuf_len = stun_agent_build_unknown_attributes_error (&agent->stun_agent,
           &msg, rbuf, rbuf_len, &req);
       if (rbuf_len != 0)
-        nice_socket_send (nicesock, from, rbuf_len, (const gchar*)rbuf);
+        agent_socket_send (nicesock, from, rbuf_len, (const gchar*)rbuf);
     }
     return TRUE;
   }
@@ -2842,7 +2842,7 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, Stream *stream,
       rbuf_len = stun_agent_finish_message (&agent->stun_agent, &msg, NULL, 0);
       if (rbuf_len > 0 && agent->compatibility != NICE_COMPATIBILITY_MSN &&
           agent->compatibility != NICE_COMPATIBILITY_OC2007)
-        nice_socket_send (nicesock, from, rbuf_len, (const gchar*)rbuf);
+        agent_socket_send (nicesock, from, rbuf_len, (const gchar*)rbuf);
     }
     return TRUE;
   }
@@ -2853,7 +2853,7 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, Stream *stream,
       rbuf_len = stun_agent_finish_message (&agent->stun_agent, &msg, NULL, 0);
       if (rbuf_len > 0 && agent->compatibility != NICE_COMPATIBILITY_MSN &&
 	  agent->compatibility != NICE_COMPATIBILITY_OC2007)
-        nice_socket_send (nicesock, from, rbuf_len, (const gchar*)rbuf);
+        agent_socket_send (nicesock, from, rbuf_len, (const gchar*)rbuf);
     }
     return TRUE;
   }

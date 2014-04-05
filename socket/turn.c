@@ -111,6 +111,7 @@ typedef struct {
 typedef struct {
   gchar *data;
   guint data_len;
+  gboolean reliable;
 } SendData;
 
 static void socket_close (NiceSocket *sock);
@@ -118,6 +119,8 @@ static gint socket_recv_messages (NiceSocket *sock,
     NiceInputMessage *recv_messages, guint n_recv_messages);
 static gint socket_send_messages (NiceSocket *sock, const NiceAddress *to,
     const NiceOutputMessage *messages, guint n_messages);
+static gint socket_send_messages_reliable (NiceSocket *sock,
+    const NiceAddress *to, const NiceOutputMessage *messages, guint n_messages);
 static gboolean socket_is_reliable (NiceSocket *sock);
 
 static void priv_process_pending_bindings (TurnPriv *priv);
@@ -232,6 +235,7 @@ nice_turn_socket_new (GMainContext *ctx, NiceAddress *addr,
   sock->fileno = base_socket->fileno;
   sock->addr = *addr;
   sock->send_messages = socket_send_messages;
+  sock->send_messages_reliable = socket_send_messages_reliable;
   sock->recv_messages = socket_recv_messages;
   sock->is_reliable = socket_is_reliable;
   sock->close = socket_close;
@@ -528,7 +532,7 @@ priv_clear_permissions (TurnPriv *priv)
 
 static void
 socket_enqueue_data(TurnPriv *priv, const NiceAddress *to,
-    guint len, const gchar *buf)
+    guint len, const gchar *buf, gboolean reliable)
 {
   SendData *data = g_slice_new0 (SendData);
   GQueue *queue = g_hash_table_lookup (priv->send_data_queues, to);
@@ -541,6 +545,7 @@ socket_enqueue_data(TurnPriv *priv, const NiceAddress *to,
 
   data->data = g_memdup(buf, len);
   data->data_len = len;
+  data->reliable = reliable;
   g_queue_push_tail (queue, data);
 }
 
@@ -555,8 +560,12 @@ socket_dequeue_all_data (TurnPriv *priv, const NiceAddress *to)
           (SendData *) g_queue_pop_head(send_queue);
 
       nice_debug ("dequeuing data");
-      nice_socket_send (priv->base_socket, &priv->server_addr, data->data_len,
-          data->data);
+      if (data->reliable)
+        nice_socket_send_reliable (priv->base_socket, &priv->server_addr,
+            data->data_len, data->data);
+      else
+        nice_socket_send (priv->base_socket, &priv->server_addr, data->data_len,
+            data->data);
 
       g_free (data->data);
       g_slice_free (SendData, data);
@@ -570,7 +579,7 @@ socket_dequeue_all_data (TurnPriv *priv, const NiceAddress *to)
 
 static gssize
 socket_send_message (NiceSocket *sock, const NiceAddress *to,
-    const NiceOutputMessage *message)
+    const NiceOutputMessage *message, gboolean reliable)
 {
   TurnPriv *priv = (TurnPriv *) sock->priv;
   StunMessage msg;
@@ -631,8 +640,13 @@ socket_send_message (NiceSocket *sock, const NiceAddress *to,
         goto error;
       }
     } else {
-      ret = nice_socket_send_messages (priv->base_socket, &priv->server_addr,
-          message, 1);
+      if (reliable)
+        ret = nice_socket_send_messages_reliable (priv->base_socket,
+            &priv->server_addr, message, 1);
+      else
+        ret = nice_socket_send_messages (priv->base_socket, &priv->server_addr,
+            message, 1);
+
       if (ret == 1)
         return output_message_get_size (message);
       return ret;
@@ -722,15 +736,20 @@ socket_send_message (NiceSocket *sock, const NiceAddress *to,
 
       /* enque data */
       nice_debug ("enqueuing data");
-      socket_enqueue_data(priv, to, msg_len, (gchar *)buffer);
+      socket_enqueue_data(priv, to, msg_len, (gchar *)buffer, reliable);
 
       return msg_len;
     } else {
       GOutputVector local_buf = { buffer, msg_len };
       NiceOutputMessage local_message = {&local_buf, 1};
 
-      ret = nice_socket_send_messages (priv->base_socket, &priv->server_addr,
-          &local_message, 1);
+      if (reliable)
+        ret = nice_socket_send_messages_reliable (priv->base_socket,
+            &priv->server_addr, &local_message, 1);
+      else
+        ret = nice_socket_send_messages (priv->base_socket, &priv->server_addr,
+            &local_message, 1);
+
       if (ret == 1)
         return msg_len;
       return ret;
@@ -738,7 +757,10 @@ socket_send_message (NiceSocket *sock, const NiceAddress *to,
   }
 
   /* Error condition pass through to the base socket. */
-  ret = nice_socket_send_messages (priv->base_socket, to, message, 1);
+  if (reliable)
+    ret = nice_socket_send_messages_reliable (priv->base_socket, to, message, 1);
+  else
+    ret = nice_socket_send_messages (priv->base_socket, to, message, 1);
   if (ret == 1)
     return output_message_get_size (message);
   return ret;
@@ -756,12 +778,45 @@ socket_send_messages (NiceSocket *sock, const NiceAddress *to,
     const NiceOutputMessage *message = &messages[i];
     gssize len;
 
-    len = socket_send_message (sock, to, message);
+    len = socket_send_message (sock, to, message, FALSE);
 
     if (len < 0) {
       /* Error. */
       if (i > 0)
         break;
+      return len;
+    } else if (len == 0) {
+      /* EWOULDBLOCK. */
+      break;
+    }
+  }
+
+  return i;
+}
+
+static gint
+socket_send_messages_reliable (NiceSocket *sock, const NiceAddress *to,
+    const NiceOutputMessage *messages, guint n_messages)
+{
+  TurnPriv *priv = (TurnPriv *) sock->priv;
+  guint i;
+
+  /* TURN can depend either on tcp-turn or udp-bsd as a base socket
+   * if we allow reliable send and need to create permissions and we queue the
+   * data, then we must be sure that the reliable send will succeed later, so
+   * we check for udp-bsd here as the base socket and don't allow it.
+   */
+  if (priv->base_socket->type == NICE_SOCKET_TYPE_UDP_BSD)
+    return -1;
+
+  for (i = 0; i < n_messages; i++) {
+    const NiceOutputMessage *message = &messages[i];
+    gssize len;
+
+    len = socket_send_message (sock, to, message, TRUE);
+
+    if (len < 0) {
+      /* Error. */
       return len;
     } else if (len == 0) {
       /* EWOULDBLOCK. */
@@ -1601,13 +1656,16 @@ priv_send_turn_message (TurnPriv *priv, TURNMessage *msg)
     priv->current_binding_msg = NULL;
   }
 
-  nice_socket_send (priv->base_socket, &priv->server_addr,
-      stun_len, (gchar *)msg->buffer);
-
   if (nice_socket_is_reliable (priv->base_socket)) {
+    nice_socket_send_reliable (priv->base_socket, &priv->server_addr,
+        stun_len, (gchar *)msg->buffer);
     stun_timer_start_reliable (&msg->timer,
         STUN_TIMER_DEFAULT_RELIABLE_TIMEOUT);
   } else {
+    if (nice_socket_send_reliable (priv->base_socket, &priv->server_addr,
+            stun_len, (gchar *)msg->buffer) < 0)
+      nice_socket_send (priv->base_socket, &priv->server_addr,
+          stun_len, (gchar *)msg->buffer);
     stun_timer_start (&msg->timer, STUN_TIMER_DEFAULT_TIMEOUT,
         STUN_TIMER_DEFAULT_MAX_RETRANSMISSIONS);
   }
@@ -1660,8 +1718,16 @@ priv_send_create_permission(TurnPriv *priv, StunMessage *resp,
       STUN_USAGE_TURN_COMPATIBILITY_RFC5766);
 
   if (msg_buf_len > 0) {
-    res = nice_socket_send (priv->base_socket, &priv->server_addr,
-        msg_buf_len, (gchar *) msg->buffer);
+    if (nice_socket_is_reliable (priv->base_socket)) {
+      res = nice_socket_send_reliable (priv->base_socket, &priv->server_addr,
+          msg_buf_len, (gchar *) msg->buffer);
+    } else {
+      res = nice_socket_send_reliable (priv->base_socket, &priv->server_addr,
+          msg_buf_len, (gchar *) msg->buffer);
+      if (res < 0)
+        res = nice_socket_send (priv->base_socket, &priv->server_addr,
+            msg_buf_len, (gchar *) msg->buffer);
+    }
 
     if (nice_socket_is_reliable (priv->base_socket)) {
       stun_timer_start_reliable (&msg->timer,
