@@ -2024,7 +2024,7 @@ static void _upnp_mapped_external_port (GUPnPSimpleIgd *self, gchar *proto,
   NiceAgent *agent = (NiceAgent*)user_data;
   NiceAddress localaddr;
   NiceAddress externaddr;
-
+  NiceCandidateTransport transport;
   GSList *i, *j, *k;
 
   agent_lock();
@@ -2035,6 +2035,11 @@ static void _upnp_mapped_external_port (GUPnPSimpleIgd *self, gchar *proto,
   if (!nice_address_set_from_string (&localaddr, local_ip))
     goto end;
   nice_address_set_port (&localaddr, local_port);
+
+  if (g_strcmp0 (proto, "TCP") == 0)
+    transport = NICE_CANDIDATE_TRANSPORT_TCP_PASSIVE;
+  else
+    transport = NICE_CANDIDATE_TRANSPORT_UDP;
 
   for (i = agent->upnp_mapping; i; i = i->next) {
     NiceAddress *addr = i->data;
@@ -2062,6 +2067,7 @@ static void _upnp_mapped_external_port (GUPnPSimpleIgd *self, gchar *proto,
               stream->id,
               component->id,
               &externaddr,
+              transport,
               local_candidate->sockptr);
           goto end;
         }
@@ -2214,7 +2220,7 @@ nice_agent_gather_candidates (
         nice_debug ("Agent %p: Trying to create host candidate on port %d", agent, current_port);
         nice_address_set_port (addr, current_port);
         host_candidate = discovery_add_local_host_candidate (agent, stream->id,
-            cid, addr);
+            cid, addr, NICE_CANDIDATE_TRANSPORT_UDP);
         if (current_port > 0)
           current_port++;
         if (current_port > component->max_port) current_port = component->min_port;
@@ -4712,9 +4718,11 @@ nice_agent_parse_remote_candidate_sdp (NiceAgent *agent, guint stream_id,
   const gchar *addr = NULL;
   guint16 port = 0;
   const gchar *type = NULL;
+  const gchar *tcptype = NULL;
   const gchar *raddr = NULL;
   guint16 rport = 0;
   static const gchar *type_names[] = {"host", "srflx", "prflx", "relay"};
+  NiceCandidateTransport ctransport;
   guint i;
 
   if (!g_str_has_prefix (sdp, "a=candidate:"))
@@ -4751,6 +4759,8 @@ nice_agent_parse_remote_candidate_sdp (NiceAgent *agent, guint stream_id,
           raddr = tokens[i + 1];
         } else if (g_strcmp0 (tokens[i], "rport") == 0) {
           rport = (guint16) g_ascii_strtoull (tokens[i + 1], NULL, 10);
+        } else if (g_strcmp0 (tokens[i], "tcptype") == 0) {
+          tcptype = tokens[i + 1];
         }
         i++;
         break;
@@ -4769,29 +4779,47 @@ nice_agent_parse_remote_candidate_sdp (NiceAgent *agent, guint stream_id,
   if (ntype == -1)
     goto done;
 
-  if (g_strcmp0 (transport, "UDP") == 0) {
-    candidate = nice_candidate_new(ntype);
-    candidate->component_id = component_id;
-    candidate->stream_id = stream_id;
-    candidate->transport = NICE_CANDIDATE_TRANSPORT_UDP;
-    g_strlcpy(candidate->foundation, foundation, NICE_CANDIDATE_MAX_FOUNDATION);
-    candidate->priority = priority;
+  if (g_ascii_strcasecmp (transport, "UDP") == 0)
+    ctransport = NICE_CANDIDATE_TRANSPORT_UDP;
+  else if (g_ascii_strcasecmp (transport, "TCP-SO") == 0)
+    ctransport = NICE_CANDIDATE_TRANSPORT_TCP_SO;
+  else if (g_ascii_strcasecmp (transport, "TCP-ACT") == 0)
+    ctransport = NICE_CANDIDATE_TRANSPORT_TCP_ACTIVE;
+  else if (g_ascii_strcasecmp (transport, "TCP-PASS") == 0)
+    ctransport = NICE_CANDIDATE_TRANSPORT_TCP_PASSIVE;
+  else if (g_ascii_strcasecmp (transport, "TCP") == 0) {
+    if (g_ascii_strcasecmp (tcptype, "so") == 0)
+      ctransport = NICE_CANDIDATE_TRANSPORT_TCP_SO;
+    else if (g_ascii_strcasecmp (tcptype, "active") == 0)
+      ctransport = NICE_CANDIDATE_TRANSPORT_TCP_ACTIVE;
+    else if (g_ascii_strcasecmp (tcptype, "passive") == 0)
+      ctransport = NICE_CANDIDATE_TRANSPORT_TCP_PASSIVE;
+    else
+      goto done;
+  } else
+    goto done;
 
-    if (!nice_address_set_from_string (&candidate->addr, addr)) {
+  candidate = nice_candidate_new(ntype);
+  candidate->component_id = component_id;
+  candidate->stream_id = stream_id;
+  candidate->transport = ctransport;
+  g_strlcpy(candidate->foundation, foundation, NICE_CANDIDATE_MAX_FOUNDATION);
+  candidate->priority = priority;
+
+  if (!nice_address_set_from_string (&candidate->addr, addr)) {
+    nice_candidate_free (candidate);
+    candidate = NULL;
+    goto done;
+  }
+  nice_address_set_port (&candidate->addr, port);
+
+  if (raddr && rport) {
+    if (!nice_address_set_from_string (&candidate->base_addr, raddr)) {
       nice_candidate_free (candidate);
       candidate = NULL;
       goto done;
     }
-    nice_address_set_port (&candidate->addr, port);
-
-    if (raddr && rport) {
-      if (!nice_address_set_from_string (&candidate->base_addr, raddr)) {
-        nice_candidate_free (candidate);
-        candidate = NULL;
-        goto done;
-      }
-      nice_address_set_port (&candidate->base_addr, rport);
-    }
+    nice_address_set_port (&candidate->base_addr, rport);
   }
 
  done:

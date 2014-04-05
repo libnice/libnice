@@ -97,7 +97,8 @@ discovery_add_local_host_candidate (
   NiceAgent *agent,
   guint stream_id,
   guint component_id,
-  NiceAddress *address);
+  NiceAddress *address,
+  NiceCandidateTransport transport);
 
 NiceCandidate*
 discovery_add_relay_candidate (
@@ -105,6 +106,7 @@ discovery_add_relay_candidate (
   guint stream_id,
   guint component_id,
   NiceAddress *address,
+  NiceCandidateTransport transport,
   NiceSocket *base_socket,
   TurnServer *turn);
 
@@ -114,6 +116,7 @@ discovery_add_server_reflexive_candidate (
   guint stream_id,
   guint component_id,
   NiceAddress *address,
+  NiceCandidateTransport transport,
   NiceSocket *base_socket);
 
 NiceCandidate* 

@@ -269,7 +269,8 @@ static gboolean priv_add_local_candidate_pruned (NiceAgent *agent, guint stream_
     NiceCandidate *c = i->data;
 
     if (nice_address_equal (&c->base_addr, &candidate->base_addr) &&
-	nice_address_equal (&c->addr, &candidate->addr)) {
+        nice_address_equal (&c->addr, &candidate->addr) &&
+        c->transport == candidate->transport) {
       nice_debug ("Candidate %p (component-id %u) redundant, ignoring.", candidate, component->id);
       return FALSE;
     }
@@ -462,17 +463,19 @@ NiceCandidate *discovery_add_local_host_candidate (
   NiceAgent *agent,
   guint stream_id,
   guint component_id,
-  NiceAddress *address)
+  NiceAddress *address,
+  NiceCandidateTransport transport)
 {
   NiceCandidate *candidate;
   Component *component;
   Stream *stream;
-  NiceSocket *udp_socket = NULL;
+  NiceSocket *nicesock = NULL;
 
   if (!agent_find_component (agent, stream_id, component_id, &stream, &component))
     return NULL;
 
   candidate = nice_candidate_new (NICE_CANDIDATE_TYPE_HOST);
+  candidate->transport = transport;
   candidate->stream_id = stream_id;
   candidate->component_id = component_id;
   candidate->addr = *address;
@@ -491,26 +494,30 @@ NiceCandidate *discovery_add_local_host_candidate (
 
   /* note: candidate username and password are left NULL as stream
      level ufrag/password are used */
-  udp_socket = nice_udp_bsd_socket_new (address);
-  if (!udp_socket)
+  if (transport == NICE_CANDIDATE_TRANSPORT_UDP) {
+    nicesock = nice_udp_bsd_socket_new (address);
+  } else {
+    /* TODO: Add ICE-TCP */
+  }
+  if (!nicesock)
     goto errors;
 
-  candidate->sockptr = udp_socket;
-  candidate->addr = udp_socket->addr;
-  candidate->base_addr = udp_socket->addr;
+  candidate->sockptr = nicesock;
+  candidate->addr = nicesock->addr;
+  candidate->base_addr = nicesock->addr;
 
   if (!priv_add_local_candidate_pruned (agent, stream_id, component, candidate))
     goto errors;
 
-  _priv_set_socket_tos (agent, udp_socket, stream->tos);
-  component_attach_socket (component, udp_socket);
+  _priv_set_socket_tos (agent, nicesock, stream->tos);
+  component_attach_socket (component, nicesock);
 
   return candidate;
 
 errors:
   nice_candidate_free (candidate);
-  if (udp_socket)
-    nice_socket_free (udp_socket);
+  if (nicesock)
+    nice_socket_free (nicesock);
   return NULL;
 }
 
@@ -526,6 +533,7 @@ discovery_add_server_reflexive_candidate (
   guint stream_id,
   guint component_id,
   NiceAddress *address,
+  NiceCandidateTransport transport,
   NiceSocket *base_socket)
 {
   NiceCandidate *candidate;
@@ -547,6 +555,8 @@ discovery_add_server_reflexive_candidate (
     candidate->priority =  nice_candidate_ice_priority_full
         (NICE_CANDIDATE_TYPE_PREF_SERVER_REFLEXIVE, 0, component_id);
   }
+
+  candidate->transport = transport;
   candidate->stream_id = stream_id;
   candidate->component_id = component_id;
   candidate->addr = *address;
@@ -577,12 +587,13 @@ discovery_add_server_reflexive_candidate (
  *
  * @return pointer to the created candidate, or NULL on error
  */
-NiceCandidate* 
+NiceCandidate*
 discovery_add_relay_candidate (
   NiceAgent *agent,
   guint stream_id,
   guint component_id,
   NiceAddress *address,
+  NiceCandidateTransport transport,
   NiceSocket *base_socket,
   TurnServer *turn)
 {
@@ -605,6 +616,7 @@ discovery_add_relay_candidate (
     candidate->priority =  nice_candidate_ice_priority_full
         (NICE_CANDIDATE_TYPE_PREF_RELAYED, 0, component_id);
   }
+  candidate->transport = transport;
   candidate->stream_id = stream_id;
   candidate->component_id = component_id;
   candidate->addr = *address;
@@ -672,7 +684,6 @@ discovery_add_peer_reflexive_candidate (
 
   candidate = nice_candidate_new (NICE_CANDIDATE_TYPE_PEER_REFLEXIVE);
 
-  candidate->transport = NICE_CANDIDATE_TRANSPORT_UDP;
   if (agent->compatibility == NICE_COMPATIBILITY_GOOGLE) {
     candidate->priority = nice_candidate_jingle_priority (candidate);
   } else if (agent->compatibility == NICE_COMPATIBILITY_MSN ||
@@ -682,6 +693,7 @@ discovery_add_peer_reflexive_candidate (
     candidate->priority = nice_candidate_ice_priority_full
         (NICE_CANDIDATE_TYPE_PREF_PEER_REFLEXIVE, 0, component_id);
   }
+  candidate->transport = local->transport;
   candidate->stream_id = stream_id;
   candidate->component_id = component_id;
   candidate->addr = *address;
@@ -762,7 +774,6 @@ NiceCandidate *discovery_learn_remote_peer_reflexive_candidate (
 
   candidate = nice_candidate_new (NICE_CANDIDATE_TYPE_PEER_REFLEXIVE);
 
-  candidate->transport = NICE_CANDIDATE_TRANSPORT_UDP;
   candidate->addr = *remote_address;
   candidate->base_addr = *remote_address;
 
@@ -779,6 +790,7 @@ NiceCandidate *discovery_learn_remote_peer_reflexive_candidate (
     candidate->priority = nice_candidate_ice_priority_full
         (NICE_CANDIDATE_TYPE_PREF_PEER_REFLEXIVE, 0, component->id);
   }
+  candidate->transport = remote->transport;
   candidate->stream_id = stream->id;
   candidate->component_id = component->id;
 
