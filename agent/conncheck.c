@@ -1302,9 +1302,28 @@ static void priv_add_new_check_pair (NiceAgent *agent, guint stream_id, Componen
   }
 }
 
+static NiceCandidateTransport
+priv_match_transport (NiceCandidateTransport transport)
+{
+  switch (transport) {
+    case NICE_CANDIDATE_TRANSPORT_TCP_ACTIVE:
+      return NICE_CANDIDATE_TRANSPORT_TCP_PASSIVE;
+      break;
+    case NICE_CANDIDATE_TRANSPORT_TCP_PASSIVE:
+      return NICE_CANDIDATE_TRANSPORT_TCP_ACTIVE;
+      break;
+    case NICE_CANDIDATE_TRANSPORT_TCP_SO:
+    case NICE_CANDIDATE_TRANSPORT_UDP:
+    default:
+      return transport;
+      break;
+  }
+}
+
 static gboolean priv_conn_check_add_for_candidate_pair (NiceAgent *agent, guint stream_id, Component *component, NiceCandidate *local, NiceCandidate *remote)
 {
   gboolean ret = FALSE;
+
   /* note: do not create pairs where the local candidate is
    *       a srv-reflexive (ICE 5.7.3. "Pruning the pairs" ID-9) */
   if ((agent->compatibility == NICE_COMPATIBILITY_RFC5245 ||
@@ -1314,10 +1333,17 @@ static gboolean priv_conn_check_add_for_candidate_pair (NiceAgent *agent, guint 
     return FALSE;
   }
 
+  /* note: do not create pairs where local candidate has TCP passive transport
+   *       (ice-tcp-13 6.2. "Forming the Check Lists") */
+  if (local->transport == NICE_CANDIDATE_TRANSPORT_TCP_PASSIVE) {
+    return FALSE;
+  }
   /* note: match pairs only if transport and address family are the same */
-  if (local->transport == remote->transport &&
+  if (local->transport == priv_match_transport (remote->transport) &&
      local->addr.s.addr.sa_family == remote->addr.s.addr.sa_family) {
 
+    nice_debug ("Agent %p, Adding check pair between %s and %s", agent,
+        local->foundation, remote->foundation);
     priv_add_new_check_pair (agent, stream_id, component, local, remote, NICE_CHECK_FROZEN, FALSE);
     ret = TRUE;
     if (component->state < NICE_COMPONENT_STATE_CONNECTED) {
