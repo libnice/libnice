@@ -300,6 +300,8 @@ socket_send_messages (NiceSocket *sock, const NiceAddress *to,
 
     if (len < 0) {
       /* Error. */
+      if (i > 0)
+        break;
       return len;
     } else if (len == 0) {
       /* EWOULDBLOCK. */
