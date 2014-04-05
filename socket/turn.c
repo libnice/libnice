@@ -628,7 +628,7 @@ socket_send_message (NiceSocket *sock, const NiceAddress *to,
 
         msg_len = message_len + sizeof(uint32_t);
       } else {
-        return 0;
+        goto error;
       }
     } else {
       ret = nice_socket_send_messages (priv->base_socket, &priv->server_addr,
@@ -645,29 +645,29 @@ socket_send_message (NiceSocket *sock, const NiceAddress *to,
         priv->compatibility == NICE_TURN_SOCKET_COMPATIBILITY_RFC5766) {
       if (!stun_agent_init_indication (&priv->agent, &msg,
               buffer, sizeof(buffer), STUN_IND_SEND))
-        goto send;
+        goto error;
       if (stun_message_append_xor_addr (&msg, STUN_ATTRIBUTE_PEER_ADDRESS,
               &sa.storage, sizeof(sa)) !=
           STUN_MESSAGE_RETURN_SUCCESS)
-        goto send;
+        goto error;
     } else {
       if (!stun_agent_init_request (&priv->agent, &msg,
               buffer, sizeof(buffer), STUN_SEND))
-        goto send;
+        goto error;
 
       if (stun_message_append32 (&msg, STUN_ATTRIBUTE_MAGIC_COOKIE,
               TURN_MAGIC_COOKIE) != STUN_MESSAGE_RETURN_SUCCESS)
-        goto send;
+        goto error;
       if (priv->username != NULL && priv->username_len > 0) {
         if (stun_message_append_bytes (&msg, STUN_ATTRIBUTE_USERNAME,
                 priv->username, priv->username_len) !=
             STUN_MESSAGE_RETURN_SUCCESS)
-          goto send;
+          goto error;
       }
       if (stun_message_append_addr (&msg, STUN_ATTRIBUTE_DESTINATION_ADDRESS,
               &sa.addr, sizeof(sa)) !=
           STUN_MESSAGE_RETURN_SUCCESS)
-        goto send;
+        goto error;
 
       if (priv->compatibility == NICE_TURN_SOCKET_COMPATIBILITY_GOOGLE &&
           priv->current_binding &&
@@ -694,7 +694,7 @@ socket_send_message (NiceSocket *sock, const NiceAddress *to,
     if (stun_message_append_bytes (&msg, STUN_ATTRIBUTE_DATA,
             compacted_buf, compacted_buf_len) != STUN_MESSAGE_RETURN_SUCCESS) {
       g_free (compacted_buf);
-      goto send;
+      goto error;
     }
 
     g_free (compacted_buf);
@@ -737,12 +737,13 @@ socket_send_message (NiceSocket *sock, const NiceAddress *to,
     }
   }
 
-send:
   /* Error condition pass through to the base socket. */
   ret = nice_socket_send_messages (priv->base_socket, to, message, 1);
   if (ret == 1)
     return output_message_get_size (message);
   return ret;
+error:
+  return -1;
 }
 
 static gint
