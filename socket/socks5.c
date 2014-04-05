@@ -434,11 +434,11 @@ socket_send_messages (NiceSocket *sock, const NiceAddress *to,
     return nice_socket_send_messages (priv->base_socket, to, messages,
         n_messages);
   } else if (priv->state == SOCKS_STATE_ERROR) {
-    return FALSE;
+    return -1;
   } else {
     add_to_be_sent (sock, to, messages, n_messages);
   }
-  return TRUE;
+  return n_messages;
 }
 
 
