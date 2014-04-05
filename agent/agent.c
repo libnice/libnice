@@ -2604,36 +2604,36 @@ _set_remote_candidates_locked (NiceAgent *agent, Stream *stream,
   const GSList *i;
   int added = 0;
 
- for (i = candidates; i && added >= 0; i = i->next) {
-   NiceCandidate *d = (NiceCandidate*) i->data;
+  for (i = candidates; i && added >= 0; i = i->next) {
+    NiceCandidate *d = (NiceCandidate*) i->data;
 
-   if (nice_address_is_valid (&d->addr) == TRUE) {
-     gboolean res =
-         priv_add_remote_candidate (agent,
-             stream->id,
-             component->id,
-             d->type,
-             &d->addr,
-             &d->base_addr,
-             d->transport,
-             d->priority,
-             d->username,
-             d->password,
-             d->foundation);
-     if (res)
-       ++added;
-   }
- }
+    if (nice_address_is_valid (&d->addr) == TRUE) {
+      gboolean res =
+          priv_add_remote_candidate (agent,
+              stream->id,
+              component->id,
+              d->type,
+              &d->addr,
+              &d->base_addr,
+              d->transport,
+              d->priority,
+              d->username,
+              d->password,
+              d->foundation);
+      if (res)
+        ++added;
+    }
+  }
 
- conn_check_remote_candidates_set(agent);
+  conn_check_remote_candidates_set(agent);
 
- if (added > 0) {
-   gboolean res = conn_check_schedule_next (agent);
-   if (res != TRUE)
-     nice_debug ("Agent %p : Warning: unable to schedule any conn checks!", agent);
- }
+  if (added > 0) {
+    gboolean res = conn_check_schedule_next (agent);
+    if (res != TRUE)
+      nice_debug ("Agent %p : Warning: unable to schedule any conn checks!", agent);
+  }
 
- return added;
+  return added;
 }
 
 
