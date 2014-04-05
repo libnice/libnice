@@ -41,9 +41,24 @@
 
 G_BEGIN_DECLS
 
+/**
+ * PseudosslCompatibility:
+ * @NICE_PSEUDOSSL_SOCKET_COMPATIBILITY_GOOGLE: Use google compatible pseudossl
+ * @NICE_PSEUDOSSL_SOCKET_COMPATIBILITY_MSOC: Use compatibility for Microsoft
+ * Office Communicator and Lync servers
+ *
+ * An enum to specify which pseudo SSL compatibility mode the #NiceSocket should
+ * use.
+ */
+typedef enum
+{
+  NICE_PSEUDOSSL_SOCKET_COMPATIBILITY_GOOGLE = 0,
+  NICE_PSEUDOSSL_SOCKET_COMPATIBILITY_MSOC,
+} NicePseudoSSLSocketCompatibility;
 
 NiceSocket *
-nice_pseudossl_socket_new (NiceSocket *base_socket);
+nice_pseudossl_socket_new (NiceSocket *base_socket,
+    NicePseudoSSLSocketCompatibility compatibility);
 
 
 G_END_DECLS

@@ -1818,7 +1818,12 @@ priv_add_new_candidate_discovery_turn (NiceAgent *agent,
 
     if (turn->type ==  NICE_RELAY_TYPE_TURN_TLS &&
         agent->compatibility == NICE_COMPATIBILITY_GOOGLE) {
-      nicesock = nice_pseudossl_socket_new (nicesock);
+      nicesock = nice_pseudossl_socket_new (nicesock,
+          NICE_PSEUDOSSL_SOCKET_COMPATIBILITY_GOOGLE);
+    } else if (agent->compatibility == NICE_COMPATIBILITY_OC2007 ||
+        agent->compatibility == NICE_COMPATIBILITY_OC2007R2) {
+      nicesock = nice_pseudossl_socket_new (nicesock,
+          NICE_PSEUDOSSL_SOCKET_COMPATIBILITY_MSOC);
     }
     cdisco->nicesock = nice_tcp_turn_socket_new (nicesock,
         agent_to_turn_socket_compatibility (agent));
