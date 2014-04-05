@@ -3515,28 +3515,24 @@ nice_agent_send_messages_nonblocking_internal (
           nice_address_get_port (&component->selected_pair.remote->addr));
     }
 
-    if(agent->reliable) {
-      if (!nice_socket_is_reliable (component->selected_pair.local->sockptr)) {
-        if (component->tcp != NULL) {
-          /* Send on the pseudo-TCP socket. */
-          n_sent = pseudo_tcp_socket_send_messages (component->tcp, messages,
-              n_messages, allow_partial, &child_error);
-          adjust_tcp_clock (agent, stream, component);
+    if(agent->reliable &&
+        !nice_socket_is_reliable (component->selected_pair.local->sockptr)) {
+      if (component->tcp != NULL) {
+        /* Send on the pseudo-TCP socket. */
+        n_sent = pseudo_tcp_socket_send_messages (component->tcp, messages,
+            n_messages, allow_partial, &child_error);
+        adjust_tcp_clock (agent, stream, component);
 
-          if (!pseudo_tcp_socket_can_send (component->tcp))
-            g_cancellable_reset (component->tcp_writable_cancellable);
-          if (n_sent < 0 && !g_error_matches (child_error, G_IO_ERROR,
-                  G_IO_ERROR_WOULD_BLOCK)) {
-            /* Signal errors */
-            priv_pseudo_tcp_error (agent, stream, component);
-          }
-        } else {
-          g_set_error (&child_error, G_IO_ERROR, G_IO_ERROR_FAILED,
-              "Pseudo-TCP socket not connected.");
+        if (!pseudo_tcp_socket_can_send (component->tcp))
+          g_cancellable_reset (component->tcp_writable_cancellable);
+        if (n_sent < 0 && !g_error_matches (child_error, G_IO_ERROR,
+                G_IO_ERROR_WOULD_BLOCK)) {
+          /* Signal errors */
+          priv_pseudo_tcp_error (agent, stream, component);
         }
       } else {
-          g_set_error (&child_error, G_IO_ERROR, G_IO_ERROR_FAILED,
-              "ICE-TCP not yet supported.");
+        g_set_error (&child_error, G_IO_ERROR, G_IO_ERROR_FAILED,
+            "Pseudo-TCP socket not connected.");
       }
     } else {
       NiceSocket *sock;
