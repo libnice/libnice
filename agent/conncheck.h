@@ -69,6 +69,7 @@ struct _CandidateCheckPair
   guint component_id;
   NiceCandidate *local;
   NiceCandidate *remote;
+  NiceSocket *sockptr;
   gchar foundation[NICE_CANDIDATE_PAIR_MAX_FOUNDATION];
   NiceCheckState state;
   gboolean nominated;

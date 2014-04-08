@@ -291,7 +291,7 @@ static gboolean priv_conn_check_tick_stream (Stream *stream, NiceAgent *agent, G
               nice_debug ("Agent %p :STUN transaction retransmitted (timeout %dms).",
                   agent, timeout);
 
-              agent_socket_send (p->local->sockptr, &p->remote->addr,
+              agent_socket_send (p->sockptr, &p->remote->addr,
                   stun_message_length (&p->stun_message),
                   (gchar *)p->stun_buffer);
 
@@ -935,7 +935,7 @@ static void priv_preprocess_conn_check_pending_data (NiceAgent *agent, Stream *s
   for (i = component->incoming_checks; i; i = i->next) {
     IncomingCheck *icheck = i->data;
     if (nice_address_equal (&icheck->from, &pair->remote->addr) &&
-	icheck->local_socket == pair->local->sockptr) {
+	icheck->local_socket == pair->sockptr) {
       nice_debug ("Agent %p : Updating check %p with stored early-icheck %p, %p/%u/%u (agent/stream/component).", agent, pair, icheck, agent, stream->id, component->id);
       if (icheck->use_candidate)
 	priv_mark_pair_nominated (agent, stream, component, pair->remote);
@@ -1284,6 +1284,7 @@ static void priv_add_new_check_pair (NiceAgent *agent, guint stream_id, Componen
   pair->component_id = component->id;;
   pair->local = local;
   pair->remote = remote;
+  pair->sockptr = (NiceSocket *) local->sockptr;
   g_snprintf (pair->foundation, NICE_CANDIDATE_PAIR_MAX_FOUNDATION, "%s:%s", local->foundation, remote->foundation);
 
   pair->priority = agent_candidate_pair_priority (agent, local, remote);
@@ -1708,7 +1709,7 @@ int conn_check_send (NiceAgent *agent, CandidateCheckPair *pair)
         "password='%.*s' (%" G_GSIZE_FORMAT "), priority=%u.", agent,
 	     tmpbuf,
              nice_address_get_port (&pair->remote->addr),
-             g_socket_get_fd(((NiceSocket *)pair->local->sockptr)->fileno),
+             pair->sockptr->fileno ? g_socket_get_fd(pair->sockptr->fileno) : -1,
 	     pair->foundation, pair->component_id,
 	     (unsigned long long)agent->tie_breaker,
         (int) uname_len, uname, uname_len,
@@ -1739,7 +1740,7 @@ int conn_check_send (NiceAgent *agent, CandidateCheckPair *pair)
     }
 
     if (buffer_len > 0) {
-      if (nice_socket_is_reliable(pair->local->sockptr)) {
+      if (nice_socket_is_reliable(pair->sockptr)) {
         stun_timer_start_reliable(&pair->timer, STUN_TIMER_DEFAULT_TIMEOUT);
       } else {
         stun_timer_start (&pair->timer, STUN_TIMER_DEFAULT_TIMEOUT,
@@ -1747,7 +1748,7 @@ int conn_check_send (NiceAgent *agent, CandidateCheckPair *pair)
       }
 
       /* send the conncheck */
-      agent_socket_send (pair->local->sockptr, &pair->remote->addr,
+      agent_socket_send (pair->sockptr, &pair->remote->addr,
           buffer_len, (gchar *)pair->stun_buffer);
 
       timeout = stun_timer_remainder (&pair->timer);
@@ -1852,7 +1853,7 @@ static gboolean priv_schedule_triggered_check (NiceAgent *agent, Stream *stream,
       CandidateCheckPair *p = i->data;
       if (p->component_id == component->id &&
 	  p->remote == remote_cand &&
-	  p->local->sockptr == local_socket) {
+	  p->sockptr == local_socket) {
 
 	nice_debug ("Agent %p : Found a matching pair %p for triggered check.", agent, p);
 	
@@ -1950,7 +1951,7 @@ static void priv_reply_to_conn_check (NiceAgent *agent, Stream *stream, Componen
     nice_debug ("Agent %p : STUN-CC RESP to '%s:%u', socket=%u, len=%u, cand=%p (c-id:%u), use-cand=%d.", agent,
 	     tmpbuf,
 	     nice_address_get_port (toaddr),
-	     g_socket_get_fd(sockptr->fileno),
+             sockptr->fileno ? g_socket_get_fd(sockptr->fileno) : -1,
 	     (unsigned)rbuf_len,
 	     rcand, component->id,
 	     (int)use_candidate);
