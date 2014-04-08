@@ -1492,6 +1492,21 @@ adjust_tcp_clock (NiceAgent *agent, Stream *stream, Component *component)
   }
 }
 
+static const gchar *
+_transport_to_string (NiceCandidateTransport type) {
+  switch(type) {
+    case NICE_CANDIDATE_TRANSPORT_UDP:
+      return "UDP";
+    case NICE_CANDIDATE_TRANSPORT_TCP_ACTIVE:
+      return "TCP-ACT";
+    case NICE_CANDIDATE_TRANSPORT_TCP_PASSIVE:
+      return "TCP-PASS";
+    case NICE_CANDIDATE_TRANSPORT_TCP_SO:
+      return "TCP-SO";
+    default:
+      return "???";
+  }
+}
 
 void agent_gathering_done (NiceAgent *agent)
 {
@@ -1508,8 +1523,9 @@ void agent_gathering_done (NiceAgent *agent)
 	if (nice_debug_is_enabled ()) {
 	  gchar tmpbuf[INET6_ADDRSTRLEN];
 	  nice_address_to_string (&local_candidate->addr, tmpbuf);
-          nice_debug ("Agent %p: gathered local candidate : [%s]:%u"
+          nice_debug ("Agent %p: gathered %s local candidate : [%s]:%u"
               " for s%d/c%d. U/P '%s'/'%s'", agent,
+              _transport_to_string (local_candidate->transport),
               tmpbuf, nice_address_get_port (&local_candidate->addr),
               local_candidate->stream_id, local_candidate->component_id,
               local_candidate->username, local_candidate->password);
