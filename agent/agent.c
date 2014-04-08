@@ -4438,6 +4438,36 @@ _cand_type_to_sdp (NiceCandidateType type) {
   }
 }
 
+static const gchar *
+_transport_to_sdp (NiceCandidateTransport type) {
+  switch(type) {
+    case NICE_CANDIDATE_TRANSPORT_UDP:
+      return "UDP";
+    case NICE_CANDIDATE_TRANSPORT_TCP_ACTIVE:
+    case NICE_CANDIDATE_TRANSPORT_TCP_PASSIVE:
+    case NICE_CANDIDATE_TRANSPORT_TCP_SO:
+      return "TCP";
+    default:
+      return "???";
+  }
+}
+
+static const gchar *
+_transport_to_sdp_tcptype (NiceCandidateTransport type) {
+  switch(type) {
+    case NICE_CANDIDATE_TRANSPORT_UDP:
+      return "";
+    case NICE_CANDIDATE_TRANSPORT_TCP_ACTIVE:
+      return "active";
+    case NICE_CANDIDATE_TRANSPORT_TCP_PASSIVE:
+      return "passive";
+    case NICE_CANDIDATE_TRANSPORT_TCP_SO:
+      return "so";
+    default:
+      return "";
+  }
+}
+
 static void
 _generate_candidate_sdp (NiceAgent *agent,
     NiceCandidate *candidate, GString *sdp)
@@ -4448,7 +4478,7 @@ _generate_candidate_sdp (NiceAgent *agent,
   g_string_append_printf (sdp, "a=candidate:%.*s %d %s %d %s %d",
       NICE_CANDIDATE_MAX_FOUNDATION, candidate->foundation,
       candidate->component_id,
-      candidate->transport == NICE_CANDIDATE_TRANSPORT_UDP ? "UDP" : "???",
+      _transport_to_sdp (candidate->transport),
       candidate->priority, ip4, nice_address_get_port (&candidate->addr));
   g_string_append_printf (sdp, " typ %s", _cand_type_to_sdp (candidate->type));
   if (nice_address_is_valid (&candidate->base_addr) &&
@@ -4456,6 +4486,10 @@ _generate_candidate_sdp (NiceAgent *agent,
     nice_address_to_string (&candidate->base_addr, ip4);
     g_string_append_printf (sdp, " raddr %s rport %d", ip4,
         nice_address_get_port (&candidate->base_addr));
+    if (candidate->transport != NICE_CANDIDATE_TRANSPORT_UDP) {
+      g_string_append_printf (sdp, " tcptype %s",
+          _transport_to_sdp_tcptype (candidate->transport));
+    }
   }
 }
 
