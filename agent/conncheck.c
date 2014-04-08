@@ -571,6 +571,10 @@ static gboolean priv_conn_keepalive_tick_unlocked (NiceAgent *agent)
       if (component->selected_pair.local != NULL) {
 	CandidatePair *p = &component->selected_pair;
 
+        /* Disable keepalive checks on TCP candidates */
+        if (p->local->transport != NICE_CANDIDATE_TRANSPORT_UDP)
+          continue;
+
         if (agent->compatibility == NICE_COMPATIBILITY_GOOGLE) {
           guint32 priority = nice_candidate_ice_priority_full (
                   NICE_CANDIDATE_TYPE_PREF_PEER_REFLEXIVE, 1,
@@ -672,6 +676,10 @@ static gboolean priv_conn_keepalive_tick_unlocked (NiceAgent *agent)
 
           nice_address_set_port (&stun_server, agent->stun_server_port);
 
+          /* FIXME: This will cause the stun response to arrive on the socket
+           * but the stun agent will not be able to parse it due to an invalid
+           * stun message since RFC3489 will not be compatible, and the response
+           * will be forwarded to the application as user data */
           stun_agent_init (&stun_agent, STUN_ALL_KNOWN_ATTRIBUTES,
               STUN_COMPATIBILITY_RFC3489, 0);
 
@@ -680,7 +688,8 @@ static gboolean priv_conn_keepalive_tick_unlocked (NiceAgent *agent)
 
           for (k = component->local_candidates; k; k = k->next) {
             NiceCandidate *candidate = (NiceCandidate *) k->data;
-            if (candidate->type == NICE_CANDIDATE_TYPE_HOST) {
+            if (candidate->type == NICE_CANDIDATE_TYPE_HOST &&
+                candidate->transport == NICE_CANDIDATE_TRANSPORT_UDP) {
               /* send the conncheck */
               nice_debug ("Agent %p : resending STUN on %s to keep the "
                   "candidate alive.", agent, candidate->foundation);
