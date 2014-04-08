@@ -68,6 +68,9 @@ socket_source_attach (SocketSource *socket_source, GMainContext *context)
 {
   GSource *source;
 
+  if (socket_source->socket->fileno == NULL)
+    return;
+
   /* Create a source. */
   source = g_socket_create_source (socket_source->socket->fileno,
       G_IO_IN, NULL);
