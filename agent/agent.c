@@ -1615,8 +1615,6 @@ void agent_signal_new_selected_pair (NiceAgent *agent, guint stream_id, guint co
 {
   Component *component;
   Stream *stream;
-  gchar *lf_copy;
-  gchar *rf_copy;
 
   if (!agent_find_component (agent, stream_id, component_id,
           &stream, &component))
@@ -1638,14 +1636,8 @@ void agent_signal_new_selected_pair (NiceAgent *agent, guint stream_id, guint co
     return;
   }
 
-  lf_copy = g_strdup (local_foundation);
-  rf_copy = g_strdup (remote_foundation);
-
   agent_queue_signal (agent, signals[SIGNAL_NEW_SELECTED_PAIR],
-      stream_id, component_id, lf_copy, rf_copy);
-
-  g_free (lf_copy);
-  g_free (rf_copy);
+      stream_id, component_id, local_foundation, remote_foundation);
 }
 
 void agent_signal_new_candidate (NiceAgent *agent, NiceCandidate *candidate)
