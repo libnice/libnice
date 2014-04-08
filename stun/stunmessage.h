@@ -211,6 +211,8 @@ typedef enum
  * libjingle
  * @STUN_ATTRIBUTE_MS_VERSION: The MS-VERSION optional attribute as defined
  * by [MS-TURN]
+ * @STUN_ATTRIBUTE_MS_XOR_MAPPED_ADDRESS: The XOR-MAPPED-ADDRESS optional
+ * attribute as defined by [MS-TURN]
  * @STUN_ATTRIBUTE_SOFTWARE: The SOFTWARE optional attribute as defined by RFC5389
  * @STUN_ATTRIBUTE_ALTERNATE_SERVER: The ALTERNATE-SERVER optional attribute as
  * defined by RFC5389
@@ -288,6 +290,7 @@ typedef enum
   /* 0x8000-0x8021 */      /* reserved */
   STUN_ATTRIBUTE_OPTIONS=0x8001, /* libjingle */
   STUN_ATTRIBUTE_MS_VERSION=0x8008,    /* MS-TURN */
+  STUN_ATTRIBUTE_MS_XOR_MAPPED_ADDRESS=0x8020,    /* MS-TURN */
   STUN_ATTRIBUTE_SOFTWARE=0x8022,      /* RFC5389 */
   STUN_ATTRIBUTE_ALTERNATE_SERVER=0x8023,    /* RFC5389 */
   /* 0x8024 */        /* reserved */

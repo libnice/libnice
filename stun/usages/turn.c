@@ -343,10 +343,32 @@ StunUsageTurnReturn stun_usage_turn_process (StunMessage *msg,
       stun_debug (" No MAPPED-ADDRESS: %d\n", val);
       return STUN_USAGE_TURN_RETURN_ERROR;
     }
-  } else if (compatibility == STUN_USAGE_TURN_COMPATIBILITY_MSN ||
-      compatibility == STUN_USAGE_TURN_COMPATIBILITY_OC2007) {
+  } else if (compatibility == STUN_USAGE_TURN_COMPATIBILITY_MSN) {
     val = stun_message_find_addr (msg,
         STUN_ATTRIBUTE_MSN_MAPPED_ADDRESS, addr, addrlen);
+
+    if (val == STUN_MESSAGE_RETURN_SUCCESS)
+      ret = STUN_USAGE_TURN_RETURN_MAPPED_SUCCESS;
+
+    val = stun_message_find_addr (msg,
+        STUN_ATTRIBUTE_MAPPED_ADDRESS, relay_addr, relay_addrlen);
+    if (val != STUN_MESSAGE_RETURN_SUCCESS) {
+      stun_debug (" No MAPPED-ADDRESS: %d\n", val);
+      return STUN_USAGE_TURN_RETURN_ERROR;
+    }
+  } else if (compatibility == STUN_USAGE_TURN_COMPATIBILITY_OC2007) {
+    union {
+      StunTransactionId id;
+      uint32_t u32[4];
+    } transid;
+    uint32_t magic_cookie;
+
+    stun_message_id (msg, transid.id);
+    magic_cookie = transid.u32[0];
+
+    val = stun_message_find_xor_addr_full (msg,
+        STUN_ATTRIBUTE_MS_XOR_MAPPED_ADDRESS, addr, addrlen,
+        htonl (magic_cookie));
 
     if (val == STUN_MESSAGE_RETURN_SUCCESS)
       ret = STUN_USAGE_TURN_RETURN_MAPPED_SUCCESS;
