@@ -4239,6 +4239,9 @@ nice_agent_set_selected_remote_candidate (
 void
 _priv_set_socket_tos (NiceAgent *agent, NiceSocket *sock, gint tos)
 {
+  if (sock->fileno == NULL)
+    return;
+
   if (setsockopt (g_socket_get_fd (sock->fileno), IPPROTO_IP,
           IP_TOS, (const char *) &tos, sizeof (tos)) < 0) {
     nice_debug ("Agent %p: Could not set socket ToS: %s", agent,
