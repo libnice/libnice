@@ -247,6 +247,10 @@ guint32
 nice_candidate_ice_priority (const NiceCandidate *candidate,
     gboolean reliable, gboolean nat_assisted);
 
+guint32
+nice_candidate_ms_ice_priority (const NiceCandidate *candidate,
+    gboolean reliable, gboolean nat_assisted);
+
 guint64
 nice_candidate_pair_priority (guint32 o_prio, guint32 a_prio);
 

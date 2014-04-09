@@ -56,13 +56,19 @@
 
 G_BEGIN_DECLS
 
-
+/* Constants for determining candidate priorities */
 #define NICE_CANDIDATE_TYPE_PREF_HOST                 120
 #define NICE_CANDIDATE_TYPE_PREF_PEER_REFLEXIVE       110
 #define NICE_CANDIDATE_TYPE_PREF_NAT_ASSISTED         105
 #define NICE_CANDIDATE_TYPE_PREF_SERVER_REFLEXIVE     100
 #define NICE_CANDIDATE_TYPE_PREF_UDP_TUNNELED          75
 #define NICE_CANDIDATE_TYPE_PREF_RELAYED               10
+
+/* Priority preference constants for MS-ICE compatibility */
+#define NICE_CANDIDATE_TRANSPORT_MS_PREF_UDP           15
+#define NICE_CANDIDATE_TRANSPORT_MS_PREF_TCP            6
+#define NICE_CANDIDATE_DIRECTION_MS_PREF_PASSIVE        2
+#define NICE_CANDIDATE_DIRECTION_MS_PREF_ACTIVE         5
 
 /* Max foundation size '1*32ice-char' plus terminating NULL, ICE ID-19  */
 /**

@@ -1712,8 +1712,11 @@ int conn_check_send (NiceAgent *agent, CandidateCheckPair *pair)
   if (agent->compatibility == NICE_COMPATIBILITY_GOOGLE) {
     priority = nice_candidate_jingle_priority (candidate_priority);
   } else if (agent->compatibility == NICE_COMPATIBILITY_MSN ||
-             agent->compatibility == NICE_COMPATIBILITY_OC2007)  {
+             agent->compatibility == NICE_COMPATIBILITY_OC2007) {
     priority = nice_candidate_msn_priority (candidate_priority);
+  } else if (agent->compatibility == NICE_COMPATIBILITY_OC2007R2) {
+    priority =  nice_candidate_ms_ice_priority (candidate_priority,
+        agent->reliable, FALSE);
   } else {
     priority =  nice_candidate_ice_priority (candidate_priority,
         agent->reliable, FALSE);
