@@ -91,5 +91,6 @@ void conn_check_prune_stream (NiceAgent *agent, Stream *stream);
 gboolean conn_check_handle_inbound_stun (NiceAgent *agent, Stream *stream, Component *component, NiceSocket *udp_socket, const NiceAddress *from, gchar *buf, guint len);
 gint conn_check_compare (const CandidateCheckPair *a, const CandidateCheckPair *b);
 void conn_check_remote_candidates_set(NiceAgent *agent);
+NiceCandidateTransport conn_check_match_transport (NiceCandidateTransport transport);
 
 #endif /*_NICE_CONNCHECK_H */

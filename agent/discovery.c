@@ -763,20 +763,27 @@ NiceCandidate *discovery_learn_remote_peer_reflexive_candidate (
   Component *component,
   guint32 priority,
   const NiceAddress *remote_address,
-  NiceSocket *udp_socket,
+  NiceSocket *nicesock,
   NiceCandidate *local,
   NiceCandidate *remote)
 {
   NiceCandidate *candidate;
 
-  /* XXX: for use compiler */
-  (void)udp_socket;
-
   candidate = nice_candidate_new (NICE_CANDIDATE_TYPE_PEER_REFLEXIVE);
 
   candidate->addr = *remote_address;
   candidate->base_addr = *remote_address;
-  candidate->transport = remote->transport;
+  if (remote)
+    candidate->transport = remote->transport;
+  else if (local)
+    candidate->transport = conn_check_match_transport (local->transport);
+  else {
+    if (nicesock->type == NICE_SOCKET_TYPE_UDP_BSD ||
+        nicesock->type == NICE_SOCKET_TYPE_TURN)
+      candidate->transport = NICE_CANDIDATE_TRANSPORT_UDP;
+    else
+      candidate->transport = NICE_CANDIDATE_TRANSPORT_TCP_ACTIVE;
+  }
   candidate->stream_id = stream->id;
   candidate->component_id = component->id;
 

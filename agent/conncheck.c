@@ -1318,8 +1318,8 @@ static void priv_add_new_check_pair (NiceAgent *agent, guint stream_id, Componen
   }
 }
 
-static NiceCandidateTransport
-priv_match_transport (NiceCandidateTransport transport)
+NiceCandidateTransport
+conn_check_match_transport (NiceCandidateTransport transport)
 {
   switch (transport) {
     case NICE_CANDIDATE_TRANSPORT_TCP_ACTIVE:
@@ -1355,7 +1355,7 @@ static gboolean priv_conn_check_add_for_candidate_pair (NiceAgent *agent, guint 
     return FALSE;
   }
   /* note: match pairs only if transport and address family are the same */
-  if (local->transport == priv_match_transport (remote->transport) &&
+  if (local->transport == conn_check_match_transport (remote->transport) &&
      local->addr.s.addr.sa_family == remote->addr.s.addr.sa_family) {
 
     nice_debug ("Agent %p, Adding check pair between %s and %s", agent,
@@ -2963,6 +2963,13 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, Stream *stream,
     NiceCandidate *cand = i->data;
     if (nice_address_equal (from, &cand->addr)) {
       remote_candidate = cand;
+      break;
+    }
+  }
+  for (i = component->local_candidates; i; i = i->next) {
+    NiceCandidate *cand = i->data;
+    if (cand->sockptr == nicesock) {
+      local_candidate = cand;
       break;
     }
   }
