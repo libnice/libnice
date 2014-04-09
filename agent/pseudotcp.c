@@ -1890,23 +1890,23 @@ pseudo_tcp_socket_get_available_bytes (PseudoTcpSocket *self)
 gboolean
 pseudo_tcp_socket_can_send (PseudoTcpSocket *self)
 {
-  PseudoTcpSocketPrivate *priv = self->priv;
-
-  if (priv->state != TCP_ESTABLISHED) {
-    return FALSE;
-  }
-
-  return (pseudo_tcp_fifo_get_write_remaining (&priv->sbuf) != 0);
+  return (pseudo_tcp_socket_get_available_send_space (self) > 0);
 }
 
 gsize
 pseudo_tcp_socket_get_available_send_space (PseudoTcpSocket *self)
 {
   PseudoTcpSocketPrivate *priv = self->priv;
+  gsize ret;
 
-  if (priv->state != TCP_ESTABLISHED) {
-    return 0;
-  }
 
-  return pseudo_tcp_fifo_get_write_remaining (&priv->sbuf);
+  if (priv->state == TCP_ESTABLISHED)
+    ret = pseudo_tcp_fifo_get_write_remaining (&priv->sbuf);
+  else
+    ret = 0;
+
+  if (ret == 0)
+    priv->bWriteEnable = TRUE;
+
+  return ret;
 }
