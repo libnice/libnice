@@ -2484,14 +2484,20 @@ static gboolean priv_map_reply_to_relay_request (NiceAgent *agent, StunMessage *
             /* We also received our mapped address */
             nice_address_set_from_sockaddr (&niceaddr, &sockaddr.addr);
 
-            discovery_add_server_reflexive_candidate (
-                d->agent,
-                d->stream->id,
-                d->component->id,
-                &niceaddr,
-                NICE_CANDIDATE_TRANSPORT_UDP,
-                d->nicesock,
-                FALSE);
+            /* TCP or TLS TURNS means the server-reflexive address was
+             * on a TCP connection, which cannot be used for server-reflexive
+             * discovery of candidates.
+             */
+            if (d->turn->type == NICE_RELAY_TYPE_TURN_UDP) {
+              discovery_add_server_reflexive_candidate (
+                  d->agent,
+                  d->stream->id,
+                  d->component->id,
+                  &niceaddr,
+                  NICE_CANDIDATE_TRANSPORT_UDP,
+                  d->nicesock,
+                  FALSE);
+            }
           }
 
           nice_address_set_from_sockaddr (&niceaddr, &relayaddr.addr);
