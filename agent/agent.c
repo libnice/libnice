@@ -4097,6 +4097,10 @@ nice_agent_get_selected_socket (NiceAgent *agent, guint stream_id,
 
   agent_lock();
 
+  /* Reliable streams are pseudotcp or MUST use RFC 4571 framing */
+  if (agent->reliable)
+    goto done;
+
   /* step: check that params specify an existing pair */
   if (!agent_find_component (agent, stream_id, component_id,
           &stream, &component))
