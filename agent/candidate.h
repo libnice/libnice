@@ -220,25 +220,6 @@ nice_candidate_free (NiceCandidate *candidate);
 NiceCandidate *
 nice_candidate_copy (const NiceCandidate *candidate);
 
-
-guint32
-nice_candidate_jingle_priority (NiceCandidate *candidate);
-
-guint32
-nice_candidate_msn_priority (NiceCandidate *candidate);
-
-guint32
-nice_candidate_ice_priority_full (guint type_pref, guint local_pref,
-    guint component_id);
-
-guint32
-nice_candidate_ice_priority (const NiceCandidate *candidate,
-    gboolean reliable, gboolean nat_assisted);
-
-guint64
-nice_candidate_pair_priority (guint32 o_prio, guint32 a_prio);
-
-
 G_END_DECLS
 
 #endif /* _CANDIDATE_H */

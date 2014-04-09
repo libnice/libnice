@@ -39,6 +39,8 @@
 #endif
 
 #include "agent.h"
+#include "agent-priv.h"
+
 
 int
 main (void)
