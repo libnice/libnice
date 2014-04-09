@@ -133,28 +133,89 @@ nice_candidate_ice_priority_full (
       (0x100 - component_id));
 }
 
+static guint32
+nice_candidate_ice_local_priority_full (guint direction_preference,
+    guint other_preference)
+{
+  return (0x2000 * direction_preference +
+      other_preference);
+}
+
+static guint16
+nice_candidate_ice_local_priority (const NiceCandidate *candidate)
+{
+  guint direction_preference;
+
+  switch (candidate->transport)
+    {
+      case NICE_CANDIDATE_TRANSPORT_TCP_ACTIVE:
+        if (candidate->type == NICE_CANDIDATE_TYPE_SERVER_REFLEXIVE ||
+            candidate->type == NICE_CANDIDATE_TYPE_PREF_NAT_ASSISTED)
+          direction_preference = 4;
+        else
+          direction_preference = 6;
+        break;
+      case NICE_CANDIDATE_TRANSPORT_TCP_PASSIVE:
+        if (candidate->type == NICE_CANDIDATE_TYPE_SERVER_REFLEXIVE ||
+            candidate->type == NICE_CANDIDATE_TYPE_PREF_NAT_ASSISTED)
+          direction_preference = 2;
+        else
+          direction_preference = 4;
+        break;
+      case NICE_CANDIDATE_TRANSPORT_TCP_SO:
+        if (candidate->type == NICE_CANDIDATE_TYPE_SERVER_REFLEXIVE ||
+            candidate->type == NICE_CANDIDATE_TYPE_PREF_NAT_ASSISTED)
+          direction_preference = 6;
+        else
+          direction_preference = 2;
+        break;
+      case NICE_CANDIDATE_TRANSPORT_UDP:
+      default:
+        return 1;
+        break;
+    }
+
+  return nice_candidate_ice_local_priority_full (direction_preference, 1);
+}
 
 guint32
-nice_candidate_ice_priority (const NiceCandidate *candidate)
+nice_candidate_ice_priority (const NiceCandidate *candidate,
+    gboolean reliable, gboolean nat_assisted)
 {
   guint8 type_preference;
+  guint16 local_preference;
 
   switch (candidate->type)
     {
     case NICE_CANDIDATE_TYPE_HOST:
-      type_preference = NICE_CANDIDATE_TYPE_PREF_HOST; break;
+      type_preference = NICE_CANDIDATE_TYPE_PREF_HOST;
+      break;
     case NICE_CANDIDATE_TYPE_PEER_REFLEXIVE:
-      type_preference = NICE_CANDIDATE_TYPE_PREF_PEER_REFLEXIVE; break;
+      type_preference = NICE_CANDIDATE_TYPE_PREF_PEER_REFLEXIVE;
+      break;
     case NICE_CANDIDATE_TYPE_SERVER_REFLEXIVE:
-      type_preference = NICE_CANDIDATE_TYPE_PREF_SERVER_REFLEXIVE; break;
+      if (nat_assisted)
+        type_preference = NICE_CANDIDATE_TYPE_PREF_NAT_ASSISTED;
+      else
+        type_preference = NICE_CANDIDATE_TYPE_PREF_SERVER_REFLEXIVE;
+      break;
     case NICE_CANDIDATE_TYPE_RELAYED:
-      type_preference = NICE_CANDIDATE_TYPE_PREF_RELAYED; break;
+      type_preference = NICE_CANDIDATE_TYPE_PREF_RELAYED;
+      break;
     default:
-      type_preference = 0; break;
+      type_preference = 0;
+      break;
     }
 
-  /* return _candidate_ice_priority (type_preference, 1, candidate->component_id); */
-  return nice_candidate_ice_priority_full (type_preference, 1, candidate->component_id);
+  if (reliable && candidate->transport == NICE_CANDIDATE_TRANSPORT_UDP) {
+    type_preference = NICE_CANDIDATE_TYPE_PREF_UDP_TUNNELED;
+  } else if (!reliable && candidate->transport != NICE_CANDIDATE_TRANSPORT_UDP) {
+    type_preference = type_preference / 2 - 1;
+  }
+  local_preference = nice_candidate_ice_local_priority (candidate);
+
+  return nice_candidate_ice_priority_full (type_preference, local_preference,
+      candidate->component_id);
 }
 
 /*

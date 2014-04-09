@@ -2084,7 +2084,8 @@ static void _upnp_mapped_external_port (GUPnPSimpleIgd *self, gchar *proto,
               component->id,
               &externaddr,
               transport,
-              local_candidate->sockptr);
+              local_candidate->sockptr,
+              TRUE);
           goto end;
         }
       }

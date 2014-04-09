@@ -486,7 +486,8 @@ NiceCandidate *discovery_add_local_host_candidate (
              agent->compatibility == NICE_COMPATIBILITY_OC2007)  {
     candidate->priority = nice_candidate_msn_priority (candidate);
   } else {
-    candidate->priority = nice_candidate_ice_priority (candidate);
+    candidate->priority = nice_candidate_ice_priority (candidate,
+        agent->reliable, FALSE);
   }
 
   priv_generate_candidate_credentials (agent, candidate);
@@ -534,7 +535,8 @@ discovery_add_server_reflexive_candidate (
   guint component_id,
   NiceAddress *address,
   NiceCandidateTransport transport,
-  NiceSocket *base_socket)
+  NiceSocket *base_socket,
+  gboolean nat_assisted)
 {
   NiceCandidate *candidate;
   Component *component;
@@ -556,7 +558,8 @@ discovery_add_server_reflexive_candidate (
              agent->compatibility == NICE_COMPATIBILITY_OC2007)  {
     candidate->priority = nice_candidate_msn_priority (candidate);
   } else {
-    candidate->priority =  nice_candidate_ice_priority (candidate);
+    candidate->priority =  nice_candidate_ice_priority (candidate,
+        agent->reliable, nat_assisted);
   }
 
   /* step: link to the base candidate+socket */
@@ -616,7 +619,8 @@ discovery_add_relay_candidate (
              agent->compatibility == NICE_COMPATIBILITY_OC2007)  {
     candidate->priority = nice_candidate_msn_priority (candidate);
   } else {
-    candidate->priority =  nice_candidate_ice_priority (candidate);
+    candidate->priority =  nice_candidate_ice_priority (candidate,
+        agent->reliable, FALSE);
   }
 
   /* step: link to the base candidate+socket */
@@ -692,7 +696,8 @@ discovery_add_peer_reflexive_candidate (
              agent->compatibility == NICE_COMPATIBILITY_OC2007)  {
     candidate->priority = nice_candidate_msn_priority (candidate);
   } else {
-    candidate->priority = nice_candidate_ice_priority (candidate);
+    candidate->priority = nice_candidate_ice_priority (candidate,
+        agent->reliable, FALSE);
   }
 
   priv_assign_foundation (agent, candidate);
@@ -785,7 +790,8 @@ NiceCandidate *discovery_learn_remote_peer_reflexive_candidate (
              agent->compatibility == NICE_COMPATIBILITY_OC2007)  {
     candidate->priority = nice_candidate_msn_priority (candidate);
   } else {
-    candidate->priority = nice_candidate_ice_priority (candidate);
+    candidate->priority = nice_candidate_ice_priority (candidate,
+        agent->reliable, FALSE);
   }
 
   priv_assign_remote_foundation (agent, candidate);

@@ -47,7 +47,9 @@ main (void)
 
   /* test 1 */
   candidate = nice_candidate_new (NICE_CANDIDATE_TYPE_HOST);
-  g_assert (nice_candidate_ice_priority (candidate) == 0x78000200);
+  candidate->transport = NICE_CANDIDATE_TRANSPORT_UDP;
+  candidate->component_id = 1;
+  g_assert (nice_candidate_ice_priority (candidate, FALSE, FALSE) == 0x780001FF);
   g_assert (nice_candidate_jingle_priority (candidate) == 1000);
   nice_candidate_free (candidate);
 

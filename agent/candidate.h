@@ -59,7 +59,9 @@ G_BEGIN_DECLS
 
 #define NICE_CANDIDATE_TYPE_PREF_HOST                 120
 #define NICE_CANDIDATE_TYPE_PREF_PEER_REFLEXIVE       110
+#define NICE_CANDIDATE_TYPE_PREF_NAT_ASSISTED         105
 #define NICE_CANDIDATE_TYPE_PREF_SERVER_REFLEXIVE     100
+#define NICE_CANDIDATE_TYPE_PREF_UDP_TUNNELED          75
 #define NICE_CANDIDATE_TYPE_PREF_RELAYED               60
 
 /* Max foundation size '1*32ice-char' plus terminating NULL, ICE ID-19  */
@@ -230,7 +232,8 @@ nice_candidate_ice_priority_full (guint type_pref, guint local_pref,
     guint component_id);
 
 guint32
-nice_candidate_ice_priority (const NiceCandidate *candidate);
+nice_candidate_ice_priority (const NiceCandidate *candidate,
+    gboolean reliable, gboolean nat_assisted);
 
 guint64
 nice_candidate_pair_priority (guint32 o_prio, guint32 a_prio);

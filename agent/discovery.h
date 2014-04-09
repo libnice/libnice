@@ -117,7 +117,8 @@ discovery_add_server_reflexive_candidate (
   guint component_id,
   NiceAddress *address,
   NiceCandidateTransport transport,
-  NiceSocket *base_socket);
+  NiceSocket *base_socket,
+  gboolean nat_assisted);
 
 NiceCandidate* 
 discovery_add_peer_reflexive_candidate (
