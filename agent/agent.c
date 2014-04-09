@@ -4150,6 +4150,10 @@ nice_agent_get_selected_socket (NiceAgent *agent, guint stream_id,
   if (component->selected_pair.local->type == NICE_CANDIDATE_TYPE_RELAYED)
     goto done;
 
+  /* ICE-TCP requires RFC4571 framing, even if unreliable */
+  if (component->selected_pair.local->transport != NICE_CANDIDATE_TRANSPORT_UDP)
+    goto done;
+
   nice_socket = (NiceSocket *)component->selected_pair.local->sockptr;
   if (nice_socket->fileno)
     g_socket = g_object_ref (nice_socket->fileno);
