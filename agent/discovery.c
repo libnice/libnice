@@ -624,7 +624,7 @@ discovery_add_relay_candidate (
   }
 
   /* step: link to the base candidate+socket */
-  relay_socket = nice_turn_socket_new (agent->main_context, address,
+  relay_socket = nice_udp_turn_socket_new (agent->main_context, address,
       base_socket, &turn->server,
       turn->username, turn->password,
       agent_to_turn_socket_compatibility (agent));
@@ -779,7 +779,7 @@ NiceCandidate *discovery_learn_remote_peer_reflexive_candidate (
     candidate->transport = conn_check_match_transport (local->transport);
   else {
     if (nicesock->type == NICE_SOCKET_TYPE_UDP_BSD ||
-        nicesock->type == NICE_SOCKET_TYPE_TURN)
+        nicesock->type == NICE_SOCKET_TYPE_UDP_TURN)
       candidate->transport = NICE_CANDIDATE_TRANSPORT_UDP;
     else
       candidate->transport = NICE_CANDIDATE_TRANSPORT_TCP_ACTIVE;

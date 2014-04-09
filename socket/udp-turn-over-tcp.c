@@ -42,7 +42,7 @@
 # include "config.h"
 #endif
 
-#include "tcp-turn.h"
+#include "udp-turn-over-tcp.h"
 #include "agent-priv.h"
 
 #include <string.h>
@@ -84,7 +84,7 @@ static gint socket_send_messages_reliable (NiceSocket *sock,
 static gboolean socket_is_reliable (NiceSocket *sock);
 
 NiceSocket *
-nice_tcp_turn_socket_new (NiceSocket *base_socket,
+nice_udp_turn_over_tcp_socket_new (NiceSocket *base_socket,
     NiceTurnSocketCompatibility compatibility)
 {
   TurnTcpPriv *priv;
@@ -94,7 +94,7 @@ nice_tcp_turn_socket_new (NiceSocket *base_socket,
   priv->compatibility = compatibility;
   priv->base_socket = base_socket;
 
-  sock->type = NICE_SOCKET_TYPE_TCP_TURN;
+  sock->type = NICE_SOCKET_TYPE_UDP_TURN_OVER_TCP;
   sock->fileno = priv->base_socket->fileno;
   sock->addr = priv->base_socket->addr;
   sock->send_messages = socket_send_messages;

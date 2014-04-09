@@ -32,9 +32,9 @@ libsocket_la_SOURCES = \
 	socks5.c \
 	http.h \
 	http.c \
-	turn.h \
-	turn.c \
-	tcp-turn.h \
-	tcp-turn.c
+	udp-turn.h \
+	udp-turn.c \
+	udp-turn-over-tcp.h \
+	udp-turn-over-tcp.c
 
 

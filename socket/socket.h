@@ -61,8 +61,8 @@ typedef enum {
   NICE_SOCKET_TYPE_PSEUDOSSL,
   NICE_SOCKET_TYPE_HTTP,
   NICE_SOCKET_TYPE_SOCKS5,
-  NICE_SOCKET_TYPE_TURN,
-  NICE_SOCKET_TYPE_TCP_TURN,
+  NICE_SOCKET_TYPE_UDP_TURN,
+  NICE_SOCKET_TYPE_UDP_TURN_OVER_TCP,
   NICE_SOCKET_TYPE_TCP_ACTIVE,
   NICE_SOCKET_TYPE_TCP_PASSIVE,
   NICE_SOCKET_TYPE_TCP_SO
@@ -117,8 +117,8 @@ nice_socket_free (NiceSocket *sock);
 #include "pseudossl.h"
 #include "socks5.h"
 #include "http.h"
-#include "turn.h"
-#include "tcp-turn.h"
+#include "udp-turn.h"
+#include "udp-turn-over-tcp.h"
 
 G_END_DECLS
 

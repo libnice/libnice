@@ -1645,8 +1645,8 @@ void agent_signal_new_selected_pair (NiceAgent *agent, guint stream_id,
           &stream, &component))
     return;
 
-  if (component->selected_pair.local->type == NICE_CANDIDATE_TYPE_RELAYED) {
-    nice_turn_socket_set_peer (lcandidate->sockptr, &rcandidate->addr);
+  if (((NiceSocket *)lcandidate->sockptr)->type == NICE_SOCKET_TYPE_UDP_TURN) {
+    nice_udp_turn_socket_set_peer (lcandidate->sockptr, &rcandidate->addr);
   }
 
   if(agent->reliable) {
@@ -1841,7 +1841,7 @@ priv_add_new_candidate_discovery_turn (NiceAgent *agent,
       nicesock = nice_pseudossl_socket_new (nicesock,
           NICE_PSEUDOSSL_SOCKET_COMPATIBILITY_MSOC);
     }
-    cdisco->nicesock = nice_tcp_turn_socket_new (nicesock,
+    cdisco->nicesock = nice_udp_turn_over_tcp_socket_new (nicesock,
         agent_to_turn_socket_compatibility (agent));
 
     component_attach_socket (component, cdisco->nicesock);
@@ -2779,7 +2779,7 @@ agent_recv_message_unlocked (
       if (cand->type == NICE_CANDIDATE_TYPE_RELAYED &&
           cand->stream_id == stream->id &&
           cand->component_id == component->id) {
-        retval = nice_turn_socket_parse_recv_message (cand->sockptr, &nicesock,
+        retval = nice_udp_turn_socket_parse_recv_message (cand->sockptr, &nicesock,
             message);
         break;
       }

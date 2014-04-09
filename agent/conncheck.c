@@ -2518,8 +2518,10 @@ static gboolean priv_map_reply_to_relay_request (NiceAgent *agent, StunMessage *
                 d->turn);
 
             if (relay_cand) {
-              nice_turn_socket_set_ms_realm(relay_cand->sockptr, &d->stun_message);
-              nice_turn_socket_set_ms_connection_id(relay_cand->sockptr, resp);
+              nice_udp_turn_socket_set_ms_realm(relay_cand->sockptr,
+                  &d->stun_message);
+              nice_udp_turn_socket_set_ms_connection_id(relay_cand->sockptr,
+                  resp);
             }
 
             relay_cand = discovery_add_relay_candidate (
@@ -2550,8 +2552,10 @@ static gboolean priv_map_reply_to_relay_request (NiceAgent *agent, StunMessage *
                * response arrives to _nice_agent_recv(). We must set them right
                * after socket gets created in discovery_add_relay_candidate(),
                * so we are doing it here. */
-              nice_turn_socket_set_ms_realm(relay_cand->sockptr, &d->stun_message);
-              nice_turn_socket_set_ms_connection_id(relay_cand->sockptr, resp);
+              nice_udp_turn_socket_set_ms_realm(relay_cand->sockptr,
+                  &d->stun_message);
+              nice_udp_turn_socket_set_ms_connection_id(relay_cand->sockptr,
+                  resp);
             } else
               priv_add_new_turn_refresh (d, relay_cand, lifetime);
           }
