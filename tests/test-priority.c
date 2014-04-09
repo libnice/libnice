@@ -52,11 +52,11 @@ main (void)
   candidate->transport = NICE_CANDIDATE_TRANSPORT_UDP;
   candidate->component_id = 1;
   g_assert (nice_candidate_ice_priority (candidate, FALSE, FALSE) == 0x780001FF);
-  /* Host UDP-tunneled reliable */
-  g_assert (nice_candidate_ice_priority (candidate, TRUE, FALSE) == 0x4B0001FF);
+  /* Host UDP reliable */
+  g_assert (nice_candidate_ice_priority (candidate, TRUE, FALSE) == 0x3C0001FF);
   /* Host tcp-active unreliable */
   candidate->transport = NICE_CANDIDATE_TRANSPORT_TCP_ACTIVE;
-  g_assert (nice_candidate_ice_priority (candidate, FALSE, FALSE) == 0x3BC001FF);
+  g_assert (nice_candidate_ice_priority (candidate, FALSE, FALSE) == 0x3CC001FF);
   /* Host tcp-active reliable */
   candidate->transport = NICE_CANDIDATE_TRANSPORT_TCP_ACTIVE;
   /* Host tcp-active reliable */

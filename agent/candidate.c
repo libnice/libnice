@@ -207,10 +207,9 @@ nice_candidate_ice_priority (const NiceCandidate *candidate,
       break;
     }
 
-  if (reliable && candidate->transport == NICE_CANDIDATE_TRANSPORT_UDP) {
-    type_preference = NICE_CANDIDATE_TYPE_PREF_UDP_TUNNELED;
-  } else if (!reliable && candidate->transport != NICE_CANDIDATE_TRANSPORT_UDP) {
-    type_preference = type_preference / 2 - 1;
+  if ((reliable && candidate->transport == NICE_CANDIDATE_TRANSPORT_UDP) ||
+      (!reliable && candidate->transport != NICE_CANDIDATE_TRANSPORT_UDP)) {
+    type_preference = type_preference / 2;
   }
   local_preference = nice_candidate_ice_local_priority (candidate);
 

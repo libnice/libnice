@@ -62,7 +62,7 @@ G_BEGIN_DECLS
 #define NICE_CANDIDATE_TYPE_PREF_NAT_ASSISTED         105
 #define NICE_CANDIDATE_TYPE_PREF_SERVER_REFLEXIVE     100
 #define NICE_CANDIDATE_TYPE_PREF_UDP_TUNNELED          75
-#define NICE_CANDIDATE_TYPE_PREF_RELAYED               60
+#define NICE_CANDIDATE_TYPE_PREF_RELAYED               10
 
 /* Max foundation size '1*32ice-char' plus terminating NULL, ICE ID-19  */
 /**
