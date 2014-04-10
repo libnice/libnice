@@ -1796,14 +1796,24 @@ priv_add_new_candidate_discovery_turn (NiceAgent *agent,
     cdisco->nicesock = nicesock;
   } else {
     NiceAddress proxy_server;
-    nicesock = NULL;
+    gboolean reliable_tcp = FALSE;
 
+    /* MS-TURN will allocate a transport with the same protocol it received
+     * the allocate request. So if we are connecting in TCP, then the candidate
+     * will be TCP-ACT/TCP-PASS which means it will be reliable all the way
+     * to the peer
+     */
+    if (agent->compatibility == NICE_COMPATIBILITY_OC2007 ||
+        agent->compatibility == NICE_COMPATIBILITY_OC2007R2)
+      reliable_tcp = TRUE;
+
+    nicesock = NULL;
     if (agent->proxy_type != NICE_PROXY_TYPE_NONE &&
         agent->proxy_ip != NULL &&
         nice_address_set_from_string (&proxy_server, agent->proxy_ip)) {
       nice_address_set_port (&proxy_server, agent->proxy_port);
       nicesock = nice_tcp_bsd_socket_new (agent->main_context, &proxy_server,
-          FALSE);
+          reliable_tcp);
 
       if (nicesock) {
         _priv_set_socket_tos (agent, nicesock, stream->tos);
@@ -1822,7 +1832,7 @@ priv_add_new_candidate_discovery_turn (NiceAgent *agent,
     }
     if (nicesock == NULL) {
       nicesock = nice_tcp_bsd_socket_new (agent->main_context, &turn->server,
-          FALSE);
+          reliable_tcp);
 
       if (nicesock)
         _priv_set_socket_tos (agent, nicesock, stream->tos);
