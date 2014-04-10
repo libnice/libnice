@@ -491,7 +491,10 @@ add_to_be_sent (NiceSocket *sock, const NiceOutputMessage *message,
     len = MIN (tbs->length - offset, buffer->size - message_offset);
     memcpy (tbs->buf + offset, (guint8 *) buffer->buffer + message_offset, len);
     offset += len;
-    message_offset -= len;
+    if (message_offset >= len)
+      message_offset -= len;
+    else
+      message_offset = 0;
   }
 }
 
