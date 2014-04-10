@@ -41,7 +41,22 @@
 #include <glib.h>
 
 #include "socket.h"
+#include "socket-priv.h"
+#include "agent-priv.h"
 
+#include <string.h>
+
+#ifndef G_OS_WIN32
+#include <unistd.h>
+#endif
+
+typedef struct _NiceSocketQueuedSend NiceSocketQueuedSend;
+
+struct _NiceSocketQueuedSend {
+  guint8 *buf;  /* owned */
+  gsize length;
+  NiceAddress to;
+};
 
 /**
  * nice_socket_recv_messages:
@@ -224,4 +239,176 @@ nice_socket_free (NiceSocket *sock)
     sock->close (sock);
     g_slice_free (NiceSocket,sock);
   }
+}
+
+static void
+nice_socket_free_queued_send (NiceSocketQueuedSend *tbs)
+{
+  g_free (tbs->buf);
+  g_slice_free (NiceSocketQueuedSend, tbs);
+}
+
+void
+nice_socket_queue_send (GQueue *send_queue, const NiceAddress *to,
+    const NiceOutputMessage *messages, guint n_messages)
+{
+  guint i;
+
+  if (n_messages == 0)
+    return;
+
+  /* Compact the message’s buffers before queueing. */
+  for (i = 0; i < n_messages; i++) {
+    NiceSocketQueuedSend *tbs;
+    const NiceOutputMessage *message = &messages[i];
+    gsize message_len_remaining = output_message_get_size (message);
+    guint j;
+    gsize offset = 0;
+
+    if (message_len_remaining == 0)
+      continue;
+
+    /* Compact the buffer. */
+    tbs = g_slice_new0 (NiceSocketQueuedSend);
+    tbs->buf = g_malloc (message_len_remaining);
+    tbs->length = message_len_remaining;
+
+    if (to)
+      tbs->to = *to;
+    else
+      memset (&tbs->to, 0, sizeof(NiceAddress));
+    g_queue_push_tail (send_queue, tbs);
+
+    for (j = 0;
+         (message->n_buffers >= 0 && j < (guint) message->n_buffers) ||
+         (message->n_buffers < 0 && message->buffers[j].buffer != NULL);
+         j++) {
+      const GOutputVector *buffer = &message->buffers[j];
+      gsize len;
+
+      len = MIN (buffer->size, message_len_remaining);
+      memcpy (tbs->buf + offset, buffer->buffer, len);
+      message_len_remaining -= len;
+      offset += len;
+    }
+
+    g_assert (offset == tbs->length);
+  }
+}
+
+void nice_socket_queue_send_with_callback (GQueue *send_queue,
+    const NiceOutputMessage *message, gsize message_offset, gsize message_len,
+    gboolean head, GSocket *gsock, GSource **io_source, GMainContext *context,
+    GSourceFunc cb, gpointer user_data)
+{
+  NiceSocketQueuedSend *tbs;
+  guint j;
+  gsize offset = 0;
+
+  if (message_offset >= message_len)
+    return;
+
+  tbs = g_slice_new0 (NiceSocketQueuedSend);
+  tbs->length = message_len - message_offset;
+  tbs->buf = g_malloc (tbs->length);
+
+  if (head)
+    g_queue_push_head (send_queue, tbs);
+  else
+    g_queue_push_tail (send_queue, tbs);
+
+  if (io_source && gsock && context && cb && *io_source == NULL) {
+    *io_source = g_socket_create_source(gsock, G_IO_OUT, NULL);
+    g_source_set_callback (*io_source, (GSourceFunc) cb, user_data, NULL);
+    g_source_attach (*io_source, context);
+  }
+
+  /* Move the data into the buffer. */
+  for (j = 0;
+       (message->n_buffers >= 0 && j < (guint) message->n_buffers) ||
+       (message->n_buffers < 0 && message->buffers[j].buffer != NULL);
+       j++) {
+    const GOutputVector *buffer = &message->buffers[j];
+    gsize len;
+
+    /* Skip this buffer if it’s within @message_offset. */
+    if (buffer->size <= message_offset) {
+      message_offset -= buffer->size;
+      continue;
+    }
+
+    len = MIN (tbs->length - offset, buffer->size - message_offset);
+    memcpy (tbs->buf + offset, (guint8 *) buffer->buffer + message_offset, len);
+    offset += len;
+    if (message_offset >= len)
+      message_offset -= len;
+    else
+      message_offset = 0;
+  }
+}
+
+void nice_socket_flush_send_queue (NiceSocket *base_socket, GQueue *send_queue)
+{
+  NiceSocketQueuedSend *tbs;
+
+  while ((tbs = g_queue_pop_head (send_queue))) {
+    NiceAddress *to = &tbs->to;
+
+    if (!nice_address_is_valid (to))
+      to = NULL;
+
+    /* We only queue reliable data */
+    nice_socket_send_reliable (base_socket, to,
+        tbs->length, (const gchar *) tbs->buf);
+    nice_socket_free_queued_send (tbs);
+  }
+}
+
+gboolean nice_socket_flush_send_queue_to_socket (GSocket *gsock,
+    GQueue *send_queue)
+{
+  NiceSocketQueuedSend *tbs;
+  GError *gerr = NULL;
+
+
+  while ((tbs = g_queue_pop_head (send_queue)) != NULL) {
+    int ret;
+
+    GOutputVector local_bufs = { tbs->buf, tbs->length };
+    ret = g_socket_send_message (gsock, NULL, &local_bufs, 1, NULL, 0,
+        G_SOCKET_MSG_NONE, NULL, &gerr);
+
+    if (ret < 0) {
+      if (g_error_matches (gerr, G_IO_ERROR, G_IO_ERROR_WOULD_BLOCK)) {
+        GOutputVector local_buf = { tbs->buf, tbs->length };
+        NiceOutputMessage local_message = {&local_buf, 1};
+
+        nice_socket_queue_send_with_callback (send_queue, &local_message,
+            0, local_buf.size, TRUE, NULL, NULL, NULL, NULL, NULL);
+        nice_socket_free_queued_send (tbs);
+        g_error_free (gerr);
+        return FALSE;
+      }
+      g_clear_error (&gerr);
+    } else if (ret < (int) tbs->length) {
+      GOutputVector local_buf = { tbs->buf + ret, tbs->length - ret };
+      NiceOutputMessage local_message = {&local_buf, 1};
+
+      nice_socket_queue_send_with_callback (send_queue, &local_message,
+          0, local_buf.size, TRUE, NULL, NULL, NULL, NULL, NULL);
+      nice_socket_free_queued_send (tbs);
+      return FALSE;
+    }
+
+    nice_socket_free_queued_send (tbs);
+  }
+
+  return TRUE;
+}
+
+void
+nice_socket_free_send_queue (GQueue *send_queue)
+{
+  g_queue_foreach (send_queue, (GFunc) nice_socket_free_queued_send, NULL);
+  g_queue_clear (send_queue);
 }

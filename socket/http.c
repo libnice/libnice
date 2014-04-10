@@ -44,6 +44,7 @@
 
 #include "http.h"
 #include "agent-priv.h"
+#include "socket-priv.h"
 
 #include <string.h>
 #include <stdlib.h>
@@ -83,13 +84,6 @@ typedef struct {
 } HttpPriv;
 
 
-struct to_be_sent {
-  guint length;
-  gchar *buf;
-  NiceAddress to;
-};
-
-
 static void socket_close (NiceSocket *sock);
 static gint socket_recv_messages (NiceSocket *sock,
     NiceInputMessage *recv_messages, guint n_recv_messages);
@@ -98,11 +92,6 @@ static gint socket_send_messages (NiceSocket *sock, const NiceAddress *to,
 static gint socket_send_messages_reliable (NiceSocket *sock,
     const NiceAddress *to, const NiceOutputMessage *messages, guint n_messages);
 static gboolean socket_is_reliable (NiceSocket *sock);
-
-static void add_to_be_sent (NiceSocket *sock, const NiceAddress *to,
-    const NiceOutputMessage *messages, guint n_messages);
-static void free_to_be_sent (struct to_be_sent *tbs);
-
 
 NiceSocket *
 nice_http_socket_new (NiceSocket *base_socket,
@@ -198,8 +187,7 @@ socket_close (NiceSocket *sock)
   if (priv->recv_buf)
     g_free (priv->recv_buf);
 
-  g_queue_foreach (&priv->send_queue, (GFunc) free_to_be_sent, NULL);
-  g_queue_clear (&priv->send_queue);
+  nice_socket_free_send_queue (&priv->send_queue);
 
   g_slice_free(HttpPriv, sock->priv);
 }
@@ -542,19 +530,13 @@ retry:
     case HTTP_STATE_CONNECTED:
       {
         gsize len;
-        struct to_be_sent *tbs = NULL;
 
         len = memcpy_ring_buffer_to_input_messages (priv,
             recv_messages, n_recv_messages);
 
         /* Send the pending data */
-        while ((tbs = g_queue_pop_head (&priv->send_queue))) {
-          /* We only queue reliable data */
-          nice_socket_send_reliable (priv->base_socket, &tbs->to,
-              tbs->length, tbs->buf);
-          g_free (tbs->buf);
-          g_slice_free (struct to_be_sent, tbs);
-        }
+        nice_socket_flush_send_queue (priv->base_socket,
+            &priv->send_queue);
 
         return len;
       }
@@ -616,7 +598,7 @@ socket_send_messages_reliable (NiceSocket *sock, const NiceAddress *to,
   } else if (priv->state == HTTP_STATE_ERROR) {
     return -1;
   } else {
-    add_to_be_sent (sock, to, messages, n_messages);
+    nice_socket_queue_send (&priv->send_queue, to, messages, n_messages);
   }
 
   return n_messages;
@@ -628,56 +610,4 @@ socket_is_reliable (NiceSocket *sock)
   HttpPriv *priv = sock->priv;
 
   return nice_socket_is_reliable (priv->base_socket);
-}
-
-
-static void
-add_to_be_sent (NiceSocket *sock, const NiceAddress *to,
-    const NiceOutputMessage *messages, guint n_messages)
-{
-  HttpPriv *priv = sock->priv;
-  guint i;
-
-  if (n_messages == 0)
-    return;
-
-  /* Compact the message’s buffers before queueing. */
-  for (i = 0; i < n_messages; i++) {
-    const NiceOutputMessage *message = &messages[i];
-    struct to_be_sent *tbs = NULL;
-    guint j;
-    gsize message_len_remaining = output_message_get_size (message);
-    gsize offset = 0;
-
-    if (message_len_remaining == 0)
-      continue;
-
-    tbs = g_slice_new0 (struct to_be_sent);
-    tbs->buf = g_malloc (message_len_remaining);
-    tbs->length = message_len_remaining;
-    if (to)
-      tbs->to = *to;
-    g_queue_push_tail (&priv->send_queue, tbs);
-
-    for (j = 0;
-         (message->n_buffers >= 0 && j < (guint) message->n_buffers) ||
-         (message->n_buffers < 0 && message->buffers[j].buffer != NULL);
-         j++) {
-      const GOutputVector *buffer = &message->buffers[j];
-      gsize len;
-
-      len = MIN (buffer->size, message_len_remaining);
-      memcpy (tbs->buf + offset, buffer->buffer, len);
-      message_len_remaining -= len;
-      offset += len;
-    }
-  }
-}
-
-
-static void
-free_to_be_sent (struct to_be_sent *tbs)
-{
-  g_free (tbs->buf);
-  g_slice_free (struct to_be_sent, tbs);
 }

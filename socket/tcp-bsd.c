@@ -44,6 +44,7 @@
 
 #include "tcp-bsd.h"
 #include "agent-priv.h"
+#include "socket-priv.h"
 
 #include <string.h>
 #include <errno.h>
@@ -62,11 +63,6 @@ typedef struct {
   gboolean reliable;
 } TcpPriv;
 
-struct to_be_sent {
-  guint8 *buf;
-  gsize length;
-};
-
 #define MAX_QUEUE_LENGTH 20
 
 static void socket_close (NiceSocket *sock);
@@ -78,10 +74,6 @@ static gint socket_send_messages_reliable (NiceSocket *sock,
     const NiceAddress *to, const NiceOutputMessage *messages, guint n_messages);
 static gboolean socket_is_reliable (NiceSocket *sock);
 
-
-static void add_to_be_sent (NiceSocket *sock, const NiceOutputMessage *message,
-    gsize message_offset, gsize message_len, gboolean head);
-static void free_to_be_sent (struct to_be_sent *tbs);
 static gboolean socket_send_more (GSocket *gsocket, GIOCondition condition,
     gpointer data);
 
@@ -201,8 +193,8 @@ socket_close (NiceSocket *sock)
     g_source_destroy (priv->io_source);
     g_source_unref (priv->io_source);
   }
-  g_queue_foreach (&priv->send_queue, (GFunc) free_to_be_sent, NULL);
-  g_queue_clear (&priv->send_queue);
+
+  nice_socket_free_send_queue (&priv->send_queue);
 
   if (priv->context)
     g_main_context_unref (priv->context);
@@ -287,21 +279,27 @@ socket_send_message (NiceSocket *sock,
       if (g_error_matches (gerr, G_IO_ERROR, G_IO_ERROR_WOULD_BLOCK) ||
           g_error_matches (gerr, G_IO_ERROR, G_IO_ERROR_FAILED)) {
         /* Queue the message and send it later. */
-        add_to_be_sent (sock, message, 0, message_len, FALSE);
+        nice_socket_queue_send_with_callback (&priv->send_queue,
+            message, 0, message_len, FALSE, sock->fileno, &priv->io_source,
+            priv->context, (GSourceFunc) socket_send_more, sock);
         ret = message_len;
       }
 
       g_error_free (gerr);
     } else if ((gsize) ret < message_len) {
       /* Partial send. */
-      add_to_be_sent (sock, message, ret, message_len, TRUE);
+      nice_socket_queue_send_with_callback (&priv->send_queue,
+          message, ret, message_len, TRUE, sock->fileno, &priv->io_source,
+          priv->context, (GSourceFunc) socket_send_more, sock);
       ret = message_len;
     }
   } else {
     /* Only queue if we're sending reliably  */
     if (reliable) {
       /* Queue the message and send it later. */
-      add_to_be_sent (sock, message, 0, message_len, FALSE);
+      nice_socket_queue_send_with_callback (&priv->send_queue,
+          message, 0, message_len, FALSE, sock->fileno, &priv->io_source,
+          priv->context, (GSourceFunc) socket_send_more, sock);
       ret = message_len;
     } else {
       /* non reliable send, so we shouldn't queue the message */
@@ -381,8 +379,6 @@ socket_send_more (
 {
   NiceSocket *sock = (NiceSocket *) data;
   TcpPriv *priv = sock->priv;
-  struct to_be_sent *tbs = NULL;
-  GError *gerr = NULL;
 
   agent_lock ();
 
@@ -393,42 +389,10 @@ socket_send_more (
     return FALSE;
   }
 
-  while ((tbs = g_queue_pop_head (&priv->send_queue)) != NULL) {
-    int ret;
-
-    if(condition & G_IO_HUP) {
-      /* connection hangs up */
-      ret = -1;
-    } else {
-      GOutputVector local_bufs = { tbs->buf, tbs->length };
-      ret = g_socket_send_message (sock->fileno, NULL, &local_bufs, 1, NULL, 0,
-          G_SOCKET_MSG_NONE, NULL, &gerr);
-    }
-
-    if (ret < 0) {
-      if (g_error_matches (gerr, G_IO_ERROR, G_IO_ERROR_WOULD_BLOCK)) {
-        GOutputVector local_buf = { tbs->buf, tbs->length };
-        NiceOutputMessage local_message = {&local_buf, 1};
-
-        add_to_be_sent (sock, &local_message, 0, local_buf.size, TRUE);
-        free_to_be_sent (tbs);
-        g_error_free (gerr);
-        break;
-      }
-      g_clear_error (&gerr);
-    } else if (ret < (int) tbs->length) {
-      GOutputVector local_buf = { tbs->buf + ret, tbs->length - ret };
-      NiceOutputMessage local_message = {&local_buf, 1};
-
-      add_to_be_sent (sock, &local_message, 0, local_buf.size, TRUE);
-      free_to_be_sent (tbs);
-      break;
-    }
-
-    free_to_be_sent (tbs);
-  }
-
-  if (g_queue_is_empty (&priv->send_queue)) {
+  /* connection hangs up or queue was emptied */
+  if (condition & G_IO_HUP ||
+      nice_socket_flush_send_queue_to_socket (sock->fileno,
+          &priv->send_queue)) {
     g_source_destroy (priv->io_source);
     g_source_unref (priv->io_source);
     priv->io_source = NULL;
@@ -440,70 +404,3 @@ socket_send_more (
   agent_unlock ();
   return TRUE;
 }
-
-
-/* Queue data starting at byte offset @message_offset from @message’s
- * buffers.
- *
- * Returns the message's length */
-static void
-add_to_be_sent (NiceSocket *sock, const NiceOutputMessage *message,
-    gsize message_offset, gsize message_len, gboolean head)
-{
-  TcpPriv *priv = sock->priv;
-  struct to_be_sent *tbs;
-  guint j;
-  gsize offset = 0;
-
-  if (message_offset >= message_len)
-    return;
-
-  tbs = g_slice_new0 (struct to_be_sent);
-  tbs->length = message_len - message_offset;
-  tbs->buf = g_malloc (tbs->length);
-
-  if (head)
-    g_queue_push_head (&priv->send_queue, tbs);
-  else
-    g_queue_push_tail (&priv->send_queue, tbs);
-
-  if (priv->io_source == NULL) {
-    priv->io_source = g_socket_create_source(sock->fileno, G_IO_OUT, NULL);
-    g_source_set_callback (priv->io_source, (GSourceFunc) socket_send_more,
-        sock, NULL);
-    g_source_attach (priv->io_source, priv->context);
-  }
-
-  /* Move the data into the buffer. */
-  for (j = 0;
-       (message->n_buffers >= 0 && j < (guint) message->n_buffers) ||
-       (message->n_buffers < 0 && message->buffers[j].buffer != NULL);
-       j++) {
-    const GOutputVector *buffer = &message->buffers[j];
-    gsize len;
-
-    /* Skip this buffer if it’s within @message_offset. */
-    if (buffer->size <= message_offset) {
-      message_offset -= buffer->size;
-      continue;
-    }
-
-    len = MIN (tbs->length - offset, buffer->size - message_offset);
-    memcpy (tbs->buf + offset, (guint8 *) buffer->buffer + message_offset, len);
-    offset += len;
-    if (message_offset >= len)
-      message_offset -= len;
-    else
-      message_offset = 0;
-  }
-}
-
-
-
-static void
-free_to_be_sent (struct to_be_sent *tbs)
-{
-  g_free (tbs->buf);
-  g_slice_free (struct to_be_sent, tbs);
-}
-

@@ -21,6 +21,7 @@ noinst_LTLIBRARIES = libsocket.la
 
 libsocket_la_SOURCES = \
 	socket.h \
+	socket-priv.h \
 	socket.c \
 	udp-bsd.h \
 	udp-bsd.c \
