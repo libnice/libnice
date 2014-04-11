@@ -99,7 +99,10 @@ gint
 nice_socket_send_messages_reliable (NiceSocket *sock, const NiceAddress *addr,
     const NiceOutputMessage *messages, guint n_messages);
 gssize
-nice_socket_send (NiceSocket *sock, const NiceAddress *addr, gsize len,
+nice_socket_recv (NiceSocket *sock, NiceAddress *from, gsize len,
+    gchar *buf);
+gssize
+nice_socket_send (NiceSocket *sock, const NiceAddress *to, gsize len,
     const gchar *buf);
 gssize
 nice_socket_send_reliable (NiceSocket *sock, const NiceAddress *addr, gsize len,

@@ -195,6 +195,23 @@ nice_socket_send_messages_reliable (NiceSocket *sock, const NiceAddress *to,
   return sock->send_messages_reliable (sock, to, messages, n_messages);
 }
 
+/* Convenience wrapper around nice_socket_recv_messages(). Returns the number of
+ * bytes received on success (which will be @len), zero if sending would block, or
+ * -1 on error. */
+gssize
+nice_socket_recv (NiceSocket *sock, NiceAddress *from, gsize len,
+    gchar *buf)
+{
+  GInputVector local_buf = { buf, len };
+  NiceInputMessage local_message = { &local_buf, 1, from, 0};
+  gint ret;
+
+  ret = sock->recv_messages (sock, &local_message, 1);
+  if (ret == 1)
+    return local_message.length;
+  return ret;
+}
+
 /* Convenience wrapper around nice_socket_send_messages(). Returns the number of
  * bytes sent on success (which will be @len), zero if sending would block, or
  * -1 on error. */
