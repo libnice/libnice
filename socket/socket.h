@@ -117,6 +117,8 @@ nice_socket_free (NiceSocket *sock);
 
 #include "udp-bsd.h"
 #include "tcp-bsd.h"
+#include "tcp-active.h"
+#include "tcp-passive.h"
 #include "pseudossl.h"
 #include "socks5.h"
 #include "http.h"

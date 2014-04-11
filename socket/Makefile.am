@@ -27,6 +27,10 @@ libsocket_la_SOURCES = \
 	udp-bsd.c \
 	tcp-bsd.h \
 	tcp-bsd.c \
+	tcp-active.h \
+	tcp-active.c \
+	tcp-passive.h \
+	tcp-passive.c \
 	pseudossl.h \
 	pseudossl.c \
 	socks5.h \

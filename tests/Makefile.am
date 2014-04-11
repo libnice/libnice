@@ -41,7 +41,8 @@ check_PROGRAMS = \
 	test-fallback \
 	test-thread \
 	test-dribble \
-        test-new-dribble
+	test-new-dribble \
+	test-tcp
 
 dist_check_SCRIPTS = \
 	check-test-fullmode-with-stun.sh \
@@ -98,6 +99,8 @@ test_fallback_LDADD = $(COMMON_LDADD)
 test_dribble_LDADD = $(COMMON_LDADD)
 
 test_new_dribble_LDADD = $(COMMON_LDADD)
+
+test_tcp_LDADD = $(COMMON_LDADD)
 
 all-local:
 	chmod a+x $(srcdir)/check-test-fullmode-with-stun.sh
