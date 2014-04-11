@@ -2504,13 +2504,7 @@ static gboolean priv_map_reply_to_relay_request (NiceAgent *agent, StunMessage *
           }
 
           nice_address_set_from_sockaddr (&niceaddr, &relayaddr.addr);
-          if ((agent->compatibility == NICE_COMPATIBILITY_OC2007 ||
-                  agent->compatibility == NICE_COMPATIBILITY_OC2007R2) &&
-              (d->turn->type == NICE_RELAY_TYPE_TURN_TCP ||
-                  d->turn->type == NICE_RELAY_TYPE_TURN_TLS)) {
-            /* [MS-TURN] : The transport address has the same transport protocol
-             * over which the Allocate request was received; a request that is
-             * received over TCP returns a TCP allocated transport address.*/
+          if (nice_socket_is_reliable (d->nicesock)) {
             relay_cand = discovery_add_relay_candidate (
                 d->agent,
                 d->stream->id,
@@ -2521,10 +2515,15 @@ static gboolean priv_map_reply_to_relay_request (NiceAgent *agent, StunMessage *
                 d->turn);
 
             if (relay_cand) {
-              nice_udp_turn_socket_set_ms_realm(relay_cand->sockptr,
-                  &d->stun_message);
-              nice_udp_turn_socket_set_ms_connection_id(relay_cand->sockptr,
-                  resp);
+              if (agent->compatibility == NICE_COMPATIBILITY_OC2007 ||
+                  agent->compatibility == NICE_COMPATIBILITY_OC2007R2) {
+                nice_udp_turn_socket_set_ms_realm(relay_cand->sockptr,
+                    &d->stun_message);
+                nice_udp_turn_socket_set_ms_connection_id(relay_cand->sockptr,
+                    resp);
+              } else {
+                priv_add_new_turn_refresh (d, relay_cand, lifetime);
+              }
             }
 
             relay_cand = discovery_add_relay_candidate (
@@ -2559,8 +2558,9 @@ static gboolean priv_map_reply_to_relay_request (NiceAgent *agent, StunMessage *
                   &d->stun_message);
               nice_udp_turn_socket_set_ms_connection_id(relay_cand->sockptr,
                   resp);
-            } else
+            } else {
               priv_add_new_turn_refresh (d, relay_cand, lifetime);
+            }
           }
 
           d->stun_message.buffer = NULL;

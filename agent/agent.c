@@ -1801,7 +1801,10 @@ priv_add_new_candidate_discovery_turn (NiceAgent *agent,
     /* MS-TURN will allocate a transport with the same protocol it received
      * the allocate request. So if we are connecting in TCP, then the candidate
      * will be TCP-ACT/TCP-PASS which means it will be reliable all the way
-     * to the peer
+     * to the peer.
+     * [MS-TURN] : The transport address has the same transport protocol
+     * over which the Allocate request was received; a request that is
+     * received over TCP returns a TCP allocated transport address.
      */
     if (agent->compatibility == NICE_COMPATIBILITY_OC2007 ||
         agent->compatibility == NICE_COMPATIBILITY_OC2007R2)
