@@ -55,7 +55,7 @@
 #endif
 
 typedef struct {
-  NiceAddress server_addr;
+  NiceAddress remote_addr;
   GQueue send_queue;
   GMainContext *context;
   GSource *io_source;
@@ -78,6 +78,37 @@ static gboolean socket_send_more (GSocket *gsocket, GIOCondition condition,
     gpointer data);
 
 NiceSocket *
+nice_tcp_bsd_socket_new_from_gsock (GMainContext *ctx, GSocket *gsock,
+    NiceAddress *local_addr, NiceAddress *remote_addr, gboolean reliable)
+{
+  NiceSocket *sock;
+  TcpPriv *priv;
+
+  g_return_val_if_fail (G_IS_SOCKET (gsock), NULL);
+
+  sock = g_slice_new0 (NiceSocket);
+  sock->priv = priv = g_slice_new0 (TcpPriv);
+
+  if (ctx == NULL)
+    ctx = g_main_context_default ();
+  priv->context = g_main_context_ref (ctx);
+  priv->remote_addr = *remote_addr;
+  priv->error = FALSE;
+  priv->reliable = reliable;
+
+  sock->type = NICE_SOCKET_TYPE_TCP_BSD;
+  sock->fileno = g_object_ref (gsock);
+  sock->addr = *local_addr;
+  sock->send_messages = socket_send_messages;
+  sock->send_messages_reliable = socket_send_messages_reliable;
+  sock->recv_messages = socket_recv_messages;
+  sock->is_reliable = socket_is_reliable;
+  sock->close = socket_close;
+
+  return sock;
+}
+
+NiceSocket *
 nice_tcp_bsd_socket_new (GMainContext *ctx, NiceAddress *addr, gboolean reliable)
 {
   union {
@@ -85,18 +116,16 @@ nice_tcp_bsd_socket_new (GMainContext *ctx, NiceAddress *addr, gboolean reliable
     struct sockaddr addr;
   } name;
   NiceSocket *sock;
-  TcpPriv *priv;
   GSocket *gsock = NULL;
   GError *gerr = NULL;
   gboolean gret = FALSE;
   GSocketAddress *gaddr;
+  NiceAddress local_addr;
 
   if (addr == NULL) {
     /* We can't connect a tcp socket with no destination address */
     return NULL;
   }
-
-  sock = g_slice_new0 (NiceSocket);
 
   nice_address_copy_to_sockaddr (addr, &name.addr);
 
@@ -118,14 +147,12 @@ nice_tcp_bsd_socket_new (GMainContext *ctx, NiceAddress *addr, gboolean reliable
   }
 
   if (gsock == NULL) {
-    g_slice_free (NiceSocket, sock);
     return NULL;
   }
 
   gaddr = g_socket_address_new_from_native (&name.addr, sizeof (name));
   if (gaddr == NULL) {
     g_object_unref (gsock);
-    g_slice_free (NiceSocket, sock);
     return NULL;
   }
 
@@ -140,7 +167,6 @@ nice_tcp_bsd_socket_new (GMainContext *ctx, NiceAddress *addr, gboolean reliable
       g_error_free (gerr);
       g_socket_close (gsock, NULL);
       g_object_unref (gsock);
-      g_slice_free (NiceSocket, sock);
       return NULL;
     }
     g_error_free (gerr);
@@ -149,31 +175,17 @@ nice_tcp_bsd_socket_new (GMainContext *ctx, NiceAddress *addr, gboolean reliable
   gaddr = g_socket_get_local_address (gsock, NULL);
   if (gaddr == NULL ||
       !g_socket_address_to_native (gaddr, &name.addr, sizeof (name), NULL)) {
-    g_slice_free (NiceSocket, sock);
     g_socket_close (gsock, NULL);
     g_object_unref (gsock);
     return NULL;
   }
   g_object_unref (gaddr);
 
-  nice_address_set_from_sockaddr (&sock->addr, &name.addr);
+  nice_address_set_from_sockaddr (&local_addr, &name.addr);
 
-  sock->priv = priv = g_slice_new0 (TcpPriv);
-
-  if (ctx == NULL)
-    ctx = g_main_context_default ();
-  priv->context = g_main_context_ref (ctx);
-  priv->server_addr = *addr;
-  priv->error = FALSE;
-  priv->reliable = reliable;
-
-  sock->type = NICE_SOCKET_TYPE_TCP_BSD;
-  sock->fileno = gsock;
-  sock->send_messages = socket_send_messages;
-  sock->send_messages_reliable = socket_send_messages_reliable;
-  sock->recv_messages = socket_recv_messages;
-  sock->is_reliable = socket_is_reliable;
-  sock->close = socket_close;
+  sock = nice_tcp_bsd_socket_new_from_gsock (ctx, gsock, &local_addr, addr,
+      reliable);
+  g_object_unref (gsock);
 
   return sock;
 }
@@ -240,7 +252,7 @@ socket_recv_messages (NiceSocket *sock,
     }
 
     if (recv_messages[i].from)
-      *recv_messages[i].from = priv->server_addr;
+      *recv_messages[i].from = priv->remote_addr;
 
     if (len <= 0)
       break;
