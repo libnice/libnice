@@ -2049,6 +2049,7 @@ static CandidateCheckPair *priv_add_peer_reflexive_pair (NiceAgent *agent, guint
   pair->component_id = component_id;;
   pair->local = local_cand;
   pair->remote = parent_pair->remote;
+  pair->sockptr = local_cand->sockptr;
   pair->state = NICE_CHECK_DISCOVERED;
   nice_debug ("Agent %p : pair %p state DISCOVERED", agent, pair);
   g_snprintf (pair->foundation, NICE_CANDIDATE_PAIR_MAX_FOUNDATION, "%s:%s",
