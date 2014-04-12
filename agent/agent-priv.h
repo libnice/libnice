@@ -160,6 +160,7 @@ struct _NiceAgent
   gboolean reliable;               /* property: reliable */
 
   GQueue pending_signals;
+  guint16 rfc4571_expecting_length;
   /* XXX: add pointer to internal data struct for ABI-safe extensions */
 };
 

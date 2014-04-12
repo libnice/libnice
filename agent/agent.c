@@ -2789,9 +2789,74 @@ agent_recv_message_unlocked (
       /* In the case of a real ICE-TCP connection, we can use the socket as a
        * bytestream and do the read here with caching of data being read
        */
-      /* TODO: Ice-tcp */
-      retval = RECV_OOB;
+      gssize available = g_socket_get_available_bytes (nicesock->fileno);
+
+      /* TODO: Support bytestream reads */
       message->length = 0;
+      if (available <= 0) {
+        retval = available;
+      } else if (agent->rfc4571_expecting_length == 0) {
+        if ((gsize) available >= sizeof(guint16)) {
+          guint16 rfc4571_frame;
+          GInputVector local_buf = { &rfc4571_frame, sizeof(guint16)};
+          NiceInputMessage local_message = { &local_buf, 1, message->from, 0};
+
+          retval = nice_socket_recv_messages (nicesock, &local_message, 1);
+          if (retval == 1) {
+            agent->rfc4571_expecting_length = ntohs (rfc4571_frame);
+            available = g_socket_get_available_bytes (nicesock->fileno);
+          }
+        } else {
+          retval = 0;
+        }
+      }
+      if (agent->rfc4571_expecting_length > 0 &&
+          available >= agent->rfc4571_expecting_length) {
+        GInputVector *local_bufs;
+        NiceInputMessage local_message;
+        gsize off;
+        guint n_bufs = 0;
+        guint i;
+
+        /* Count the number of buffers. */
+        if (message->n_buffers == -1) {
+          for (i = 0; message->buffers[i].buffer != NULL; i++)
+            n_bufs++;
+        } else {
+          n_bufs = message->n_buffers;
+        }
+
+        local_bufs = g_malloc_n (n_bufs, sizeof (GInputVector));
+        local_message.buffers = local_bufs;
+        local_message.from = message->from;
+        local_message.length = 0;
+        local_message.n_buffers = 0;
+
+        /* Only read up to the expected number of bytes in the frame */
+        off = 0;
+        for (i = 0; i < n_bufs; i++) {
+          if (message->buffers[i].size < agent->rfc4571_expecting_length - off) {
+            local_bufs[i].buffer = message->buffers[i].buffer;
+            local_bufs[i].size = message->buffers[i].size;
+            local_message.n_buffers++;
+            off += message->buffers[i].size;
+          } else {
+            local_bufs[i].buffer = message->buffers[i].buffer;
+            local_bufs[i].size = MIN (message->buffers[i].size,
+                agent->rfc4571_expecting_length - off);
+            local_message.n_buffers++;
+            off += local_bufs[i].size;
+          }
+        }
+        retval = nice_socket_recv_messages (nicesock, &local_message, 1);
+        if (retval == 1) {
+          message->length = local_message.length;
+          agent->rfc4571_expecting_length -= local_message.length;
+        }
+        g_free (local_bufs);
+      } else {
+        retval = 0;
+      }
     }
   } else {
     retval = nice_socket_recv_messages (nicesock, message, 1);
