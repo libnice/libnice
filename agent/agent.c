@@ -2747,7 +2747,55 @@ agent_recv_message_unlocked (
     message->from = &from;
   }
 
-  retval = nice_socket_recv_messages (nicesock, message, 1);
+    /* ICE-TCP requires that all packets be framed with RFC4571 */
+  if (nice_socket_is_reliable (nicesock)) {
+    /* In the case of OC2007 and OC2007R2 which uses UDP TURN for TCP-ACTIVE
+     * and TCP-PASSIVE candidates, the recv_messages will be packetized and
+     * always return an entire frame, so we must read it as is */
+    if (nicesock->type == NICE_SOCKET_TYPE_UDP_TURN) {
+      GInputVector *local_bufs;
+      NiceInputMessage local_message;
+      guint n_bufs = 0;
+      guint16 rfc4571_frame;
+      guint i;
+
+      /* Count the number of buffers. */
+      if (message->n_buffers == -1) {
+        for (i = 0; message->buffers[i].buffer != NULL; i++)
+          n_bufs++;
+      } else {
+        n_bufs = message->n_buffers;
+      }
+
+      local_bufs = g_malloc_n (n_bufs + 1, sizeof (GInputVector));
+      local_message.buffers = local_bufs;
+      local_message.n_buffers = n_bufs + 1;
+      local_message.from = message->from;
+      local_message.length = 0;
+
+      local_bufs[0].buffer = &rfc4571_frame;
+      local_bufs[0].size = sizeof (guint16);
+
+      for (i = 0; i < n_bufs; i++) {
+        local_bufs[i + 1].buffer = message->buffers[i].buffer;
+        local_bufs[i + 1].size = message->buffers[i].size;
+      }
+      retval = nice_socket_recv_messages (nicesock, &local_message, 1);
+      if (retval == 1) {
+        message->length = ntohs (rfc4571_frame);
+      }
+      g_free (local_bufs);
+    } else {
+      /* In the case of a real ICE-TCP connection, we can use the socket as a
+       * bytestream and do the read here with caching of data being read
+       */
+      /* TODO: Ice-tcp */
+      retval = RECV_OOB;
+      message->length = 0;
+    }
+  } else {
+    retval = nice_socket_recv_messages (nicesock, message, 1);
+  }
 
   nice_debug ("%s: Received %d valid messages of length %" G_GSIZE_FORMAT
       " from base socket %p.", G_STRFUNC, retval, message->length, nicesock);
@@ -3571,7 +3619,99 @@ nice_agent_send_messages_nonblocking_internal (
       sock = component->selected_pair.local->sockptr;
       addr = &component->selected_pair.remote->addr;
 
-      n_sent = nice_socket_send_messages (sock, addr, messages, n_messages);
+      if (nice_socket_is_reliable (sock)) {
+        guint i;
+
+        /* ICE-TCP requires that all packets be framed with RFC4571 */
+        n_sent = 0;
+        for (i = 0; i < n_messages; i++) {
+          const NiceOutputMessage *message = &messages[i];
+          gsize message_len = output_message_get_size (message);
+          gsize offset = 0;
+          gsize current_offset = 0;
+          gsize offset_in_buffer = 0;
+          gint n_sent_framed;
+          GOutputVector *local_bufs;
+          NiceOutputMessage local_message;
+          guint j;
+          guint n_bufs = 0;
+
+          /* Count the number of buffers. */
+          if (message->n_buffers == -1) {
+            for (j = 0; message->buffers[j].buffer != NULL; j++)
+              n_bufs++;
+          } else {
+            n_bufs = message->n_buffers;
+          }
+
+          local_bufs = g_malloc_n (n_bufs + 1, sizeof (GOutputVector));
+          local_message.buffers = local_bufs;
+
+          while (message_len > 0) {
+            guint16 packet_len;
+            guint16 rfc4571_frame;
+
+            /* Split long messages into 62KB packets, leaving enough space
+             * for TURN overhead as well */
+            if (message_len > 0xF800)
+              packet_len = 0xF800;
+            else
+              packet_len = (guint16) message_len;
+            message_len -= packet_len;
+            rfc4571_frame = htons (packet_len);
+
+            local_bufs[0].buffer = &rfc4571_frame;
+            local_bufs[0].size = sizeof (guint16);
+
+            local_message.n_buffers = 1;
+            /* If we had to split the message, we need to find which buffer
+             * to start copying from and our offset within that buffer */
+            offset_in_buffer = 0;
+            current_offset = 0;
+            for (j = 0; j < n_bufs; j++) {
+              if (message->buffers[j].size < offset - current_offset) {
+                current_offset += message->buffers[j].size;
+                continue;
+              } else {
+                offset_in_buffer = offset - current_offset;
+                current_offset = offset;
+                break;
+              }
+            }
+
+            /* Keep j position in array and start copying from there */
+            for (; j < n_bufs; j++) {
+              local_bufs[local_message.n_buffers].buffer =
+                  ((guint8 *) message->buffers[j].buffer) + offset_in_buffer;
+              local_bufs[local_message.n_buffers].size =
+                  MIN (message->buffers[j].size, packet_len);
+              packet_len -= local_bufs[local_message.n_buffers++].size;
+              offset += local_bufs[local_message.n_buffers++].size;
+              offset_in_buffer = 0;
+            }
+
+            /* If we sent part of the message already, then send the rest
+             * reliably so the message is sent as a whole even if it's split */
+            if (current_offset == 0)
+              n_sent_framed = nice_socket_send_messages (sock, addr,
+                  &local_message, 1);
+            else
+              n_sent_framed = nice_socket_send_messages_reliable (sock, addr,
+                  &local_message, 1);
+            if (n_sent_framed < 0 && n_sent == 0)
+              n_sent = n_sent_framed;
+            if (n_sent_framed != 1)
+              break;
+            /* This is the last split frame, increment n_sent */
+            if (message_len == 0)
+              n_sent ++;
+          }
+          g_free (local_bufs);
+        }
+
+      } else {
+        n_sent = nice_socket_send_messages (sock, addr, messages, n_messages);
+      }
 
       if (n_sent < 0) {
         g_set_error (&child_error, G_IO_ERROR, G_IO_ERROR_FAILED,
