@@ -48,7 +48,7 @@
 #define USE_LOOPBACK 1
 #define USE_PROXY 0
 #define USE_UPNP 0
-#define USE_RELIABLE 1
+#define USE_RELIABLE 0
 #define TEST_GOOGLE 0
 
 #define PROXY_IP "127.0.0.1"
