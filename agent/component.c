@@ -68,9 +68,6 @@ socket_source_attach (SocketSource *socket_source, GMainContext *context)
 {
   GSource *source;
 
-  if (socket_source->socket->fileno == NULL)
-    return;
-
   /* Create a source. */
   source = g_socket_create_source (socket_source->socket->fileno,
       G_IO_IN, NULL);
@@ -498,6 +495,9 @@ component_attach_socket (Component *component, NiceSocket *nicesock)
   g_assert (nicesock != NULL);
 
   g_assert (component->ctx != NULL);
+
+  if (nicesock->fileno == NULL)
+    return;
 
   /* Find an existing SocketSource in the component which contains @socket, or
    * create a new one.
