@@ -4817,3 +4817,28 @@ nice_agent_get_io_stream (NiceAgent *agent, guint stream_id,
 
   return iostream;
 }
+
+NICEAPI_EXPORT gboolean
+nice_agent_forget_relays (NiceAgent *agent, guint stream_id, guint component_id)
+{
+  Component *component;
+  gboolean ret = TRUE;
+
+  g_return_val_if_fail (NICE_IS_AGENT (agent), FALSE);
+  g_return_val_if_fail (stream_id >= 1, FALSE);
+  g_return_val_if_fail (component_id >= 1, FALSE);
+
+  agent_lock ();
+
+  if (!agent_find_component (agent, stream_id, component_id, NULL, &component)) {
+    ret = FALSE;
+    goto done;
+  }
+
+  component_clean_turn_servers (component);
+
+ done:
+  agent_unlock_and_emit (agent);
+
+  return ret;
+}

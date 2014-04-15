@@ -21,6 +21,7 @@ nice_agent_recv_messages
 nice_agent_recv_nonblocking
 nice_agent_recv_messages_nonblocking
 nice_agent_attach_recv
+nice_agent_forget_relays
 nice_agent_gather_candidates
 nice_agent_generate_local_candidate_sdp
 nice_agent_generate_local_sdp

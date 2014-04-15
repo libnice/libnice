@@ -1447,6 +1447,26 @@ nice_agent_get_io_stream (
 const gchar *
 nice_component_state_to_string (NiceComponentState state);
 
+/**
+ * nice_agent_forget_relays:
+ * @agent: The #NiceAgent Object
+ * @stream_id: The ID of the stream
+ * @component_id: The ID of the component
+ *
+ * Forget all the relay servers previously added using
+ * nice_agent_set_relay_info(). Currently connected streams will keep
+ * using the relay as long as they have not been restarted and haven't
+ * succesfully negotiated a different path.
+ *
+ * Returns: %FALSE if the component could not be found, %TRUE otherwise
+ *
+ * Since: 0.1.6
+ */
+gboolean
+nice_agent_forget_relays (NiceAgent *agent,
+    guint stream_id,
+    guint component_id);
+
 G_END_DECLS
 
 #endif /* _AGENT_H */

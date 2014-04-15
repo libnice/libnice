@@ -17,6 +17,7 @@ nice_agent_set_port_range
 nice_agent_add_stream
 nice_agent_remove_stream
 nice_agent_set_relay_info
+nice_agent_forget_relays
 nice_agent_gather_candidates
 nice_agent_set_remote_credentials
 nice_agent_get_local_credentials
