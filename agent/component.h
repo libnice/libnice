@@ -257,6 +257,9 @@ component_emit_io_callback (Component *component,
 gboolean
 component_has_io_callback (Component *component);
 
+void
+component_clean_turn_servers (Component *component);
+
 G_END_DECLS
 
 #endif /* _NICE_COMPONENT_H */

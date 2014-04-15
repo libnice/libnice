@@ -146,10 +146,24 @@ component_new (guint id, NiceAgent *agent, Stream *stream)
 }
 
 void
+component_clean_turn_servers (Component *cmp)
+{
+  GList *item;
+
+  for (item = cmp->turn_servers; item; item = g_list_next (item)) {
+    TurnServer *turn = item->data;
+    g_free (turn->username);
+    g_free (turn->password);
+    g_slice_free (TurnServer, turn);
+  }
+  g_list_free (cmp->turn_servers);
+  cmp->turn_servers = NULL;
+}
+
+void
 component_free (Component *cmp)
 {
   GSList *i;
-  GList *item;
   IOCallbackData *data;
   GOutputVector *vec;
 
@@ -178,13 +192,7 @@ component_free (Component *cmp)
   component_free_socket_sources (cmp);
   g_slist_free (cmp->incoming_checks);
 
-  for (item = cmp->turn_servers; item; item = g_list_next (item)) {
-    TurnServer *turn = item->data;
-    g_free (turn->username);
-    g_free (turn->password);
-    g_slice_free (TurnServer, turn);
-  }
-  g_list_free (cmp->turn_servers);
+  component_clean_turn_servers (cmp);
 
   if (cmp->selected_pair.keepalive.tick_source != NULL) {
     g_source_destroy (cmp->selected_pair.keepalive.tick_source);
