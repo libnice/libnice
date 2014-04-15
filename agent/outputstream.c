@@ -314,6 +314,13 @@ typedef struct {
   gboolean cancelled;
 } WriteData;
 
+static WriteData *
+write_data_ref (WriteData *write_data)
+{
+  g_atomic_int_inc (&write_data->ref_count);
+  return write_data;
+}
+
 static void
 write_data_unref (WriteData *write_data)
 {
@@ -384,26 +391,25 @@ nice_output_stream_write (GOutputStream *stream, const void *buffer, gsize count
    * GCond solution; would be much better for nice_agent_send() to block
    * properly in the main loop. */
   write_data = g_slice_new0 (WriteData);
-  g_atomic_int_set (&write_data->ref_count, 4);
-
+  write_data->ref_count = 1;
   g_mutex_init (&write_data->mutex);
   g_cond_init (&write_data->cond);
 
   if (cancellable != NULL) {
     cancel_id = g_cancellable_connect (cancellable,
-        (GCallback) write_cancelled_cb, write_data,
+        (GCallback) write_cancelled_cb, write_data_ref (write_data),
         (GDestroyNotify) write_data_unref);
   }
 
   closed_cancel_id = g_cancellable_connect (self->priv->closed_cancellable,
-      (GCallback) write_cancelled_cb, write_data,
+      (GCallback) write_cancelled_cb, write_data_ref (write_data),
       (GDestroyNotify) write_data_unref);
 
   g_mutex_lock (&write_data->mutex);
 
   writeable_id = g_signal_connect_data (G_OBJECT (agent),
       "reliable-transport-writable",
-      (GCallback) reliable_transport_writeable_cb, write_data,
+      (GCallback) reliable_transport_writeable_cb, write_data_ref (write_data),
       (GClosureNotify) write_data_unref, 0);
 
 
