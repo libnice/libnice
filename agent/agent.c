@@ -3695,7 +3695,6 @@ nice_agent_restart (
   NiceAgent *agent)
 {
   GSList *i;
-  gboolean res = TRUE;
 
   agent_lock();
 
@@ -3705,16 +3704,16 @@ nice_agent_restart (
   /* step: regenerate tie-breaker value */
   priv_generate_tie_breaker (agent);
 
-  for (i = agent->streams; i && res; i = i->next) {
+  for (i = agent->streams; i; i = i->next) {
     Stream *stream = i->data;
 
     /* step: reset local credentials for the stream and 
      * clean up the list of remote candidates */
-    res = stream_restart (stream, agent->rng);
+    stream_restart (stream, agent->rng);
   }
 
   agent_unlock_and_emit (agent);
-  return res;
+  return TRUE;
 }
 
 

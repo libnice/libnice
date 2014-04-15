@@ -276,7 +276,7 @@ component_find_pair (Component *cmp, NiceAgent *agent, const gchar *lfoundation,
  * Resets the component state to that of a ICE restarted
  * session.
  */
-gboolean
+void
 component_restart (Component *cmp)
 {
   GSList *i;
@@ -307,8 +307,6 @@ component_restart (Component *cmp)
   cmp->incoming_checks = NULL;
 
   /* note: component state managed by agent */
-
-  return TRUE;
 }
 
 /*

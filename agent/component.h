@@ -214,7 +214,7 @@ component_free (Component *cmp);
 gboolean
 component_find_pair (Component *cmp, NiceAgent *agent, const gchar *lfoundation, const gchar *rfoundation, CandidatePair *pair);
 
-gboolean
+void
 component_restart (Component *cmp);
 
 void

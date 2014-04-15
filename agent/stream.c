@@ -132,22 +132,19 @@ void stream_initialize_credentials (Stream *stream, NiceRNG *rng)
  * Resets the stream state to that of a ICE restarted
  * session.
  */
-gboolean 
+void
 stream_restart (Stream *stream, NiceRNG *rng)
 {
   GSList *i;
-  gboolean res = TRUE;
 
   stream->initial_binding_request_received = FALSE;
 
   stream_initialize_credentials (stream, rng);
 
-  for (i = stream->components; i && res; i = i->next) {
+  for (i = stream->components; i; i = i->next) {
     Component *component = i->data;
-    
-    res = component_restart (component);
+
+    component_restart (component);
   }
-  
-  return res;
 }
 

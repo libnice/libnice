@@ -92,7 +92,7 @@ stream_find_component_by_id (const Stream *stream, guint id);
 void
 stream_initialize_credentials (Stream *stream, NiceRNG *rng);
 
-gboolean 
+void
 stream_restart (Stream *stream, NiceRNG *rng);
 
 G_END_DECLS
