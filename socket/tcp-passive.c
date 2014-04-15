@@ -52,6 +52,7 @@
 
 typedef struct {
   GMainContext *context;
+  GHashTable *connections;
 } TcpPassivePriv;
 
 
@@ -63,7 +64,7 @@ static gint socket_send_messages (NiceSocket *sock, const NiceAddress *to,
 static gint socket_send_messages_reliable (NiceSocket *sock,
     const NiceAddress *to, const NiceOutputMessage *messages, guint n_messages);
 static gboolean socket_is_reliable (NiceSocket *sock);
-
+static guint nice_address_hash (const NiceAddress * key);
 
 NiceSocket *
 nice_tcp_passive_socket_new (GMainContext *ctx, NiceAddress *addr)
@@ -141,6 +142,9 @@ nice_tcp_passive_socket_new (GMainContext *ctx, NiceAddress *addr)
 
   sock->priv = priv = g_slice_new0 (TcpPassivePriv);
   priv->context = g_main_context_ref (ctx);
+  priv->connections = g_hash_table_new_full ((GHashFunc) nice_address_hash,
+      (GEqualFunc) nice_address_equal, (
+          GDestroyNotify) nice_address_free, NULL);
 
   sock->type = NICE_SOCKET_TYPE_TCP_PASSIVE;
   sock->fileno = gsock;
@@ -160,6 +164,7 @@ socket_close (NiceSocket *sock)
 
   if (priv->context)
     g_main_context_unref (priv->context);
+  g_hash_table_unref (priv->connections);
 
   g_slice_free (TcpPassivePriv, sock->priv);
 }
@@ -173,12 +178,27 @@ static gint socket_recv_messages (NiceSocket *sock,
 static gint socket_send_messages (NiceSocket *sock, const NiceAddress *to,
     const NiceOutputMessage *messages, guint n_messages)
 {
+  TcpPassivePriv *priv = sock->priv;
+
+  if (to) {
+    NiceSocket *peer_socket = g_hash_table_lookup (priv->connections, to);
+    if (peer_socket)
+      return nice_socket_send_messages (peer_socket, to, messages, n_messages);
+  }
   return -1;
 }
 
 static gint socket_send_messages_reliable (NiceSocket *sock,
     const NiceAddress *to, const NiceOutputMessage *messages, guint n_messages)
 {
+  TcpPassivePriv *priv = sock->priv;
+
+  if (to) {
+    NiceSocket *peer_socket = g_hash_table_lookup (priv->connections, to);
+    if (peer_socket)
+      return nice_socket_send_messages_reliable (peer_socket, to, messages,
+          n_messages);
+  }
   return -1;
 }
 
@@ -225,5 +245,24 @@ nice_tcp_passive_socket_accept (NiceSocket *sock)
       &sock->addr, &remote_addr, TRUE);
   g_object_unref (gsock);
 
+  if (new_socket) {
+    NiceAddress *key = nice_address_dup (&remote_addr);
+
+    g_hash_table_insert (priv->connections, key, new_socket);
+  }
   return new_socket;
+}
+
+static guint nice_address_hash (const NiceAddress * key)
+{
+  gchar ip[INET6_ADDRSTRLEN];
+  gchar *str;
+  guint hash;
+
+  nice_address_to_string (key, ip);
+  str = g_strdup_printf ("%s:%u", ip, nice_address_get_port (key));
+  hash = g_str_hash (str);
+  g_free (str);
+
+  return hash;
 }
