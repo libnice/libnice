@@ -1663,6 +1663,46 @@ void agent_signal_new_selected_pair (NiceAgent *agent, guint stream_id,
       return;
     }
   }
+  if (nice_debug_is_enabled ()) {
+    gchar ip[100];
+    guint port;
+
+    port = nice_address_get_port (&lcandidate->addr);
+    nice_address_to_string (&lcandidate->addr, ip);
+
+    nice_debug ("Agent %p: Local selected pair: %d:%d %s %s %s:%d %s",
+        agent, stream_id, component_id, lcandidate->foundation,
+        lcandidate->transport == NICE_CANDIDATE_TRANSPORT_TCP_ACTIVE ?
+        "TCP-ACT" :
+        lcandidate->transport == NICE_CANDIDATE_TRANSPORT_TCP_PASSIVE ?
+        "TCP-PASS" :
+        lcandidate->transport == NICE_CANDIDATE_TRANSPORT_UDP ? "UDP" : "???",
+        ip, port, lcandidate->type == NICE_CANDIDATE_TYPE_HOST ? "HOST" :
+        lcandidate->type == NICE_CANDIDATE_TYPE_SERVER_REFLEXIVE ?
+        "SRV-RFLX" :
+        lcandidate->type == NICE_CANDIDATE_TYPE_RELAYED ?
+        "RELAYED" :
+        lcandidate->type == NICE_CANDIDATE_TYPE_PEER_REFLEXIVE ?
+        "PEER-RFLX" : "???");
+
+    port = nice_address_get_port (&rcandidate->addr);
+    nice_address_to_string (&rcandidate->addr, ip);
+
+    nice_debug ("Agent %p: Remote selected pair: %d:%d %s %s %s:%d %s",
+        agent, stream_id, component_id, rcandidate->foundation,
+        rcandidate->transport == NICE_CANDIDATE_TRANSPORT_TCP_ACTIVE ?
+        "TCP-ACT" :
+        rcandidate->transport == NICE_CANDIDATE_TRANSPORT_TCP_PASSIVE ?
+        "TCP-PASS" :
+        rcandidate->transport == NICE_CANDIDATE_TRANSPORT_UDP ? "UDP" : "???",
+        ip, port, rcandidate->type == NICE_CANDIDATE_TYPE_HOST ? "HOST" :
+        rcandidate->type == NICE_CANDIDATE_TYPE_SERVER_REFLEXIVE ?
+        "SRV-RFLX" :
+        rcandidate->type == NICE_CANDIDATE_TYPE_RELAYED ?
+        "RELAYED" :
+        rcandidate->type == NICE_CANDIDATE_TYPE_PEER_REFLEXIVE ?
+        "PEER-RFLX" : "???");
+  }
 
   agent_queue_signal (agent, signals[SIGNAL_NEW_SELECTED_PAIR],
       stream_id, component_id, lcandidate->foundation, rcandidate->foundation);
