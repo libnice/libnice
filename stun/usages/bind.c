@@ -94,8 +94,8 @@ size_t stun_usage_bind_create (StunAgent *agent, StunMessage *msg,
 }
 
 StunUsageBindReturn stun_usage_bind_process (StunMessage *msg,
-    struct sockaddr_storage *addr, socklen_t *addrlen,
-    struct sockaddr_storage *alternate_server, socklen_t *alternate_server_len)
+    struct sockaddr *addr, socklen_t *addrlen,
+    struct sockaddr *alternate_server, socklen_t *alternate_server_len)
 {
   int code = -1;
   StunMessageReturn val;
@@ -126,7 +126,7 @@ StunUsageBindReturn stun_usage_bind_process (StunMessage *msg,
       if ((code / 100) == 3) {
         if (alternate_server && alternate_server_len) {
           if (stun_message_find_addr (msg, STUN_ATTRIBUTE_ALTERNATE_SERVER,
-                  alternate_server,
+                  (struct sockaddr_storage *) alternate_server,
                   alternate_server_len) != STUN_MESSAGE_RETURN_SUCCESS) {
             stun_debug (" Unexpectedly missing ALTERNATE-SERVER attribute\n");
             return STUN_USAGE_BIND_RETURN_ERROR;
@@ -152,12 +152,14 @@ StunUsageBindReturn stun_usage_bind_process (StunMessage *msg,
   stun_debug ("Received %u-bytes STUN message\n", stun_message_length (msg));
 
   val = stun_message_find_xor_addr (msg,
-      STUN_ATTRIBUTE_XOR_MAPPED_ADDRESS, addr, addrlen);
+      STUN_ATTRIBUTE_XOR_MAPPED_ADDRESS, (struct sockaddr_storage *)addr,
+      addrlen);
   if (val != STUN_MESSAGE_RETURN_SUCCESS)
   {
     stun_debug (" No XOR-MAPPED-ADDRESS: %d\n", val);
     val = stun_message_find_addr (msg,
-        STUN_ATTRIBUTE_MAPPED_ADDRESS, addr, addrlen);
+        STUN_ATTRIBUTE_MAPPED_ADDRESS, (struct sockaddr_storage *)addr,
+        addrlen);
     if (val != STUN_MESSAGE_RETURN_SUCCESS)
     {
       stun_debug (" No MAPPED-ADDRESS: %d\n", val);
@@ -529,8 +531,8 @@ StunUsageBindReturn stun_usage_bind_run (const struct sockaddr *srv,
     if (valid != STUN_VALIDATION_SUCCESS) {
       ret = STUN_USAGE_TRANS_RETURN_RETRY;
     } else {
-      bind_ret = stun_usage_bind_process (&msg, addr, addrlen,
-          &alternate_server, &alternate_server_len);
+      bind_ret = stun_usage_bind_process (&msg, (struct sockaddr *)  addr,
+          addrlen, (struct sockaddr *) &alternate_server, &alternate_server_len);
       if (bind_ret == STUN_USAGE_BIND_RETURN_ALTERNATE_SERVER) {
         stun_trans_deinit (&trans);
 

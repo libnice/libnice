@@ -121,8 +121,8 @@ size_t stun_usage_bind_create (StunAgent *agent, StunMessage *msg,
  * Note that #STUN_USAGE_BIND_RETURN_TIMEOUT cannot be returned by this function
  */
 StunUsageBindReturn stun_usage_bind_process (StunMessage *msg,
-    struct sockaddr_storage *addr, socklen_t *addrlen,
-    struct sockaddr_storage *alternate_server, socklen_t *alternate_server_len);
+    struct sockaddr *addr, socklen_t *addrlen,
+    struct sockaddr *alternate_server, socklen_t *alternate_server_len);
 
 /**
  * stun_usage_bind_keepalive:

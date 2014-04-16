@@ -2267,8 +2267,8 @@ static gboolean priv_map_reply_to_discovery_request (NiceAgent *agent, StunMessa
       stun_message_id (&d->stun_message, discovery_id);
 
       if (memcmp (discovery_id, response_id, sizeof(StunTransactionId)) == 0) {
-        res = stun_usage_bind_process (resp, &sockaddr.storage,
-            &socklen, &alternate.storage, &alternatelen);
+        res = stun_usage_bind_process (resp, &sockaddr.addr,
+            &socklen, &alternate.addr, &alternatelen);
         nice_debug ("Agent %p : stun_bind_process/disc for %p res %d.",
             agent, d, (int)res);
 
