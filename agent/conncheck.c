@@ -3019,7 +3019,7 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, Stream *stream,
     return TRUE;
   }
   if (valid == STUN_VALIDATION_UNAUTHORIZED_BAD_REQUEST) {
-    nice_debug ("Agent %p : Integrity check failed.", agent);
+    nice_debug ("Agent %p : Integrity check failed - bad request.", agent);
     if (stun_agent_init_error (&agent->stun_agent, &msg, rbuf, rbuf_len,
             &req, STUN_ERROR_BAD_REQUEST)) {
       rbuf_len = stun_agent_finish_message (&agent->stun_agent, &msg, NULL, 0);

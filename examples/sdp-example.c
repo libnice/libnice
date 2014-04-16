@@ -166,8 +166,9 @@ example_thread(void *data)
     goto end;
 
   // Candidate gathering is done. Send our local candidates on stdout
-  printf("Copy this line to remote client:\n");
   sdp = nice_agent_generate_local_sdp (agent);
+  printf("Generated SDP from agent :\n%s\n\n", sdp);
+  printf("Copy the following line to remote client:\n");
   sdp64 = g_base64_encode ((const guchar *)sdp, strlen (sdp));
   printf("\n  %s\n", sdp64);
   g_free (sdp);
