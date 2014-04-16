@@ -1302,7 +1302,8 @@ process(PseudoTcpSocket *self, Segment *seg)
         DEBUG (PSEUDO_TCP_DEBUG_VERBOSE, "rtt: %ld   srtt: %d  rto: %d",
                 rtt, priv->rx_srtt, priv->rx_rto);
       } else {
-        g_assert_not_reached ();
+        DEBUG (PSEUDO_TCP_DEBUG_NORMAL, "Invalid RTT: %ld", rtt);
+        return FALSE;
       }
     }
 
