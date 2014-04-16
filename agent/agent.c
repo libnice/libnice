@@ -3698,9 +3698,6 @@ nice_agent_restart (
 
   agent_lock();
 
-  /* step: clean up all connectivity checks */
-  conn_check_free (agent);
-
   /* step: regenerate tie-breaker value */
   priv_generate_tie_breaker (agent);
 
@@ -3709,7 +3706,7 @@ nice_agent_restart (
 
     /* step: reset local credentials for the stream and 
      * clean up the list of remote candidates */
-    stream_restart (stream, agent->rng);
+    stream_restart (agent, stream, agent->rng);
   }
 
   agent_unlock_and_emit (agent);

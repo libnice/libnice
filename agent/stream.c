@@ -133,9 +133,12 @@ void stream_initialize_credentials (Stream *stream, NiceRNG *rng)
  * session.
  */
 void
-stream_restart (Stream *stream, NiceRNG *rng)
+stream_restart (NiceAgent *agent, Stream *stream, NiceRNG *rng)
 {
   GSList *i;
+
+  /* step: clean up all connectivity checks */
+  conn_check_prune_stream (agent, stream);
 
   stream->initial_binding_request_received = FALSE;
 
