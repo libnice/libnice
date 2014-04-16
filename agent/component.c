@@ -495,8 +495,8 @@ component_reattach_all_sockets (Component *component)
  * @component: a #Component
  * @socket: the socket to detach the source for
  *
- * Detach the #GSource for the single specified @socket. Leave the socket itself
- * untouched.
+ * Detach the #GSource for the single specified @socket. It also closes it
+ * and frees it!
  *
  * If the @socket doesn’t exist in this @component, do nothing.
  */
@@ -516,7 +516,11 @@ component_detach_socket (Component *component, NiceSocket *nicesock)
 
   /* Detach the source. */
   socket_source = l->data;
+  component->socket_sources = g_slist_delete_link (component->socket_sources, l);
+  component->socket_sources_age++;
+
   socket_source_detach (socket_source);
+  socket_source_free (socket_source);
 }
 
 /*
