@@ -72,6 +72,7 @@ static size_t priv_create_username (NiceAgent *agent, Stream *stream,
 static size_t priv_get_password (NiceAgent *agent, Stream *stream,
     NiceCandidate *remote, uint8_t **password);
 static void conn_check_free_item (gpointer data);
+static void priv_conn_check_add_for_candidate_pair_matched (NiceAgent *agent, guint stream_id, Component *component, NiceCandidate *local, NiceCandidate *remote);
 
 static int priv_timer_expired (GTimeVal *timer, GTimeVal *now)
 {
@@ -1336,7 +1337,30 @@ conn_check_match_transport (NiceCandidateTransport transport)
   }
 }
 
-static gboolean priv_conn_check_add_for_candidate_pair (NiceAgent *agent, guint stream_id, Component *component, NiceCandidate *local, NiceCandidate *remote)
+static void priv_conn_check_add_for_candidate_pair_matched (NiceAgent *agent,
+    guint stream_id, Component *component, NiceCandidate *local,
+    NiceCandidate *remote)
+{
+  nice_debug ("Agent %p, Adding check pair between %s and %s", agent,
+      local->foundation, remote->foundation);
+  priv_add_new_check_pair (agent, stream_id, component, local, remote,
+      NICE_CHECK_FROZEN, FALSE);
+  if (component->state < NICE_COMPONENT_STATE_CONNECTED) {
+    agent_signal_component_state_change (agent,
+        stream_id,
+        component->id,
+        NICE_COMPONENT_STATE_CONNECTING);
+  } else {
+    agent_signal_component_state_change (agent,
+        stream_id,
+        component->id,
+        NICE_COMPONENT_STATE_CONNECTED);
+  }
+}
+
+static gboolean priv_conn_check_add_for_candidate_pair (NiceAgent *agent,
+    guint stream_id, Component *component, NiceCandidate *local,
+    NiceCandidate *remote)
 {
   gboolean ret = FALSE;
 
@@ -1354,25 +1378,13 @@ static gboolean priv_conn_check_add_for_candidate_pair (NiceAgent *agent, guint 
   if (local->transport == NICE_CANDIDATE_TRANSPORT_TCP_PASSIVE) {
     return FALSE;
   }
+
   /* note: match pairs only if transport and address family are the same */
   if (local->transport == conn_check_match_transport (remote->transport) &&
      local->addr.s.addr.sa_family == remote->addr.s.addr.sa_family) {
-
-    nice_debug ("Agent %p, Adding check pair between %s and %s", agent,
-        local->foundation, remote->foundation);
-    priv_add_new_check_pair (agent, stream_id, component, local, remote, NICE_CHECK_FROZEN, FALSE);
+    priv_conn_check_add_for_candidate_pair_matched (agent, stream_id, component,
+        local, remote);
     ret = TRUE;
-    if (component->state < NICE_COMPONENT_STATE_CONNECTED) {
-      agent_signal_component_state_change (agent,
-          stream_id,
-          component->id,
-          NICE_COMPONENT_STATE_CONNECTING);
-    } else {
-      agent_signal_component_state_change (agent,
-          stream_id,
-          component->id,
-          NICE_COMPONENT_STATE_CONNECTED);
-    }
   }
 
   return ret;
