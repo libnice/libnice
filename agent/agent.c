@@ -3335,7 +3335,6 @@ nice_agent_recv_messages_blocking_or_nonblocking (NiceAgent *agent,
     memcpy (&prev_recv_messages_iter, &component->recv_messages_iter,
         sizeof (NiceInputMessageIter));
 
-
     agent_unlock_and_emit (agent);
     g_main_context_iteration (context, blocking);
     agent_lock ();
@@ -3344,7 +3343,11 @@ nice_agent_recv_messages_blocking_or_nonblocking (NiceAgent *agent,
             &stream, &component)) {
       g_set_error (&child_error, G_IO_ERROR, G_IO_ERROR_BROKEN_PIPE,
           "Component removed during call.");
-      goto done;
+
+      component = NULL;
+      error_reported = TRUE;
+
+      goto recv_error;
     }
 
     received_enough =
@@ -3360,13 +3363,15 @@ nice_agent_recv_messages_blocking_or_nonblocking (NiceAgent *agent,
       nice_input_message_iter_get_n_valid_messages (
           &component->recv_messages_iter);  /* grab before resetting the iter */
 
-  /* Tidy up. */
+  component_set_io_callback (component, NULL, NULL, NULL, 0, NULL);
+
+recv_error:
+  /* Tidy up. Below this point, @component may be %NULL. */
   if (cancellable_source != NULL) {
     g_source_destroy (cancellable_source);
     g_source_unref (cancellable_source);
   }
 
-  component_set_io_callback (component, NULL, NULL, NULL, 0, NULL);
   g_main_context_unref (context);
 
   /* Handle errors and cancellations. */
