@@ -128,15 +128,25 @@ static void cb_candidate_gathering_done(NiceAgent *agent, guint stream_id, gpoin
 
 static void cb_component_state_changed (NiceAgent *agent, guint stream_id, guint component_id, guint state, gpointer data)
 {
+  gboolean ready_to_connected = FALSE;
   g_debug ("test-dribble:%s: %p", G_STRFUNC, data);
 
-  if (GPOINTER_TO_UINT (data) == 1)
+  if (GPOINTER_TO_UINT (data) == 1) {
+    if (global_lagent_state == NICE_COMPONENT_STATE_READY &&
+        state == NICE_COMPONENT_STATE_CONNECTED)
+      ready_to_connected = TRUE;
     global_lagent_state = state;
-  else if (GPOINTER_TO_UINT (data) == 2)
+  } else if (GPOINTER_TO_UINT (data) == 2) {
+    if (global_ragent_state == NICE_COMPONENT_STATE_READY &&
+        state == NICE_COMPONENT_STATE_CONNECTED)
+      ready_to_connected = TRUE;
     global_ragent_state = state;
-  
+  }
+
   if (state == NICE_COMPONENT_STATE_READY)
     global_components_ready++;
+  else if (state == NICE_COMPONENT_STATE_CONNECTED && ready_to_connected)
+    global_components_ready--;
   if (state == NICE_COMPONENT_STATE_FAILED)
     global_components_failed++;
 
@@ -339,7 +349,7 @@ int main (void)
   g_timeout_add (500, quit_loop_cb, NULL);
   g_main_loop_run (global_mainloop);
 
-  global_components_ready--;
+  //global_components_ready--;
 
   cands = nice_agent_get_local_candidates (ragent, rs_id, NICE_COMPONENT_TYPE_RTP);
   nice_address_set_port(&((NiceCandidate *) cands->data)->addr, 80);
