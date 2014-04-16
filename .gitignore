@@ -133,6 +133,7 @@ tests/test-build-io-stream
 tests/test-dribble
 tests/test-fallback
 tests/test-fullmode
+tests/test-icetcp
 tests/test-io-stream-cancelling
 tests/test-io-stream-closing-read
 tests/test-io-stream-closing-write

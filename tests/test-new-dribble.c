@@ -744,6 +744,9 @@ int main(void)
   lagent = nice_agent_new (NULL, NICE_COMPATIBILITY_RFC5245);
   ragent = nice_agent_new (NULL, NICE_COMPATIBILITY_RFC5245);
 
+  g_object_set (G_OBJECT (lagent), "ice-tcp", FALSE,  NULL);
+  g_object_set (G_OBJECT (ragent), "ice-tcp", FALSE,  NULL);
+
   g_object_set (G_OBJECT (lagent), "controlling-mode", TRUE, NULL);
   g_object_set (G_OBJECT (ragent), "controlling-mode", FALSE, NULL);
 

@@ -857,6 +857,10 @@ int main (void)
       NICE_COMPATIBILITY);
 #endif
 
+  g_object_set (G_OBJECT (lagent), "ice-tcp", FALSE,  NULL);
+  g_object_set (G_OBJECT (ragent), "ice-tcp", FALSE,  NULL);
+
+
   nice_agent_set_software (lagent, "Test-fullmode, Left Agent");
   nice_agent_set_software (ragent, "Test-fullmode, Right Agent");
 

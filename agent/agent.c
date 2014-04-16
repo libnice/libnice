@@ -106,7 +106,9 @@ enum
   PROP_PROXY_PASSWORD,
   PROP_UPNP,
   PROP_UPNP_TIMEOUT,
-  PROP_RELIABLE
+  PROP_RELIABLE,
+  PROP_ICE_UDP,
+  PROP_ICE_TCP,
 };
 
 
@@ -582,6 +584,20 @@ nice_agent_class_init (NiceAgentClass *klass)
 	FALSE,
         G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY));
 
+   g_object_class_install_property (gobject_class, PROP_ICE_UDP,
+      g_param_spec_boolean (
+        "ice-udp",
+        "Use ICE-UDP",
+        "Use ICE-UDP specification to generate UDP candidates",
+        TRUE, /* use ice-udp by default */
+        G_PARAM_READWRITE));
+   g_object_class_install_property (gobject_class, PROP_ICE_TCP,
+      g_param_spec_boolean (
+        "ice-tcp",
+        "Use ICE-TCP",
+        "Use ICE-TCP specification to generate TCP candidates",
+        TRUE, /* use ice-tcp by default */
+        G_PARAM_READWRITE));
   /* install signals */
 
   /**
@@ -807,6 +823,8 @@ nice_agent_init (NiceAgent *agent)
 
   agent->compatibility = NICE_COMPATIBILITY_RFC5245;
   agent->reliable = FALSE;
+  agent->use_ice_udp = TRUE;
+  agent->use_ice_tcp = TRUE;
 
   stun_agent_init (&agent->stun_agent, STUN_ALL_KNOWN_ATTRIBUTES,
       STUN_COMPATIBILITY_RFC5389,
@@ -930,6 +948,14 @@ nice_agent_get_property (
 
     case PROP_RELIABLE:
       g_value_set_boolean (value, agent->reliable);
+      break;
+
+    case PROP_ICE_UDP:
+      g_value_set_boolean (value, agent->use_ice_udp);
+      break;
+
+    case PROP_ICE_TCP:
+      g_value_set_boolean (value, agent->use_ice_tcp);
       break;
 
     default:
@@ -1060,6 +1086,17 @@ nice_agent_set_property (
 
     case PROP_RELIABLE:
       agent->reliable = g_value_get_boolean (value);
+      break;
+
+      /* Don't allow ice-udp and ice-tcp to be disabled at the same time */
+    case PROP_ICE_UDP:
+      if (agent->use_ice_tcp == TRUE || g_value_get_boolean (value) == TRUE)
+        agent->use_ice_udp = g_value_get_boolean (value);
+      break;
+
+    case PROP_ICE_TCP:
+      if (agent->use_ice_udp == TRUE || g_value_get_boolean (value) == TRUE)
+        agent->use_ice_tcp = g_value_get_boolean (value);
       break;
 
     default:
@@ -1821,6 +1858,10 @@ priv_add_new_candidate_discovery_turn (NiceAgent *agent,
   cdisco->type = NICE_CANDIDATE_TYPE_RELAYED;
 
   if (turn->type ==  NICE_RELAY_TYPE_TURN_UDP) {
+    if (agent->use_ice_udp == FALSE) {
+      g_slice_free (CandidateDiscovery, cdisco);
+      return;
+    }
     if (agent->compatibility == NICE_COMPATIBILITY_GOOGLE) {
       NiceAddress addr = nicesock->addr;
       NiceSocket *new_socket;
@@ -1850,7 +1891,15 @@ priv_add_new_candidate_discovery_turn (NiceAgent *agent,
         agent->compatibility == NICE_COMPATIBILITY_OC2007R2)
       reliable_tcp = TRUE;
 
+    /* Ignore tcp candidates if we disabled ice-tcp */
+    if ((agent->use_ice_udp == FALSE && reliable_tcp == FALSE) ||
+        (agent->use_ice_tcp == FALSE && reliable_tcp == TRUE)) {
+      g_slice_free (CandidateDiscovery, cdisco);
+      return;
+    }
     nicesock = NULL;
+
+    /* TODO: add support for turn-tcp RFC 6062 */
     if (agent->proxy_type != NICE_PROXY_TYPE_NONE &&
         agent->proxy_ip != NULL &&
         nice_address_set_from_string (&proxy_server, agent->proxy_ip)) {
@@ -2273,81 +2322,111 @@ nice_agent_gather_candidates (
 
     for (cid = 1; cid <= stream->n_components; cid++) {
       Component *component = stream_find_component_by_id (stream, cid);
-      guint current_port;
-      guint start_port;
+      enum {
+        ADD_HOST_MIN = 0,
+        ADD_HOST_UDP = ADD_HOST_MIN,
+        ADD_HOST_TCP_ACTIVE,
+        ADD_HOST_TCP_PASSIVE,
+        ADD_HOST_MAX = ADD_HOST_TCP_PASSIVE
+      } add_type;
 
       if (component == NULL)
         continue;
 
-      start_port = component->min_port;
-      if(component->min_port != 0) {
-        start_port = nice_rng_generate_int(agent->rng, component->min_port, component->max_port+1);
-      }
-      current_port = start_port;
+      for (add_type = ADD_HOST_MIN; add_type <= ADD_HOST_MAX; add_type++) {
+        NiceCandidateTransport transport;
+        guint current_port;
+        guint start_port;
 
-      host_candidate = NULL;
-      while (host_candidate == NULL) {
-        nice_debug ("Agent %p: Trying to create host candidate on port %d", agent, current_port);
-        nice_address_set_port (addr, current_port);
-        host_candidate = discovery_add_local_host_candidate (agent, stream->id,
-            cid, addr, NICE_CANDIDATE_TRANSPORT_UDP);
-        if (current_port > 0)
-          current_port++;
-        if (current_port > component->max_port) current_port = component->min_port;
-        if (current_port == 0 || current_port == start_port)
-          break;
-      }
-      nice_address_set_port (addr, 0);
+        if ((agent->use_ice_udp == FALSE && add_type == ADD_HOST_UDP) ||
+            (agent->use_ice_tcp == FALSE && add_type != ADD_HOST_UDP))
+          continue;
 
-      if (!host_candidate) {
-        if (nice_debug_is_enabled ()) {
-          gchar ip[NICE_ADDRESS_STRING_LEN];
-          nice_address_to_string (addr, ip);
-          nice_debug ("Agent %p: Unable to add local host candidate %s for"
-              " s%d:%d. Invalid interface?", agent, ip, stream->id,
-              component->id);
+        switch (add_type) {
+          default:
+          case ADD_HOST_UDP:
+            transport = NICE_CANDIDATE_TRANSPORT_UDP;
+            break;
+          case ADD_HOST_TCP_ACTIVE:
+            transport = NICE_CANDIDATE_TRANSPORT_TCP_ACTIVE;
+            break;
+          case ADD_HOST_TCP_PASSIVE:
+            transport = NICE_CANDIDATE_TRANSPORT_TCP_PASSIVE;
+            break;
         }
-        ret = FALSE;
-        goto error;
-      }
+
+        start_port = component->min_port;
+        if(component->min_port != 0) {
+          start_port = nice_rng_generate_int(agent->rng, component->min_port, component->max_port+1);
+        }
+        current_port = start_port;
+
+        host_candidate = NULL;
+        while (host_candidate == NULL) {
+          nice_debug ("Agent %p: Trying to create host candidate on port %d", agent, current_port);
+          nice_address_set_port (addr, current_port);
+          host_candidate = discovery_add_local_host_candidate (agent, stream->id,
+              cid, addr, transport);
+          if (current_port > 0)
+            current_port++;
+          if (current_port > component->max_port) current_port = component->min_port;
+          if (current_port == 0 || current_port == start_port)
+            break;
+        }
+        nice_address_set_port (addr, 0);
+
+        if (!host_candidate) {
+          if (nice_debug_is_enabled ()) {
+            gchar ip[NICE_ADDRESS_STRING_LEN];
+            nice_address_to_string (addr, ip);
+            nice_debug ("Agent %p: Unable to add local host candidate %s for"
+                " s%d:%d. Invalid interface?", agent, ip, stream->id,
+                component->id);
+          }
+          ret = FALSE;
+          goto error;
+        }
 
 #ifdef HAVE_GUPNP
-      if (agent->upnp_enabled) {
-        NiceAddress *base_addr = nice_address_dup (&host_candidate->base_addr);
-        nice_debug ("Agent %p: Adding UPnP port %s:%d", agent, local_ip,
-            nice_address_get_port (base_addr));
-        gupnp_simple_igd_add_port (GUPNP_SIMPLE_IGD (agent->upnp), "UDP",
-            0, local_ip, nice_address_get_port (base_addr),
-            0, PACKAGE_STRING);
-        agent->upnp_mapping = g_slist_prepend (agent->upnp_mapping, base_addr);
+        if (agent->upnp_enabled) {
+          NiceAddress *base_addr = nice_address_dup (&host_candidate->base_addr);
+          nice_debug ("Agent %p: Adding UPnP port %s:%d", agent, local_ip,
+              nice_address_get_port (base_addr));
+          gupnp_simple_igd_add_port (GUPNP_SIMPLE_IGD (agent->upnp),
+              transport == NICE_CANDIDATE_TRANSPORT_UDP ? "UDP" : "TCP",
+              0, local_ip, nice_address_get_port (base_addr),
+              0, PACKAGE_STRING);
+          agent->upnp_mapping = g_slist_prepend (agent->upnp_mapping, base_addr);
       }
 #endif
 
-      if (agent->full_mode &&
-          agent->stun_server_ip) {
-        NiceAddress stun_server;
-        if (nice_address_set_from_string (&stun_server, agent->stun_server_ip)) {
-          nice_address_set_port (&stun_server, agent->stun_server_port);
+        /* TODO: Add server-reflexive support for TCP candidates */
+        if (agent->full_mode && agent->stun_server_ip &&
+            transport == NICE_CANDIDATE_TRANSPORT_UDP) {
+          NiceAddress stun_server;
+          if (nice_address_set_from_string (&stun_server, agent->stun_server_ip)) {
+            nice_address_set_port (&stun_server, agent->stun_server_port);
 
-          priv_add_new_candidate_discovery_stun (agent,
-              host_candidate->sockptr,
-              stun_server,
-              stream,
-              cid);
+            priv_add_new_candidate_discovery_stun (agent,
+                host_candidate->sockptr,
+                stun_server,
+                stream,
+                cid);
+          }
         }
-      }
 
-      if (agent->full_mode && component) {
-        GList *item;
+        if (agent->full_mode && component) {
+          GList *item;
 
-        for (item = component->turn_servers; item; item = item->next) {
-          TurnServer *turn = item->data;
+          for (item = component->turn_servers; item; item = item->next) {
+            TurnServer *turn = item->data;
 
-          priv_add_new_candidate_discovery_turn (agent,
-              host_candidate->sockptr,
-              turn,
-              stream,
-              cid);
+            priv_add_new_candidate_discovery_turn (agent,
+                host_candidate->sockptr,
+                turn,
+                stream,
+                cid);
+          }
         }
       }
     }
@@ -2827,76 +2906,90 @@ agent_recv_message_unlocked (
       }
       g_free (local_bufs);
     } else {
-      /* In the case of a real ICE-TCP connection, we can use the socket as a
-       * bytestream and do the read here with caching of data being read
-       */
-      gssize available = g_socket_get_available_bytes (nicesock->fileno);
+      if (nicesock->type == NICE_SOCKET_TYPE_TCP_PASSIVE) {
+        NiceSocket *new_socket;
 
-      /* TODO: Support bytestream reads */
-      message->length = 0;
-      if (available <= 0) {
-        retval = available;
-      } else if (agent->rfc4571_expecting_length == 0) {
-        if ((gsize) available >= sizeof(guint16)) {
-          guint16 rfc4571_frame;
-          GInputVector local_buf = { &rfc4571_frame, sizeof(guint16)};
-          NiceInputMessage local_message = { &local_buf, 1, message->from, 0};
+        /* Passive candidates when readable should accept and create a new
+         * socket. When established, the connchecks will create a peer reflexive
+         * candidate for it */
+        new_socket = nice_tcp_passive_socket_accept (nicesock);
+        if (new_socket) {
+          _priv_set_socket_tos (agent, new_socket, stream->tos);
+          component_attach_socket (component, new_socket);
+        }
+        retval = 0;
+      } else {
+        /* In the case of a real ICE-TCP connection, we can use the socket as a
+         * bytestream and do the read here with caching of data being read
+         */
+        gssize available = g_socket_get_available_bytes (nicesock->fileno);
 
+        /* TODO: Support bytestream reads */
+        message->length = 0;
+        if (available <= 0) {
+          retval = available;
+        } else if (agent->rfc4571_expecting_length == 0) {
+          if ((gsize) available >= sizeof(guint16)) {
+            guint16 rfc4571_frame;
+            GInputVector local_buf = { &rfc4571_frame, sizeof(guint16)};
+            NiceInputMessage local_message = { &local_buf, 1, message->from, 0};
+
+            retval = nice_socket_recv_messages (nicesock, &local_message, 1);
+            if (retval == 1) {
+              agent->rfc4571_expecting_length = ntohs (rfc4571_frame);
+              available = g_socket_get_available_bytes (nicesock->fileno);
+            }
+          } else {
+            retval = 0;
+          }
+        }
+        if (agent->rfc4571_expecting_length > 0 &&
+            available >= agent->rfc4571_expecting_length) {
+          GInputVector *local_bufs;
+          NiceInputMessage local_message;
+          gsize off;
+          guint n_bufs = 0;
+          guint i;
+
+          /* Count the number of buffers. */
+          if (message->n_buffers == -1) {
+            for (i = 0; message->buffers[i].buffer != NULL; i++)
+              n_bufs++;
+          } else {
+            n_bufs = message->n_buffers;
+          }
+
+          local_bufs = g_malloc_n (n_bufs, sizeof (GInputVector));
+          local_message.buffers = local_bufs;
+          local_message.from = message->from;
+          local_message.length = 0;
+          local_message.n_buffers = 0;
+
+          /* Only read up to the expected number of bytes in the frame */
+          off = 0;
+          for (i = 0; i < n_bufs; i++) {
+            if (message->buffers[i].size < agent->rfc4571_expecting_length - off) {
+              local_bufs[i].buffer = message->buffers[i].buffer;
+              local_bufs[i].size = message->buffers[i].size;
+              local_message.n_buffers++;
+              off += message->buffers[i].size;
+            } else {
+              local_bufs[i].buffer = message->buffers[i].buffer;
+              local_bufs[i].size = MIN (message->buffers[i].size,
+                  agent->rfc4571_expecting_length - off);
+              local_message.n_buffers++;
+              off += local_bufs[i].size;
+            }
+          }
           retval = nice_socket_recv_messages (nicesock, &local_message, 1);
           if (retval == 1) {
-            agent->rfc4571_expecting_length = ntohs (rfc4571_frame);
-            available = g_socket_get_available_bytes (nicesock->fileno);
+            message->length = local_message.length;
+            agent->rfc4571_expecting_length -= local_message.length;
           }
+          g_free (local_bufs);
         } else {
           retval = 0;
         }
-      }
-      if (agent->rfc4571_expecting_length > 0 &&
-          available >= agent->rfc4571_expecting_length) {
-        GInputVector *local_bufs;
-        NiceInputMessage local_message;
-        gsize off;
-        guint n_bufs = 0;
-        guint i;
-
-        /* Count the number of buffers. */
-        if (message->n_buffers == -1) {
-          for (i = 0; message->buffers[i].buffer != NULL; i++)
-            n_bufs++;
-        } else {
-          n_bufs = message->n_buffers;
-        }
-
-        local_bufs = g_malloc_n (n_bufs, sizeof (GInputVector));
-        local_message.buffers = local_bufs;
-        local_message.from = message->from;
-        local_message.length = 0;
-        local_message.n_buffers = 0;
-
-        /* Only read up to the expected number of bytes in the frame */
-        off = 0;
-        for (i = 0; i < n_bufs; i++) {
-          if (message->buffers[i].size < agent->rfc4571_expecting_length - off) {
-            local_bufs[i].buffer = message->buffers[i].buffer;
-            local_bufs[i].size = message->buffers[i].size;
-            local_message.n_buffers++;
-            off += message->buffers[i].size;
-          } else {
-            local_bufs[i].buffer = message->buffers[i].buffer;
-            local_bufs[i].size = MIN (message->buffers[i].size,
-                agent->rfc4571_expecting_length - off);
-            local_message.n_buffers++;
-            off += local_bufs[i].size;
-          }
-        }
-        retval = nice_socket_recv_messages (nicesock, &local_message, 1);
-        if (retval == 1) {
-          message->length = local_message.length;
-          agent->rfc4571_expecting_length -= local_message.length;
-        }
-        g_free (local_bufs);
-      } else {
-        retval = 0;
       }
     }
   } else {

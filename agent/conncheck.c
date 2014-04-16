@@ -1040,6 +1040,14 @@ void conn_check_remote_candidates_set(NiceAgent *agent)
                 }
               }
             }
+          } else {
+            for (l = component->local_candidates; l; l = l->next) {
+              NiceCandidate *cand = l->data;
+              if (nice_address_equal (&cand->addr, &icheck->local_socket->addr)) {
+                local_candidate = cand;
+                break;
+              }
+            }
           }
 
           if (agent->compatibility == NICE_COMPATIBILITY_GOOGLE &&
@@ -1062,7 +1070,12 @@ void conn_check_remote_candidates_set(NiceAgent *agent)
                     icheck->local_socket,
                     local_candidate, remote_candidate);
             if (candidate) {
-              conn_check_add_for_candidate (agent, stream->id, component, candidate);
+              if (local_candidate &&
+                  local_candidate->transport == NICE_CANDIDATE_TRANSPORT_TCP_PASSIVE)
+                priv_conn_check_add_for_candidate_pair_matched (agent,
+                    stream->id, component, local_candidate, candidate);
+              else
+                conn_check_add_for_candidate (agent, stream->id, component, candidate);
 
               if (icheck->use_candidate)
                 priv_mark_pair_nominated (agent, stream, component, candidate);
@@ -1300,7 +1313,10 @@ static void priv_add_new_check_pair (NiceAgent *agent, guint stream_id, Componen
   pair->component_id = component->id;;
   pair->local = local;
   pair->remote = remote;
-  pair->sockptr = (NiceSocket *) local->sockptr;
+  if (remote->type == NICE_CANDIDATE_TYPE_PEER_REFLEXIVE)
+    pair->sockptr = (NiceSocket *) remote->sockptr;
+  else
+    pair->sockptr = (NiceSocket *) local->sockptr;
   g_snprintf (pair->foundation, NICE_CANDIDATE_PAIR_MAX_FOUNDATION, "%s:%s", local->foundation, remote->foundation);
 
   pair->priority = agent_candidate_pair_priority (agent, local, remote);
@@ -1787,6 +1803,26 @@ int conn_check_send (NiceAgent *agent, CandidateCheckPair *pair)
             STUN_TIMER_DEFAULT_MAX_RETRANSMISSIONS);
       }
 
+      /* TCP-ACTIVE candidate must create a new socket before sending
+       * by connecting to the peer. The new socket is stored in the candidate
+       * check pair, until we discover a new local peer reflexive */
+      if (pair->sockptr->fileno == NULL &&
+          pair->local->transport == NICE_CANDIDATE_TRANSPORT_TCP_ACTIVE) {
+        Stream *stream = NULL;
+        Component *component = NULL;
+        NiceSocket *new_socket;
+
+        if (agent_find_component (agent, pair->stream_id, pair->component_id,
+                &stream, &component)) {
+          new_socket = nice_tcp_active_socket_connect (pair->sockptr,
+              &pair->remote->addr);
+          if (new_socket) {
+            pair->sockptr = new_socket;
+            _priv_set_socket_tos (agent, pair->sockptr, stream->tos);
+            component_attach_socket (component, new_socket);
+          }
+        }
+      }
       /* send the conncheck */
       agent_socket_send (pair->sockptr, &pair->remote->addr,
           buffer_len, (gchar *)pair->stun_buffer);
@@ -1893,7 +1929,13 @@ static gboolean priv_schedule_triggered_check (NiceAgent *agent, Stream *stream,
       CandidateCheckPair *p = i->data;
       if (p->component_id == component->id &&
 	  p->remote == remote_cand &&
-	  p->sockptr == local_socket) {
+          ((p->local->transport == NICE_CANDIDATE_TRANSPORT_TCP_PASSIVE &&
+              p->sockptr == local_socket) ||
+              (p->local->transport != NICE_CANDIDATE_TRANSPORT_TCP_PASSIVE &&
+                  p->local->sockptr == local_socket))) {
+        /* We don't check for p->sockptr because in the case of
+         * tcp-active we don't want to retrigger a check on a pair that
+         * was FAILED when a peer-reflexive pair was created */
 
 	nice_debug ("Agent %p : Found a matching pair %p for triggered check.", agent, p);
 	
@@ -2133,7 +2175,7 @@ static CandidateCheckPair *priv_process_response_check_for_peer_reflexive(NiceAg
 {
   CandidateCheckPair *new_pair = NULL;
   NiceAddress mapped;
-  GSList *j;
+  GSList *i, *j;
   gboolean local_cand_matches = FALSE;
 
   nice_address_set_from_sockaddr (&mapped, mapped_sockaddr);
@@ -2141,7 +2183,19 @@ static CandidateCheckPair *priv_process_response_check_for_peer_reflexive(NiceAg
   for (j = component->local_candidates; j; j = j->next) {
     NiceCandidate *cand = j->data;
     if (nice_address_equal (&mapped, &cand->addr)) {
-      local_cand_matches = TRUE; 
+      local_cand_matches = TRUE;
+
+      /* We always need to select the peer-reflexive Candidate Pair in the case
+       * of a TCP-ACTIVE local candidate, so we find it even if an incoming
+       * check matched an existing pair because it could be the original
+       * ACTIVE-PASSIVE candidate pair which was retriggered */
+      for (i = stream->conncheck_list; i; i = i->next) {
+        CandidateCheckPair *pair = i->data;
+        if (pair->local == cand && remote_candidate == pair->remote) {
+          new_pair = pair;
+          break;
+        }
+      }
       break;
     }
   }
@@ -2988,7 +3042,7 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, Stream *stream,
   }
   for (i = component->local_candidates; i; i = i->next) {
     NiceCandidate *cand = i->data;
-    if (cand->sockptr == nicesock) {
+    if (nice_address_equal (&nicesock->addr, &cand->addr)) {
       local_candidate = cand;
       break;
     }
@@ -3123,8 +3177,14 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, Stream *stream,
             agent, stream, component, priority, from, nicesock,
             local_candidate,
             remote_candidate2 ? remote_candidate2 : remote_candidate);
-        if(remote_candidate)
-          conn_check_add_for_candidate (agent, stream->id, component, remote_candidate);
+        if(remote_candidate) {
+          if (local_candidate &&
+              local_candidate->transport == NICE_CANDIDATE_TRANSPORT_TCP_PASSIVE)
+            priv_conn_check_add_for_candidate_pair_matched (agent,
+                stream->id, component, local_candidate, remote_candidate);
+          else
+            conn_check_add_for_candidate (agent, stream->id, component, remote_candidate);
+        }
       }
 
       priv_reply_to_conn_check (agent, stream, component, remote_candidate,

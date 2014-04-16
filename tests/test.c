@@ -69,6 +69,7 @@ main (void)
   nice_address_set_port (&addr_remote, 2345);
 
   agent = nice_agent_new ( NULL, NICE_COMPATIBILITY_RFC5245);
+  g_object_set (G_OBJECT (agent), "ice-tcp", FALSE,  NULL);
 
   g_assert (agent->local_addresses == NULL);
 

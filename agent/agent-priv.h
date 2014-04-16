@@ -161,6 +161,8 @@ struct _NiceAgent
 
   GQueue pending_signals;
   guint16 rfc4571_expecting_length;
+  gboolean use_ice_udp;
+  gboolean use_ice_tcp;
   /* XXX: add pointer to internal data struct for ABI-safe extensions */
 };
 

@@ -500,8 +500,12 @@ NiceCandidate *discovery_add_local_host_candidate (
      level ufrag/password are used */
   if (transport == NICE_CANDIDATE_TRANSPORT_UDP) {
     nicesock = nice_udp_bsd_socket_new (address);
+  } else if (transport == NICE_CANDIDATE_TRANSPORT_TCP_ACTIVE) {
+    nicesock = nice_tcp_active_socket_new (agent->main_context, address);
+  } else if (transport == NICE_CANDIDATE_TRANSPORT_TCP_PASSIVE) {
+    nicesock = nice_tcp_passive_socket_new (agent->main_context, address);
   } else {
-    /* TODO: Add ICE-TCP */
+    /* TODO: Add TCP-SO */
   }
   if (!nicesock)
     goto errors;
@@ -693,10 +697,21 @@ discovery_add_peer_reflexive_candidate (
     return NULL;
 
   candidate = nice_candidate_new (NICE_CANDIDATE_TYPE_PEER_REFLEXIVE);
-  candidate->transport = local->transport;
+  if (local)
+    candidate->transport = local->transport;
+  else if (remote)
+    candidate->transport = conn_check_match_transport (remote->transport);
+  else {
+    if (base_socket->type == NICE_SOCKET_TYPE_UDP_BSD ||
+        base_socket->type == NICE_SOCKET_TYPE_UDP_TURN)
+      candidate->transport = NICE_CANDIDATE_TRANSPORT_UDP;
+    else
+      candidate->transport = NICE_CANDIDATE_TRANSPORT_TCP_PASSIVE;
+  }
   candidate->stream_id = stream_id;
   candidate->component_id = component_id;
   candidate->addr = *address;
+  candidate->sockptr = base_socket;
   candidate->base_addr = base_socket->addr;
 
   if (agent->compatibility == NICE_COMPATIBILITY_GOOGLE) {
@@ -746,10 +761,6 @@ discovery_add_peer_reflexive_candidate (
     candidate->password = g_strdup(local->password);
   }
 
-  /* step: link to the base candidate+socket */
-  candidate->sockptr = base_socket;
-  candidate->base_addr = base_socket->addr;
-
   result = priv_add_local_candidate_pruned (agent, stream_id, component, candidate);
   if (result != TRUE) {
     /* error: memory allocation, or duplicate candidate */
@@ -796,6 +807,7 @@ NiceCandidate *discovery_learn_remote_peer_reflexive_candidate (
     else
       candidate->transport = NICE_CANDIDATE_TRANSPORT_TCP_ACTIVE;
   }
+  candidate->sockptr = nicesock;
   candidate->stream_id = stream->id;
   candidate->component_id = component->id;
 
@@ -849,7 +861,6 @@ NiceCandidate *discovery_learn_remote_peer_reflexive_candidate (
     candidate->password = g_strdup(remote->password);
   }
 
-  candidate->sockptr = NULL; /* not stored for remote candidates */
   /* note: candidate username and password are left NULL as stream 
      level ufrag/password are used */
 
