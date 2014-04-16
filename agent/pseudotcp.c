@@ -1324,6 +1324,7 @@ process(PseudoTcpSocket *self, Segment *seg)
 
       if (nFree < data->len) {
         data->len -= nFree;
+        data->seq += nFree;
         nFree = 0;
       } else {
         if (data->len > priv->largest) {
@@ -1547,7 +1548,13 @@ transmit(PseudoTcpSocket *self, SSegment *segment, guint32 now)
   while (TRUE) {
     guint32 seq = segment->seq;
     guint8 flags = (segment->bCtrl ? FLAG_CTL : 0);
-    PseudoTcpWriteResult wres = packet(self, seq, flags,
+    PseudoTcpWriteResult wres;
+
+    /* The packet must not have already been acknowledged. */
+    g_assert_cmpuint (segment->seq, >=, priv->snd_una);
+
+    /* Write out the packet. */
+    wres = packet(self, seq, flags,
         segment->seq - priv->snd_una, nTransmit, now);
 
     if (wres == WR_SUCCESS)
