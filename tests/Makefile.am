@@ -22,6 +22,7 @@ COMMON_LDADD = $(top_builddir)/agent/libagent.la $(top_builddir)/socket/libsocke
 
 check_PROGRAMS = \
 	test-pseudotcp \
+	test-pseudotcp-fuzzy \
 	test-bsd \
 	test \
 	test-address \
@@ -51,6 +52,8 @@ TESTS = $(check_PROGRAMS) $(dist_check_SCRIPTS)
 noinst_HEADERS = test-io-stream-common.h
 
 test_pseudotcp_LDADD = $(COMMON_LDADD)
+
+test_pseudotcp_fuzzy_LDADD = $(COMMON_LDADD) -lm
 
 test_bsd_LDADD = $(COMMON_LDADD)
 

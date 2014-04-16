@@ -142,6 +142,7 @@ tests/test-send-recv
 tests/test-mainloop
 tests/test-priority
 tests/test-pseudotcp
+tests/test-pseudotcp-fuzzy
 tests/test-restart
 tests/test-thread
 tests/test-new-dribble
