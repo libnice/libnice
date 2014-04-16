@@ -206,7 +206,7 @@ void refresh_free (NiceAgent *agent)
 
 /*
  * Prunes the list of discovery processes for items related
- * to stream 'stream_id'. 
+ * to stream 'stream_id'.
  *
  * @return TRUE on success, FALSE on a fatal error
  */
@@ -218,6 +218,9 @@ void refresh_prune_stream (NiceAgent *agent, guint stream_id)
     CandidateRefresh *cand = i->data;
     GSList *next = i->next;
 
+    /* Don't free the candidate refresh to the currently selected local candidate
+     * unless the whole pair is being destroyed.
+     */
     if (cand->stream->id == stream_id) {
       agent->refresh_list = g_slist_delete_link (agent->refresh_list, i);
       refresh_free_item (cand);
@@ -228,12 +231,30 @@ void refresh_prune_stream (NiceAgent *agent, guint stream_id)
 
 }
 
+void refresh_prune_candidate (NiceAgent *agent, NiceCandidate *candidate)
+{
+  GSList *i;
+
+  for (i = agent->refresh_list; i;) {
+    GSList *next = i->next;
+    CandidateRefresh *refresh = i->data;
+
+    if (refresh->candidate == candidate) {
+      agent->refresh_list = g_slist_delete_link (agent->refresh_list, i);
+      refresh_free_item (refresh);
+    }
+
+    i = next;
+  }
+}
+
 void refresh_cancel (CandidateRefresh *refresh)
 {
   refresh->agent->refresh_list = g_slist_remove (refresh->agent->refresh_list,
       refresh);
   refresh_free_item (refresh);
 }
+
 
 /*
  * Adds a new local candidate. Implements the candidate pruning

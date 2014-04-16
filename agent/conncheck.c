@@ -1128,6 +1128,14 @@ static gboolean priv_update_selected_pair (NiceAgent *agent, Component *componen
       component->selected_pair.keepalive.tick_source = NULL;
     }
 
+    if (component->selected_pair.local &&
+        component->selected_pair.local == component->turn_candidate) {
+      refresh_prune_candidate (agent, component->turn_candidate);
+      component_detach_socket (component, component->turn_candidate->sockptr);
+      nice_candidate_free (component->turn_candidate);
+      component->turn_candidate = NULL;
+    }
+
     memset (&component->selected_pair, 0, sizeof(CandidatePair));
     component->selected_pair.local = pair->local;
     component->selected_pair.remote = pair->remote;

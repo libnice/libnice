@@ -51,6 +51,7 @@
 #include "debug.h"
 
 #include "component.h"
+#include "discovery.h"
 #include "agent-priv.h"
 
 
@@ -148,9 +149,48 @@ component_new (guint id, NiceAgent *agent, Stream *stream)
 void
 component_clean_turn_servers (Component *cmp)
 {
+  GSList *i;
 
   g_list_free_full (cmp->turn_servers, (GDestroyNotify) turn_server_unref);
   cmp->turn_servers = NULL;
+
+  for (i = cmp->local_candidates; i;) {
+    NiceCandidate *candidate = i->data;
+    GSList *next = i->next;
+
+    if (candidate->type != NICE_CANDIDATE_TYPE_RELAYED) {
+      i = next;
+      continue;
+    }
+
+    /* note: do not remove the remote candidate that is
+     *       currently part of the 'selected pair', see ICE
+     *       9.1.1.1. "ICE Restarts" (ID-19)
+     *
+     * So what we do instead is that we put the selected candidate
+     * in a special location and keep it "alive" that way. This is
+     * especially important for TURN, because refresh requests to the
+     * server need to keep happening.
+     */
+    if (candidate == cmp->selected_pair.local) {
+      if (cmp->turn_candidate) {
+        refresh_prune_candidate (cmp->agent, cmp->turn_candidate);
+        component_detach_socket (cmp, cmp->turn_candidate->sockptr);
+	nice_candidate_free (cmp->turn_candidate);
+      }
+      /* Bring the priority down to 0, so that it will be replaced
+       * on the new run.
+       */
+      cmp->selected_pair.priority = 0;
+      cmp->turn_candidate = candidate;
+    } else {
+      refresh_prune_candidate (cmp->agent, candidate);
+      component_detach_socket (cmp, candidate->sockptr);
+      nice_candidate_free (candidate);
+    }
+    cmp->local_candidates = g_slist_delete_link (cmp->local_candidates, i);
+    i = next;
+  }
 }
 
 void
@@ -174,6 +214,10 @@ component_free (Component *cmp)
     nice_candidate_free (cmp->restart_candidate),
       cmp->restart_candidate = NULL;
 
+  if (cmp->turn_candidate)
+    nice_candidate_free (cmp->turn_candidate),
+        cmp->turn_candidate = NULL;
+
   for (i = cmp->incoming_checks; i; i = i->next) {
     IncomingCheck *icheck = i->data;
     g_free (icheck->username);
@@ -181,9 +225,12 @@ component_free (Component *cmp)
   }
 
   g_slist_free (cmp->local_candidates);
+  cmp->local_candidates = NULL;
   g_slist_free (cmp->remote_candidates);
+  cmp->remote_candidates = NULL;
   component_free_socket_sources (cmp);
   g_slist_free (cmp->incoming_checks);
+  cmp->incoming_checks = NULL;
 
   component_clean_turn_servers (cmp);
 
@@ -285,7 +332,7 @@ component_restart (Component *cmp)
   for (i = cmp->remote_candidates; i; i = i->next) {
     NiceCandidate *candidate = i->data;
 
-    /* note: do not remove the remote candidate that is
+    /* note: do not remove the local candidate that is
      *       currently part of the 'selected pair', see ICE
      *       9.1.1.1. "ICE Restarts" (ID-19) */
     if (candidate == cmp->selected_pair.remote) {

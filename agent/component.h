@@ -149,7 +149,7 @@ struct _Component
   CandidatePair selected_pair; /**< independent from checklists, 
 				    see ICE 11.1. "Sending Media" (ID-19) */
   NiceCandidate *restart_candidate; /**< for storing active remote candidate during a restart */
-
+  NiceCandidate *turn_candidate; /**< for storing active turn candidate if turn servers have been cleared */
   /* I/O handling. The main context must always be non-NULL, and is used for all
    * socket recv() operations. All io_callback emissions are invoked in this
    * context too.

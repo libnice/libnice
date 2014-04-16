@@ -84,6 +84,7 @@ typedef struct
 
 void refresh_free (NiceAgent *agent);
 void refresh_prune_stream (NiceAgent *agent, guint stream_id);
+void refresh_prune_candidate (NiceAgent *agent, NiceCandidate *candidate);
 void refresh_cancel (CandidateRefresh *refresh);
 
 
