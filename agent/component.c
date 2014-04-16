@@ -451,16 +451,9 @@ component_attach_socket (Component *component, NiceSocket *nicesock)
   /* Find an existing SocketSource in the component which contains @socket, or
    * create a new one.
    *
-   * In order for socket_sources_age to work properly, socket_sources must only
-   * grow monotonically, or be entirely cleared. i.e. New SocketSources must be
-   * prepended to socket_sources, and all other existing SocketSource must be
-   * left untouched; *or* the whole of socket_sources must be cleared. If
-   * socket_sources is cleared, age is reset to 0 and *must not* be incremented
-   * again or the new sockets will not be picked up by ComponentSocket. This is
-   * guaranteed by the fact that socket_sources is only cleared on disconnection
-   * or discovery failure, which are both unrecoverable states.
-   *
-   * An empty socket_sources corresponds to age 0. */
+   * Whenever a source is added or remove to socket_sources, socket_sources_age
+   * must be incremented.
+   */
   l = g_slist_find_custom (component->socket_sources, nicesock,
           _find_socket_source);
   if (l != NULL) {
@@ -554,7 +547,7 @@ component_free_socket_sources (Component *component)
   g_slist_free_full (component->socket_sources,
       (GDestroyNotify) socket_source_free);
   component->socket_sources = NULL;
-  component->socket_sources_age = 0;
+  component->socket_sources_age++;
 }
 
 GMainContext *
@@ -830,7 +823,6 @@ component_deschedule_io_callback (Component *component)
   component->io_callback_id = 0;
 }
 
-
 /**
  * ComponentSource:
  *
@@ -861,15 +853,20 @@ typedef struct {
   guint stream_id;
   guint component_id;
   guint component_socket_sources_age;
+
+  /* SocketSource, free with free_child_socket_source() */
+  GSList *socket_sources;
+
+  GIOCondition condition;
 } ComponentSource;
 
 static gboolean
 component_source_prepare (GSource *source, gint *timeout_)
 {
   ComponentSource *component_source = (ComponentSource *) source;
-  gint age_diff;
   NiceAgent *agent;
   Component *component;
+  GSList *parentl, *childl;
 
   agent = g_weak_ref_get (&component_source->agent_ref);
   if (!agent)
@@ -884,43 +881,66 @@ component_source_prepare (GSource *source, gint *timeout_)
     goto done;
 
 
-  age_diff =
-      component->socket_sources_age -
-      component_source->component_socket_sources_age;
+  if (component->socket_sources_age ==
+      component_source->component_socket_sources_age)
+    goto done;
 
-  /* If the age has changed, either:
-   *  • a new socket has been *prepended* to component->socket_sources (and
-   *    age_diff > 0); or
-   *  • component->socket_sources has been emptied (and age_diff < 0).
-   * We can’t remove any child sources without destroying them, so must
-   * monotonically add new ones, or remove everything.
-   *
-   * Removing everything only happens on shutdown or failure, in which case
-   * the ComponentSource itself can be destroyed, automatically destroying all
-   * the child sources. */
-  if (age_diff < 0) {
-    g_source_destroy (source);
-  } else if (age_diff > 0) {
-    /* Add the new child sources. The difference between the two ages gives
-     * the number of new child sources. */
-    guint i;
-    GSList *l;
+  /* If the age has changed, either
+   *  - one or more new socket has been prepended
+   *  - old sockets have been removed
+   */
 
-    for (i = 0, l = component->socket_sources;
-         i < (guint) age_diff && l != NULL;
-         i++, l = l->next) {
-      GSource *child_source;
-      SocketSource *socket_source;
+  /* Add the new child sources. */
 
-      socket_source = l->data;
+  for (parentl = component->socket_sources; parentl; parentl = parentl->next) {
+    SocketSource *parent_socket_source = parentl->data;
+    SocketSource *child_socket_source;
 
-      child_source = g_socket_create_source (socket_source->socket->fileno,
-          G_IO_IN, NULL);
-      g_source_set_dummy_callback (child_source);
-      g_source_add_child_source (source, child_source);
-      g_source_unref (child_source);
-    }
+    /* Iterating the list of socket sources every time isn't a big problem
+     * because the number of pairs is limited ~100 normally, so there will
+     * rarely be more than 10.
+     */
+    childl = g_slist_find_custom (component_source->socket_sources,
+        parent_socket_source->socket, _find_socket_source);
+
+    /* If we have reached this state, then all sources new sources have been
+     * added, because they are always prepended.
+     */
+    if (childl)
+      break;
+
+    child_socket_source = g_slice_new0 (SocketSource);
+    child_socket_source->socket = parent_socket_source->socket;
+    child_socket_source->source =
+        g_socket_create_source (child_socket_source->socket->fileno, G_IO_IN,
+            NULL);
+    g_source_set_dummy_callback (child_socket_source->source);
+    g_source_add_child_source (source, child_socket_source->source);
+    g_source_unref (child_socket_source->source);
+    component_source->socket_sources =
+        g_slist_prepend (component_source->socket_sources, child_socket_source);
   }
+
+
+  for (childl = component_source->socket_sources;
+       childl;) {
+    SocketSource *child_socket_source = childl->data;
+    GSList *next = childl->next;
+
+    parentl = g_slist_find_custom (component->socket_sources,
+      child_socket_source->socket, _find_socket_source);
+
+    /* If this is not a currently used socket, remove the relevant source */
+    if (!parentl) {
+      g_source_remove_child_source (source, child_socket_source->source);
+      g_slice_free (SocketSource, child_socket_source);
+      component_source->socket_sources =
+          g_slist_delete_link (component_source->socket_sources, childl);
+    }
+
+    childl = next;
+  }
+
 
   /* Update the age. */
   component_source->component_socket_sources_age = component->socket_sources_age;
@@ -945,9 +965,17 @@ component_source_dispatch (GSource *source, GSourceFunc callback,
 }
 
 static void
+free_child_socket_source (gpointer data)
+{
+  g_slice_free (SocketSource, data);
+}
+
+static void
 component_source_finalize (GSource *source)
 {
   ComponentSource *component_source = (ComponentSource *) source;
+
+  g_slist_free_full (component_source->socket_sources, free_child_socket_source);
 
   g_weak_ref_clear (&component_source->agent_ref);
   g_object_unref (component_source->pollable_stream);
