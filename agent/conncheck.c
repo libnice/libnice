@@ -1908,7 +1908,7 @@ static gboolean priv_schedule_triggered_check (NiceAgent *agent, Stream *stream,
 	  nice_debug ("Agent %p : check already in progress, "
 	    "restarting the timer again?: %s ..", agent,
             p->timer_restarted ? "no" : "yes");
-	  if (!p->timer_restarted) {
+	  if (!nice_socket_is_reliable (p->sockptr) && !p->timer_restarted) {
 	    stun_timer_start (&p->timer, STUN_TIMER_DEFAULT_TIMEOUT,
 	      STUN_TIMER_DEFAULT_MAX_RETRANSMISSIONS);
 	    p->timer_restarted = TRUE;
