@@ -36,6 +36,7 @@ nice_agent_set_selected_remote_candidate
 nice_agent_set_stream_tos
 nice_agent_set_software
 nice_agent_restart
+nice_agent_restart_stream
 nice_agent_set_stream_name
 nice_agent_get_stream_name
 nice_agent_get_default_local_candidate

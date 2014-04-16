@@ -3689,7 +3689,6 @@ nice_agent_get_remote_candidates (
   return ret;
 }
 
-
 gboolean
 nice_agent_restart (
   NiceAgent *agent)
@@ -3711,6 +3710,32 @@ nice_agent_restart (
 
   agent_unlock_and_emit (agent);
   return TRUE;
+}
+
+gboolean
+nice_agent_restart_stream (
+    NiceAgent *agent,
+    guint stream_id)
+{
+  gboolean res = FALSE;
+  Stream *stream;
+
+  agent_lock();
+
+  stream = agent_find_stream (agent, stream_id);
+  if (!stream) {
+    g_warning ("Could not find  stream %u", stream_id);
+    goto done;
+  }
+
+  /* step: reset local credentials for the stream and
+   * clean up the list of remote candidates */
+  stream_restart (agent, stream, agent->rng);
+
+  res = TRUE;
+ done:
+  agent_unlock_and_emit (agent);
+  return res;
 }
 
 
