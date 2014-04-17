@@ -1686,20 +1686,16 @@ void agent_signal_new_selected_pair (NiceAgent *agent, guint stream_id,
     nice_udp_turn_socket_set_peer (lcandidate->sockptr, &rcandidate->addr);
   }
 
-  if(agent->reliable) {
-    if (!nice_socket_is_reliable (lcandidate->sockptr)) {
-      if (!component->tcp)
-        pseudo_tcp_socket_create (agent, stream, component);
-      process_queued_tcp_packets (agent, stream, component);
+  if(agent->reliable && !nice_socket_is_reliable (lcandidate->sockptr)) {
+    if (!component->tcp)
+      pseudo_tcp_socket_create (agent, stream, component);
+    process_queued_tcp_packets (agent, stream, component);
 
-      pseudo_tcp_socket_connect (component->tcp);
-      pseudo_tcp_socket_notify_mtu (component->tcp, MAX_TCP_MTU);
-      adjust_tcp_clock (agent, stream, component);
-    } else {
-      nice_debug ("ICE-TCP not yet supported");
-      return;
-    }
+    pseudo_tcp_socket_connect (component->tcp);
+    pseudo_tcp_socket_notify_mtu (component->tcp, MAX_TCP_MTU);
+    adjust_tcp_clock (agent, stream, component);
   }
+
   if (nice_debug_is_enabled ()) {
     gchar ip[100];
     guint port;
@@ -1743,6 +1739,11 @@ void agent_signal_new_selected_pair (NiceAgent *agent, guint stream_id,
 
   agent_queue_signal (agent, signals[SIGNAL_NEW_SELECTED_PAIR],
       stream_id, component_id, lcandidate->foundation, rcandidate->foundation);
+
+  if(agent->reliable && nice_socket_is_reliable (lcandidate->sockptr)) {
+    agent_queue_signal (agent, signals[SIGNAL_RELIABLE_TRANSPORT_WRITABLE],
+        stream_id, component_id);
+  }
 }
 
 void agent_signal_new_candidate (NiceAgent *agent, NiceCandidate *candidate)
@@ -3122,12 +3123,6 @@ agent_recv_message_unlocked (
 
       retval = RECV_OOB;
       goto done;
-    } else {
-      /* Received data on a reliable connection which has no TCP component. */
-      nice_debug ("Ice TCP unsupported\n");
-
-      retval = RECV_OOB;
-      goto done;
     }
   }
 
@@ -4203,73 +4198,69 @@ component_io_cb (GSocket *gsocket, GIOCondition condition, gpointer user_data)
    * need to take the agent lock to change the Component’s io_callback. */
   g_assert (!has_io_callback || component->recv_messages == NULL);
 
-  if (agent->reliable) {
+  if (agent->reliable && !nice_socket_is_reliable (socket_source->socket)) {
 #define TCP_HEADER_SIZE 24 /* bytes */
-    if (!nice_socket_is_reliable (socket_source->socket)) {
-      guint8 local_header_buf[TCP_HEADER_SIZE];
-      /* FIXME: Currently, the critical path for reliable packet delivery has two
-       * memcpy()s: one into the pseudo-TCP receive buffer, and one out of it.
-       * This could moderately easily be reduced to one memcpy() in the common
-       * case of in-order packet delivery, by replacing local_body_buf with a
-       * pointer into the pseudo-TCP receive buffer. If it turns out the packet
-       * is out-of-order (which we can only know after parsing its header), the
-       * data will need to be moved in the buffer. If the packet *is* in order,
-       * however, the only memcpy() then needed is from the pseudo-TCP receive
-       * buffer to the client’s message buffers.
-       *
-       * In fact, in the case of a reliable agent with I/O callbacks, zero
-       * memcpy()s can be achieved (for in-order packet delivery) by emittin the
-       * I/O callback directly from the pseudo-TCP receive buffer. */
-      guint8 local_body_buf[MAX_BUFFER_SIZE];
-      GInputVector local_bufs[] = {
-        { local_header_buf, sizeof (local_header_buf) },
-        { local_body_buf, sizeof (local_body_buf) },
-      };
-      NiceInputMessage local_message = {
-        local_bufs, G_N_ELEMENTS (local_bufs), NULL, 0
-      };
-      RecvStatus retval = 0;
+    guint8 local_header_buf[TCP_HEADER_SIZE];
+    /* FIXME: Currently, the critical path for reliable packet delivery has two
+     * memcpy()s: one into the pseudo-TCP receive buffer, and one out of it.
+     * This could moderately easily be reduced to one memcpy() in the common
+     * case of in-order packet delivery, by replacing local_body_buf with a
+     * pointer into the pseudo-TCP receive buffer. If it turns out the packet
+     * is out-of-order (which we can only know after parsing its header), the
+     * data will need to be moved in the buffer. If the packet *is* in order,
+     * however, the only memcpy() then needed is from the pseudo-TCP receive
+     * buffer to the client’s message buffers.
+     *
+     * In fact, in the case of a reliable agent with I/O callbacks, zero
+     * memcpy()s can be achieved (for in-order packet delivery) by emittin the
+     * I/O callback directly from the pseudo-TCP receive buffer. */
+    guint8 local_body_buf[MAX_BUFFER_SIZE];
+    GInputVector local_bufs[] = {
+      { local_header_buf, sizeof (local_header_buf) },
+      { local_body_buf, sizeof (local_body_buf) },
+    };
+    NiceInputMessage local_message = {
+      local_bufs, G_N_ELEMENTS (local_bufs), NULL, 0
+    };
+    RecvStatus retval = 0;
 
-      if (component->tcp == NULL) {
-        nice_debug ("Agent %p: not handling incoming packet for s%d:%d "
-            "because pseudo-TCP socket does not exist in reliable mode.", agent,
-            stream->id, component->id);
+    if (component->tcp == NULL) {
+      nice_debug ("Agent %p: not handling incoming packet for s%d:%d "
+          "because pseudo-TCP socket does not exist in reliable mode.", agent,
+          stream->id, component->id);
+      remove_source = TRUE;
+      goto done;
+    }
+
+    while (has_io_callback ||
+        (component->recv_messages != NULL &&
+            !nice_input_message_iter_is_at_end (&component->recv_messages_iter,
+                component->recv_messages, component->n_recv_messages))) {
+      /* Receive a single message. This will receive it into the given
+       * @local_bufs then, for pseudo-TCP, emit I/O callbacks or copy it into
+       * component->recv_messages in pseudo_tcp_socket_readable(). STUN packets
+       * will be parsed in-place. */
+      retval = agent_recv_message_unlocked (agent, stream, component,
+          socket_source->socket, &local_message);
+
+      nice_debug ("%s: %p: received %d valid messages with %" G_GSSIZE_FORMAT
+          " bytes", G_STRFUNC, agent, retval, local_message.length);
+
+      /* Don’t expect any valid messages to escape pseudo_tcp_socket_readable()
+       * when in reliable mode. */
+      g_assert_cmpint (retval, !=, RECV_SUCCESS);
+
+      if (retval == RECV_WOULD_BLOCK) {
+        /* EWOULDBLOCK. */
+        break;
+      } else if (retval == RECV_ERROR) {
+        /* Other error. */
+        nice_debug ("%s: error receiving message", G_STRFUNC);
         remove_source = TRUE;
-        goto done;
+        break;
       }
 
-      while (has_io_callback ||
-          (component->recv_messages != NULL &&
-              !nice_input_message_iter_is_at_end (&component->recv_messages_iter,
-                  component->recv_messages, component->n_recv_messages))) {
-        /* Receive a single message. This will receive it into the given
-         * @local_bufs then, for pseudo-TCP, emit I/O callbacks or copy it into
-         * component->recv_messages in pseudo_tcp_socket_readable(). STUN packets
-         * will be parsed in-place. */
-        retval = agent_recv_message_unlocked (agent, stream, component,
-            socket_source->socket, &local_message);
-
-        nice_debug ("%s: %p: received %d valid messages with %" G_GSSIZE_FORMAT
-            " bytes", G_STRFUNC, agent, retval, local_message.length);
-
-        /* Don’t expect any valid messages to escape pseudo_tcp_socket_readable()
-         * when in reliable mode. */
-        g_assert_cmpint (retval, !=, RECV_SUCCESS);
-
-        if (retval == RECV_WOULD_BLOCK) {
-          /* EWOULDBLOCK. */
-          break;
-        } else if (retval == RECV_ERROR) {
-          /* Other error. */
-          nice_debug ("%s: error receiving message", G_STRFUNC);
-          remove_source = TRUE;
-          break;
-        }
-
-        has_io_callback = component_has_io_callback (component);
-      }
-    } else {
-      nice_debug ("unsupported ice-tcp");
+      has_io_callback = component_has_io_callback (component);
     }
   } else if (has_io_callback) {
     while (has_io_callback) {
