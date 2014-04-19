@@ -1847,7 +1847,7 @@ priv_add_new_candidate_discovery_stun (NiceAgent *agent,
 static void
 priv_add_new_candidate_discovery_turn (NiceAgent *agent,
     NiceSocket *nicesock, TurnServer *turn,
-    Stream *stream, guint component_id)
+    Stream *stream, guint component_id, gboolean turn_tcp)
 {
   CandidateDiscovery *cdisco;
   Component *component = stream_find_component_by_id (stream, component_id);
@@ -1859,7 +1859,7 @@ priv_add_new_candidate_discovery_turn (NiceAgent *agent,
   cdisco->type = NICE_CANDIDATE_TYPE_RELAYED;
 
   if (turn->type == NICE_RELAY_TYPE_TURN_UDP) {
-    if (agent->use_ice_udp == FALSE) {
+    if (agent->use_ice_udp == FALSE || turn_tcp == TRUE) {
       g_slice_free (CandidateDiscovery, cdisco);
       return;
     }
@@ -1888,8 +1888,7 @@ priv_add_new_candidate_discovery_turn (NiceAgent *agent,
      * over which the Allocate request was received; a request that is
      * received over TCP returns a TCP allocated transport address.
      */
-    if (agent->compatibility == NICE_COMPATIBILITY_OC2007 ||
-        agent->compatibility == NICE_COMPATIBILITY_OC2007R2)
+    if (turn_tcp)
       reliable_tcp = TRUE;
 
     /* Ignore tcp candidates if we disabled ice-tcp */
@@ -1898,6 +1897,19 @@ priv_add_new_candidate_discovery_turn (NiceAgent *agent,
       g_slice_free (CandidateDiscovery, cdisco);
       return;
     }
+
+    /* TURN-TCP is currently unsupport unless it's OC2007 compatibliity */
+    /* TODO: Add support for TURN-TCP */
+    if (((agent->compatibility == NICE_COMPATIBILITY_OC2007 ||
+            agent->compatibility == NICE_COMPATIBILITY_OC2007R2) &&
+            reliable_tcp == FALSE) ||
+        (!(agent->compatibility == NICE_COMPATIBILITY_OC2007 ||
+            agent->compatibility == NICE_COMPATIBILITY_OC2007R2) &&
+            reliable_tcp == TRUE)) {
+      g_slice_free (CandidateDiscovery, cdisco);
+      return;
+    }
+
     nicesock = NULL;
 
     /* TODO: add support for turn-tcp RFC 6062 */
@@ -2073,8 +2085,8 @@ nice_agent_set_relay_info(NiceAgent *agent,
       if  (candidate->type == NICE_CANDIDATE_TYPE_HOST &&
            candidate->transport != NICE_CANDIDATE_TRANSPORT_TCP_PASSIVE)
         priv_add_new_candidate_discovery_turn (agent,
-            candidate->sockptr, turn, stream,
-            component_id);
+            candidate->sockptr, turn, stream, component_id,
+            candidate->transport != NICE_CANDIDATE_TRANSPORT_UDP);
     }
 
     if (agent->discovery_unsched_items)
@@ -2430,7 +2442,8 @@ nice_agent_gather_candidates (
                 host_candidate->sockptr,
                 turn,
                 stream,
-                cid);
+                cid,
+                host_candidate->transport != NICE_CANDIDATE_TRANSPORT_UDP);
           }
         }
       }
