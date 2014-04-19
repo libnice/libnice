@@ -72,7 +72,8 @@ typedef enum {
 #define MAX_UDP_MESSAGE_SIZE 65535
 
 #define MAGIC_COOKIE_OFFSET \
-  STUN_MESSAGE_HEADER_LENGTH + STUN_MESSAGE_TYPE_LEN + STUN_MESSAGE_LENGTH_LEN
+  STUN_MESSAGE_HEADER_LENGTH + STUN_MESSAGE_TYPE_LEN + \
+  STUN_MESSAGE_LENGTH_LEN + sizeof(guint16)
 
 static void socket_close (NiceSocket *sock);
 static gint socket_recv_messages (NiceSocket *sock,
@@ -182,8 +183,11 @@ socket_recv_message (NiceSocket *sock, NiceInputMessage *recv_message)
         /* Unexpected data, error in stream */
         return -1;
       }
-      priv->expecting_len = packetlen;
-      priv->recv_buf_len = 0;
+
+      /* Keep the RFC4571 framing for the NiceAgent to unframe */
+      priv->expecting_len = packetlen + sizeof(guint16);
+      priv->recv_buf_len = sizeof(guint16);
+      priv->recv_buf.u16[0] = priv->recv_buf.u16[1];
     }
   }
 
@@ -263,7 +267,6 @@ socket_send_message (NiceSocket *sock, const NiceAddress *to,
     struct {
       guint8 pt;
       guint8 zero;
-      guint16 packet_len;
     } msoc;
   } header_buf;
   guint offset = 0;
@@ -302,7 +305,6 @@ socket_send_message (NiceSocket *sock, const NiceAddress *to,
       guint8 u8[4];
     } cookie;
     guint16 len = output_message_get_size (message);
-    guint16 header_len;
 
     /* Copy the cookie from possibly split messages */
     cookie.u32 = 0;
@@ -328,16 +330,14 @@ socket_send_message (NiceSocket *sock, const NiceAddress *to,
     }
 
     cookie.u32 = ntohl(cookie.u32);
-    header_buf.msoc.packet_len = htons (len);
     header_buf.msoc.zero = 0;
-    header_len = sizeof(header_buf.msoc);
     if (cookie.u32 == TURN_MAGIC_COOKIE)
       header_buf.msoc.pt = MS_TURN_CONTROL_MESSAGE;
     else
       header_buf.msoc.pt = MS_TURN_END_TO_END_DATA;
 
     local_bufs[0].buffer = &header_buf;
-    local_bufs[0].size = header_len;
+    local_bufs[0].size = sizeof(header_buf.msoc);
     offset = 1;
   } else {
     local_message.n_buffers = n_bufs;

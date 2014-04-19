@@ -534,24 +534,93 @@ static gint
 _socket_send_messages_wrapped (NiceSocket *sock, const NiceAddress *to,
     const NiceOutputMessage *messages, guint n_messages, gboolean reliable)
 {
-  if (reliable)
-    return nice_socket_send_messages_reliable (sock, to, messages, n_messages);
-  else
-    return nice_socket_send_messages (sock, to, messages, n_messages);
+  if (!nice_socket_is_reliable (sock)) {
+    if (reliable)
+      return nice_socket_send_messages_reliable (sock, to, messages, n_messages);
+    else
+      return nice_socket_send_messages (sock, to, messages, n_messages);
+  } else {
+    GOutputVector *local_bufs;
+    NiceOutputMessage local_message;
+    const NiceOutputMessage *message;
+    gsize message_len;
+    guint n_bufs = 0;
+    guint16 rfc4571_frame;
+    guint i;
+    gint ret;
+
+    g_assert (n_messages == 1);
+    message = &messages[0];
+    message_len = output_message_get_size (message);
+    g_assert (message_len <= G_MAXUINT16);
+
+    /* ICE-TCP requires that all packets be framed with RFC4571 */
+
+    /* Count the number of buffers. */
+    if (message->n_buffers == -1) {
+      for (i = 0; message->buffers[i].buffer != NULL; i++)
+        n_bufs++;
+    } else {
+      n_bufs = message->n_buffers;
+    }
+
+    local_bufs = g_malloc_n (n_bufs + 1, sizeof (GOutputVector));
+    local_message.buffers = local_bufs;
+    local_message.n_buffers = n_bufs + 1;
+
+    rfc4571_frame = htons (message_len);
+    local_bufs[0].buffer = &rfc4571_frame;
+    local_bufs[0].size = sizeof (guint16);
+
+    for (i = 0; i < n_bufs; i++) {
+      local_bufs[i + 1].buffer = message->buffers[i].buffer;
+      local_bufs[i + 1].size = message->buffers[i].size;
+    }
+
+
+    if (reliable)
+      ret = nice_socket_send_messages_reliable (sock, to,
+          &local_message, 1);
+    else
+      ret = nice_socket_send_messages (sock, to, &local_message, 1);
+
+    if (ret == 1)
+      ret = message_len;
+
+    g_free (local_bufs);
+
+    return ret;
+  }
 }
 
 static gssize
 _socket_send_wrapped (NiceSocket *sock, const NiceAddress *to,
     guint len, const gchar *buf, gboolean reliable)
 {
-  GOutputVector local_buf = { buf, len };
-  NiceOutputMessage local_message = { &local_buf, 1};
   gint ret;
 
-  ret = _socket_send_messages_wrapped (sock, to, &local_message, 1, reliable);
-  if (ret == 1)
-    return len;
-  return ret;
+  if (!nice_socket_is_reliable (sock)) {
+    GOutputVector local_buf = { buf, len };
+    NiceOutputMessage local_message = { &local_buf, 1};
+
+    ret = _socket_send_messages_wrapped (sock, to, &local_message, 1, reliable);
+    if (ret == 1)
+      return len;
+    return ret;
+  } else {
+    guint16 rfc4571_frame = htons (len);
+    GOutputVector local_buf[2] = {{&rfc4571_frame, 2}, { buf, len }};
+    NiceOutputMessage local_message = { local_buf, 2};
+
+    if (reliable)
+      ret = nice_socket_send_messages_reliable (sock, to, &local_message, 1);
+    else
+      ret = nice_socket_send_messages (sock, to, &local_message, 1);
+
+    if (ret == 1)
+      return len;
+    return ret;
+  }
 }
 
 static void
@@ -1044,7 +1113,14 @@ nice_udp_turn_socket_parse_recv (NiceSocket *sock, NiceSocket **from_sock,
     guint16 *u16;
   } recv_buf;
 
-  recv_buf.u8 = (guint8 *) _recv_buf;
+  /* In the case of a reliable UDP-TURN-OVER-TCP (which means MS-TURN)
+   * we must use RFC4571 framing */
+  if (nice_socket_is_reliable (sock)) {
+    recv_buf.u8 = _recv_buf + sizeof(guint16);
+    recv_len -= sizeof(guint16);
+  } else {
+    recv_buf.u8 = _recv_buf;
+  }
 
   if (nice_address_equal (&priv->server_addr, recv_from)) {
     valid = stun_agent_validate (&priv->agent, &msg,
