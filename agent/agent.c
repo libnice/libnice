@@ -2877,7 +2877,8 @@ agent_recv_message_unlocked (
     /* In the case of OC2007 and OC2007R2 which uses UDP TURN for TCP-ACTIVE
      * and TCP-PASSIVE candidates, the recv_messages will be packetized and
      * always return an entire frame, so we must read it as is */
-    if (nicesock->type == NICE_SOCKET_TYPE_UDP_TURN) {
+    if (nicesock->type == NICE_SOCKET_TYPE_UDP_TURN_OVER_TCP ||
+        nicesock->type == NICE_SOCKET_TYPE_UDP_TURN) {
       GInputVector *local_bufs;
       NiceInputMessage local_message;
       guint n_bufs = 0;
