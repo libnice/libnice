@@ -5309,9 +5309,13 @@ agent_socket_send (NiceSocket *sock, const NiceAddress *addr, gsize len,
     guint16 rfc4571_frame = htons (len);
     GOutputVector local_buf[2] = {{&rfc4571_frame, 2}, { buf, len }};
     NiceOutputMessage local_message = { local_buf, 2};
+    gint ret;
 
     /* ICE-TCP requires that all packets be framed with RFC4571 */
-    return nice_socket_send_messages_reliable (sock, addr, &local_message, 1);
+    ret = nice_socket_send_messages_reliable (sock, addr, &local_message, 1);
+    if (ret == 1)
+      return len;
+    return ret;
   } else {
     gssize ret = nice_socket_send_reliable (sock, addr, len, buf);
     if (ret < 0)
