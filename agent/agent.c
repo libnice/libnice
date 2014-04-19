@@ -1946,8 +1946,9 @@ nice_agent_set_relay_info(NiceAgent *agent,
   turn->password = g_strdup (password);
   turn->type = type;
 
-  nice_debug ("Agent %p: added relay server [%s]:%d of type %d", agent,
-      server_ip, server_port, type);
+  nice_debug ("Agent %p: added relay server [%s]:%d of type %d to s/c %d/%d "
+      "with user/pass : %s -- %s", agent, server_ip, server_port, type,
+      stream_id, component_id, username, password);
 
   component->turn_servers = g_list_append (component->turn_servers, turn);
 
