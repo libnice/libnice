@@ -2932,8 +2932,16 @@ agent_recv_message_unlocked (
 
         /* TODO: Support bytestream reads */
         message->length = 0;
+        retval = 0;
         if (available <= 0) {
           retval = available;
+          if (g_socket_is_connected (nicesock->fileno) == FALSE) {
+            /* If we receive a readable event on a TCP_BSD socket which is
+             * not connected, it means that it failed to connect, so we must
+             * return an error to make the socket fail/closed
+             */
+            retval = -1;
+          }
         } else if (agent->rfc4571_expecting_length == 0) {
           if ((gsize) available >= sizeof(guint16)) {
             guint16 rfc4571_frame;
@@ -2945,8 +2953,6 @@ agent_recv_message_unlocked (
               agent->rfc4571_expecting_length = ntohs (rfc4571_frame);
               available = g_socket_get_available_bytes (nicesock->fileno);
             }
-          } else {
-            retval = 0;
           }
         }
         if (agent->rfc4571_expecting_length > 0 &&
@@ -2993,8 +2999,6 @@ agent_recv_message_unlocked (
             agent->rfc4571_expecting_length -= local_message.length;
           }
           g_free (local_bufs);
-        } else {
-          retval = 0;
         }
       }
     }
