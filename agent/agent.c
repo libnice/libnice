@@ -1858,7 +1858,7 @@ priv_add_new_candidate_discovery_turn (NiceAgent *agent,
   cdisco = g_slice_new0 (CandidateDiscovery);
   cdisco->type = NICE_CANDIDATE_TYPE_RELAYED;
 
-  if (turn->type ==  NICE_RELAY_TYPE_TURN_UDP) {
+  if (turn->type == NICE_RELAY_TYPE_TURN_UDP) {
     if (agent->use_ice_udp == FALSE) {
       g_slice_free (CandidateDiscovery, cdisco);
       return;
@@ -1939,8 +1939,9 @@ priv_add_new_candidate_discovery_turn (NiceAgent *agent,
         agent->compatibility == NICE_COMPATIBILITY_GOOGLE) {
       nicesock = nice_pseudossl_socket_new (nicesock,
           NICE_PSEUDOSSL_SOCKET_COMPATIBILITY_GOOGLE);
-    } else if (agent->compatibility == NICE_COMPATIBILITY_OC2007 ||
-        agent->compatibility == NICE_COMPATIBILITY_OC2007R2) {
+    } else if (turn->type == NICE_RELAY_TYPE_TURN_TLS &&
+        (agent->compatibility == NICE_COMPATIBILITY_OC2007 ||
+            agent->compatibility == NICE_COMPATIBILITY_OC2007R2)) {
       nicesock = nice_pseudossl_socket_new (nicesock,
           NICE_PSEUDOSSL_SOCKET_COMPATIBILITY_MSOC);
     }
