@@ -2865,6 +2865,7 @@ agent_recv_message_unlocked (
 {
   NiceAddress from;
   GList *item;
+  GSList *cand_i;
   gint retval;
 
   /* We need an address for packet parsing, below. */
@@ -2872,7 +2873,26 @@ agent_recv_message_unlocked (
     message->from = &from;
   }
 
-    /* ICE-TCP requires that all packets be framed with RFC4571 */
+  /* In case of ICE-TCP on UDP-TURN (OC2007 compat), we need to do the recv
+   * on the UDP_TURN socket, but it's possible we receive the source event on
+   * the UDP_TURN_OVER_TCP socket, so in that case, we need to replace the
+   * socket we do the recv on to the topmost socket
+   */
+  for (cand_i = component->local_candidates; cand_i; cand_i = cand_i->next) {
+    NiceCandidate *cand = cand_i->data;
+
+    if (cand->type == NICE_CANDIDATE_TYPE_RELAYED &&
+        cand->stream_id == stream->id &&
+        cand->component_id == component->id &&
+        ((NiceSocket *)cand->sockptr)->fileno == nicesock->fileno) {
+      nice_debug ("Agent %p : Packet received from a TURN socket.",
+          agent);
+      nicesock = cand->sockptr;
+      break;
+    }
+  }
+
+  /* ICE-TCP requires that all packets be framed with RFC4571 */
   if (nice_socket_is_reliable (nicesock)) {
     /* In the case of OC2007 and OC2007R2 which uses UDP TURN for TCP-ACTIVE
      * and TCP-PASSIVE candidates, the recv_messages will be packetized and
