@@ -374,6 +374,8 @@ socket_recv_messages (NiceSocket *sock,
       /* A TURN control message which needs ignoring. Re-use this
        * NiceInputMessage in the next loop iteration. */
       n_valid_messages = 0;
+    } else {
+      *message->from = from;
     }
 
     /* Split up the monolithic buffer again into the caller-provided buffers. */
