@@ -2070,7 +2070,8 @@ nice_agent_set_relay_info(NiceAgent *agent,
     for (i = component->local_candidates; i; i = i->next) {
       NiceCandidate *candidate = i->data;
 
-      if  (candidate->type == NICE_CANDIDATE_TYPE_HOST)
+      if  (candidate->type == NICE_CANDIDATE_TYPE_HOST &&
+           candidate->transport != NICE_CANDIDATE_TRANSPORT_TCP_PASSIVE)
         priv_add_new_candidate_discovery_turn (agent,
             candidate->sockptr, turn, stream,
             component_id);
@@ -2390,7 +2391,8 @@ nice_agent_gather_candidates (
         }
 
 #ifdef HAVE_GUPNP
-        if (agent->upnp_enabled) {
+        if (agent->upnp_enabled &&
+            transport != NICE_CANDIDATE_TRANSPORT_TCP_ACTIVE) {
           NiceAddress *base_addr = nice_address_dup (&host_candidate->base_addr);
           nice_debug ("Agent %p: Adding UPnP port %s:%d", agent, local_ip,
               nice_address_get_port (base_addr));
@@ -2417,7 +2419,8 @@ nice_agent_gather_candidates (
           }
         }
 
-        if (agent->full_mode && component) {
+        if (agent->full_mode && component &&
+            transport != NICE_CANDIDATE_TRANSPORT_TCP_PASSIVE) {
           GList *item;
 
           for (item = component->turn_servers; item; item = item->next) {
