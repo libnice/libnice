@@ -171,12 +171,12 @@ socket_close (NiceSocket *sock)
 }
 
 static gboolean
-server_handshake_valid(NiceSocket *sock, GInputVector *data)
+server_handshake_valid(NiceSocket *sock, GInputVector *data, guint length)
 {
   PseudoSSLPriv *priv = sock->priv;
 
   if (priv->compatibility == NICE_PSEUDOSSL_SOCKET_COMPATIBILITY_MSOC) {
-    if (data->size == sizeof(SSL_SERVER_MSOC_HANDSHAKE)) {
+    if (length == sizeof(SSL_SERVER_MSOC_HANDSHAKE)) {
       guint8 *buf = data->buffer;
 
       memset(buf + 11, 0, 32);
@@ -186,7 +186,7 @@ server_handshake_valid(NiceSocket *sock, GInputVector *data)
     }
     return FALSE;
   } else {
-    return data->size == sizeof(SSL_SERVER_GOOGLE_HANDSHAKE) &&
+    return length == sizeof(SSL_SERVER_GOOGLE_HANDSHAKE) &&
         memcmp(SSL_SERVER_GOOGLE_HANDSHAKE, data->buffer,
             sizeof(SSL_SERVER_GOOGLE_HANDSHAKE)) == 0;
   }
@@ -225,7 +225,8 @@ socket_recv_messages (NiceSocket *sock,
 
     if (ret <= 0) {
       return ret;
-    } else if (ret == 1 && server_handshake_valid(sock, &local_recv_buf)) {
+    } else if (ret == 1 && server_handshake_valid(sock, &local_recv_buf,
+            local_recv_message.length)) {
       priv->handshaken = TRUE;
       nice_socket_flush_send_queue (priv->base_socket, &priv->send_queue);
     } else {
