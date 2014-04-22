@@ -76,8 +76,7 @@ void discovery_free_item (gpointer data, gpointer user_data)
 {
   CandidateDiscovery *cand = data;
   g_assert (user_data == NULL);
-  g_free (cand->msn_turn_username);
-  g_free (cand->msn_turn_password);
+
   g_slice_free (CandidateDiscovery, cand);
 }
 
@@ -888,10 +887,8 @@ static gboolean priv_discovery_tick_unlocked (gpointer pointer)
 
           if (turn_compat == STUN_USAGE_TURN_COMPATIBILITY_MSN ||
               turn_compat == STUN_USAGE_TURN_COMPATIBILITY_OC2007) {
-            g_free (cand->msn_turn_username);
-            g_free (cand->msn_turn_password);
-            cand->msn_turn_username = username;
-            cand->msn_turn_password = password;
+            g_free (username);
+            g_free (password);
           }
         }
 

@@ -57,8 +57,6 @@ typedef struct
   Component *component;
   TurnServer *turn;
   StunAgent stun_agent;
-  uint8_t *msn_turn_username;
-  uint8_t *msn_turn_password;
   StunTimer timer;
   uint8_t stun_buffer[STUN_MAX_MESSAGE_SIZE];
   StunMessage stun_message;
