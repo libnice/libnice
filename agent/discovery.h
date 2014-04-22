@@ -82,7 +82,6 @@ typedef struct
   StunMessage stun_resp_msg;
 } CandidateRefresh;
 
-void refresh_free_item (gpointer data, gpointer user_data);
 void refresh_free (NiceAgent *agent);
 void refresh_prune_stream (NiceAgent *agent, guint stream_id);
 void refresh_cancel (CandidateRefresh *refresh);

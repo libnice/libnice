@@ -124,11 +124,10 @@ void discovery_prune_stream (NiceAgent *agent, guint stream_id)
 
 /*
  * Frees the CandidateDiscovery structure pointed to
- * by 'user data'. Compatible with g_slist_foreach().
+ * by 'user data'. Compatible with g_slist_free_full().
  */
-void refresh_free_item (gpointer data, gpointer user_data)
+static void refresh_free_item (CandidateRefresh *cand)
 {
-  CandidateRefresh *cand = data;
   NiceAgent *agent = cand->agent;
   uint8_t *username;
   gsize username_len;
@@ -136,8 +135,6 @@ void refresh_free_item (gpointer data, gpointer user_data)
   gsize password_len;
   size_t buffer_len = 0;
   StunUsageTurnCompatibility turn_compat = agent_to_turn_compatibility (agent);
-
-  g_assert (user_data == NULL);
 
   if (cand->timer_source != NULL) {
     g_source_destroy (cand->timer_source);
@@ -200,8 +197,7 @@ void refresh_free_item (gpointer data, gpointer user_data)
  */
 void refresh_free (NiceAgent *agent)
 {
-  g_slist_foreach (agent->refresh_list, refresh_free_item, NULL);
-  g_slist_free (agent->refresh_list);
+  g_slist_free_full (agent->refresh_list, (GDestroyNotify) refresh_free_item);
   agent->refresh_list = NULL;
 }
 
@@ -220,8 +216,8 @@ void refresh_prune_stream (NiceAgent *agent, guint stream_id)
     GSList *next = i->next;
 
     if (cand->stream->id == stream_id) {
-      agent->refresh_list = g_slist_remove (agent->refresh_list, cand);
-      refresh_free_item (cand, NULL);
+      agent->refresh_list = g_slist_delete_link (agent->refresh_list, i);
+      refresh_free_item (cand);
     }
 
     i = next;
@@ -233,7 +229,7 @@ void refresh_cancel (CandidateRefresh *refresh)
 {
   refresh->agent->refresh_list = g_slist_remove (refresh->agent->refresh_list,
       refresh);
-  refresh_free_item (refresh, NULL);
+  refresh_free_item (refresh);
 }
 
 /*
