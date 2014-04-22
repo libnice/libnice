@@ -148,15 +148,8 @@ component_new (guint id, NiceAgent *agent, Stream *stream)
 void
 component_clean_turn_servers (Component *cmp)
 {
-  GList *item;
 
-  for (item = cmp->turn_servers; item; item = g_list_next (item)) {
-    TurnServer *turn = item->data;
-    g_free (turn->username);
-    g_free (turn->password);
-    g_slice_free (TurnServer, turn);
-  }
-  g_list_free (cmp->turn_servers);
+  g_list_free_full (cmp->turn_servers, (GDestroyNotify) turn_server_unref);
   cmp->turn_servers = NULL;
 }
 
@@ -1080,6 +1073,7 @@ turn_server_new (const gchar *server_ip, guint server_port,
 
   nice_address_init (&turn->server);
 
+  turn->ref_count = 1;
   if (nice_address_set_from_string (&turn->server, server_ip)) {
     nice_address_set_port (&turn->server, server_port);
   } else {
@@ -1091,4 +1085,24 @@ turn_server_new (const gchar *server_ip, guint server_port,
   turn->type = type;
 
   return turn;
+}
+
+TurnServer *
+turn_server_ref (TurnServer *turn)
+{
+  turn->ref_count++;
+
+  return turn;
+}
+
+void
+turn_server_unref (TurnServer *turn)
+{
+  turn->ref_count--;
+
+  if (turn->ref_count == 0) {
+    g_free (turn->username);
+    g_free (turn->password);
+    g_slice_free (TurnServer, turn);
+  }
 }

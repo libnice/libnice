@@ -265,6 +265,13 @@ TurnServer *
 turn_server_new (const gchar *server_ip, guint server_port,
     const gchar *username, const gchar *password, NiceRelayType type);
 
+TurnServer *
+turn_server_ref (TurnServer *turn);
+
+void
+turn_server_unref (TurnServer *turn);
+
+
 G_END_DECLS
 
 #endif /* _NICE_COMPONENT_H */

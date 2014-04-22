@@ -1820,7 +1820,7 @@ priv_add_new_candidate_discovery_turn (NiceAgent *agent,
     component_attach_socket (component, cdisco->nicesock);
   }
 
-  cdisco->turn = turn;
+  cdisco->turn = turn_server_ref (turn);
   cdisco->server = turn->server;
 
   cdisco->stream = stream;

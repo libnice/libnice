@@ -80,6 +80,9 @@ nice_candidate_free (NiceCandidate *candidate)
   if (candidate->password)
     g_free (candidate->password);
 
+  if (candidate->turn)
+    turn_server_unref (candidate->turn);
+
   g_slice_free (NiceCandidate, candidate);
 }
 
@@ -180,6 +183,7 @@ nice_candidate_copy (const NiceCandidate *candidate)
 
   memcpy (copy, candidate, sizeof(NiceCandidate));
 
+  copy->turn = NULL;
   copy->username = g_strdup (copy->username);
   copy->password = g_strdup (copy->password);
 

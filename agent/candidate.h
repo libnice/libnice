@@ -129,6 +129,8 @@ typedef struct _TurnServer TurnServer;
  */
 struct _TurnServer
 {
+  gint ref_count;
+
   NiceAddress server;       /**< TURN server address */
   gchar *username;           /**< TURN username */
   gchar *password;           /**< TURN password */

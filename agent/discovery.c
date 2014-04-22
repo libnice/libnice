@@ -74,6 +74,9 @@ static inline int priv_timer_expired (GTimeVal *timer, GTimeVal *now)
  */
 static void discovery_free_item (CandidateDiscovery *cand)
 {
+  if (cand->turn)
+    turn_server_unref (cand->turn);
+
   g_slice_free (CandidateDiscovery, cand);
 }
 
@@ -584,7 +587,7 @@ discovery_add_relay_candidate (
   candidate->stream_id = stream_id;
   candidate->component_id = component_id;
   candidate->addr = *address;
-  candidate->turn = turn;
+  candidate->turn = turn_server_ref (turn);
 
   /* step: link to the base candidate+socket */
   relay_socket = nice_turn_socket_new (agent->main_context, address,
