@@ -88,7 +88,6 @@ void refresh_prune_stream (NiceAgent *agent, guint stream_id);
 void refresh_cancel (CandidateRefresh *refresh);
 
 
-void discovery_free_item (gpointer data, gpointer user_data);
 void discovery_free (NiceAgent *agent);
 void discovery_prune_stream (NiceAgent *agent, guint stream_id);
 void discovery_schedule (NiceAgent *agent);

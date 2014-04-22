@@ -70,13 +70,10 @@ static inline int priv_timer_expired (GTimeVal *timer, GTimeVal *now)
 
 /*
  * Frees the CandidateDiscovery structure pointed to
- * by 'user data'. Compatible with g_slist_foreach().
+ * by 'user data'. Compatible with g_slist_free_full().
  */
-void discovery_free_item (gpointer data, gpointer user_data)
+static void discovery_free_item (CandidateDiscovery *cand)
 {
-  CandidateDiscovery *cand = data;
-  g_assert (user_data == NULL);
-
   g_slice_free (CandidateDiscovery, cand);
 }
 
@@ -85,9 +82,8 @@ void discovery_free_item (gpointer data, gpointer user_data)
  */
 void discovery_free (NiceAgent *agent)
 {
-
-  g_slist_foreach (agent->discovery_list, discovery_free_item, NULL);
-  g_slist_free (agent->discovery_list);
+  g_slist_free_full (agent->discovery_list,
+      (GDestroyNotify) discovery_free_item);
   agent->discovery_list = NULL;
   agent->discovery_unsched_items = 0;
 
@@ -114,7 +110,7 @@ void discovery_prune_stream (NiceAgent *agent, guint stream_id)
 
     if (cand->stream->id == stream_id) {
       agent->discovery_list = g_slist_remove (agent->discovery_list, cand);
-      discovery_free_item (cand, NULL);
+      discovery_free_item (cand);
     }
     i = next;
   }
