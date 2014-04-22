@@ -2331,6 +2331,7 @@ priv_add_new_turn_refresh (CandidateDiscovery *cdisco, NiceCandidate *relay_cand
   cand = g_slice_new0 (CandidateRefresh);
   agent->refresh_list = g_slist_append (agent->refresh_list, cand);
 
+  cand->candidate = relay_cand;
   cand->nicesock = cdisco->nicesock;
   cand->relay_socket = relay_cand->sockptr;
   cand->server = cdisco->server;

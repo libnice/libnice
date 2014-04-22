@@ -72,6 +72,7 @@ typedef struct
   NiceSocket *nicesock;     /**< existing socket to use */
   NiceSocket *relay_socket; /**< relay socket from which we receive */
   NiceAddress server;       /**< STUN/TURN server address */
+  NiceCandidate *candidate; /**< candidate to refresh */
   Stream *stream;
   Component *component;
   TurnServer *turn;
