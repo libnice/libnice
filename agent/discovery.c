@@ -155,10 +155,10 @@ void refresh_free_item (gpointer data, gpointer user_data)
     cand->tick_source = NULL;
   }
 
-  username = (uint8_t *)cand->turn->username;
-  username_len = (size_t) strlen (cand->turn->username);
-  password = (uint8_t *)cand->turn->password;
-  password_len = (size_t) strlen (cand->turn->password);
+  username = (uint8_t *)cand->candidate->turn->username;
+  username_len = (size_t) strlen (cand->candidate->turn->username);
+  password = (uint8_t *)cand->candidate->turn->password;
+  password_len = (size_t) strlen (cand->candidate->turn->password);
 
   if (turn_compat == STUN_USAGE_TURN_COMPATIBILITY_MSN ||
       turn_compat == STUN_USAGE_TURN_COMPATIBILITY_OC2007) {

@@ -798,10 +798,10 @@ static void priv_turn_allocate_refresh_tick_unlocked (CandidateRefresh *cand)
   StunUsageTurnCompatibility turn_compat =
       agent_to_turn_compatibility (cand->agent);
 
-  username = (uint8_t *)cand->turn->username;
-  username_len = (size_t) strlen (cand->turn->username);
-  password = (uint8_t *)cand->turn->password;
-  password_len = (size_t) strlen (cand->turn->password);
+  username = (uint8_t *)cand->candidate->turn->username;
+  username_len = (size_t) strlen (cand->candidate->turn->username);
+  password = (uint8_t *)cand->candidate->turn->password;
+  password_len = (size_t) strlen (cand->candidate->turn->password);
 
   if (turn_compat == STUN_USAGE_TURN_COMPATIBILITY_MSN ||
       turn_compat == STUN_USAGE_TURN_COMPATIBILITY_OC2007) {
@@ -2333,9 +2333,7 @@ priv_add_new_turn_refresh (CandidateDiscovery *cdisco, NiceCandidate *relay_cand
 
   cand->candidate = relay_cand;
   cand->nicesock = cdisco->nicesock;
-  cand->relay_socket = relay_cand->sockptr;
   cand->server = cdisco->server;
-  cand->turn = cdisco->turn;
   cand->stream = cdisco->stream;
   cand->component = cdisco->component;
   cand->agent = cdisco->agent;
@@ -2803,9 +2801,10 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, Stream *stream,
     for (i = agent->refresh_list; i; i = i->next) {
       CandidateRefresh *r = i->data;
       nice_debug ("Comparing %p to %p, %p to %p and %p and %p to %p", r->stream,
-          stream, r->component, component, r->nicesock, r->relay_socket, nicesock);
+          stream, r->component, component, r->nicesock, r->candidate->sockptr,
+          nicesock);
       if (r->stream == stream && r->component == component &&
-          (r->nicesock == nicesock || r->relay_socket == nicesock)) {
+          (r->nicesock == nicesock || r->candidate->sockptr == nicesock)) {
         valid = stun_agent_validate (&r->stun_agent, &req,
             (uint8_t *) buf, len, conncheck_stun_validater, &validater_data);
         nice_debug ("Validating gave %d", valid);
