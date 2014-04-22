@@ -260,6 +260,11 @@ component_has_io_callback (Component *component);
 void
 component_clean_turn_servers (Component *component);
 
+
+TurnServer *
+turn_server_new (const gchar *server_ip, guint server_port,
+    const gchar *username, const gchar *password, NiceRelayType type);
+
 G_END_DECLS
 
 #endif /* _NICE_COMPONENT_H */

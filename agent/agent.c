@@ -1930,21 +1930,12 @@ nice_agent_set_relay_info(NiceAgent *agent,
     goto done;
   }
 
-  turn = g_slice_new0 (TurnServer);
+  turn = turn_server_new (server_ip, server_port, username, password, type);
 
-  nice_address_init (&turn->server);
-
-  if (nice_address_set_from_string (&turn->server, server_ip)) {
-    nice_address_set_port (&turn->server, server_port);
-  } else {
-    g_slice_free (TurnServer, turn);
+  if (!turn) {
     ret = FALSE;
     goto done;
   }
-
-  turn->username = g_strdup (username);
-  turn->password = g_strdup (password);
-  turn->type = type;
 
   nice_debug ("Agent %p: added relay server [%s]:%d of type %d to s/c %d/%d "
       "with user/pass : %s -- %s", agent, server_ip, server_port, type,

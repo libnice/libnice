@@ -1070,3 +1070,25 @@ component_input_source_new (NiceAgent *agent, guint stream_id,
 
   return (GSource *) component_source;
 }
+
+
+TurnServer *
+turn_server_new (const gchar *server_ip, guint server_port,
+    const gchar *username, const gchar *password, NiceRelayType type)
+{
+  TurnServer *turn = g_slice_new (TurnServer);
+
+  nice_address_init (&turn->server);
+
+  if (nice_address_set_from_string (&turn->server, server_ip)) {
+    nice_address_set_port (&turn->server, server_port);
+  } else {
+    g_slice_free (TurnServer, turn);
+    return NULL;
+  }
+  turn->username = g_strdup (username);
+  turn->password = g_strdup (password);
+  turn->type = type;
+
+  return turn;
+}
