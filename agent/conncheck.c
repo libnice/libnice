@@ -818,10 +818,8 @@ static void priv_turn_allocate_refresh_tick_unlocked (CandidateRefresh *cand)
 
   if (turn_compat == STUN_USAGE_TURN_COMPATIBILITY_MSN ||
       turn_compat == STUN_USAGE_TURN_COMPATIBILITY_OC2007) {
-    g_free (cand->msn_turn_username);
-    g_free (cand->msn_turn_password);
-    cand->msn_turn_username = username;
-    cand->msn_turn_password = password;
+    g_free (username);
+    g_free (password);
   }
 
   nice_debug ("Agent %p : Sending allocate Refresh %zd", cand->agent,
