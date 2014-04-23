@@ -1412,6 +1412,19 @@ nice_agent_get_io_stream (
     guint stream_id,
     guint component_id);
 
+/**
+ * nice_component_state_to_string:
+ * @state: a #NiceComponentState
+ *
+ * Returns a string representation of the state, generally to use in debug
+ * messages.
+ *
+ * Returns: (transfer none): a string representation of @state
+ * Since: UNRELEASED
+ */
+const gchar *
+nice_component_state_to_string (NiceComponentState state);
+
 G_END_DECLS
 
 #endif /* _AGENT_H */

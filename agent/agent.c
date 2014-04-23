@@ -1652,8 +1652,8 @@ void agent_signal_new_remote_candidate (NiceAgent *agent, NiceCandidate *candida
       candidate->stream_id, candidate->component_id, candidate->foundation);
 }
 
-static const gchar *
-component_state_to_string (NiceComponentState state)
+NICEAPI_EXPORT const gchar *
+nice_component_state_to_string (NiceComponentState state)
 {
   switch (state)
     {
@@ -1686,16 +1686,16 @@ void agent_signal_component_state_change (NiceAgent *agent, guint stream_id, gui
 
   if (agent->reliable && component->tcp == NULL &&
       state != NICE_COMPONENT_STATE_FAILED) {
-    nice_debug ("Agent %p: not changing component state for s%d:%d to %d "
+    nice_debug ("Agent %p: not changing component state for s%d:%d to %s "
         "because pseudo tcp socket does not exist in reliable mode", agent,
-        stream->id, component->id, state);
+        stream->id, component->id, nice_component_state_to_string (state));
     return;
   }
 
   if (component->state != state && state < NICE_COMPONENT_STATE_LAST) {
     nice_debug ("Agent %p : stream %u component %u STATE-CHANGE %s -> %s.", agent,
-        stream_id, component_id, component_state_to_string (component->state),
-        component_state_to_string (state));
+        stream_id, component_id, nice_component_state_to_string (component->state),
+        nice_component_state_to_string (state));
 
     component->state = state;
 
