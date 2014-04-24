@@ -109,6 +109,7 @@ enum
   PROP_RELIABLE,
   PROP_ICE_UDP,
   PROP_ICE_TCP,
+  PROP_BYTESTREAM_TCP,
 };
 
 
@@ -642,6 +643,40 @@ nice_agent_class_init (NiceAgentClass *klass)
         "Use ICE-TCP specification to generate TCP candidates",
         TRUE, /* use ice-tcp by default */
         G_PARAM_READWRITE));
+
+  /**
+   * NiceAgent:bytestream-tcp:
+   *
+   * This property defines whether receive/send over a TCP or pseudo-TCP, in
+   * reliable mode, are considered as packetized or as bytestream.
+   * In unreliable mode, every send/recv is considered as packetized, and
+   * this property is ignored and cannot be set.
+   * <para>
+   * In reliable mode, this property will always return %TRUE in the
+   * %NICE_COMPATIBILITY_GOOGLE compatibility mode.
+   * </para>
+   * If the property is %TRUE, the stream is considered in bytestream mode
+   * and data can be read with any receive size. If the property is %FALSE, then
+   * the stream is considred packetized and each receive will return one packet
+   * of the same size as what was sent from the peer. If in packetized mode,
+   * then doing a receive with a size smaller than the packet, will cause the
+   * remaining bytes in the packet to be dropped, breaking the reliability
+   * of the stream.
+   * <para>
+   * This property is currently read-only, and will become read/write once
+   * bytestream mode will be supported.
+   * </para>
+   *
+   * Since: UNRELEASED
+   */
+   g_object_class_install_property (gobject_class, PROP_BYTESTREAM_TCP,
+      g_param_spec_boolean (
+        "bytestream-tcp",
+        "Bytestream TCP",
+        "Use bytestream mode for reliable TCP and Pseudo-TCP connections",
+        FALSE,
+        G_PARAM_READABLE));
+
   /* install signals */
 
   /**
@@ -1002,6 +1037,16 @@ nice_agent_get_property (
       g_value_set_boolean (value, agent->use_ice_tcp);
       break;
 
+    case PROP_BYTESTREAM_TCP:
+      if (agent->reliable) {
+        if (agent->compatibility == NICE_COMPATIBILITY_GOOGLE)
+          g_value_set_boolean (value, TRUE);
+        else
+          g_value_set_boolean (value, FALSE);
+      } else {
+        g_value_set_boolean (value, FALSE);
+      }
+      break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
     }
@@ -1149,6 +1194,9 @@ nice_agent_set_property (
         agent->use_ice_tcp = g_value_get_boolean (value);
       break;
 
+    case PROP_BYTESTREAM_TCP:
+      /* TODO: support bytestream mode and set property to writable */
+      break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
     }
