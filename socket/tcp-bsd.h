@@ -43,7 +43,7 @@ G_BEGIN_DECLS
 
 
 NiceSocket *
-nice_tcp_bsd_socket_new (GMainContext *ctx, NiceAddress *addr, gboolean reliable);
+nice_tcp_bsd_socket_new (GMainContext *ctx, NiceAddress *remote_addr, gboolean reliable);
 
 NiceSocket *
 nice_tcp_bsd_socket_new_from_gsock (GMainContext *ctx, GSocket *gsock,

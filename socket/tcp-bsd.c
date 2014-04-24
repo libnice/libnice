@@ -109,7 +109,7 @@ nice_tcp_bsd_socket_new_from_gsock (GMainContext *ctx, GSocket *gsock,
 }
 
 NiceSocket *
-nice_tcp_bsd_socket_new (GMainContext *ctx, NiceAddress *addr, gboolean reliable)
+nice_tcp_bsd_socket_new (GMainContext *ctx, NiceAddress *remote_addr, gboolean reliable)
 {
   union {
     struct sockaddr_storage storage;
@@ -122,12 +122,12 @@ nice_tcp_bsd_socket_new (GMainContext *ctx, NiceAddress *addr, gboolean reliable
   GSocketAddress *gaddr;
   NiceAddress local_addr;
 
-  if (addr == NULL) {
+  if (remote_addr == NULL) {
     /* We can't connect a tcp socket with no destination address */
     return NULL;
   }
 
-  nice_address_copy_to_sockaddr (addr, &name.addr);
+  nice_address_copy_to_sockaddr (remote_addr, &name.addr);
 
   if (name.storage.ss_family == AF_UNSPEC || name.storage.ss_family == AF_INET) {
     gsock = g_socket_new (G_SOCKET_FAMILY_IPV4, G_SOCKET_TYPE_STREAM,
@@ -183,7 +183,7 @@ nice_tcp_bsd_socket_new (GMainContext *ctx, NiceAddress *addr, gboolean reliable
 
   nice_address_set_from_sockaddr (&local_addr, &name.addr);
 
-  sock = nice_tcp_bsd_socket_new_from_gsock (ctx, gsock, &local_addr, addr,
+  sock = nice_tcp_bsd_socket_new_from_gsock (ctx, gsock, &local_addr, remote_addr,
       reliable);
   g_object_unref (gsock);
 
