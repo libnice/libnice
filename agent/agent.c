@@ -1949,6 +1949,7 @@ priv_add_new_candidate_discovery_turn (NiceAgent *agent,
 {
   CandidateDiscovery *cdisco;
   Component *component = stream_find_component_by_id (stream, component_id);
+  NiceAddress local_address;
 
   /* note: no need to check for redundant candidates, as this is
    *       done later on in the process */
@@ -2008,6 +2009,7 @@ priv_add_new_candidate_discovery_turn (NiceAgent *agent,
       return;
     }
 
+    local_address = nicesock->addr;
     nicesock = NULL;
 
     /* TODO: add support for turn-tcp RFC 6062 */
@@ -2016,7 +2018,7 @@ priv_add_new_candidate_discovery_turn (NiceAgent *agent,
         nice_address_set_from_string (&proxy_server, agent->proxy_ip)) {
       nice_address_set_port (&proxy_server, agent->proxy_port);
       nicesock = nice_tcp_bsd_socket_new (agent->main_context, &proxy_server,
-          reliable_tcp);
+          &local_address, reliable_tcp);
 
       if (nicesock) {
         _priv_set_socket_tos (agent, nicesock, stream->tos);
@@ -2035,7 +2037,7 @@ priv_add_new_candidate_discovery_turn (NiceAgent *agent,
     }
     if (nicesock == NULL) {
       nicesock = nice_tcp_bsd_socket_new (agent->main_context, &turn->server,
-          reliable_tcp);
+          &local_address, reliable_tcp);
 
       if (nicesock)
         _priv_set_socket_tos (agent, nicesock, stream->tos);
