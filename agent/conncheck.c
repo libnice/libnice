@@ -1162,6 +1162,18 @@ static void priv_update_check_list_failed_components (NiceAgent *agent, Stream *
    *       must be fetched before entering the loop*/
   guint c, components = stream->n_components;
 
+  for (i = agent->discovery_list; i; i = i->next) {
+    CandidateDiscovery *d = i->data;
+
+    /* There is still discovery ogoing for this stream,
+     * so don't fail any of it's candidates.
+     */
+    if (d->stream == stream && !d->done)
+      return;
+  }
+  if (agent->discovery_list != NULL)
+    return;
+
   /* note: iterate the conncheck list for each component separately */
   for (c = 0; c < components; c++) {
     Component *comp = NULL;
@@ -1170,7 +1182,7 @@ static void priv_update_check_list_failed_components (NiceAgent *agent, Stream *
 
     for (i = stream->conncheck_list; i; i = i->next) {
       CandidateCheckPair *p = i->data;
-      
+
       if (p->stream_id == stream->id &&
 	  p->component_id == (c + 1)) {
 	if (p->state != NICE_CHECK_FAILED)
