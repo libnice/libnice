@@ -1971,7 +1971,6 @@ nice_agent_set_relay_info(NiceAgent *agent,
 static gboolean priv_upnp_timeout_cb (gpointer user_data)
 {
   NiceAgent *agent = (NiceAgent*)user_data;
-  GSList *i;
 
   agent_lock();
 
@@ -1982,11 +1981,7 @@ static gboolean priv_upnp_timeout_cb (gpointer user_data)
 
   nice_debug ("Agent %p : UPnP port mapping timed out", agent);
 
-  for (i = agent->upnp_mapping; i; i = i->next) {
-    NiceAddress *a = i->data;
-    nice_address_free (a);
-  }
-  g_slist_free (agent->upnp_mapping);
+  g_slist_free_full (agent->upnp_mapping, (GDestroyNotify) nice_address_free);
   agent->upnp_mapping = NULL;
 
   if (agent->upnp_timer_source != NULL) {
@@ -2054,7 +2049,7 @@ static void _upnp_mapped_external_port (GUPnPSimpleIgd *self, gchar *proto,
   }
 
  end:
-  if (g_slist_length (agent->upnp_mapping) == 0) {
+  if (agent->upnp_mapping == NULL) {
     if (agent->upnp_timer_source != NULL) {
       g_source_destroy (agent->upnp_timer_source);
       g_source_unref (agent->upnp_timer_source);
@@ -2090,7 +2085,7 @@ static void _upnp_error_mapping_port (GUPnPSimpleIgd *self, GError *error,
       }
     }
 
-    if (g_slist_length (agent->upnp_mapping) == 0) {
+    if (agent->upnp_mapping == NULL) {
       if (agent->upnp_timer_source != NULL) {
         g_source_destroy (agent->upnp_timer_source);
         g_source_unref (agent->upnp_timer_source);
@@ -2298,7 +2293,7 @@ nice_agent_gather_candidates (
   /* note: no async discoveries pending, signal that we are ready */
   if (agent->discovery_unsched_items == 0 &&
 #ifdef HAVE_GUPNP
-      g_slist_length (agent->upnp_mapping) == 0) {
+      agent->upnp_mapping == NULL) {
 #else
       TRUE) {
 #endif
@@ -2339,18 +2334,12 @@ nice_agent_gather_candidates (
 static void priv_free_upnp (NiceAgent *agent)
 {
 #ifdef HAVE_GUPNP
-  GSList *i;
-
   if (agent->upnp) {
     g_object_unref (agent->upnp);
     agent->upnp = NULL;
   }
 
-  for (i = agent->upnp_mapping; i; i = i->next) {
-    NiceAddress *a = i->data;
-    nice_address_free (a);
-  }
-  g_slist_free (agent->upnp_mapping);
+  g_slist_free_full (agent->upnp_mapping, (GDestroyNotify) nice_address_free);
   agent->upnp_mapping = NULL;
 
   if (agent->upnp_timer_source != NULL) {
