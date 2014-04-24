@@ -1974,6 +1974,7 @@ static gboolean priv_upnp_timeout_cb (gpointer user_data)
 
   agent_lock();
 
+  /* If the source has been destroyed, we have already freed all mappings. */
   if (g_source_is_destroyed (g_main_current_source ())) {
     agent_unlock ();
     return FALSE;
@@ -1981,8 +1982,28 @@ static gboolean priv_upnp_timeout_cb (gpointer user_data)
 
   nice_debug ("Agent %p : UPnP port mapping timed out", agent);
 
+  /* We cannot free priv->upnp here as it may be holding mappings open which
+   * we are using (e.g. if some mappings were successful and others errored). */
   g_slist_free_full (agent->upnp_mapping, (GDestroyNotify) nice_address_free);
   agent->upnp_mapping = NULL;
+
+  agent_check_upnp_gathering_done (agent);
+
+  agent_unlock_and_emit (agent);
+  return FALSE;
+}
+
+/* Check whether UPnP gathering is done, which is true when the list of pending
+ * mappings (upnp_mapping) is empty. When it is empty, we have heard back from
+ * gupnp-igd about each of the mappings we added, either successfully or not.
+ *
+ * Note that upnp_mapping has to be a list, rather than a counter, as the
+ * mapped-external-port and error-mapping-port signals could be emitted multiple
+ * times for each mapping. */
+static void agent_check_upnp_gathering_done (NiceAgent *agent)
+{
+  if (agent->upnp_mapping != NULL)
+    return;
 
   if (agent->upnp_timer_source != NULL) {
     g_source_destroy (agent->upnp_timer_source);
@@ -1991,9 +2012,6 @@ static gboolean priv_upnp_timeout_cb (gpointer user_data)
   }
 
   agent_gathering_done (agent);
-
-  agent_unlock_and_emit (agent);
-  return FALSE;
 }
 
 static void _upnp_mapped_external_port (GUPnPSimpleIgd *self, gchar *proto,
@@ -2049,14 +2067,7 @@ static void _upnp_mapped_external_port (GUPnPSimpleIgd *self, gchar *proto,
   }
 
  end:
-  if (agent->upnp_mapping == NULL) {
-    if (agent->upnp_timer_source != NULL) {
-      g_source_destroy (agent->upnp_timer_source);
-      g_source_unref (agent->upnp_timer_source);
-      agent->upnp_timer_source = NULL;
-    }
-    agent_gathering_done (agent);
-  }
+  agent_check_upnp_gathering_done (agent);
 
   agent_unlock_and_emit (agent);
 }
@@ -2085,14 +2096,7 @@ static void _upnp_error_mapping_port (GUPnPSimpleIgd *self, GError *error,
       }
     }
 
-    if (agent->upnp_mapping == NULL) {
-      if (agent->upnp_timer_source != NULL) {
-        g_source_destroy (agent->upnp_timer_source);
-        g_source_unref (agent->upnp_timer_source);
-        agent->upnp_timer_source = NULL;
-      }
-      agent_gathering_done (agent);
-    }
+    agent_check_upnp_gathering_done (agent);
   }
 
   agent_unlock_and_emit (agent);
