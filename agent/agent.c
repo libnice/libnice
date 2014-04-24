@@ -584,6 +584,24 @@ nice_agent_class_init (NiceAgentClass *klass)
 	FALSE,
         G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY));
 
+  /**
+   * NiceAgent:ice-udp:
+   *
+   * Whether the agent should use ICE-UDP when gathering candidates.
+   * If the option is disabled, no UDP candidates will be generated. If the
+   * agent is in reliable mode, then pseudotcp will not be used since pseudotcp
+   * works on top of UDP candidates.
+   * <para>
+   * This option should be set before gathering candidates and should not be
+   * modified afterwards.
+   * </para>
+   * The #NiceAgent:ice-udp property can be set at the same time as the
+   * #NiceAgent:ice-tcp property, but both cannot be unset at the same time.
+   * If #NiceAgent:ice-tcp is set to %FALSE, then this property cannot be set
+   * to %FALSE as well.
+   *
+   * Since: UNRELEASED
+   */
    g_object_class_install_property (gobject_class, PROP_ICE_UDP,
       g_param_spec_boolean (
         "ice-udp",
@@ -591,6 +609,25 @@ nice_agent_class_init (NiceAgentClass *klass)
         "Use ICE-UDP specification to generate UDP candidates",
         TRUE, /* use ice-udp by default */
         G_PARAM_READWRITE));
+
+  /**
+   * NiceAgent:ice-tcp:
+   *
+   * Whether the agent should use ICE-TCP when gathering candidates.
+   * If the option is disabled, no TCP candidates will be generated. If the
+   * agent is in reliable mode, then pseudotcp will need to be used over UDP
+   * candidates.
+   * <para>
+   * This option should be set before gathering candidates and should not be
+   * modified afterwards.
+   * </para>
+   * The #NiceAgent:ice-tcp property can be set at the same time as the
+   * #NiceAgent:ice-udp property, but both cannot be unset at the same time.
+   * If #NiceAgent:ice-udp is set to %FALSE, then this property cannot be set
+   * to %FALSE as well.
+   *
+   * Since: UNRELEASED
+   */
    g_object_class_install_property (gobject_class, PROP_ICE_TCP,
       g_param_spec_boolean (
         "ice-tcp",
