@@ -625,6 +625,13 @@ nice_agent_class_init (NiceAgentClass *klass)
    * #NiceAgent:ice-udp property, but both cannot be unset at the same time.
    * If #NiceAgent:ice-udp is set to %FALSE, then this property cannot be set
    * to %FALSE as well.
+   * <note>
+   <para>
+   ICE-TCP is only supported for %NICE_COMPATIBILITY_RFC5245,
+   %NICE_COMPATIBILITY_OC2007 and %NICE_COMPATIBILITY_OC2007R2 compatibility
+   modes.
+   </para>
+   * </note>
    *
    * Since: UNRELEASED
    */
@@ -1029,16 +1036,19 @@ nice_agent_set_property (
             STUN_COMPATIBILITY_RFC3489,
             STUN_AGENT_USAGE_SHORT_TERM_CREDENTIALS |
             STUN_AGENT_USAGE_IGNORE_CREDENTIALS);
+        agent->use_ice_tcp = FALSE;
       } else if (agent->compatibility == NICE_COMPATIBILITY_MSN) {
         stun_agent_init (&agent->stun_agent, STUN_ALL_KNOWN_ATTRIBUTES,
             STUN_COMPATIBILITY_RFC3489,
             STUN_AGENT_USAGE_SHORT_TERM_CREDENTIALS |
             STUN_AGENT_USAGE_FORCE_VALIDATER);
+        agent->use_ice_tcp = FALSE;
       } else if (agent->compatibility == NICE_COMPATIBILITY_WLM2009) {
         stun_agent_init (&agent->stun_agent, STUN_ALL_KNOWN_ATTRIBUTES,
             STUN_COMPATIBILITY_WLM2009,
             STUN_AGENT_USAGE_SHORT_TERM_CREDENTIALS |
             STUN_AGENT_USAGE_USE_FINGERPRINT);
+        agent->use_ice_tcp = FALSE;
       } else if (agent->compatibility == NICE_COMPATIBILITY_OC2007) {
         stun_agent_init (&agent->stun_agent, STUN_ALL_KNOWN_ATTRIBUTES,
             STUN_COMPATIBILITY_RFC3489,
@@ -1132,7 +1142,10 @@ nice_agent_set_property (
       break;
 
     case PROP_ICE_TCP:
-      if (agent->use_ice_udp == TRUE || g_value_get_boolean (value) == TRUE)
+      if ((agent->compatibility == NICE_COMPATIBILITY_RFC5245 ||
+              agent->compatibility == NICE_COMPATIBILITY_OC2007 ||
+              agent->compatibility == NICE_COMPATIBILITY_OC2007R2) &&
+          (agent->use_ice_udp == TRUE || g_value_get_boolean (value) == TRUE))
         agent->use_ice_tcp = g_value_get_boolean (value);
       break;
 
