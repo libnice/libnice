@@ -79,7 +79,7 @@
 #define MAX_BUFFER_SIZE ((1 << 16) - 1)  /* 65535 */
 
 #define DEFAULT_STUN_PORT  3478
-#define DEFAULT_UPNP_TIMEOUT 200
+#define DEFAULT_UPNP_TIMEOUT 200  /* milliseconds */
 
 #define MAX_TCP_MTU 1400 /* Use 1400 because of VPNs and we assume IEE 802.3 */
 
@@ -550,8 +550,8 @@ nice_agent_class_init (NiceAgentClass *klass)
   /**
    * NiceAgent:upnp-timeout:
    *
-   * The maximum amount of time to wait for UPnP discovery to finish before
-   * signaling the #NiceAgent::candidate-gathering-done signal
+   * The maximum amount of time (in milliseconds) to wait for UPnP discovery to
+   * finish before signaling the #NiceAgent::candidate-gathering-done signal
    *
    * Since: 0.0.7
    */
