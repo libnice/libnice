@@ -510,7 +510,7 @@ component_detach_socket (Component *component, NiceSocket *nicesock)
   nice_debug ("Detach socket %p.", nicesock);
 
   /* Find the SocketSource for the socket. */
-  l = g_slist_find_custom (component->socket_sources, socket,
+  l = g_slist_find_custom (component->socket_sources, nicesock,
           _find_socket_source);
   if (l == NULL)
     return;
