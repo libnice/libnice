@@ -110,7 +110,7 @@ discovery_add_relay_candidate (
   NiceSocket *base_socket,
   TurnServer *turn);
 
-NiceCandidate* 
+NiceCandidate*
 discovery_add_server_reflexive_candidate (
   NiceAgent *agent,
   guint stream_id,
@@ -120,7 +120,15 @@ discovery_add_server_reflexive_candidate (
   NiceSocket *base_socket,
   gboolean nat_assisted);
 
-NiceCandidate* 
+void
+discovery_discover_tcp_server_reflexive_candidates (
+  NiceAgent *agent,
+  guint stream_id,
+  guint component_id,
+  NiceAddress *address,
+  NiceSocket *base_socket);
+
+NiceCandidate*
 discovery_add_peer_reflexive_candidate (
   NiceAgent *agent,
   guint stream_id,

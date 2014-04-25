@@ -591,6 +591,51 @@ discovery_add_server_reflexive_candidate (
   return candidate;
 }
 
+/*
+ * Creates a server reflexive candidate for 'component_id' of stream
+ * 'stream_id' for each TCP_PASSIVE and TCP_ACTIVE candidates for each
+ * base address.
+ *
+ * @return pointer to the created candidate, or NULL on error
+ */
+void
+discovery_discover_tcp_server_reflexive_candidates (
+  NiceAgent *agent,
+  guint stream_id,
+  guint component_id,
+  NiceAddress *address,
+  NiceSocket *base_socket)
+{
+  Component *component;
+  Stream *stream;
+  NiceAddress base_addr = base_socket->addr;
+  GSList *i;
+
+  if (!agent_find_component (agent, stream_id, component_id, &stream, &component))
+    return;
+
+  nice_address_set_port (&base_addr, 0);
+  for (i = component->local_candidates; i; i = i ->next) {
+    NiceCandidate *c = i->data;
+    NiceAddress caddr;
+
+    caddr = c->addr;
+    nice_address_set_port (&caddr, 0);
+    if (c->transport != NICE_CANDIDATE_TRANSPORT_UDP &&
+        c->type == NICE_CANDIDATE_TYPE_HOST &&
+        nice_address_equal (&base_addr, &caddr)) {
+      nice_address_set_port (address, nice_address_get_port (&c->addr));
+      discovery_add_server_reflexive_candidate (
+          agent,
+          stream_id,
+          component_id,
+          address,
+          c->transport,
+          c->sockptr,
+          FALSE);
+    }
+  }
+}
 
 /*
  * Creates a server reflexive candidate for 'component_id' of stream

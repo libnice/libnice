@@ -2423,6 +2423,13 @@ static gboolean priv_map_reply_to_discovery_request (NiceAgent *agent, StunMessa
               NICE_CANDIDATE_TRANSPORT_UDP,
               d->nicesock,
               FALSE);
+          if (d->agent->use_ice_tcp)
+            discovery_discover_tcp_server_reflexive_candidates (
+                d->agent,
+                d->stream->id,
+                d->component->id,
+                &niceaddr,
+                d->nicesock);
 
           d->stun_message.buffer = NULL;
           d->stun_message.buffer_len = 0;
@@ -2548,9 +2555,7 @@ static gboolean priv_map_reply_to_relay_request (NiceAgent *agent, StunMessage *
           NiceAddress niceaddr;
           NiceCandidate *relay_cand;
 
-          /* Server reflexive candidates are only valid for UDP sockets */
-          if (res == STUN_USAGE_TURN_RETURN_MAPPED_SUCCESS &&
-              !nice_socket_is_reliable (d->nicesock)) {
+          if (res == STUN_USAGE_TURN_RETURN_MAPPED_SUCCESS) {
             /* We also received our mapped address */
             nice_address_set_from_sockaddr (&niceaddr, &sockaddr.addr);
 
@@ -2568,6 +2573,13 @@ static gboolean priv_map_reply_to_relay_request (NiceAgent *agent, StunMessage *
                   d->nicesock,
                   FALSE);
             }
+            if (d->agent->use_ice_tcp)
+              discovery_discover_tcp_server_reflexive_candidates (
+                  d->agent,
+                  d->stream->id,
+                  d->component->id,
+                  &niceaddr,
+                  d->nicesock);
           }
 
           nice_address_set_from_sockaddr (&niceaddr, &relayaddr.addr);
