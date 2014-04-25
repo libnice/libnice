@@ -554,9 +554,9 @@ size_t stun_agent_finish_message (StunAgent *agent, StunMessage *msg,
         stun_hash_creds (realm, realm_len,
             username,  username_len,
             key, key_len, md5);
+        memcpy (msg->long_term_key, md5, sizeof(msg->long_term_key));
+        msg->long_term_valid = TRUE;
       }
-      memcpy (msg->long_term_key, md5, sizeof(msg->long_term_key));
-      msg->long_term_valid = TRUE;
     }
 
     /* If no realm/username and long term credentials,
