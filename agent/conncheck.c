@@ -71,7 +71,7 @@ static size_t priv_create_username (NiceAgent *agent, Stream *stream,
     uint8_t *dest, guint dest_len, gboolean inbound);
 static size_t priv_get_password (NiceAgent *agent, Stream *stream,
     NiceCandidate *remote, uint8_t **password);
-static void conn_check_free_item (gpointer data, gpointer user_data);
+static void conn_check_free_item (gpointer data);
 
 static int priv_timer_expired (GTimeVal *timer, GTimeVal *now)
 {
@@ -1089,9 +1089,8 @@ static GSList *priv_limit_conn_check_list_size (GSList *conncheck_list, guint up
     c = list_len - upper_limit;
     if (c == list_len) {
       /* case: delete whole list */
-      g_slist_foreach (conncheck_list, conn_check_free_item, NULL);
-      g_slist_free (conncheck_list),
-	result = NULL;
+      g_slist_free_full (conncheck_list, conn_check_free_item);
+      result = NULL;
     }
     else {
       /* case: remove 'c' items from list end (lowest priority) */
@@ -1103,11 +1102,8 @@ static GSList *priv_limit_conn_check_list_size (GSList *conncheck_list, guint up
       tmp = i->next;
       i->next = NULL;
 
-      if (tmp) {
-	/* delete the rest of the connectivity check list */
-	g_slist_foreach (tmp, conn_check_free_item, NULL);
-	g_slist_free (tmp);
-      }
+      /* delete the rest of the connectivity check list */
+      g_slist_free_full (tmp, conn_check_free_item);
     }
   }
 
@@ -1396,12 +1392,12 @@ int conn_check_add_for_local_candidate (NiceAgent *agent, guint stream_id, Compo
 
 /*
  * Frees the CandidateCheckPair structure pointer to 
- * by 'user data'. Compatible with g_slist_foreach().
+ * by 'user data'. Compatible with GDestroyNotify.
  */
-static void conn_check_free_item (gpointer data, gpointer user_data)
+static void conn_check_free_item (gpointer data)
 {
   CandidateCheckPair *pair = data;
-  g_assert (user_data == NULL);
+
   pair->stun_message.buffer = NULL;
   pair->stun_message.buffer_len = 0;
   g_slice_free (CandidateCheckPair, pair);
@@ -1428,11 +1424,8 @@ void conn_check_free (NiceAgent *agent)
     Stream *stream = i->data;
 
     nice_debug ("Agent %p, freeing conncheck_list of stream %p", agent, stream);
-    if (stream->conncheck_list) {
-      g_slist_foreach (stream->conncheck_list, conn_check_free_item, NULL);
-      g_slist_free (stream->conncheck_list),
-	stream->conncheck_list = NULL;
-    }
+    g_slist_free_full (stream->conncheck_list, conn_check_free_item);
+    stream->conncheck_list = NULL;
   }
 
   conn_check_stop (agent);
@@ -1446,23 +1439,11 @@ void conn_check_free (NiceAgent *agent)
  */
 void conn_check_prune_stream (NiceAgent *agent, Stream *stream)
 {
-  CandidateCheckPair *pair;
   GSList *i;
   gboolean keep_going = FALSE;
 
-  for (i = stream->conncheck_list; i ; ) {
-    GSList *next = i->next;
-    pair = i->data;
-
-    g_assert (pair->stream_id == stream->id);
-
-    stream->conncheck_list = 
-      g_slist_remove (stream->conncheck_list, pair);
-    conn_check_free_item (pair, NULL);
-    i = next;
-    if (!stream->conncheck_list)
-      break;
-  }
+  g_slist_free_full (stream->conncheck_list, conn_check_free_item);
+  stream->conncheck_list = NULL;
 
   for (i = agent->streams; i; i = i->next) {
     Stream *s = i->data;
