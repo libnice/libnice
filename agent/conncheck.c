@@ -1443,7 +1443,7 @@ void conn_check_free (NiceAgent *agent)
  *
  * @return TRUE on success, FALSE on a fatal error
  */
-gboolean conn_check_prune_stream (NiceAgent *agent, Stream *stream)
+void conn_check_prune_stream (NiceAgent *agent, Stream *stream)
 {
   CandidateCheckPair *pair;
   GSList *i;
@@ -1464,12 +1464,6 @@ gboolean conn_check_prune_stream (NiceAgent *agent, Stream *stream)
 
   if (!stream->conncheck_list)
     conn_check_free (agent);
-
-  /* return FALSE if there was a memory allocation failure */
-  if (stream->conncheck_list == NULL && i != NULL)
-    return FALSE;
-
-  return TRUE;
 }
 
 /*
