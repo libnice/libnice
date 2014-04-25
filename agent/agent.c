@@ -3069,7 +3069,14 @@ agent_recv_message_unlocked (
         retval = 0;
         if (available <= 0) {
           retval = available;
-          if (g_socket_is_connected (nicesock->fileno) == FALSE) {
+
+          /* If we don't call check_connect_result on an outbound connection,
+           * then is_connected will always return FALSE. That's why we check
+           * both conditions to make sure g_socket_is_connected returns the
+           * correct result, otherwise we end up closing valid connections
+           */
+          if (g_socket_check_connect_result (nicesock->fileno, NULL) == FALSE ||
+              g_socket_is_connected (nicesock->fileno) == FALSE) {
             /* If we receive a readable event on a TCP_BSD socket which is
              * not connected, it means that it failed to connect, so we must
              * return an error to make the socket fail/closed
