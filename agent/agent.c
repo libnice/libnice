@@ -2017,8 +2017,8 @@ priv_add_new_candidate_discovery_turn (NiceAgent *agent,
         agent->proxy_ip != NULL &&
         nice_address_set_from_string (&proxy_server, agent->proxy_ip)) {
       nice_address_set_port (&proxy_server, agent->proxy_port);
-      nicesock = nice_tcp_bsd_socket_new (agent->main_context, &proxy_server,
-          &local_address, reliable_tcp);
+      nicesock = nice_tcp_bsd_socket_new (agent->main_context, &local_address,
+          &proxy_server, reliable_tcp);
 
       if (nicesock) {
         _priv_set_socket_tos (agent, nicesock, stream->tos);
@@ -2036,8 +2036,8 @@ priv_add_new_candidate_discovery_turn (NiceAgent *agent,
 
     }
     if (nicesock == NULL) {
-      nicesock = nice_tcp_bsd_socket_new (agent->main_context, &turn->server,
-          &local_address, reliable_tcp);
+      nicesock = nice_tcp_bsd_socket_new (agent->main_context, &local_address,
+          &turn->server, reliable_tcp);
 
       if (nicesock)
         _priv_set_socket_tos (agent, nicesock, stream->tos);
