@@ -71,6 +71,7 @@ static size_t priv_create_username (NiceAgent *agent, Stream *stream,
     uint8_t *dest, guint dest_len, gboolean inbound);
 static size_t priv_get_password (NiceAgent *agent, Stream *stream,
     NiceCandidate *remote, uint8_t **password);
+static void conn_check_free_item (gpointer data, gpointer user_data);
 
 static int priv_timer_expired (GTimeVal *timer, GTimeVal *now)
 {
@@ -1397,7 +1398,7 @@ int conn_check_add_for_local_candidate (NiceAgent *agent, guint stream_id, Compo
  * Frees the CandidateCheckPair structure pointer to 
  * by 'user data'. Compatible with g_slist_foreach().
  */
-void conn_check_free_item (gpointer data, gpointer user_data)
+static void conn_check_free_item (gpointer data, gpointer user_data)
 {
   CandidateCheckPair *pair = data;
   g_assert (user_data == NULL);
