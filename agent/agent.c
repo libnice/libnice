@@ -1627,6 +1627,32 @@ adjust_tcp_clock (NiceAgent *agent, Stream *stream, Component *component)
   }
 }
 
+static void
+_tcp_sock_is_writable (NiceSocket *sock, gpointer user_data)
+{
+  Component *component = user_data;
+  NiceAgent *agent = component->agent;
+  Stream *stream = component->stream;
+
+  agent_lock ();
+
+  /* Don't signal writable if the socket that has become writable is not
+   * the selected pair */
+  if (component->selected_pair.local == NULL ||
+      component->selected_pair.local->sockptr != sock) {
+    agent_unlock ();
+    return;
+  }
+
+  nice_debug ("Agent %p: s%d:%d Tcp socket writable", agent,
+      stream->id, component->id);
+  g_cancellable_cancel (component->tcp_writable_cancellable);
+  agent_queue_signal (agent, signals[SIGNAL_RELIABLE_TRANSPORT_WRITABLE],
+      stream->id, component->id);
+
+  agent_unlock_and_emit (agent);
+}
+
 static const gchar *
 _transport_to_string (NiceCandidateTransport type) {
   switch(type) {
@@ -2048,6 +2074,9 @@ priv_add_new_candidate_discovery_turn (NiceAgent *agent,
     if (nicesock == NULL)
       return;
 
+    if (agent->reliable)
+      nice_socket_set_writable_callback (nicesock, _tcp_sock_is_writable,
+          component);
     if (turn->type ==  NICE_RELAY_TYPE_TURN_TLS &&
         agent->compatibility == NICE_COMPATIBILITY_GOOGLE) {
       nicesock = nice_pseudossl_socket_new (nicesock,
@@ -2502,6 +2531,10 @@ nice_agent_gather_candidates (
           ret = FALSE;
           goto error;
         }
+
+        if (agent->reliable)
+          nice_socket_set_writable_callback (host_candidate->sockptr,
+              _tcp_sock_is_writable, component);
 
 #ifdef HAVE_GUPNP
         if (agent->upnp_enabled &&
@@ -4043,6 +4076,10 @@ nice_agent_send_messages_nonblocking_internal (
             else
               n_sent_framed = nice_socket_send_messages_reliable (sock, addr,
                   &local_message, 1);
+
+            if (!nice_socket_can_send (sock, addr))
+              g_cancellable_reset (component->tcp_writable_cancellable);
+
             if (n_sent_framed < 0 && n_sent == 0)
               n_sent = n_sent_framed;
             if (n_sent_framed != 1)
