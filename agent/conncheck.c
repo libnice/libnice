@@ -1447,6 +1447,7 @@ void conn_check_prune_stream (NiceAgent *agent, Stream *stream)
 {
   CandidateCheckPair *pair;
   GSList *i;
+  gboolean keep_going = FALSE;
 
   for (i = stream->conncheck_list; i ; ) {
     GSList *next = i->next;
@@ -1462,8 +1463,16 @@ void conn_check_prune_stream (NiceAgent *agent, Stream *stream)
       break;
   }
 
-  if (!stream->conncheck_list)
-    conn_check_free (agent);
+  for (i = agent->streams; i; i = i->next) {
+    Stream *s = i->data;
+    if (s->conncheck_list) {
+      keep_going = TRUE;
+      break;
+    }
+  }
+
+  if (!keep_going)
+    conn_check_stop (agent);
 }
 
 /*
