@@ -339,7 +339,7 @@ ipv6_address_is_private (const guchar *addr)
 {
   return (
       /* fe80::/10 */
-      ((addr[0] == 0xfe) && ((addr[1] & 0xc) == 0x80)) ||
+      ((addr[0] == 0xfe) && ((addr[1] & 0xc0) == 0x80)) ||
       /* fc00::/7 */
       ((addr[0] & 0xfe) == 0xfc) ||
       /* ::1 loopback */
