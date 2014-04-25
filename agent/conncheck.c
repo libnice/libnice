@@ -1406,6 +1406,17 @@ void conn_check_free_item (gpointer data, gpointer user_data)
   g_slice_free (CandidateCheckPair, pair);
 }
 
+static void
+conn_check_stop (NiceAgent *agent)
+{
+  if (agent->conncheck_timer_source == NULL)
+    return;
+
+  g_source_destroy (agent->conncheck_timer_source);
+  g_source_unref (agent->conncheck_timer_source);
+  agent->conncheck_timer_source = NULL;
+}
+
 /*
  * Frees all resources of all connectivity checks.
  */
@@ -1423,11 +1434,7 @@ void conn_check_free (NiceAgent *agent)
     }
   }
 
-  if (agent->conncheck_timer_source != NULL) {
-    g_source_destroy (agent->conncheck_timer_source);
-    g_source_unref (agent->conncheck_timer_source);
-    agent->conncheck_timer_source = NULL;
-  }
+  conn_check_stop (agent);
 }
 
 /*
