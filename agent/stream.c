@@ -133,7 +133,7 @@ void stream_initialize_credentials (Stream *stream, NiceRNG *rng)
  * session.
  */
 void
-stream_restart (NiceAgent *agent, Stream *stream, NiceRNG *rng)
+stream_restart (NiceAgent *agent, Stream *stream)
 {
   GSList *i;
 
@@ -142,7 +142,7 @@ stream_restart (NiceAgent *agent, Stream *stream, NiceRNG *rng)
 
   stream->initial_binding_request_received = FALSE;
 
-  stream_initialize_credentials (stream, rng);
+  stream_initialize_credentials (stream, agent->rng);
 
   for (i = stream->components; i; i = i->next) {
     Component *component = i->data;

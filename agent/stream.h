@@ -93,7 +93,7 @@ void
 stream_initialize_credentials (Stream *stream, NiceRNG *rng);
 
 void
-stream_restart (NiceAgent *agent, Stream *stream, NiceRNG *rng);
+stream_restart (NiceAgent *agent, Stream *stream);
 
 G_END_DECLS
 

@@ -3705,7 +3705,7 @@ nice_agent_restart (
 
     /* step: reset local credentials for the stream and 
      * clean up the list of remote candidates */
-    stream_restart (agent, stream, agent->rng);
+    stream_restart (agent, stream);
   }
 
   agent_unlock_and_emit (agent);
@@ -3730,7 +3730,7 @@ nice_agent_restart_stream (
 
   /* step: reset local credentials for the stream and
    * clean up the list of remote candidates */
-  stream_restart (agent, stream, agent->rng);
+  stream_restart (agent, stream);
 
   res = TRUE;
  done:
