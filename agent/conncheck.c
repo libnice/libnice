@@ -1435,9 +1435,12 @@ void conn_check_free (NiceAgent *agent)
   for (i = agent->streams; i; i = i->next) {
     Stream *stream = i->data;
 
-    nice_debug ("Agent %p, freeing conncheck_list of stream %p", agent, stream);
-    g_slist_free_full (stream->conncheck_list, conn_check_free_item);
-    stream->conncheck_list = NULL;
+    if (stream->conncheck_list) {
+      nice_debug ("Agent %p, freeing conncheck_list of stream %p", agent,
+          stream);
+      g_slist_free_full (stream->conncheck_list, conn_check_free_item);
+      stream->conncheck_list = NULL;
+    }
   }
 
   conn_check_stop (agent);
@@ -1454,8 +1457,12 @@ void conn_check_prune_stream (NiceAgent *agent, Stream *stream)
   GSList *i;
   gboolean keep_going = FALSE;
 
-  g_slist_free_full (stream->conncheck_list, conn_check_free_item);
-  stream->conncheck_list = NULL;
+  if (stream->conncheck_list) {
+    nice_debug ("Agent %p, freeing conncheck_list of stream %p", agent, stream);
+
+    g_slist_free_full (stream->conncheck_list, conn_check_free_item);
+    stream->conncheck_list = NULL;
+  }
 
   for (i = agent->streams; i; i = i->next) {
     Stream *s = i->data;
