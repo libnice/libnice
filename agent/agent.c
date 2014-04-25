@@ -1968,6 +1968,8 @@ nice_agent_set_relay_info(NiceAgent *agent,
 
 #ifdef HAVE_GUPNP
 
+static void agent_check_upnp_gathering_done (NiceAgent *agent);
+
 static gboolean priv_upnp_timeout_cb (gpointer user_data)
 {
   NiceAgent *agent = (NiceAgent*)user_data;
