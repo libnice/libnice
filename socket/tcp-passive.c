@@ -53,6 +53,8 @@
 typedef struct {
   GMainContext *context;
   GHashTable *connections;
+  NiceSocketWritableCb writable_cb;
+  gpointer writable_data;
 } TcpPassivePriv;
 
 
@@ -64,7 +66,13 @@ static gint socket_send_messages (NiceSocket *sock, const NiceAddress *to,
 static gint socket_send_messages_reliable (NiceSocket *sock,
     const NiceAddress *to, const NiceOutputMessage *messages, guint n_messages);
 static gboolean socket_is_reliable (NiceSocket *sock);
+static gboolean socket_can_send (NiceSocket *sock, NiceAddress *addr);
+static void socket_set_writable_callback (NiceSocket *sock,
+    NiceSocketWritableCb callback, gpointer user_data);
+
 static guint nice_address_hash (const NiceAddress * key);
+static void _set_child_callbacks (NiceAddress *addr, NiceSocket *child,
+    NiceSocket *sock);
 
 NiceSocket *
 nice_tcp_passive_socket_new (GMainContext *ctx, NiceAddress *addr)
@@ -145,6 +153,8 @@ nice_tcp_passive_socket_new (GMainContext *ctx, NiceAddress *addr)
   priv->connections = g_hash_table_new_full ((GHashFunc) nice_address_hash,
       (GEqualFunc) nice_address_equal, (
           GDestroyNotify) nice_address_free, NULL);
+  priv->writable_cb = NULL;
+  priv->writable_data = NULL;
 
   sock->type = NICE_SOCKET_TYPE_TCP_PASSIVE;
   sock->fileno = gsock;
@@ -152,6 +162,8 @@ nice_tcp_passive_socket_new (GMainContext *ctx, NiceAddress *addr)
   sock->send_messages_reliable = socket_send_messages_reliable;
   sock->recv_messages = socket_recv_messages;
   sock->is_reliable = socket_is_reliable;
+  sock->can_send = socket_can_send;
+  sock->set_writable_callback = socket_set_writable_callback;
   sock->close = socket_close;
 
   return sock;
@@ -208,6 +220,42 @@ socket_is_reliable (NiceSocket *sock)
   return TRUE;
 }
 
+static gboolean
+socket_can_send (NiceSocket *sock, NiceAddress *addr)
+{
+  TcpPassivePriv *priv = sock->priv;
+  NiceSocket *peer_socket = NULL;
+
+  /* FIXME: Danger if child socket was closed */
+  if (addr)
+    peer_socket = g_hash_table_lookup (priv->connections, addr);
+  if (peer_socket)
+    return nice_socket_can_send (peer_socket, addr);
+  return FALSE;
+}
+
+static void
+_set_child_callbacks (NiceAddress *addr, NiceSocket *child, NiceSocket *sock)
+{
+  TcpPassivePriv *priv = sock->priv;
+
+  /* FIXME: Danger if child socket was closed */
+  nice_socket_set_writable_callback (child, priv->writable_cb,
+      priv->writable_data);
+}
+
+static void
+socket_set_writable_callback (NiceSocket *sock,
+    NiceSocketWritableCb callback, gpointer user_data)
+{
+  TcpPassivePriv *priv = sock->priv;
+
+  priv->writable_cb = callback;
+  priv->writable_data = user_data;
+
+  g_hash_table_foreach (priv->connections, (GHFunc) _set_child_callbacks, sock);
+}
+
 NiceSocket *
 nice_tcp_passive_socket_accept (NiceSocket *sock)
 {
@@ -248,6 +296,7 @@ nice_tcp_passive_socket_accept (NiceSocket *sock)
   if (new_socket) {
     NiceAddress *key = nice_address_dup (&remote_addr);
 
+    _set_child_callbacks (key, new_socket, sock);
     g_hash_table_insert (priv->connections, key, new_socket);
   }
   return new_socket;

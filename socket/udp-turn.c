@@ -122,6 +122,9 @@ static gint socket_send_messages (NiceSocket *sock, const NiceAddress *to,
 static gint socket_send_messages_reliable (NiceSocket *sock,
     const NiceAddress *to, const NiceOutputMessage *messages, guint n_messages);
 static gboolean socket_is_reliable (NiceSocket *sock);
+static gboolean socket_can_send (NiceSocket *sock, NiceAddress *addr);
+static void socket_set_writable_callback (NiceSocket *sock,
+    NiceSocketWritableCb callback, gpointer user_data);
 
 static void priv_process_pending_bindings (UdpTurnPriv *priv);
 static gboolean priv_retransmissions_tick_unlocked (UdpTurnPriv *priv);
@@ -238,6 +241,8 @@ nice_udp_turn_socket_new (GMainContext *ctx, NiceAddress *addr,
   sock->send_messages_reliable = socket_send_messages_reliable;
   sock->recv_messages = socket_recv_messages;
   sock->is_reliable = socket_is_reliable;
+  sock->can_send = socket_can_send;
+  sock->set_writable_callback = socket_set_writable_callback;
   sock->close = socket_close;
   sock->priv = (void *) priv;
 
@@ -912,6 +917,23 @@ socket_is_reliable (NiceSocket *sock)
   UdpTurnPriv *priv = (UdpTurnPriv *) sock->priv;
 
   return nice_socket_is_reliable (priv->base_socket);
+}
+
+static gboolean
+socket_can_send (NiceSocket *sock, NiceAddress *addr)
+{
+  UdpTurnPriv *priv = sock->priv;
+
+  return nice_socket_can_send (priv->base_socket, addr);
+}
+
+static void
+socket_set_writable_callback (NiceSocket *sock,
+    NiceSocketWritableCb callback, gpointer user_data)
+{
+  UdpTurnPriv *priv = sock->priv;
+
+  nice_socket_set_writable_callback (priv->base_socket, callback, user_data);
 }
 
 static gboolean

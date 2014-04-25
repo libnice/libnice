@@ -68,6 +68,8 @@ typedef enum {
   NICE_SOCKET_TYPE_TCP_SO
 } NiceSocketType;
 
+typedef void (*NiceSocketWritableCb) (NiceSocket *sock, gpointer user_data);
+
 struct _NiceSocket
 {
   NiceAddress addr;
@@ -83,9 +85,13 @@ struct _NiceSocket
   gint (*send_messages_reliable) (NiceSocket *sock, const NiceAddress *to,
       const NiceOutputMessage *messages, guint n_messages);
   gboolean (*is_reliable) (NiceSocket *sock);
+  gboolean (*can_send) (NiceSocket *sock, NiceAddress *addr);
+  void (*set_writable_callback) (NiceSocket *sock,
+      NiceSocketWritableCb callback, gpointer user_data);
   void (*close) (NiceSocket *sock);
   void *priv;
 };
+
 
 G_GNUC_WARN_UNUSED_RESULT
 gint
@@ -111,6 +117,12 @@ nice_socket_send_reliable (NiceSocket *sock, const NiceAddress *addr, gsize len,
 gboolean
 nice_socket_is_reliable (NiceSocket *sock);
 
+gboolean
+nice_socket_can_send (NiceSocket *sock, NiceAddress *addr);
+
+void
+nice_socket_set_writable_callback (NiceSocket *sock,
+    NiceSocketWritableCb callback, gpointer user_data);
 
 void
 nice_socket_free (NiceSocket *sock);

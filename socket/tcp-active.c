@@ -64,6 +64,9 @@ static gint socket_send_messages (NiceSocket *sock, const NiceAddress *to,
 static gint socket_send_messages_reliable (NiceSocket *sock,
     const NiceAddress *to, const NiceOutputMessage *messages, guint n_messages);
 static gboolean socket_is_reliable (NiceSocket *sock);
+static gboolean socket_can_send (NiceSocket *sock, NiceAddress *addr);
+static void socket_set_writable_callback (NiceSocket *sock,
+    NiceSocketWritableCb callback, gpointer user_data);
 
 
 NiceSocket *
@@ -110,6 +113,8 @@ nice_tcp_active_socket_new (GMainContext *ctx, NiceAddress *addr)
   sock->send_messages_reliable = socket_send_messages_reliable;
   sock->recv_messages = socket_recv_messages;
   sock->is_reliable = socket_is_reliable;
+  sock->can_send = socket_can_send;
+  sock->set_writable_callback = socket_set_writable_callback;
   sock->close = socket_close;
 
   return sock;
@@ -150,6 +155,18 @@ static gboolean
 socket_is_reliable (NiceSocket *sock)
 {
   return TRUE;
+}
+
+static gboolean
+socket_can_send (NiceSocket *sock, NiceAddress *addr)
+{
+  return FALSE;
+}
+
+static void
+socket_set_writable_callback (NiceSocket *sock,
+    NiceSocketWritableCb callback, gpointer user_data)
+{
 }
 
 NiceSocket *

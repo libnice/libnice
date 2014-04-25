@@ -113,6 +113,9 @@ static gint socket_send_messages (NiceSocket *sock, const NiceAddress *to,
 static gint socket_send_messages_reliable (NiceSocket *sock,
     const NiceAddress *to, const NiceOutputMessage *messages, guint n_messages);
 static gboolean socket_is_reliable (NiceSocket *sock);
+static gboolean socket_can_send (NiceSocket *sock, NiceAddress *addr);
+static void socket_set_writable_callback (NiceSocket *sock,
+    NiceSocketWritableCb callback, gpointer user_data);
 
 NiceSocket *
 nice_pseudossl_socket_new (NiceSocket *base_socket,
@@ -147,6 +150,8 @@ nice_pseudossl_socket_new (NiceSocket *base_socket,
   sock->send_messages_reliable = socket_send_messages_reliable;
   sock->recv_messages = socket_recv_messages;
   sock->is_reliable = socket_is_reliable;
+  sock->can_send = socket_can_send;
+  sock->set_writable_callback = socket_set_writable_callback;
   sock->close = socket_close;
 
   /* We send 'to' NULL because it will always be to an already connected
@@ -287,4 +292,21 @@ socket_is_reliable (NiceSocket *sock)
   PseudoSSLPriv *priv = sock->priv;
 
   return nice_socket_is_reliable (priv->base_socket);
+}
+
+static gboolean
+socket_can_send (NiceSocket *sock, NiceAddress *addr)
+{
+  PseudoSSLPriv *priv = sock->priv;
+
+  return nice_socket_can_send (priv->base_socket, addr);
+}
+
+static void
+socket_set_writable_callback (NiceSocket *sock,
+    NiceSocketWritableCb callback, gpointer user_data)
+{
+  PseudoSSLPriv *priv = sock->priv;
+
+  nice_socket_set_writable_callback (priv->base_socket, callback, user_data);
 }

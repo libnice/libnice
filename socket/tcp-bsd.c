@@ -61,6 +61,8 @@ typedef struct {
   GSource *io_source;
   gboolean error;
   gboolean reliable;
+  NiceSocketWritableCb writable_cb;
+  gpointer writable_data;
 } TcpPriv;
 
 #define MAX_QUEUE_LENGTH 20
@@ -73,6 +75,9 @@ static gint socket_send_messages (NiceSocket *sock, const NiceAddress *to,
 static gint socket_send_messages_reliable (NiceSocket *sock,
     const NiceAddress *to, const NiceOutputMessage *messages, guint n_messages);
 static gboolean socket_is_reliable (NiceSocket *sock);
+static gboolean socket_can_send (NiceSocket *sock, NiceAddress *addr);
+static void socket_set_writable_callback (NiceSocket *sock,
+    NiceSocketWritableCb callback, gpointer user_data);
 
 static gboolean socket_send_more (GSocket *gsocket, GIOCondition condition,
     gpointer data);
@@ -95,6 +100,8 @@ nice_tcp_bsd_socket_new_from_gsock (GMainContext *ctx, GSocket *gsock,
   priv->remote_addr = *remote_addr;
   priv->error = FALSE;
   priv->reliable = reliable;
+  priv->writable_cb = NULL;
+  priv->writable_data = NULL;
 
   sock->type = NICE_SOCKET_TYPE_TCP_BSD;
   sock->fileno = g_object_ref (gsock);
@@ -103,6 +110,8 @@ nice_tcp_bsd_socket_new_from_gsock (GMainContext *ctx, GSocket *gsock,
   sock->send_messages_reliable = socket_send_messages_reliable;
   sock->recv_messages = socket_recv_messages;
   sock->is_reliable = socket_is_reliable;
+  sock->can_send = socket_can_send;
+  sock->set_writable_callback = socket_set_writable_callback;
   sock->close = socket_close;
 
   return sock;
@@ -374,13 +383,23 @@ socket_is_reliable (NiceSocket *sock)
   return priv->reliable;
 }
 
+static gboolean
+socket_can_send (NiceSocket *sock, NiceAddress *addr)
+{
+  TcpPriv *priv = sock->priv;
 
-/*
- * Returns:
- * -1 = error
- * 0 = have more to send
- * 1 = sent everything
- */
+  return g_queue_is_empty (&priv->send_queue);
+}
+
+static void
+socket_set_writable_callback (NiceSocket *sock,
+    NiceSocketWritableCb callback, gpointer user_data)
+{
+  TcpPriv *priv = sock->priv;
+
+  priv->writable_cb = callback;
+  priv->writable_data = user_data;
+}
 
 static gboolean
 socket_send_more (
@@ -409,6 +428,10 @@ socket_send_more (
     priv->io_source = NULL;
 
     agent_unlock ();
+
+    if (priv->writable_cb)
+      priv->writable_cb (sock, priv->writable_data);
+
     return FALSE;
   }
 

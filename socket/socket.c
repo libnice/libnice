@@ -249,6 +249,22 @@ nice_socket_is_reliable (NiceSocket *sock)
   return sock->is_reliable (sock);
 }
 
+gboolean
+nice_socket_can_send (NiceSocket *sock, NiceAddress *addr)
+{
+  if (sock->can_send)
+    return sock->can_send (sock, addr);
+  return TRUE;
+}
+
+void
+nice_socket_set_writable_callback (NiceSocket *sock,
+    NiceSocketWritableCb callback, gpointer user_data)
+{
+  if (sock->set_writable_callback)
+    sock->set_writable_callback (sock, callback, user_data);
+}
+
 void
 nice_socket_free (NiceSocket *sock)
 {

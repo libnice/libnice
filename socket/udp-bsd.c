@@ -64,6 +64,9 @@ static gint socket_send_messages (NiceSocket *sock, const NiceAddress *to,
 static gint socket_send_messages_reliable (NiceSocket *sock,
     const NiceAddress *to, const NiceOutputMessage *messages, guint n_messages);
 static gboolean socket_is_reliable (NiceSocket *sock);
+static gboolean socket_can_send (NiceSocket *sock, NiceAddress *addr);
+static void socket_set_writable_callback (NiceSocket *sock,
+    NiceSocketWritableCb callback, gpointer user_data);
 
 struct UdpBsdSocketPrivate
 {
@@ -149,6 +152,8 @@ nice_udp_bsd_socket_new (NiceAddress *addr)
   sock->send_messages_reliable = socket_send_messages_reliable;
   sock->recv_messages = socket_recv_messages;
   sock->is_reliable = socket_is_reliable;
+  sock->can_send = socket_can_send;
+  sock->set_writable_callback = socket_set_writable_callback;
   sock->close = socket_close;
 
   return sock;
@@ -307,5 +312,17 @@ static gboolean
 socket_is_reliable (NiceSocket *sock)
 {
   return FALSE;
+}
+
+static gboolean
+socket_can_send (NiceSocket *sock, NiceAddress *addr)
+{
+  return TRUE;
+}
+
+static void
+socket_set_writable_callback (NiceSocket *sock,
+    NiceSocketWritableCb callback, gpointer user_data)
+{
 }
 
