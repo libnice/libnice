@@ -2010,6 +2010,7 @@ priv_add_new_candidate_discovery_turn (NiceAgent *agent,
     }
 
     local_address = nicesock->addr;
+    nice_address_set_port (&local_address, 0);
     nicesock = NULL;
 
     /* TODO: add support for turn-tcp RFC 6062 */
