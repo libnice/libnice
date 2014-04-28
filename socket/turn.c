@@ -354,7 +354,7 @@ socket_recv_messages (NiceSocket *sock,
          message->buffers[0].buffer != NULL &&
          message->buffers[1].buffer == NULL)) {
       buffer = message->buffers[0].buffer;
-      buffer_length = message->buffers[0].size;
+      buffer_length = message->length;
     } else {
       nice_debug ("%s: **WARNING: SLOW PATH**", G_STRFUNC);
 
