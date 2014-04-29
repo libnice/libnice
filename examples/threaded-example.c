@@ -331,6 +331,7 @@ parse_candidate(char *scand, guint stream_id)
   cand->stream_id = stream_id;
   cand->transport = NICE_CANDIDATE_TRANSPORT_UDP;
   strncpy(cand->foundation, tokens[0], NICE_CANDIDATE_MAX_FOUNDATION);
+  cand->foundation[NICE_CANDIDATE_MAX_FOUNDATION - 1] = 0;
   cand->priority = atoi (tokens[1]);
 
   if (!nice_address_set_from_string(&cand->addr, tokens[2])) {
