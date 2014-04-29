@@ -1,3 +1,14 @@
+libnice 0.1.6 (2014-04-28)
+==========================
+API: nice_agent_restart_stream() to do a ICE restart on a single strema
+API: nice_component_state_to_string() to get a printable name for a component
+  state
+API: nice_agent_forget_relays() to forget the relays set for a
+  specific component, along with nice_agent_restart_stream(), it allows
+  changing the current relay without dropping the connection.
+It is now possible to add relays after the initial candidate gathering.
+Many bug fixes
+
 libnice 0.1.5 (2014-03-06)
 ==========================
 

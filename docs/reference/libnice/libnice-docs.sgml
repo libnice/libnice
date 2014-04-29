@@ -93,6 +93,10 @@
       <title>Index of new symbols in 0.1.5</title>
       <xi:include href="xml/api-index-0.1.5.xml"><xi:fallback/></xi:include>
     </index>
+    <index role="0.1.6">
+      <title>Index of new symbols in 0.1.6</title>
+      <xi:include href="xml/api-index-0.1.6.xml"><xi:fallback/></xi:include>
+    </index>
     <xi:include href="xml/annotation-glossary.xml"><xi:fallback /></xi:include>
   </part>
 </book>

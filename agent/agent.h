@@ -1442,7 +1442,7 @@ nice_agent_get_io_stream (
  * messages.
  *
  * Returns: (transfer none): a string representation of @state
- * Since: UNRELEASED
+ * Since: 0.1.6
  */
 const gchar *
 nice_component_state_to_string (NiceComponentState state);
