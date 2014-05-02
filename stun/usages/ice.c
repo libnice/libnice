@@ -305,7 +305,7 @@ stun_usage_ice_conncheck_create_reply (StunAgent *agent, StunMessage *req,
         src, srclen);
   } else {
     val = stun_message_append_addr (msg, STUN_ATTRIBUTE_MAPPED_ADDRESS,
-        src, srclen);
+        (struct sockaddr *) src, srclen);
   }
 
   if (val != STUN_MESSAGE_RETURN_SUCCESS) {

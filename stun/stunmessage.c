@@ -420,7 +420,7 @@ stun_message_append_string (StunMessage * msg, StunAttribute type,
 
 StunMessageReturn
 stun_message_append_addr (StunMessage *msg, StunAttribute type,
-    const struct sockaddr_storage *addr, socklen_t addrlen)
+    const struct sockaddr *addr, socklen_t addrlen)
 {
   const void *pa;
   uint8_t *ptr;
@@ -430,7 +430,7 @@ stun_message_append_addr (StunMessage *msg, StunAttribute type,
   if ((size_t) addrlen < sizeof (struct sockaddr))
     return STUN_MESSAGE_RETURN_INVALID;
 
-  switch (addr->ss_family)
+  switch (addr->sa_family)
   {
     case AF_INET:
       {
@@ -488,7 +488,8 @@ stun_message_append_xor_addr (StunMessage *msg, StunAttribute type,
   if (val)
     return val;
 
-  return stun_message_append_addr (msg, type, &tmpaddr, addrlen);
+  return stun_message_append_addr (msg, type, (struct sockaddr *) &tmpaddr,
+      addrlen);
 }
 
 StunMessageReturn
@@ -508,7 +509,8 @@ stun_message_append_xor_addr_full (StunMessage *msg, StunAttribute type,
   if (val)
     return val;
 
-  return stun_message_append_addr (msg, type, &tmpaddr, addrlen);
+  return stun_message_append_addr (msg, type, (struct sockaddr *) &tmpaddr,
+      addrlen);
 }
 
 

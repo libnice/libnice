@@ -226,7 +226,7 @@ static int dgram_process (int sock, StunAgent *oldagent, StunAgent *newagent)
             STUN_ATTRIBUTE_XOR_MAPPED_ADDRESS, &addr.storage, addr_len);
       else
          stun_message_append_addr (&response, STUN_ATTRIBUTE_MAPPED_ADDRESS,
-             &addr.storage, addr_len);
+             &addr.addr, addr_len);
       break;
 
     case STUN_SHARED_SECRET:

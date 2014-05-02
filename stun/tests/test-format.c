@@ -146,7 +146,7 @@ check_af (const char *name, int family, socklen_t addrlen)
   stun_agent_init_request (&agent, &msg, buf, sizeof(buf), STUN_BINDING);
 
   if (stun_message_append_addr (&msg, STUN_ATTRIBUTE_MAPPED_ADDRESS,
-          &addr, addrlen) !=
+          (struct sockaddr *) &addr, addrlen) !=
       STUN_MESSAGE_RETURN_UNSUPPORTED_ADDRESS)
     fatal ("Unknown address family test failed");
   if (stun_message_append_xor_addr (&msg, STUN_ATTRIBUTE_XOR_MAPPED_ADDRESS,
@@ -156,7 +156,8 @@ check_af (const char *name, int family, socklen_t addrlen)
 
   addr.ss_family = family;
   if (stun_message_append_addr (&msg, STUN_ATTRIBUTE_MAPPED_ADDRESS,
-          &addr, addrlen - 1) != STUN_MESSAGE_RETURN_INVALID)
+          (struct sockaddr *) &addr, addrlen - 1) !=
+      STUN_MESSAGE_RETURN_INVALID)
     fatal ("Too small %s sockaddr test failed", name);
 
   if (stun_message_append_xor_addr (&msg, STUN_ATTRIBUTE_XOR_MAPPED_ADDRESS,
@@ -164,7 +165,7 @@ check_af (const char *name, int family, socklen_t addrlen)
     fatal ("Too small %s sockaddr xor test failed", name);
 
   if (stun_message_append_addr (&msg, STUN_ATTRIBUTE_MAPPED_ADDRESS,
-          &addr, addrlen) != STUN_MESSAGE_RETURN_SUCCESS)
+          (struct sockaddr *) &addr, addrlen) != STUN_MESSAGE_RETURN_SUCCESS)
     fatal ("%s sockaddr test failed", name);
 
   if (stun_message_append_xor_addr (&msg, STUN_ATTRIBUTE_XOR_MAPPED_ADDRESS,

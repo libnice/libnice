@@ -662,7 +662,7 @@ socket_send_message (NiceSocket *sock, const NiceAddress *to,
           goto send;
       }
       if (stun_message_append_addr (&msg, STUN_ATTRIBUTE_DESTINATION_ADDRESS,
-              &sa.storage, sizeof(sa)) !=
+              &sa.addr, sizeof(sa)) !=
           STUN_MESSAGE_RETURN_SUCCESS)
         goto send;
 
@@ -1831,7 +1831,7 @@ priv_add_channel_binding (TurnPriv *priv, const NiceAddress *peer)
 
     if (stun_message_append_addr (&msg->message,
             STUN_ATTRIBUTE_DESTINATION_ADDRESS,
-            &sa.storage, sizeof(sa))
+            &sa.addr, sizeof(sa))
         != STUN_MESSAGE_RETURN_SUCCESS) {
       g_free (msg);
       return FALSE;

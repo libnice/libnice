@@ -795,7 +795,7 @@ StunMessageReturn stun_message_append_string (StunMessage *msg,
  * %STUN_MESSAGE_RETURN_UNSUPPORTED_ADDRESS if the address family is unknown.
  */
 StunMessageReturn stun_message_append_addr (StunMessage * msg,
-    StunAttribute type, const struct sockaddr_storage *addr, socklen_t addrlen);
+    StunAttribute type, const struct sockaddr *addr, socklen_t addrlen);
 
 /**
  * stun_message_append_xor_addr:
