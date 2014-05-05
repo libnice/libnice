@@ -1,3 +1,7 @@
+libnice 0.1.7 (2014-05-05)
+==========================
+Fix undesired API change that broke Farstream unit testsx
+
 libnice 0.1.6 (2014-04-28)
 ==========================
 API: nice_agent_restart_stream() to do a ICE restart on a single strema
