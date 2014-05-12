@@ -58,7 +58,7 @@ typedef struct
   TurnServer *turn;
   StunAgent stun_agent;
   StunTimer timer;
-  uint8_t stun_buffer[STUN_MAX_MESSAGE_SIZE];
+  uint8_t stun_buffer[STUN_MAX_MESSAGE_SIZE_IPV6];
   StunMessage stun_message;
   uint8_t stun_resp_buffer[STUN_MAX_MESSAGE_SIZE];
   StunMessage stun_resp_msg;
@@ -76,7 +76,7 @@ typedef struct
   GSource *timer_source;
   GSource *tick_source;
   StunTimer timer;
-  uint8_t stun_buffer[STUN_MAX_MESSAGE_SIZE];
+  uint8_t stun_buffer[STUN_MAX_MESSAGE_SIZE_IPV6];
   StunMessage stun_message;
   uint8_t stun_resp_buffer[STUN_MAX_MESSAGE_SIZE];
   StunMessage stun_resp_msg;

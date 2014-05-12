@@ -666,7 +666,7 @@ static gboolean priv_conn_keepalive_tick_unlocked (NiceAgent *agent)
         NiceAddress stun_server;
         if (nice_address_set_from_string (&stun_server, agent->stun_server_ip)) {
           StunAgent stun_agent;
-          uint8_t stun_buffer[STUN_MAX_MESSAGE_SIZE];
+          uint8_t stun_buffer[STUN_MAX_MESSAGE_SIZE_IPV6];
           StunMessage stun_message;
           size_t buffer_len = 0;
 
