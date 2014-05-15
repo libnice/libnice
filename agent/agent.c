@@ -2482,6 +2482,7 @@ nice_agent_gather_candidates (
         NiceCandidateTransport transport;
         guint current_port;
         guint start_port;
+        HostCandidateResult res = HOST_CANDIDATE_CANT_CREATE_SOCKET;
 
         if ((agent->use_ice_udp == FALSE && add_type == ADD_HOST_UDP) ||
             (agent->use_ice_tcp == FALSE && add_type != ADD_HOST_UDP))
@@ -2507,20 +2508,28 @@ nice_agent_gather_candidates (
         current_port = start_port;
 
         host_candidate = NULL;
-        while (host_candidate == NULL) {
+        while (res == HOST_CANDIDATE_CANT_CREATE_SOCKET) {
           nice_debug ("Agent %p: Trying to create host candidate on port %d", agent, current_port);
           nice_address_set_port (addr, current_port);
-          host_candidate = discovery_add_local_host_candidate (agent, stream->id,
-              cid, addr, transport);
+          res =  discovery_add_local_host_candidate (agent, stream->id, cid,
+              addr, transport, &host_candidate);
           if (current_port > 0)
             current_port++;
           if (current_port > component->max_port) current_port = component->min_port;
           if (current_port == 0 || current_port == start_port)
             break;
         }
-        nice_address_set_port (addr, 0);
 
-        if (!host_candidate) {
+        if (res == HOST_CANDIDATE_REDUNDANT) {
+          nice_debug ("Agent %p: Ignoring local candidate, it's redundant",
+                      agent);
+          continue;
+        } else if (res == HOST_CANDIDATE_FAILED) {
+          nice_debug ("Agent %p: Could ot retrieive component %d/%d", agent,
+              stream->id, cid);
+          ret = FALSE;
+          goto error;
+        } else if (res == HOST_CANDIDATE_CANT_CREATE_SOCKET) {
           if (nice_debug_is_enabled ()) {
             gchar ip[NICE_ADDRESS_STRING_LEN];
             nice_address_to_string (addr, ip);
@@ -2531,6 +2540,9 @@ nice_agent_gather_candidates (
           ret = FALSE;
           goto error;
         }
+
+        nice_address_set_port (addr, 0);
+
 
         if (agent->reliable)
           nice_socket_set_writable_callback (host_candidate->sockptr,
@@ -4077,7 +4089,8 @@ nice_agent_send_messages_nonblocking_internal (
               n_sent_framed = nice_socket_send_messages_reliable (sock, addr,
                   &local_message, 1);
 
-            if (!nice_socket_can_send (sock, addr))
+            if (component->tcp_writable_cancellable &&
+                !nice_socket_can_send (sock, addr))
               g_cancellable_reset (component->tcp_writable_cancellable);
 
             if (n_sent_framed < 0 && n_sent == 0)

@@ -459,20 +459,22 @@ void priv_generate_candidate_credentials (NiceAgent *agent,
  *
  * @return pointer to the created candidate, or NULL on error
  */
-NiceCandidate *discovery_add_local_host_candidate (
+HostCandidateResult discovery_add_local_host_candidate (
   NiceAgent *agent,
   guint stream_id,
   guint component_id,
   NiceAddress *address,
-  NiceCandidateTransport transport)
+  NiceCandidateTransport transport,
+  NiceCandidate **outcandidate)
 {
   NiceCandidate *candidate;
   Component *component;
   Stream *stream;
   NiceSocket *nicesock = NULL;
+  HostCandidateResult res = HOST_CANDIDATE_FAILED;
 
   if (!agent_find_component (agent, stream_id, component_id, &stream, &component))
-    return NULL;
+    return res;
 
   candidate = nice_candidate_new (NICE_CANDIDATE_TYPE_HOST);
   candidate->transport = transport;
@@ -507,26 +509,33 @@ NiceCandidate *discovery_add_local_host_candidate (
   } else {
     /* TODO: Add TCP-SO */
   }
-  if (!nicesock)
+  if (!nicesock) {
+    res = HOST_CANDIDATE_CANT_CREATE_SOCKET;
     goto errors;
+  }
 
   candidate->sockptr = nicesock;
   candidate->addr = nicesock->addr;
   candidate->base_addr = nicesock->addr;
 
-  if (!priv_add_local_candidate_pruned (agent, stream_id, component, candidate))
+  if (!priv_add_local_candidate_pruned (agent, stream_id, component,
+          candidate)) {
+    res = HOST_CANDIDATE_REDUNDANT;
     goto errors;
+  }
 
   _priv_set_socket_tos (agent, nicesock, stream->tos);
   component_attach_socket (component, nicesock);
 
-  return candidate;
+  *outcandidate = candidate;
+
+  return HOST_CANDIDATE_SUCCESS;
 
 errors:
   nice_candidate_free (candidate);
   if (nicesock)
     nice_socket_free (nicesock);
-  return NULL;
+  return res;
 }
 
 /*

@@ -92,13 +92,21 @@ void discovery_free (NiceAgent *agent);
 void discovery_prune_stream (NiceAgent *agent, guint stream_id);
 void discovery_schedule (NiceAgent *agent);
 
-NiceCandidate *
+typedef enum {
+  HOST_CANDIDATE_SUCCESS,
+  HOST_CANDIDATE_FAILED,
+  HOST_CANDIDATE_CANT_CREATE_SOCKET,
+  HOST_CANDIDATE_REDUNDANT
+} HostCandidateResult;
+
+HostCandidateResult
 discovery_add_local_host_candidate (
   NiceAgent *agent,
   guint stream_id,
   guint component_id,
   NiceAddress *address,
-  NiceCandidateTransport transport);
+  NiceCandidateTransport transport,
+  NiceCandidate **candidate);
 
 NiceCandidate*
 discovery_add_relay_candidate (
