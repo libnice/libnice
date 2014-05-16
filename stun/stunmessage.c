@@ -538,11 +538,11 @@ stun_message_append_error (StunMessage *msg, StunError code)
  * they’re STUN packets. If they look like they might be, their buffers are
  * compacted to allow a more thorough check. */
 ssize_t stun_message_validate_buffer_length_fast (StunInputVector *buffers,
-    unsigned int n_buffers, size_t total_length, bool has_padding)
+    int n_buffers, size_t total_length, bool has_padding)
 {
   size_t mlen;
 
-  if (total_length < 1 || n_buffers < 1)
+  if (total_length < 1 || n_buffers == 0 || buffers[0].buffer == NULL)
   {
     stun_debug ("STUN error: No data!\n");
     return STUN_MESSAGE_BUFFER_INVALID;
@@ -569,7 +569,8 @@ ssize_t stun_message_validate_buffer_length_fast (StunInputVector *buffers,
     unsigned int i;
 
     /* Skip bytes. */
-    for (i = 0; i < n_buffers; i++) {
+    for (i = 0; (n_buffers >= 0 && i < (unsigned int) n_buffers) ||
+             (n_buffers < 0 && buffers[i].buffer != NULL); i++) {
       if (buffers[i].size <= skip_remaining)
         skip_remaining -= buffers[i].size;
       else

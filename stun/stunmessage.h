@@ -904,7 +904,8 @@ typedef struct {
  * stun_message_validate_buffer_length_fast:
  * @buffers: (array length=n_buffers) (in caller-allocated): array of contiguous
  * #StunInputVectors containing already-received message data
- * @n_buffers: number of entries in @buffers
+ * @n_buffers: number of entries in @buffers or if -1 , then buffers is
+ *  terminated by a #StunInputVector with the buffer pointer being %NULL.
  * @total_length: total number of valid bytes stored consecutively in @buffers
  * @has_padding: %TRUE if attributes should be padded to 4-byte boundaries
  *
@@ -926,7 +927,7 @@ typedef struct {
  * Since: 0.1.5
  */
 ssize_t stun_message_validate_buffer_length_fast (StunInputVector *buffers,
-    unsigned int n_buffers, size_t total_length, bool has_padding);
+    int n_buffers, size_t total_length, bool has_padding);
 
 /**
  * stun_message_id:
