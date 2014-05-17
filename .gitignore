@@ -42,6 +42,7 @@ ltmain.sh
 missing
 stamp-h.in
 stamp-h1
+test-driver
 
 # top level stuff
 debian
