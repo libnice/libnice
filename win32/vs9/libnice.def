@@ -5,6 +5,7 @@ EXPORTS
 nice_address_copy_to_sockaddr
 nice_address_dup
 nice_address_equal
+nice_address_equal_no_port
 nice_address_free
 nice_address_get_port
 nice_address_init

@@ -391,3 +391,23 @@ nice_address_ip_version (const NiceAddress *addr)
       return 0;
     }
 }
+
+NICEAPI_EXPORT gboolean
+nice_address_equal_no_port (const NiceAddress *a, const NiceAddress *b)
+{
+  if (a->s.addr.sa_family != b->s.addr.sa_family)
+    return FALSE;
+
+  switch (a->s.addr.sa_family)
+    {
+    case AF_INET:
+      return (a->s.ip4.sin_addr.s_addr == b->s.ip4.sin_addr.s_addr);
+
+    case AF_INET6:
+      return IN6_ARE_ADDR_EQUAL (&a->s.ip6.sin6_addr, &b->s.ip6.sin6_addr)
+          && (a->s.ip6.sin6_scope_id == b->s.ip6.sin6_scope_id);
+
+    default:
+      g_return_val_if_reached (FALSE);
+    }
+}

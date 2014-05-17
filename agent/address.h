@@ -235,11 +235,28 @@ nice_address_copy_to_sockaddr (const NiceAddress *addr, struct sockaddr *sin);
  * @b: Second #NiceAddress to compare
  *
  * Compares two #NiceAddress structures to see if they contain the same address
+ * and the same port.
  *
  * Returns: %TRUE if @a and @b are the same address, %FALSE if they are different
  */
 gboolean
 nice_address_equal (const NiceAddress *a, const NiceAddress *b);
+
+/**
+ * nice_address_equal_no_port:
+ * @a: First #NiceAddress to compare
+ * @b: Second #NiceAddress to compare
+ *
+ * Compares two #NiceAddress structures to see if they contain the same address,
+ * ignoring the port.
+ *
+ * Returns: %TRUE if @a and @b are the same address, %FALSE if they
+ * are different
+ *
+ * Since: UNRELEASED
+ */
+gboolean
+nice_address_equal_no_port (const NiceAddress *a, const NiceAddress *b);
 
 /**
  * nice_address_to_string:
