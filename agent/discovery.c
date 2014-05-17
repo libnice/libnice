@@ -324,19 +324,14 @@ static void priv_assign_foundation (NiceAgent *agent, NiceCandidate *candidate)
       Component *component = j->data;
       for (k = component->local_candidates; k; k = k->next) {
 	NiceCandidate *n = k->data;
-	NiceAddress temp = n->base_addr;
 
 	/* note: candidate must not on the local candidate list */
 	g_assert (candidate != n);
 
-	/* note: ports are not to be compared */
-	nice_address_set_port (&temp,
-               nice_address_get_port (&candidate->base_addr));
-
 	if (candidate->type == n->type &&
             candidate->transport == n->transport &&
             candidate->stream_id == n->stream_id &&
-	    nice_address_equal (&candidate->base_addr, &temp) &&
+	    nice_address_equal_no_port (&candidate->base_addr, &n->base_addr) &&
             !(agent->compatibility == NICE_COMPATIBILITY_GOOGLE &&
                 n->type == NICE_CANDIDATE_TYPE_RELAYED)) {
 	  /* note: currently only one STUN/TURN server per stream at a
@@ -379,19 +374,14 @@ static void priv_assign_remote_foundation (NiceAgent *agent, NiceCandidate *cand
 
       for (k = c->remote_candidates; k; k = k->next) {
 	NiceCandidate *n = k->data;
-	NiceAddress temp = n->addr;
 
 	/* note: candidate must not on the remote candidate list */
 	g_assert (candidate != n);
 
-	/* note: ports are not to be compared */
-	nice_address_set_port (&temp,
-               nice_address_get_port (&candidate->base_addr));
-
 	if (candidate->type == n->type &&
             candidate->transport == n->transport &&
             candidate->stream_id == n->stream_id &&
-	    nice_address_equal (&candidate->addr, &temp)) {
+	    nice_address_equal_no_port (&candidate->addr, &n->addr)) {
 	  /* note: currently only one STUN/TURN server per stream at a
 	   *       time is supported, so there is no need to check
 	   *       for candidates that would otherwise share the
