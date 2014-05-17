@@ -389,6 +389,7 @@ static void priv_assign_remote_foundation (NiceAgent *agent, NiceCandidate *cand
                nice_address_get_port (&candidate->base_addr));
 
 	if (candidate->type == n->type &&
+            candidate->transport == n->transport &&
             candidate->stream_id == n->stream_id &&
 	    nice_address_equal (&candidate->addr, &temp)) {
 	  /* note: currently only one STUN/TURN server per stream at a
