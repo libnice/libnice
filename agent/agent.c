@@ -123,6 +123,9 @@ enum
   SIGNAL_INITIAL_BINDING_REQUEST_RECEIVED,
   SIGNAL_RELIABLE_TRANSPORT_WRITABLE,
   SIGNAL_STREAMS_REMOVED,
+  SIGNAL_NEW_CANDIDATE_FULL,
+  SIGNAL_NEW_REMOTE_CANDIDATE_FULL,
+
   N_SIGNALS,
 };
 
@@ -756,7 +759,11 @@ nice_agent_class_init (NiceAgentClass *klass)
    * @foundation: The foundation of the new candidate
    *
    * This signal is fired when the agent discovers a new local candidate.
-   * <para> See also: #NiceAgent::candidate-gathering-done </para>
+   * When this signal is emitted, a matching #NiceAgent::new-candidate-full is
+   * also emitted with the candidate.
+   *
+   * See also: #NiceAgent::candidate-gathering-done,
+   * #NiceAgent::new-candidate-full
    */
   signals[SIGNAL_NEW_CANDIDATE] =
       g_signal_new (
@@ -779,8 +786,13 @@ nice_agent_class_init (NiceAgentClass *klass)
    * @component_id: The ID of the component
    * @foundation: The foundation of the new candidate
    *
-   * This signal is fired when the agent discovers a new remote candidate.
-   * This can happen with peer reflexive candidates.
+   * This signal is fired when the agent discovers a new remote
+   * candidate.  This can happen with peer reflexive candidates.  When
+   * this signal is emitted, a matching
+   * #NiceAgent::new-remote-candidate-full is also emitted with the
+   * candidate.
+   *
+   * See also: #NiceAgent::new-remote-candidate-full
    */
   signals[SIGNAL_NEW_REMOTE_CANDIDATE] =
       g_signal_new (
@@ -869,6 +881,59 @@ nice_agent_class_init (NiceAgentClass *klass)
           G_TYPE_NONE,
           1,
           NICE_TYPE_AGENT_STREAM_IDS,
+          G_TYPE_INVALID);
+
+
+  /**
+   * NiceAgent::new-candidate-full
+   * @agent: The #NiceAgent object
+   * @candidate: The new #NiceCandidate
+   *
+   * This signal is fired when the agent discovers a new local candidate.
+   * When this signal is emitted, a matching #NiceAgent::new-candidate is
+   * also emitted with the candidate's foundation.
+   *
+   * See also: #NiceAgent::candidate-gathering-done,
+   * #NiceAgent::new-candidate
+   */
+  signals[SIGNAL_NEW_CANDIDATE_FULL] =
+      g_signal_new (
+          "new-candidate-full",
+          G_OBJECT_CLASS_TYPE (klass),
+          G_SIGNAL_RUN_LAST,
+          0,
+          NULL,
+          NULL,
+          NULL,
+          G_TYPE_NONE,
+          1,
+          NICE_TYPE_CANDIDATE,
+          G_TYPE_INVALID);
+
+  /**
+   * NiceAgent::new-remote-candidate-full
+   * @agent: The #NiceAgent object
+   * @candidate: The new #NiceCandidate
+   *
+   * This signal is fired when the agent discovers a new remote candidate.
+   * This can happen with peer reflexive candidates.
+   * When this signal is emitted, a matching #NiceAgent::new-remote-candidate is
+   * also emitted with the candidate's foundation.
+   *
+   * See also: #NiceAgent::new-remote-candidate
+   */
+  signals[SIGNAL_NEW_REMOTE_CANDIDATE_FULL] =
+      g_signal_new (
+          "new-remote-candidate-full",
+          G_OBJECT_CLASS_TYPE (klass),
+          G_SIGNAL_RUN_LAST,
+          0,
+          NULL,
+          NULL,
+          NULL,
+          G_TYPE_NONE,
+          1,
+          NICE_TYPE_CANDIDATE,
           G_TYPE_INVALID);
 
   /* Init debug options depending on env variables */
@@ -1872,12 +1937,16 @@ void agent_signal_new_selected_pair (NiceAgent *agent, guint stream_id,
 
 void agent_signal_new_candidate (NiceAgent *agent, NiceCandidate *candidate)
 {
+  agent_queue_signal (agent, signals[SIGNAL_NEW_CANDIDATE_FULL],
+      candidate);
   agent_queue_signal (agent, signals[SIGNAL_NEW_CANDIDATE],
       candidate->stream_id, candidate->component_id, candidate->foundation);
 }
 
 void agent_signal_new_remote_candidate (NiceAgent *agent, NiceCandidate *candidate)
 {
+  agent_queue_signal (agent, signals[SIGNAL_NEW_REMOTE_CANDIDATE_FULL],
+      candidate);
   agent_queue_signal (agent, signals[SIGNAL_NEW_REMOTE_CANDIDATE],
       candidate->stream_id, candidate->component_id, candidate->foundation);
 }
