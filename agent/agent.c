@@ -123,6 +123,7 @@ enum
   SIGNAL_INITIAL_BINDING_REQUEST_RECEIVED,
   SIGNAL_RELIABLE_TRANSPORT_WRITABLE,
   SIGNAL_STREAMS_REMOVED,
+  SIGNAL_NEW_SELECTED_PAIR_FULL,
   SIGNAL_NEW_CANDIDATE_FULL,
   SIGNAL_NEW_REMOTE_CANDIDATE_FULL,
 
@@ -734,8 +735,13 @@ nice_agent_class_init (NiceAgentClass *klass)
    * @lfoundation: The local foundation of the selected candidate pair
    * @rfoundation: The remote foundation of the selected candidate pair
    *
-   * This signal is fired once a candidate pair is selected for data transfer for
-   * a stream's component
+   * This signal is fired once a candidate pair is selected for data
+   * transfer for a stream's component This is emitted along with
+   * #NiceAgent::new-selected-pair-full which has the whole candidate,
+   * the Foundation of a Candidate is not a unique identifier.
+   *
+   * See also: #NiceAgent::new-selected-pair-full
+   * Deprecated: UNRELEASED: Use #NiceAgent::new-selected-pair-full
    */
   signals[SIGNAL_NEW_SELECTED_PAIR] =
       g_signal_new (
@@ -885,6 +891,34 @@ nice_agent_class_init (NiceAgentClass *klass)
           NICE_TYPE_AGENT_STREAM_IDS,
           G_TYPE_INVALID);
 
+
+  /**
+   * NiceAgent::new-selected-pair-full
+   * @agent: The #NiceAgent object
+   * @stream_id: The ID of the stream
+   * @component_id: The ID of the component
+   * @lcandidate: The local #NiceCandidate of the selected candidate pair
+   * @rcandidate: The remote #NiceCandidate of the selected candidate pair
+   *
+   * This signal is fired once a candidate pair is selected for data
+   * transfer for a stream's component. This is emitted along with
+   * #NiceAgent::new-selected-pair.
+   *
+   * See also: #NiceAgent::new-selected-pair
+   * Since: UNRELEASED
+   */
+  signals[SIGNAL_NEW_SELECTED_PAIR_FULL] =
+      g_signal_new (
+          "new-selected-pair-full",
+          G_OBJECT_CLASS_TYPE (klass),
+          G_SIGNAL_RUN_LAST,
+          0,
+          NULL,
+          NULL,
+          NULL,
+          G_TYPE_NONE,
+          4, G_TYPE_UINT, G_TYPE_UINT, NICE_TYPE_CANDIDATE, NICE_TYPE_CANDIDATE,
+          G_TYPE_INVALID);
 
   /**
    * NiceAgent::new-candidate-full
@@ -1930,6 +1964,8 @@ void agent_signal_new_selected_pair (NiceAgent *agent, guint stream_id,
         "PEER-RFLX" : "???");
   }
 
+  agent_queue_signal (agent, signals[SIGNAL_NEW_SELECTED_PAIR_FULL],
+      stream_id, component_id, lcandidate, rcandidate);
   agent_queue_signal (agent, signals[SIGNAL_NEW_SELECTED_PAIR],
       stream_id, component_id, lcandidate->foundation, rcandidate->foundation);
 
