@@ -391,13 +391,13 @@ int main (void)
   global_mainloop = g_main_loop_new (NULL, FALSE);
 
   /* step: create the agents L and R */
-  lagent = nice_agent_new (g_main_loop_get_context (global_mainloop),
+  lagent = nice_agent_new_reliable (g_main_loop_get_context (global_mainloop),
       NICE_COMPATIBILITY_RFC5245);
-  ragent = nice_agent_new (g_main_loop_get_context (global_mainloop),
+  ragent = nice_agent_new_reliable (g_main_loop_get_context (global_mainloop),
       NICE_COMPATIBILITY_RFC5245);
 
-  g_object_set (G_OBJECT (lagent), "ice-udp", FALSE,  NULL);
-  g_object_set (G_OBJECT (ragent), "ice-udp", FALSE,  NULL);
+  g_object_set (G_OBJECT (lagent), "ice-udp", FALSE, NULL);
+  g_object_set (G_OBJECT (ragent), "ice-udp", FALSE, NULL);
   nice_agent_set_software (lagent, "Test-icetcp, Left Agent");
   nice_agent_set_software (ragent, "Test-icetcp, Right Agent");
 

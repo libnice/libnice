@@ -1787,12 +1787,13 @@ void agent_gathering_done (NiceAgent *agent)
 	if (nice_debug_is_enabled ()) {
 	  gchar tmpbuf[INET6_ADDRSTRLEN];
 	  nice_address_to_string (&local_candidate->addr, tmpbuf);
-          nice_debug ("Agent %p: gathered %s local candidate : [%s]:%u"
-              " for s%d/c%d. U/P '%s'/'%s'", agent,
+          nice_debug ("Agent %p: gathered %s local candidate: [%s]:%u"
+              " for s%d/c%d. U/P '%s'/'%s' prio: %u", agent,
               _transport_to_string (local_candidate->transport),
               tmpbuf, nice_address_get_port (&local_candidate->addr),
               local_candidate->stream_id, local_candidate->component_id,
-              local_candidate->username, local_candidate->password);
+              local_candidate->username, local_candidate->password,
+              local_candidate->priority);
 	}
         for (l = component->remote_candidates; l; l = l->next) {
           NiceCandidate *remote_candidate = l->data;

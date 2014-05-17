@@ -512,9 +512,11 @@ HostCandidateResult discovery_add_local_host_candidate (
   if (transport == NICE_CANDIDATE_TRANSPORT_UDP) {
     nicesock = nice_udp_bsd_socket_new (address);
   } else if (transport == NICE_CANDIDATE_TRANSPORT_TCP_ACTIVE) {
-    nicesock = nice_tcp_active_socket_new (agent->main_context, address);
+    nicesock = nice_tcp_active_socket_new (agent->main_context, address,
+        agent->reliable);
   } else if (transport == NICE_CANDIDATE_TRANSPORT_TCP_PASSIVE) {
-    nicesock = nice_tcp_passive_socket_new (agent->main_context, address);
+    nicesock = nice_tcp_passive_socket_new (agent->main_context, address,
+        agent->reliable);
   } else {
     /* TODO: Add TCP-SO */
   }
