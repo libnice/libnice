@@ -308,6 +308,22 @@ static guint priv_highest_remote_foundation (Component *component)
   g_return_val_if_reached (highest);
 }
 
+/* From RFC 5245 section 4.1.3:
+ *
+ *   for reflexive and relayed candidates, the STUN or TURN servers
+ *   used to obtain them have the same IP address.
+ */
+static gboolean
+priv_compare_turn_servers (TurnServer *turn1, TurnServer *turn2)
+{
+  if (turn1 == turn2)
+    return TRUE;
+  if (turn1 == NULL || turn2 == NULL)
+    return FALSE;
+
+  return nice_address_equal_no_port (&turn1->server, &turn2->server);
+}
+
 /*
  * Assings a foundation to the candidate.
  *
@@ -332,12 +348,14 @@ static void priv_assign_foundation (NiceAgent *agent, NiceCandidate *candidate)
             candidate->transport == n->transport &&
             candidate->stream_id == n->stream_id &&
 	    nice_address_equal_no_port (&candidate->base_addr, &n->base_addr) &&
+            (candidate->type != NICE_CANDIDATE_TYPE_RELAYED ||
+                priv_compare_turn_servers (candidate->turn, n->turn)) &&
             !(agent->compatibility == NICE_COMPATIBILITY_GOOGLE &&
                 n->type == NICE_CANDIDATE_TYPE_RELAYED)) {
-	  /* note: currently only one STUN/TURN server per stream at a
+	  /* note: currently only one STUN server per stream at a
 	   *       time is supported, so there is no need to check
 	   *       for candidates that would otherwise share the
-	   *       foundation, but have different STUN/TURN servers */
+	   *       foundation, but have different STUN servers */
 	  g_strlcpy (candidate->foundation, n->foundation,
               NICE_CANDIDATE_MAX_FOUNDATION);
           if (n->username) {
@@ -382,10 +400,9 @@ static void priv_assign_remote_foundation (NiceAgent *agent, NiceCandidate *cand
             candidate->transport == n->transport &&
             candidate->stream_id == n->stream_id &&
 	    nice_address_equal_no_port (&candidate->addr, &n->addr)) {
-	  /* note: currently only one STUN/TURN server per stream at a
-	   *       time is supported, so there is no need to check
-	   *       for candidates that would otherwise share the
-	   *       foundation, but have different STUN/TURN servers */
+	  /* note: No need to check for STUN/TURN servers, as these candidate
+           * will always be peer reflexive, never relayed or serve reflexive.
+           */
 	  g_strlcpy (candidate->foundation, n->foundation,
               NICE_CANDIDATE_MAX_FOUNDATION);
           if (n->username) {
