@@ -1859,8 +1859,8 @@ process_queued_tcp_packets (NiceAgent *agent, Stream *stream,
   guint component_id = component->id;
 
   if (component->selected_pair.local == NULL ||
-      (!nice_socket_is_reliable (component->selected_pair.local->sockptr)
-          && component->tcp == NULL))
+      component->tcp == NULL ||
+      nice_socket_is_reliable (component->selected_pair.local->sockptr))
     return;
 
   nice_debug ("%s: Sending outstanding packets for agent %p.", G_STRFUNC,
