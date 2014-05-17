@@ -226,6 +226,15 @@ nice_candidate_free (NiceCandidate *candidate);
 NiceCandidate *
 nice_candidate_copy (const NiceCandidate *candidate);
 
+GType nice_candidate_get_type (void);
+
+/**
+ * NICE_TYPE_CANDIDATE:
+ *
+ * A boxed type for a #NiceCandidate.
+ */
+#define NICE_TYPE_CANDIDATE nice_candidate_get_type ()
+
 G_END_DECLS
 
 #endif /* _CANDIDATE_H */

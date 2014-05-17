@@ -53,6 +53,9 @@
 #include "agent.h"
 #include "component.h"
 
+G_DEFINE_BOXED_TYPE (NiceCandidate, nice_candidate, nice_candidate_copy,
+    nice_candidate_free);
+
 /* (ICE 4.1.1 "Gathering Candidates") ""Every candidate is a transport
  * address. It also has a type and a base. Three types are defined and 
  * gathered by this specification - host candidates, server reflexive 
