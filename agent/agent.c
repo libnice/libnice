@@ -764,6 +764,7 @@ nice_agent_class_init (NiceAgentClass *klass)
    *
    * See also: #NiceAgent::candidate-gathering-done,
    * #NiceAgent::new-candidate-full
+   * Deprecated: UNRELEASED: Use #NiceAgent::new-candiate-full
    */
   signals[SIGNAL_NEW_CANDIDATE] =
       g_signal_new (
@@ -793,6 +794,7 @@ nice_agent_class_init (NiceAgentClass *klass)
    * candidate.
    *
    * See also: #NiceAgent::new-remote-candidate-full
+   * Deprecated: UNRELEASED: Use #NiceAgent::new-remote-candiate-full
    */
   signals[SIGNAL_NEW_REMOTE_CANDIDATE] =
       g_signal_new (
@@ -895,6 +897,7 @@ nice_agent_class_init (NiceAgentClass *klass)
    *
    * See also: #NiceAgent::candidate-gathering-done,
    * #NiceAgent::new-candidate
+   * Since: UNRELEASED
    */
   signals[SIGNAL_NEW_CANDIDATE_FULL] =
       g_signal_new (
@@ -921,6 +924,7 @@ nice_agent_class_init (NiceAgentClass *klass)
    * also emitted with the candidate's foundation.
    *
    * See also: #NiceAgent::new-remote-candidate
+   * Since: UNRELEASED
    */
   signals[SIGNAL_NEW_REMOTE_CANDIDATE_FULL] =
       g_signal_new (
