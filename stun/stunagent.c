@@ -192,7 +192,7 @@ StunValidationStatus stun_agent_validate (StunAgent *agent, StunMessage *msg,
       (stun_message_get_class (msg) == STUN_ERROR &&
        stun_message_find_error (msg, &error_code) ==
           STUN_MESSAGE_RETURN_SUCCESS &&
-       (error_code == 400 || error_code == 401)) ||
+       (error_code == 400 || error_code == 401 || error_code == 438)) ||
       (stun_message_get_class (msg) == STUN_INDICATION &&
           (agent->usage_flags & STUN_AGENT_USAGE_LONG_TERM_CREDENTIALS ||
               agent->usage_flags & STUN_AGENT_USAGE_NO_INDICATION_AUTH));
