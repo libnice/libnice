@@ -4619,6 +4619,10 @@ component_io_cb (GSocket *gsocket, GIOCondition condition, gpointer user_data)
       if (retval == RECV_SUCCESS && local_message.length > 0)
         component_emit_io_callback (component, local_buf, local_message.length);
 
+      if (g_source_is_destroyed (g_main_current_source ())) {
+        nice_debug ("Component IO source disappeared during the callback");
+        goto out;
+      }
       has_io_callback = component_has_io_callback (component);
     }
   } else if (component->recv_messages != NULL) {
@@ -4670,6 +4674,11 @@ done:
   g_object_unref (agent);
 
   return !remove_source;
+
+out:
+  g_object_unref (agent);
+  agent_unlock_and_emit (agent);
+  return G_SOURCE_REMOVE;
 }
 
 NICEAPI_EXPORT gboolean
