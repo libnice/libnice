@@ -12,7 +12,7 @@ AC_CANONICAL_TARGET
 
 AC_CONFIG_SRCDIR([agent/agent.c])
 AC_CONFIG_HEADERS([config.h])
-AM_INIT_AUTOMAKE([-Wall])
+AM_INIT_AUTOMAKE([1.12 -Wall])
 
 AC_CONFIG_FILES([
 	Makefile
@@ -46,11 +46,8 @@ LIBNICE_LIBVERSION=${LIBNICE_CURRENT}:${LIBNICE_REVISION}:${LIBNICE_AGE}
 LIBNICE_LT_LDFLAGS="-version-info ${LIBNICE_LIBVERSION} -no-undefined"
 AC_SUBST(LIBNICE_LT_LDFLAGS)
 
-
-dnl use pretty build output with automake >= 1.11
-m4_ifdef([AM_SILENT_RULES],[AM_SILENT_RULES([yes])],
-  [AM_DEFAULT_VERBOSITY=1
-   AC_SUBST(AM_DEFAULT_VERBOSITY)])
+dnl use pretty build output
+AM_SILENT_RULES([yes])
 
 
 # Checks for programs.
