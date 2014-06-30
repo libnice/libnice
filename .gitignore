@@ -177,3 +177,6 @@ win32/vs9/libnice/
 glib/
 *.exe
 ar-lib
+
+# Code coverage
+lcov/
