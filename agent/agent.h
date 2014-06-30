@@ -733,7 +733,7 @@ nice_agent_send_messages_nonblocking (
  * @stream_id: The ID of the stream
  * @component_id: The ID of the component
  *
- * Retreive from the agent the list of all local candidates
+ * Retrieve from the agent the list of all local candidates
  * for a stream's component
  *
  <note>
