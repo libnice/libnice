@@ -82,7 +82,7 @@ struct _CandidatePair
 {
   NiceCandidate *local;
   NiceCandidate *remote;
-  guint64 priority;           /**< candidate pair priority */
+  guint64 priority;           /* candidate pair priority */
   CandidatePairKeepalive keepalive;
 };
 
@@ -138,48 +138,48 @@ io_callback_data_free (IOCallbackData *data);
 struct _Component
 {
   NiceComponentType type;
-  guint id;                    /**< component id */
+  guint id;                    /* component id */
   NiceComponentState state;
-  GSList *local_candidates;    /**< list of Candidate objs */
-  GSList *remote_candidates;   /**< list of Candidate objs */
-  GSList *socket_sources;      /**< list of SocketSource objs; must only grow monotonically */
-  guint socket_sources_age;    /**< incremented when socket_sources changes */
-  GSList *incoming_checks;     /**< list of IncomingCheck objs */
-  GList *turn_servers;             /**< List of TURN servers */
-  CandidatePair selected_pair; /**< independent from checklists, 
+  GSList *local_candidates;    /* list of Candidate objs */
+  GSList *remote_candidates;   /* list of Candidate objs */
+  GSList *socket_sources;      /* list of SocketSource objs; must only grow monotonically */
+  guint socket_sources_age;    /* incremented when socket_sources changes */
+  GSList *incoming_checks;     /* list of IncomingCheck objs */
+  GList *turn_servers;             /* List of TURN servers */
+  CandidatePair selected_pair; /* independent from checklists, 
 				    see ICE 11.1. "Sending Media" (ID-19) */
-  NiceCandidate *restart_candidate; /**< for storing active remote candidate during a restart */
-  NiceCandidate *turn_candidate; /**< for storing active turn candidate if turn servers have been cleared */
+  NiceCandidate *restart_candidate; /* for storing active remote candidate during a restart */
+  NiceCandidate *turn_candidate; /* for storing active turn candidate if turn servers have been cleared */
   /* I/O handling. The main context must always be non-NULL, and is used for all
    * socket recv() operations. All io_callback emissions are invoked in this
    * context too.
    *
    * recv_messages and io_callback are mutually exclusive, but it is allowed for
    * both to be NULL if the Component is not currently ready to receive data. */
-  GMutex io_mutex;                  /**< protects io_callback, io_user_data,
+  GMutex io_mutex;                  /* protects io_callback, io_user_data,
                                          pending_io_messages and io_callback_id.
                                          immutable: can be accessed without
                                          holding the agent lock; if the agent
                                          lock is to be taken, it must always be
                                          taken before this one */
-  NiceAgentRecvFunc io_callback;    /**< function called on io cb */
-  gpointer io_user_data;            /**< data passed to the io function */
-  GQueue pending_io_messages;       /**< queue of messages which have been
+  NiceAgentRecvFunc io_callback;    /* function called on io cb */
+  gpointer io_user_data;            /* data passed to the io function */
+  GQueue pending_io_messages;       /* queue of messages which have been
                                          received but not passed to the client
                                          in an I/O callback or recv() call yet.
                                          each element is an owned
                                          IOCallbackData */
   guint io_callback_id;             /* GSource ID of the I/O callback */
 
-  GMainContext *own_ctx;            /**< own context for GSources for this
+  GMainContext *own_ctx;            /* own context for GSources for this
                                        component */
-  GMainContext *ctx;                /**< context for GSources for this
+  GMainContext *ctx;                /* context for GSources for this
                                        component (possibly set from the app) */
-  NiceInputMessage *recv_messages;  /**< unowned messages for receiving into */
-  guint n_recv_messages;            /**< length of recv_messages */
-  NiceInputMessageIter recv_messages_iter; /**< current write position in
+  NiceInputMessage *recv_messages;  /* unowned messages for receiving into */
+  guint n_recv_messages;            /* length of recv_messages */
+  NiceInputMessageIter recv_messages_iter; /* current write position in
                                                 recv_messages */
-  GError **recv_buf_error;          /**< error information about failed reads */
+  GError **recv_buf_error;          /* error information about failed reads */
 
   NiceAgent *agent;  /* unowned, immutable: can be accessed without holding the
                       * agent lock */
