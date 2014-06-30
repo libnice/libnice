@@ -88,11 +88,6 @@ NICE_CANDIDATE_DIRECTION_MS_PREF_ACTIVE
 NICE_CANDIDATE_DIRECTION_MS_PREF_PASSIVE
 NICE_CANDIDATE_TRANSPORT_MS_PREF_TCP
 NICE_CANDIDATE_TRANSPORT_MS_PREF_UDP
-nice_candidate_jingle_priority
-nice_candidate_msn_priority
-nice_candidate_ice_priority_full
-nice_candidate_ice_priority
-nice_candidate_pair_priority
 </SECTION>
 
 <SECTION>
