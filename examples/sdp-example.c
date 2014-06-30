@@ -130,15 +130,15 @@ example_thread(void *data)
 
   // Set the STUN settings and controlling mode
   if (stun_addr) {
-    g_object_set(G_OBJECT(agent), "stun-server", stun_addr, NULL);
-    g_object_set(G_OBJECT(agent), "stun-server-port", stun_port, NULL);
+    g_object_set(agent, "stun-server", stun_addr, NULL);
+    g_object_set(agent, "stun-server-port", stun_port, NULL);
   }
-  g_object_set(G_OBJECT(agent), "controlling-mode", controlling, NULL);
+  g_object_set(agent, "controlling-mode", controlling, NULL);
 
   // Connect to the signals
-  g_signal_connect(G_OBJECT(agent), "candidate-gathering-done",
+  g_signal_connect(agent, "candidate-gathering-done",
       G_CALLBACK(cb_candidate_gathering_done), NULL);
-  g_signal_connect(G_OBJECT(agent), "component-state-changed",
+  g_signal_connect(agent, "component-state-changed",
       G_CALLBACK(cb_component_state_changed), NULL);
 
   // Create a new stream with one component
