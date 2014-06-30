@@ -137,6 +137,7 @@ typedef struct _TurnServer TurnServer;
 
 /**
  * TurnServer:
+ * @ref_count: Reference count for the structure.
  * @server: The #NiceAddress of the TURN server
  * @username: The TURN username
  * @password: The TURN password
