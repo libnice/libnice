@@ -349,6 +349,7 @@ nice_interfaces_get_ip_for_interface (gchar *interface_name)
   } sa;
   gint sockfd;
 
+  g_return_val_if_fail (interface_name != NULL, NULL);
 
   ifr.ifr_addr.sa_family = AF_INET;
   memset (ifr.ifr_name, 0, sizeof (ifr.ifr_name));
