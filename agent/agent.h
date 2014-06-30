@@ -823,7 +823,7 @@ nice_agent_restart_stream (
 
 
 /**
- * nice_agent_attach_recv:
+ * nice_agent_attach_recv: (skip)
  * @agent: The #NiceAgent Object
  * @stream_id: The ID of stream
  * @component_id: The ID of the component
