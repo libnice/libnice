@@ -40,6 +40,9 @@
 #ifndef _CANDIDATE_H
 #define _CANDIDATE_H
 
+#include <glib.h>
+#include <glib-object.h>
+
 
 /**
  * SECTION:candidate
