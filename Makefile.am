@@ -21,7 +21,7 @@ SUBDIRS = \
 	tests \
 	examples
 
-DISTCHECK_CONFIGURE_FLAGS = --disable-assert -enable-gtk-doc
+DISTCHECK_CONFIGURE_FLAGS = --disable-assert -enable-gtk-doc --enable-introspection
 
 EXTRA_DIST = \
 	COPYING.LGPL \
@@ -31,7 +31,8 @@ EXTRA_DIST = \
 	scripts/lcov.mk \
 	scripts/lcov.sh \
 	scripts/valgrind.sh \
-	win32
+	win32 \
+	m4/introspection.m4
 
 MAINTAINERCLEANFILES = ar-lib
 

@@ -66,6 +66,8 @@ agent/test-fallback
 agent/test-fullmode
 agent/test-restart
 agent/test-thread
+agent/Nice-*.gir
+agent/Nice-*.typelib
 
 
 # stun/ stuff

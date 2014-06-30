@@ -1,5 +1,5 @@
 
-AC_PREREQ(2.59c)
+AC_PREREQ(2.62)
 
 dnl Always compile with -Wall; if --enable-compile-warnings=error is passed,
 dnl also use -Werror. git and pre-releases default to -Werror
@@ -12,7 +12,7 @@ AC_CANONICAL_TARGET
 
 AC_CONFIG_SRCDIR([agent/agent.c])
 AC_CONFIG_HEADERS([config.h])
-AM_INIT_AUTOMAKE([1.12 -Wall])
+AM_INIT_AUTOMAKE([1.12 -Wall -Wno-portability])
 
 AC_CONFIG_FILES([
 	Makefile
@@ -314,6 +314,10 @@ GTK_DOC_CHECK(1.9)
 ],[
 AM_CONDITIONAL([ENABLE_GTK_DOC], false)
 ])
+
+# GObject introspection
+GOBJECT_INTROSPECTION_CHECK([1.30.0])
+
 AC_CONFIG_MACRO_DIR(m4)
 
 AC_OUTPUT
