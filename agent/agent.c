@@ -770,7 +770,7 @@ nice_agent_class_init (NiceAgentClass *klass)
    *
    * See also: #NiceAgent::candidate-gathering-done,
    * #NiceAgent::new-candidate-full
-   * Deprecated: UNRELEASED: Use #NiceAgent::new-candiate-full
+   * Deprecated: UNRELEASED: Use #NiceAgent::new-candidate-full
    */
   signals[SIGNAL_NEW_CANDIDATE] =
       g_signal_new (
@@ -800,7 +800,7 @@ nice_agent_class_init (NiceAgentClass *klass)
    * candidate.
    *
    * See also: #NiceAgent::new-remote-candidate-full
-   * Deprecated: UNRELEASED: Use #NiceAgent::new-remote-candiate-full
+   * Deprecated: UNRELEASED: Use #NiceAgent::new-remote-candidate-full
    */
   signals[SIGNAL_NEW_REMOTE_CANDIDATE] =
       g_signal_new (
