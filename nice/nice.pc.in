@@ -5,9 +5,8 @@ includedir=@includedir@
 
 Name: libnice
 Description: ICE library
-Requires: glib-2.0 >= 2.10.0
 Version: @VERSION@
-Libs: -L${libdir} -lnice @GLIB_LIBS@
-Libs.private: @GUPNP_LIBS@
-Cflags: @GLIB_CFLAGS@ -I${includedir} -I${includedir}/nice
-
+Requires: @NICE_PACKAGES_PUBLIC@ @GUPNP_PACKAGES_PUBLIC@
+Requires.private: @NICE_PACKAGES_PRIVATE@ @GUPNP_PACKAGES_PRIVATE@
+Libs: -L${libdir} -lnice
+Cflags: -I${includedir}/nice
