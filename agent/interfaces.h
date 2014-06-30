@@ -58,7 +58,8 @@ gchar * nice_interfaces_get_ip_for_interface (gchar *interface_name);
  *
  * Get a list of local ipv4 interface addresses
  *
- * Returns: a newly-allocated #GList of strings. The caller must free it.
+ * Returns: (element-type utf8) (transfer full): a newly-allocated #GList of
+ * strings. The caller must free it.
  */
 
 GList * nice_interfaces_get_local_ips (gboolean include_loopback);
@@ -69,7 +70,8 @@ GList * nice_interfaces_get_local_ips (gboolean include_loopback);
  *
  * Get the list of local interfaces
  *
- * Returns: a newly-allocated #GList of strings. The caller must free it.
+ * Returns: (element-type utf8) (transfer full): a newly-allocated #GList of
+ * strings. The caller must free it.
  */
 GList * nice_interfaces_get_local_interfaces (void);
 

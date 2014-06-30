@@ -596,7 +596,8 @@ nice_agent_get_local_credentials (
  * @agent: The #NiceAgent Object
  * @stream_id: The ID of the stream the candidates are for
  * @component_id: The ID of the component the candidates are for
- * @candidates: a #GSList of #NiceCandidate items describing each candidate to add
+ * @candidates: (element-type NiceCandidate) (transfer none): a #GSList of
+ * #NiceCandidate items describing each candidate to add
  *
  * Sets, adds or updates the remote candidates for a component of a stream.
  *
@@ -744,8 +745,8 @@ nice_agent_send_messages_nonblocking (
    </para>
  </note>
  *
- * Returns: a #GSList of #NiceCandidate objects representing
- * the local candidates of @agent
+ * Returns: (element-type NiceCandidate) (transfer full): a #GSList of
+ * #NiceCandidate objects representing the local candidates of @agent
  **/
 GSList *
 nice_agent_get_local_candidates (
@@ -774,8 +775,8 @@ nice_agent_get_local_candidates (
    </para>
  </note>
  *
- * Returns: a #GSList of #NiceCandidates objects representing
- * the remote candidates set on the @agent
+ * Returns: (element-type NiceCandidate) (transfer full): a #GSList of
+ * #NiceCandidates objects representing the remote candidates set on the @agent
  **/
 GSList *
 nice_agent_get_remote_candidates (
@@ -1082,8 +1083,9 @@ nice_agent_get_selected_pair (
  * of proxy, as in this case, the socket will not be available to the
  * application because the packets are encapsulated.
  *
- * Returns: (transfer full) pointer to the #GSocket, or NULL if there is no
- * selected candidate or if the selected candidate is a relayed candidate.
+ * Returns: (transfer full) (nullable): pointer to the #GSocket, or %NULL if
+ * there is no selected candidate or if the selected candidate is a relayed
+ * candidate.
  *
  * Since: 0.1.5
  */
@@ -1384,8 +1386,8 @@ nice_agent_parse_remote_sdp (
  * <para>See also: nice_agent_parse_remote_sdp() </para>
  * <para>See also: nice_agent_parse_remote_candidate_sdp() </para>
  *
- * Returns: A #GSList of candidates parsed from the SDP, or %NULL in case of
- * errors
+ * Returns: (element-type NiceCandidate) (transfer full): A #GSList of
+ * candidates parsed from the SDP, or %NULL in case of errors
  *
  * Since: 0.1.4
  **/
