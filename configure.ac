@@ -274,6 +274,7 @@ fi
 
 if test "x$HAVE_GUPNP" = "xyes"; then
    AC_DEFINE(HAVE_GUPNP,,[Have the GUPnP IGD library])
+  UPNP_ENABLED="true"
 else
   GUPNP_PACKAGES_PUBLIC=""
   GUPNP_PACKAGES_PRIVATE=""
@@ -285,6 +286,7 @@ AC_SUBST([GUPNP_PACKAGES_PRIVATE])
 AC_SUBST([GUPNP_PACKAGES])
 
 AC_SUBST(HAVE_GUPNP)
+AC_SUBST([UPNP_ENABLED])
 
 dnl Test coverage
 AC_ARG_ENABLE([coverage],
