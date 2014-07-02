@@ -147,6 +147,10 @@ nice_tcp_passive_socket_new (GMainContext *ctx, NiceAddress *addr,
   }
   g_object_unref (gaddr);
 
+  if (ctx == NULL) {
+    ctx = g_main_context_default ();
+  }
+
   sock = g_slice_new0 (NiceSocket);
 
   nice_address_set_from_sockaddr (&sock->addr, &name.addr);

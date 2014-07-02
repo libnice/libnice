@@ -101,6 +101,10 @@ nice_tcp_active_socket_new (GMainContext *ctx, NiceAddress *addr,
     return NULL;
   }
 
+  if (ctx == NULL) {
+    ctx = g_main_context_default ();
+  }
+
   sock = g_slice_new0 (NiceSocket);
 
   sock->priv = priv = g_slice_new0 (TcpActivePriv);
