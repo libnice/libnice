@@ -92,13 +92,13 @@ INTROSPECTION_COMPILER_ARGS = --includedir=$(srcdir)
 if HAVE_INTROSPECTION
 introspection_sources = $(pkginclude_HEADERS)
 
-Nice-0.0.gir: libagent.la
-Nice_0_0_gir_INCLUDES = GObject-2.0 Gio-2.0
-Nice_0_0_gir_EXPORT_PACKAGES = nice
-Nice_0_0_gir_CFLAGS = $(AM_CFLAGS)
-Nice_0_0_gir_LIBS = libagent.la
-Nice_0_0_gir_FILES = $(introspection_sources)
-INTROSPECTION_GIRS += Nice-0.0.gir
+Nice-0.1.gir: libagent.la
+Nice_0_1_gir_INCLUDES = GObject-2.0 Gio-2.0
+Nice_0_1_gir_EXPORT_PACKAGES = nice
+Nice_0_1_gir_CFLAGS = $(AM_CFLAGS)
+Nice_0_1_gir_LIBS = libagent.la
+Nice_0_1_gir_FILES = $(introspection_sources)
+INTROSPECTION_GIRS += Nice-0.1.gir
 
 girdir = $(datadir)/gir-1.0
 gir_DATA = $(INTROSPECTION_GIRS)
