@@ -58,6 +58,7 @@
 
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <netdb.h>
 
 #ifdef __sun
 #include <sys/sockio.h>
@@ -205,36 +206,29 @@ nice_interfaces_get_local_ips (gboolean include_loopback)
   /* Loop through the interface list and get the IP address of each IF */
   for (ifa = results; ifa; ifa = ifa->ifa_next) {
     char addr_as_string[INET6_ADDRSTRLEN+1];
-
-    union {
-      struct sockaddr *addr;
-      struct sockaddr_in *in;
-      struct sockaddr_in6 *in6;
-    } sa;
-
-    sa.addr = ifa->ifa_addr;
+    size_t addr_len;
 
     /* no ip address from interface that is down */
     if ((ifa->ifa_flags & IFF_UP) == 0)
       continue;
 
-    if (ifa->ifa_addr == NULL) {
-      continue;
-    } else if (ifa->ifa_addr->sa_family == AF_INET) {
-      if (inet_ntop (AF_INET, &sa.in->sin_addr, addr_as_string,
-              INET6_ADDRSTRLEN) == NULL)
-        continue;
-    } else if (ifa->ifa_addr->sa_family == AF_INET6) {
-      /* Skip link-local addresses, they require a scope */
-      if (IN6_IS_ADDR_LINKLOCAL (&sa.in6->sin6_addr))
-        continue;
-
-      if (inet_ntop (AF_INET6, &sa.in6->sin6_addr, addr_as_string,
-              INET6_ADDRSTRLEN) == NULL)
-        continue;
-    } else
+    if (ifa->ifa_addr == NULL)
       continue;
 
+    /* Convert to a string. */
+    switch (ifa->ifa_addr->sa_family) {
+      case AF_INET: addr_len = sizeof (struct sockaddr_in); break;
+      case AF_INET6: addr_len = sizeof (struct sockaddr_in6); break;
+      default: g_assert_not_reached ();
+    }
+
+    if (getnameinfo (ifa->ifa_addr, addr_len,
+            addr_as_string, sizeof (addr_as_string), NULL, 0,
+            NI_NUMERICHOST) != 0) {
+      nice_debug ("Failed to convert address to string for interface ‘%s’.",
+          ifa->ifa_name);
+      continue;
+    }
 
     nice_debug ("Interface:  %s", ifa->ifa_name);
     nice_debug ("IP Address: %s", addr_as_string);
