@@ -418,7 +418,7 @@ SOCKET nice_interfaces_get_WSA_socket ()
 }
 #endif
 
-GList * nice_interfaces_get_local_interfaces ()
+GList * nice_interfaces_get_local_interfaces (void)
 {
   ULONG size = 0;
   PMIB_IFTABLE if_table;
