@@ -192,6 +192,9 @@ nice_interfaces_is_private_ip (const struct sockaddr *_sa)
 
 #ifdef HAVE_GETIFADDRS
 
+static gchar *
+sockaddr_to_string (const struct sockaddr *addr);
+
 GList *
 nice_interfaces_get_local_ips (gboolean include_loopback)
 {
@@ -205,8 +208,7 @@ nice_interfaces_get_local_ips (gboolean include_loopback)
 
   /* Loop through the interface list and get the IP address of each IF */
   for (ifa = results; ifa; ifa = ifa->ifa_next) {
-    char addr_as_string[INET6_ADDRSTRLEN+1];
-    size_t addr_len;
+    gchar *addr_string;
 
     /* no ip address from interface that is down */
     if ((ifa->ifa_flags & IFF_UP) == 0)
@@ -216,32 +218,26 @@ nice_interfaces_get_local_ips (gboolean include_loopback)
       continue;
 
     /* Convert to a string. */
-    switch (ifa->ifa_addr->sa_family) {
-      case AF_INET: addr_len = sizeof (struct sockaddr_in); break;
-      case AF_INET6: addr_len = sizeof (struct sockaddr_in6); break;
-      default: g_assert_not_reached ();
-    }
-
-    if (getnameinfo (ifa->ifa_addr, addr_len,
-            addr_as_string, sizeof (addr_as_string), NULL, 0,
-            NI_NUMERICHOST) != 0) {
+    addr_string = sockaddr_to_string (ifa->ifa_addr);
+    if (addr_string == NULL) {
       nice_debug ("Failed to convert address to string for interface ‘%s’.",
           ifa->ifa_name);
       continue;
     }
 
     nice_debug ("Interface:  %s", ifa->ifa_name);
-    nice_debug ("IP Address: %s", addr_as_string);
+    nice_debug ("IP Address: %s", addr_string);
     if ((ifa->ifa_flags & IFF_LOOPBACK) == IFF_LOOPBACK) {
       if (include_loopback)
-        loopbacks = g_list_append (loopbacks, g_strdup (addr_as_string));
+        loopbacks = g_list_append (loopbacks, addr_string);
       else
         nice_debug ("Ignoring loopback interface");
+        g_free (addr_string);
     } else {
       if (nice_interfaces_is_private_ip (ifa->ifa_addr))
-        ips = g_list_append (ips, g_strdup (addr_as_string));
+        ips = g_list_append (ips, addr_string);
       else
-        ips = g_list_prepend (ips, g_strdup (addr_as_string));
+        ips = g_list_prepend (ips, addr_string);
     }
   }
 
@@ -447,17 +443,46 @@ GList * nice_interfaces_get_local_interfaces ()
   return ret;
 }
 
+static gchar *
+sockaddr_to_string (const struct sockaddr *addr);
+
 GList * nice_interfaces_get_local_ips (gboolean include_loopback)
 {
-  ULONG size = 0;
+  IP_ADAPTER_ADDRESSES *addresses = NULL, *a;
+  ULONG status;
+  guint iterations;
+  ULONG addresses_size;
   DWORD pref = 0;
-  PMIB_IPADDRTABLE ip_table;
-  GList * ret = NULL;
+  GList *ret = NULL;
 
-  GetIpAddrTable (NULL, &size, TRUE);
+  /* As suggested on
+   * http://msdn.microsoft.com/en-gb/library/windows/desktop/aa365915%28v=vs.85%29.aspx */
+  #define MAX_TRIES 3
+  #define INITIAL_BUFFER_SIZE 15000
 
-  if (!size)
+  addresses_size = INITIAL_BUFFER_SIZE;
+  iterations = 0;
+
+  do {
+    g_free (addresses);
+    addresses = g_malloc0 (addresses_size);
+
+    status = GetAdaptersAddresses (AF_UNSPEC,
+        GAA_FLAG_SKIP_ANYCAST | GAA_FLAG_SKIP_MULTICAST |
+        GAA_FLAG_SKIP_DNS_SERVER, NULL, addresses, &addresses_size);
+  } while ((status == ERROR_BUFFER_OVERFLOW) && (iterations++ < MAX_TRIES));
+
+  nice_debug ("Queried addresses with status %lu.", status);
+
+  #undef INITIAL_BUFFER_SIZE
+  #undef MAX_TRIES
+
+  /* Error? */
+  if (status != NO_ERROR) {
+    nice_debug ("Error retrieving local addresses (error code %lu).", status);
+    g_free (addresses);
     return NULL;
+  }
 
   /*
    * Get the best interface for transport to 0.0.0.0.
@@ -466,42 +491,49 @@ GList * nice_interfaces_get_local_ips (gboolean include_loopback)
   if (GetBestInterface (0, &pref) != NO_ERROR)
     pref = 0;
 
-  ip_table = (PMIB_IPADDRTABLE)g_malloc0 (size);
+  /* Loop over the adapters. */
+  for (a = addresses; a != NULL; a = a->Next) {
+    IP_ADAPTER_UNICAST_ADDRESS *unicast;
 
-  if (GetIpAddrTable (ip_table, &size, TRUE) == ERROR_SUCCESS) {
-    DWORD i;
-    for (i = 0; i < ip_table->dwNumEntries; i++) {
-      gchar * ipstr;
-      PMIB_IPADDRROW ipaddr = &ip_table->table[i];
+    nice_debug ("Interface ‘%S’:", a->FriendlyName);
 
-      if (!(ipaddr->wType & (MIB_IPADDR_DISCONNECTED | MIB_IPADDR_DELETED)) &&
-          ipaddr->dwAddr) {
-        if (!include_loopback) {
-          DWORD type = 0;
-          PMIB_IFROW ifr = (PMIB_IFROW)g_malloc0 (sizeof (MIB_IFROW));
-          ifr->dwIndex = ipaddr->dwIndex;
-          if (GetIfEntry (ifr) == NO_ERROR)
-            type = ifr->dwType;
-          g_free (ifr);
+    /* Various conditions for ignoring the interface. */
+    if (a->Flags & IP_ADAPTER_RECEIVE_ONLY ||
+        a->OperStatus == IfOperStatusDown ||
+        a->OperStatus == IfOperStatusNotPresent ||
+        a->OperStatus == IfOperStatusLowerLayerDown) {
+      nice_debug ("Rejecting interface due to being down or read-only.");
+      continue;
+    }
 
-          if (type == IF_TYPE_SOFTWARE_LOOPBACK)
-            continue;
-        }
+    if (!include_loopback &&
+        a->IfType == IF_TYPE_SOFTWARE_LOOPBACK) {
+      nice_debug ("Rejecting loopback interface ‘%S’.", a->FriendlyName);
+      continue;
+    }
 
-        ipstr = g_strdup_printf ("%lu.%lu.%lu.%lu",
-            (ipaddr->dwAddr      ) & 0xFF,
-            (ipaddr->dwAddr >>  8) & 0xFF,
-            (ipaddr->dwAddr >> 16) & 0xFF,
-            (ipaddr->dwAddr >> 24) & 0xFF);
-        if (ipaddr->dwIndex == pref)
-          ret = g_list_prepend (ret, ipstr);
-        else
-          ret = g_list_append (ret, ipstr);
+    /* Grab the interface’s unicast addresses. */
+    for (unicast = a->FirstUnicastAddress;
+         unicast != NULL; unicast = unicast->Next) {
+      gchar *addr_string;
+
+      addr_string = sockaddr_to_string (unicast->Address.lpSockaddr);
+      if (addr_string == NULL) {
+        nice_debug ("Failed to convert address to string for interface ‘%S’.",
+            a->FriendlyName);
+        continue;
       }
+
+      nice_debug ("IP address: %s", addr_string);
+
+      if (a->IfIndex == pref || a->Ipv6IfIndex == pref)
+        ret = g_list_prepend (ret, addr_string);
+      else
+        ret = g_list_append (ret, addr_string);
     }
   }
 
-  g_free(ip_table);
+  g_free (addresses);
 
   return ret;
 }
@@ -588,3 +620,25 @@ gchar * nice_interfaces_get_ip_for_interface (gchar *interface_name)
 #error Can not use this method for retreiving ip list from OS other than unix or windows
 #endif /* G_OS_WIN32 */
 #endif /* G_OS_UNIX */
+
+/* Works on both UNIX and Windows. Magic! */
+static gchar *
+sockaddr_to_string (const struct sockaddr *addr)
+{
+  char addr_as_string[INET6_ADDRSTRLEN+1];
+  size_t addr_len;
+
+  switch (addr->sa_family) {
+    case AF_INET: addr_len = sizeof (struct sockaddr_in); break;
+    case AF_INET6: addr_len = sizeof (struct sockaddr_in6); break;
+    default: return NULL;
+  }
+
+  if (getnameinfo (addr, addr_len,
+          addr_as_string, sizeof (addr_as_string), NULL, 0,
+          NI_NUMERICHOST) != 0) {
+    return NULL;
+  }
+
+  return g_strdup (addr_as_string);
+}
