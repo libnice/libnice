@@ -44,6 +44,10 @@
 
 #include <string.h>
 
+#ifndef G_OS_WIN32
+#include <netdb.h>
+#endif
+
 #include "address.h"
 
 #ifdef G_OS_WIN32
@@ -197,18 +201,21 @@ nice_address_get_port (const NiceAddress *addr)
 NICEAPI_EXPORT gboolean
 nice_address_set_from_string (NiceAddress *addr, const gchar *str)
 {
-  union
-  {
-    struct in_addr  ipv4;
-    struct in6_addr ipv6;
-  } a;
+  struct addrinfo hints;
+  struct addrinfo *res;
 
-  if (inet_pton (AF_INET, str, &a.ipv4) > 0)
-      nice_address_set_ipv4 (addr, ntohl (a.ipv4.s_addr));
-  else if (inet_pton (AF_INET6, str, &a.ipv6) > 0)
-      nice_address_set_ipv6 (addr, a.ipv6.s6_addr);
-  else
-    return FALSE; /* Invalid address */
+  memset (&hints, 0, sizeof (hints));
+
+  /* AI_NUMERICHOST prevents getaddrinfo() from doing DNS resolution. */
+  hints.ai_family = AF_UNSPEC;
+  hints.ai_flags = AI_NUMERICHOST;
+
+  if (getaddrinfo (str, NULL, &hints, &res) != 0)
+    return FALSE;  /* invalid address */
+
+  nice_address_set_from_sockaddr (addr, res->ai_addr);
+
+  freeaddrinfo (res);
 
   return TRUE;
 }
