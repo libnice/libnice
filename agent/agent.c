@@ -2549,11 +2549,13 @@ nice_agent_gather_candidates (
     GList *item;
 
     for (item = addresses; item; item = g_list_next (item)) {
+      const gchar *addr_string = item->data;
       NiceAddress *addr = nice_address_new ();
 
-      if (nice_address_set_from_string (addr, item->data)) {
+      if (nice_address_set_from_string (addr, addr_string)) {
         local_addresses = g_slist_append (local_addresses, addr);
       } else {
+        nice_debug ("Error: Failed to parse local address ‘%s’.", addr_string);
         nice_address_free (addr);
       }
     }
