@@ -1308,6 +1308,16 @@ nice_agent_set_property (
 
 }
 
+
+static void
+ agent_signal_socket_writable (NiceAgent *agent, Component *component)
+{
+  g_cancellable_cancel (component->tcp_writable_cancellable);
+
+  agent_queue_signal (agent, signals[SIGNAL_RELIABLE_TRANSPORT_WRITABLE],
+      component->stream->id, component->id);
+}
+
 static void
 pseudo_tcp_socket_create (NiceAgent *agent, Stream *stream, Component *component)
 {
@@ -1355,10 +1365,8 @@ pseudo_tcp_socket_opened (PseudoTcpSocket *sock, gpointer user_data)
 
   nice_debug ("Agent %p: s%d:%d pseudo Tcp socket Opened", agent,
       stream->id, component->id);
-  g_cancellable_cancel (component->tcp_writable_cancellable);
 
-  agent_queue_signal (agent, signals[SIGNAL_RELIABLE_TRANSPORT_WRITABLE],
-      stream->id, component->id);
+  agent_signal_socket_writable (agent, component);
 }
 
 /* Will attempt to queue all @n_messages into the pseudo-TCP transmission
@@ -1614,9 +1622,8 @@ pseudo_tcp_socket_writable (PseudoTcpSocket *sock, gpointer user_data)
 
   nice_debug ("Agent %p: s%d:%d pseudo Tcp socket writable", agent,
       stream->id, component->id);
-  g_cancellable_cancel (component->tcp_writable_cancellable);
-  agent_queue_signal (agent, signals[SIGNAL_RELIABLE_TRANSPORT_WRITABLE],
-      stream->id, component->id);
+
+  agent_signal_socket_writable (agent, component);
 }
 
 static void
@@ -1749,9 +1756,7 @@ _tcp_sock_is_writable (NiceSocket *sock, gpointer user_data)
 
   nice_debug ("Agent %p: s%d:%d Tcp socket writable", agent,
       stream->id, component->id);
-  g_cancellable_cancel (component->tcp_writable_cancellable);
-  agent_queue_signal (agent, signals[SIGNAL_RELIABLE_TRANSPORT_WRITABLE],
-      stream->id, component->id);
+  agent_signal_socket_writable (agent, component);
 
   agent_unlock_and_emit (agent);
 }
@@ -1971,8 +1976,7 @@ void agent_signal_new_selected_pair (NiceAgent *agent, guint stream_id,
       stream_id, component_id, lcandidate->foundation, rcandidate->foundation);
 
   if(agent->reliable && nice_socket_is_reliable (lcandidate->sockptr)) {
-    agent_queue_signal (agent, signals[SIGNAL_RELIABLE_TRANSPORT_WRITABLE],
-        stream_id, component_id);
+    agent_signal_socket_writable (agent, component);
   }
 }
 
