@@ -538,13 +538,6 @@ nice_output_stream_write_nonblocking (GPollableOutputStream *stream,
     return 0;
   }
 
-  /* This is equivalent to the default GPollableOutputStream implementation. */
-  if (!g_pollable_output_stream_is_writable (stream)) {
-    g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_WOULD_BLOCK,
-        g_strerror (EAGAIN));
-    g_object_unref (agent);
-    return -1;
-  }
 
   n_sent = nice_agent_send (agent, priv->stream_id, priv->component_id,
       count, buffer);
