@@ -3243,6 +3243,19 @@ agent_recv_message_unlocked (
              * return an error to make the socket fail/closed
              */
             retval = -1;
+          } else {
+            gint flags = G_SOCKET_MSG_PEEK;
+
+            /* If available bytes are 0, but the socket is still considered
+             * connected, then either we're just trying to see if there's more
+             * data available or the peer closed the connection.
+             * The only way to know is to do a read, so we do here a peek and
+             * check the return value, if it's 0, it means the peer has closed
+             * the connection, so we must return an error instead of WOULD_BLOCK
+             */
+            if (g_socket_receive_message (nicesock->fileno, NULL,
+                    NULL, 0, NULL, NULL, &flags, NULL, NULL) == 0)
+              retval = -1;
           }
         } else if (agent->rfc4571_expecting_length == 0) {
           if ((gsize) available >= sizeof(guint16)) {
