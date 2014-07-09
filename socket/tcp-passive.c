@@ -51,8 +51,6 @@
 #endif
 
 typedef struct {
-  gboolean reliable;
-
   GMainContext *context;
   GHashTable *connections;
   NiceSocketWritableCb writable_cb;
@@ -75,8 +73,7 @@ static void socket_set_writable_callback (NiceSocket *sock,
 static guint nice_address_hash (const NiceAddress * key);
 
 NiceSocket *
-nice_tcp_passive_socket_new (GMainContext *ctx, NiceAddress *addr,
-    gboolean reliable)
+nice_tcp_passive_socket_new (GMainContext *ctx, NiceAddress *addr)
 {
   union {
     struct sockaddr_storage storage;
@@ -154,7 +151,6 @@ nice_tcp_passive_socket_new (GMainContext *ctx, NiceAddress *addr,
   nice_address_set_from_sockaddr (&sock->addr, &name.addr);
 
   sock->priv = priv = g_slice_new0 (TcpPassivePriv);
-  priv->reliable = reliable;
   priv->context = g_main_context_ref (ctx);
   priv->connections = g_hash_table_new_full ((GHashFunc) nice_address_hash,
       (GEqualFunc) nice_address_equal, (
@@ -223,9 +219,7 @@ static gint socket_send_messages_reliable (NiceSocket *sock,
 static gboolean
 socket_is_reliable (NiceSocket *sock)
 {
-  TcpPassivePriv *priv = sock->priv;
-
-  return priv->reliable;
+  return TRUE;
 }
 
 static gboolean

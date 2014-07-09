@@ -102,7 +102,7 @@ main (void)
   nice_address_init (&tmp);
 
   passive_sock = nice_tcp_passive_socket_new (g_main_loop_get_context (mainloop),
-      &passive_bind_addr, TRUE);
+      &passive_bind_addr);
   g_assert (passive_sock);
 
   srv_listen_source = g_socket_create_source (passive_sock->fileno,
@@ -112,7 +112,7 @@ main (void)
   g_source_attach (srv_listen_source, g_main_loop_get_context (mainloop));
 
   active_sock = nice_tcp_active_socket_new (g_main_loop_get_context (mainloop),
-      &active_bind_addr, TRUE);
+      &active_bind_addr);
   g_assert (active_sock);
 
   client = nice_tcp_active_socket_connect (active_sock, &passive_bind_addr);
