@@ -228,11 +228,12 @@ nice_interfaces_get_local_ips (gboolean include_loopback)
     nice_debug ("Interface:  %s", ifa->ifa_name);
     nice_debug ("IP Address: %s", addr_string);
     if ((ifa->ifa_flags & IFF_LOOPBACK) == IFF_LOOPBACK) {
-      if (include_loopback)
+      if (include_loopback) {
         loopbacks = g_list_append (loopbacks, addr_string);
-      else
+      } else {
         nice_debug ("Ignoring loopback interface");
         g_free (addr_string);
+      }
     } else {
       if (nice_interfaces_is_private_ip (ifa->ifa_addr))
         ips = g_list_append (ips, addr_string);
