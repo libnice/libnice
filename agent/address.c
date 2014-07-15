@@ -44,7 +44,7 @@
 
 #include <string.h>
 
-#ifndef G_OS_WIN32
+#ifdef HAVE_NETDB_H
 #include <netdb.h>
 #endif
 
