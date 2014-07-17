@@ -183,6 +183,8 @@ readable (PseudoTcpSocket *sock, gpointer data)
       } else {
         pseudo_tcp_socket_close (sock, FALSE);
       }
+    } else if (len == 0) {
+      pseudo_tcp_socket_close (sock, FALSE);
     }
   } while (len > 0);
 

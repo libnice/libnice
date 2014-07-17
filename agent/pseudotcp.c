@@ -1,8 +1,8 @@
 /*
  * This file is part of the Nice GLib ICE library.
  *
- * (C) 2010 Collabora Ltd.
- *  Contact: Youness Alaoui
+ * (C) 2010, 2014 Collabora Ltd.
+ *  Contact: Philip Withnall
 
  *
  * The contents of this file are subject to the Mozilla Public License Version
@@ -22,6 +22,7 @@
  *
  * Contributors:
  *   Youness Alaoui, Collabora Ltd.
+ *   Philip Withnall, Collabora Ltd.
  *
  * Alternatively, the contents of this file may be used under the terms of the
  * the GNU Lesser General Public License Version 2.1 (the "LGPL"), in which
@@ -162,15 +163,17 @@ const guint16 PACKET_MAXIMUMS[] = {
 
 /* NOTE: This must fit in 8 bits. This is used on the wire. */
 typedef enum {
+  /* Google-provided options: */
   TCP_OPT_EOL = 0,  /* end of list */
   TCP_OPT_NOOP = 1,  /* no-op */
   TCP_OPT_MSS = 2,  /* maximum segment size */
   TCP_OPT_WND_SCALE = 3,  /* window scale factor */
+  /* libnice extensions: */
+  TCP_OPT_FIN_ACK = 254,  /* FIN-ACK support */
 } TcpOption;
 
 
 /*
-#define FLAG_FIN 0x01
 #define FLAG_SYN 0x02
 #define FLAG_ACK 0x10
 */
@@ -178,6 +181,7 @@ typedef enum {
 /* NOTE: This must fit in 5 bits. This is used on the wire. */
 typedef enum {
   FLAG_NONE = 0,
+  FLAG_FIN = 1 << 0,
   FLAG_CTL = 1 << 1,
   FLAG_RST = 1 << 2,
 } TcpFlags;
@@ -189,10 +193,18 @@ typedef enum {
 
 #define CTRL_BOUND 0x80000000
 
+/* Maximum segment lifetime (1 minute).
+ * RFC 793, §3.3 specifies 2 minutes; but Linux uses 1 minute, so let’s go with
+ * that. */
+#define TCP_MSL (60 * 1000)
+
 // If there are no pending clocks, wake up every 4 seconds
 #define DEFAULT_TIMEOUT 4000
 // If the connection is closed, once per minute
 #define CLOSED_TIMEOUT (60 * 1000)
+/* Timeout after reaching the TIME_WAIT state.
+ * See: RFC 1122, §4.2.2.13. */
+#define TIME_WAIT_TIMEOUT (2 * TCP_MSL)
 
 //////////////////////////////////////////////////////////////////////
 // Helper Functions
@@ -386,6 +398,7 @@ pseudo_tcp_fifo_write (PseudoTcpFifo *b, const guint8 *buffer, gsize bytes)
 // PseudoTcp
 //////////////////////////////////////////////////////////////////////
 
+/* Only used if FIN-ACK support is disabled. */
 typedef enum {
   SD_NONE,
   SD_GRACEFUL,
@@ -395,7 +408,9 @@ typedef enum {
 typedef enum {
   sfNone,
   sfDelayedAck,
-  sfImmediateAck
+  sfImmediateAck,
+  sfFin,
+  sfRst,
 } SendFlags;
 
 typedef struct {
@@ -417,11 +432,26 @@ typedef struct {
   guint32 seq, len;
 } RSegment;
 
+/**
+ * ClosedownSource:
+ * @CLOSEDOWN_LOCAL: Error detected locally, or connection forcefully closed
+ * locally.
+ * @CLOSEDOWN_REMOTE: RST segment received from the peer.
+ *
+ * Reasons for calling closedown().
+ *
+ * Since: UNRELEASED
+ */
+typedef enum {
+  CLOSEDOWN_LOCAL,
+  CLOSEDOWN_REMOTE,
+} ClosedownSource;
+
 
 struct _PseudoTcpSocketPrivate {
   PseudoTcpCallbacks callbacks;
 
-  Shutdown shutdown;
+  Shutdown shutdown;  /* only used if !support_fin_ack */
   gint error;
 
   // TCB data
@@ -471,6 +501,11 @@ struct _PseudoTcpSocketPrivate {
   /* Current time. Typically only used for testing, when non-zero. When zero,
    * the system monotonic clock is used. Units: monotonic milliseconds. */
   guint32 current_time;
+
+  /* This is used by compatible implementations (with the TCP_OPT_FIN_ACK
+   * option) to enable correct FIN-ACK connection termination. Defaults to
+   * TRUE unless no compatible option is received. */
+  gboolean support_fin_ack;
 };
 
 #define LARGER(a,b) (((a) - (b) - 1) < (G_MAXUINT32 >> 1))
@@ -500,7 +535,7 @@ static void pseudo_tcp_socket_finalize (GObject *object);
 
 
 static void queue_connect_message (PseudoTcpSocket *self);
-static guint32 queue (PseudoTcpSocket *self, const gchar * data,
+static guint32 queue (PseudoTcpSocket *self, const gchar *data,
     guint32 len, TcpFlags flags);
 static PseudoTcpWriteResult packet(PseudoTcpSocket *self, guint32 seq,
     TcpFlags flags, guint32 offset, guint32 len, guint32 now);
@@ -510,7 +545,8 @@ static gboolean parse (PseudoTcpSocket *self,
 static gboolean process(PseudoTcpSocket *self, Segment *seg);
 static gboolean transmit(PseudoTcpSocket *self, SSegment *sseg, guint32 now);
 static void attempt_send(PseudoTcpSocket *self, SendFlags sflags);
-static void closedown(PseudoTcpSocket *self, guint32 err);
+static void closedown (PseudoTcpSocket *self, guint32 err,
+    ClosedownSource source);
 static void adjustMTU(PseudoTcpSocket *self);
 static void parse_options (PseudoTcpSocket *self, const guint8 *data,
     guint32 len);
@@ -521,6 +557,8 @@ static void set_state_established (PseudoTcpSocket *self);
 static void set_state_closed (PseudoTcpSocket *self, guint32 err);
 
 static const gchar *pseudo_tcp_state_get_name (PseudoTcpState state);
+static gboolean pseudo_tcp_state_has_sent_fin (PseudoTcpState state);
+static gboolean pseudo_tcp_state_has_received_fin (PseudoTcpState state);
 
 // The following logging is for detailed (packet-level) pseudotcp analysis only.
 static PseudoTcpDebugLevel debug_level = PSEUDO_TCP_DEBUG_NONE;
@@ -764,6 +802,7 @@ pseudo_tcp_socket_init (PseudoTcpSocket *obj)
   priv->use_nagling = !DEFAULT_NO_DELAY;
 
   priv->support_wnd_scale = TRUE;
+  priv->support_fin_ack = TRUE;
 }
 
 PseudoTcpSocket *pseudo_tcp_socket_new (guint32 conversation,
@@ -780,7 +819,7 @@ static void
 queue_connect_message (PseudoTcpSocket *self)
 {
   PseudoTcpSocketPrivate *priv = self->priv;
-  guint8 buf[4];
+  guint8 buf[8];
   gsize size = 0;
 
   buf[size++] = CTL_CONNECT;
@@ -791,9 +830,33 @@ queue_connect_message (PseudoTcpSocket *self)
     buf[size++] = priv->rwnd_scale;
   }
 
+  if (priv->support_fin_ack) {
+    buf[size++] = TCP_OPT_FIN_ACK;
+    buf[size++] = 1;  /* option length; zero is invalid (RFC 1122, §4.2.2.5) */
+    buf[size++] = 0;  /* currently unused */
+  }
+
   priv->snd_wnd = size;
 
   queue (self, (char *) buf, size, FLAG_CTL);
+}
+
+static void
+queue_fin_message (PseudoTcpSocket *self)
+{
+  g_assert (self->priv->support_fin_ack);
+
+  /* FIN segments are always zero-length. */
+  queue (self, "", 0, FLAG_FIN);
+}
+
+static void
+queue_rst_message (PseudoTcpSocket *self)
+{
+  g_assert (self->priv->support_fin_ack);
+
+  /* RST segments are always zero-length. */
+  queue (self, "", 0, FLAG_RST);
 }
 
 gboolean
@@ -833,6 +896,26 @@ pseudo_tcp_socket_notify_clock(PseudoTcpSocket *self)
   if (priv->state == TCP_CLOSED)
     return;
 
+  /* If in the TIME-WAIT state, any delayed segments have passed and the
+   * connection can be considered closed from both ends.
+   * FIXME: This should probably actually compare a timestamp before
+   * operating. */
+  if (priv->support_fin_ack && priv->state == TCP_TIME_WAIT) {
+    DEBUG (PSEUDO_TCP_DEBUG_NORMAL,
+        "Notified clock in TIME-WAIT state; closing connection.");
+    set_state_closed (self, 0);
+  }
+
+  /* If in the LAST-ACK state, resend the FIN because it hasn’t been ACKed yet.
+   * FIXME: This should probably actually compare a timestamp before
+   * operating. */
+  if (priv->support_fin_ack && priv->state == TCP_LAST_ACK) {
+    DEBUG (PSEUDO_TCP_DEBUG_NORMAL,
+        "Notified clock in LAST-ACK state; resending FIN segment.");
+    queue_fin_message (self);
+    attempt_send (self, sfFin);
+  }
+
   // Check if it's time to retransmit a segment
   if (priv->rto_base &&
       (time_diff(priv->rto_base + priv->rx_rto, now) <= 0)) {
@@ -849,7 +932,7 @@ pseudo_tcp_socket_notify_clock(PseudoTcpSocket *self)
           priv->rx_rto, priv->rto_base, now, (guint) priv->dup_acks);
 
       if (!transmit(self, g_queue_peek_head (&priv->slist), now)) {
-        closedown(self, ECONNABORTED);
+        closedown (self, ECONNABORTED, CLOSEDOWN_LOCAL);
         return;
       }
 
@@ -869,7 +952,7 @@ pseudo_tcp_socket_notify_clock(PseudoTcpSocket *self)
   if ((priv->snd_wnd == 0)
         && (time_diff(priv->lastsend + priv->rx_rto, now) <= 0)) {
     if (time_diff(now, priv->lastrecv) >= 15000) {
-      closedown(self, ECONNABORTED);
+      closedown (self, ECONNABORTED, CLOSEDOWN_LOCAL);
       return;
     }
 
@@ -953,21 +1036,52 @@ pseudo_tcp_socket_get_next_clock(PseudoTcpSocket *self, guint64 *timeout)
   PseudoTcpSocketPrivate *priv = self->priv;
   guint32 now = get_current_time (self);
   gsize snd_buffered;
+  guint32 closed_timeout;
 
-  if (priv->shutdown == SD_FORCEFUL)
+  if (priv->shutdown == SD_FORCEFUL) {
+    if (priv->support_fin_ack) {
+      DEBUG (PSEUDO_TCP_DEBUG_NORMAL,
+          "‘Forceful’ shutdown used when FIN-ACK support is enabled");
+    }
+
     return FALSE;
+  }
 
   snd_buffered = pseudo_tcp_fifo_get_buffered (&priv->sbuf);
   if ((priv->shutdown == SD_GRACEFUL)
       && ((priv->state != TCP_ESTABLISHED)
           || ((snd_buffered == 0) && (priv->t_ack == 0)))) {
+    if (priv->support_fin_ack) {
+      DEBUG (PSEUDO_TCP_DEBUG_NORMAL,
+          "‘Graceful’ shutdown used when FIN-ACK support is enabled");
+    }
+
+    return FALSE;
+  }
+
+  /* FIN-ACK support. The timeout for closing the socket if nothing is received
+   * varies depending on whether the socket is waiting in the TIME-WAIT state
+   * for delayed segments to pass.
+   *
+   * See: http://vincent.bernat.im/en/blog/2014-tcp-time-wait-state-linux.html
+   */
+  closed_timeout = CLOSED_TIMEOUT;
+  if (priv->support_fin_ack && priv->state == TCP_TIME_WAIT)
+    closed_timeout = TIME_WAIT_TIMEOUT;
+
+  if (priv->support_fin_ack && priv->state == TCP_CLOSED) {
     return FALSE;
   }
 
   if (*timeout == 0 || *timeout < now)
-    *timeout = now + CLOSED_TIMEOUT;
+    *timeout = now + closed_timeout;
 
-  if (priv->state == TCP_CLOSED) {
+  if (priv->support_fin_ack && priv->state == TCP_TIME_WAIT) {
+    *timeout = min (*timeout, now + TIME_WAIT_TIMEOUT);
+    return TRUE;
+  }
+
+  if (priv->state == TCP_CLOSED && !priv->support_fin_ack) {
     *timeout = min (*timeout, now + CLOSED_TIMEOUT);
     return TRUE;
   }
@@ -995,7 +1109,15 @@ pseudo_tcp_socket_recv(PseudoTcpSocket *self, char * buffer, size_t len)
   gsize bytesread;
   gsize available_space;
 
-  if (priv->state != TCP_ESTABLISHED) {
+  /* Received a FIN from the peer, so return 0. RFC 793, §3.5, Case 2. */
+  if (priv->support_fin_ack &&
+      pseudo_tcp_state_has_received_fin (priv->state)) {
+    return 0;
+  }
+
+  /* Return ENOTCONN if FIN-ACK is not supported and the connection is not
+   * ESTABLISHED. */
+  if (!priv->support_fin_ack && priv->state != TCP_ESTABLISHED) {
     priv->error = ENOTCONN;
     return -1;
   }
@@ -1037,7 +1159,7 @@ pseudo_tcp_socket_send(PseudoTcpSocket *self, const char * buffer, guint32 len)
   gsize available_space;
 
   if (priv->state != TCP_ESTABLISHED) {
-    priv->error = ENOTCONN;
+    priv->error = pseudo_tcp_state_has_sent_fin (priv->state) ? EPIPE : ENOTCONN;
     return -1;
   }
 
@@ -1063,9 +1185,64 @@ void
 pseudo_tcp_socket_close(PseudoTcpSocket *self, gboolean force)
 {
   PseudoTcpSocketPrivate *priv = self->priv;
+
   DEBUG (PSEUDO_TCP_DEBUG_VERBOSE, "Closing socket %p : %s", self,
       force ? "forcefully" : "gracefully");
-  priv->shutdown = force ? SD_FORCEFUL : SD_GRACEFUL;
+
+  /* FIN-ACK--only stuff below here. */
+  if (!priv->support_fin_ack) {
+    priv->shutdown = force ? SD_FORCEFUL : SD_GRACEFUL;
+    return;
+  }
+
+  /* Forced closure by sending an RST segment. RFC 1122, §4.2.2.13. */
+  if (force) {
+    closedown (self, ECONNABORTED, CLOSEDOWN_LOCAL);
+    return;
+  }
+
+  /* Unforced closure. */
+  switch (priv->state) {
+  case TCP_LISTEN:
+  case TCP_SYN_SENT:
+    /* Just abort the connection without completing the handshake. */
+    set_state_closed (self, 0);
+    break;
+  case TCP_SYN_RECEIVED:
+  case TCP_ESTABLISHED:
+    /* Local user initiating the close: RFC 793, §3.5, Cases 1 and 3.
+     * If there is pending receive data, send RST instead of FIN;
+     * see RFC 1122, §4.2.2.13. */
+    if (pseudo_tcp_socket_get_available_bytes (self) > 0) {
+      closedown (self, ECONNABORTED, CLOSEDOWN_LOCAL);
+    } else {
+      queue_fin_message (self);
+      attempt_send (self, sfFin);
+      set_state (self, TCP_FIN_WAIT_1);
+    }
+    break;
+  case TCP_CLOSE_WAIT:
+    /* Remote user initiating the close: RFC 793, §3.5, Case 2.
+     * We’ve previously received a FIN from the peer; now the user is closing
+     * the local end of the connection. */
+    queue_fin_message (self);
+    attempt_send (self, sfFin);
+    set_state (self, TCP_LAST_ACK);
+    break;
+  case TCP_CLOSING:
+  case TCP_CLOSED:
+    /* Already closed on both sides. */
+    break;
+  case TCP_FIN_WAIT_1:
+  case TCP_FIN_WAIT_2:
+  case TCP_TIME_WAIT:
+  case TCP_LAST_ACK:
+    /* Already closed locally. */
+    break;
+  default:
+    /* Do nothing. */
+    break;
+  }
 }
 
 int
@@ -1216,6 +1393,53 @@ parse (PseudoTcpSocket *self, const guint8 *_header_buf, gsize header_buf_len,
   return process(self, &seg);
 }
 
+/* True iff the @state requires that a FIN has already been sent by this
+ * host. */
+static gboolean
+pseudo_tcp_state_has_sent_fin (PseudoTcpState state)
+{
+  switch (state) {
+  case TCP_LISTEN:
+  case TCP_SYN_SENT:
+  case TCP_SYN_RECEIVED:
+  case TCP_ESTABLISHED:
+  case TCP_CLOSE_WAIT:
+    return FALSE;
+  case TCP_CLOSED:
+  case TCP_FIN_WAIT_1:
+  case TCP_FIN_WAIT_2:
+  case TCP_CLOSING:
+  case TCP_TIME_WAIT:
+  case TCP_LAST_ACK:
+    return TRUE;
+  default:
+    return FALSE;
+  }
+}
+
+/* True iff the @state requires that a FIN has already been received from the
+ * peer. */
+static gboolean
+pseudo_tcp_state_has_received_fin (PseudoTcpState state)
+{
+  switch (state) {
+  case TCP_LISTEN:
+  case TCP_SYN_SENT:
+  case TCP_SYN_RECEIVED:
+  case TCP_ESTABLISHED:
+  case TCP_FIN_WAIT_1:
+  case TCP_FIN_WAIT_2:
+    return FALSE;
+  case TCP_CLOSED:
+  case TCP_CLOSING:
+  case TCP_TIME_WAIT:
+  case TCP_CLOSE_WAIT:
+  case TCP_LAST_ACK:
+    return TRUE;
+  default:
+    return FALSE;
+  }
+}
 
 static gboolean
 process(PseudoTcpSocket *self, Segment *seg)
@@ -1229,7 +1453,7 @@ process(PseudoTcpSocket *self, Segment *seg)
   gsize snd_buffered;
   gsize available_space;
   guint32 kIdealRefillSize;
-  gboolean is_valuable_ack, is_duplicate_ack;
+  gboolean is_valuable_ack, is_duplicate_ack, is_fin_ack = FALSE;
 
   /* If this is the wrong conversation, send a reset!?!
      (with the correct conversation?) */
@@ -1245,15 +1469,19 @@ process(PseudoTcpSocket *self, Segment *seg)
   priv->last_traffic = priv->lastrecv = now;
   priv->bOutgoing = FALSE;
 
-  if (priv->state == TCP_CLOSED) {
-    // !?! send reset?
-    DEBUG (PSEUDO_TCP_DEBUG_NORMAL, "closed");
+  if (priv->state == TCP_CLOSED ||
+      (pseudo_tcp_state_has_sent_fin (priv->state) && seg->len > 0)) {
+    /* Send an RST segment. See: RFC 1122, §4.2.2.13. */
+    if ((seg->flags & FLAG_RST) == 0) {
+      closedown (self, 0, CLOSEDOWN_LOCAL);
+    }
+    DEBUG (PSEUDO_TCP_DEBUG_NORMAL, "Segment received while closed; sent RST.");
     return FALSE;
   }
 
   // Check if this is a reset segment
   if (seg->flags & FLAG_RST) {
-    closedown(self, ECONNRESET);
+    closedown (self, ECONNRESET, CLOSEDOWN_REMOTE);
     return FALSE;
   }
 
@@ -1325,6 +1553,15 @@ process(PseudoTcpSocket *self, Segment *seg)
 
     priv->rto_base = (priv->snd_una == priv->snd_nxt) ? 0 : now;
 
+    /* ACKs for FIN segments give an increment on nAcked, but there is no
+     * corresponding byte to read because the FIN segment is empty (it just has
+     * a sequence number). */
+    if (nAcked == priv->sbuf.data_length + 1 &&
+        pseudo_tcp_state_has_sent_fin (priv->state)) {
+      is_fin_ack = TRUE;
+      nAcked--;
+    }
+
     pseudo_tcp_fifo_consume_read_data (&priv->sbuf, nAcked);
 
     for (nFree = nAcked; nFree > 0; ) {
@@ -1357,7 +1594,7 @@ process(PseudoTcpSocket *self, Segment *seg)
       } else {
         DEBUG (PSEUDO_TCP_DEBUG_NORMAL, "recovery retransmit");
         if (!transmit(self, g_queue_peek_head (&priv->slist), now)) {
-          closedown(self, ECONNABORTED);
+          closedown (self, ECONNABORTED, CLOSEDOWN_LOCAL);
           return FALSE;
         }
         priv->cwnd += priv->mss - min(nAcked, priv->cwnd);
@@ -1387,7 +1624,7 @@ process(PseudoTcpSocket *self, Segment *seg)
         DEBUG (PSEUDO_TCP_DEBUG_NORMAL, "enter recovery");
         DEBUG (PSEUDO_TCP_DEBUG_NORMAL, "recovery retransmit");
         if (!transmit(self, g_queue_peek_head (&priv->slist), now)) {
-          closedown(self, ECONNABORTED);
+          closedown (self, ECONNABORTED, CLOSEDOWN_LOCAL);
           return FALSE;
         }
         priv->recover = priv->snd_nxt;
@@ -1408,6 +1645,83 @@ process(PseudoTcpSocket *self, Segment *seg)
     set_state_established (self);
   }
 
+  /* Check for connection closure. */
+  if (priv->support_fin_ack) {
+    /* For the moment, FIN segments must not contain data. */
+    if (seg->flags & FLAG_FIN && seg->len != 0) {
+      DEBUG (PSEUDO_TCP_DEBUG_NORMAL, "FIN segment contained data; ignored");
+      return FALSE;
+    }
+
+    /* Update the state machine, implementing all transitions on ‘rcv FIN’ or
+     * ‘rcv ACK of FIN’ from RFC 793, Figure 6; and RFC 1122, §4.2.2.8. */
+    switch (priv->state) {
+    case TCP_ESTABLISHED:
+      if (seg->flags & FLAG_FIN) {
+        /* Received a FIN from the network, RFC 793, §3.5, Case 2.
+         * The code below will send an ACK for the FIN. */
+         set_state (self, TCP_CLOSE_WAIT);
+      }
+      break;
+    case TCP_CLOSING:
+      if (is_fin_ack) {
+        /* Handle the ACK of a locally-sent FIN flag. RFC 793, §3.5, Case 3. */
+        set_state (self, TCP_TIME_WAIT);
+      }
+      break;
+    case TCP_LAST_ACK:
+      if (is_fin_ack) {
+        /* Handle the ACK of a locally-sent FIN flag. RFC 793, §3.5, Case 2. */
+        set_state_closed (self, 0);
+      }
+      break;
+    case TCP_FIN_WAIT_1:
+      if (is_fin_ack && seg->flags & FLAG_FIN) {
+        /* Simultaneous close with an ACK for a FIN previously sent,
+         * RFC 793, §3.5, Case 3. */
+        set_state (self, TCP_TIME_WAIT);
+      } else if (is_fin_ack) {
+        /* Handle the ACK of a locally-sent FIN flag. RFC 793, §3.5, Case 1. */
+        set_state (self, TCP_FIN_WAIT_2);
+      } else if (seg->flags & FLAG_FIN) {
+        /* Simultaneous close, RFC 793, §3.5, Case 3. */
+        set_state (self, TCP_CLOSING);
+      }
+      break;
+    case TCP_FIN_WAIT_2:
+      if (seg->flags & FLAG_FIN) {
+        /* Local user closed the connection, RFC 793, §3.5, Case 1. */
+        set_state (self, TCP_TIME_WAIT);
+      }
+      break;
+    case TCP_LISTEN:
+    case TCP_SYN_SENT:
+    case TCP_SYN_RECEIVED:
+    case TCP_TIME_WAIT:
+    case TCP_CLOSED:
+    case TCP_CLOSE_WAIT:
+      /* Shouldn’t ever hit these cases. */
+      if (seg->flags & FLAG_FIN) {
+        DEBUG (PSEUDO_TCP_DEBUG_NORMAL,
+           "Unexpected state %u when FIN received", priv->state);
+      } else if (is_fin_ack) {
+        DEBUG (PSEUDO_TCP_DEBUG_NORMAL,
+           "Unexpected state %u when FIN-ACK received", priv->state);
+      }
+      break;
+    default:
+      DEBUG (PSEUDO_TCP_DEBUG_NORMAL, "Invalid state %u when FIN received",
+          priv->state);
+      return FALSE;
+    }
+  } else if (seg->flags & FLAG_FIN) {
+    DEBUG (PSEUDO_TCP_DEBUG_NORMAL,
+        "Invalid FIN received when FIN-ACK support is disabled");
+  } else if (is_fin_ack) {
+    DEBUG (PSEUDO_TCP_DEBUG_NORMAL,
+        "Invalid FIN-ACK received when FIN-ACK support is disabled");
+  }
+
   // If we make room in the send queue, notify the user
   // The goal it to make sure we always have at least enough data to fill the
   // window.  We'd like to notify the app when we are halfway to that point.
@@ -1426,8 +1740,10 @@ process(PseudoTcpSocket *self, Segment *seg)
    * 3) Segment has data (so we need to ACK!) (delayed)
    * ... so the only time we don't need to ACK, is an empty segment
    * that points to rcv_nxt!
+   * 4) Segment has the FIN flag set (immediately) — note that the FIN flag
+   *    itself has to be included in the ACK as a numbered byte;
+   *    see RFC 793, §3.3. Also see: RFC 793, §3.5.
    */
-
   if (seg->seq != priv->rcv_nxt) {
     sflags = sfImmediateAck; // (Fast Recovery)
   } else if (seg->len != 0) {
@@ -1436,7 +1752,11 @@ process(PseudoTcpSocket *self, Segment *seg)
     } else {
       sflags = sfDelayedAck;
     }
+  } else if (seg->flags & FLAG_FIN) {
+    sflags = sfImmediateAck;
+    priv->rcv_nxt += 1;
   }
+
   if (sflags == sfImmediateAck) {
     if (seg->seq > priv->rcv_nxt) {
       DEBUG (PSEUDO_TCP_DEBUG_NORMAL, "too new");
@@ -1468,10 +1788,18 @@ process(PseudoTcpSocket *self, Segment *seg)
     }
   }
 
-  bIgnoreData = (seg->flags & FLAG_CTL) || (priv->shutdown != SD_NONE);
+  bIgnoreData = (seg->flags & FLAG_CTL);
+  if (!priv->support_fin_ack)
+    bIgnoreData |= (priv->shutdown != SD_NONE);
+
   bNewData = FALSE;
 
-  if (seg->len > 0) {
+  if (seg->flags & FLAG_FIN) {
+    /* FIN flags have a sequence number. */
+    if (seg->seq == priv->rcv_nxt) {
+      priv->rcv_nxt++;
+    }
+  } else if (seg->len > 0) {
     if (bIgnoreData) {
       if (seg->seq == priv->rcv_nxt) {
         priv->rcv_nxt += seg->len;
@@ -1615,6 +1943,10 @@ transmit(PseudoTcpSocket *self, SSegment *segment, guint32 now)
     g_assert (g_queue_peek_head (&priv->unsent_slist) == segment);
     g_queue_pop_head (&priv->unsent_slist);
     priv->snd_nxt += segment->len;
+
+    /* FIN flags require acknowledgement. */
+    if (segment->len == 0 && segment->flags & FLAG_FIN)
+      priv->snd_nxt++;
   }
   segment->xmit += 1;
 
@@ -1655,7 +1987,10 @@ attempt_send(PseudoTcpSocket *self, SendFlags sflags)
     nInFlight = priv->snd_nxt - priv->snd_una;
     nUseable = (nInFlight < nWindow) ? (nWindow - nInFlight) : 0;
     snd_buffered = pseudo_tcp_fifo_get_buffered (&priv->sbuf);
-    nAvailable = min(snd_buffered - nInFlight, priv->mss);
+    if (snd_buffered < nInFlight)  /* iff a FIN has been sent */
+      nAvailable = 0;
+    else
+      nAvailable = min(snd_buffered - nInFlight, priv->mss);
 
     if (nAvailable > nUseable) {
       if (nUseable * 4 < nWindow) {
@@ -1676,7 +2011,7 @@ attempt_send(PseudoTcpSocket *self, SendFlags sflags)
           available_space, priv->ssthresh);
     }
 
-    if (nAvailable == 0) {
+    if (nAvailable == 0 && sflags != sfFin && sflags != sfRst) {
       if (sflags == sfNone)
         return;
 
@@ -1693,17 +2028,20 @@ attempt_send(PseudoTcpSocket *self, SendFlags sflags)
     // If there is data already in-flight, and we haven't a full segment of
     // data ready to send then hold off until we get more to send, or the
     // in-flight data is acknowledged.
-    if (priv->use_nagling && (priv->snd_nxt > priv->snd_una) &&
+    if (priv->use_nagling && sflags != sfFin && sflags != sfRst &&
+        (priv->snd_nxt > priv->snd_una) &&
         (nAvailable < priv->mss))  {
       return;
     }
 
     // Find the next segment to transmit
     iter = g_queue_peek_head_link (&priv->unsent_slist);
+    if (iter == NULL)
+      return;
     sseg = iter->data;
 
     // If the segment is too large, break it into two
-    if (sseg->len > nAvailable) {
+    if (sseg->len > nAvailable && sflags != sfFin && sflags != sfRst) {
       SSegment *subseg = g_slice_new0 (SSegment);
       subseg->seq = sseg->seq + nAvailable;
       subseg->len = sseg->len - nAvailable;
@@ -1721,13 +2059,49 @@ attempt_send(PseudoTcpSocket *self, SendFlags sflags)
       return;
     }
 
-    sflags = sfNone;
+    if (sflags == sfImmediateAck || sflags == sfDelayedAck)
+      sflags = sfNone;
   }
 }
 
+/* If @source is %CLOSEDOWN_REMOTE, don’t send an RST packet, since closedown()
+ * has been called as a result of an RST segment being received.
+ * See: RFC 1122, §4.2.2.13. */
 static void
-closedown(PseudoTcpSocket *self, guint32 err)
+closedown (PseudoTcpSocket *self, guint32 err, ClosedownSource source)
 {
+  if (source == CLOSEDOWN_LOCAL && self->priv->support_fin_ack) {
+    queue_rst_message (self);
+    attempt_send (self, sfRst);
+  }
+
+  /* ‘Cute’ little navigation through the state machine to avoid breaking the
+   * invariant that CLOSED can only be reached from TIME-WAIT or LAST-ACK. */
+  switch (self->priv->state) {
+  case TCP_LISTEN:
+  case TCP_SYN_SENT:
+    break;
+  case TCP_SYN_RECEIVED:
+  case TCP_ESTABLISHED:
+    set_state (self, TCP_FIN_WAIT_1);
+    /* Fall through. */
+  case TCP_FIN_WAIT_1:
+    set_state (self, TCP_FIN_WAIT_2);
+    /* Fall through. */
+  case TCP_FIN_WAIT_2:
+  case TCP_CLOSING:
+    set_state (self, TCP_TIME_WAIT);
+    break;
+  case TCP_CLOSE_WAIT:
+    set_state (self, TCP_LAST_ACK);
+    break;
+  case TCP_LAST_ACK:
+  case TCP_TIME_WAIT:
+  case TCP_CLOSED:
+  default:
+    break;
+  }
+
   set_state_closed (self, err);
 }
 
@@ -1761,6 +2135,14 @@ apply_window_scale_option (PseudoTcpSocket *self, guint8 scale_factor)
 }
 
 static void
+apply_fin_ack_option (PseudoTcpSocket *self)
+{
+  PseudoTcpSocketPrivate *priv = self->priv;
+
+  priv->support_fin_ack = TRUE;
+}
+
+static void
 apply_option (PseudoTcpSocket *self, guint8 kind, const guint8 *data,
     guint32 len)
 {
@@ -1779,6 +2161,11 @@ apply_option (PseudoTcpSocket *self, guint8 kind, const guint8 *data,
     }
     apply_window_scale_option(self, data[0]);
     break;
+  case TCP_OPT_FIN_ACK:
+    // FIN-ACK support.
+    DEBUG (PSEUDO_TCP_DEBUG_NORMAL, "FIN-ACK support enabled.");
+    apply_fin_ack_option (self);
+    break;
   case TCP_OPT_EOL:
   case TCP_OPT_NOOP:
     /* Nothing to do. */
@@ -1795,6 +2182,7 @@ parse_options (PseudoTcpSocket *self, const guint8 *data, guint32 len)
 {
   PseudoTcpSocketPrivate *priv = self->priv;
   gboolean has_window_scaling_option = FALSE;
+  gboolean has_fin_ack_option = FALSE;
   guint32 pos = 0;
 
   // See http://www.freesoft.org/CIE/Course/Section4/8.htm for
@@ -1838,6 +2226,8 @@ parse_options (PseudoTcpSocket *self, const guint8 *data, guint32 len)
 
     if (kind == TCP_OPT_WND_SCALE)
       has_window_scaling_option = TRUE;
+    else if (kind == TCP_OPT_FIN_ACK)
+      has_fin_ack_option = TRUE;
   }
 
   if (!has_window_scaling_option) {
@@ -1848,6 +2238,11 @@ parse_options (PseudoTcpSocket *self, const guint8 *data, guint32 len)
       resize_receive_buffer (self, DEFAULT_RCV_BUF_SIZE);
       priv->swnd_scale = 0;
     }
+  }
+
+  if (!has_fin_ack_option) {
+    DEBUG (PSEUDO_TCP_DEBUG_NORMAL, "Peer doesn't support FIN-ACK");
+    priv->support_fin_ack = FALSE;
   }
 }
 
@@ -1942,6 +2337,12 @@ pseudo_tcp_state_get_name (PseudoTcpState state)
   case TCP_SYN_RECEIVED: return "SYN-RECEIVED";
   case TCP_ESTABLISHED: return "ESTABLISHED";
   case TCP_CLOSED: return "CLOSED";
+  case TCP_FIN_WAIT_1: return "FIN-WAIT-1";
+  case TCP_FIN_WAIT_2: return "FIN-WAIT-2";
+  case TCP_CLOSING: return "CLOSING";
+  case TCP_TIME_WAIT: return "TIME-WAIT";
+  case TCP_CLOSE_WAIT: return "CLOSE-WAIT";
+  case TCP_LAST_ACK: return "LAST-ACK";
   default: return "UNKNOWN";
   }
 }
@@ -1964,8 +2365,9 @@ set_state (PseudoTcpSocket *self, PseudoTcpState new_state)
     (old_state == TCP_##OLD && \
      new_state == TCP_##NEW)
 
-  /* Valid transitions. See: RFC 793, p23. */
-  g_assert (TRANSITION (CLOSED, SYN_SENT) ||
+  /* Valid transitions. See: RFC 793, p23; RFC 1122, §4.2.2.8. */
+  g_assert (/* RFC 793, p23. */
+            TRANSITION (CLOSED, SYN_SENT) ||
             TRANSITION (SYN_SENT, CLOSED) ||
             TRANSITION (CLOSED, LISTEN) ||
             TRANSITION (LISTEN, CLOSED) ||
@@ -1974,11 +2376,19 @@ set_state (PseudoTcpSocket *self, PseudoTcpState new_state)
             TRANSITION (SYN_SENT, SYN_RECEIVED) ||
             TRANSITION (SYN_RECEIVED, ESTABLISHED) ||
             TRANSITION (SYN_SENT, ESTABLISHED) ||
-            /* These differ from RFC 793: */
-            TRANSITION (LISTEN, CLOSED) ||
-            TRANSITION (SYN_SENT, CLOSED) ||
-            TRANSITION (SYN_RECEIVED, CLOSED) ||
-            TRANSITION (ESTABLISHED, CLOSED));
+            TRANSITION (SYN_RECEIVED, FIN_WAIT_1) ||
+            TRANSITION (ESTABLISHED, FIN_WAIT_1) ||
+            TRANSITION (ESTABLISHED, CLOSE_WAIT) ||
+            TRANSITION (FIN_WAIT_1, FIN_WAIT_2) ||
+            TRANSITION (FIN_WAIT_1, CLOSING) ||
+            TRANSITION (CLOSE_WAIT, LAST_ACK) ||
+            TRANSITION (FIN_WAIT_2, TIME_WAIT) ||
+            TRANSITION (CLOSING, TIME_WAIT) ||
+            TRANSITION (LAST_ACK, CLOSED) ||
+            TRANSITION (TIME_WAIT, CLOSED) ||
+            /* RFC 1122, §4.2.2.8. */
+            TRANSITION (SYN_RECEIVED, LISTEN) ||
+            TRANSITION (FIN_WAIT_1, TIME_WAIT));
 
 #undef TRANSITION
 
@@ -2021,5 +2431,7 @@ pseudo_tcp_socket_is_closed (PseudoTcpSocket *self)
 gboolean
 pseudo_tcp_socket_is_closed_remotely (PseudoTcpSocket *self)
 {
-  return pseudo_tcp_socket_is_closed (self);
+  PseudoTcpSocketPrivate *priv = self->priv;
+
+  return pseudo_tcp_state_has_received_fin (priv->state);
 }

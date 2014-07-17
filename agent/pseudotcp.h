@@ -1,8 +1,8 @@
 /*
  * This file is part of the Nice GLib ICE library.
  *
- * (C) 2010 Collabora Ltd.
- *  Contact: Youness Alaoui
+ * (C) 2010, 2014 Collabora Ltd.
+ *  Contact: Philip Withnall
 
  *
  * The contents of this file are subject to the Mozilla Public License Version
@@ -22,6 +22,7 @@
  *
  * Contributors:
  *   Youness Alaoui, Collabora Ltd.
+ *   Philip Withnall, Collabora Ltd.
  *
  * Alternatively, the contents of this file may be used under the terms of the
  * the GNU Lesser General Public License Version 2.1 (the "LGPL"), in which
@@ -136,8 +137,21 @@ typedef enum {
  * @TCP_SYN_RECEIVED: The socket has received a connection request (SYN) packet.
  * @TCP_ESTABLISHED: The socket is connected
  * @TCP_CLOSED: The socket has been closed
+ * @TCP_FIN_WAIT_1: The socket has been closed locally but not remotely
+ * (Since: UNRELEASED)
+ * @TCP_FIN_WAIT_2: The socket has been closed locally but not remotely
+ * (Since: UNRELEASED)
+ * @TCP_CLOSING: The socket has been closed locally and remotely
+ * (Since: UNRELEASED)
+ * @TCP_TIME_WAIT: The socket has been closed locally and remotely
+ * (Since: UNRELEASED)
+ * @TCP_CLOSE_WAIT: The socket has been closed remotely but not locally
+ * (Since: UNRELEASED)
+ * @TCP_LAST_ACK: The socket has been closed locally and remotely
+ * (Since: UNRELEASED)
  *
- * An enum representing the state of the #PseudoTcpSocket.
+ * An enum representing the state of the #PseudoTcpSocket. These states
+ * correspond to the TCP states in RFC 793.
  * <para> See also: #PseudoTcpSocket:state </para>
  *
  * Since: 0.0.11
@@ -147,7 +161,13 @@ typedef enum {
   TCP_SYN_SENT,
   TCP_SYN_RECEIVED,
   TCP_ESTABLISHED,
-  TCP_CLOSED
+  TCP_CLOSED,
+  TCP_FIN_WAIT_1,
+  TCP_FIN_WAIT_2,
+  TCP_CLOSING,
+  TCP_TIME_WAIT,
+  TCP_CLOSE_WAIT,
+  TCP_LAST_ACK,
 } PseudoTcpState;
 
 /**
@@ -175,7 +195,7 @@ typedef enum {
  * @PseudoTcpOpened: The #PseudoTcpSocket is now connected
  * @PseudoTcpReadable: The socket is readable
  * @PseudoTcpWritable: The socket is writable
- * @PseudoTcpClosed: The socket was closed
+ * @PseudoTcpClosed: The socket was closed (both sides)
  * @WritePacket: This callback is called when the socket needs to send data.
  *
  * A structure containing callbacks functions that will be called by the
@@ -294,8 +314,12 @@ gint pseudo_tcp_socket_send(PseudoTcpSocket *self, const char * buffer,
  * @self: The #PseudoTcpSocket object.
  * @force: %TRUE to close the socket forcefully, %FALSE to close it gracefully
  *
- * Close the socket. IF @force is set to %FALSE, the socket will finish sending
- * pending data before closing.
+ * Close the socket for sending. IF @force is set to %FALSE, the socket will
+ * finish sending pending data before closing.
+ *
+ * The socket will only be fully closed once the peer has also closed their end
+ * of the connection — until that point, pseudo_tcp_socket_recv() can still be
+ * called to receive data from the peer.
  *
  <note>
    <para>

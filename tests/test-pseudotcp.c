@@ -138,6 +138,8 @@ static void readable (PseudoTcpSocket *sock, gpointer data)
           exit (-1);
         }
       }
+    } else if (len == 0) {
+      pseudo_tcp_socket_close (sock, FALSE);
     }
   } while (len > 0);
 
