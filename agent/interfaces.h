@@ -45,9 +45,11 @@ G_BEGIN_DECLS
  * nice_interfaces_get_ip_for_interface:
  * @interface_name: name of local interface
  *
- * Retreives the IPv4 address of an interface by its name
+ * Retrieves the IP address of an interface by its name. If this fails, %NULL
+ * is returned.
  *
- * Returns: a newly-allocated string with the IP address
+ * Returns: (nullable) (transfer full): a newly-allocated string with the IP
+ * address
  */
 gchar * nice_interfaces_get_ip_for_interface (gchar *interface_name);
 
