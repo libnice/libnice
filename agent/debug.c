@@ -38,6 +38,8 @@
 # include <config.h>
 #endif
 
+#include <string.h>
+
 #include "debug.h"
 
 #include "stunagent.h"
@@ -60,36 +62,40 @@ static const GDebugKey keys[] = {
   { NULL, 0},
 };
 
+static void
+stun_handler (const char *format, va_list ap)
+{
+  g_logv ("libnice-stun", G_LOG_LEVEL_DEBUG, format, ap);
+}
 
 void nice_debug_init (void)
 {
   static gboolean debug_initialized = FALSE;
   const gchar *flags_string;
-  guint flags;
+  const gchar *gflags_string;
+  guint flags = 0;
 
   if (!debug_initialized) {
     debug_initialized = TRUE;
 
     flags_string = g_getenv ("NICE_DEBUG");
+    gflags_string = g_getenv ("G_MESSAGES_DEBUG");
 
-    nice_debug_disable (TRUE);
-
-    if (flags_string != NULL) {
+    if (flags_string)
       flags = g_parse_debug_string (flags_string, keys,  4);
+    if (gflags_string && strstr (gflags_string, "libnice-pseudotcp-verbose"))
+      flags |= NICE_DEBUG_PSEUDOTCP_VERBOSE;
 
-      if (flags & NICE_DEBUG_NICE)
-        nice_debug_enable (FALSE);
-      if (flags & NICE_DEBUG_STUN)
-        stun_debug_enable ();
+    stun_set_debug_handler (stun_handler);
+    nice_debug_enable (TRUE);
 
-      /* Set verbose before normal so that if we use 'all', then only
-         normal debug is enabled, we'd need to set pseudotcp-verbose without the
-         pseudotcp flag in order to actually enable verbose pseudotcp */
-      if (flags & NICE_DEBUG_PSEUDOTCP_VERBOSE)
-        pseudo_tcp_set_debug_level (PSEUDO_TCP_DEBUG_VERBOSE);
-      if (flags & NICE_DEBUG_PSEUDOTCP)
-        pseudo_tcp_set_debug_level (PSEUDO_TCP_DEBUG_NORMAL);
-    }
+    /* Set verbose before normal so that if we use 'all', then only
+       normal debug is enabled, we'd need to set pseudotcp-verbose without the
+       pseudotcp flag in order to actually enable verbose pseudotcp */
+    if (flags & NICE_DEBUG_PSEUDOTCP_VERBOSE)
+      pseudo_tcp_set_debug_level (PSEUDO_TCP_DEBUG_VERBOSE);
+    else
+      pseudo_tcp_set_debug_level (PSEUDO_TCP_DEBUG_NORMAL);
   }
 }
 

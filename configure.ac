@@ -159,6 +159,7 @@ AS_IF([test "$enable_compile_warnings" = "maximum" -o \
 ])
 AS_IF([test "x$enable_compile_warnings" = "xerror"],[
     NICE_ADD_FLAG([-Werror])
+    NICE_ADD_FLAG([-Wno-suggest-attribute=format])
 ])
 
 #
