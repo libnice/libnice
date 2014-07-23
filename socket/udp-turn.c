@@ -1647,8 +1647,6 @@ priv_retransmissions_create_permission_tick_unlocked (UdpTurnPriv *priv, GList *
     }
   }
 
-  if (ret)
-    priv_schedule_tick (priv);
   return ret;
 }
 
@@ -1681,7 +1679,6 @@ static gboolean
 priv_retransmissions_create_permission_tick (gpointer pointer)
 {
   UdpTurnPriv *priv = pointer;
-  GList *i, *next;
 
   agent_lock ();
   if (g_source_is_destroyed (g_main_current_source ())) {
@@ -1691,17 +1688,11 @@ priv_retransmissions_create_permission_tick (gpointer pointer)
     return FALSE;
   }
 
-  for (i = priv->pending_permissions; i; i = next) {
-    next = i->next;
+  /* This will call priv_retransmissions_create_permission_tick_unlocked() for
+   * every pending permission with an expired timer and will create a new timer
+   * if there are pending permissions that require it */
+  priv_schedule_tick (priv);
 
-    if (!priv_retransmissions_create_permission_tick_unlocked (priv, i)) {
-      if (priv->tick_source_create_permission != NULL) {
-        g_source_destroy (priv->tick_source_create_permission);
-        g_source_unref (priv->tick_source_create_permission);
-        priv->tick_source_create_permission = NULL;
-      }
-    }
-  }
   agent_unlock ();
 
   return FALSE;
@@ -1710,8 +1701,9 @@ priv_retransmissions_create_permission_tick (gpointer pointer)
 static void
 priv_schedule_tick (UdpTurnPriv *priv)
 {
-  GList *i, *next;
+  GList *i, *next, *prev;
   TURNMessage *current_create_permission_msg;
+  guint min_timeout = G_MAXUINT;
 
   if (priv->tick_source_channel_bind != NULL) {
     g_source_destroy (priv->tick_source_channel_bind);
@@ -1730,7 +1722,13 @@ priv_schedule_tick (UdpTurnPriv *priv)
     }
   }
 
-  for (i = priv->pending_permissions; i; i = next) {
+  if (priv->tick_source_create_permission != NULL) {
+    g_source_destroy (priv->tick_source_create_permission);
+    g_source_unref (priv->tick_source_create_permission);
+    priv->tick_source_create_permission = NULL;
+  }
+
+  for (i = priv->pending_permissions, prev = NULL; i; i = next) {
     guint timeout;
 
     current_create_permission_msg = (TURNMessage *)i->data;
@@ -1739,18 +1737,26 @@ priv_schedule_tick (UdpTurnPriv *priv)
     timeout = stun_timer_remainder (&current_create_permission_msg->timer);
 
     if (timeout > 0) {
-      if (priv->tick_source_create_permission) {
-        g_source_destroy (priv->tick_source_create_permission);
-        g_source_unref (priv->tick_source_create_permission);
-      }
-      priv->tick_source_create_permission =
-          priv_timeout_add_with_context (priv, FALSE,
-              timeout,
-              priv_retransmissions_create_permission_tick,
-              priv);
+      min_timeout = MIN (min_timeout, timeout);
+      prev = i;
     } else {
+      /* This could either delete the permission from the list, or it could
+       * refresh it, changing its timeout value */
       priv_retransmissions_create_permission_tick_unlocked (priv, i);
+      if (prev == NULL)
+        next = priv->pending_permissions;
+      else
+        next = prev->next;
     }
+  }
+
+  /* We create one timer for the minimal timeout we need */
+  if (min_timeout != G_MAXUINT) {
+    priv->tick_source_create_permission =
+        priv_timeout_add_with_context (priv, FALSE,
+            min_timeout,
+            priv_retransmissions_create_permission_tick,
+            priv);
   }
 }
 
@@ -1845,8 +1851,8 @@ priv_send_create_permission(UdpTurnPriv *priv, StunMessage *resp,
         STUN_TIMER_DEFAULT_MAX_RETRANSMISSIONS);
     }
 
-    priv_schedule_tick (priv);
     priv->pending_permissions = g_list_append (priv->pending_permissions, msg);
+    priv_schedule_tick (priv);
   } else {
     g_free(msg);
   }
