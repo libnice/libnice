@@ -717,13 +717,9 @@ static void test_hash_creds (void)
       (uint8_t *) "user",  strlen ("user"),
       (uint8_t *) "pass", strlen ("pass"), md5);
 
-  stun_debug ("key for user:realm:pass is : ");
-  stun_debug_bytes (md5, 16);
-  stun_debug ("\n\n");
+  stun_debug_bytes ("key for user:realm:pass is : ", md5, 16);
 
-  stun_debug ("RFC key for user:realm:pass is : ");
-  stun_debug_bytes (real_md5, 16);
-  stun_debug ("\n\n");
+  stun_debug_bytes ("RFC key for user:realm:pass is : ", real_md5, 16);
 
   if(memcmp (md5, real_md5, sizeof(md5)) != 0)
     fatal ("MD5 hashes are different!");

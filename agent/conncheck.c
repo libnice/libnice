@@ -1021,15 +1021,14 @@ void conn_check_remote_candidates_set(NiceAgent *agent)
                     component->id,  rcand, lcand,
                     uname, sizeof (uname), TRUE);
 
-                stun_debug ("pending check, comparing username '");
-                stun_debug_bytes (icheck->username,
+                stun_debug ("pending check, comparing usernames of len %d and %d, equal=%d",
+                    icheck->username_len, uname_len,
+                    icheck->username && uname_len == icheck->username_len &&
+                    memcmp (uname, icheck->username, icheck->username_len) == 0);
+                stun_debug_bytes ("  first username:  ",
+                    icheck->username,
                     icheck->username? icheck->username_len : 0);
-                stun_debug ("' (%d) with '", icheck->username_len);
-                stun_debug_bytes (uname, uname_len);
-                stun_debug ("' (%d) : %d\n",
-                    uname_len, icheck->username &&
-                    uname_len == icheck->username_len &&
-                    memcmp (icheck->username, uname, uname_len) == 0);
+                stun_debug_bytes ("  second username: ", uname, uname_len);
 
                 if (icheck->username &&
                     uname_len == icheck->username_len &&
@@ -2853,13 +2852,11 @@ static bool conncheck_stun_validater (StunAgent *agent,
     if (ufrag == NULL)
       continue;
 
-    stun_debug ("Comparing username '");
-    stun_debug_bytes (username, username_len);
-    stun_debug ("' (%d) with '", username_len);
-    stun_debug_bytes (ufrag, ufrag_len);
-    stun_debug ("' (%" G_GSIZE_FORMAT ") : %d\n",
-        ufrag_len, username_len >= ufrag_len ?
+    stun_debug ("Comparing username/ufrag of len %d and %zu, equal=%d",
+        username_len, ufrag_len, username_len >= ufrag_len ?
         memcmp (username, ufrag, ufrag_len) : 0);
+    stun_debug_bytes ("  username: ", username, username_len);
+    stun_debug_bytes ("  ufrag:    ", ufrag, ufrag_len);
     if (ufrag_len > 0 && username_len >= ufrag_len &&
         memcmp (username, ufrag, ufrag_len) == 0) {
       gchar *pass = NULL;
@@ -2885,7 +2882,7 @@ static bool conncheck_stun_validater (StunAgent *agent,
       if (msn_msoc_nice_compatibility)
         g_free (ufrag);
 
-      stun_debug ("Found valid username, returning password: '%s'\n", *password);
+      stun_debug ("Found valid username, returning password: '%s'", *password);
       return TRUE;
     }
 
@@ -3085,13 +3082,14 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, Stream *stream,
             component->id,  rcand, lcand,
             uname, sizeof (uname), inbound);
 
-        stun_debug ("Comparing username '");
-        stun_debug_bytes (username, username? username_len : 0);
-        stun_debug ("' (%d) with '", username_len);
-        stun_debug_bytes (uname, uname_len);
-        stun_debug ("' (%d) : %d\n",
-            uname_len, username && uname_len == username_len &&
+
+
+        stun_debug ("Comparing usernames of size %d and %d: %d",
+            username_len, uname_len, username && uname_len == username_len &&
             memcmp (username, uname, uname_len) == 0);
+        stun_debug_bytes ("  First username: ", username,
+            username ? username_len : 0);
+        stun_debug_bytes ("  Second uname:   ", uname, uname_len);
 
         if (username &&
             uname_len == username_len &&

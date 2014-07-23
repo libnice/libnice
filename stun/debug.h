@@ -38,6 +38,7 @@
 #define STUN_DEBUG_H
 
 #include <stddef.h>
+#include <stdarg.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -58,6 +59,9 @@ void stun_debug_enable (void);
  */
 void stun_debug_disable (void);
 
+typedef void (*StunDebugHandler) (const char *format, va_list ap);
+
+void stun_set_debug_handler (StunDebugHandler handler);
 
 #if defined(__GNUC__) && (__GNUC__ > 2 || (__GNUC__ == 2 && __GNUC_MINOR__ > 4))
 void stun_debug (const char *fmt, ...)
@@ -65,7 +69,7 @@ void stun_debug (const char *fmt, ...)
 #else
 void stun_debug (const char *fmt, ...);
 #endif
-void stun_debug_bytes (const void *data, size_t len);
+void stun_debug_bytes (const char *prefix, const void *data, size_t len);
 
 
 # ifdef __cplusplus

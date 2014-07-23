@@ -544,19 +544,19 @@ ssize_t stun_message_validate_buffer_length_fast (StunInputVector *buffers,
 
   if (total_length < 1 || n_buffers == 0 || buffers[0].buffer == NULL)
   {
-    stun_debug ("STUN error: No data!\n");
+    stun_debug ("STUN error: No data!");
     return STUN_MESSAGE_BUFFER_INVALID;
   }
 
   if (buffers[0].buffer[0] >> 6)
   {
-    stun_debug ("STUN error: RTP or other non-protocol packet!\n");
+    stun_debug ("STUN error: RTP or other non-protocol packet!");
     return STUN_MESSAGE_BUFFER_INVALID; // RTP or other non-STUN packet
   }
 
   if (total_length < STUN_MESSAGE_LENGTH_POS + STUN_MESSAGE_LENGTH_LEN)
   {
-    stun_debug ("STUN error: Incomplete STUN message header!\n");
+    stun_debug ("STUN error: Incomplete STUN message header!");
     return STUN_MESSAGE_BUFFER_INCOMPLETE;
   }
 
@@ -590,12 +590,12 @@ ssize_t stun_message_validate_buffer_length_fast (StunInputVector *buffers,
   mlen += STUN_MESSAGE_HEADER_LENGTH;
 
   if (has_padding && stun_padding (mlen)) {
-    stun_debug ("STUN error: Invalid message length: %u!\n", (unsigned)mlen);
+    stun_debug ("STUN error: Invalid message length: %u!", (unsigned)mlen);
     return STUN_MESSAGE_BUFFER_INVALID; // wrong padding
   }
 
   if (total_length < mlen) {
-    stun_debug ("STUN error: Incomplete message: %u of %u bytes!\n",
+    stun_debug ("STUN error: Incomplete message: %u of %u bytes!",
         (unsigned) total_length, (unsigned) mlen);
     return STUN_MESSAGE_BUFFER_INCOMPLETE; // partial message
   }
@@ -631,7 +631,7 @@ int stun_message_validate_buffer_length (const uint8_t *msg, size_t length,
     if (len < 4)
     {
       stun_debug ("STUN error: Incomplete STUN attribute header of length "
-          "%u bytes!\n", (unsigned)len);
+          "%u bytes!", (unsigned)len);
       return STUN_MESSAGE_BUFFER_INVALID;
     }
 
@@ -645,7 +645,7 @@ int stun_message_validate_buffer_length (const uint8_t *msg, size_t length,
 
     if (len < alen)
     {
-      stun_debug ("STUN error: %u instead of %u bytes for attribute!\n",
+      stun_debug ("STUN error: %u instead of %u bytes for attribute!",
           (unsigned)len, (unsigned)alen);
       return STUN_MESSAGE_BUFFER_INVALID; // no room for attribute value + padding
     }

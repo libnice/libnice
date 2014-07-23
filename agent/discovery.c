@@ -1079,7 +1079,7 @@ static gboolean priv_discovery_tick_unlocked (gpointer pointer)
               /* case: not ready complete, so schedule next timeout */
               unsigned int timeout = stun_timer_remainder (&cand->timer);
 
-              stun_debug ("STUN transaction retransmitted (timeout %dms).\n",
+              stun_debug ("STUN transaction retransmitted (timeout %dms).",
                   timeout);
 
               /* retransmit */

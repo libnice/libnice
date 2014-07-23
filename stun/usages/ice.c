@@ -160,12 +160,12 @@ StunUsageIceReturn stun_usage_ice_conncheck_process (StunMessage *msg,
 
       /* NOTE: currently we ignore unauthenticated messages if the context
        * is authenticated, for security reasons. */
-      stun_debug (" STUN error message received (code: %d)\n", code);
+      stun_debug (" STUN error message received (code: %d)", code);
 
       return STUN_USAGE_ICE_RETURN_ERROR;
   }
 
-  stun_debug ("Received %u-bytes STUN message\n", stun_message_length (msg));
+  stun_debug ("Received %u-bytes STUN message", stun_message_length (msg));
 
   if (compatibility == STUN_USAGE_ICE_COMPATIBILITY_MSN) {
     union {
@@ -184,17 +184,17 @@ StunUsageIceReturn stun_usage_ice_conncheck_process (StunMessage *msg,
   }
   if (val != STUN_MESSAGE_RETURN_SUCCESS)
   {
-    stun_debug (" No XOR-MAPPED-ADDRESS: %d\n", val);
+    stun_debug (" No XOR-MAPPED-ADDRESS: %d", val);
     val = stun_message_find_addr (msg,
         STUN_ATTRIBUTE_MAPPED_ADDRESS, addr, addrlen);
     if (val != STUN_MESSAGE_RETURN_SUCCESS)
     {
-      stun_debug (" No MAPPED-ADDRESS: %d\n", val);
+      stun_debug (" No MAPPED-ADDRESS: %d", val);
       return STUN_USAGE_ICE_RETURN_NO_MAPPED_ADDRESS;
     }
   }
 
-  stun_debug ("Mapped address found!\n");
+  stun_debug ("Mapped address found!");
   return STUN_USAGE_ICE_RETURN_SUCCESS;
 }
 
@@ -207,7 +207,7 @@ stun_bind_error (StunAgent *agent, StunMessage *msg,
   int val;
 
   *plen = 0;
-  stun_debug ("STUN Error Reply (buffer size: %u)...\n", (unsigned)len);
+  stun_debug ("STUN Error Reply (buffer size: %u)...", (unsigned)len);
 
   val = stun_agent_init_error (agent, msg, buf, len, req, code);
   if (!val)
@@ -218,7 +218,7 @@ stun_bind_error (StunAgent *agent, StunMessage *msg,
     return 0;
 
   *plen = len;
-  stun_debug (" Error response (%u) of %u bytes\n", (unsigned)code,
+  stun_debug (" Error response (%u) of %u bytes", (unsigned)code,
        (unsigned)*plen);
   return 1;
 }
@@ -243,18 +243,18 @@ stun_usage_ice_conncheck_create_reply (StunAgent *agent, StunMessage *req,
   *plen = len
 
   *plen = 0;
-  stun_debug ("STUN Reply (buffer size = %u)...\n", (unsigned)len);
+  stun_debug ("STUN Reply (buffer size = %u)...", (unsigned)len);
 
   if (stun_message_get_class (req) != STUN_REQUEST)
   {
-    stun_debug (" Unhandled non-request (class %u) message.\n",
+    stun_debug (" Unhandled non-request (class %u) message.",
          stun_message_get_class (req));
     return STUN_USAGE_ICE_RETURN_INVALID_REQUEST;
   }
 
   if (stun_message_get_method (req) != STUN_BINDING)
   {
-    stun_debug (" Bad request (method %u) message.\n",
+    stun_debug (" Bad request (method %u) message.",
          stun_message_get_method (req));
     err (STUN_ERROR_BAD_REQUEST);
     return STUN_USAGE_ICE_RETURN_INVALID_METHOD;
@@ -265,28 +265,28 @@ stun_usage_ice_conncheck_create_reply (StunAgent *agent, StunMessage *req,
   if (stun_message_find64 (req, *control ? STUN_ATTRIBUTE_ICE_CONTROLLING
           : STUN_ATTRIBUTE_ICE_CONTROLLED, &q) == STUN_MESSAGE_RETURN_SUCCESS)
   {
-    stun_debug ("STUN Role Conflict detected:\n");
+    stun_debug ("STUN Role Conflict detected:");
 
     if (tie < q)
     {
-      stun_debug (" switching role from \"controll%s\" to \"controll%s\"\n",
+      stun_debug (" switching role from \"controll%s\" to \"controll%s\"",
            *control ? "ing" : "ed", *control ? "ed" : "ing");
       *control = !*control;
       ret = STUN_USAGE_ICE_RETURN_ROLE_CONFLICT;
     }
     else
     {
-      stun_debug (" staying \"controll%s\" (sending error)\n",
+      stun_debug (" staying \"controll%s\" (sending error)",
            *control ? "ing" : "ed");
       err (STUN_ERROR_ROLE_CONFLICT);
       return STUN_USAGE_ICE_RETURN_SUCCESS;
     }
   } else {
-    stun_debug ("STUN Role not specified by peer!\n");
+    stun_debug ("STUN Role not specified by peer!");
   }
 
   if (stun_agent_init_response (agent, msg, buf, len, req) == FALSE) {
-    stun_debug ("Unable to create response\n");
+    stun_debug ("Unable to create response");
     goto failure;
   }
   if (compatibility == STUN_USAGE_ICE_COMPATIBILITY_MSN) {
@@ -309,7 +309,7 @@ stun_usage_ice_conncheck_create_reply (StunAgent *agent, StunMessage *req,
   }
 
   if (val != STUN_MESSAGE_RETURN_SUCCESS) {
-    stun_debug (" Mapped address problem: %d\n", val);
+    stun_debug (" Mapped address problem: %d", val);
     goto failure;
   }
 
@@ -321,7 +321,7 @@ stun_usage_ice_conncheck_create_reply (StunAgent *agent, StunMessage *req,
   }
 
   if (val != STUN_MESSAGE_RETURN_SUCCESS) {
-    stun_debug ("Error appending username: %d\n", val);
+    stun_debug ("Error appending username: %d", val);
     goto failure;
   }
 
@@ -333,12 +333,12 @@ stun_usage_ice_conncheck_create_reply (StunAgent *agent, StunMessage *req,
     goto failure;
 
   *plen = len;
-  stun_debug (" All done (response size: %u)\n", (unsigned)len);
+  stun_debug (" All done (response size: %u)", (unsigned)len);
   return ret;
 
 failure:
   assert (*plen == 0);
-  stun_debug (" Fatal error formatting Response: %d\n", val);
+  stun_debug (" Fatal error formatting Response: %d", val);
 
   switch (val)
   {

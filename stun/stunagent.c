@@ -77,17 +77,19 @@ bool stun_agent_default_validater (StunAgent *agent,
   int i;
 
   for (i = 0; val && val[i].username ; i++) {
-    stun_debug ("Comparing username '");
-    stun_debug_bytes (username, username_len);
-    stun_debug ("' (%d) with '", username_len);
-    stun_debug_bytes (val[i].username, val[i].username_len);
-    stun_debug ("' (%" PRIuPTR ") : %d\n",
-        val[i].username_len, memcmp (username, val[i].username, username_len));
+#if 0
+    stun_debug ("Comparing username of size %d and %" PRIuPTR ": %d",
+        username_len, val[i].username_len,
+        (memcmp (username, val[i].username, username_len) == 0));
+#endif
+    stun_debug_bytes ("  First username: ", username, username_len);
+    stun_debug_bytes ("  Second username: ", val[i].username,
+        val[i].username_len);
     if (username_len == val[i].username_len &&
         memcmp (username, val[i].username, username_len) == 0) {
       *password = (uint8_t *) val[i].password;
       *password_len = val[i].password_len;
-      stun_debug ("Found valid username, returning password : '%s'\n", *password);
+      stun_debug ("Found valid username, returning password : '%s'", *password);
       return TRUE;
     }
   }
@@ -139,7 +141,7 @@ StunValidationStatus stun_agent_validate (StunAgent *agent, StunMessage *msg,
   if ((agent->compatibility == STUN_COMPATIBILITY_RFC5389 ||
           agent->compatibility == STUN_COMPATIBILITY_WLM2009) &&
       !stun_message_has_cookie (msg)) {
-      stun_debug ("STUN demux error: no cookie!\n");
+      stun_debug ("STUN demux error: no cookie!");
       return STUN_VALIDATION_BAD_REQUEST;
   }
 
@@ -149,7 +151,7 @@ StunValidationStatus stun_agent_validate (StunAgent *agent, StunMessage *msg,
     /* Looks for FINGERPRINT */
     if (stun_message_find32 (msg, STUN_ATTRIBUTE_FINGERPRINT, &fpr) !=
         STUN_MESSAGE_RETURN_SUCCESS) {
-      stun_debug ("STUN demux error: no FINGERPRINT attribute!\n");
+      stun_debug ("STUN demux error: no FINGERPRINT attribute!");
       return STUN_VALIDATION_BAD_REQUEST;
     }
     /* Checks FINGERPRINT */
@@ -158,11 +160,11 @@ StunValidationStatus stun_agent_validate (StunAgent *agent, StunMessage *msg,
     fpr = ntohl (fpr);
     if (fpr != crc32) {
       stun_debug ("STUN demux error: bad fingerprint: 0x%08x,"
-          " expected: 0x%08x!\n", fpr, crc32);
+          " expected: 0x%08x!", fpr, crc32);
       return STUN_VALIDATION_BAD_REQUEST;
     }
 
-    stun_debug ("STUN demux: OK!\n");
+    stun_debug ("STUN demux: OK!");
   }
 
   if (stun_message_get_class (msg) == STUN_RESPONSE ||
@@ -284,27 +286,23 @@ StunValidationStatus stun_agent_validate (StunAgent *agent, StunMessage *msg,
       }
 
       stun_debug (" Message HMAC-SHA1 fingerprint:");
-      stun_debug ("\nkey     : ");
-      stun_debug_bytes (key, key_len);
-      stun_debug ("\n  expected: ");
-      stun_debug_bytes (sha, sizeof (sha));
-      stun_debug ("\n  received: ");
-      stun_debug_bytes (hash, sizeof (sha));
-      stun_debug ("\n");
+      stun_debug_bytes ("  key     : ", key, key_len);
+      stun_debug_bytes ("  expected: ", sha, sizeof (sha));
+      stun_debug_bytes ("  received: ", hash, sizeof (sha));
 
       if (memcmp (sha, hash, sizeof (sha)))  {
-        stun_debug ("STUN auth error: SHA1 fingerprint mismatch!\n");
+        stun_debug ("STUN auth error: SHA1 fingerprint mismatch!");
         return STUN_VALIDATION_UNAUTHORIZED;
       }
 
-      stun_debug ("STUN auth: OK!\n");
+      stun_debug ("STUN auth: OK!");
       msg->key = key;
       msg->key_len = key_len;
     } else if (!(stun_message_get_class (msg) == STUN_ERROR &&
         stun_message_find_error (msg, &error_code) ==
             STUN_MESSAGE_RETURN_SUCCESS &&
         (error_code == 400 || error_code == 401))) {
-      stun_debug ("STUN auth error: No message integrity attribute!\n");
+      stun_debug ("STUN auth error: No message integrity attribute!");
       return STUN_VALIDATION_UNAUTHORIZED;
     }
   }
@@ -600,12 +598,9 @@ size_t stun_agent_finish_message (StunAgent *agent, StunMessage *msg,
         }
       }
 
-      stun_debug (" Message HMAC-SHA1 message integrity:"
-          "\n  key     : ");
-      stun_debug_bytes (key, key_len);
-      stun_debug ("\n  sent    : ");
-      stun_debug_bytes (ptr, 20);
-      stun_debug ("\n");
+      stun_debug (" Message HMAC-SHA1 message integrity:");
+      stun_debug_bytes ("  key     : ", key, key_len);
+      stun_debug_bytes ("  sent    : ", ptr, 20);
     }
   }
 
@@ -621,9 +616,7 @@ size_t stun_agent_finish_message (StunAgent *agent, StunMessage *msg,
         agent->compatibility == STUN_COMPATIBILITY_WLM2009);
     memcpy (ptr, &fpr, sizeof (fpr));
 
-    stun_debug (" Message HMAC-SHA1 fingerprint: ");
-    stun_debug_bytes (ptr, 4);
-    stun_debug ("\n");
+    stun_debug_bytes (" Message HMAC-SHA1 fingerprint: ", ptr, 4);
   }
 
 
@@ -678,7 +671,7 @@ stun_agent_find_unknowns (StunAgent *agent, const StunMessage * msg,
 
     if (!stun_optional (atype) && stun_agent_is_unknown (agent, atype))
     {
-      stun_debug ("STUN unknown: attribute 0x%04x(%u bytes)\n",
+      stun_debug ("STUN unknown: attribute 0x%04x(%u bytes)",
            (unsigned)atype, (unsigned)alen);
       list[count++] = htons (atype);
     }
@@ -689,7 +682,7 @@ stun_agent_find_unknowns (StunAgent *agent, const StunMessage * msg,
     offset += STUN_ATTRIBUTE_VALUE_POS + alen;
   }
 
-  stun_debug ("STUN unknown: %u mandatory attribute(s)!\n", count);
+  stun_debug ("STUN unknown: %u mandatory attribute(s)!", count);
   return count;
 }
 

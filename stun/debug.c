@@ -55,22 +55,51 @@ void stun_debug_disable (void) {
   debug_enabled = 0;
 }
 
+
+static void
+default_handler (const char *format, va_list ap)
+{
+  vfprintf (stderr, format, ap);
+  fprintf (stderr, "\n");
+}
+
+static StunDebugHandler handler = default_handler;
+
 void stun_debug (const char *fmt, ...)
 {
   va_list ap;
   if (debug_enabled) {
     va_start (ap, fmt);
-    vfprintf (stderr, fmt, ap);
+    handler (fmt, ap);
     va_end (ap);
   }
 }
 
-void stun_debug_bytes (const void *data, size_t len)
+void stun_debug_bytes (const char *prefix, const void *data, size_t len)
 {
   size_t i;
+  size_t prefix_len = strlen (prefix);
+  char bytes[prefix_len + 2 + (len * 2) + 1];
 
-  stun_debug ("0x");
+  if (!debug_enabled)
+    return;
+
+  bytes[0] = 0;
+  strcpy (bytes, prefix);
+  strcpy (bytes + prefix_len, "0x");
+
   for (i = 0; i < len; i++)
-    stun_debug ("%02x", ((const unsigned char *)data)[i]);
+    snprintf (bytes + prefix_len + 2 + (i * 2), 3, "%02x", ((const unsigned char *)data)[i]);
+
+  stun_debug ("%s", bytes);
+}
+
+
+void stun_set_debug_handler (StunDebugHandler _handler)
+{
+  if (_handler == NULL)
+    _handler = default_handler;
+
+  handler = _handler;
 }
 

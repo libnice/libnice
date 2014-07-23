@@ -120,7 +120,7 @@ StunUsageBindReturn stun_usage_bind_process (StunMessage *msg,
 
       /* NOTE: currently we ignore unauthenticated messages if the context
        * is authenticated, for security reasons. */
-      stun_debug (" STUN error message received (code: %d)\n", code);
+      stun_debug (" STUN error message received (code: %d)", code);
 
       /* ALTERNATE-SERVER mechanism */
       if ((code / 100) == 3) {
@@ -128,17 +128,17 @@ StunUsageBindReturn stun_usage_bind_process (StunMessage *msg,
           if (stun_message_find_addr (msg, STUN_ATTRIBUTE_ALTERNATE_SERVER,
                   (struct sockaddr_storage *) alternate_server,
                   alternate_server_len) != STUN_MESSAGE_RETURN_SUCCESS) {
-            stun_debug (" Unexpectedly missing ALTERNATE-SERVER attribute\n");
+            stun_debug (" Unexpectedly missing ALTERNATE-SERVER attribute");
             return STUN_USAGE_BIND_RETURN_ERROR;
           }
         } else {
           if (!stun_message_has_attribute (msg, STUN_ATTRIBUTE_ALTERNATE_SERVER)) {
-            stun_debug (" Unexpectedly missing ALTERNATE-SERVER attribute\n");
+            stun_debug (" Unexpectedly missing ALTERNATE-SERVER attribute");
             return STUN_USAGE_BIND_RETURN_ERROR;
           }
         }
 
-        stun_debug ("Found alternate server\n");
+        stun_debug ("Found alternate server");
         return STUN_USAGE_BIND_RETURN_ALTERNATE_SERVER;
 
       }
@@ -149,25 +149,25 @@ StunUsageBindReturn stun_usage_bind_process (StunMessage *msg,
       break;
   }
 
-  stun_debug ("Received %u-bytes STUN message\n", stun_message_length (msg));
+  stun_debug ("Received %u-bytes STUN message", stun_message_length (msg));
 
   val = stun_message_find_xor_addr (msg,
       STUN_ATTRIBUTE_XOR_MAPPED_ADDRESS, (struct sockaddr_storage *)addr,
       addrlen);
   if (val != STUN_MESSAGE_RETURN_SUCCESS)
   {
-    stun_debug (" No XOR-MAPPED-ADDRESS: %d\n", val);
+    stun_debug (" No XOR-MAPPED-ADDRESS: %d", val);
     val = stun_message_find_addr (msg,
         STUN_ATTRIBUTE_MAPPED_ADDRESS, (struct sockaddr_storage *)addr,
         addrlen);
     if (val != STUN_MESSAGE_RETURN_SUCCESS)
     {
-      stun_debug (" No MAPPED-ADDRESS: %d\n", val);
+      stun_debug (" No MAPPED-ADDRESS: %d", val);
       return STUN_USAGE_BIND_RETURN_ERROR;
     }
   }
 
-  stun_debug (" Mapped address found!\n");
+  stun_debug (" Mapped address found!");
   return STUN_USAGE_BIND_RETURN_SUCCESS;
 
 }
@@ -478,19 +478,19 @@ StunUsageBindReturn stun_usage_bind_run (const struct sockaddr *srv,
 
   ret = stun_trans_create (&trans, SOCK_DGRAM, 0, srv, srvlen);
   if (ret != STUN_USAGE_TRANS_RETURN_SUCCESS) {
-    stun_debug ("STUN transaction failed: couldn't create transport.\n");
+    stun_debug ("STUN transaction failed: couldn't create transport.");
     return STUN_USAGE_BIND_RETURN_ERROR;
   }
 
   val = stun_trans_send (&trans, req_buf, len);
   if (val < -1) {
-    stun_debug ("STUN transaction failed: couldn't send request.\n");
+    stun_debug ("STUN transaction failed: couldn't send request.");
     return STUN_USAGE_BIND_RETURN_ERROR;
   }
 
   stun_timer_start (&timer, STUN_TIMER_DEFAULT_TIMEOUT,
       STUN_TIMER_DEFAULT_MAX_RETRANSMISSIONS);
-  stun_debug ("STUN transaction started (timeout %dms).\n",
+  stun_debug ("STUN transaction started (timeout %dms).",
       stun_timer_remainder (&timer));
 
   do
@@ -501,14 +501,14 @@ StunUsageBindReturn stun_usage_bind_run (const struct sockaddr *srv,
       if (ret == STUN_USAGE_TRANS_RETURN_RETRY) {
         switch (stun_timer_refresh (&timer)) {
           case STUN_USAGE_TIMER_RETURN_TIMEOUT:
-            stun_debug ("STUN transaction failed: time out.\n");
+            stun_debug ("STUN transaction failed: time out.");
             return STUN_USAGE_BIND_RETURN_TIMEOUT; // fatal error!
           case STUN_USAGE_TIMER_RETURN_RETRANSMIT:
-            stun_debug ("STUN transaction retransmitted (timeout %dms).\n",
+            stun_debug ("STUN transaction retransmitted (timeout %dms).",
                 stun_timer_remainder (&timer));
             val = stun_trans_send (&trans, req_buf, len);
             if (val <  -1) {
-              stun_debug ("STUN transaction failed: couldn't resend request.\n");
+              stun_debug ("STUN transaction failed: couldn't resend request.");
               return STUN_USAGE_BIND_RETURN_ERROR;
             }
             continue;
