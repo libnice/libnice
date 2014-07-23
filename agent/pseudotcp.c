@@ -516,20 +516,10 @@ static void resize_receive_buffer (PseudoTcpSocket *self, guint32 new_size);
 // The following logging is for detailed (packet-level) pseudotcp analysis only.
 static PseudoTcpDebugLevel debug_level = PSEUDO_TCP_DEBUG_NONE;
 
-#ifndef _MSC_VER
-#define DEBUG(level, fmt, ...) \
-  if (debug_level >= level) \
-    g_debug ("PseudoTcpSocket %p: " fmt, self, ## __VA_ARGS__)
-#else
-/* HACK ALERT: To avoid Visual Studio compiler error due to the following bug
- * https://connect.microsoft.com/VisualStudio/feedback/details/604348/-va-args-support-has-an-error
- * we need to expand the g_debug macro and use g_log directly
- */
-#define DEBUG(level, fmt, ...) \
-  if (debug_level >= level) \
-    g_log (G_LOG_DOMAIN, G_LOG_LEVEL_DEBUG, "PseudoTcpSocket %p: " fmt, \
+#define DEBUG(level, fmt, ...)                                          \
+  if (debug_level >= level)                                             \
+    g_log (level == PSEUDO_TCP_DEBUG_NORMAL ? "libnice-pseudotcp" : "libnice-pseudotcp-verbose", G_LOG_LEVEL_DEBUG, "PseudoTcpSocket %p: " fmt, \
         self, ## __VA_ARGS__)
-#endif
 
 void
 pseudo_tcp_set_debug_level (PseudoTcpDebugLevel level)
