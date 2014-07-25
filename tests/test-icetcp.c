@@ -126,15 +126,26 @@ static void cb_candidate_gathering_done(NiceAgent *agent, guint stream_id, gpoin
 
 static void cb_component_state_changed (NiceAgent *agent, guint stream_id, guint component_id, guint state, gpointer data)
 {
+  gboolean ready_to_connected = FALSE;
+  static gboolean quit_called = FALSE;
   g_debug ("test-icetcp:%s: %p", G_STRFUNC, data);
 
-  if (GPOINTER_TO_UINT (data) == 1)
+  if (GPOINTER_TO_UINT (data) == 1) {
+    if (global_lagent_state[component_id - 1] == NICE_COMPONENT_STATE_READY &&
+        state == NICE_COMPONENT_STATE_CONNECTED)
+      ready_to_connected = TRUE;
     global_lagent_state[component_id - 1] = state;
-  else if (GPOINTER_TO_UINT (data) == 2)
+  } else if (GPOINTER_TO_UINT (data) == 2) {
+    if (global_ragent_state[component_id - 1] == NICE_COMPONENT_STATE_READY &&
+        state == NICE_COMPONENT_STATE_CONNECTED)
+      ready_to_connected = TRUE;
     global_ragent_state[component_id - 1] = state;
-  
+  }
+
   if (state == NICE_COMPONENT_STATE_READY)
     global_components_ready++;
+  else if (state == NICE_COMPONENT_STATE_CONNECTED && ready_to_connected)
+    global_components_ready--;
   if (state == NICE_COMPONENT_STATE_FAILED)
     global_components_failed++;
 
@@ -143,8 +154,10 @@ static void cb_component_state_changed (NiceAgent *agent, guint stream_id, guint
 
   /* signal status via a global variable */
   if (global_components_ready == global_components_ready_exit &&
-      global_components_failed == global_components_failed_exit) {
+      global_components_failed == global_components_failed_exit &&
+      quit_called == FALSE) {
     g_debug ("Components ready/failed achieved. Stopping mailoop");
+    quit_called = TRUE;
     g_main_loop_quit (global_mainloop); 
     return;
   }
