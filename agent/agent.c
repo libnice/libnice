@@ -1719,11 +1719,11 @@ adjust_tcp_clock (NiceAgent *agent, Stream *stream, Component *component)
 #endif
         }
         if (!component->tcp_clock) {
-          long interval = timeout - (g_get_monotonic_time () / 1000);
+          long interval = timeout - (guint32) (g_get_monotonic_time () / 1000);
 
           /* Prevent integer overflows */
           if (interval < 0 || interval > G_MAXINT)
-            interval = 0;
+            interval = G_MAXINT;
           component->tcp_clock = agent_timeout_add_with_context (agent, interval,
               notify_pseudo_tcp_socket_clock, component);
         }
