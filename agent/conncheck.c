@@ -2369,19 +2369,19 @@ static gboolean priv_map_reply_to_conn_check_request (NiceAgent *agent, Stream *
           if (!ok_pair)
             ok_pair = p;
 
-          /* Do not step down to CONNECTED if we're already at state READY*/
-          if (component->state != NICE_COMPONENT_STATE_READY) {
-            /* step: notify the client of a new component state (must be done
-             *       before the possible check list state update step */
-            agent_signal_component_state_change (agent,
-                stream->id, component->id, NICE_COMPONENT_STATE_CONNECTED);
-          }
-
-
           /* step: updating nominated flag (ICE 7.1.2.2.4 "Updating the
              Nominated Flag" (ID-19) */
-          if (ok_pair->nominated == TRUE)
+          if (ok_pair->nominated == TRUE) {
             priv_update_selected_pair (agent, component, ok_pair);
+
+            /* Do not step down to CONNECTED if we're already at state READY*/
+            if (component->state != NICE_COMPONENT_STATE_READY) {
+              /* step: notify the client of a new component state (must be done
+               *       before the possible check list state update step */
+              agent_signal_component_state_change (agent,
+                  stream->id, component->id, NICE_COMPONENT_STATE_CONNECTED);
+            }
+          }
 
           /* step: update pair states (ICE 7.1.2.2.3 "Updating pair
              states" and 8.1.2 "Updating States", ID-19) */
