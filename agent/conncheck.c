@@ -1796,7 +1796,7 @@ int conn_check_send (NiceAgent *agent, CandidateCheckPair *pair)
 
     if (buffer_len > 0) {
       if (nice_socket_is_reliable(pair->sockptr)) {
-        stun_timer_start_reliable(&pair->timer, STUN_TIMER_DEFAULT_TIMEOUT);
+        stun_timer_start_reliable(&pair->timer, STUN_TIMER_DEFAULT_RELIABLE_TIMEOUT);
       } else {
         stun_timer_start (&pair->timer, STUN_TIMER_DEFAULT_TIMEOUT,
             STUN_TIMER_DEFAULT_MAX_RETRANSMISSIONS);
