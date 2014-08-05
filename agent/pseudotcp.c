@@ -511,6 +511,7 @@ static void parse_options (PseudoTcpSocket *self, const guint8 *data,
     guint32 len);
 static void resize_send_buffer (PseudoTcpSocket *self, guint32 new_size);
 static void resize_receive_buffer (PseudoTcpSocket *self, guint32 new_size);
+static void set_state (PseudoTcpSocket *self, PseudoTcpState new_state);
 
 
 // The following logging is for detailed (packet-level) pseudotcp analysis only.
@@ -783,8 +784,7 @@ pseudo_tcp_socket_connect(PseudoTcpSocket *self)
     return FALSE;
   }
 
-  priv->state = TCP_SYN_SENT;
-  DEBUG (PSEUDO_TCP_DEBUG_NORMAL, "State: TCP_SYN_SENT");
+  set_state (self, TCP_SYN_SENT);
 
   queue_connect_message (self);
   attempt_send(self, sfNone);
@@ -1246,11 +1246,10 @@ process(PseudoTcpSocket *self, Segment *seg)
       parse_options (self, (guint8 *) &seg->data[1], seg->len - 1);
 
       if (priv->state == TCP_LISTEN) {
-        priv->state = TCP_SYN_RECEIVED;
+        set_state (self, TCP_SYN_RECEIVED);
         queue_connect_message (self);
       } else if (priv->state == TCP_SYN_SENT) {
-        priv->state = TCP_ESTABLISHED;
-        DEBUG (PSEUDO_TCP_DEBUG_NORMAL, "State: TCP_ESTABLISHED");
+        set_state (self, TCP_ESTABLISHED);
         adjustMTU(self);
         if (priv->callbacks.PseudoTcpOpened)
           priv->callbacks.PseudoTcpOpened(self, priv->callbacks.user_data);
@@ -1384,8 +1383,7 @@ process(PseudoTcpSocket *self, Segment *seg)
 
   // !?! A bit hacky
   if ((priv->state == TCP_SYN_RECEIVED) && !bConnect) {
-    priv->state = TCP_ESTABLISHED;
-    DEBUG (PSEUDO_TCP_DEBUG_NORMAL, "State: TCP_ESTABLISHED");
+    set_state (self, TCP_ESTABLISHED);
     adjustMTU(self);
     if (priv->callbacks.PseudoTcpOpened)
       priv->callbacks.PseudoTcpOpened(self, priv->callbacks.user_data);
@@ -1713,8 +1711,7 @@ closedown(PseudoTcpSocket *self, guint32 err)
 {
   PseudoTcpSocketPrivate *priv = self->priv;
 
-  DEBUG (PSEUDO_TCP_DEBUG_NORMAL, "State: TCP_CLOSED");
-  priv->state = TCP_CLOSED;
+  set_state (self, TCP_CLOSED);
   if (priv->callbacks.PseudoTcpClosed)
     priv->callbacks.PseudoTcpClosed(self, err, priv->callbacks.user_data);
 }
@@ -1907,4 +1904,57 @@ pseudo_tcp_socket_get_available_send_space (PseudoTcpSocket *self)
     priv->bWriteEnable = TRUE;
 
   return ret;
+}
+
+/* State names are capitalised and formatted as in RFC 793. */
+static const gchar *
+pseudo_tcp_state_get_name (PseudoTcpState state)
+{
+  switch (state) {
+  case TCP_LISTEN: return "LISTEN";
+  case TCP_SYN_SENT: return "SYN-SENT";
+  case TCP_SYN_RECEIVED: return "SYN-RECEIVED";
+  case TCP_ESTABLISHED: return "ESTABLISHED";
+  case TCP_CLOSED: return "CLOSED";
+  default: return "UNKNOWN";
+  }
+}
+
+static void
+set_state (PseudoTcpSocket *self, PseudoTcpState new_state)
+{
+  PseudoTcpSocketPrivate *priv = self->priv;
+  PseudoTcpState old_state = priv->state;
+
+  if (new_state == old_state)
+    return;
+
+  DEBUG (PSEUDO_TCP_DEBUG_NORMAL, "State %s → %s.",
+      pseudo_tcp_state_get_name (old_state),
+      pseudo_tcp_state_get_name (new_state));
+
+  /* Check whether it’s a valid state transition. */
+#define TRANSITION(OLD, NEW) \
+    (old_state == TCP_##OLD && \
+     new_state == TCP_##NEW)
+
+  /* Valid transitions. See: RFC 793, p23. */
+  g_assert (TRANSITION (CLOSED, SYN_SENT) ||
+            TRANSITION (SYN_SENT, CLOSED) ||
+            TRANSITION (CLOSED, LISTEN) ||
+            TRANSITION (LISTEN, CLOSED) ||
+            TRANSITION (LISTEN, SYN_SENT) ||
+            TRANSITION (LISTEN, SYN_RECEIVED) ||
+            TRANSITION (SYN_SENT, SYN_RECEIVED) ||
+            TRANSITION (SYN_RECEIVED, ESTABLISHED) ||
+            TRANSITION (SYN_SENT, ESTABLISHED) ||
+            /* These differ from RFC 793: */
+            TRANSITION (LISTEN, CLOSED) ||
+            TRANSITION (SYN_SENT, CLOSED) ||
+            TRANSITION (SYN_RECEIVED, CLOSED) ||
+            TRANSITION (ESTABLISHED, CLOSED));
+
+#undef TRANSITION
+
+  priv->state = new_state;
 }
