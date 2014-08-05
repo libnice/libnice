@@ -160,10 +160,13 @@ const guint16 PACKET_MAXIMUMS[] = {
 #define DEFAULT_RCV_BUF_SIZE (60 * 1024)
 #define DEFAULT_SND_BUF_SIZE (90 * 1024)
 
-#define TCP_OPT_EOL       0  // End of list.
-#define TCP_OPT_NOOP      1  // No-op.
-#define TCP_OPT_MSS       2  // Maximum segment size.
-#define TCP_OPT_WND_SCALE 3  // Window scale factor.
+/* NOTE: This must fit in 8 bits. This is used on the wire. */
+typedef enum {
+  TCP_OPT_EOL = 0,  /* end of list */
+  TCP_OPT_NOOP = 1,  /* no-op */
+  TCP_OPT_MSS = 2,  /* maximum segment size */
+  TCP_OPT_WND_SCALE = 3,  /* window scale factor */
+} TcpOption;
 
 
 /*
@@ -1749,11 +1752,13 @@ static void
 apply_option (PseudoTcpSocket *self, guint8 kind, const guint8 *data,
     guint32 len)
 {
-  if (kind == TCP_OPT_MSS) {
+  switch (kind) {
+  case TCP_OPT_MSS:
     DEBUG (PSEUDO_TCP_DEBUG_NORMAL,
         "Peer specified MSS option which is not supported.");
     // TODO: Implement.
-  } else if (kind == TCP_OPT_WND_SCALE) {
+    break;
+  case TCP_OPT_WND_SCALE:
     // Window scale factor.
     // http://www.ietf.org/rfc/rfc1323.txt
     if (len != 1) {
@@ -1761,6 +1766,14 @@ apply_option (PseudoTcpSocket *self, guint8 kind, const guint8 *data,
       return;
     }
     apply_window_scale_option(self, data[0]);
+    break;
+  case TCP_OPT_EOL:
+  case TCP_OPT_NOOP:
+    /* Nothing to do. */
+    break;
+  default:
+    DEBUG (PSEUDO_TCP_DEBUG_NORMAL, "Invalid TCP option %u", kind);
+    break;
   }
 }
 
