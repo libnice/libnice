@@ -520,14 +520,15 @@ static void resize_send_buffer (PseudoTcpSocket *self, guint32 new_size);
 static void resize_receive_buffer (PseudoTcpSocket *self, guint32 new_size);
 static void set_state (PseudoTcpSocket *self, PseudoTcpState new_state);
 
+static const gchar *pseudo_tcp_state_get_name (PseudoTcpState state);
 
 // The following logging is for detailed (packet-level) pseudotcp analysis only.
 static PseudoTcpDebugLevel debug_level = PSEUDO_TCP_DEBUG_NONE;
 
 #define DEBUG(level, fmt, ...)                                          \
   if (debug_level >= level)                                             \
-    g_log (level == PSEUDO_TCP_DEBUG_NORMAL ? "libnice-pseudotcp" : "libnice-pseudotcp-verbose", G_LOG_LEVEL_DEBUG, "PseudoTcpSocket %p: " fmt, \
-        self, ## __VA_ARGS__)
+    g_log (level == PSEUDO_TCP_DEBUG_NORMAL ? "libnice-pseudotcp" : "libnice-pseudotcp-verbose", G_LOG_LEVEL_DEBUG, "PseudoTcpSocket %p %s: " fmt, \
+        self, pseudo_tcp_state_get_name (self->priv->state), ## __VA_ARGS__)
 
 void
 pseudo_tcp_set_debug_level (PseudoTcpDebugLevel level)
