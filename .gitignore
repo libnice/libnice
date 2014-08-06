@@ -147,6 +147,7 @@ tests/test-mainloop
 tests/test-priority
 tests/test-pseudotcp
 tests/test-pseudotcp-fuzzy
+tests/test-pseudotcp-fin
 tests/test-restart
 tests/test-tcp
 tests/test-thread
