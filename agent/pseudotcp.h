@@ -472,6 +472,25 @@ gboolean pseudo_tcp_socket_can_send (PseudoTcpSocket *self);
 gsize pseudo_tcp_socket_get_available_send_space (PseudoTcpSocket *self);
 
 /**
+ * pseudo_tcp_socket_set_time:
+ * @self: The #PseudoTcpSocket object.
+ * @current_time: Current monotonic time, in milliseconds; or zero to use the
+ * system monotonic clock.
+ *
+ * Sets the current monotonic time to be used by the TCP socket when calculating
+ * timeouts and expiry times. If this function is not called, or is called with
+ * @current_time as zero, g_get_monotonic_time() will be used. Otherwise, the
+ * specified @current_time will be used until it is updated by calling this
+ * function again.
+ *
+ * This function is intended for testing only, and should not be used in
+ * production code.
+ *
+ * Since: UNRELEASED
+ */
+void pseudo_tcp_socket_set_time (PseudoTcpSocket *self, guint32 current_time);
+
+/**
  * pseudo_tcp_socket_is_closed:
  * @self: The #PseudoTcpSocket object.
  *

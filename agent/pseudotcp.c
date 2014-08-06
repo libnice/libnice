@@ -208,12 +208,6 @@ bound(guint32 lower, guint32 middle, guint32 upper)
    return min (max (lower, middle), upper);
 }
 
-static guint32
-get_current_time(void)
-{
-  return g_get_monotonic_time () / 1000;
-}
-
 static gboolean
 time_is_between(guint32 later, guint32 middle, guint32 earlier)
 {
@@ -473,6 +467,10 @@ struct _PseudoTcpSocketPrivate {
   // This is used by unit tests to test backward compatibility of
   // PseudoTcp implementations that don't support window scaling.
   gboolean support_wnd_scale;
+
+  /* Current time. Typically only used for testing, when non-zero. When zero,
+   * the system monotonic clock is used. Units: monotonic milliseconds. */
+  guint32 current_time;
 };
 
 #define LARGER(a,b) (((a) - (b) - 1) < (G_MAXUINT32 >> 1))
@@ -534,6 +532,21 @@ void
 pseudo_tcp_set_debug_level (PseudoTcpDebugLevel level)
 {
   debug_level = level;
+}
+
+static guint32
+get_current_time (PseudoTcpSocket *socket)
+{
+  if (G_UNLIKELY (socket->priv->current_time != 0))
+    return socket->priv->current_time;
+
+  return g_get_monotonic_time () / 1000;
+}
+
+void
+pseudo_tcp_socket_set_time (PseudoTcpSocket *self, guint32 current_time)
+{
+  self->priv->current_time = current_time;
 }
 
 static void
@@ -701,7 +714,6 @@ pseudo_tcp_socket_init (PseudoTcpSocket *obj)
    * our private data is too big (150KB+) and the g_slice_allow cannot allocate
    * it. So we handle the private ourselves */
   PseudoTcpSocketPrivate *priv = g_new0 (PseudoTcpSocketPrivate, 1);
-  guint32 now = get_current_time();
 
   obj->priv = priv;
 
@@ -735,7 +747,7 @@ pseudo_tcp_socket_init (PseudoTcpSocket *obj)
 
   priv->cwnd = 2 * priv->mss;
   priv->ssthresh = priv->rbuf_len;
-  priv->lastrecv = priv->lastsend = priv->last_traffic = now;
+  priv->lastrecv = priv->lastsend = priv->last_traffic = 0;
   priv->bOutgoing = FALSE;
 
   priv->dup_acks = 0;
@@ -814,7 +826,7 @@ void
 pseudo_tcp_socket_notify_clock(PseudoTcpSocket *self)
 {
   PseudoTcpSocketPrivate *priv = self->priv;
-  guint32 now = get_current_time ();
+  guint32 now = get_current_time (self);
 
   if (priv->state == TCP_CLOSED)
     return;
@@ -937,7 +949,7 @@ gboolean
 pseudo_tcp_socket_get_next_clock(PseudoTcpSocket *self, guint64 *timeout)
 {
   PseudoTcpSocketPrivate *priv = self->priv;
-  guint32 now = get_current_time ();
+  guint32 now = get_current_time (self);
   gsize snd_buffered;
 
   if (priv->shutdown == SD_FORCEFUL)
@@ -1226,7 +1238,7 @@ process(PseudoTcpSocket *self, Segment *seg)
     return FALSE;
   }
 
-  now = get_current_time();
+  now = get_current_time (self);
   priv->last_traffic = priv->lastrecv = now;
   priv->bOutgoing = FALSE;
 
@@ -1618,7 +1630,7 @@ static void
 attempt_send(PseudoTcpSocket *self, SendFlags sflags)
 {
   PseudoTcpSocketPrivate *priv = self->priv;
-  guint32 now = get_current_time();
+  guint32 now = get_current_time (self);
   gboolean bFirst = TRUE;
 
   if (time_diff(now, priv->lastsend) > (long) priv->rx_rto) {
