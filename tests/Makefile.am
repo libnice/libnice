@@ -17,6 +17,7 @@ AM_CFLAGS = \
 	-I $(top_srcdir)/random \
 	-I $(top_srcdir)/socket \
 	-I $(top_srcdir)/stun
+AM_CPPFLAGS = -DG_LOG_DOMAIN=\"libnice-tests\"
 
 COMMON_LDADD = $(top_builddir)/agent/libagent.la $(top_builddir)/socket/libsocket.la $(GLIB_LIBS) $(GUPNP_LIBS)
 
