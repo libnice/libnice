@@ -54,6 +54,7 @@ static gboolean global_lagent_gathering_done = FALSE;
 static gboolean global_ragent_gathering_done = FALSE;
 static gboolean global_lagent_ibr_received = FALSE;
 static gboolean global_ragent_ibr_received = FALSE;
+static gboolean global_ready_reached = FALSE;
 static int global_lagent_cands = 0;
 static int global_ragent_cands = 0;
 static gint global_ragent_read = 0;
@@ -127,7 +128,6 @@ static void cb_candidate_gathering_done(NiceAgent *agent, guint stream_id, gpoin
 static void cb_component_state_changed (NiceAgent *agent, guint stream_id, guint component_id, guint state, gpointer data)
 {
   gboolean ready_to_connected = FALSE;
-  static gboolean quit_called = FALSE;
   g_debug ("test-icetcp:%s: %p", G_STRFUNC, data);
 
   if (GPOINTER_TO_UINT (data) == 1) {
@@ -155,9 +155,9 @@ static void cb_component_state_changed (NiceAgent *agent, guint stream_id, guint
   /* signal status via a global variable */
   if (global_components_ready == global_components_ready_exit &&
       global_components_failed == global_components_failed_exit &&
-      quit_called == FALSE) {
+      global_ready_reached == FALSE) {
     g_debug ("Components ready/failed achieved. Stopping mailoop");
-    quit_called = TRUE;
+    global_ready_reached = TRUE;
     g_main_loop_quit (global_mainloop); 
     return;
   }
@@ -274,6 +274,7 @@ static int run_full_test (NiceAgent *lagent, NiceAgent *ragent, NiceAddress *bas
     global_ragent_ibr_received = FALSE;
   global_lagent_cands =
     global_ragent_cands = 0;
+  global_ready_reached = FALSE;
 
   g_object_set (G_OBJECT (lagent), "controlling-mode", TRUE, NULL);
   g_object_set (G_OBJECT (ragent), "controlling-mode", FALSE, NULL);
