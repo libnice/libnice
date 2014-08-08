@@ -50,8 +50,8 @@
  * component triple, and will be closed as soon as that stream is removed from
  * the agent (e.g. if nice_agent_remove_stream() is called from another thread).
  * If g_output_stream_close() is called on a #NiceOutputStream, the output
- * stream will be marked as closed, but the underlying #NiceAgent stream will
- * not be removed. Use nice_agent_remove_stream() to do that.
+ * stream and underlying #NiceAgent stream will be closed, but the underlying
+ * stream will not be removed. Use nice_agent_remove_stream() to do that.
  *
  * The output stream can only be used once the
  * #NiceAgent::reliable-transport-writable signal has been received for the
@@ -104,6 +104,8 @@ static void nice_output_stream_set_property (GObject *object, guint prop_id,
 
 static gssize nice_output_stream_write (GOutputStream *stream,
     const void *buffer, gsize count, GCancellable *cancellable, GError **error);
+static gboolean nice_output_stream_close (GOutputStream *stream,
+    GCancellable *cancellable, GError **error);
 
 static gboolean nice_output_stream_is_writable (GPollableOutputStream *stream);
 static gssize nice_output_stream_write_nonblocking (
@@ -122,6 +124,7 @@ nice_output_stream_class_init (NiceOutputStreamClass *klass)
   g_type_class_add_private (klass, sizeof (NiceOutputStreamPrivate));
 
   stream_class->write_fn = nice_output_stream_write;
+  stream_class->close_fn = nice_output_stream_close;
 
   gobject_class->set_property = nice_output_stream_set_property;
   gobject_class->get_property = nice_output_stream_get_property;
@@ -184,6 +187,11 @@ nice_output_stream_dispose (GObject *object)
 {
   NiceOutputStream *self = NICE_OUTPUT_STREAM (object);
   NiceAgent *agent;
+
+  /* Ensure the stream is closed first, otherwise the agent can’t be found in
+   * the close handler called by the parent implementation. */
+  if (!g_output_stream_is_closed (G_OUTPUT_STREAM (object)))
+    g_output_stream_close (G_OUTPUT_STREAM (object), NULL, NULL);
 
   agent = g_weak_ref_get (&self->priv->agent_ref);
   if (agent != NULL) {
@@ -461,6 +469,36 @@ nice_output_stream_write (GOutputStream *stream, const void *buffer, gsize count
   g_assert (len != 0);
 
   return len;
+}
+
+static gboolean
+nice_output_stream_close (GOutputStream *stream, GCancellable *cancellable,
+    GError **error)
+{
+  NiceOutputStreamPrivate *priv = NICE_OUTPUT_STREAM (stream)->priv;
+  Component *component = NULL;
+  Stream *_stream = NULL;
+  NiceAgent *agent;  /* owned */
+
+  /* Has the agent disappeared? */
+  agent = g_weak_ref_get (&priv->agent_ref);
+  if (agent == NULL)
+    return TRUE;
+
+  agent_lock ();
+
+  /* Shut down the write side of the pseudo-TCP stream. */
+  if (agent_find_component (agent, priv->stream_id, priv->component_id,
+          &_stream, &component) &&
+      component->tcp != NULL) {
+    pseudo_tcp_socket_shutdown (component->tcp, PSEUDO_TCP_SHUTDOWN_WR);
+  }
+
+  agent_unlock ();
+
+  g_object_unref (agent);
+
+  return TRUE;
 }
 
 static gboolean

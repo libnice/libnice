@@ -50,9 +50,10 @@
  * A single #NiceIOStream can only be used with a single agent, stream and
  * component triple, and will be closed as soon as that stream is removed from
  * the agent (e.g. if nice_agent_remove_stream() is called from another thread).
- * If g_io_stream_close() is called on a #NiceIOStream, the I/O stream will be
- * marked as closed in both directions, but the underlying #NiceAgent stream
- * will not be removed. Use nice_agent_remove_stream() to do that.
+ * If g_io_stream_close() is called on a #NiceIOStream, the I/O stream and
+ * underlying #NiceAgent stream will be closed in both directions, but the
+ * underlying stream will not be removed. Use nice_agent_remove_stream() to do
+ * that.
  *
  * Since: 0.1.5
  */
