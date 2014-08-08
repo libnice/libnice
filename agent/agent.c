@@ -1384,7 +1384,6 @@ static void priv_pseudo_tcp_error (NiceAgent *agent, Stream *stream,
         component->id, NICE_COMPONENT_STATE_FAILED);
     component_detach_all_sockets (component);
     pseudo_tcp_socket_close (component->tcp, TRUE);
-    g_clear_object (&component->tcp);
   }
 
   if (component->tcp_clock) {
