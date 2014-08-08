@@ -202,9 +202,14 @@ typedef enum {
 #define DEFAULT_TIMEOUT 4000
 // If the connection is closed, once per minute
 #define CLOSED_TIMEOUT (60 * 1000)
-/* Timeout after reaching the TIME_WAIT state.
- * See: RFC 1122, §4.2.2.13. */
-#define TIME_WAIT_TIMEOUT (2 * TCP_MSL)
+/* Timeout after reaching the TIME_WAIT state, in milliseconds.
+ * See: RFC 1122, §4.2.2.13.
+ *
+ * XXX: Since we can control the underlying layer’s channel ID, we can guarantee
+ * delayed segments won’t affect subsequent connections, so can radically
+ * shorten the TIME-WAIT timeout (to the extent that it basically doesn’t
+ * exist). It would normally be (2 * TCP_MSL). */
+#define TIME_WAIT_TIMEOUT 1
 
 //////////////////////////////////////////////////////////////////////
 // Helper Functions
