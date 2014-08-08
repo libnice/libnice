@@ -517,6 +517,8 @@ static void parse_options (PseudoTcpSocket *self, const guint8 *data,
 static void resize_send_buffer (PseudoTcpSocket *self, guint32 new_size);
 static void resize_receive_buffer (PseudoTcpSocket *self, guint32 new_size);
 static void set_state (PseudoTcpSocket *self, PseudoTcpState new_state);
+static void set_state_established (PseudoTcpSocket *self);
+static void set_state_closed (PseudoTcpSocket *self, guint32 err);
 
 static const gchar *pseudo_tcp_state_get_name (PseudoTcpState state);
 
@@ -1270,11 +1272,7 @@ process(PseudoTcpSocket *self, Segment *seg)
         set_state (self, TCP_SYN_RECEIVED);
         queue_connect_message (self);
       } else if (priv->state == TCP_SYN_SENT) {
-        set_state (self, TCP_ESTABLISHED);
-        adjustMTU(self);
-        if (priv->callbacks.PseudoTcpOpened)
-          priv->callbacks.PseudoTcpOpened(self, priv->callbacks.user_data);
-
+        set_state_established (self);
       }
     } else {
       DEBUG (PSEUDO_TCP_DEBUG_NORMAL, "Unknown control code: %d", seg->data[0]);
@@ -1407,10 +1405,7 @@ process(PseudoTcpSocket *self, Segment *seg)
 
   // !?! A bit hacky
   if ((priv->state == TCP_SYN_RECEIVED) && !bConnect) {
-    set_state (self, TCP_ESTABLISHED);
-    adjustMTU(self);
-    if (priv->callbacks.PseudoTcpOpened)
-      priv->callbacks.PseudoTcpOpened(self, priv->callbacks.user_data);
+    set_state_established (self);
   }
 
   // If we make room in the send queue, notify the user
@@ -1733,11 +1728,7 @@ attempt_send(PseudoTcpSocket *self, SendFlags sflags)
 static void
 closedown(PseudoTcpSocket *self, guint32 err)
 {
-  PseudoTcpSocketPrivate *priv = self->priv;
-
-  set_state (self, TCP_CLOSED);
-  if (priv->callbacks.PseudoTcpClosed)
-    priv->callbacks.PseudoTcpClosed(self, err, priv->callbacks.user_data);
+  set_state_closed (self, err);
 }
 
 static void
@@ -1992,6 +1983,31 @@ set_state (PseudoTcpSocket *self, PseudoTcpState new_state)
 #undef TRANSITION
 
   priv->state = new_state;
+}
+
+static void
+set_state_established (PseudoTcpSocket *self)
+{
+  PseudoTcpSocketPrivate *priv = self->priv;
+
+  set_state (self, TCP_ESTABLISHED);
+
+  adjustMTU (self);
+  if (priv->callbacks.PseudoTcpOpened)
+    priv->callbacks.PseudoTcpOpened (self, priv->callbacks.user_data);
+}
+
+/* (err == 0) means no error. */
+static void
+set_state_closed (PseudoTcpSocket *self, guint32 err)
+{
+  PseudoTcpSocketPrivate *priv = self->priv;
+
+  set_state (self, TCP_CLOSED);
+
+  /* Only call the callback if there was an error. */
+  if (priv->callbacks.PseudoTcpClosed && err != 0)
+    priv->callbacks.PseudoTcpClosed (self, err, priv->callbacks.user_data);
 }
 
 gboolean
