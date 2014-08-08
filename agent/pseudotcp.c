@@ -779,14 +779,14 @@ queue_connect_message (PseudoTcpSocket *self)
 {
   PseudoTcpSocketPrivate *priv = self->priv;
   guint8 buf[4];
-  gsize size = 1;
+  gsize size = 0;
 
-  buf[0] = CTL_CONNECT;
+  buf[size++] = CTL_CONNECT;
+
   if (priv->support_wnd_scale) {
-    buf[1] = TCP_OPT_WND_SCALE;
-    buf[2] = 1;
-    buf[3] = priv->rwnd_scale;
-    size = 4;
+    buf[size++] = TCP_OPT_WND_SCALE;
+    buf[size++] = 1;
+    buf[size++] = priv->rwnd_scale;
   }
 
   priv->snd_wnd = size;
