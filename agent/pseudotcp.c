@@ -175,8 +175,12 @@ typedef enum {
 #define FLAG_ACK 0x10
 */
 
-#define FLAG_CTL 0x02
-#define FLAG_RST 0x04
+/* NOTE: This must fit in 5 bits. This is used on the wire. */
+typedef enum {
+  FLAG_NONE = 0,
+  FLAG_CTL = 1 << 1,
+  FLAG_RST = 1 << 2,
+} TcpFlags;
 
 #define CTL_CONNECT  0
 //#define CTL_REDIRECT  1
@@ -402,7 +406,7 @@ typedef enum {
 
 typedef struct {
   guint32 conv, seq, ack;
-  guint8 flags;
+  TcpFlags flags;
   guint16 wnd;
   const gchar * data;
   guint32 len;
@@ -501,7 +505,7 @@ static void queue_connect_message (PseudoTcpSocket *self);
 static guint32 queue(PseudoTcpSocket *self, const gchar * data,
     guint32 len, gboolean bCtrl);
 static PseudoTcpWriteResult packet(PseudoTcpSocket *self, guint32 seq,
-    guint8 flags, guint32 offset, guint32 len, guint32 now);
+    TcpFlags flags, guint32 offset, guint32 len, guint32 now);
 static gboolean parse (PseudoTcpSocket *self,
     const guint8 *_header_buf, gsize header_buf_len,
     const guint8 *data_buf, gsize data_buf_len);
@@ -1103,7 +1107,7 @@ queue(PseudoTcpSocket *self, const gchar * data, guint32 len, gboolean bCtrl)
 // value is 0 then this is an ACK packet, otherwise this packet has payload.
 
 static PseudoTcpWriteResult
-packet(PseudoTcpSocket *self, guint32 seq, guint8 flags,
+packet(PseudoTcpSocket *self, guint32 seq, TcpFlags flags,
     guint32 offset, guint32 len, guint32 now)
 {
   PseudoTcpSocketPrivate *priv = self->priv;
