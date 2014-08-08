@@ -1718,19 +1718,18 @@ pseudo_tcp_socket_write_packet (PseudoTcpSocket *psocket,
     NiceAddress *addr;
 
     sock = component->selected_pair.local->sockptr;
+    addr = &component->selected_pair.remote->addr;
 
     if (nice_debug_is_enabled ()) {
       gchar tmpbuf[INET6_ADDRSTRLEN];
-      nice_address_to_string (&component->selected_pair.remote->addr, tmpbuf);
+      nice_address_to_string (addr, tmpbuf);
 
       nice_debug (
           "Agent %p : s%d:%d: sending %d bytes on socket %p (FD %d) to [%s]:%d",
           component->agent, component->stream->id, component->id, len,
           sock->fileno, g_socket_get_fd (sock->fileno), tmpbuf,
-          nice_address_get_port (&component->selected_pair.remote->addr));
+          nice_address_get_port (addr));
     }
-
-    addr = &component->selected_pair.remote->addr;
 
     if (nice_socket_send (sock, addr, len, buffer))
       return WR_SUCCESS;
