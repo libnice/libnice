@@ -241,6 +241,10 @@ socket_send_message (NiceSocket *sock, const NiceAddress *to,
   GError *child_error = NULL;
   gssize len;
 
+  /* Socket has been closed: */
+  if (priv == NULL)
+    return -1;
+
   if (!nice_address_is_valid (&priv->niceaddr) ||
       !nice_address_equal (&priv->niceaddr, to)) {
     union {
