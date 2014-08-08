@@ -870,7 +870,8 @@ nice_agent_attach_recv (
  * A single-message version of nice_agent_recv_messages().
  *
  * Returns: the number of bytes written to @buf on success (guaranteed to be
- * greater than 0 unless @buf_len is 0), or -1 on error
+ * greater than 0 unless @buf_len is 0), 0 if in reliable mode and the remote
+ * peer closed the stream, or -1 on error
  *
  * Since: 0.1.5
  */
@@ -927,7 +928,8 @@ nice_agent_recv (
  * cancelled. %G_IO_ERROR_FAILED will be returned for other errors.
  *
  * Returns: the number of valid messages written to @messages on success
- * (guaranteed to be greater than 0 unless @n_messages is 0), or -1 on error
+ * (guaranteed to be greater than 0 unless @n_messages is 0), 0 if the remote
+ * peer closed the stream, or -1 on error
  *
  * Since: 0.1.5
  */
@@ -956,7 +958,8 @@ nice_agent_recv_messages (
  * A single-message version of nice_agent_recv_messages_nonblocking().
  *
  * Returns: the number of bytes received into @buf on success (guaranteed to be
- * greater than 0 unless @buf_len is 0), or -1 on error
+ * greater than 0 unless @buf_len is 0), 0 if in reliable mode and the remote
+ * peer closed the stream, or -1 on error
  *
  * Since: 0.1.5
  */
@@ -1005,7 +1008,8 @@ nice_agent_recv_nonblocking (
  * same stream/component pair.
  *
  * Returns: the number of valid messages written to @messages on success
- * (guaranteed to be greater than 0 unless @n_messages is 0), or -1 on error
+ * (guaranteed to be greater than 0 unless @n_messages is 0), 0 if in reliable
+ * mode and the remote peer closed the stream, or -1 on error
  *
  * Since: 0.1.5
  */

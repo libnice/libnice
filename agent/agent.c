@@ -1482,8 +1482,9 @@ pseudo_tcp_socket_send_messages (PseudoTcpSocket *self,
  * an error is returned.
  *
  * Returns the number of valid messages in @messages on success (which may be
- * zero if reading into the first buffer of the message would have blocked), or
- * a negative number on error. */
+ * zero if no data is pending and the peer has disconnected), or a negative
+ * number on error (including if the request would have blocked returning no
+ * messages). */
 static gint
 pseudo_tcp_socket_recv_messages (PseudoTcpSocket *self,
     NiceInputMessage *messages, guint n_messages, NiceInputMessageIter *iter,
@@ -1513,9 +1514,20 @@ pseudo_tcp_socket_recv_messages (PseudoTcpSocket *self,
             "buffer %p (offset %" G_GSIZE_FORMAT ", length %" G_GSIZE_FORMAT
             ").", G_STRFUNC, len, buffer->buffer, iter->offset, buffer->size);
 
-        if (len < 0 && pseudo_tcp_socket_get_error (self) == EWOULDBLOCK) {
+        if (len == 0) {
+          /* Reached EOS. */
           len = 0;
           goto done;
+        } else if (len < 0 &&
+            pseudo_tcp_socket_get_error (self) == EWOULDBLOCK) {
+          /* EWOULDBLOCK. If we’ve already received something, return that;
+           * otherwise, error. */
+          if (nice_input_message_iter_get_n_valid_messages (iter) > 0) {
+            goto done;
+          }
+          g_set_error (error, G_IO_ERROR, G_IO_ERROR_WOULD_BLOCK,
+              "Error reading data from pseudo-TCP socket: would block.");
+          return len;
         } else if (len < 0 && pseudo_tcp_socket_get_error (self) == ENOTCONN) {
           g_set_error (error, G_IO_ERROR, G_IO_ERROR_WOULD_BLOCK,
               "Error reading data from pseudo-TCP socket: not connected.");
@@ -1578,25 +1590,29 @@ pseudo_tcp_socket_readable (PseudoTcpSocket *sock, gpointer user_data)
           G_STRFUNC, len);
 
       if (len == 0) {
+        /* Reached EOS. */
         component->tcp_readable = FALSE;
+        pseudo_tcp_socket_close (component->tcp, FALSE);
         break;
-      } else if (len <= 0) {
+      } else if (len < 0) {
         /* Handle errors. */
         if (pseudo_tcp_socket_get_error (sock) != EWOULDBLOCK) {
           nice_debug ("%s: calling priv_pseudo_tcp_error()", G_STRFUNC);
           priv_pseudo_tcp_error (agent, stream, component);
+        }
 
-          if (component->recv_buf_error != NULL) {
-            GIOErrorEnum error_code;
+        if (component->recv_buf_error != NULL) {
+          GIOErrorEnum error_code;
 
-            if (pseudo_tcp_socket_get_error (sock) == ENOTCONN)
-              error_code = G_IO_ERROR_BROKEN_PIPE;
-            else
-              error_code = G_IO_ERROR_FAILED;
+          if (pseudo_tcp_socket_get_error (sock) == ENOTCONN)
+            error_code = G_IO_ERROR_BROKEN_PIPE;
+          else if (pseudo_tcp_socket_get_error (sock) == EWOULDBLOCK)
+            error_code = G_IO_ERROR_WOULD_BLOCK;
+          else
+            error_code = G_IO_ERROR_FAILED;
 
-            g_set_error (component->recv_buf_error, G_IO_ERROR, error_code,
-                "Error reading data from pseudo-TCP socket.");
-          }
+          g_set_error (component->recv_buf_error, G_IO_ERROR, error_code,
+              "Error reading data from pseudo-TCP socket.");
         }
 
         break;
@@ -1618,6 +1634,7 @@ pseudo_tcp_socket_readable (PseudoTcpSocket *sock, gpointer user_data)
     } while (has_io_callback);
   } else if (component->recv_messages != NULL) {
     gint n_valid_messages;
+    GError *child_error = NULL;
 
     /* Fill up every buffer in every message until the connection closes or an
      * error occurs. Copy the data directly into the client’s receive message
@@ -1625,7 +1642,7 @@ pseudo_tcp_socket_readable (PseudoTcpSocket *sock, gpointer user_data)
      * as we go. */
     n_valid_messages = pseudo_tcp_socket_recv_messages (sock,
         component->recv_messages, component->n_recv_messages,
-        &component->recv_messages_iter, component->recv_buf_error);
+        &component->recv_messages_iter, &child_error);
 
     nice_debug ("%s: Client buffers case: Received %d valid messages:",
         G_STRFUNC, n_valid_messages);
@@ -1633,10 +1650,22 @@ pseudo_tcp_socket_readable (PseudoTcpSocket *sock, gpointer user_data)
         component->n_recv_messages);
 
     if (n_valid_messages < 0) {
+      g_propagate_error (component->recv_buf_error, child_error);
+    } else {
+      g_clear_error (&child_error);
+    }
+
+    if (n_valid_messages < 0 &&
+        g_error_matches (child_error, G_IO_ERROR,
+            G_IO_ERROR_WOULD_BLOCK)) {
+      component->tcp_readable = FALSE;
+    } else if (n_valid_messages < 0) {
       nice_debug ("%s: calling priv_pseudo_tcp_error()", G_STRFUNC);
       priv_pseudo_tcp_error (agent, stream, component);
     } else if (n_valid_messages == 0) {
+      /* Reached EOS. */
       component->tcp_readable = FALSE;
+      pseudo_tcp_socket_close (component->tcp, FALSE);
     }
   } else {
     nice_debug ("%s: no data read", G_STRFUNC);
@@ -3825,6 +3854,7 @@ nice_agent_recv_messages_blocking_or_nonblocking (NiceAgent *agent,
   GSource *cancellable_source = NULL;
   gboolean received_enough = FALSE, error_reported = FALSE;
   gboolean all_sockets_would_block = FALSE;
+  gboolean reached_eos = FALSE;
   GError *child_error = NULL;
   NiceInputMessage *messages_orig = NULL;
   guint i;
@@ -3947,11 +3977,14 @@ nice_agent_recv_messages_blocking_or_nonblocking (NiceAgent *agent,
    * @n_messages messages. In blocking, non-reliable mode, iterate the loop to
    * receive @n_messages messages (which may not fill all the buffers). In
    * non-blocking mode, stop iterating the loop if all sockets would block (i.e.
-   * if no data was received for an iteration).
+   * if no data was received for an iteration; in which case @child_error will
+   * be set to %G_IO_ERROR_WOULD_BLOCK).
    */
-  while (!received_enough && !error_reported && !all_sockets_would_block) {
+  while (!received_enough && !error_reported && !all_sockets_would_block &&
+      !reached_eos) {
     NiceInputMessageIter prev_recv_messages_iter;
 
+    g_clear_error (&child_error);
     memcpy (&prev_recv_messages_iter, &component->recv_messages_iter,
         sizeof (NiceInputMessageIter));
 
@@ -3973,8 +4006,13 @@ nice_agent_recv_messages_blocking_or_nonblocking (NiceAgent *agent,
     received_enough =
         nice_input_message_iter_is_at_end (&component->recv_messages_iter,
             component->recv_messages, component->n_recv_messages);
-    error_reported = (child_error != NULL);
-    all_sockets_would_block = (!blocking &&
+    error_reported = (child_error != NULL &&
+        !g_error_matches (child_error, G_IO_ERROR, G_IO_ERROR_WOULD_BLOCK));
+    reached_eos = (agent->reliable && component->tcp != NULL &&
+        pseudo_tcp_socket_is_closed_remotely (component->tcp) &&
+        nice_input_message_iter_compare (&prev_recv_messages_iter,
+            &component->recv_messages_iter));
+    all_sockets_would_block = (!blocking && !reached_eos &&
         nice_input_message_iter_compare (&prev_recv_messages_iter,
             &component->recv_messages_iter));
   }
@@ -3995,7 +4033,7 @@ recv_error:
   g_main_context_unref (context);
 
   /* Handle errors and cancellations. */
-  if (error_reported) {
+  if (child_error != NULL) {
     n_valid_messages = -1;
   } else if (n_valid_messages == 0 && all_sockets_would_block) {
     g_set_error_literal (&child_error, G_IO_ERROR, G_IO_ERROR_WOULD_BLOCK,
@@ -4009,6 +4047,7 @@ recv_error:
 done:
   g_assert ((child_error != NULL) == (n_valid_messages == -1));
   g_assert (n_valid_messages < 0 || (guint) n_valid_messages <= n_messages);
+  g_assert ((n_valid_messages == 0) == reached_eos);
 
   if (child_error != NULL)
     g_propagate_error (error, child_error);
@@ -4687,8 +4726,15 @@ component_io_cb (GSocket *gsocket, GIOCondition condition, gpointer user_data)
       if (retval == RECV_SUCCESS) {
         /* Successfully received a single message. */
         component->recv_messages_iter.message++;
+        g_clear_error (component->recv_buf_error);
       } else if (retval == RECV_WOULD_BLOCK) {
         /* EWOULDBLOCK. */
+        if (component->recv_messages_iter.message == 0 &&
+            component->recv_buf_error != NULL &&
+            *component->recv_buf_error == NULL) {
+          g_set_error_literal (component->recv_buf_error, G_IO_ERROR,
+              G_IO_ERROR_WOULD_BLOCK, g_strerror (EAGAIN));
+        }
         break;
       } else if (retval == RECV_ERROR) {
         /* Other error. */
