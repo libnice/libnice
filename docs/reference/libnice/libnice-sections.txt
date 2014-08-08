@@ -291,6 +291,7 @@ pseudo_tcp_socket_connect
 pseudo_tcp_socket_recv
 pseudo_tcp_socket_send
 pseudo_tcp_socket_close
+pseudo_tcp_socket_is_closed
 pseudo_tcp_socket_get_error
 pseudo_tcp_socket_get_next_clock
 pseudo_tcp_socket_notify_clock

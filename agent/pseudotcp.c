@@ -1958,3 +1958,11 @@ set_state (PseudoTcpSocket *self, PseudoTcpState new_state)
 
   priv->state = new_state;
 }
+
+gboolean
+pseudo_tcp_socket_is_closed (PseudoTcpSocket *self)
+{
+  PseudoTcpSocketPrivate *priv = self->priv;
+
+  return (priv->state == TCP_CLOSED);
+}

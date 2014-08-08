@@ -471,6 +471,18 @@ gboolean pseudo_tcp_socket_can_send (PseudoTcpSocket *self);
  */
 gsize pseudo_tcp_socket_get_available_send_space (PseudoTcpSocket *self);
 
+/**
+ * pseudo_tcp_socket_is_closed:
+ * @self: The #PseudoTcpSocket object.
+ *
+ * Gets whether the socket is closed, with the shutdown handshake completed,
+ * and both peers no longer able to read or write data to the connection.
+ *
+ * Returns: %TRUE if the socket is closed in both directions, %FALSE otherwise
+ * Since: UNRELEASED
+ */
+gboolean pseudo_tcp_socket_is_closed (PseudoTcpSocket *self);
+
 G_END_DECLS
 
 #endif /* _PSEUDOTCP_H */
