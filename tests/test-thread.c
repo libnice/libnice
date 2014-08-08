@@ -48,11 +48,11 @@
 
 GMainLoop *error_loop;
 
-gint global_lagent_cands = 0;
-gint global_ragent_cands = 0;
+volatile gint global_lagent_cands = 0;
+volatile gint global_ragent_cands = 0;
 
-gint global_lagent_buffers = 0;
-gint global_ragent_buffers = 0;
+volatile gint global_lagent_buffers = 0;
+volatile gint global_ragent_buffers = 0;
 
 static gboolean timer_cb (gpointer pointer)
 {
@@ -131,7 +131,8 @@ static void cb_candidate_gathering_done(NiceAgent *agent, guint stream_id, gpoin
 static void cb_nice_recv (NiceAgent *agent, guint stream_id, guint component_id, guint len, gchar *buf, gpointer user_data)
 {
   gchar data[10];
-  gint *count = NULL;
+  volatile gint *count = NULL;
+  gint count_val;
 
   if (GPOINTER_TO_UINT (user_data) == 1)
     count = &global_lagent_buffers;
@@ -140,21 +141,20 @@ static void cb_nice_recv (NiceAgent *agent, guint stream_id, guint component_id,
   else
     g_error ("Invalid agent ?");
 
-  if (*count == -1)
+  count_val = g_atomic_int_get (count);
+  if (count_val == 10)
     return;
 
   g_assert (len == 10);
 
-  memset (data, *count+'1', 10);
+  memset (data, count_val + '1', 10);
 
   g_assert (memcmp (buf, data, 10) == 0);
 
-  (*count)++;
+  g_atomic_int_inc (count);
 
-  if (*count == 10)
-    *count = -1;
-
-  if (global_ragent_buffers == -1 && global_lagent_buffers == -1)
+  if (g_atomic_int_get (&global_ragent_buffers) == 10 &&
+      g_atomic_int_get (&global_lagent_buffers) == 10)
     g_main_loop_quit (error_loop);
 }
 
@@ -335,8 +335,8 @@ int main (void)
   g_thread_join (rthread);
 
   /* note: verify that correct number of local candidates were reported */
-  g_assert (global_lagent_cands == 1);
-  g_assert (global_ragent_cands == 1);
+  g_assert (g_atomic_int_get (&global_lagent_cands) == 1);
+  g_assert (g_atomic_int_get (&global_ragent_cands) == 1);
 
   g_object_unref (lagent);
   g_object_unref (ragent);
