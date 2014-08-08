@@ -457,6 +457,7 @@ struct _PseudoTcpSocketPrivate {
   PseudoTcpCallbacks callbacks;
 
   Shutdown shutdown;  /* only used if !support_fin_ack */
+  gboolean shutdown_reads;
   gint error;
 
   // TCB data
@@ -1116,7 +1117,8 @@ pseudo_tcp_socket_recv(PseudoTcpSocket *self, char * buffer, size_t len)
 
   /* Received a FIN from the peer, so return 0. RFC 793, §3.5, Case 2. */
   if (priv->support_fin_ack &&
-      pseudo_tcp_state_has_received_fin (priv->state)) {
+      (priv->shutdown_reads ||
+       pseudo_tcp_state_has_received_fin (priv->state))) {
     return 0;
   }
 
@@ -1191,22 +1193,51 @@ pseudo_tcp_socket_close(PseudoTcpSocket *self, gboolean force)
 {
   PseudoTcpSocketPrivate *priv = self->priv;
 
-  DEBUG (PSEUDO_TCP_DEBUG_VERBOSE, "Closing socket %p : %s", self,
+  DEBUG (PSEUDO_TCP_DEBUG_NORMAL, "Closing socket %p %s", self,
       force ? "forcefully" : "gracefully");
 
-  /* FIN-ACK--only stuff below here. */
-  if (!priv->support_fin_ack) {
-    priv->shutdown = force ? SD_FORCEFUL : SD_GRACEFUL;
-    return;
-  }
-
   /* Forced closure by sending an RST segment. RFC 1122, §4.2.2.13. */
-  if (force) {
+  if (force && priv->state != TCP_CLOSED) {
     closedown (self, ECONNABORTED, CLOSEDOWN_LOCAL);
     return;
   }
 
-  /* Unforced closure. */
+  /* Fall back to shutdown(). */
+  pseudo_tcp_socket_shutdown (self, PSEUDO_TCP_SHUTDOWN_RDWR);
+}
+
+void
+pseudo_tcp_socket_shutdown (PseudoTcpSocket *self, PseudoTcpShutdown how)
+{
+  PseudoTcpSocketPrivate *priv = self->priv;
+
+  DEBUG (PSEUDO_TCP_DEBUG_NORMAL, "Shutting down socket %p: %u", self, how);
+
+  /* FIN-ACK--only stuff below here. */
+  if (!priv->support_fin_ack) {
+    priv->shutdown = SD_GRACEFUL;
+    return;
+  }
+
+  /* What needs shutting down? */
+  switch (how) {
+  case PSEUDO_TCP_SHUTDOWN_RD:
+  case PSEUDO_TCP_SHUTDOWN_RDWR:
+    priv->shutdown_reads = TRUE;
+    break;
+  case PSEUDO_TCP_SHUTDOWN_WR:
+    /* Handled below. */
+    break;
+  default:
+    DEBUG (PSEUDO_TCP_DEBUG_NORMAL, "Invalid shutdown method: %u.", how);
+    break;
+  }
+
+  if (how == PSEUDO_TCP_SHUTDOWN_RD) {
+    return;
+  }
+
+  /* Unforced write closure. */
   switch (priv->state) {
   case TCP_LISTEN:
   case TCP_SYN_SENT:

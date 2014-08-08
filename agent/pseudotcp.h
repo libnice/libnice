@@ -190,6 +190,24 @@ typedef enum {
 } PseudoTcpWriteResult;
 
 /**
+ * PseudoTcpShutdown:
+ * @PSEUDO_TCP_SHUTDOWN_RD: Shut down the local reader only
+ * @PSEUDO_TCP_SHUTDOWN_WR: Shut down the local writer only
+ * @PSEUDO_TCP_SHUTDOWN_RDWR: Shut down both reading and writing
+ *
+ * Options for which parts of a connection to shut down when calling
+ * pseudo_tcp_socket_shutdown(). These correspond to the values passed to POSIX
+ * shutdown().
+ *
+ * Since: UNRELEASED
+ */
+typedef enum {
+  PSEUDO_TCP_SHUTDOWN_RD,
+  PSEUDO_TCP_SHUTDOWN_WR,
+  PSEUDO_TCP_SHUTDOWN_RDWR,
+} PseudoTcpShutdown;
+
+/**
  * PseudoTcpCallbacks:
  * @user_data: A user defined pointer to be passed to the callbacks
  * @PseudoTcpOpened: The #PseudoTcpSocket is now connected
@@ -314,12 +332,16 @@ gint pseudo_tcp_socket_send(PseudoTcpSocket *self, const char * buffer,
  * @self: The #PseudoTcpSocket object.
  * @force: %TRUE to close the socket forcefully, %FALSE to close it gracefully
  *
- * Close the socket for sending. IF @force is set to %FALSE, the socket will
- * finish sending pending data before closing.
+ * Close the socket for sending. If @force is set to %FALSE, the socket will
+ * finish sending pending data before closing. If it is set to %TRUE, the socket
+ * will discard pending data and close the connection immediately (sending a TCP
+ * RST segment).
  *
- * The socket will only be fully closed once the peer has also closed their end
- * of the connection — until that point, pseudo_tcp_socket_recv() can still be
- * called to receive data from the peer.
+ * The socket will be closed in both directions – sending and receiving – and
+ * any pending received data must be read before calling this function, by
+ * calling pseudo_tcp_socket_recv() until it blocks. If any pending data is in
+ * the receive buffer when pseudo_tcp_socket_close() is called, a TCP RST
+ * segment will be sent to the peer to notify it of the data loss.
  *
  <note>
    <para>
@@ -336,6 +358,24 @@ gint pseudo_tcp_socket_send(PseudoTcpSocket *self, const char * buffer,
  */
 void pseudo_tcp_socket_close(PseudoTcpSocket *self, gboolean force);
 
+/**
+ * pseudo_tcp_socket_shutdown:
+ * @self: The #PseudoTcpSocket object.
+ * @how: The directions of the connection to shut down.
+ *
+ * Shut down sending, receiving, or both on the socket, depending on the value
+ * of @how. The behaviour of pseudo_tcp_socket_send() and
+ * pseudo_tcp_socket_recv() will immediately change after this function returns
+ * (depending on the value of @how), though the socket may continue to process
+ * network traffic in the background even if sending or receiving data is
+ * forbidden.
+ *
+ * This is equivalent to the POSIX shutdown() function. Setting @how to
+ * %PSEUDO_TCP_SHUTDOWN_RDWR is equivalent to calling pseudo_tcp_socket_close().
+ *
+ * Since: UNRELEASED
+ */
+void pseudo_tcp_socket_shutdown (PseudoTcpSocket *self, PseudoTcpShutdown how);
 
 /**
  * pseudo_tcp_socket_get_error:
