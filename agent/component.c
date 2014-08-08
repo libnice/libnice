@@ -246,12 +246,6 @@ component_free (Component *cmp)
 
   component_clean_turn_servers (cmp);
 
-  if (cmp->selected_pair.keepalive.tick_source != NULL) {
-    g_source_destroy (cmp->selected_pair.keepalive.tick_source);
-    g_source_unref (cmp->selected_pair.keepalive.tick_source);
-    cmp->selected_pair.keepalive.tick_source = NULL;
-  }
-
   if (cmp->tcp_clock) {
     g_source_destroy (cmp->tcp_clock);
     g_source_unref (cmp->tcp_clock);
@@ -604,6 +598,8 @@ component_free_socket_sources (Component *component)
       (GDestroyNotify) socket_source_free);
   component->socket_sources = NULL;
   component->socket_sources_age++;
+
+  component_clear_selected_pair (component);
 }
 
 GMainContext *
