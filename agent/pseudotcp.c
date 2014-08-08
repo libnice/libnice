@@ -1227,6 +1227,7 @@ process(PseudoTcpSocket *self, Segment *seg)
   gsize snd_buffered;
   gsize available_space;
   guint32 kIdealRefillSize;
+  gboolean is_valuable_ack, is_duplicate_ack;
 
   /* If this is the wrong conversation, send a reset!?!
      (with the correct conversation?) */
@@ -1288,8 +1289,11 @@ process(PseudoTcpSocket *self, Segment *seg)
   }
 
   // Check if this is a valuable ack
-  if (LARGER(seg->ack, priv->snd_una) &&
-      SMALLER_OR_EQUAL(seg->ack, priv->snd_nxt)) {
+  is_valuable_ack = (LARGER(seg->ack, priv->snd_una) &&
+      SMALLER_OR_EQUAL(seg->ack, priv->snd_nxt));
+  is_duplicate_ack = (seg->ack == priv->snd_una);
+
+  if (is_valuable_ack) {
     guint32 nAcked;
     guint32 nFree;
 
@@ -1369,7 +1373,7 @@ process(PseudoTcpSocket *self, Segment *seg)
         priv->cwnd += max(1LU, priv->mss * priv->mss / priv->cwnd);
       }
     }
-  } else if (seg->ack == priv->snd_una) {
+  } else if (is_duplicate_ack) {
     /* !?! Note, tcp says don't do this... but otherwise how does a
        closed window become open? */
     priv->snd_wnd = seg->wnd << priv->swnd_scale;
