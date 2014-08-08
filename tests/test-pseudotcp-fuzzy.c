@@ -188,8 +188,8 @@ readable (PseudoTcpSocket *sock, gpointer data)
 
   if (len == -1 &&
       pseudo_tcp_socket_get_error (sock) != EWOULDBLOCK) {
-    g_printerr ("Error reading from socket: error code %d.\n",
-        pseudo_tcp_socket_get_error (sock));
+    g_printerr ("Error reading from socket %p: %s.\n",
+        sock, g_strerror (pseudo_tcp_socket_get_error (sock)));
 
     retval = -1;
     g_main_loop_quit (main_loop);
@@ -210,7 +210,7 @@ closed (PseudoTcpSocket *sock, guint32 err, gpointer data)
 {
   /* Don’t treat this as an error, since we’re throwing rubbish into the
    * socket and can hardly expect it to complete successfully. */
-  g_debug ("Socket %p Closed : %d", sock, err);
+  g_debug ("Socket %p Closed: %s", sock, g_strerror (err));
   retval = 0;
   g_main_loop_quit (main_loop);
 }

@@ -143,8 +143,8 @@ static void readable (PseudoTcpSocket *sock, gpointer data)
 
   if (len == -1 &&
       pseudo_tcp_socket_get_error (sock) != EWOULDBLOCK) {
-    g_debug ("Error reading from socket : %d",
-        pseudo_tcp_socket_get_error (sock));
+    g_debug ("Error reading from socket %p: %s", sock,
+        g_strerror (pseudo_tcp_socket_get_error (sock)));
     exit (-1);
   }
 }
@@ -225,7 +225,7 @@ static void adjust_clock (PseudoTcpSocket *sock)
 
   if (pseudo_tcp_socket_get_next_clock (sock, &timeout)) {
     timeout -= g_get_monotonic_time () / 1000;
-    g_debug ("Socket %p: Adjuting clock to %ld ms", sock, timeout);
+    g_debug ("Socket %p: Adjusting clock to %" G_GUINT64_FORMAT " ms", sock, timeout);
     if (sock == left) {
       if (left_clock != 0)
          g_source_remove (left_clock);
