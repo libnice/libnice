@@ -57,7 +57,8 @@ CFILE_GLOB=$(top_srcdir)/agent/agent.c \
 IGNORE_HFILES= conncheck.h discovery.h stream.h component.h agent-priv.h \
 	iostream.h inputstream.h outputstream.h \
 	gstnice.h gstnicesrc.h gstnicesink.h  \
-	md5.h sha1.h stunhmac.h utils.h rand.h stun5389.h stuncrc32.h
+	md5.h sha1.h stunhmac.h utils.h rand.h stun5389.h stuncrc32.h \
+	stund.h agent-signals-marshal.h win32_common.h
 
 # Images to copy into HTML directory.
 # e.g. HTML_IMAGES=$(top_srcdir)/gtk/stock-icons/stock_about_24.png

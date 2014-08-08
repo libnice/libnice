@@ -59,12 +59,14 @@
 
 #include <glib-object.h>
 
+#ifndef __GTK_DOC_IGNORE__
 #ifdef G_OS_WIN32
 #  include <winsock2.h>
 #  define ECONNABORTED WSAECONNABORTED
 #  define ENOTCONN WSAENOTCONN
 #  define EWOULDBLOCK WSAEWOULDBLOCK
 #  define ECONNRESET WSAECONNRESET
+#endif
 #endif
 
 #include "agent.h"
