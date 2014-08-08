@@ -65,6 +65,10 @@ struct _GstNiceSink
   NiceAgent *agent;
   guint stream_id;
   guint component_id;
+  gboolean reliable;
+  GCond writable_cond;
+  gulong writable_id;
+  gboolean flushing;
 };
 
 typedef struct _GstNiceSinkClass GstNiceSinkClass;
