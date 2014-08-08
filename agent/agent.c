@@ -1455,7 +1455,8 @@ pseudo_tcp_socket_send_messages (PseudoTcpSocket *self,
         if (pseudo_tcp_socket_get_error (self) == EWOULDBLOCK)
           goto out;
 
-        if (pseudo_tcp_socket_get_error (self) == ENOTCONN)
+        if (pseudo_tcp_socket_get_error (self) == ENOTCONN ||
+            pseudo_tcp_socket_get_error (self) == EPIPE)
           g_set_error (error, G_IO_ERROR, G_IO_ERROR_WOULD_BLOCK,
               "TCP connection is not yet established.");
         else
