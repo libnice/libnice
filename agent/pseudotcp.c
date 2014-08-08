@@ -410,7 +410,7 @@ typedef struct {
 typedef struct {
   guint32 seq, len;
   guint8 xmit;
-  gboolean bCtrl;
+  TcpFlags flags;
 } SSegment;
 
 typedef struct {
@@ -500,8 +500,8 @@ static void pseudo_tcp_socket_finalize (GObject *object);
 
 
 static void queue_connect_message (PseudoTcpSocket *self);
-static guint32 queue(PseudoTcpSocket *self, const gchar * data,
-    guint32 len, gboolean bCtrl);
+static guint32 queue (PseudoTcpSocket *self, const gchar * data,
+    guint32 len, TcpFlags flags);
 static PseudoTcpWriteResult packet(PseudoTcpSocket *self, guint32 seq,
     TcpFlags flags, guint32 offset, guint32 len, guint32 now);
 static gboolean parse (PseudoTcpSocket *self,
@@ -791,7 +791,7 @@ queue_connect_message (PseudoTcpSocket *self)
 
   priv->snd_wnd = size;
 
-  queue(self, (char*) buf, size, TRUE);
+  queue (self, (char *) buf, size, FLAG_CTL);
 }
 
 gboolean
@@ -1047,7 +1047,7 @@ pseudo_tcp_socket_send(PseudoTcpSocket *self, const char * buffer, guint32 len)
     return -1;
   }
 
-  written = queue(self, buffer, len, FALSE);
+  written = queue (self, buffer, len, FLAG_NONE);
   attempt_send(self, sfNone);
 
   if (written > 0 && (guint32)written < len) {
@@ -1078,21 +1078,21 @@ pseudo_tcp_socket_get_error(PseudoTcpSocket *self)
 //
 
 static guint32
-queue(PseudoTcpSocket *self, const gchar * data, guint32 len, gboolean bCtrl)
+queue (PseudoTcpSocket *self, const gchar * data, guint32 len, TcpFlags flags)
 {
   PseudoTcpSocketPrivate *priv = self->priv;
   gsize available_space;
 
   available_space = pseudo_tcp_fifo_get_write_remaining (&priv->sbuf);
   if (len > available_space) {
-    g_assert(!bCtrl);
+    g_assert (flags == FLAG_NONE);
     len = available_space;
   }
 
   // We can concatenate data if the last segment is the same type
   // (control v. regular data), and has not been transmitted yet
   if (g_queue_get_length (&priv->slist) &&
-      (((SSegment *)g_queue_peek_tail (&priv->slist))->bCtrl == bCtrl) &&
+      (((SSegment *)g_queue_peek_tail (&priv->slist))->flags == flags) &&
       (((SSegment *)g_queue_peek_tail (&priv->slist))->xmit == 0)) {
     ((SSegment *)g_queue_peek_tail (&priv->slist))->len += len;
   } else {
@@ -1101,7 +1101,7 @@ queue(PseudoTcpSocket *self, const gchar * data, guint32 len, gboolean bCtrl)
 
     sseg->seq = priv->snd_una + snd_buffered;
     sseg->len = len;
-    sseg->bCtrl = bCtrl;
+    sseg->flags = flags;
     g_queue_push_tail (&priv->slist, sseg);
     g_queue_push_tail (&priv->unsent_slist, sseg);
   }
@@ -1555,7 +1555,7 @@ transmit(PseudoTcpSocket *self, SSegment *segment, guint32 now)
 
   while (TRUE) {
     guint32 seq = segment->seq;
-    guint8 flags = (segment->bCtrl ? FLAG_CTL : 0);
+    guint8 flags = segment->flags;
     PseudoTcpWriteResult wres;
 
     /* The packet must not have already been acknowledged. */
@@ -1599,7 +1599,7 @@ transmit(PseudoTcpSocket *self, SSegment *segment, guint32 now)
     SSegment *subseg = g_slice_new0 (SSegment);
     subseg->seq = segment->seq + nTransmit;
     subseg->len = segment->len - nTransmit;
-    subseg->bCtrl = segment->bCtrl;
+    subseg->flags = segment->flags;
     subseg->xmit = segment->xmit;
 
     DEBUG (PSEUDO_TCP_DEBUG_NORMAL, "mss reduced to %d", priv->mss);
@@ -1708,7 +1708,7 @@ attempt_send(PseudoTcpSocket *self, SendFlags sflags)
       SSegment *subseg = g_slice_new0 (SSegment);
       subseg->seq = sseg->seq + nAvailable;
       subseg->len = sseg->len - nAvailable;
-      subseg->bCtrl = sseg->bCtrl;
+      subseg->flags = sseg->flags;
 
       sseg->len = nAvailable;
       g_queue_insert_after (&priv->unsent_slist, iter, subseg);
