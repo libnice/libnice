@@ -36,6 +36,7 @@
 # include "config.h"
 #endif
 
+#include <locale.h>
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -251,6 +252,8 @@ int main (int argc, char *argv[])
   PseudoTcpCallbacks cbs = {
     NULL, opened, readable, writable, closed, write_packet
   };
+
+  setlocale (LC_ALL, "");
 
   mainloop = g_main_loop_new (NULL, FALSE);
 
