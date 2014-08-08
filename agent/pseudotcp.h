@@ -465,7 +465,7 @@ gboolean pseudo_tcp_socket_can_send (PseudoTcpSocket *self);
  *
  * Gets the number of bytes of space available in the transmission buffer.
  *
- * Returns: The numbero f bytes, or 0 if the connection is not established.
+ * Returns: The number of bytes, or 0 if the connection is not established.
  *
  * Since: 0.1.5
  */
