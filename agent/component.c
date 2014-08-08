@@ -193,6 +193,18 @@ component_clean_turn_servers (Component *cmp)
   }
 }
 
+static void
+component_clear_selected_pair (Component *component)
+{
+  if (component->selected_pair.keepalive.tick_source != NULL) {
+    g_source_destroy (component->selected_pair.keepalive.tick_source);
+    g_source_unref (component->selected_pair.keepalive.tick_source);
+    component->selected_pair.keepalive.tick_source = NULL;
+  }
+
+  memset (&component->selected_pair, 0, sizeof(CandidatePair));
+}
+
 void
 component_free (Component *cmp)
 {
@@ -369,12 +381,6 @@ void component_update_selected_pair (Component *component, const CandidatePair *
       G_GUINT64_FORMAT ").", component->id, pair->local->foundation,
       pair->remote->foundation, pair->priority);
 
-  if (component->selected_pair.keepalive.tick_source != NULL) {
-    g_source_destroy (component->selected_pair.keepalive.tick_source);
-    g_source_unref (component->selected_pair.keepalive.tick_source);
-    component->selected_pair.keepalive.tick_source = NULL;
-  }
-
   if (component->selected_pair.local &&
       component->selected_pair.local == component->turn_candidate) {
     refresh_prune_candidate (component->agent, component->turn_candidate);
@@ -383,7 +389,7 @@ void component_update_selected_pair (Component *component, const CandidatePair *
     component->turn_candidate = NULL;
   }
 
-  memset (&component->selected_pair, 0, sizeof(CandidatePair));
+  component_clear_selected_pair (component);
 
   component->selected_pair.local = pair->local;
   component->selected_pair.remote = pair->remote;
@@ -460,13 +466,8 @@ component_set_selected_remote_candidate (NiceAgent *agent, Component *component,
     agent_signal_new_remote_candidate (agent, remote);
   }
 
-  if (component->selected_pair.keepalive.tick_source != NULL) {
-    g_source_destroy (component->selected_pair.keepalive.tick_source);
-    g_source_unref (component->selected_pair.keepalive.tick_source);
-    component->selected_pair.keepalive.tick_source = NULL;
-  }
+  component_clear_selected_pair (component);
 
-  memset (&component->selected_pair, 0, sizeof(CandidatePair));
   component->selected_pair.local = local;
   component->selected_pair.remote = remote;
   component->selected_pair.priority = priority;
