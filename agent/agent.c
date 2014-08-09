@@ -4645,6 +4645,24 @@ component_io_cb (GSocket *gsocket, GIOCondition condition, gpointer user_data)
 
   g_object_ref (agent);
 
+  /* Remove disconnected sockets when we get a HUP */
+  if (condition & G_IO_HUP) {
+    nice_debug ("Agent %p: NiceSocket %p has received HUP", agent,
+        socket_source->socket);
+    if (component->selected_pair.local &&
+        component->selected_pair.local->sockptr == socket_source->socket &&
+        component->state == NICE_COMPONENT_STATE_READY) {
+      nice_debug ("Agent %p: Selected pair socket %p has HUP, declaring failed",
+          agent, socket_source->socket);
+      agent_signal_component_state_change (agent,
+          stream->id, component->id, NICE_COMPONENT_STATE_FAILED);
+    }
+
+    component_detach_socket (component, socket_source->socket);
+    agent_unlock ();
+    return G_SOURCE_REMOVE;
+  }
+
   has_io_callback = component_has_io_callback (component);
 
   /* Choose which receive buffer to use. If we’re reading for
