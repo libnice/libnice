@@ -26,6 +26,7 @@ DISTCHECK_CONFIGURE_FLAGS = --disable-assert -enable-gtk-doc --enable-introspect
 EXTRA_DIST = \
 	COPYING.LGPL \
 	COPYING.MPL \
+	README.win32 \
 	autogen.sh \
 	common.mk \
 	scripts/lcov.mk \
