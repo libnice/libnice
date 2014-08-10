@@ -70,12 +70,22 @@ typedef unsigned   uint32_t;
 typedef long long  int64_t;
 typedef unsigned long long   uint64_t;
 
+/* Using the [S]SIZE_T definitions from:
+ * http://msdn.microsoft.com/en-gb/library/windows/desktop/aa383751%28v=vs.85%29.aspx#SSIZE_T */
 #ifndef HAVE_SIZE_T
-typedef unsigned int size_t;
+#if defined(_WIN64)
+typedef unsigned __int64 size_t;
+#else
+typedef unsigned long size_t;
 #endif
+#endif  /* !HAVE_SSIZE_T */
 #ifndef HAVE_SSIZE_T
-typedef unsigned long ssize_t;
+#if defined(_WIN64)
+typedef signed __int64 ssize_t;
+#else
+typedef signed long ssize_t;
 #endif
+#endif  /* !HAVE_SSIZE_T */
 
 typedef uint8_t bool;
 #define true 1
