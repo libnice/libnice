@@ -1003,6 +1003,7 @@ component_source_prepare (GSource *source, gint *timeout_)
  done:
 
   agent_unlock_and_emit (agent);
+  g_object_unref (agent);
 
   /* We can’t be sure if the ComponentSource itself needs to be dispatched until
    * poll() is called on all the child sources. */
