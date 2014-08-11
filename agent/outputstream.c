@@ -571,7 +571,6 @@ nice_output_stream_write_nonblocking (GPollableOutputStream *stream,
   }
 
   if (count == 0) {
-    g_object_unref (agent);
     n_sent = 0;
     goto done;
   }
