@@ -535,9 +535,9 @@ nice_output_stream_write_nonblocking (GPollableOutputStream *stream,
 
   if (count == 0) {
     g_object_unref (agent);
-    return 0;
+    n_sent = 0;
+    goto done;
   }
-
 
   n_sent = nice_agent_send (agent, priv->stream_id, priv->component_id,
       count, buffer);
@@ -546,7 +546,7 @@ nice_output_stream_write_nonblocking (GPollableOutputStream *stream,
     g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_WOULD_BLOCK,
         g_strerror (EAGAIN));
 
-
+ done:
 
   g_object_unref (agent);
 
