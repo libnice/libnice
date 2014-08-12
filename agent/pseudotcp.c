@@ -1966,3 +1966,9 @@ pseudo_tcp_socket_is_closed (PseudoTcpSocket *self)
 
   return (priv->state == TCP_CLOSED);
 }
+
+gboolean
+pseudo_tcp_socket_is_closed_remotely (PseudoTcpSocket *self)
+{
+  return pseudo_tcp_socket_is_closed (self);
+}

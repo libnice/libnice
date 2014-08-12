@@ -483,6 +483,22 @@ gsize pseudo_tcp_socket_get_available_send_space (PseudoTcpSocket *self);
  */
 gboolean pseudo_tcp_socket_is_closed (PseudoTcpSocket *self);
 
+/**
+ * pseudo_tcp_socket_is_closed_remotely:
+ * @self: The #PseudoTcpSocket object.
+ *
+ * Gets whether the socket has been closed on the remote peer’s side of the
+ * connection (i.e. whether pseudo_tcp_socket_close() has been called there).
+ * This is guaranteed to return %TRUE if pseudo_tcp_socket_is_closed() returns
+ * %TRUE. It will not return %TRUE after pseudo_tcp_socket_close() is called
+ * until a FIN segment is received from the remote peer.
+ *
+ * Returns: %TRUE if the remote peer has closed its side of the connection,
+ * %FALSE otherwise
+ * Since: UNRELEASED
+ */
+gboolean pseudo_tcp_socket_is_closed_remotely (PseudoTcpSocket *self);
+
 G_END_DECLS
 
 #endif /* _PSEUDOTCP_H */
