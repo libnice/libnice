@@ -1360,16 +1360,17 @@ static void priv_conn_check_add_for_candidate_pair_matched (NiceAgent *agent,
       local->foundation, remote->foundation);
   priv_add_new_check_pair (agent, stream_id, component, local, remote,
       initial_state, FALSE);
-  if (component->state < NICE_COMPONENT_STATE_CONNECTED) {
-    agent_signal_component_state_change (agent,
-        stream_id,
-        component->id,
-        NICE_COMPONENT_STATE_CONNECTING);
-  } else {
+  if (component->state == NICE_COMPONENT_STATE_CONNECTED ||
+      component->state == NICE_COMPONENT_STATE_READY) {
     agent_signal_component_state_change (agent,
         stream_id,
         component->id,
         NICE_COMPONENT_STATE_CONNECTED);
+  } else {
+    agent_signal_component_state_change (agent,
+        stream_id,
+        component->id,
+        NICE_COMPONENT_STATE_CONNECTING);
   }
 }
 
