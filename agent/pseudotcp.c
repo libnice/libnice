@@ -1253,7 +1253,8 @@ pseudo_tcp_socket_shutdown (PseudoTcpSocket *self, PseudoTcpShutdown how)
 
   /* FIN-ACK--only stuff below here. */
   if (!priv->support_fin_ack) {
-    priv->shutdown = SD_GRACEFUL;
+    if (priv->shutdown == SD_NONE)
+      priv->shutdown = SD_GRACEFUL;
     return;
   }
 
@@ -2144,14 +2145,18 @@ attempt_send(PseudoTcpSocket *self, SendFlags sflags)
 static void
 closedown (PseudoTcpSocket *self, guint32 err, ClosedownSource source)
 {
-  if (source == CLOSEDOWN_LOCAL && self->priv->support_fin_ack) {
+  PseudoTcpSocketPrivate *priv = self->priv;
+
+  if (source == CLOSEDOWN_LOCAL && priv->support_fin_ack) {
     queue_rst_message (self);
     attempt_send (self, sfRst);
+  } else if (source == CLOSEDOWN_LOCAL) {
+    priv->shutdown = SD_FORCEFUL;
   }
 
   /* ‘Cute’ little navigation through the state machine to avoid breaking the
    * invariant that CLOSED can only be reached from TIME-WAIT or LAST-ACK. */
-  switch (self->priv->state) {
+  switch (priv->state) {
   case TCP_LISTEN:
   case TCP_SYN_SENT:
     break;
