@@ -1746,7 +1746,8 @@ apply_window_scale_option (PseudoTcpSocket *self, guint8 scale_factor)
 }
 
 static void
-apply_option(PseudoTcpSocket *self, char kind, const guint8* data, guint32 len)
+apply_option (PseudoTcpSocket *self, guint8 kind, const guint8 *data,
+    guint32 len)
 {
   if (kind == TCP_OPT_MSS) {
     DEBUG (PSEUDO_TCP_DEBUG_NORMAL,
