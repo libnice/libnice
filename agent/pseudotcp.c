@@ -1077,6 +1077,9 @@ pseudo_tcp_socket_get_next_clock(PseudoTcpSocket *self, guint64 *timeout)
           "‘Forceful’ shutdown used when FIN-ACK support is enabled");
     }
 
+    /* Transition to the CLOSED state. */
+    closedown (self, 0, CLOSEDOWN_REMOTE);
+
     return FALSE;
   }
 
@@ -1088,6 +1091,9 @@ pseudo_tcp_socket_get_next_clock(PseudoTcpSocket *self, guint64 *timeout)
       DEBUG (PSEUDO_TCP_DEBUG_NORMAL,
           "‘Graceful’ shutdown used when FIN-ACK support is enabled");
     }
+
+    /* Transition to the CLOSED state. */
+    closedown (self, 0, CLOSEDOWN_REMOTE);
 
     return FALSE;
   }
