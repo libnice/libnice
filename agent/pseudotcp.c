@@ -1155,6 +1155,11 @@ pseudo_tcp_socket_recv(PseudoTcpSocket *self, char * buffer, size_t len)
     return 0;
   }
 
+  /* Return 0 if FIN-ACK is not supported but the socket has been closed. */
+  if (!priv->support_fin_ack && pseudo_tcp_socket_is_closed (self)) {
+    return 0;
+  }
+
   /* Return ENOTCONN if FIN-ACK is not supported and the connection is not
    * ESTABLISHED. */
   if (!priv->support_fin_ack && priv->state != TCP_ESTABLISHED) {
