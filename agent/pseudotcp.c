@@ -529,6 +529,7 @@ enum
   PROP_NO_DELAY,
   PROP_RCV_BUF,
   PROP_SND_BUF,
+  PROP_SUPPORT_FIN_ACK,
   LAST_PROPERTY
 };
 
@@ -644,6 +645,26 @@ pseudo_tcp_socket_class_init (PseudoTcpSocketClass *cls)
           "Send Buffer size",
           1, G_MAXUINT, DEFAULT_SND_BUF_SIZE,
           G_PARAM_READWRITE| G_PARAM_STATIC_STRINGS));
+
+  /**
+   * PseudoTcpSocket:support-fin-ack:
+   *
+   * Whether to support the FIN–ACK extension to the pseudo-TCP protocol for
+   * this socket. The extension is only compatible with other libnice pseudo-TCP
+   * stacks, and not with Jingle pseudo-TCP stacks. If enabled, support is
+   * negotiatied on connection setup, so it is safe for a #PseudoTcpSocket with
+   * support enabled to be used with one with it disabled, or with a Jingle
+   * pseudo-TCP socket which doesn’t support it at all.
+   *
+   * Support is enabled by default.
+   *
+   * Since: UNRELEASED
+   */
+  g_object_class_install_property (object_class, PROP_SUPPORT_FIN_ACK,
+      g_param_spec_boolean ("support-fin-ack", "Support FIN–ACK",
+          "Whether to enable the optional FIN–ACK support.",
+          TRUE,
+          G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY | G_PARAM_STATIC_STRINGS));
 }
 
 
@@ -676,6 +697,9 @@ pseudo_tcp_socket_get_property (GObject *object,
       break;
     case PROP_SND_BUF:
       g_value_set_uint (value, self->priv->sbuf_len);
+      break;
+    case PROP_SUPPORT_FIN_ACK:
+      g_value_set_boolean (value, self->priv->support_fin_ack);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -714,6 +738,9 @@ pseudo_tcp_socket_set_property (GObject *object,
     case PROP_SND_BUF:
       g_return_if_fail (self->priv->state == TCP_LISTEN);
       resize_send_buffer (self, g_value_get_uint (value));
+      break;
+    case PROP_SUPPORT_FIN_ACK:
+      self->priv->support_fin_ack = g_value_get_boolean (value);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);

@@ -193,14 +193,22 @@ write_packet (PseudoTcpSocket *sock, const gchar *buffer, guint32 len,
 
 
 static void
-create_sockets (Data *data)
+create_sockets (Data *data, gboolean support_fin_ack)
 {
   PseudoTcpCallbacks cbs = {
     data, opened, readable, writable, closed, write_packet
   };
 
-  data->left = pseudo_tcp_socket_new (0, &cbs);
-  data->right = pseudo_tcp_socket_new (0, &cbs);
+  data->left = g_object_new (PSEUDO_TCP_SOCKET_TYPE,
+      "conversation", 0,
+      "callbacks", &cbs,
+      "support-fin-ack", support_fin_ack,
+      NULL);
+  data->right = g_object_new (PSEUDO_TCP_SOCKET_TYPE,
+      "conversation", 0,
+      "callbacks", &cbs,
+      "support-fin-ack", support_fin_ack,
+      NULL);
 
   g_debug ("Left: %p, right: %p", data->left, data->right);
 
@@ -435,7 +443,7 @@ close_socket (PseudoTcpSocket *socket)
 static void
 establish_connection (Data *data)
 {
-  create_sockets (data);
+  create_sockets (data, TRUE);
   pseudo_tcp_socket_connect (data->left);
   expect_syn_sent (data);
   forward_segment_ltr (data);
@@ -992,6 +1000,65 @@ pseudotcp_close_rst_afterwards (void)
   data_clear (&data);
 }
 
+/* Check that two pseudo-TCP sockets interact correctly even if FIN–ACK support
+ * is disabled on one of them. */
+static void
+pseudotcp_compatibility (void)
+{
+  Data data = { 0, };
+  guint8 buf[100];
+  guint64 timeout;
+
+  /* Establish a connection. Note the sequence numbers should start at 4 this
+   * time, rather than the 7 in other tests, because the FIN–ACK option should
+   * not be being sent. */
+  create_sockets (&data, FALSE);
+  pseudo_tcp_socket_connect (data.left);
+  expect_segment (data.left, data.left_sent, 0, 0, 4, FLAG_SYN);
+  forward_segment_ltr (&data);
+  expect_segment (data.right, data.right_sent, 0, 4, 4, FLAG_SYN);
+  forward_segment_rtl (&data);
+  increment_time_both (&data, 110);
+  expect_ack (data.left,  data.left_sent, 4, 4);
+  forward_segment_ltr (&data);
+  expect_sockets_connected (&data);
+
+  /* Close it. Sending shouldn’t fail. */
+  pseudo_tcp_socket_close (data.left, FALSE);
+  g_assert (!pseudo_tcp_socket_is_closed (data.left));
+
+  g_assert_cmpint (pseudo_tcp_socket_send (data.left, "foo", 3), ==, 3);
+  g_assert_cmpint (pseudo_tcp_socket_recv (data.left, (char *) buf, sizeof (buf)), ==, -1);
+  g_assert_cmpint (pseudo_tcp_socket_get_error (data.left), ==, EWOULDBLOCK);
+
+  expect_data (data.left, data.left_sent, 4, 4, 3);
+  forward_segment_ltr (&data);
+
+  increment_time_both (&data, 100);
+
+  expect_ack (data.right, data.right_sent, 4, 7);
+  forward_segment_rtl (&data);
+
+  /* Advance the timers; now the LHS should be closed, as the RHS has ACKed all
+   * outstanding data. */
+  increment_time_both (&data, 50);
+
+  g_assert (!pseudo_tcp_socket_get_next_clock (data.left, &timeout));
+
+  /* Check the RHS can be closed after receiving the data just sent. */
+  g_assert_cmpint (pseudo_tcp_socket_recv (data.right, (char *) buf, sizeof (buf)), ==, 3);
+  g_assert_cmpint (pseudo_tcp_socket_recv (data.right, (char *) buf, sizeof (buf)), ==, -1);
+  g_assert_cmpint (pseudo_tcp_socket_get_error (data.right), ==, EWOULDBLOCK);
+
+  pseudo_tcp_socket_close (data.right, FALSE);
+
+  g_assert (!pseudo_tcp_socket_get_next_clock (data.right, &timeout));
+
+  expect_sockets_closed (&data);
+
+  data_clear (&data);
+}
+
 int
 main (int argc, char *argv[])
 {
@@ -1057,6 +1124,9 @@ main (int argc, char *argv[])
       pseudotcp_close_pending_received);
   g_test_add_func ("/pseudotcp/close/rst-afterwards",
       pseudotcp_close_rst_afterwards);
+
+  g_test_add_func ("/pseudotcp/compatibility",
+      pseudotcp_compatibility);
 
   g_test_run ();
 
