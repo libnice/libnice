@@ -576,7 +576,8 @@ static gboolean priv_conn_keepalive_tick_unlocked (NiceAgent *agent)
         if (p->local->transport != NICE_CANDIDATE_TRANSPORT_UDP)
           continue;
 
-        if (agent->compatibility == NICE_COMPATIBILITY_GOOGLE) {
+        if (agent->compatibility == NICE_COMPATIBILITY_GOOGLE ||
+            agent->keepalive_conncheck) {
           NiceCandidate *candidate_priority;
           guint32 priority;
           uint8_t uname[NICE_STREAM_MAX_UNAME];
@@ -592,6 +593,7 @@ static gboolean priv_conn_keepalive_tick_unlocked (NiceAgent *agent)
               NICE_CANDIDATE_TYPE_PEER_REFLEXIVE);
           candidate_priority->transport = p->local->transport;
           candidate_priority->component_id = p->local->component_id;
+          /* FIXME: This is not always jingle */
           priority = nice_candidate_jingle_priority (candidate_priority);
           nice_candidate_free (candidate_priority);
 

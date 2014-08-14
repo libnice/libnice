@@ -110,6 +110,7 @@ enum
   PROP_ICE_UDP,
   PROP_ICE_TCP,
   PROP_BYTESTREAM_TCP,
+  PROP_KEEPALIVE_CONNCHECK
 };
 
 
@@ -681,6 +682,30 @@ nice_agent_class_init (NiceAgentClass *klass)
         FALSE,
         G_PARAM_READABLE));
 
+  /**
+   * NiceAgent:keepalive-conncheck:
+   *
+   * Use binding requests as keepalives instead of binding
+   * indications. This means that the keepalives may time out which
+   * will change the component state to %NICE_COMPONENT_STATE_FAILED.
+   *
+   * Enabing this is a slight violation of RFC 5245 section 10 which
+   * recommends using Binding Indications for keepalives.
+   *
+   * This is always enabled if the compatibility mode is
+   * %NICE_COMPATIBILITY_GOOGLE.
+   *
+   * Since: 0.1.7
+   */
+   g_object_class_install_property (gobject_class, PROP_KEEPALIVE_CONNCHECK,
+      g_param_spec_boolean (
+        "keepalive-conncheck",
+        "Use conncheck as keepalives",
+        "Use binding requests which require a reply as keepalives instead of "
+        "binding indications which don't.",
+	FALSE,
+        G_PARAM_READWRITE));
+
   /* install signals */
 
   /**
@@ -1150,6 +1175,14 @@ nice_agent_get_property (
         g_value_set_boolean (value, FALSE);
       }
       break;
+
+    case PROP_KEEPALIVE_CONNCHECK:
+      if (agent->compatibility == NICE_COMPATIBILITY_GOOGLE)
+        g_value_set_boolean (value, TRUE);
+      else
+        g_value_set_boolean (value, agent->keepalive_conncheck);
+      break;
+
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
     }
@@ -1300,6 +1333,11 @@ nice_agent_set_property (
     case PROP_BYTESTREAM_TCP:
       /* TODO: support bytestream mode and set property to writable */
       break;
+
+    case PROP_KEEPALIVE_CONNCHECK:
+      agent->keepalive_conncheck = g_value_get_boolean (value);
+      break;
+
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
     }
