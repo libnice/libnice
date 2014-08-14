@@ -261,9 +261,6 @@ socket_recv_messages (NiceSocket *sock,
 
     if (recv_messages[i].from)
       *recv_messages[i].from = priv->remote_addr;
-
-    if (len <= 0)
-      break;
   }
 
   /* Was there an error processing the first message? */
