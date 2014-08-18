@@ -259,11 +259,10 @@ gst_nice_sink_dispose (GObject *object)
 {
   GstNiceSink *sink = GST_NICE_SINK (object);
 
-  if (sink->agent) {
+  if (sink->agent && sink->writable_id)
     g_signal_handler_disconnect (sink->agent, sink->writable_id);
-    g_object_unref (sink->agent);
-  }
-  sink->agent = NULL;
+  sink->writable_id = 0;
+  g_clear_object (&sink->agent);
 
   g_cond_clear (&sink->writable_cond);
 
