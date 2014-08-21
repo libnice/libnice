@@ -546,6 +546,33 @@ static gboolean priv_conn_keepalive_retransmissions_tick (gpointer pointer)
   return FALSE;
 }
 
+static guint32 peer_reflexive_candidate_priority (NiceAgent *agent,
+    NiceCandidate *local_candidate)
+{
+  NiceCandidate *candidate_priority =
+      nice_candidate_new (NICE_CANDIDATE_TYPE_PEER_REFLEXIVE);
+  guint32 priority;
+
+  candidate_priority->transport = local_candidate->transport;
+  candidate_priority->component_id = local_candidate->component_id;
+  if (agent->compatibility == NICE_COMPATIBILITY_GOOGLE) {
+    priority = nice_candidate_jingle_priority (candidate_priority);
+  } else if (agent->compatibility == NICE_COMPATIBILITY_MSN ||
+             agent->compatibility == NICE_COMPATIBILITY_OC2007) {
+    priority = nice_candidate_msn_priority (candidate_priority);
+  } else if (agent->compatibility == NICE_COMPATIBILITY_OC2007R2) {
+    priority = nice_candidate_ms_ice_priority (candidate_priority,
+        agent->reliable, FALSE);
+  } else {
+    priority = nice_candidate_ice_priority (candidate_priority,
+        agent->reliable, FALSE);
+  }
+  nice_candidate_free (candidate_priority);
+
+  return priority;
+}
+
+
 
 /*
  * Timer callback that handles initiating and managing connectivity
@@ -578,7 +605,6 @@ static gboolean priv_conn_keepalive_tick_unlocked (NiceAgent *agent)
 
         if (agent->compatibility == NICE_COMPATIBILITY_GOOGLE ||
             agent->keepalive_conncheck) {
-          NiceCandidate *candidate_priority;
           guint32 priority;
           uint8_t uname[NICE_STREAM_MAX_UNAME];
           size_t uname_len =
@@ -589,13 +615,7 @@ static gboolean priv_conn_keepalive_tick_unlocked (NiceAgent *agent)
           size_t password_len = priv_get_password (agent,
               agent_find_stream (agent, stream->id), p->remote, &password);
 
-          candidate_priority = nice_candidate_new (
-              NICE_CANDIDATE_TYPE_PEER_REFLEXIVE);
-          candidate_priority->transport = p->local->transport;
-          candidate_priority->component_id = p->local->component_id;
-          /* FIXME: This is not always jingle */
-          priority = nice_candidate_jingle_priority (candidate_priority);
-          nice_candidate_free (candidate_priority);
+          priority = peer_reflexive_candidate_priority (agent, p->local);
 
           if (nice_debug_is_enabled ()) {
             gchar tmpbuf[INET6_ADDRSTRLEN];
@@ -1719,7 +1739,6 @@ int conn_check_send (NiceAgent *agent, CandidateCheckPair *pair)
    *  - ICE-CONTROLLED/ICE-CONTROLLING (for role conflicts)
    *  - USE-CANDIDATE (if sent by the controlling agent)
    */
-  NiceCandidate *candidate_priority;
   guint32 priority;
 
   uint8_t uname[NICE_STREAM_MAX_UNAME];
@@ -1736,22 +1755,7 @@ int conn_check_send (NiceAgent *agent, CandidateCheckPair *pair)
   size_t buffer_len;
   unsigned int timeout;
 
-  candidate_priority = nice_candidate_new (NICE_CANDIDATE_TYPE_PEER_REFLEXIVE);
-  candidate_priority->transport = pair->local->transport;
-  candidate_priority->component_id = pair->local->component_id;
-  if (agent->compatibility == NICE_COMPATIBILITY_GOOGLE) {
-    priority = nice_candidate_jingle_priority (candidate_priority);
-  } else if (agent->compatibility == NICE_COMPATIBILITY_MSN ||
-             agent->compatibility == NICE_COMPATIBILITY_OC2007) {
-    priority = nice_candidate_msn_priority (candidate_priority);
-  } else if (agent->compatibility == NICE_COMPATIBILITY_OC2007R2) {
-    priority =  nice_candidate_ms_ice_priority (candidate_priority,
-        agent->reliable, FALSE);
-  } else {
-    priority =  nice_candidate_ice_priority (candidate_priority,
-        agent->reliable, FALSE);
-  }
-  nice_candidate_free (candidate_priority);
+  priority = peer_reflexive_candidate_priority (agent, pair->local);
 
   if (password != NULL &&
       (agent->compatibility == NICE_COMPATIBILITY_MSN ||
