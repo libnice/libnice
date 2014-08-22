@@ -308,9 +308,7 @@ nice_input_stream_read (GInputStream *stream, void *buffer, gsize count,
 
   /* Closed streams are not readable. */
   if (g_input_stream_is_closed (stream)) {
-    g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_CLOSED,
-        "Stream is closed.");
-    return -1;
+    return 0;
   }
 
   /* Has the agent disappeared? */
@@ -424,9 +422,7 @@ nice_input_stream_read_nonblocking (GPollableInputStream *stream, void *buffer,
 
   /* Closed streams are not readable. */
   if (g_input_stream_is_closed (G_INPUT_STREAM (stream))) {
-    g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_CLOSED,
-        "Stream is closed.");
-    return -1;
+    return 0;
   }
 
   /* Has the agent disappeared? */
