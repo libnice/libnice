@@ -1625,7 +1625,7 @@ pseudo_tcp_socket_readable (PseudoTcpSocket *sock, gpointer user_data)
         nice_debug ("Stream or Component disappeared during the callback");
         goto out;
       }
-      if (!component->tcp) {
+      if (pseudo_tcp_socket_is_closed (component->tcp)) {
         nice_debug ("PseudoTCP socket got destroyed in readable callback!");
         goto out;
       }
@@ -1769,7 +1769,7 @@ notify_pseudo_tcp_socket_clock (gpointer user_data)
 static void
 adjust_tcp_clock (NiceAgent *agent, Stream *stream, Component *component)
 {
-  if (component->tcp) {
+  if (!pseudo_tcp_socket_is_closed (component->tcp)) {
     guint64 timeout = component->last_clock_timeout;
 
     if (pseudo_tcp_socket_get_next_clock (component->tcp, &timeout)) {
@@ -1929,10 +1929,13 @@ process_queued_tcp_packets (NiceAgent *agent, Stream *stream,
   guint stream_id = stream->id;
   guint component_id = component->id;
 
+  g_assert (agent->reliable);
+
   if (component->selected_pair.local == NULL ||
-      component->tcp == NULL ||
+      pseudo_tcp_socket_is_closed (component->tcp) ||
       nice_socket_is_reliable (component->selected_pair.local->sockptr))
     return;
+  }
 
   nice_debug ("%s: Sending outstanding packets for agent %p.", G_STRFUNC,
       agent);
@@ -1951,7 +1954,7 @@ process_queued_tcp_packets (NiceAgent *agent, Stream *stream,
           "pseudo_tcp_socket_notify_packet()");
       return;
     }
-    if (!component->tcp) {
+    if (pseudo_tcp_socket_is_closed (component->tcp)) {
       nice_debug ("PseudoTCP socket got destroyed in"
           " pseudo_tcp_socket_notify_packet()!");
       return;
@@ -2100,7 +2103,8 @@ void agent_signal_component_state_change (NiceAgent *agent, guint stream_id, gui
 
     component->state = state;
 
-    process_queued_tcp_packets (agent, stream, component);
+    if (agent->reliable)
+      process_queued_tcp_packets (agent, stream, component);
 
     agent_queue_signal (agent, signals[SIGNAL_COMPONENT_STATE_CHANGED],
         stream_id, component_id, state);
@@ -3477,7 +3481,8 @@ agent_recv_message_unlocked (
 
   /* Unhandled STUN; try handling TCP data, then pass to the client. */
   if (message->length > 0  && agent->reliable) {
-    if (!nice_socket_is_reliable (nicesock) && component->tcp) {
+    if (!nice_socket_is_reliable (nicesock) &&
+        !pseudo_tcp_socket_is_closed (component->tcp)) {
       /* If we don’t yet have an underlying selected socket, queue up the
        * incoming data to handle later. This is because we can’t send ACKs (or,
        * more importantly for the first few packets, SYNACKs) without an
@@ -3508,7 +3513,7 @@ agent_recv_message_unlocked (
       /* Success! Handled out-of-band. */
       retval = RECV_OOB;
       goto done;
-    } else if (!nice_socket_is_reliable (nicesock)) {
+    } else if (pseudo_tcp_socket_is_closed (component->tcp)) {
       nice_debug ("Received data on a pseudo tcp FAILED component. Ignoring.");
 
       retval = RECV_OOB;
@@ -3950,7 +3955,7 @@ nice_agent_recv_messages_blocking_or_nonblocking (NiceAgent *agent,
 
   /* For a reliable stream, grab any data from the pseudo-TCP input buffer
    * before trying the sockets. */
-  if (agent->reliable && component->tcp != NULL &&
+  if (agent->reliable &&
       pseudo_tcp_socket_get_available_bytes (component->tcp) > 0) {
     pseudo_tcp_socket_recv_messages (component->tcp,
         component->recv_messages, component->n_recv_messages,
@@ -4007,7 +4012,7 @@ nice_agent_recv_messages_blocking_or_nonblocking (NiceAgent *agent,
             component->recv_messages, component->n_recv_messages);
     error_reported = (child_error != NULL &&
         !g_error_matches (child_error, G_IO_ERROR, G_IO_ERROR_WOULD_BLOCK));
-    reached_eos = (agent->reliable && component->tcp != NULL &&
+    reached_eos = (agent->reliable &&
         pseudo_tcp_socket_is_closed_remotely (component->tcp) &&
         nice_input_message_iter_compare (&prev_recv_messages_iter,
             &component->recv_messages_iter));
@@ -4189,7 +4194,7 @@ nice_agent_send_messages_nonblocking_internal (
 
     if(agent->reliable &&
         !nice_socket_is_reliable (component->selected_pair.local->sockptr)) {
-      if (component->tcp != NULL) {
+      if (!pseudo_tcp_socket_is_closed (component->tcp)) {
         /* Send on the pseudo-TCP socket. */
         n_sent = pseudo_tcp_socket_send_messages (component->tcp, messages,
             n_messages, allow_partial, &child_error);
@@ -4629,7 +4634,7 @@ component_io_cb (GSocket *gsocket, GIOCondition condition, gpointer user_data)
     };
     RecvStatus retval = 0;
 
-    if (component->tcp == NULL) {
+    if (pseudo_tcp_socket_is_closed (component->tcp)) {
       nice_debug ("Agent %p: not handling incoming packet for s%d:%d "
           "because pseudo-TCP socket does not exist in reliable mode.", agent,
           stream->id, component->id);
@@ -4802,7 +4807,8 @@ nice_agent_attach_recv (
      * next incoming data.
      * but only do this if we know we're already readable, otherwise we might
      * trigger an error in the initial, pre-connection attach. */
-    if (component->tcp && component->tcp_readable)
+    if (agent->reliable && !pseudo_tcp_socket_is_closed (component->tcp) &&
+        component->tcp_readable)
       pseudo_tcp_socket_readable (component->tcp, component);
   }
 
@@ -4839,7 +4845,7 @@ nice_agent_set_selected_pair (
   conn_check_prune_stream (agent, stream);
 
   if (agent->reliable && !nice_socket_is_reliable (pair.local->sockptr) &&
-      component->tcp == NULL) {
+      pseudo_tcp_socket_is_closed (component->tcp)) {
     nice_debug ("Agent %p: not setting selected pair for s%d:%d because "
         "pseudo tcp socket does not exist in reliable mode", agent,
         stream->id, component->id);
@@ -4980,7 +4986,7 @@ nice_agent_set_selected_remote_candidate (
     goto done;
 
   if (agent->reliable && !nice_socket_is_reliable (lcandidate->sockptr) &&
-      component->tcp == NULL) {
+      pseudo_tcp_socket_is_closed (component->tcp)) {
     nice_debug ("Agent %p: not setting selected remote candidate s%d:%d because"
         " pseudo tcp socket does not exist in reliable mode", agent,
         stream->id, component->id);

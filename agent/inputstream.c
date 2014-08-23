@@ -345,8 +345,8 @@ nice_input_stream_close (GInputStream *stream, GCancellable *cancellable,
 
   /* Shut down the read side of the pseudo-TCP stream, if it still exists. */
   if (agent_find_component (agent, priv->stream_id, priv->component_id,
-          &_stream, &component) &&
-      component->tcp != NULL) {
+          &_stream, &component) && agent->reliable &&
+      !pseudo_tcp_socket_is_closed (component->tcp)) {
     pseudo_tcp_socket_shutdown (component->tcp, PSEUDO_TCP_SHUTDOWN_RD);
   }
 
@@ -387,7 +387,7 @@ nice_input_stream_is_readable (GPollableInputStream *stream)
 
   /* If it’s a reliable agent, see if there’s any pending data in the pseudo-TCP
    * buffer. */
-  if (component->tcp != NULL &&
+  if (agent->reliable &&
       pseudo_tcp_socket_get_available_bytes (component->tcp) > 0) {
     retval = TRUE;
     goto done;

@@ -489,8 +489,8 @@ nice_output_stream_close (GOutputStream *stream, GCancellable *cancellable,
 
   /* Shut down the write side of the pseudo-TCP stream. */
   if (agent_find_component (agent, priv->stream_id, priv->component_id,
-          &_stream, &component) &&
-      component->tcp != NULL) {
+          &_stream, &component) && agent->reliable &&
+      !pseudo_tcp_socket_is_closed (component->tcp)) {
     pseudo_tcp_socket_shutdown (component->tcp, PSEUDO_TCP_SHUTDOWN_WR);
   }
 
@@ -533,8 +533,7 @@ nice_output_stream_is_writable (GPollableOutputStream *stream)
     /* If it’s a reliable agent, see if there’s any space in the pseudo-TCP
      * output buffer. */
     if (!nice_socket_is_reliable (sockptr)) {
-      if (component->tcp != NULL)
-        retval = pseudo_tcp_socket_can_send (component->tcp);
+      retval = pseudo_tcp_socket_can_send (component->tcp);
     } else {
       retval = (g_socket_condition_check (sockptr->fileno, G_IO_OUT) != 0);
     }
