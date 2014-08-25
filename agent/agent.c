@@ -1933,7 +1933,7 @@ process_queued_tcp_packets (NiceAgent *agent, Stream *stream,
 
   if (component->selected_pair.local == NULL ||
       pseudo_tcp_socket_is_closed (component->tcp) ||
-      nice_socket_is_reliable (component->selected_pair.local->sockptr))
+      nice_socket_is_reliable (component->selected_pair.local->sockptr)) {
     return;
   }
 
