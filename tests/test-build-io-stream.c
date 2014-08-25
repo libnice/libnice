@@ -179,9 +179,8 @@ test_pollable_properties (NiceAddress *addr)
 
   g_assert (
       g_pollable_input_stream_read_nonblocking (pollable_input_stream,
-          buf, sizeof (buf), NULL, &error) == -1);
-  g_assert_error (error, G_IO_ERROR, G_IO_ERROR_CLOSED);
-  g_clear_error (&error);
+          buf, sizeof (buf), NULL, &error) == 0);
+  g_assert_no_error (error);
 
   g_assert (
       g_pollable_output_stream_write_nonblocking (pollable_output_stream,
