@@ -136,7 +136,7 @@ static guint signals[N_SIGNALS];
 #if GLIB_CHECK_VERSION(2,31,8)
 static GMutex agent_mutex;    /* Mutex used for thread-safe lib */
 #else
-static GStaticMutex agent_mutex = G_STATIC_REC_MUTEX_INIT;
+static GStaticMutex agent_mutex = G_STATIC_MUTEX_INIT;
 #endif
 
 static void priv_free_upnp (NiceAgent *agent);
