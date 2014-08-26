@@ -2890,7 +2890,6 @@ nice_agent_remove_stream (
   /* Remove the stream and signal its removal. */
   agent->streams = g_slist_remove (agent->streams, stream);
   stream_close (stream);
-  stream_free (stream);
 
   if (!agent->streams)
     priv_remove_keepalive_timer (agent);
@@ -2899,6 +2898,12 @@ nice_agent_remove_stream (
       g_memdup (stream_ids, sizeof(stream_ids)));
 
   agent_unlock_and_emit (agent);
+
+  /* Actually free the stream. This should be done with the lock released, as
+   * it could end up disposing of a NiceIOStream, which tries to take the
+   * agent lock itself. */
+  stream_free (stream);
+
   return;
 }
 
