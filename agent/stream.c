@@ -67,6 +67,17 @@ stream_new (guint n_components, NiceAgent *agent)
 }
 
 void
+stream_close (Stream *stream)
+{
+  GSList *i;
+
+  for (i = stream->components; i; i = i->next) {
+    Component *component = i->data;
+    component_close (component);
+  }
+}
+
+void
 stream_free (Stream *stream)
 {
   GSList *i;

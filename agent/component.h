@@ -209,6 +209,9 @@ Component *
 component_new (guint component_id, NiceAgent *agent, Stream *stream);
 
 void
+component_close (Component *cmp);
+
+void
 component_free (Component *cmp);
 
 gboolean

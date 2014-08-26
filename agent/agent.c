@@ -2889,6 +2889,7 @@ nice_agent_remove_stream (
 
   /* Remove the stream and signal its removal. */
   agent->streams = g_slist_remove (agent->streams, stream);
+  stream_close (stream);
   stream_free (stream);
 
   if (!agent->streams)

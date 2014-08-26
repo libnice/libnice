@@ -205,8 +205,10 @@ component_clear_selected_pair (Component *component)
   memset (&component->selected_pair, 0, sizeof(CandidatePair));
 }
 
+/* Must be called with the agent lock held as it touches internal Component
+ * state. */
 void
-component_free (Component *cmp)
+component_close (Component *cmp)
 {
   GSList *i;
   IOCallbackData *data;
@@ -257,7 +259,6 @@ component_free (Component *cmp)
   }
   if (cmp->tcp) {
     pseudo_tcp_socket_close (cmp->tcp, TRUE);
-    g_clear_object(&cmp->tcp);
   }
 
   while ((data = g_queue_pop_head (&cmp->pending_io_messages)) != NULL)
@@ -266,7 +267,22 @@ component_free (Component *cmp)
   component_deschedule_io_callback (cmp);
 
   g_cancellable_cancel (cmp->stop_cancellable);
+
+  while ((vec = g_queue_pop_head (&cmp->queued_tcp_packets)) != NULL) {
+    g_free ((gpointer) vec->buffer);
+    g_slice_free (GOutputVector, vec);
+  }
+}
+
+/* Must be called with the agent lock released as it could dispose of
+ * NiceIOStreams. */
+void
+component_free (Component *cmp)
+{
+  g_clear_object (&cmp->tcp);
   g_clear_object (&cmp->stop_cancellable);
+  g_clear_object (&cmp->iostream);
+  g_mutex_clear (&cmp->io_mutex);
 
   if (cmp->ctx != NULL) {
     g_main_context_unref (cmp->ctx);
@@ -274,15 +290,6 @@ component_free (Component *cmp)
   }
 
   g_main_context_unref (cmp->own_ctx);
-
-  while ((vec = g_queue_pop_head (&cmp->queued_tcp_packets)) != NULL) {
-    g_free ((gpointer) vec->buffer);
-    g_slice_free (GOutputVector, vec);
-  }
-
-  g_clear_object (&cmp->iostream);
-
-  g_mutex_clear (&cmp->io_mutex);
 
   g_slice_free (Component, cmp);
 }
