@@ -271,13 +271,15 @@ static gboolean priv_conn_check_tick_stream (Stream *stream, NiceAgent *agent, G
             {
               /* case: error, abort processing */
               StunTransactionId id;
+              Component *component = stream_find_component_by_id (stream,
+                  p->component_id);
 
               nice_debug ("Agent %p : Retransmissions failed, giving up on connectivity check %p", agent, p);
               p->state = NICE_CHECK_FAILED;
               nice_debug ("Agent %p : pair %p state FAILED", agent, p);
 
               stun_message_id (&p->stun_message, id);
-              stun_agent_forget_transaction (&agent->stun_agent, id);
+              stun_agent_forget_transaction (&component->stun_agent, id);
 
               p->stun_message.buffer = NULL;
               p->stun_message.buffer_len = 0;
@@ -351,13 +353,18 @@ static gboolean priv_conn_check_tick_stream (Stream *stream, NiceAgent *agent, G
       s_waiting_for_nomination) {
     keep_timer_going = TRUE;
     if (agent->controlling_mode) {
-      guint n;
-      for (n = 0; n < stream->n_components; n++) {
+      GSList *component_item;
+
+      for (component_item = stream->components; component_item;
+           component_item = component_item->next) {
+        Component *component = component_item->data;
+
 	for (k = stream->conncheck_list; k ; k = k->next) {
 	  CandidateCheckPair *p = k->data;
 	  /* note: highest priority item selected (list always sorted) */
-	  if (p->state == NICE_CHECK_SUCCEEDED ||
-	      p->state == NICE_CHECK_DISCOVERED) {
+	  if (p->component_id == component->id &&
+              (p->state == NICE_CHECK_SUCCEEDED ||
+               p->state == NICE_CHECK_DISCOVERED)) {
 	    nice_debug ("Agent %p : restarting check %p as the nominated pair.", agent, p);
 	    p->nominated = TRUE;
 	    priv_conn_check_initiate (agent, p);
@@ -497,10 +504,19 @@ static gboolean priv_conn_keepalive_retransmissions_tick (gpointer pointer)
       {
         /* Time out */
         StunTransactionId id;
+        Component *component;
 
+        if (!agent_find_component (pair->keepalive.agent,
+                pair->keepalive.stream_id, pair->keepalive.component_id,
+                NULL, &component)) {
+          nice_debug ("Could not find stream or component in"
+              " priv_conn_keepalive_retransmissions_tick");
+          agent_unlock ();
+          return FALSE;
+        }
 
         stun_message_id (&pair->keepalive.stun_message, id);
-        stun_agent_forget_transaction (&pair->keepalive.agent->stun_agent, id);
+        stun_agent_forget_transaction (&component->stun_agent, id);
 
         if (pair->keepalive.agent->media_after_tick) {
           nice_debug ("Agent %p : Keepalive conncheck timed out!! "
@@ -629,7 +645,7 @@ static gboolean priv_conn_keepalive_tick_unlocked (NiceAgent *agent)
                 (int) password_len, password, password_len, priority);
           }
           if (uname_len > 0) {
-            buf_len = stun_usage_ice_conncheck_create (&agent->stun_agent,
+            buf_len = stun_usage_ice_conncheck_create (&component->stun_agent,
                 &p->keepalive.stun_message, p->keepalive.stun_buffer,
                 sizeof(p->keepalive.stun_buffer),
                 uname, uname_len, password, password_len,
@@ -670,7 +686,7 @@ static gboolean priv_conn_keepalive_tick_unlocked (NiceAgent *agent)
             }
           }
         } else {
-          buf_len = stun_usage_bind_keepalive (&agent->stun_agent,
+          buf_len = stun_usage_bind_keepalive (&component->stun_agent,
               &p->keepalive.stun_message, p->keepalive.stun_buffer,
               sizeof(p->keepalive.stun_buffer));
 
@@ -1227,8 +1243,10 @@ static void priv_update_check_list_failed_components (NiceAgent *agent, Stream *
     for (i = stream->conncheck_list; i; i = i->next) {
       CandidateCheckPair *p = i->data;
 
-      if (p->stream_id == stream->id &&
-	  p->component_id == (c + 1)) {
+      g_assert (p->agent == agent);
+      g_assert (p->stream_id == stream->id);
+
+      if (p->component_id == (c + 1)) {
 	if (p->state != NICE_CHECK_FAILED)
 	  break;
       }
@@ -1743,6 +1761,7 @@ int conn_check_send (NiceAgent *agent, CandidateCheckPair *pair)
 
   uint8_t uname[NICE_STREAM_MAX_UNAME];
   Stream *stream;
+  Component *component;
   gsize uname_len;
   uint8_t *password = NULL;
   gsize password_len;
@@ -1753,7 +1772,7 @@ int conn_check_send (NiceAgent *agent, CandidateCheckPair *pair)
   unsigned int timeout;
 
   if (!agent_find_component (agent, pair->stream_id, pair->component_id,
-          &stream, NULL))
+          &stream, &component))
     return -1;
 
   uname_len = priv_create_username (agent, stream, pair->component_id,
@@ -1789,8 +1808,7 @@ int conn_check_send (NiceAgent *agent, CandidateCheckPair *pair)
     pair->nominated = controlling;
 
   if (uname_len > 0) {
-
-    buffer_len = stun_usage_ice_conncheck_create (&agent->stun_agent,
+    buffer_len = stun_usage_ice_conncheck_create (&component->stun_agent,
         &pair->stun_message, pair->stun_buffer, sizeof(pair->stun_buffer),
         uname, uname_len, password, password_len,
         cand_use, controlling, priority,
@@ -2961,7 +2979,7 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, Stream *stream,
 
   /* note: ICE  7.2. "STUN Server Procedures" (ID-19) */
 
-  valid = stun_agent_validate (&agent->stun_agent, &req,
+  valid = stun_agent_validate (&component->stun_agent, &req,
       (uint8_t *) buf, len, conncheck_stun_validater, &validater_data);
 
   /* Check for discovery candidates stun agents */
@@ -3019,7 +3037,7 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, Stream *stream,
 
     if (agent->compatibility != NICE_COMPATIBILITY_MSN &&
         agent->compatibility != NICE_COMPATIBILITY_OC2007) {
-      rbuf_len = stun_agent_build_unknown_attributes_error (&agent->stun_agent,
+      rbuf_len = stun_agent_build_unknown_attributes_error (&component->stun_agent,
           &msg, rbuf, rbuf_len, &req);
       if (rbuf_len != 0)
         agent_socket_send (nicesock, from, rbuf_len, (const gchar*)rbuf);
@@ -3030,9 +3048,9 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, Stream *stream,
   if (valid == STUN_VALIDATION_UNAUTHORIZED) {
     nice_debug ("Agent %p : Integrity check failed.", agent);
 
-    if (stun_agent_init_error (&agent->stun_agent, &msg, rbuf, rbuf_len,
+    if (stun_agent_init_error (&component->stun_agent, &msg, rbuf, rbuf_len,
             &req, STUN_ERROR_UNAUTHORIZED)) {
-      rbuf_len = stun_agent_finish_message (&agent->stun_agent, &msg, NULL, 0);
+      rbuf_len = stun_agent_finish_message (&component->stun_agent, &msg, NULL, 0);
       if (rbuf_len > 0 && agent->compatibility != NICE_COMPATIBILITY_MSN &&
           agent->compatibility != NICE_COMPATIBILITY_OC2007)
         agent_socket_send (nicesock, from, rbuf_len, (const gchar*)rbuf);
@@ -3041,9 +3059,9 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, Stream *stream,
   }
   if (valid == STUN_VALIDATION_UNAUTHORIZED_BAD_REQUEST) {
     nice_debug ("Agent %p : Integrity check failed - bad request.", agent);
-    if (stun_agent_init_error (&agent->stun_agent, &msg, rbuf, rbuf_len,
+    if (stun_agent_init_error (&component->stun_agent, &msg, rbuf, rbuf_len,
             &req, STUN_ERROR_BAD_REQUEST)) {
-      rbuf_len = stun_agent_finish_message (&agent->stun_agent, &msg, NULL, 0);
+      rbuf_len = stun_agent_finish_message (&component->stun_agent, &msg, NULL, 0);
       if (rbuf_len > 0 && agent->compatibility != NICE_COMPATIBILITY_MSN &&
 	  agent->compatibility != NICE_COMPATIBILITY_OC2007)
         agent_socket_send (nicesock, from, rbuf_len, (const gchar*)rbuf);
@@ -3163,7 +3181,7 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, Stream *stream,
     }
 
     rbuf_len = sizeof (rbuf);
-    res = stun_usage_ice_conncheck_create_reply (&agent->stun_agent, &req,
+    res = stun_usage_ice_conncheck_create_reply (&component->stun_agent, &req,
         &msg, rbuf, &rbuf_len, &sockaddr.storage, sizeof (sockaddr),
         &control, agent->tie_breaker,
         agent_to_ice_compatibility (agent));

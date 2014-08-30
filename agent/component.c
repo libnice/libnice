@@ -123,6 +123,8 @@ component_new (guint id, NiceAgent *agent, Stream *stream)
   component->agent = agent;
   component->stream = stream;
 
+  nice_agent_init_stun_agent (agent, &component->stun_agent);
+
   g_mutex_init (&component->io_mutex);
   g_queue_init (&component->pending_io_messages);
   component->io_callback_id = 0;

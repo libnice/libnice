@@ -1033,11 +1033,6 @@ nice_agent_init (NiceAgent *agent)
   agent->use_ice_udp = TRUE;
   agent->use_ice_tcp = TRUE;
 
-  stun_agent_init (&agent->stun_agent, STUN_ALL_KNOWN_ATTRIBUTES,
-      STUN_COMPATIBILITY_RFC5389,
-      STUN_AGENT_USAGE_SHORT_TERM_CREDENTIALS |
-      STUN_AGENT_USAGE_USE_FINGERPRINT);
-
   agent->rng = nice_rng_new ();
   priv_generate_tie_breaker (agent);
 
@@ -1190,6 +1185,66 @@ nice_agent_get_property (
   agent_unlock_and_emit(agent);
 }
 
+void
+nice_agent_init_stun_agent (NiceAgent *agent, StunAgent *stun_agent)
+{
+  if (agent->compatibility == NICE_COMPATIBILITY_GOOGLE) {
+    stun_agent_init (stun_agent, STUN_ALL_KNOWN_ATTRIBUTES,
+        STUN_COMPATIBILITY_RFC3489,
+        STUN_AGENT_USAGE_SHORT_TERM_CREDENTIALS |
+        STUN_AGENT_USAGE_IGNORE_CREDENTIALS);
+  } else if (agent->compatibility == NICE_COMPATIBILITY_MSN) {
+    stun_agent_init (stun_agent, STUN_ALL_KNOWN_ATTRIBUTES,
+        STUN_COMPATIBILITY_RFC3489,
+        STUN_AGENT_USAGE_SHORT_TERM_CREDENTIALS |
+        STUN_AGENT_USAGE_FORCE_VALIDATER);
+  } else if (agent->compatibility == NICE_COMPATIBILITY_WLM2009) {
+    stun_agent_init (stun_agent, STUN_ALL_KNOWN_ATTRIBUTES,
+        STUN_COMPATIBILITY_WLM2009,
+        STUN_AGENT_USAGE_SHORT_TERM_CREDENTIALS |
+        STUN_AGENT_USAGE_USE_FINGERPRINT);
+  } else if (agent->compatibility == NICE_COMPATIBILITY_OC2007) {
+    stun_agent_init (stun_agent, STUN_ALL_KNOWN_ATTRIBUTES,
+        STUN_COMPATIBILITY_RFC3489,
+        STUN_AGENT_USAGE_SHORT_TERM_CREDENTIALS |
+        STUN_AGENT_USAGE_FORCE_VALIDATER |
+        STUN_AGENT_USAGE_NO_ALIGNED_ATTRIBUTES);
+  } else if (agent->compatibility == NICE_COMPATIBILITY_OC2007R2) {
+    stun_agent_init (stun_agent, STUN_ALL_KNOWN_ATTRIBUTES,
+        STUN_COMPATIBILITY_WLM2009,
+        STUN_AGENT_USAGE_SHORT_TERM_CREDENTIALS |
+        STUN_AGENT_USAGE_USE_FINGERPRINT |
+        STUN_AGENT_USAGE_NO_ALIGNED_ATTRIBUTES);
+  } else {
+    stun_agent_init (stun_agent, STUN_ALL_KNOWN_ATTRIBUTES,
+        STUN_COMPATIBILITY_RFC5389,
+        STUN_AGENT_USAGE_SHORT_TERM_CREDENTIALS |
+        STUN_AGENT_USAGE_USE_FINGERPRINT);
+  }
+  stun_agent_set_software (stun_agent, agent->software_attribute);
+}
+
+static void
+nice_agent_reset_all_stun_agents (NiceAgent *agent, gboolean only_software)
+{
+  GSList *stream_item, *component_item;
+
+  for (stream_item = agent->streams; stream_item;
+       stream_item = stream_item->next) {
+    Stream *stream = stream_item->data;
+
+    for (component_item = stream->components; component_item;
+         component_item = component_item->next) {
+      Component *component = component_item->data;
+
+      if (only_software)
+        stun_agent_set_software (&component->stun_agent,
+            agent->software_attribute);
+      else
+        nice_agent_init_stun_agent(agent, &component->stun_agent);
+    }
+  }
+}
 
 static void
 nice_agent_set_property (
@@ -1212,44 +1267,12 @@ nice_agent_set_property (
 
     case PROP_COMPATIBILITY:
       agent->compatibility = g_value_get_uint (value);
-      if (agent->compatibility == NICE_COMPATIBILITY_GOOGLE) {
-        stun_agent_init (&agent->stun_agent, STUN_ALL_KNOWN_ATTRIBUTES,
-            STUN_COMPATIBILITY_RFC3489,
-            STUN_AGENT_USAGE_SHORT_TERM_CREDENTIALS |
-            STUN_AGENT_USAGE_IGNORE_CREDENTIALS);
+      if (agent->compatibility == NICE_COMPATIBILITY_GOOGLE ||
+          agent->compatibility == NICE_COMPATIBILITY_MSN ||
+          agent->compatibility == NICE_COMPATIBILITY_WLM2009)
         agent->use_ice_tcp = FALSE;
-      } else if (agent->compatibility == NICE_COMPATIBILITY_MSN) {
-        stun_agent_init (&agent->stun_agent, STUN_ALL_KNOWN_ATTRIBUTES,
-            STUN_COMPATIBILITY_RFC3489,
-            STUN_AGENT_USAGE_SHORT_TERM_CREDENTIALS |
-            STUN_AGENT_USAGE_FORCE_VALIDATER);
-        agent->use_ice_tcp = FALSE;
-      } else if (agent->compatibility == NICE_COMPATIBILITY_WLM2009) {
-        stun_agent_init (&agent->stun_agent, STUN_ALL_KNOWN_ATTRIBUTES,
-            STUN_COMPATIBILITY_WLM2009,
-            STUN_AGENT_USAGE_SHORT_TERM_CREDENTIALS |
-            STUN_AGENT_USAGE_USE_FINGERPRINT);
-        agent->use_ice_tcp = FALSE;
-      } else if (agent->compatibility == NICE_COMPATIBILITY_OC2007) {
-        stun_agent_init (&agent->stun_agent, STUN_ALL_KNOWN_ATTRIBUTES,
-            STUN_COMPATIBILITY_RFC3489,
-            STUN_AGENT_USAGE_SHORT_TERM_CREDENTIALS |
-            STUN_AGENT_USAGE_FORCE_VALIDATER |
-            STUN_AGENT_USAGE_NO_ALIGNED_ATTRIBUTES);
-      } else if (agent->compatibility == NICE_COMPATIBILITY_OC2007R2) {
-        stun_agent_init (&agent->stun_agent, STUN_ALL_KNOWN_ATTRIBUTES,
-            STUN_COMPATIBILITY_WLM2009,
-            STUN_AGENT_USAGE_SHORT_TERM_CREDENTIALS |
-            STUN_AGENT_USAGE_USE_FINGERPRINT |
-            STUN_AGENT_USAGE_NO_ALIGNED_ATTRIBUTES);
-      } else {
-        stun_agent_init (&agent->stun_agent, STUN_ALL_KNOWN_ATTRIBUTES,
-            STUN_COMPATIBILITY_RFC5389,
-            STUN_AGENT_USAGE_SHORT_TERM_CREDENTIALS |
-            STUN_AGENT_USAGE_USE_FINGERPRINT);
-      }
-      stun_agent_set_software (&agent->stun_agent, agent->software_attribute);
 
+      nice_agent_reset_all_stun_agents (agent, FALSE);
       break;
 
     case PROP_STUN_SERVER:
@@ -5076,7 +5099,7 @@ nice_agent_set_software (NiceAgent *agent, const gchar *software)
     agent->software_attribute = g_strdup_printf ("%s/%s",
         software, PACKAGE_STRING);
 
-  stun_agent_set_software (&agent->stun_agent, agent->software_attribute);
+  nice_agent_reset_all_stun_agents (agent, TRUE);
 
   agent_unlock_and_emit (agent);
 }

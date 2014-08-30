@@ -147,7 +147,6 @@ struct _NiceAgent
   guint64 tie_breaker;            /* tie breaker (ICE sect 5.2
 				     "Determining Role" ID-19) */
   NiceCompatibility compatibility; /* property: Compatibility mode */
-  StunAgent stun_agent;            /* STUN agent */
   gboolean media_after_tick;       /* Received media after keepalive tick */
 #ifdef HAVE_GUPNP
   GUPnPSimpleIgdThread* upnp;	   /* GUPnP Single IGD agent */
@@ -212,6 +211,8 @@ GSource *agent_timeout_add_with_context (NiceAgent *agent, guint interval, GSour
 StunUsageIceCompatibility agent_to_ice_compatibility (NiceAgent *agent);
 StunUsageTurnCompatibility agent_to_turn_compatibility (NiceAgent *agent);
 NiceTurnSocketCompatibility agent_to_turn_socket_compatibility (NiceAgent *agent);
+
+void nice_agent_init_stun_agent (NiceAgent *agent, StunAgent *stun_agent);
 
 void _priv_set_socket_tos (NiceAgent *agent, NiceSocket *sock, gint tos);
 

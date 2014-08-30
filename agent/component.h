@@ -186,6 +186,9 @@ struct _Component
   Stream *stream;  /* unowned, immutable: can be accessed without holding the
                     * agent lock */
 
+  StunAgent stun_agent; /* This stun agent is used to validate all stun requests */
+
+
   GCancellable *stop_cancellable;
 
   PseudoTcpSocket *tcp;
