@@ -522,7 +522,7 @@ size_t stun_agent_finish_message (StunAgent *agent, StunMessage *msg,
     }
   }
   if (saved_id_idx == STUN_AGENT_MAX_SAVED_IDS) {
-    stun_debug ("Saved ids full");
+    stun_debug ("WARNING: Saved IDs full. STUN message dropped.");
     return 0;
   }
 
