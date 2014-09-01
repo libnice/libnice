@@ -4057,7 +4057,7 @@ recv_error:
 done:
   g_assert ((child_error != NULL) == (n_valid_messages == -1));
   g_assert (n_valid_messages < 0 || (guint) n_valid_messages <= n_messages);
-  g_assert ((n_valid_messages == 0) == reached_eos);
+  g_assert (n_valid_messages != 0 || reached_eos);
 
   if (child_error != NULL)
     g_propagate_error (error, child_error);
