@@ -1742,18 +1742,23 @@ int conn_check_send (NiceAgent *agent, CandidateCheckPair *pair)
   guint32 priority;
 
   uint8_t uname[NICE_STREAM_MAX_UNAME];
-  gsize uname_len =
-      priv_create_username (agent, agent_find_stream (agent, pair->stream_id),
-          pair->component_id, pair->remote, pair->local, uname, sizeof (uname), FALSE);
+  Stream *stream;
+  gsize uname_len;
   uint8_t *password = NULL;
-  gsize password_len = priv_get_password (agent,
-      agent_find_stream (agent, pair->stream_id), pair->remote, &password);
-
+  gsize password_len;
   bool controlling = agent->controlling_mode;
  /* XXX: add API to support different nomination modes: */
   bool cand_use = controlling;
   size_t buffer_len;
   unsigned int timeout;
+
+  if (!agent_find_component (agent, pair->stream_id, pair->component_id,
+          &stream, NULL))
+    return -1;
+
+  uname_len = priv_create_username (agent, stream, pair->component_id,
+      pair->remote, pair->local, uname, sizeof (uname), FALSE);
+  password_len = priv_get_password (agent, stream, pair->remote, &password);
 
   priority = peer_reflexive_candidate_priority (agent, pair->local);
 
@@ -1814,18 +1819,18 @@ int conn_check_send (NiceAgent *agent, CandidateCheckPair *pair)
        * check pair, until we discover a new local peer reflexive */
       if (pair->sockptr->fileno == NULL &&
           pair->local->transport == NICE_CANDIDATE_TRANSPORT_TCP_ACTIVE) {
-        Stream *stream = NULL;
-        Component *component = NULL;
+        Stream *stream2 = NULL;
+        Component *component2 = NULL;
         NiceSocket *new_socket;
 
         if (agent_find_component (agent, pair->stream_id, pair->component_id,
-                &stream, &component)) {
+                &stream2, &component2)) {
           new_socket = nice_tcp_active_socket_connect (pair->sockptr,
               &pair->remote->addr);
           if (new_socket) {
             pair->sockptr = new_socket;
-            _priv_set_socket_tos (agent, pair->sockptr, stream->tos);
-            component_attach_socket (component, new_socket);
+            _priv_set_socket_tos (agent, pair->sockptr, stream2->tos);
+            component_attach_socket (component2, new_socket);
           }
         }
       }
