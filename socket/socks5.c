@@ -421,7 +421,7 @@ socket_send_messages (NiceSocket *sock, const NiceAddress *to,
   if (priv->state == SOCKS_STATE_CONNECTED) {
     /* Fast path: pass through to the base socket once connected. */
     if (priv->base_socket == NULL)
-      return FALSE;
+      return -1;
 
     return nice_socket_send_messages (priv->base_socket, to, messages,
         n_messages);
@@ -430,7 +430,6 @@ socket_send_messages (NiceSocket *sock, const NiceAddress *to,
   } else {
     return 0;
   }
-  return n_messages;
 }
 
 
