@@ -195,6 +195,7 @@ socket_close (NiceSocket *sock)
   nice_socket_free_send_queue (&priv->send_queue);
 
   g_slice_free(HttpPriv, sock->priv);
+  sock->priv = NULL;
 }
 
 static void
@@ -279,6 +280,10 @@ socket_recv_messages (NiceSocket *sock,
 {
   HttpPriv *priv = sock->priv;
   gint ret = -1;
+
+  /* Socket has been closed: */
+  if (sock->priv == NULL)
+    return 0;
 
   if (priv->state == HTTP_STATE_CONNECTED) {
     guint i;
@@ -570,6 +575,10 @@ socket_send_messages (NiceSocket *sock, const NiceAddress *to,
     const NiceOutputMessage *messages, guint n_messages)
 {
   HttpPriv *priv = sock->priv;
+
+  /* Socket has been closed: */
+  if (sock->priv == NULL)
+    return -1;
 
   if (priv->state == HTTP_STATE_CONNECTED) {
     /* Fast path. */

@@ -173,6 +173,7 @@ socket_close (NiceSocket *sock)
   nice_socket_free_send_queue (&priv->send_queue);
 
   g_slice_free(PseudoSSLPriv, sock->priv);
+  sock->priv = NULL;
 }
 
 static gboolean
@@ -202,6 +203,10 @@ socket_recv_messages (NiceSocket *sock,
     NiceInputMessage *recv_messages, guint n_recv_messages)
 {
   PseudoSSLPriv *priv = sock->priv;
+
+  /* Socket has been closed: */
+  if (sock->priv == NULL)
+    return 0;
 
   if (priv->handshaken) {
     if (priv->base_socket) {
@@ -250,6 +255,10 @@ socket_send_messages (NiceSocket *sock, const NiceAddress *to,
     const NiceOutputMessage *messages, guint n_messages)
 {
   PseudoSSLPriv *priv = sock->priv;
+
+  /* Socket has been closed: */
+  if (sock->priv == NULL)
+    return -1;
 
   if (priv->handshaken) {
     /* Fast path: pass directly through to the base socket once the handshake is

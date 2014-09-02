@@ -122,6 +122,7 @@ socket_close (NiceSocket *sock)
     nice_socket_free (priv->base_socket);
 
   g_slice_free(TurnTcpPriv, sock->priv);
+  sock->priv = NULL;
 }
 
 static gssize
@@ -132,6 +133,10 @@ socket_recv_message (NiceSocket *sock, NiceInputMessage *recv_message)
   guint padlen;
   GInputVector local_recv_buf;
   NiceInputMessage local_recv_message;
+
+  /* Socket has been closed: */
+  if (sock->priv == NULL)
+    return 0;
 
   if (priv->expecting_len == 0) {
     guint headerlen = 0;
@@ -236,6 +241,10 @@ socket_recv_messages (NiceSocket *nicesock,
   guint i;
   gboolean error = FALSE;
 
+  /* Socket has been closed: */
+  if (nicesock->priv == NULL)
+    return 0;
+
   for (i = 0; i < n_recv_messages; i++) {
     gssize len;
 
@@ -275,6 +284,10 @@ socket_send_message (NiceSocket *sock, const NiceAddress *to,
     } msoc;
   } header_buf;
   guint offset = 0;
+
+  /* Socket has been closed: */
+  if (sock->priv == NULL)
+    return -1;
 
   /* Count the number of buffers. */
   if (message->n_buffers == -1) {
@@ -374,6 +387,10 @@ socket_send_messages (NiceSocket *sock, const NiceAddress *to,
     const NiceOutputMessage *messages, guint n_messages)
 {
   guint i;
+
+  /* Socket has been closed: */
+  if (sock->priv == NULL)
+    return -1;
 
   for (i = 0; i < n_messages; i++) {
     const NiceOutputMessage *message = &messages[i];

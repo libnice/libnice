@@ -183,6 +183,10 @@ socket_recv_messages (NiceSocket *sock,
   guint i;
   gboolean error = FALSE;
 
+  /* Socket has been closed: */
+  if (sock->priv == NULL)
+    return 0;
+
   /* Read messages into recv_messages until one fails or would block, or we
    * reach the end. */
   for (i = 0; i < n_recv_messages; i++) {
@@ -284,6 +288,10 @@ socket_send_messages (NiceSocket *sock, const NiceAddress *to,
     const NiceOutputMessage *messages, guint n_messages)
 {
   guint i;
+
+  /* Socket has been closed: */
+  if (sock->priv == NULL)
+    return -1;
 
   for (i = 0; i < n_messages; i++) {
     const NiceOutputMessage *message = &messages[i];

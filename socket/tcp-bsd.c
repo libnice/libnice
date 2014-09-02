@@ -229,6 +229,10 @@ socket_recv_messages (NiceSocket *sock,
   TcpPriv *priv = sock->priv;
   guint i;
 
+  /* Socket has been closed: */
+  if (sock->priv == NULL)
+    return 0;
+
   /* Don't try to access the socket if it had an error */
   if (priv->error)
     return -1;
@@ -278,6 +282,10 @@ socket_send_message (NiceSocket *sock,
   gssize ret;
   GError *gerr = NULL;
   gsize message_len;
+
+  /* Socket has been closed: */
+  if (sock->priv == NULL)
+    return -1;
 
   /* Don't try to access the socket if it had an error, otherwise we risk a
    * crash with SIGPIPE (Broken pipe) */
@@ -335,6 +343,10 @@ socket_send_messages (NiceSocket *sock, const NiceAddress *to,
     const NiceOutputMessage *messages, guint n_messages)
 {
   guint i;
+
+  /* Socket has been closed: */
+  if (sock->priv == NULL)
+    return -1;
 
   for (i = 0; i < n_messages; i++) {
     const NiceOutputMessage *message = &messages[i];

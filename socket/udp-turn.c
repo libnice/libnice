@@ -318,6 +318,8 @@ socket_close (NiceSocket *sock)
   g_free (priv->username);
   g_free (priv->password);
   g_free (priv);
+
+  sock->priv = NULL;
 }
 
 static gint
@@ -329,6 +331,10 @@ socket_recv_messages (NiceSocket *sock,
   guint i;
   gboolean error = FALSE;
   guint n_valid_messages;
+
+  /* Socket has been closed: */
+  if (sock->priv == NULL)
+    return 0;
 
   nice_debug ("received message on TURN socket");
 
@@ -687,6 +693,10 @@ socket_send_message (NiceSocket *sock, const NiceAddress *to,
   ChannelBinding *binding = NULL;
   gint ret;
 
+  /* Socket has been closed: */
+  if (sock->priv == NULL)
+    return -1;
+
   for (; i; i = i->next) {
     ChannelBinding *b = i->data;
     if (nice_address_equal (&b->peer, to)) {
@@ -857,6 +867,10 @@ socket_send_messages (NiceSocket *sock, const NiceAddress *to,
     const NiceOutputMessage *messages, guint n_messages)
 {
   guint i;
+
+  /* Socket has been closed: */
+  if (sock->priv == NULL)
+    return -1;
 
   for (i = 0; i < n_messages; i++) {
     const NiceOutputMessage *message = &messages[i];
