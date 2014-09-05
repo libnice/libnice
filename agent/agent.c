@@ -3487,16 +3487,29 @@ agent_recv_message_unlocked (
      * into a single monolithic one and parse the packet properly. */
     guint8 *big_buf;
     gsize big_buf_len;
+    int validated_len;
 
     big_buf = compact_input_message (message, &big_buf_len);
 
-    if (stun_message_validate_buffer_length (big_buf, big_buf_len,
+    validated_len = stun_message_validate_buffer_length (big_buf, big_buf_len,
         (agent->compatibility != NICE_COMPATIBILITY_OC2007 &&
-         agent->compatibility != NICE_COMPATIBILITY_OC2007R2)) == (gint) big_buf_len &&
+         agent->compatibility != NICE_COMPATIBILITY_OC2007R2));
+
+    if (validated_len == (gint) big_buf_len) {
+      gboolean handled;
+
+      handled =
         conn_check_handle_inbound_stun (agent, stream, component, nicesock,
-            message->from, (gchar *) big_buf, big_buf_len)) {
-      /* Handled STUN message. */
-      nice_debug ("%s: Valid STUN packet received.", G_STRFUNC);
+            message->from, (gchar *) big_buf, big_buf_len);
+
+      if (handled) {
+        /* Handled STUN message. */
+        nice_debug ("%s: Valid STUN packet received.", G_STRFUNC);
+      } else {
+        /* Valid but unhandled STUN message (e.g. does not match a previously
+         * sent request due to being a duplicate response). */
+        nice_debug ("%s: Valid but unhandled STUN packet received.", G_STRFUNC);
+      }
 
       retval = RECV_OOB;
       g_free (big_buf);
