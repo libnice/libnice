@@ -73,6 +73,8 @@
  *   <programlisting>
  *   guint stream_id;
  *   gchar buffer[] = "hello world!";
+ *   gchar *ufrag = NULL, *pwd = NULL;
+ *   gchar *remote_ufrag, *remote_pwd;
  *   GSList *lcands = NULL;
  *
  *   // Create a nice agent
@@ -96,8 +98,13 @@
  *
  *   // ... Wait until the signal candidate-gathering-done is fired ...
  *   lcands = nice_agent_get_local_candidates(agent, stream_id, 1);
+
+ *   nice_agent_get_local_credentials(agent, stream_id, &ufrag, &pwd);
  *
- *   // ... Send local candidates to the peer and set the peer's remote candidates
+ *   // ... Send local candidates and credentials to the peer
+ *
+ *   // Set the peer's remote credentials and remote candidates
+ *   nice_agent_set_remote_credentials (agent, stream_id, remote_ufrag, remote_pwd);
  *   nice_agent_set_remote_candidates (agent, stream_id, 1, rcands);
  *
  *   // ... Wait until the signal new-selected-pair is fired ...
@@ -558,6 +565,13 @@ nice_agent_gather_candidates (
  <note>
    <para>
      Stream credentials do not override per-candidate credentials if set
+   </para>
+   <para>
+     Due to the native of peer-reflexive candidates, any agent using a per-stream
+     credentials (RFC5245, WLM2009, OC2007R2 and DRAFT19) instead of
+     per-candidate credentials (GOOGLE, MSN, OC2007), must
+     use the nice_agent_set_remote_credentials() API instead of setting the
+     username and password on the candidates.
    </para>
  </note>
  *
