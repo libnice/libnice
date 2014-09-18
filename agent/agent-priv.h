@@ -274,10 +274,14 @@ void nice_debug_init (void);
 
 #ifdef NDEBUG
 static inline gboolean nice_debug_is_enabled (void) { return FALSE; }
+static inline gboolean nice_debug_is_verbose (void) { return FALSE; }
 static inline void nice_debug (const char *fmt, ...) { }
+static inline void nice_debug_verbose (const char *fmt, ...) { }
 #else
 gboolean nice_debug_is_enabled (void);
+gboolean nice_debug_is_verbose (void);
 void nice_debug (const char *fmt, ...) G_GNUC_PRINTF (1, 2);
+void nice_debug_verbose (const char *fmt, ...) G_GNUC_PRINTF (1, 2);
 #endif
 
 #endif /*_NICE_AGENT_PRIV_H */

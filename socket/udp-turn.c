@@ -336,7 +336,7 @@ socket_recv_messages (NiceSocket *sock,
   if (sock->priv == NULL)
     return 0;
 
-  nice_debug ("received message on TURN socket");
+  nice_debug_verbose ("received message on TURN socket");
 
   n_messages = nice_socket_recv_messages (priv->base_socket,
       recv_messages, n_recv_messages);
@@ -374,7 +374,7 @@ socket_recv_messages (NiceSocket *sock,
       buffer = message->buffers[0].buffer;
       buffer_length = message->length;
     } else {
-      nice_debug ("%s: **WARNING: SLOW PATH**", G_STRFUNC);
+      nice_debug_verbose ("%s: **WARNING: SLOW PATH**", G_STRFUNC);
 
       buffer = compact_input_message (message, &buffer_length);
       allocated_buffer = TRUE;
@@ -663,7 +663,7 @@ socket_dequeue_all_data (UdpTurnPriv *priv, const NiceAddress *to)
       SendData *data =
           (SendData *) g_queue_pop_head(send_queue);
 
-      nice_debug ("dequeuing data");
+      nice_debug_verbose ("dequeuing data");
       _socket_send_wrapped (priv->base_socket, &priv->server_addr,
           data->data_len, data->data, data->reliable);
 
@@ -835,7 +835,7 @@ socket_send_message (NiceSocket *sock, const NiceAddress *to,
       }
 
       /* enque data */
-      nice_debug ("enqueuing data");
+      nice_debug_verbose ("enqueuing data");
       socket_enqueue_data(priv, to, msg_len, (gchar *)buffer, reliable);
 
       return msg_len;
@@ -1121,7 +1121,7 @@ nice_udp_turn_socket_parse_recv_message (NiceSocket *sock, NiceSocket **from_soc
   }
 
   /* Slow path. */
-  nice_debug ("%s: **WARNING: SLOW PATH**", G_STRFUNC);
+  nice_debug_verbose ("%s: **WARNING: SLOW PATH**", G_STRFUNC);
 
   buf = compact_input_message (message, &buf_len);
   len = nice_udp_turn_socket_parse_recv (sock, from_sock,

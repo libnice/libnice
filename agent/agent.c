@@ -1533,7 +1533,7 @@ pseudo_tcp_socket_recv_messages (PseudoTcpSocket *self,
             (gchar *) buffer->buffer + iter->offset,
             buffer->size - iter->offset);
 
-        nice_debug ("%s: Received %" G_GSSIZE_FORMAT " bytes into "
+        nice_debug_verbose ("%s: Received %" G_GSSIZE_FORMAT " bytes into "
             "buffer %p (offset %" G_GSIZE_FORMAT ", length %" G_GSIZE_FORMAT
             ").", G_STRFUNC, len, buffer->buffer, iter->offset, buffer->size);
 
@@ -1589,7 +1589,7 @@ pseudo_tcp_socket_readable (PseudoTcpSocket *sock, gpointer user_data)
 
   g_object_ref (agent);
 
-  nice_debug ("Agent %p: s%d:%d pseudo Tcp socket readable", agent,
+  nice_debug_verbose ("Agent %p: s%d:%d pseudo Tcp socket readable", agent,
       stream->id, component->id);
 
   component->tcp_readable = TRUE;
@@ -1667,7 +1667,7 @@ pseudo_tcp_socket_readable (PseudoTcpSocket *sock, gpointer user_data)
         component->recv_messages, component->n_recv_messages,
         &component->recv_messages_iter, &child_error);
 
-    nice_debug ("%s: Client buffers case: Received %d valid messages:",
+    nice_debug_verbose ("%s: Client buffers case: Received %d valid messages:",
         G_STRFUNC, n_valid_messages);
     nice_debug_input_message_composition (component->recv_messages,
         component->n_recv_messages);
@@ -1710,7 +1710,7 @@ pseudo_tcp_socket_writable (PseudoTcpSocket *sock, gpointer user_data)
   NiceAgent *agent = component->agent;
   Stream *stream = component->stream;
 
-  nice_debug ("Agent %p: s%d:%d pseudo Tcp socket writable", agent,
+  nice_debug_verbose ("Agent %p: s%d:%d pseudo Tcp socket writable", agent,
       stream->id, component->id);
 
   agent_signal_socket_writable (agent, component);
@@ -1747,7 +1747,7 @@ pseudo_tcp_socket_write_packet (PseudoTcpSocket *psocket,
       gchar tmpbuf[INET6_ADDRSTRLEN];
       nice_address_to_string (addr, tmpbuf);
 
-      nice_debug (
+      nice_debug_verbose (
           "Agent %p : s%d:%d: sending %d bytes on socket %p (FD %d) to [%s]:%d",
           component->agent, component->stream->id, component->id, len,
           sock->fileno, g_socket_get_fd (sock->fileno), tmpbuf,
@@ -1972,7 +1972,7 @@ process_queued_tcp_packets (NiceAgent *agent, Stream *stream,
     return;
   }
 
-  nice_debug ("%s: Sending outstanding packets for agent %p.", G_STRFUNC,
+  nice_debug_verbose ("%s: Sending outstanding packets for agent %p.", G_STRFUNC,
       agent);
 
   while ((vec = g_queue_peek_head (&component->queued_tcp_packets)) != NULL) {
@@ -3515,7 +3515,7 @@ agent_recv_message_unlocked (
     retval = nice_socket_recv_messages (nicesock, message, 1);
   }
 
-  nice_debug ("%s: Received %d valid messages of length %" G_GSIZE_FORMAT
+  nice_debug_verbose ("%s: Received %d valid messages of length %" G_GSIZE_FORMAT
       " from base socket %p.", G_STRFUNC, retval, message->length, nicesock);
 
   if (retval == 0) {
@@ -3534,10 +3534,10 @@ agent_recv_message_unlocked (
     goto done;
   }
 
-  if (nice_debug_is_enabled ()) {
+  if (nice_debug_is_verbose ()) {
     gchar tmpbuf[INET6_ADDRSTRLEN];
     nice_address_to_string (message->from, tmpbuf);
-    nice_debug ("Agent %p : Packet received on local socket %d from [%s]:%u (%" G_GSSIZE_FORMAT " octets).", agent,
+    nice_debug_verbose ("Agent %p : Packet received on local socket %d from [%s]:%u (%" G_GSSIZE_FORMAT " octets).", agent,
         g_socket_get_fd (nicesock->fileno), tmpbuf,
         nice_address_get_port (message->from), message->length);
   }
@@ -3549,7 +3549,7 @@ agent_recv_message_unlocked (
     if (!nice_address_equal (message->from, &turn->server))
       continue;
 
-    nice_debug ("Agent %p : Packet received from TURN server candidate.",
+    nice_debug_verbose ("Agent %p : Packet received from TURN server candidate.",
         agent);
 
     for (i = component->local_candidates; i; i = i->next) {
@@ -3637,7 +3637,7 @@ agent_recv_message_unlocked (
 
       /* Received data on a reliable connection. */
 
-      nice_debug ("%s: notifying pseudo-TCP of packet, length %" G_GSIZE_FORMAT,
+      nice_debug_verbose ("%s: notifying pseudo-TCP of packet, length %" G_GSIZE_FORMAT,
           G_STRFUNC, message->length);
       pseudo_tcp_socket_notify_message (component->tcp, message);
 
@@ -3671,14 +3671,14 @@ nice_debug_input_message_composition (const NiceInputMessage *messages,
 {
   guint i;
 
-  if (!nice_debug_is_enabled ())
+  if (!nice_debug_is_verbose ())
     return;
 
   for (i = 0; i < n_messages; i++) {
     const NiceInputMessage *message = &messages[i];
     guint j;
 
-    nice_debug ("Message %p (from: %p, length: %" G_GSIZE_FORMAT ")", message,
+    nice_debug_verbose ("Message %p (from: %p, length: %" G_GSIZE_FORMAT ")", message,
         message->from, message->length);
 
     for (j = 0;
@@ -3687,7 +3687,7 @@ nice_debug_input_message_composition (const NiceInputMessage *messages,
          j++) {
       GInputVector *buffer = &message->buffers[j];
 
-      nice_debug ("\tBuffer %p (length: %" G_GSIZE_FORMAT ")", buffer->buffer,
+      nice_debug_verbose ("\tBuffer %p (length: %" G_GSIZE_FORMAT ")", buffer->buffer,
           buffer->size);
     }
   }
@@ -3723,7 +3723,7 @@ compact_message (const NiceOutputMessage *message, gsize buffer_length)
 guint8 *
 compact_input_message (const NiceInputMessage *message, gsize *buffer_length)
 {
-  nice_debug ("%s: **WARNING: SLOW PATH**", G_STRFUNC);
+  nice_debug_verbose ("%s: **WARNING: SLOW PATH**", G_STRFUNC);
   nice_debug_input_message_composition (message, 1);
 
   /* This works as long as NiceInputMessage is a subset of eNiceOutputMessage */
@@ -3741,7 +3741,7 @@ memcpy_buffer_to_input_message (NiceInputMessage *message,
 {
   guint i;
 
-  nice_debug ("%s: **WARNING: SLOW PATH**", G_STRFUNC);
+  nice_debug_verbose ("%s: **WARNING: SLOW PATH**", G_STRFUNC);
 
   message->length = 0;
 
@@ -4040,7 +4040,7 @@ nice_agent_recv_messages_blocking_or_nonblocking (NiceAgent *agent,
     goto done;
   }
 
-  nice_debug ("%s: %p: (%s):", G_STRFUNC, agent,
+  nice_debug_verbose ("%s: %p: (%s):", G_STRFUNC, agent,
       blocking ? "blocking" : "non-blocking");
   nice_debug_input_message_composition (messages, n_messages);
 
@@ -4073,7 +4073,7 @@ nice_agent_recv_messages_blocking_or_nonblocking (NiceAgent *agent,
         component->recv_messages, component->n_recv_messages,
         &component->recv_messages_iter);
 
-    nice_debug ("%s: %p: Received %d valid messages from pending I/O buffer.",
+    nice_debug_verbose ("%s: %p: Received %d valid messages from pending I/O buffer.",
         G_STRFUNC, agent,
         nice_input_message_iter_get_n_valid_messages (
             &component->recv_messages_iter));
@@ -4094,7 +4094,7 @@ nice_agent_recv_messages_blocking_or_nonblocking (NiceAgent *agent,
         &component->recv_messages_iter, &child_error);
     adjust_tcp_clock (agent, stream, component);
 
-    nice_debug ("%s: %p: Received %d valid messages from pseudo-TCP read "
+    nice_debug_verbose ("%s: %p: Received %d valid messages from pseudo-TCP read "
         "buffer.", G_STRFUNC, agent,
         nice_input_message_iter_get_n_valid_messages (
             &component->recv_messages_iter));
@@ -4178,7 +4178,7 @@ recv_error:
     n_valid_messages = -1;
   }
 
-  nice_debug ("%s: %p: n_valid_messages: %d, n_messages: %u", G_STRFUNC, agent,
+  nice_debug_verbose ("%s: %p: n_valid_messages: %d, n_messages: %u", G_STRFUNC, agent,
       n_valid_messages, n_messages);
 
 done:
@@ -4334,7 +4334,7 @@ nice_agent_send_messages_nonblocking_internal (
       gchar tmpbuf[INET6_ADDRSTRLEN];
       nice_address_to_string (&component->selected_pair.remote->addr, tmpbuf);
 
-      nice_debug ("Agent %p : s%d:%d: sending %u messages to "
+      nice_debug_verbose ("Agent %p : s%d:%d: sending %u messages to "
           "[%s]:%d", agent, stream_id, component_id, n_messages, tmpbuf,
           nice_address_get_port (&component->selected_pair.remote->addr));
     }
@@ -4484,7 +4484,7 @@ nice_agent_send_messages_nonblocking_internal (
     n_sent = -1;
   }
 
-  nice_debug ("%s: n_sent: %d, n_messages: %u", G_STRFUNC,
+  nice_debug_verbose ("%s: n_sent: %d, n_messages: %u", G_STRFUNC,
       n_sent, n_messages);
 
 done:
@@ -4834,7 +4834,7 @@ component_io_cb (GSocket *gsocket, GIOCondition condition, gpointer user_data)
       retval = agent_recv_message_unlocked (agent, stream, component,
           socket_source->socket, &local_message);
 
-      nice_debug ("%s: %p: received %d valid messages with %" G_GSSIZE_FORMAT
+      nice_debug_verbose ("%s: %p: received %d valid messages with %" G_GSSIZE_FORMAT
           " bytes", G_STRFUNC, agent, retval, local_message.length);
 
       /* Don’t expect any valid messages to escape pseudo_tcp_socket_readable()
@@ -4864,7 +4864,7 @@ component_io_cb (GSocket *gsocket, GIOCondition condition, gpointer user_data)
       retval = agent_recv_message_unlocked (agent, stream, component,
           socket_source->socket, &local_message);
 
-      nice_debug ("%s: %p: received %d valid messages with %" G_GSSIZE_FORMAT
+      nice_debug_verbose ("%s: %p: received %d valid messages with %" G_GSSIZE_FORMAT
            " bytes", G_STRFUNC, agent, retval, local_message.length);
 
       if (retval == RECV_WOULD_BLOCK) {
@@ -4905,7 +4905,7 @@ component_io_cb (GSocket *gsocket, GIOCondition condition, gpointer user_data)
           socket_source->socket,
           &component->recv_messages[component->recv_messages_iter.message]);
 
-      nice_debug ("%s: %p: received %d valid messages", G_STRFUNC, agent,
+      nice_debug_verbose ("%s: %p: received %d valid messages", G_STRFUNC, agent,
           retval);
 
       if (retval == RECV_SUCCESS) {
