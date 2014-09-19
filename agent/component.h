@@ -140,12 +140,12 @@ struct _Component
   NiceComponentType type;
   guint id;                    /* component id */
   NiceComponentState state;
-  GSList *local_candidates;    /* list of Candidate objs */
-  GSList *remote_candidates;   /* list of Candidate objs */
+  GSList *local_candidates;    /* list of NiceCandidate objs */
+  GSList *remote_candidates;   /* list of NiceCandidate objs */
   GSList *socket_sources;      /* list of SocketSource objs; must only grow monotonically */
   guint socket_sources_age;    /* incremented when socket_sources changes */
   GSList *incoming_checks;     /* list of IncomingCheck objs */
-  GList *turn_servers;             /* List of TURN servers */
+  GList *turn_servers;             /* List of TurnServer objs */
   CandidatePair selected_pair; /* independent from checklists, 
 				    see ICE 11.1. "Sending Media" (ID-19) */
   NiceCandidate *restart_candidate; /* for storing active remote candidate during a restart */

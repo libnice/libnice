@@ -152,7 +152,7 @@ struct _NiceAgent
   GUPnPSimpleIgdThread* upnp;	   /* GUPnP Single IGD agent */
   gboolean upnp_enabled;           /* whether UPnP discovery is enabled */
   guint upnp_timeout;              /* UPnP discovery timeout */
-  GSList *upnp_mapping;            /* list of Candidates being mapped */
+  GSList *upnp_mapping;            /* NiceAddresses of cands being mapped */
   GSource *upnp_timer_source;      /* source of upnp timeout timer */
 #endif
   gchar *software_attribute;       /* SOFTWARE attribute */
