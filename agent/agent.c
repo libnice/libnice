@@ -1813,7 +1813,8 @@ adjust_tcp_clock (NiceAgent *agent, Stream *stream, Component *component)
           /* Prevent integer overflows */
           if (interval < 0 || interval > G_MAXINT)
             interval = G_MAXINT;
-          component->tcp_clock = agent_timeout_add_with_context (agent, interval,
+          component->tcp_clock = agent_timeout_add_with_context (agent,
+              "Pseudo-TCP clock", interval,
               notify_pseudo_tcp_socket_clock, component);
         }
       }
@@ -2618,7 +2619,7 @@ nice_agent_gather_candidates (
     agent->upnp = gupnp_simple_igd_thread_new ();
 
     agent->upnp_timer_source = agent_timeout_add_with_context (agent,
-        agent->upnp_timeout, priv_upnp_timeout_cb, agent);
+        "UPnP timeout", agent->upnp_timeout, priv_upnp_timeout_cb, agent);
 
     if (agent->upnp) {
       g_signal_connect (agent->upnp, "mapped-external-port",
@@ -4963,8 +4964,8 @@ nice_agent_get_selected_socket (NiceAgent *agent, guint stream_id,
   return g_socket;
 }
 
-GSource* agent_timeout_add_with_context (NiceAgent *agent, guint interval,
-    GSourceFunc function, gpointer data)
+GSource* agent_timeout_add_with_context (NiceAgent *agent, const gchar *name,
+    guint interval, GSourceFunc function, gpointer data)
 {
   GSource *source;
 
@@ -4972,6 +4973,7 @@ GSource* agent_timeout_add_with_context (NiceAgent *agent, guint interval,
 
   source = g_timeout_source_new (interval);
 
+  g_source_set_name (source, name);
   g_source_set_callback (source, function, data, NULL);
   g_source_attach (source, agent->main_context);
 

@@ -206,7 +206,8 @@ void agent_signal_initial_binding_request_received (NiceAgent *agent, Stream *st
 
 guint64 agent_candidate_pair_priority (NiceAgent *agent, NiceCandidate *local, NiceCandidate *remote);
 
-GSource *agent_timeout_add_with_context (NiceAgent *agent, guint interval, GSourceFunc function, gpointer data);
+GSource *agent_timeout_add_with_context (NiceAgent *agent, const gchar *name,
+    guint interval, GSourceFunc function, gpointer data);
 
 StunUsageIceCompatibility agent_to_ice_compatibility (NiceAgent *agent);
 StunUsageTurnCompatibility agent_to_turn_compatibility (NiceAgent *agent);

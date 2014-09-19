@@ -543,14 +543,14 @@ static gboolean priv_conn_keepalive_retransmissions_tick (gpointer pointer)
           pair->keepalive.agent);
       pair->keepalive.tick_source =
           agent_timeout_add_with_context (pair->keepalive.agent,
-          stun_timer_remainder (&pair->keepalive.timer),
-          priv_conn_keepalive_retransmissions_tick, pair);
+              "Pair keepalive", stun_timer_remainder (&pair->keepalive.timer),
+              priv_conn_keepalive_retransmissions_tick, pair);
       break;
     case STUN_USAGE_TIMER_RETURN_SUCCESS:
       pair->keepalive.tick_source =
           agent_timeout_add_with_context (pair->keepalive.agent,
-          stun_timer_remainder (&pair->keepalive.timer),
-          priv_conn_keepalive_retransmissions_tick, pair);
+              "Pair keepalive", stun_timer_remainder (&pair->keepalive.timer),
+              priv_conn_keepalive_retransmissions_tick, pair);
       break;
     default:
       /* Nothing to do. */
@@ -679,6 +679,7 @@ static gboolean priv_conn_keepalive_tick_unlocked (NiceAgent *agent)
 
               p->keepalive.tick_source =
                   agent_timeout_add_with_context (p->keepalive.agent,
+                      "Pair keepalive",
                       stun_timer_remainder (&p->keepalive.timer),
                       priv_conn_keepalive_retransmissions_tick, p);
             } else {
@@ -824,12 +825,12 @@ static gboolean priv_turn_allocate_refresh_retransmissions_tick (gpointer pointe
           stun_message_length (&cand->stun_message), (gchar *)cand->stun_buffer);
 
       cand->tick_source = agent_timeout_add_with_context (cand->agent,
-          stun_timer_remainder (&cand->timer),
+          "Candidate TURN refresh", stun_timer_remainder (&cand->timer),
           priv_turn_allocate_refresh_retransmissions_tick, cand);
       break;
     case STUN_USAGE_TIMER_RETURN_SUCCESS:
       cand->tick_source = agent_timeout_add_with_context (cand->agent,
-          stun_timer_remainder (&cand->timer),
+          "Candidate TURN refresh", stun_timer_remainder (&cand->timer),
           priv_turn_allocate_refresh_retransmissions_tick, cand);
       break;
     default:
@@ -894,7 +895,7 @@ static void priv_turn_allocate_refresh_tick_unlocked (CandidateRefresh *cand)
         buffer_len, (gchar *)cand->stun_buffer);
 
     cand->tick_source = agent_timeout_add_with_context (cand->agent,
-        stun_timer_remainder (&cand->timer),
+        "Candidate TURN refresh", stun_timer_remainder (&cand->timer),
         priv_turn_allocate_refresh_retransmissions_tick, cand);
   }
 
@@ -946,12 +947,18 @@ gboolean conn_check_schedule_next (NiceAgent *agent)
 
   /* step: schedule timer if not running yet */
   if (res && agent->conncheck_timer_source == NULL) {
-    agent->conncheck_timer_source = agent_timeout_add_with_context (agent, agent->timer_ta, priv_conn_check_tick, agent);
+    agent->conncheck_timer_source =
+        agent_timeout_add_with_context (agent,
+            "Connectivity check schedule", agent->timer_ta,
+            priv_conn_check_tick, agent);
   }
 
   /* step: also start the keepalive timer */
   if (agent->keepalive_timer_source == NULL) {
-    agent->keepalive_timer_source = agent_timeout_add_with_context (agent, NICE_AGENT_TIMER_TR_DEFAULT, priv_conn_keepalive_tick, agent);
+    agent->keepalive_timer_source =
+        agent_timeout_add_with_context (agent,
+            "Connectivity keepalive timeout", NICE_AGENT_TIMER_TR_DEFAULT,
+            priv_conn_keepalive_tick, agent);
   }
 
   nice_debug ("Agent %p : conn_check_schedule_next returning %d", agent, res);
@@ -2513,8 +2520,8 @@ priv_add_new_turn_refresh (CandidateDiscovery *cdisco, NiceCandidate *relay_cand
   /* step: also start the refresh timer */
   /* refresh should be sent 1 minute before it expires */
   cand->timer_source =
-      agent_timeout_add_with_context (agent, (lifetime - 60) * 1000,
-          priv_turn_allocate_refresh_tick, cand);
+      agent_timeout_add_with_context (agent, "Candidate TURN refresh",
+          (lifetime - 60) * 1000, priv_turn_allocate_refresh_tick, cand);
 
   nice_debug ("timer source is : %p", cand->timer_source);
 
@@ -2759,8 +2766,9 @@ static gboolean priv_map_reply_to_relay_refresh (NiceAgent *agent, StunMessage *
         if (res == STUN_USAGE_TURN_RETURN_RELAY_SUCCESS) {
           /* refresh should be sent 1 minute before it expires */
           cand->timer_source =
-              agent_timeout_add_with_context (cand->agent, (lifetime - 60) * 1000,
-              priv_turn_allocate_refresh_tick, cand);
+              agent_timeout_add_with_context (cand->agent,
+                  "Candidate TURN refresh", (lifetime - 60) * 1000,
+                  priv_turn_allocate_refresh_tick, cand);
 
           g_source_destroy (cand->tick_source);
           g_source_unref (cand->tick_source);
