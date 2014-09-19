@@ -124,6 +124,33 @@ void discovery_prune_stream (NiceAgent *agent, guint stream_id)
   }
 }
 
+/*
+ * Prunes the list of discovery processes for items related
+ * to socket @sock.
+ *
+ * @return TRUE on success, FALSE on a fatal error
+ */
+void discovery_prune_socket (NiceAgent *agent, NiceSocket *sock)
+{
+  GSList *i;
+
+  for (i = agent->discovery_list; i ; ) {
+    CandidateDiscovery *discovery = i->data;
+    GSList *next = i->next;
+
+    if (discovery->nicesock == sock) {
+      agent->discovery_list = g_slist_remove (agent->discovery_list, discovery);
+      discovery_free_item (discovery);
+    }
+    i = next;
+  }
+
+  if (agent->discovery_list == NULL) {
+    /* noone using the timer anymore, clean it up */
+    discovery_free (agent);
+  }
+}
+
 
 /*
  * Frees the CandidateDiscovery structure pointed to
@@ -240,6 +267,23 @@ void refresh_prune_candidate (NiceAgent *agent, NiceCandidate *candidate)
     CandidateRefresh *refresh = i->data;
 
     if (refresh->candidate == candidate) {
+      agent->refresh_list = g_slist_delete_link (agent->refresh_list, i);
+      refresh_free_item (refresh);
+    }
+
+    i = next;
+  }
+}
+
+void refresh_prune_socket (NiceAgent *agent, NiceSocket *sock)
+{
+  GSList *i;
+
+  for (i = agent->refresh_list; i;) {
+    GSList *next = i->next;
+    CandidateRefresh *refresh = i->data;
+
+    if (refresh->nicesock == sock) {
       agent->refresh_list = g_slist_delete_link (agent->refresh_list, i);
       refresh_free_item (refresh);
     }

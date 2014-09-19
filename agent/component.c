@@ -184,6 +184,9 @@ component_clean_turn_servers (Component *cmp)
     if (candidate == cmp->selected_pair.local) {
       if (cmp->turn_candidate) {
         refresh_prune_candidate (cmp->agent, cmp->turn_candidate);
+        discovery_prune_socket (cmp->agent, cmp->turn_candidate->sockptr);
+        conn_check_prune_socket (cmp->agent, cmp->stream, cmp,
+            cmp->turn_candidate->sockptr);
         component_detach_socket (cmp, cmp->turn_candidate->sockptr);
 	nice_candidate_free (cmp->turn_candidate);
       }
@@ -194,6 +197,9 @@ component_clean_turn_servers (Component *cmp)
       cmp->turn_candidate = candidate;
     } else {
       refresh_prune_candidate (cmp->agent, candidate);
+      discovery_prune_socket (cmp->agent, candidate->sockptr);
+      conn_check_prune_socket (cmp->agent, cmp->stream, cmp,
+          candidate->sockptr);
       component_detach_socket (cmp, candidate->sockptr);
       nice_candidate_free (candidate);
     }
@@ -385,6 +391,10 @@ void component_update_selected_pair (Component *component, const CandidatePair *
   if (component->selected_pair.local &&
       component->selected_pair.local == component->turn_candidate) {
     refresh_prune_candidate (component->agent, component->turn_candidate);
+    discovery_prune_socket (component->agent,
+        component->turn_candidate->sockptr);
+    conn_check_prune_socket (component->agent, component->stream, component,
+        component->turn_candidate->sockptr);
     component_detach_socket (component, component->turn_candidate->sockptr);
     nice_candidate_free (component->turn_candidate);
     component->turn_candidate = NULL;
@@ -560,6 +570,20 @@ component_detach_socket (Component *component, NiceSocket *nicesock)
   SocketSource *socket_source;
 
   nice_debug ("Detach socket %p.", nicesock);
+
+  /* Remove the socket from various lists. */
+  for (l = component->incoming_checks; l != NULL;) {
+    IncomingCheck *icheck = l->data;
+    GSList *next = l->next;
+
+    if (icheck->local_socket == nicesock) {
+      component->incoming_checks =
+          g_slist_delete_link (component->incoming_checks, l);
+      incoming_check_free (icheck);
+    }
+
+    l = next;
+  }
 
   /* Find the SocketSource for the socket. */
   l = g_slist_find_custom (component->socket_sources, nicesock,

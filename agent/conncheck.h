@@ -104,5 +104,8 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, Stream *stream, Compo
 gint conn_check_compare (const CandidateCheckPair *a, const CandidateCheckPair *b);
 void conn_check_remote_candidates_set(NiceAgent *agent);
 NiceCandidateTransport conn_check_match_transport (NiceCandidateTransport transport);
+void
+conn_check_prune_socket (NiceAgent *agent, Stream *stream, Component *component,
+    NiceSocket *sock);
 
 #endif /*_NICE_CONNCHECK_H */

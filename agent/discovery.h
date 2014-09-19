@@ -85,11 +85,13 @@ typedef struct
 void refresh_free (NiceAgent *agent);
 void refresh_prune_stream (NiceAgent *agent, guint stream_id);
 void refresh_prune_candidate (NiceAgent *agent, NiceCandidate *candidate);
+void refresh_prune_socket (NiceAgent *agent, NiceSocket *sock);
 void refresh_cancel (CandidateRefresh *refresh);
 
 
 void discovery_free (NiceAgent *agent);
 void discovery_prune_stream (NiceAgent *agent, guint stream_id);
+void discovery_prune_socket (NiceAgent *agent, NiceSocket *sock);
 void discovery_schedule (NiceAgent *agent);
 
 typedef enum {

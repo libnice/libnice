@@ -3281,3 +3281,33 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, Stream *stream,
 
   return TRUE;
 }
+
+/* Remove all pointers to the given @sock from the connection checking process.
+ * These are entirely NiceCandidates pointed to from various places. */
+void
+conn_check_prune_socket (NiceAgent *agent, Stream *stream, Component *component,
+    NiceSocket *sock)
+{
+  GSList *l;
+
+  if (component->selected_pair.local &&
+      component->selected_pair.local->sockptr == sock &&
+      component->state == NICE_COMPONENT_STATE_READY) {
+    nice_debug ("Agent %p: Selected pair socket %p has been destroyed, "
+        "declaring failed", agent, sock);
+    agent_signal_component_state_change (agent,
+        stream->id, component->id, NICE_COMPONENT_STATE_FAILED);
+  }
+
+  /* Prune from the candidate check pairs. */
+  for (l = stream->conncheck_list; l != NULL; l = l->next) {
+    CandidateCheckPair *p = l->data;
+
+    if ((p->local != NULL && p->local->sockptr == sock) ||
+        (p->remote != NULL && p->remote->sockptr == sock)) {
+      nice_debug ("Agent %p : Retransmissions failed, giving up on "
+          "connectivity check %p", agent, p);
+      candidate_check_pair_fail (stream, agent, p);
+    }
+  }
+}
