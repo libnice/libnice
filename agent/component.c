@@ -61,6 +61,13 @@ static void
 component_deschedule_io_callback (Component *component);
 
 
+void
+incoming_check_free (IncomingCheck *icheck)
+{
+  g_free (icheck->username);
+  g_slice_free (IncomingCheck, icheck);
+}
+
 /* Must *not* take the agent lock, since it’s called from within
  * component_set_io_context(), which holds the Component’s I/O lock. */
 static void
@@ -234,18 +241,13 @@ component_close (Component *cmp)
     nice_candidate_free (cmp->turn_candidate),
         cmp->turn_candidate = NULL;
 
-  for (i = cmp->incoming_checks; i; i = i->next) {
-    IncomingCheck *icheck = i->data;
-    g_free (icheck->username);
-    g_slice_free (IncomingCheck, icheck);
-  }
-
   g_slist_free (cmp->local_candidates);
   cmp->local_candidates = NULL;
   g_slist_free (cmp->remote_candidates);
   cmp->remote_candidates = NULL;
   component_free_socket_sources (cmp);
-  g_slist_free (cmp->incoming_checks);
+  g_slist_free_full (cmp->incoming_checks,
+      (GDestroyNotify) incoming_check_free);
   cmp->incoming_checks = NULL;
 
   component_clean_turn_servers (cmp);
@@ -361,12 +363,8 @@ component_restart (Component *cmp)
   g_slist_free (cmp->remote_candidates),
     cmp->remote_candidates = NULL;
 
-  for (i = cmp->incoming_checks; i; i = i->next) {
-    IncomingCheck *icheck = i->data;
-    g_free (icheck->username);
-    g_slice_free (IncomingCheck, icheck);
-  }
-  g_slist_free (cmp->incoming_checks);
+  g_slist_free_full (cmp->incoming_checks,
+      (GDestroyNotify) incoming_check_free);
   cmp->incoming_checks = NULL;
 
   /* note: component state managed by agent */

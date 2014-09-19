@@ -96,6 +96,9 @@ struct _IncomingCheck
   uint16_t username_len;
 };
 
+void
+incoming_check_free (IncomingCheck *icheck);
+
 /* A pair of a socket and the GSource which polls it from the main loop. All
  * GSources in a Component must be attached to the same main context:
  * component->ctx.
