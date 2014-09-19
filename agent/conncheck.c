@@ -241,6 +241,24 @@ static void priv_conn_check_unfreeze_related (NiceAgent *agent, Stream *stream, 
     priv_conn_check_unfreeze_next (agent);
 }
 
+static void
+candidate_check_pair_fail (Stream *stream, NiceAgent *agent, CandidateCheckPair *p)
+{
+  StunTransactionId id;
+  Component *component;
+
+  component = stream_find_component_by_id (stream, p->component_id);
+
+  p->state = NICE_CHECK_FAILED;
+  nice_debug ("Agent %p : pair %p state FAILED", agent, p);
+
+  stun_message_id (&p->stun_message, id);
+  stun_agent_forget_transaction (&component->stun_agent, id);
+
+  p->stun_message.buffer = NULL;
+  p->stun_message.buffer_len = 0;
+}
+
 /*
  * Helper function for connectivity check timer callback that
  * runs through the stream specific part of the state machine. 
@@ -270,20 +288,8 @@ static gboolean priv_conn_check_tick_stream (Stream *stream, NiceAgent *agent, G
           case STUN_USAGE_TIMER_RETURN_TIMEOUT:
             {
               /* case: error, abort processing */
-              StunTransactionId id;
-              Component *component = stream_find_component_by_id (stream,
-                  p->component_id);
-
               nice_debug ("Agent %p : Retransmissions failed, giving up on connectivity check %p", agent, p);
-              p->state = NICE_CHECK_FAILED;
-              nice_debug ("Agent %p : pair %p state FAILED", agent, p);
-
-              stun_message_id (&p->stun_message, id);
-              stun_agent_forget_transaction (&component->stun_agent, id);
-
-              p->stun_message.buffer = NULL;
-              p->stun_message.buffer_len = 0;
-
+              candidate_check_pair_fail (stream, agent, p);
 
               break;
             }
