@@ -1169,10 +1169,9 @@ void discovery_schedule (NiceAgent *agent)
       /* step: run first iteration immediately */
       gboolean res = priv_discovery_tick_unlocked (agent);
       if (res == TRUE) {
-        agent->discovery_timer_source =
-            agent_timeout_add_with_context (agent,
-                "Candidate discovery tick", agent->timer_ta,
-                priv_discovery_tick, agent);
+        agent_timeout_add_with_context (agent, &agent->discovery_timer_source,
+            "Candidate discovery tick", agent->timer_ta,
+            priv_discovery_tick, agent);
       }
     }
   }
