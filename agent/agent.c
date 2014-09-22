@@ -2618,7 +2618,7 @@ nice_agent_gather_candidates (
   if (agent->upnp_enabled) {
     agent->upnp = gupnp_simple_igd_thread_new ();
 
-    agent->upnp_timer_source = agent_timeout_add_with_context (agent,
+    agent_timeout_add_with_context (agent, &agent->upnp_timer_source,
         "UPnP timeout", agent->upnp_timeout, priv_upnp_timeout_cb, agent);
 
     if (agent->upnp) {
