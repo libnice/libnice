@@ -305,8 +305,11 @@ nice_candidate_pair_priority (guint32 o_prio, guint32 a_prio)
 NICEAPI_EXPORT NiceCandidate *
 nice_candidate_copy (const NiceCandidate *candidate)
 {
-  NiceCandidate *copy = nice_candidate_new (candidate->type);
+  NiceCandidate *copy;
 
+  g_return_val_if_fail (candidate != NULL, NULL);
+
+  copy = nice_candidate_new (candidate->type);
   memcpy (copy, candidate, sizeof(NiceCandidate));
 
   copy->turn = NULL;
