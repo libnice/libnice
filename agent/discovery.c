@@ -309,6 +309,8 @@ static gboolean priv_add_local_candidate_pruned (NiceAgent *agent, guint stream_
 {
   GSList *i;
 
+  g_assert (candidate != NULL);
+
   for (i = component->local_candidates; i ; i = i->next) {
     NiceCandidate *c = i->data;
 

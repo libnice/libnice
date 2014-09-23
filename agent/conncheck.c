@@ -1341,8 +1341,14 @@ static void priv_mark_pair_nominated (NiceAgent *agent, Stream *stream, Componen
  */
 static void priv_add_new_check_pair (NiceAgent *agent, guint stream_id, Component *component, NiceCandidate *local, NiceCandidate *remote, NiceCheckState initial_state, gboolean use_candidate)
 {
-  Stream *stream = agent_find_stream (agent, stream_id);
-  CandidateCheckPair *pair = g_slice_new0 (CandidateCheckPair);
+  Stream *stream;
+  CandidateCheckPair *pair;
+
+  g_assert (local != NULL);
+  g_assert (remote != NULL);
+
+  stream = agent_find_stream (agent, stream_id);
+  pair = g_slice_new0 (CandidateCheckPair);
 
   stream->conncheck_list = g_slist_insert_sorted (stream->conncheck_list, pair,
       (GCompareFunc)conn_check_compare);
@@ -1420,6 +1426,9 @@ static gboolean priv_conn_check_add_for_candidate_pair (NiceAgent *agent,
 {
   gboolean ret = FALSE;
 
+  g_assert (local != NULL);
+  g_assert (remote != NULL);
+
   /* note: do not create pairs where the local candidate is
    *       a srv-reflexive (ICE 5.7.3. "Pruning the pairs" ID-9) */
   if ((agent->compatibility == NICE_COMPATIBILITY_RFC5245 ||
@@ -1464,6 +1473,8 @@ int conn_check_add_for_candidate (NiceAgent *agent, guint stream_id, Component *
   int added = 0;
   int ret = 0;
 
+  g_assert (remote != NULL);
+
   for (i = component->local_candidates; i ; i = i->next) {
 
     NiceCandidate *local = i->data;
@@ -1492,6 +1503,8 @@ int conn_check_add_for_local_candidate (NiceAgent *agent, guint stream_id, Compo
   GSList *i;
   int added = 0;
   int ret = 0;
+
+  g_assert (local != NULL);
 
   for (i = component->remote_candidates; i ; i = i->next) {
 
@@ -1953,6 +1966,8 @@ static gboolean priv_schedule_triggered_check (NiceAgent *agent, Stream *stream,
 {
   GSList *i;
   NiceCandidate *local = NULL;
+
+  g_assert (remote_cand != NULL);
 
   for (i = stream->conncheck_list; i ; i = i->next) {
       CandidateCheckPair *p = i->data;
