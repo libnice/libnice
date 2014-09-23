@@ -80,16 +80,8 @@ stream_close (Stream *stream)
 void
 stream_free (Stream *stream)
 {
-  GSList *i;
-
-  if (stream->name)
-    g_free (stream->name);
-  for (i = stream->components; i; i = i->next) {
-    Component *component = i->data;
-    component_free (component);
-    i->data = NULL;
-  }
-  g_slist_free (stream->components);
+  g_free (stream->name);
+  g_slist_free_full (stream->components, (GDestroyNotify) component_free);
   g_slice_free (Stream, stream);
 }
 

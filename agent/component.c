@@ -225,19 +225,8 @@ component_clear_selected_pair (Component *component)
 void
 component_close (Component *cmp)
 {
-  GSList *i;
   IOCallbackData *data;
   GOutputVector *vec;
-
-  for (i = cmp->local_candidates; i; i = i->next) {
-    NiceCandidate *candidate = i->data;
-    nice_candidate_free (candidate);
-  }
-
-  for (i = cmp->remote_candidates; i; i = i->next) {
-    NiceCandidate *candidate = i->data;
-    nice_candidate_free (candidate);
-  }
 
   if (cmp->restart_candidate)
     nice_candidate_free (cmp->restart_candidate),
@@ -247,9 +236,11 @@ component_close (Component *cmp)
     nice_candidate_free (cmp->turn_candidate),
         cmp->turn_candidate = NULL;
 
-  g_slist_free (cmp->local_candidates);
+  g_slist_free_full (cmp->local_candidates,
+      (GDestroyNotify) nice_candidate_free);
   cmp->local_candidates = NULL;
-  g_slist_free (cmp->remote_candidates);
+  g_slist_free_full (cmp->remote_candidates,
+      (GDestroyNotify) nice_candidate_free);
   cmp->remote_candidates = NULL;
   component_free_socket_sources (cmp);
   g_slist_free_full (cmp->incoming_checks,
