@@ -1128,6 +1128,7 @@ nice_udp_turn_socket_parse_recv_message (NiceSocket *sock, NiceSocket **from_soc
       message->from, buf_len, buf,
       message->from, buf, buf_len);
   len = memcpy_buffer_to_input_message (message, buf, len);
+  g_free (buf);
 
   return (len > 0) ? 1 : 0;
 }
