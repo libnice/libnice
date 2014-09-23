@@ -304,9 +304,7 @@ gboolean
 component_find_pair (Component *cmp, NiceAgent *agent, const gchar *lfoundation, const gchar *rfoundation, CandidatePair *pair)
 {
   GSList *i;
-  CandidatePair result;
-
-  memset (&result, 0, sizeof(result));
+  CandidatePair result = { 0, };
 
   for (i = cmp->local_candidates; i; i = i->next) {
     NiceCandidate *candidate = i->data;
