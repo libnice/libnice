@@ -5052,6 +5052,11 @@ nice_agent_set_selected_remote_candidate (
   g_return_val_if_fail (component_id != 0, FALSE);
   g_return_val_if_fail (candidate != NULL, FALSE);
 
+  g_return_val_if_fail (NICE_IS_AGENT (agent), FALSE);
+  g_return_val_if_fail (stream_id != 0, FALSE);
+  g_return_val_if_fail (component_id != 0, FALSE);
+  g_return_val_if_fail (candidate != NULL, FALSE);
+
   agent_lock();
 
   /* step: check if the component exists*/
