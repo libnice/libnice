@@ -787,6 +787,7 @@ static gboolean priv_conn_keepalive_tick (gpointer pointer)
 static gboolean priv_turn_allocate_refresh_retransmissions_tick (gpointer pointer)
 {
   CandidateRefresh *cand = (CandidateRefresh *) pointer;
+  NiceAgent *agent = NULL;
 
   agent_lock();
 
@@ -806,6 +807,8 @@ static gboolean priv_turn_allocate_refresh_retransmissions_tick (gpointer pointe
   g_source_unref (cand->tick_source);
   cand->tick_source = NULL;
 
+  agent = g_object_ref (cand->agent);
+
   switch (stun_timer_refresh (&cand->timer)) {
     case STUN_USAGE_TIMER_RETURN_TIMEOUT:
       {
@@ -823,12 +826,12 @@ static gboolean priv_turn_allocate_refresh_retransmissions_tick (gpointer pointe
       agent_socket_send (cand->nicesock, &cand->server,
           stun_message_length (&cand->stun_message), (gchar *)cand->stun_buffer);
 
-      agent_timeout_add_with_context (cand->agent, &cand->tick_source,
+      agent_timeout_add_with_context (agent, &cand->tick_source,
           "Candidate TURN refresh", stun_timer_remainder (&cand->timer),
           priv_turn_allocate_refresh_retransmissions_tick, cand);
       break;
     case STUN_USAGE_TIMER_RETURN_SUCCESS:
-      agent_timeout_add_with_context (cand->agent, &cand->tick_source,
+      agent_timeout_add_with_context (agent, &cand->tick_source,
           "Candidate TURN refresh", stun_timer_remainder (&cand->timer),
           priv_turn_allocate_refresh_retransmissions_tick, cand);
       break;
@@ -838,7 +841,10 @@ static gboolean priv_turn_allocate_refresh_retransmissions_tick (gpointer pointe
   }
 
 
-  agent_unlock_and_emit (cand->agent);
+  agent_unlock_and_emit (agent);
+
+  g_object_unref (agent);
+
   return FALSE;
 }
 
