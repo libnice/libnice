@@ -102,7 +102,9 @@ main (void)
 
   g_main_loop_run (loop);
 
+  nice_agent_remove_stream (agent, stream);
   g_object_unref (agent);
+
   return 0;
 }
 

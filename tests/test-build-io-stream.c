@@ -55,6 +55,8 @@ test_invalid_stream (NiceAddress *addr)
    * return G_IO_ERROR_BROKEN_PIPE. */
   io_stream = nice_agent_get_io_stream (agent, 5, 5);
   g_assert (io_stream == NULL);
+
+  g_object_unref (agent);
 }
 
 static void
@@ -351,8 +353,10 @@ test_pollable_cancellation (NiceAddress *addr)
 
   check_pollable_source_cancellation (stream_source, cancellable);
 
+  g_object_unref (io_stream);
   g_source_unref (stream_source);
   g_object_unref (cancellable);
+  g_object_unref (agent);
 }
 
 static void

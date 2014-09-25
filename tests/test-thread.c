@@ -54,6 +54,21 @@ volatile gint global_ragent_cands = 0;
 volatile gint global_lagent_buffers = 0;
 volatile gint global_ragent_buffers = 0;
 
+/* Waits about 10 seconds for @var to be NULL/FALSE */
+#define WAIT_UNTIL_UNSET(var, context)			\
+  if (var)						\
+    {							\
+      int _i;						\
+							\
+      for (_i = 0; _i < 13 && (var); _i++)		\
+	{						\
+	  g_usleep (1000 * (1 << _i));			\
+	  g_main_context_iteration (context, FALSE);	\
+	}						\
+							\
+      g_assert (!(var));				\
+    }
+
 static gboolean timer_cb (gpointer pointer)
 {
   g_debug ("test-thread:%s: %p", G_STRFUNC, pointer);
@@ -338,8 +353,14 @@ int main (void)
   g_assert (g_atomic_int_get (&global_lagent_cands) == 1);
   g_assert (g_atomic_int_get (&global_ragent_cands) == 1);
 
+  g_object_add_weak_pointer (G_OBJECT (lagent), (gpointer *) &lagent);
+  g_object_add_weak_pointer (G_OBJECT (ragent), (gpointer *) &ragent);
+
   g_object_unref (lagent);
   g_object_unref (ragent);
+
+  WAIT_UNTIL_UNSET (lagent, lmainctx);
+  WAIT_UNTIL_UNSET (ragent, rmainctx);
 
   g_main_loop_unref (lmainloop);
   g_main_loop_unref (rmainloop);

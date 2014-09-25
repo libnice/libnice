@@ -69,6 +69,8 @@ test_socket_initial_properties (void)
   g_assert_cmpint (sock->addr.s.ip4.sin_addr.s_addr, ==, 0);
   // is bound to a particular port
   g_assert_cmpuint (nice_address_get_port (&sock->addr), !=, 0);
+
+  nice_socket_free (sock);
 }
 
 static void
@@ -84,6 +86,8 @@ test_socket_address_properties (void)
   g_assert_cmpuint (nice_address_get_port (&sock->addr), !=, 0);
   nice_address_set_port (&tmp, nice_address_get_port (&sock->addr));
   g_assert_cmpuint (nice_address_get_port (&tmp), !=, 0);
+
+  nice_socket_free (sock);
 }
 
 static void
@@ -336,6 +340,25 @@ test_multi_message_recv (guint n_sends, guint n_receives,
     }
 
     g_slice_free1 (expected_recv_buf_len, _expected_recv_buf);
+
+    for (i = 0; i < n_receives; i++) {
+      for (j = 0; j < n_bufs_per_message; j++) {
+        g_slice_free1 (recv_buf_size,
+                       recv_bufs[i * n_bufs_per_message + j].buffer);
+      }
+    }
+
+    for (i = 0; i < n_sends; i++) {
+      for (j = 0; j < n_bufs_per_message; j++) {
+        g_slice_free1 (send_buf_size,
+                       (gpointer) send_bufs[i * n_bufs_per_message + j].buffer);
+      }
+    }
+
+    g_free (recv_messages);
+    g_free (recv_bufs);
+    g_free (send_messages);
+    g_free (send_bufs);
   }
 
   nice_socket_free (client);

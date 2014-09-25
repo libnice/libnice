@@ -89,6 +89,21 @@ static const uint16_t known_attributes[] =  {
   0
 };
 
+/* Waits about 10 seconds for @var to be NULL/FALSE */
+#define WAIT_UNTIL_UNSET(var, context)			\
+  if (var)						\
+    {							\
+      int _i;						\
+							\
+      for (_i = 0; _i < 13 && (var); _i++)		\
+	{						\
+	  g_usleep (1000 * (1 << _i));			\
+	  g_main_context_iteration (context, FALSE);	\
+	}						\
+							\
+      g_assert (!(var));				\
+    }
+
 /*
  * Creates a listening socket
  */
@@ -716,7 +731,6 @@ int main(void)
   src = g_cancellable_source_new (global_cancellable);
   g_source_set_dummy_callback (src);
   g_source_attach (src, NULL);
-  g_source_unref (src);
 
   sock = listen_socket (&stun_port);
 
@@ -782,6 +796,9 @@ int main(void)
   drop_stun_packets = TRUE;
   send_dummy_data ();
 
+  g_object_add_weak_pointer (G_OBJECT (lagent), (gpointer *) &lagent);
+  g_object_add_weak_pointer (G_OBJECT (ragent), (gpointer *) &ragent);
+
   g_object_unref (lagent);
   g_object_unref (ragent);
 
@@ -791,6 +808,12 @@ int main(void)
   g_cond_free (stun_signal_ptr);
 #endif
   g_object_unref (global_cancellable);
+
+  g_source_destroy (src);
+  g_source_unref (src);
+
+  WAIT_UNTIL_UNSET (lagent, NULL);
+  WAIT_UNTIL_UNSET (ragent, NULL);
 
   return 0;
 }

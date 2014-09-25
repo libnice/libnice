@@ -90,6 +90,7 @@ read_thread_cb (GInputStream *input_stream, TestIOStreamThreadData *data)
   len = g_input_stream_read (input_stream, buf, sizeof (buf),
       user_data->cancellable, &error);
   g_assert_error (error, G_IO_ERROR, G_IO_ERROR_CANCELLED);
+  g_error_free (error);
   g_assert (len == -1);
 
   g_main_loop_quit (data->error_loop);
@@ -116,9 +117,13 @@ int main (void)
 
   l_data.cancellable = g_cancellable_new ();
   l_data.blocking = FALSE;
+  g_cond_init (&l_data.cond);
+  g_mutex_init (&l_data.mutex);
 
   r_data.cancellable = g_cancellable_new ();
   r_data.blocking = FALSE;
+  g_cond_init (&r_data.cond);
+  g_mutex_init (&r_data.mutex);
 
   l_cancellation_thread = spawn_thread ("libnice L cancel",
       cancellation_thread_cb, &l_data);
@@ -133,6 +138,10 @@ int main (void)
   /* Free things. */
   g_object_unref (r_data.cancellable);
   g_object_unref (l_data.cancellable);
+  g_cond_clear (&l_data.cond);
+  g_cond_clear (&r_data.cond);
+  g_mutex_clear (&l_data.mutex);
+  g_mutex_clear (&r_data.mutex);
 
 #ifdef G_OS_WIN32
   WSACleanup ();

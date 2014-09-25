@@ -904,6 +904,7 @@ read_stream_cb (GObject *pollable_stream, gpointer _user_data)
 
   if (len == -1) {
     g_assert_error (error, G_IO_ERROR, G_IO_ERROR_WOULD_BLOCK);
+    g_error_free (error);
     g_free (buf);
     return TRUE;
   }
@@ -1175,6 +1176,7 @@ main (int argc, char *argv[])
   if (!g_option_context_parse (context, &argc, &argv, &error)) {
     g_printerr ("Option parsing failed: %s\n", error->message);
     g_error_free (error);
+    g_option_context_free (context);
     exit (1);
   }
 
@@ -1307,6 +1309,8 @@ main (int argc, char *argv[])
   }
 
 done:
+  g_option_context_free (context);
+
 #ifdef G_OS_WIN32
   WSACleanup ();
 #endif

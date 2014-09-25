@@ -49,6 +49,21 @@ GMutex start_mutex;
 GCond start_cond;
 gboolean started;
 
+/* Waits about 10 seconds for @var to be NULL/FALSE */
+#define WAIT_UNTIL_UNSET(var, context)			\
+  if (var)						\
+    {							\
+      int i;						\
+							\
+      for (i = 0; i < 13 && (var); i++)			\
+	{						\
+	  g_usleep (1000 * (1 << i));			\
+	  g_main_context_iteration (context, FALSE);	\
+	}						\
+							\
+      g_assert (!(var));				\
+    }
+
 static gboolean timer_cb (gpointer pointer)
 {
   g_debug ("test-thread:%s: %p", G_STRFUNC, pointer);
@@ -344,6 +359,7 @@ run_io_stream_test (guint deadlock_timeout, gboolean reliable,
   GMutex mutex;
   GCond cond;
   guint start_count = 6;
+  guint stream_id;
 
   g_mutex_init (&mutex);
   g_cond_init (&cond);
@@ -451,8 +467,25 @@ run_io_stream_test (guint deadlock_timeout, gboolean reliable,
   if (l_data.io_stream != NULL)
     g_object_unref (l_data.io_stream);
 
+  stream_id =
+    GPOINTER_TO_UINT (g_object_get_data (G_OBJECT (r_data.agent), "stream-id"));
+  if (stream_id != 0)
+    nice_agent_remove_stream (r_data.agent, stream_id);
+  stream_id =
+    GPOINTER_TO_UINT (g_object_get_data (G_OBJECT (l_data.agent), "stream-id"));
+  if (stream_id != 0)
+    nice_agent_remove_stream (l_data.agent, stream_id);
+
+  g_object_add_weak_pointer (G_OBJECT (r_data.agent),
+                             (gpointer *) &r_data.agent);
+  g_object_add_weak_pointer (G_OBJECT (l_data.agent),
+                             (gpointer *) &l_data.agent);
+
   g_object_unref (r_data.agent);
   g_object_unref (l_data.agent);
+
+  WAIT_UNTIL_UNSET (r_data.agent, r_data.main_context);
+  WAIT_UNTIL_UNSET (l_data.agent, l_data.main_context);
 
   g_main_loop_unref (r_data.main_loop);
   g_main_loop_unref (l_data.main_loop);
@@ -513,6 +546,7 @@ check_for_termination (TestIOStreamThreadData *data, gsize *recv_count,
 
   /* Remove the stream and run away. */
   nice_agent_remove_stream (data->agent, stream_id);
+  g_object_set_data (G_OBJECT (data->agent), "stream-id", GUINT_TO_POINTER (0));
 
   /* If both sides have finished, quit the test main loop. */
   if (*recv_count > expected_recv_count &&

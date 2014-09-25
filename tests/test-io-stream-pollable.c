@@ -72,6 +72,7 @@ read_stream_cb (GObject *pollable_stream, gpointer _user_data)
 
   if (len == -1) {
     g_assert_error (error, G_IO_ERROR, G_IO_ERROR_WOULD_BLOCK);
+    g_error_free (error);
     return TRUE;
   }
 
