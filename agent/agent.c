@@ -4041,6 +4041,7 @@ nice_agent_recv_messages_blocking_or_nonblocking (NiceAgent *agent,
 
     if (!agent_find_component (agent, stream_id, component_id,
             &stream, &component)) {
+      g_clear_error (&child_error);
       g_set_error (&child_error, G_IO_ERROR, G_IO_ERROR_BROKEN_PIPE,
           "Component removed during call.");
 
