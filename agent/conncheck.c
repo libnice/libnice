@@ -252,8 +252,10 @@ candidate_check_pair_fail (Stream *stream, NiceAgent *agent, CandidateCheckPair 
   p->state = NICE_CHECK_FAILED;
   nice_debug ("Agent %p : pair %p state FAILED", agent, p);
 
-  stun_message_id (&p->stun_message, id);
-  stun_agent_forget_transaction (&component->stun_agent, id);
+  if (p->stun_message.buffer != NULL) {
+    stun_message_id (&p->stun_message, id);
+    stun_agent_forget_transaction (&component->stun_agent, id);
+  }
 
   p->stun_message.buffer = NULL;
   p->stun_message.buffer_len = 0;
