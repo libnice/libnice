@@ -1,3 +1,4 @@
+
 /*
  * This file is part of the Nice GLib ICE library.
  *
@@ -301,9 +302,15 @@ gst_nice_sink_set_property (
       break;
 
     case PROP_COMPONENT:
-      GST_OBJECT_LOCK (sink);
-      sink->component_id = g_value_get_uint (value);
-      GST_OBJECT_UNLOCK (sink);
+      {
+        guint new_component_id = g_value_get_uint (value);
+        GST_OBJECT_LOCK (sink);
+        if (sink->component_id != new_component_id) {
+          sink->component_id = new_component_id;
+          g_cond_broadcast (&sink->writable_cond);
+        }
+        GST_OBJECT_UNLOCK (sink);
+      }
       break;
 
     default:
