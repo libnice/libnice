@@ -3,10 +3,14 @@
 export G_SLICE=always-malloc
 export G_DEBUG=gc-friendly
 
+tests_dir="`dirname $0`/../tests"
+
 report=`libtool --mode=execute valgrind \
 	--leak-check=full \
 	--show-reachable=no \
 	--error-exitcode=1 \
+	--suppressions=$tests_dir/libnice.supp \
+	--num-callers=30 \
 	$1 2>&1`
 
 #if echo "$report" | grep -q ==; then
