@@ -4578,6 +4578,7 @@ nice_agent_dispose (GObject *object)
     {
       Stream *s = i->data;
 
+      stream_close (s);
       stream_free (s);
     }
 
