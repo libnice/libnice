@@ -279,6 +279,11 @@ component_close (Component *cmp)
 void
 component_free (Component *cmp)
 {
+  /* Component should have been closed already. */
+  g_warn_if_fail (cmp->local_candidates == NULL);
+  g_warn_if_fail (cmp->remote_candidates == NULL);
+  g_warn_if_fail (cmp->incoming_checks == NULL);
+
   g_clear_object (&cmp->tcp);
   g_clear_object (&cmp->stop_cancellable);
   g_clear_object (&cmp->iostream);
