@@ -120,7 +120,6 @@ Component *
 component_new (guint id, NiceAgent *agent, Stream *stream)
 {
   Component *component;
-  GSource *src;
 
   component = g_slice_new0 (Component);
   component->id = id;
@@ -138,10 +137,10 @@ component_new (guint id, NiceAgent *agent, Stream *stream)
 
   component->own_ctx = g_main_context_new ();
   component->stop_cancellable = g_cancellable_new ();
-  src = g_cancellable_source_new (component->stop_cancellable);
-  g_source_set_dummy_callback (src);
-  g_source_attach (src, component->own_ctx);
-  g_source_unref (src);
+  component->stop_cancellable_source =
+      g_cancellable_source_new (component->stop_cancellable);
+  g_source_set_dummy_callback (component->stop_cancellable_source);
+  g_source_attach (component->stop_cancellable_source, component->own_ctx);
   component->ctx = g_main_context_ref (component->own_ctx);
 
   /* Start off with a fresh main context and all I/O paused. This
@@ -284,6 +283,11 @@ component_free (Component *cmp)
   g_clear_object (&cmp->stop_cancellable);
   g_clear_object (&cmp->iostream);
   g_mutex_clear (&cmp->io_mutex);
+
+  if (cmp->stop_cancellable_source != NULL) {
+    g_source_destroy (cmp->stop_cancellable_source);
+    g_source_unref (cmp->stop_cancellable_source);
+  }
 
   if (cmp->ctx != NULL) {
     g_main_context_unref (cmp->ctx);

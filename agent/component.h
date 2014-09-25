@@ -193,6 +193,7 @@ struct _Component
 
 
   GCancellable *stop_cancellable;
+  GSource *stop_cancellable_source;  /* owned */
 
   PseudoTcpSocket *tcp;
   GSource* tcp_clock;
