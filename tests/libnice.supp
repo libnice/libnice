@@ -358,6 +358,11 @@
 	Helgrind:Race
 	fun:g_inet_address_get_type
 }
+{
+	nice-get-type-helgrind
+	Helgrind:Race
+	fun:nice_*_get_type
+}
 
 # From: https://github.com/fredericgermain/valgrind/blob/master/glibc-2.X-drd.supp
 {
@@ -470,6 +475,61 @@
 {
 	g-main-context-cond
 	Helgrind:Misc
+	...
 	fun:g_cond_clear
 	fun:g_main_context_unref
+}
+
+# False positives
+{
+	g-source-unlocked
+	Helgrind:Race
+	fun:g_source_*_unlocked
+}
+{
+	g-source-internal
+	Helgrind:Race
+	fun:g_source_*_internal
+}
+
+# FIXME: Probably actually a race
+{
+	test-io-stream-common-termination
+	Helgrind:Race
+	fun:check_for_termination
+}
+{
+	test-io-stream-common-wait
+	Helgrind:Race
+	fun:wait_for_start
+}
+{
+	test-io-stream-common-main
+	Helgrind:Race
+	fun:main_thread_cb
+}
+{
+	test-io-stream-common-read
+	Helgrind:Race
+	fun:read_thread_cb
+}
+{
+	test-io-stream-common-write
+	Helgrind:Race
+	fun:write_thread_cb
+}
+
+# False positive
+{
+	g_object_real_dispose
+	Helgrind:Race
+	fun:g_object_real_dispose
+}
+
+# False positive
+{
+	g_object_new_valist
+	Helgrind:Race
+	...
+	fun:g_object_new_valist
 }
