@@ -1769,10 +1769,13 @@ static gboolean
 notify_pseudo_tcp_socket_clock (gpointer user_data)
 {
   Component *component = user_data;
-  Stream *stream = component->stream;
-  NiceAgent *agent = component->agent;
+  Stream *stream;
+  NiceAgent *agent;
 
   agent_lock();
+
+  stream = component->stream;
+  agent = component->agent;
 
   if (g_source_is_destroyed (g_main_current_source ())) {
     nice_debug ("Source was destroyed. "
