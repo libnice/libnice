@@ -53,7 +53,8 @@
  * If g_io_stream_close() is called on a #NiceIOStream, the I/O stream and
  * underlying #NiceAgent stream will be closed in both directions, but the
  * underlying stream will not be removed. Use nice_agent_remove_stream() to do
- * that.
+ * that, but only do so after g_io_stream_close() has completed, or the stream
+ * will return broken pipe errors.
  *
  * Since: 0.1.5
  */

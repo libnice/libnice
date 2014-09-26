@@ -442,7 +442,10 @@ nice_agent_add_stream (
  * @agent: The #NiceAgent Object
  * @stream_id: The ID of the stream to remove
  *
- * Remove and free a previously created data stream from @agent
+ * Remove and free a previously created data stream from @agent. If any I/O
+ * streams have been created using nice_agent_get_io_stream(), they should be
+ * closed completely using g_io_stream_close() before this is called, or they
+ * will get broken pipe errors.
  *
  **/
 void
