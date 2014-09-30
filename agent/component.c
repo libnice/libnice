@@ -371,6 +371,9 @@ component_restart (Component *cmp)
       (GDestroyNotify) incoming_check_free);
   cmp->incoming_checks = NULL;
 
+  /* Reset the priority to 0 to make sure we get a new pair */
+  cmp->selected_pair.priority = 0;
+
   /* note: component state managed by agent */
 }
 
