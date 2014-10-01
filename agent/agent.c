@@ -2502,6 +2502,9 @@ static void _upnp_mapped_external_port (GUPnPSimpleIgd *self, gchar *proto,
 
   agent_lock();
 
+  if (agent->upnp_timer_source == NULL)
+    goto end;
+
   nice_debug ("Agent %p : Successfully mapped %s:%d to %s:%d", agent, local_ip,
       local_port, external_ip, external_port);
 
