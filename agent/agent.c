@@ -2850,6 +2850,9 @@ nice_agent_gather_candidates (
 
       for (i = component->local_candidates; i; i = i->next) {
         NiceCandidate *candidate = i->data;
+
+        agent_remove_local_candidate (agent, candidate);
+
         nice_candidate_free (candidate);
       }
       g_slist_free (component->local_candidates);
@@ -2861,6 +2864,24 @@ nice_agent_gather_candidates (
   agent_unlock_and_emit (agent);
 
   return ret;
+}
+
+void agent_remove_local_candidate (NiceAgent *agent, NiceCandidate *candidate)
+{
+#ifdef HAVE_GUPNP
+  gchar local_ip[NICE_ADDRESS_STRING_LEN];
+
+  if (agent->upnp == NULL)
+    return;
+
+  if (candidate->type != NICE_CANDIDATE_TYPE_HOST)
+    return;
+
+  nice_address_to_string (&candidate->addr, local_ip);
+
+  gupnp_simple_igd_remove_port_local (GUPNP_SIMPLE_IGD (agent->upnp), "UDP",
+      local_ip, nice_address_get_port (&candidate->addr));
+#endif
 }
 
 static void priv_stop_upnp (NiceAgent *agent)

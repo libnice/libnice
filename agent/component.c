@@ -200,6 +200,7 @@ component_clean_turn_servers (Component *cmp)
       conn_check_prune_socket (cmp->agent, cmp->stream, cmp,
           candidate->sockptr);
       component_detach_socket (cmp, candidate->sockptr);
+      agent_remove_local_candidate (cmp->agent, candidate);
       nice_candidate_free (candidate);
     }
     cmp->local_candidates = g_slist_delete_link (cmp->local_candidates, i);
@@ -235,9 +236,13 @@ component_close (Component *cmp)
     nice_candidate_free (cmp->turn_candidate),
         cmp->turn_candidate = NULL;
 
-  g_slist_free_full (cmp->local_candidates,
-      (GDestroyNotify) nice_candidate_free);
-  cmp->local_candidates = NULL;
+  while (cmp->local_candidates) {
+    agent_remove_local_candidate (cmp->agent, cmp->local_candidates->data);
+    nice_candidate_free (cmp->local_candidates->data);
+    cmp->local_candidates = g_slist_delete_link (cmp->local_candidates,
+        cmp->local_candidates);
+  }
+
   g_slist_free_full (cmp->remote_candidates,
       (GDestroyNotify) nice_candidate_free);
   cmp->remote_candidates = NULL;

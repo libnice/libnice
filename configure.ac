@@ -248,7 +248,7 @@ AC_SUBST(gstplugin010dir)
 AM_CONDITIONAL(WITH_GSTREAMER, test "$with_gstreamer" = yes)
 AM_CONDITIONAL(WITH_GSTREAMER010, test "$with_gstreamer010" = yes)
 
-GUPNP_IGD_REQUIRED=0.1.2
+GUPNP_IGD_REQUIRED=0.2.4
 
 AC_ARG_ENABLE([gupnp],
         AS_HELP_STRING([--disable-gupnp],[Disable GUPnP IGD support]),
