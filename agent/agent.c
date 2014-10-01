@@ -139,7 +139,7 @@ static GMutex agent_mutex;    /* Mutex used for thread-safe lib */
 static GStaticMutex agent_mutex = G_STATIC_MUTEX_INIT;
 #endif
 
-static void priv_free_upnp (NiceAgent *agent);
+static void priv_stop_upnp (NiceAgent *agent);
 
 static void pseudo_tcp_socket_opened (PseudoTcpSocket *sock, gpointer user_data);
 static void pseudo_tcp_socket_readable (PseudoTcpSocket *sock, gpointer user_data);
@@ -2619,15 +2619,13 @@ nice_agent_gather_candidates (
       agent->full_mode ? "ICE-FULL" : "ICE-LITE");
 
 #ifdef HAVE_GUPNP
-  priv_free_upnp (agent);
-
-  if (agent->upnp_enabled) {
+  if (agent->upnp_enabled && agent->upnp == NULL) {
     agent->upnp = gupnp_simple_igd_thread_new ();
 
-    agent_timeout_add_with_context (agent, &agent->upnp_timer_source,
-        "UPnP timeout", agent->upnp_timeout, priv_upnp_timeout_cb, agent);
-
     if (agent->upnp) {
+      agent_timeout_add_with_context (agent, &agent->upnp_timer_source,
+          "UPnP timeout", agent->upnp_timeout, priv_upnp_timeout_cb, agent);
+
       g_signal_connect (agent->upnp, "mapped-external-port",
           G_CALLBACK (_upnp_mapped_external_port), agent);
       g_signal_connect (agent->upnp, "error-mapping-port",
@@ -2764,16 +2762,16 @@ nice_agent_gather_candidates (
               _tcp_sock_is_writable, component);
 
 #ifdef HAVE_GUPNP
-        if (agent->upnp_enabled &&
-            transport != NICE_CANDIDATE_TRANSPORT_TCP_ACTIVE) {
-          NiceAddress *base_addr = nice_address_dup (&host_candidate->base_addr);
-          nice_debug ("Agent %p: Adding UPnP port %s:%d", agent, local_ip,
-              nice_address_get_port (base_addr));
-          gupnp_simple_igd_add_port (GUPNP_SIMPLE_IGD (agent->upnp),
-              transport == NICE_CANDIDATE_TRANSPORT_UDP ? "UDP" : "TCP",
-              0, local_ip, nice_address_get_port (base_addr),
-              0, PACKAGE_STRING);
-          agent->upnp_mapping = g_slist_prepend (agent->upnp_mapping, base_addr);
+      if (agent->upnp_enabled && agent->upnp &&
+          transport != NICE_CANDIDATE_TRANSPORT_TCP_ACTIVE) {
+        NiceAddress *base_addr = nice_address_dup (&host_candidate->base_addr);
+        nice_debug ("Agent %p: Adding UPnP port %s:%d", agent, local_ip,
+            nice_address_get_port (base_addr));
+        gupnp_simple_igd_add_port (GUPNP_SIMPLE_IGD (agent->upnp),
+            transport == NICE_CANDIDATE_TRANSPORT_UDP ? "UDP" : "TCP",
+            0, local_ip, nice_address_get_port (base_addr),
+            0, PACKAGE_STRING);
+        agent->upnp_mapping = g_slist_prepend (agent->upnp_mapping, base_addr);
       }
 #endif
 
@@ -2844,7 +2842,7 @@ nice_agent_gather_candidates (
   g_slist_free (local_addresses);
 
   if (ret == FALSE) {
-    priv_free_upnp (agent);
+    priv_stop_upnp (agent);
     for (cid = 1; cid <= stream->n_components; cid++) {
       Component *component = stream_find_component_by_id (stream, cid);
 
@@ -2865,13 +2863,11 @@ nice_agent_gather_candidates (
   return ret;
 }
 
-static void priv_free_upnp (NiceAgent *agent)
+static void priv_stop_upnp (NiceAgent *agent)
 {
 #ifdef HAVE_GUPNP
-  if (agent->upnp) {
-    g_object_unref (agent->upnp);
-    agent->upnp = NULL;
-  }
+  if (!agent->upnp)
+    return;
 
   g_slist_free_full (agent->upnp_mapping, (GDestroyNotify) nice_address_free);
   agent->upnp_mapping = NULL;
@@ -4608,7 +4604,14 @@ nice_agent_dispose (GObject *object)
   nice_rng_free (agent->rng);
   agent->rng = NULL;
 
-  priv_free_upnp (agent);
+  priv_stop_upnp (agent);
+
+#ifdef HAVE_GUPNP
+  if (agent->upnp) {
+    g_object_unref (agent->upnp);
+    agent->upnp = NULL;
+  }
+#endif
 
   g_free (agent->software_attribute);
   agent->software_attribute = NULL;
