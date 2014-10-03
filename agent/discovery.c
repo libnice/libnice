@@ -1016,7 +1016,7 @@ static gboolean priv_discovery_tick_unlocked (gpointer pointer)
       if (nice_debug_is_enabled ()) {
         gchar tmpbuf[INET6_ADDRSTRLEN];
         nice_address_to_string (&cand->server, tmpbuf);
-        nice_debug ("Agent %p : discovery - scheduling cand type %u addr %s.\n",
+        nice_debug ("Agent %p : discovery - scheduling cand type %u addr %s.",
             agent, cand->type, tmpbuf);
       }
       if (nice_address_is_valid (&cand->server) &&
