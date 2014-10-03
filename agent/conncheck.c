@@ -1444,7 +1444,7 @@ static void priv_conn_check_add_for_candidate_pair_matched (NiceAgent *agent,
   }
 }
 
-static gboolean priv_conn_check_add_for_candidate_pair (NiceAgent *agent,
+gboolean conn_check_add_for_candidate_pair (NiceAgent *agent,
     guint stream_id, Component *component, NiceCandidate *local,
     NiceCandidate *remote)
 {
@@ -1502,7 +1502,7 @@ int conn_check_add_for_candidate (NiceAgent *agent, guint stream_id, Component *
   for (i = component->local_candidates; i ; i = i->next) {
 
     NiceCandidate *local = i->data;
-    ret = priv_conn_check_add_for_candidate_pair (agent, stream_id, component, local, remote);
+    ret = conn_check_add_for_candidate_pair (agent, stream_id, component, local, remote);
 
     if (ret) {
       ++added;
@@ -1533,7 +1533,7 @@ int conn_check_add_for_local_candidate (NiceAgent *agent, guint stream_id, Compo
   for (i = component->remote_candidates; i ; i = i->next) {
 
     NiceCandidate *remote = i->data;
-    ret = priv_conn_check_add_for_candidate_pair (agent, stream_id, component, local, remote);
+    ret = conn_check_add_for_candidate_pair (agent, stream_id, component, local, remote);
 
     if (ret) {
       ++added;

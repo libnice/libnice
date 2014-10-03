@@ -1902,7 +1902,8 @@ void agent_gathering_done (NiceAgent *agent)
               break;
           }
           if (m == NULL) {
-            conn_check_add_for_candidate (agent, stream->id, component, remote_candidate);
+            conn_check_add_for_candidate_pair (agent, stream->id, component,
+                local_candidate, remote_candidate);
           }
         }
       }
