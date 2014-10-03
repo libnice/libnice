@@ -1375,9 +1375,6 @@ static void priv_add_new_check_pair (NiceAgent *agent, guint stream_id, Componen
   stream = agent_find_stream (agent, stream_id);
   pair = g_slice_new0 (CandidateCheckPair);
 
-  stream->conncheck_list = g_slist_insert_sorted (stream->conncheck_list, pair,
-      (GCompareFunc)conn_check_compare);
-
   pair->agent = agent;
   pair->stream_id = stream_id;
   pair->component_id = component->id;;
@@ -1394,6 +1391,9 @@ static void priv_add_new_check_pair (NiceAgent *agent, guint stream_id, Componen
   nice_debug ("Agent %p : creating new pair %p state %d", agent, pair, initial_state);
   pair->nominated = use_candidate;
   pair->controlling = agent->controlling_mode;
+
+  stream->conncheck_list = g_slist_insert_sorted (stream->conncheck_list, pair,
+      (GCompareFunc)conn_check_compare);
 
   nice_debug ("Agent %p : added a new conncheck %p with foundation of '%s' to list %u.", agent, pair, pair->foundation, stream_id);
 
