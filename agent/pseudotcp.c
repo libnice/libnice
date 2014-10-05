@@ -960,8 +960,8 @@ pseudo_tcp_socket_notify_clock(PseudoTcpSocket *self)
       guint32 nInFlight;
       guint32 rto_limit;
 
-      DEBUG (PSEUDO_TCP_DEBUG_NORMAL, "timeout retransmit (rto: %d) "
-          "(rto_base: %d) (now: %d) (dup_acks: %d)",
+      DEBUG (PSEUDO_TCP_DEBUG_NORMAL, "timeout retransmit (rto: %u) "
+          "(rto_base: %u) (now: %u) (dup_acks: %u)",
           priv->rx_rto, priv->rto_base, now, (guint) priv->dup_acks);
 
       if (!transmit(self, g_queue_peek_head (&priv->slist), now)) {
@@ -1407,8 +1407,8 @@ packet(PseudoTcpSocket *self, guint32 seq, TcpFlags flags,
     g_assert (bytes_read == len);
   }
 
-  DEBUG (PSEUDO_TCP_DEBUG_VERBOSE, "<-- <CONV=%d><FLG=%d><SEQ=%d:%d><ACK=%d>"
-      "<WND=%d><TS=%d><TSR=%d><LEN=%d>",
+  DEBUG (PSEUDO_TCP_DEBUG_VERBOSE, "<-- <CONV=%u><FLG=%u><SEQ=%u:%u><ACK=%u>"
+      "<WND=%u><TS=%u><TSR=%u><LEN=%u>",
       priv->conv, (unsigned)flags, seq, seq + len, priv->rcv_nxt, priv->rcv_wnd,
       now % 10000, priv->ts_recent % 10000, len);
 
@@ -1460,8 +1460,8 @@ parse (PseudoTcpSocket *self, const guint8 *_header_buf, gsize header_buf_len,
   seg.data = (const gchar *) data_buf;
   seg.len = data_buf_len;
 
-  DEBUG (PSEUDO_TCP_DEBUG_VERBOSE, "--> <CONV=%d><FLG=%d><SEQ=%d:%d><ACK=%d>"
-      "<WND=%d><TS=%d><TSR=%d><LEN=%d>",
+  DEBUG (PSEUDO_TCP_DEBUG_VERBOSE, "--> <CONV=%u><FLG=%u><SEQ=%u:%u><ACK=%u>"
+      "<WND=%u><TS=%u><TSR=%u><LEN=%u>",
       seg.conv, (unsigned)seg.flags, seg.seq, seg.seq + seg.len, seg.ack,
       seg.wnd, seg.tsval % 10000, seg.tsecr % 10000, seg.len);
 
@@ -1578,7 +1578,7 @@ process(PseudoTcpSocket *self, Segment *seg)
         set_state_established (self);
       }
     } else {
-      DEBUG (PSEUDO_TCP_DEBUG_NORMAL, "Unknown control code: %d", seg->data[0]);
+      DEBUG (PSEUDO_TCP_DEBUG_NORMAL, "Unknown control code: %u", seg->data[0]);
       return FALSE;
     }
   }
@@ -1613,7 +1613,7 @@ process(PseudoTcpSocket *self, Segment *seg)
         priv->rx_rto = bound(MIN_RTO,
             priv->rx_srtt + max(1LU, 4 * priv->rx_rttvar), MAX_RTO);
 
-        DEBUG (PSEUDO_TCP_DEBUG_VERBOSE, "rtt: %ld   srtt: %d  rto: %d",
+        DEBUG (PSEUDO_TCP_DEBUG_VERBOSE, "rtt: %ld   srtt: %u  rto: %u",
                 rtt, priv->rx_srtt, priv->rx_rto);
       } else {
         DEBUG (PSEUDO_TCP_DEBUG_NORMAL, "Invalid RTT: %ld", rtt);
@@ -1902,7 +1902,7 @@ process(PseudoTcpSocket *self, Segment *seg)
           if (LARGER (data->seq + data->len, priv->rcv_nxt)) {
             guint32 nAdjust = (data->seq + data->len) - priv->rcv_nxt;
             sflags = sfImmediateAck; // (Fast Recovery)
-            DEBUG (PSEUDO_TCP_DEBUG_NORMAL, "Recovered %d bytes (%d -> %d)",
+            DEBUG (PSEUDO_TCP_DEBUG_NORMAL, "Recovered %u bytes (%u -> %u)",
                 nAdjust, priv->rcv_nxt, priv->rcv_nxt + nAdjust);
             pseudo_tcp_fifo_consume_write_buffer (&priv->rbuf, nAdjust);
             priv->rcv_nxt += nAdjust;
@@ -1916,7 +1916,7 @@ process(PseudoTcpSocket *self, Segment *seg)
         GList *iter = NULL;
         RSegment *rseg = g_slice_new0 (RSegment);
 
-        DEBUG (PSEUDO_TCP_DEBUG_NORMAL, "Saving %d bytes (%d -> %d)",
+        DEBUG (PSEUDO_TCP_DEBUG_NORMAL, "Saving %u bytes (%u -> %u)",
             seg->len, seg->seq, seg->seq + seg->len);
         rseg->seq = seg->seq;
         rseg->len = seg->len;
@@ -1994,7 +1994,7 @@ transmit(PseudoTcpSocket *self, SSegment *segment, guint32 now)
         break;
       }
     }
-    DEBUG (PSEUDO_TCP_DEBUG_NORMAL, "Adjusting mss to %d bytes ", priv->mss);
+    DEBUG (PSEUDO_TCP_DEBUG_NORMAL, "Adjusting mss to %u bytes ", priv->mss);
   }
 
   if (nTransmit < segment->len) {
@@ -2004,7 +2004,7 @@ transmit(PseudoTcpSocket *self, SSegment *segment, guint32 now)
     subseg->flags = segment->flags;
     subseg->xmit = segment->xmit;
 
-    DEBUG (PSEUDO_TCP_DEBUG_NORMAL, "mss reduced to %d", priv->mss);
+    DEBUG (PSEUDO_TCP_DEBUG_NORMAL, "mss reduced to %u", priv->mss);
 
     segment->len = nTransmit;
     g_queue_insert_after (&priv->slist,
@@ -2079,9 +2079,9 @@ attempt_send(PseudoTcpSocket *self, SendFlags sflags)
     if (bFirst) {
       gsize available_space = pseudo_tcp_fifo_get_write_remaining (&priv->sbuf);
       bFirst = FALSE;
-      DEBUG (PSEUDO_TCP_DEBUG_VERBOSE, "[cwnd: %d  nWindow: %d  nInFlight: %d "
-          "nAvailable: %d nQueued: %" G_GSIZE_FORMAT " nEmpty: %" G_GSIZE_FORMAT
-          "  ssthresh: %d]",
+      DEBUG (PSEUDO_TCP_DEBUG_VERBOSE, "[cwnd: %u  nWindow: %u  nInFlight: %u "
+          "nAvailable: %u nQueued: %" G_GSIZE_FORMAT " nEmpty: %" G_GSIZE_FORMAT
+          "  ssthresh: %u]",
           priv->cwnd, nWindow, nInFlight, nAvailable, snd_buffered,
           available_space, priv->ssthresh);
     }
@@ -2199,7 +2199,7 @@ adjustMTU(PseudoTcpSocket *self)
   }
   priv->mss = priv->mtu_advise - PACKET_OVERHEAD;
   // !?! Should we reset priv->largest here?
-  DEBUG (PSEUDO_TCP_DEBUG_NORMAL, "Adjusting mss to %d bytes", priv->mss);
+  DEBUG (PSEUDO_TCP_DEBUG_NORMAL, "Adjusting mss to %u bytes", priv->mss);
   // Enforce minimums on ssthresh and cwnd
   priv->ssthresh = max(priv->ssthresh, 2 * priv->mss);
   priv->cwnd = max(priv->cwnd, priv->mss);
