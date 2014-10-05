@@ -1487,6 +1487,24 @@ nice_agent_forget_relays (NiceAgent *agent,
     guint stream_id,
     guint component_id);
 
+/**
+ * nice_agent_get_component_state:
+ * @agent: The #NiceAgent Object
+ * @stream_id: The ID of the stream
+ * @component_id: The ID of the component
+ *
+ * Retrieves the current state of a component.
+ *
+ * Returns: the #NiceComponentState of the component and
+ * %NICE_COMPONENT_STATE_FAILED if the component was invalid.
+ *
+ * Since: 0.1.7
+ */
+NiceComponentState
+nice_agent_get_component_state (NiceAgent *agent,
+    guint stream_id,
+    guint component_id);
+
 G_END_DECLS
 
 #endif /* _AGENT_H */

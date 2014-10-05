@@ -5866,3 +5866,20 @@ agent_socket_send (NiceSocket *sock, const NiceAddress *addr, gsize len,
     return ret;
   }
 }
+
+NiceComponentState
+nice_agent_get_component_state (NiceAgent *agent,
+    guint stream_id, guint component_id)
+{
+  NiceComponentState state = NICE_COMPONENT_STATE_FAILED;
+  Component *component;
+
+  agent_lock ();
+
+  if (agent_find_component (agent, stream_id, component_id, NULL, &component))
+    state = component->state;
+
+  agent_unlock ();
+
+  return state;
+}
