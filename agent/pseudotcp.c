@@ -153,7 +153,7 @@ const guint16 PACKET_MAXIMUMS[] = {
 
 // MIN_RTO = 250 ms (RFC1122, Sec 4.2.3.1 "fractions of a second")
 #define MIN_RTO      250
-#define DEF_RTO     3000 /* 3 seconds (RFC1122, Sec 4.2.3.1) */
+#define DEF_RTO     1000 /* 1 seconds (RFC 6298 sect 2.1) */
 #define MAX_RTO    60000 /* 60 seconds */
 #define DEFAULT_ACK_DELAY    100 /* 100 milliseconds */
 #define DEFAULT_NO_DELAY     FALSE
