@@ -1779,6 +1779,34 @@ size_t priv_get_password (NiceAgent *agent, Stream *stream,
   return 0;
 }
 
+/* Implement the computation specific in RFC 5245 section 16 */
+
+static unsigned int priv_compute_conncheck_timer (NiceAgent *agent,
+    Stream *stream)
+{
+  GSList *item;
+  guint waiting_and_in_progress = 0;
+  unsigned int rto = 0;
+
+  for (item = stream->conncheck_list; item; item = item->next) {
+    CandidateCheckPair *pair = item->data;
+
+    if (pair->state == NICE_CHECK_IN_PROGRESS ||
+        pair->state == NICE_CHECK_WAITING)
+      waiting_and_in_progress++;
+  }
+
+  /* FIXME: This should also be multiple by "N", which I believe is the
+   * number of Streams currently in the conncheck state. */
+  rto = agent->timer_ta  * waiting_and_in_progress;
+
+  /* We assume non-reliable streams are RTP, so we use 100 as the max */
+  if (agent->reliable)
+    return MAX (rto, 500);
+  else
+    return MAX (rto, 100);
+}
+
 /*
  * Sends a connectivity check over candidate pair 'pair'.
  *
@@ -1865,7 +1893,8 @@ int conn_check_send (NiceAgent *agent, CandidateCheckPair *pair)
       if (nice_socket_is_reliable(pair->sockptr)) {
         stun_timer_start_reliable(&pair->timer, STUN_TIMER_DEFAULT_RELIABLE_TIMEOUT);
       } else {
-        stun_timer_start (&pair->timer, STUN_TIMER_DEFAULT_TIMEOUT,
+        stun_timer_start (&pair->timer,
+            priv_compute_conncheck_timer (agent, stream),
             STUN_TIMER_DEFAULT_MAX_RETRANSMISSIONS);
       }
 
@@ -2019,8 +2048,9 @@ static gboolean priv_schedule_triggered_check (NiceAgent *agent, Stream *stream,
 	    "restarting the timer again?: %s ..", agent,
             p->timer_restarted ? "no" : "yes");
 	  if (!nice_socket_is_reliable (p->sockptr) && !p->timer_restarted) {
-	    stun_timer_start (&p->timer, STUN_TIMER_DEFAULT_TIMEOUT,
-	      STUN_TIMER_DEFAULT_MAX_RETRANSMISSIONS);
+	    stun_timer_start (&p->timer,
+                priv_compute_conncheck_timer (agent, stream),
+                STUN_TIMER_DEFAULT_MAX_RETRANSMISSIONS);
 	    p->timer_restarted = TRUE;
 	  }
 	}
