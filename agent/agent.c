@@ -440,7 +440,7 @@ nice_agent_class_init (NiceAgentClass *klass)
         "candidate gathering and sending of connectivity checks",
         1, 0xffffffff,
 	NICE_AGENT_TIMER_TA_DEFAULT,
-        G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY));
+        G_PARAM_READWRITE | G_PARAM_CONSTRUCT));
 
   /* note: according to spec recommendation in sect 5.7.3 (ID-19) */
   g_object_class_install_property (gobject_class, PROP_MAX_CONNECTIVITY_CHECKS,
