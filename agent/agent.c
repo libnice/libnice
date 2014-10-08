@@ -2420,6 +2420,8 @@ nice_agent_set_relay_info(NiceAgent *agent,
  if (stream->gathering_started) {
     GSList *i;
 
+    stream->gathering = TRUE;
+
     for (i = component->local_candidates; i; i = i->next) {
       NiceCandidate *candidate = i->data;
 
