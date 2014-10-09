@@ -689,7 +689,7 @@ socket_send_message (NiceSocket *sock, const NiceAddress *to,
     struct sockaddr_storage storage;
     struct sockaddr addr;
   } sa;
-  GList *i = priv->channels;
+  GList *i;
   ChannelBinding *binding = NULL;
   gint ret;
 
@@ -697,7 +697,7 @@ socket_send_message (NiceSocket *sock, const NiceAddress *to,
   if (sock->priv == NULL)
     return -1;
 
-  for (; i; i = i->next) {
+  for (i = priv->channels; i; i = i->next) {
     ChannelBinding *b = i->data;
     if (nice_address_equal (&b->peer, to)) {
       binding = b;
