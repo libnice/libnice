@@ -3931,7 +3931,6 @@ nice_agent_recv_messages_blocking_or_nonblocking (NiceAgent *agent,
   g_return_val_if_fail (stream_id >= 1, -1);
   g_return_val_if_fail (component_id >= 1, -1);
   g_return_val_if_fail (n_messages == 0 || messages != NULL, -1);
-  g_return_val_if_fail (n_messages <= G_MAXINT, -1);
   g_return_val_if_fail (
       cancellable == NULL || G_IS_CANCELLABLE (cancellable), -1);
   g_return_val_if_fail (error == NULL || *error == NULL, -1);
