@@ -140,17 +140,17 @@ typedef enum {
  * @TCP_ESTABLISHED: The socket is connected
  * @TCP_CLOSED: The socket has been closed
  * @TCP_FIN_WAIT_1: The socket has been closed locally but not remotely
- * (Since: UNRELEASED)
+ * (Since: 0.1.8)
  * @TCP_FIN_WAIT_2: The socket has been closed locally but not remotely
- * (Since: UNRELEASED)
+ * (Since: 0.1.8)
  * @TCP_CLOSING: The socket has been closed locally and remotely
- * (Since: UNRELEASED)
+ * (Since: 0.1.8)
  * @TCP_TIME_WAIT: The socket has been closed locally and remotely
- * (Since: UNRELEASED)
+ * (Since: 0.1.8)
  * @TCP_CLOSE_WAIT: The socket has been closed remotely but not locally
- * (Since: UNRELEASED)
+ * (Since: 0.1.8)
  * @TCP_LAST_ACK: The socket has been closed locally and remotely
- * (Since: UNRELEASED)
+ * (Since: 0.1.8)
  *
  * An enum representing the state of the #PseudoTcpSocket. These states
  * correspond to the TCP states in RFC 793.
@@ -201,7 +201,7 @@ typedef enum {
  * pseudo_tcp_socket_shutdown(). These correspond to the values passed to POSIX
  * shutdown().
  *
- * Since: UNRELEASED
+ * Since: 0.1.8
  */
 typedef enum {
   PSEUDO_TCP_SHUTDOWN_RD,
@@ -375,7 +375,7 @@ void pseudo_tcp_socket_close(PseudoTcpSocket *self, gboolean force);
  * This is equivalent to the POSIX shutdown() function. Setting @how to
  * %PSEUDO_TCP_SHUTDOWN_RDWR is equivalent to calling pseudo_tcp_socket_close().
  *
- * Since: UNRELEASED
+ * Since: 0.1.8
  */
 void pseudo_tcp_socket_shutdown (PseudoTcpSocket *self, PseudoTcpShutdown how);
 
@@ -552,7 +552,7 @@ gsize pseudo_tcp_socket_get_available_send_space (PseudoTcpSocket *self);
  * This function is intended for testing only, and should not be used in
  * production code.
  *
- * Since: UNRELEASED
+ * Since: 0.1.8
  */
 void pseudo_tcp_socket_set_time (PseudoTcpSocket *self, guint32 current_time);
 
@@ -564,7 +564,7 @@ void pseudo_tcp_socket_set_time (PseudoTcpSocket *self, guint32 current_time);
  * and both peers no longer able to read or write data to the connection.
  *
  * Returns: %TRUE if the socket is closed in both directions, %FALSE otherwise
- * Since: UNRELEASED
+ * Since: 0.1.8
  */
 gboolean pseudo_tcp_socket_is_closed (PseudoTcpSocket *self);
 
@@ -580,7 +580,7 @@ gboolean pseudo_tcp_socket_is_closed (PseudoTcpSocket *self);
  *
  * Returns: %TRUE if the remote peer has closed its side of the connection,
  * %FALSE otherwise
- * Since: UNRELEASED
+ * Since: 0.1.8
  */
 gboolean pseudo_tcp_socket_is_closed_remotely (PseudoTcpSocket *self);
 

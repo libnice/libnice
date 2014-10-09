@@ -253,7 +253,7 @@ nice_address_equal (const NiceAddress *a, const NiceAddress *b);
  * Returns: %TRUE if @a and @b are the same address, %FALSE if they
  * are different
  *
- * Since: UNRELEASED
+ * Since: 0.1.8
  */
 gboolean
 nice_address_equal_no_port (const NiceAddress *a, const NiceAddress *b);

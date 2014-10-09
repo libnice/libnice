@@ -445,7 +445,7 @@ typedef struct {
  *
  * Reasons for calling closedown().
  *
- * Since: UNRELEASED
+ * Since: 0.1.8
  */
 typedef enum {
   CLOSEDOWN_LOCAL,
@@ -658,7 +658,7 @@ pseudo_tcp_socket_class_init (PseudoTcpSocketClass *cls)
    *
    * Support is enabled by default.
    *
-   * Since: UNRELEASED
+   * Since: 0.1.8
    */
   g_object_class_install_property (object_class, PROP_SUPPORT_FIN_ACK,
       g_param_spec_boolean ("support-fin-ack", "Support FIN–ACK",

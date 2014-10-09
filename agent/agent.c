@@ -606,7 +606,7 @@ nice_agent_class_init (NiceAgentClass *klass)
    * If #NiceAgent:ice-tcp is set to %FALSE, then this property cannot be set
    * to %FALSE as well.
    *
-   * Since: UNRELEASED
+   * Since: 0.1.8
    */
    g_object_class_install_property (gobject_class, PROP_ICE_UDP,
       g_param_spec_boolean (
@@ -639,7 +639,7 @@ nice_agent_class_init (NiceAgentClass *klass)
    </para>
    * </note>
    *
-   * Since: UNRELEASED
+   * Since: 0.1.8
    */
    g_object_class_install_property (gobject_class, PROP_ICE_TCP,
       g_param_spec_boolean (
@@ -672,7 +672,7 @@ nice_agent_class_init (NiceAgentClass *klass)
    * bytestream mode will be supported.
    * </para>
    *
-   * Since: UNRELEASED
+   * Since: 0.1.8
    */
    g_object_class_install_property (gobject_class, PROP_BYTESTREAM_TCP,
       g_param_spec_boolean (
@@ -695,7 +695,7 @@ nice_agent_class_init (NiceAgentClass *klass)
    * This is always enabled if the compatibility mode is
    * %NICE_COMPATIBILITY_GOOGLE.
    *
-   * Since: 0.1.7
+   * Since: 0.1.8
    */
    g_object_class_install_property (gobject_class, PROP_KEEPALIVE_CONNCHECK,
       g_param_spec_boolean (
@@ -766,7 +766,7 @@ nice_agent_class_init (NiceAgentClass *klass)
    * the Foundation of a Candidate is not a unique identifier.
    *
    * See also: #NiceAgent::new-selected-pair-full
-   * Deprecated: UNRELEASED: Use #NiceAgent::new-selected-pair-full
+   * Deprecated: 0.1.8: Use #NiceAgent::new-selected-pair-full
    */
   signals[SIGNAL_NEW_SELECTED_PAIR] =
       g_signal_new (
@@ -795,7 +795,7 @@ nice_agent_class_init (NiceAgentClass *klass)
    *
    * See also: #NiceAgent::candidate-gathering-done,
    * #NiceAgent::new-candidate-full
-   * Deprecated: UNRELEASED: Use #NiceAgent::new-candidate-full
+   * Deprecated: 0.1.8: Use #NiceAgent::new-candidate-full
    */
   signals[SIGNAL_NEW_CANDIDATE] =
       g_signal_new (
@@ -825,7 +825,7 @@ nice_agent_class_init (NiceAgentClass *klass)
    * candidate.
    *
    * See also: #NiceAgent::new-remote-candidate-full
-   * Deprecated: UNRELEASED: Use #NiceAgent::new-remote-candidate-full
+   * Deprecated: 0.1.8: Use #NiceAgent::new-remote-candidate-full
    */
   signals[SIGNAL_NEW_REMOTE_CANDIDATE] =
       g_signal_new (
@@ -930,7 +930,7 @@ nice_agent_class_init (NiceAgentClass *klass)
    * #NiceAgent::new-selected-pair.
    *
    * See also: #NiceAgent::new-selected-pair
-   * Since: UNRELEASED
+   * Since: 0.1.8
    */
   signals[SIGNAL_NEW_SELECTED_PAIR_FULL] =
       g_signal_new (
@@ -956,7 +956,7 @@ nice_agent_class_init (NiceAgentClass *klass)
    *
    * See also: #NiceAgent::candidate-gathering-done,
    * #NiceAgent::new-candidate
-   * Since: UNRELEASED
+   * Since: 0.1.8
    */
   signals[SIGNAL_NEW_CANDIDATE_FULL] =
       g_signal_new (
@@ -983,7 +983,7 @@ nice_agent_class_init (NiceAgentClass *klass)
    * also emitted with the candidate's foundation.
    *
    * See also: #NiceAgent::new-remote-candidate
-   * Since: UNRELEASED
+   * Since: 0.1.8
    */
   signals[SIGNAL_NEW_REMOTE_CANDIDATE_FULL] =
       g_signal_new (

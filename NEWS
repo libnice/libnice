@@ -1,3 +1,20 @@
+libnice 0.1.8 (2014-10-09)
+==========================
+Added FIN-ACK behavior in the PseudoTCP
+ICE-TCP, both standard mode and Microsoft compatible
+Microsoft compatible TURN-TCP
+API: nice_address_equal_no_port() to compare NiceAddresses ignoring the port
+API: nice_agent_get_component_state() to get the current component state
+API: agent:keepalive-conncheck to make the agent use conncheck as keepalives
+  and fail the connection if there is no answer
+API: agent:ice-tcp, agent:udp-tcp to control ICE-UDP vs ICE-TCP behaviours
+API: agent:bytestream-tcp to know if the send/receives in reliable mode create full packets or not
+API: New signals agent::new-selected-pair-full, agent::new-candidate-full,
+  agent::new-remote-candidate-full which include the NiceCandidates directly
+API: Deprecated agent::new-selected-pair and agent::new-candidate and 
+  agent::new-remote-candidate signals
+Now all signals are emitted at the function return time
+
 libnice 0.1.7 (2014-05-05)
 ==========================
 Fix undesired API change that broke Farstream unit testsx

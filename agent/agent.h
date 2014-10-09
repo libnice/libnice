@@ -1498,7 +1498,7 @@ nice_agent_forget_relays (NiceAgent *agent,
  * Returns: the #NiceComponentState of the component and
  * %NICE_COMPONENT_STATE_FAILED if the component was invalid.
  *
- * Since: 0.1.7
+ * Since: 0.1.8
  */
 NiceComponentState
 nice_agent_get_component_state (NiceAgent *agent,
