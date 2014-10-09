@@ -3531,18 +3531,13 @@ agent_recv_message_unlocked (
       if (handled) {
         /* Handled STUN message. */
         nice_debug ("%s: Valid STUN packet received.", G_STRFUNC);
-      } else {
-        /* Valid but unhandled STUN message (e.g. does not match a previously
-         * sent request due to being a duplicate response). */
-        nice_debug ("%s: Valid but unhandled STUN packet received.", G_STRFUNC);
+        retval = RECV_OOB;
+        g_free (big_buf);
+        goto done;
       }
-
-      retval = RECV_OOB;
-      g_free (big_buf);
-      goto done;
     }
 
-    nice_debug ("%s: WARNING: Packet passed fast STUN validation but failed "
+    nice_debug ("%s: Packet passed fast STUN validation but failed "
         "slow validation.", G_STRFUNC);
 
     g_free (big_buf);
