@@ -45,6 +45,6 @@
 #include <stdint.h>
 #endif
 
-void RAND_bytes (uint8_t *dst, int len);
+void nice_RAND_bytes (uint8_t *dst, int len);
 
 #endif /* RAND_H */
