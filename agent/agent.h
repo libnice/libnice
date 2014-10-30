@@ -52,6 +52,11 @@
  * It will take care of discovering your local candidates and do
  *  connectivity checks to create a stream of data between you and your peer.
  *
+ * A #NiceAgent must always be used with a #GMainLoop running the #GMainContext
+ * passed into nice_agent_new() (or nice_agent_new_reliable()). Without the
+ * #GMainContext being iterated, the agent’s timers will not fire and, if
+ * nice_agent_attach_recv() is used, packets will not be received.
+ *
  * Streams and their components are referenced by integer IDs (with respect to a
  * given #NiceAgent). These IDs are guaranteed to be positive (i.e. non-zero)
  * for valid streams/components.
@@ -77,8 +82,9 @@
  *   gchar *remote_ufrag, *remote_pwd;
  *   GSList *lcands = NULL;
  *
- *   // Create a nice agent
+ *   // Create a nice agent, passing in the global default GMainContext.
  *   NiceAgent *agent = nice_agent_new (NULL, NICE_COMPATIBILITY_RFC5245);
+ *   spawn_thread_to_run_main_loop (g_main_loop_new (NULL, FALSE));
  *
  *   // Connect the signals
  *   g_signal_connect (G_OBJECT (agent), "candidate-gathering-done",
@@ -111,7 +117,9 @@
  *   // Send our message!
  *   nice_agent_send (agent, stream_id, 1, sizeof(buffer), buffer);
  *
- *   // Anything received will be received through the cb_nice_recv callback
+ *   // Anything received will be received through the cb_nice_recv callback.
+ *   // You must be running a GMainLoop on the global default GMainContext in
+ *   // another thread for this to work.
  *
  *   // Destroy the object
  *   g_object_unref(agent);
