@@ -89,7 +89,7 @@ void stun_debug_bytes (const char *prefix, const void *data, size_t len)
   strcpy (bytes + prefix_len, "0x");
 
   for (i = 0; i < len; i++)
-    snprintf (bytes + prefix_len + 2 + (i * 2), 3, "%02x", ((const unsigned char *)data)[i]);
+    sprintf (bytes + prefix_len + 2 + (i * 2), "%02x", ((const unsigned char *)data)[i]);
 
   stun_debug ("%s", bytes);
 }
