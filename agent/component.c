@@ -228,6 +228,20 @@ component_close (Component *cmp)
   IOCallbackData *data;
   GOutputVector *vec;
 
+  /* Start closing the pseudo-TCP socket first. FIXME: There is a very big and
+   * reliably triggerable race here. pseudo_tcp_socket_close() does not block
+   * on the socket closing — it only sends the first packet of the FIN
+   * handshake. component_close() will immediately afterwards close the
+   * underlying component sockets, aborting the handshake.
+   *
+   * On the principle that starting the FIN handshake is better than not
+   * starting it, even if it’s later truncated, call pseudo_tcp_socket_close().
+   * A long-term fix is needed in the form of making component_close() (and all
+   * its callers) async, so we can properly block on closure. */
+  if (cmp->tcp) {
+    pseudo_tcp_socket_close (cmp->tcp, TRUE);
+  }
+
   if (cmp->restart_candidate)
     nice_candidate_free (cmp->restart_candidate),
       cmp->restart_candidate = NULL;
@@ -261,9 +275,6 @@ component_close (Component *cmp)
   if (cmp->tcp_writable_cancellable) {
     g_cancellable_cancel (cmp->tcp_writable_cancellable);
     g_clear_object (&cmp->tcp_writable_cancellable);
-  }
-  if (cmp->tcp) {
-    pseudo_tcp_socket_close (cmp->tcp, TRUE);
   }
 
   while ((data = g_queue_pop_head (&cmp->pending_io_messages)) != NULL)
