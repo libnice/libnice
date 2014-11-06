@@ -55,7 +55,8 @@ AM_SILENT_RULES([yes])
 AC_USE_SYSTEM_EXTENSIONS
 AC_PROG_CC
 AM_PROG_AR
-LT_INIT
+LT_PREREQ([2.2.6])
+LT_INIT([dlopen win32-dll disable-static])
 
 # Check Operating System
 AC_MSG_CHECKING([operating system])

@@ -33,7 +33,7 @@ libgstnice_la_SOURCES = \
 
 libgstnice_la_LIBADD = 	$(COMMON_LIBADD) $(GST_LIBS)
 
-libgstnice_la_LDFLAGS = -module -avoid-version
+libgstnice_la_LDFLAGS = -module -avoid-version -no-undefined
 endif
 
 
@@ -52,5 +52,5 @@ libgstnice010_la_SOURCES = \
 
 libgstnice010_la_LIBADD = $(COMMON_LIBADD) $(GST010_LIBS)
 
-libgstnice010_la_LDFLAGS = -module -avoid-version
+libgstnice010_la_LDFLAGS = -module -avoid-version -no-undefined
 endif
