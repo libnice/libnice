@@ -488,8 +488,6 @@ validate_received_messages (TestIOStreamThreadData *data, gsize buffer_offset,
         message_len_remaining -= valid_len;
       }
       test_data->received_bytes += valid_len;
-
-      g_free (buffer->buffer);
     }
 
     g_assert_cmpuint (message->length, <=, total_buf_len);
@@ -505,6 +503,18 @@ validate_received_messages (TestIOStreamThreadData *data, gsize buffer_offset,
       g_assert_cmpuint (message->length, ==, total_buf_len);
 
     g_assert (message->from == NULL);
+  }
+
+  /* Free all messages. */
+  for (i = 0; i < (guint) n_messages; i++) {
+    NiceInputMessage *message = &messages[i];
+    guint j;
+
+    for (j = 0; j < (guint) message->n_buffers; j++) {
+      GInputVector *buffer = &message->buffers[j];
+
+      g_free (buffer->buffer);
+    }
 
     g_free (message->buffers);
   }
