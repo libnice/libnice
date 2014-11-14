@@ -42,6 +42,11 @@
  * @brief ICE component functions
  */
 
+/* Simple tracking for the number of alive components. These must be accessed
+ * atomically. */
+static volatile unsigned int n_components_created = 0;
+static volatile unsigned int n_components_destroyed = 0;
+
 #ifdef HAVE_CONFIG_H
 # include <config.h>
 #endif
@@ -120,6 +125,10 @@ Component *
 component_new (guint id, NiceAgent *agent, Stream *stream)
 {
   Component *component;
+
+  g_atomic_int_inc (&n_components_created);
+  nice_debug ("Created NiceComponent (%u created, %u destroyed)",
+      n_components_created, n_components_destroyed);
 
   component = g_slice_new0 (Component);
   component->id = id;
@@ -318,6 +327,10 @@ component_free (Component *cmp)
   g_main_context_unref (cmp->own_ctx);
 
   g_slice_free (Component, cmp);
+
+  g_atomic_int_inc (&n_components_destroyed);
+  nice_debug ("Destroyed NiceComponent (%u created, %u destroyed)",
+      n_components_created, n_components_destroyed);
 }
 
 /*

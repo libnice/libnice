@@ -43,6 +43,11 @@
 
 #include "stream.h"
 
+/* Simple tracking for the number of alive streams. These must be accessed
+ * atomically. */
+static volatile unsigned int n_streams_created = 0;
+static volatile unsigned int n_streams_destroyed = 0;
+
 /*
  * @file stream.c
  * @brief ICE stream functionality
@@ -53,6 +58,10 @@ stream_new (guint n_components, NiceAgent *agent)
   Stream *stream;
   guint n;
   Component *component;
+
+  g_atomic_int_inc (&n_streams_created);
+  nice_debug ("Created NiceStream (%u created, %u destroyed)",
+      n_streams_created, n_streams_destroyed);
 
   stream = g_slice_new0 (Stream);
   for (n = 0; n < n_components; n++) {
@@ -83,6 +92,10 @@ stream_free (Stream *stream)
   g_free (stream->name);
   g_slist_free_full (stream->components, (GDestroyNotify) component_free);
   g_slice_free (Stream, stream);
+
+  g_atomic_int_inc (&n_streams_destroyed);
+  nice_debug ("Destroyed NiceStream (%u created, %u destroyed)",
+      n_streams_created, n_streams_destroyed);
 }
 
 Component *
