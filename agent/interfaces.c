@@ -195,6 +195,23 @@ nice_interfaces_is_private_ip (const struct sockaddr *_sa)
 static gchar *
 sockaddr_to_string (const struct sockaddr *addr);
 
+static GList *
+add_ip_to_list (GList *list, gchar *ip, gboolean append)
+{
+  GList *i;
+
+  for (i = list; i; i = i->next) {
+    gchar *addr = (gchar *) i->data;
+
+    if (g_strcmp0 (addr, ip) == 0)
+      return list;
+  }
+  if (append)
+    return g_list_append (list, ip);
+  else
+    return g_list_prepend (list, ip);
+}
+
 GList *
 nice_interfaces_get_local_ips (gboolean include_loopback)
 {
@@ -229,16 +246,16 @@ nice_interfaces_get_local_ips (gboolean include_loopback)
     nice_debug ("IP Address: %s", addr_string);
     if ((ifa->ifa_flags & IFF_LOOPBACK) == IFF_LOOPBACK) {
       if (include_loopback) {
-        loopbacks = g_list_append (loopbacks, addr_string);
+        loopbacks = add_ip_to_list (loopbacks, addr_string, TRUE);
       } else {
         nice_debug ("Ignoring loopback interface");
         g_free (addr_string);
       }
     } else {
       if (nice_interfaces_is_private_ip (ifa->ifa_addr))
-        ips = g_list_append (ips, addr_string);
+        ips = add_ip_to_list (ips, addr_string, TRUE);
       else
-        ips = g_list_prepend (ips, addr_string);
+        ips = add_ip_to_list (ips, addr_string, FALSE);
     }
   }
 
@@ -312,9 +329,9 @@ nice_interfaces_get_local_ips (gboolean include_loopback)
         nice_debug ("Ignoring loopback interface");
     } else {
       if (nice_interfaces_is_private_ip (sa)) {
-        ips = g_list_append (ips, g_strdup (inet_ntoa (sa->sin_addr)));
+        ips = add_ip_to_list (ips, g_strdup (inet_ntoa (sa->sin_addr)), TRUE);
       } else {
-        ips = g_list_prepend (ips, g_strdup (inet_ntoa (sa->sin_addr)));
+        ips = add_ip_to_list (ips, g_strdup (inet_ntoa (sa->sin_addr)), FALSE);
       }
     }
   }
@@ -323,7 +340,7 @@ nice_interfaces_get_local_ips (gboolean include_loopback)
   free (ifc.ifc_req);
 
   if (loopback)
-    ips = g_list_append (ips, loopback);
+    ips = add_ip_to_list (ips, loopback, TRUE);
 
   return ips;
 }
