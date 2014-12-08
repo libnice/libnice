@@ -1961,7 +1961,7 @@ transmit(PseudoTcpSocket *self, SSegment *segment, guint32 now)
     PseudoTcpWriteResult wres;
 
     /* The packet must not have already been acknowledged. */
-    g_assert_cmpuint (segment->seq, >=, priv->snd_una);
+    g_assert_cmpuint (segment->seq - priv->snd_una, <=, 1024 * 1024 * 64);
 
     /* Write out the packet. */
     wres = packet(self, seq, flags,
