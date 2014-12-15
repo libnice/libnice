@@ -1754,8 +1754,15 @@ pseudo_tcp_socket_write_packet (PseudoTcpSocket *psocket,
           nice_address_get_port (addr));
     }
 
-    if (nice_socket_send (sock, addr, len, buffer))
+    /* Send the segment. nice_socket_send() returns 0 on EWOULDBLOCK; in that
+     * case the segment is not sent on the wire, but we return WR_SUCCESS
+     * anyway. This effectively drops the segment. The pseudo-TCP state machine
+     * will eventually pick up this loss and go into recovery mode, reducing
+     * its transmission rate and, hopefully, the usage of system resources
+     * which caused the EWOULDBLOCK in the first place. */
+    if (nice_socket_send (sock, addr, len, buffer) >= 0) {
       return WR_SUCCESS;
+    }
   } else {
     nice_debug ("%s: WARNING: Failed to send pseudo-TCP packet from agent %p "
         "as no pair has been selected yet.", G_STRFUNC, component->agent);
