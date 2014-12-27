@@ -75,9 +75,19 @@ G_BEGIN_DECLS
 
 /**
  * nice_debug_enable:
- * @with_stun: Also enable stun debugging messages
+ * @with_stun: Also enable STUN debugging messages
  *
- * Enables libnice debug output to the terminal
+ * Enables libnice debug output to the terminal. Note that the
+ * `G_MESSAGES_DEBUG` and `NICE_DEBUG` environment variables must be set to the
+ * set of logging domains to print, in order for any output to be printed. Set
+ * them to `all` to print all debugging messages, or any of the following
+ * domains:
+ * - `libnice-stun`
+ * - `libnice-tests`
+ * - `libnice-socket`
+ * - `libnice`
+ * - `libnice-pseudotcp`
+ * - `libnice-pseudotcp-verbose`
  */
 void nice_debug_enable (gboolean with_stun);
 
