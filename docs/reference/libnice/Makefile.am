@@ -101,6 +101,7 @@ include $(top_srcdir)/gtk-doc.make
 # for --rebuild-sections in $(SCAN_OPTIONS) e.g. $(DOC_MODULE)-sections.txt
 #DISTCLEANFILES +=
 
-# Comment this out if you want your docs-status tested during 'make check'
-#TESTS = $(GTKDOC_CHECK)
-
+if ENABLE_GTK_DOC
+TESTS_ENVIRONMENT = cd $(builddir) &&
+TESTS = $(GTKDOC_CHECK)
+endif
