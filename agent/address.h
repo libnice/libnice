@@ -67,9 +67,6 @@ G_BEGIN_DECLS
 
 /**
  * NiceAddress:
- * @addr: Generic sockaddr address
- * @ip4: IPv4 sockaddr address
- * @ip6: IPv6 sockaddr address
  *
  * The #NiceAddress structure that represents an IPv4 or IPv6 address.
  */

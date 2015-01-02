@@ -59,8 +59,26 @@ void stun_debug_enable (void);
  */
 void stun_debug_disable (void);
 
+/**
+ * StunDebugHandler:
+ * @format: printf()-style debug message format string
+ * @ap: Parameters to substitute into message placeholders
+ *
+ * Callback for a debug message from the STUN code.
+ */
 typedef void (*StunDebugHandler) (const char *format, va_list ap);
 
+/**
+ * stun_set_debug_handler:
+ * @handler: (nullable): Handler for STUN debug messages, or %NULL to use the
+ *   default
+ *
+ * Set a callback function to be invoked for each debug message from the STUN
+ * code. The callback will only be invoked if STUN debugging is enabled using
+ * stun_debug_enable().
+ *
+ * The default callback prints the formatted debug message to stderr.
+ */
 void stun_set_debug_handler (StunDebugHandler handler);
 
 #if defined(__GNUC__) && (__GNUC__ > 2 || (__GNUC__ == 2 && __GNUC_MINOR__ > 4))

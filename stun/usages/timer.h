@@ -200,6 +200,7 @@ void stun_timer_start (StunTimer *timer, unsigned int initial_timeout,
 /**
  * stun_timer_start_reliable:
  * @timer: The #StunTimer to start
+ * @initial_timeout: The initial timeout to use before the first retransmission
  *
  * Starts a STUN transaction retransmission timer for a reliable transport.
  * This should be called as soon as you send the message for the first time on

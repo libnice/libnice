@@ -163,6 +163,8 @@ typedef enum
  * TURN draft 09 and 12
  * @STUN_ATTRIBUTE_LIFETIME: The LIFETIME attribute as defined by TURN
  * draft 04, 09 and 12
+ * @STUN_ATTRIBUTE_MS_ALTERNATE_SERVER: The ALTERNATE-SERVER attribute as
+ * defined by [MS-TURN]
  * @STUN_ATTRIBUTE_MAGIC_COOKIE: The MAGIC-COOKIE attribute as defined by
  * the rosenberg-midcom TURN draft 08
  * @STUN_ATTRIBUTE_BANDWIDTH: The BANDWIDTH attribute as defined by TURN draft 04

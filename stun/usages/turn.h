@@ -96,6 +96,10 @@ typedef enum {
  * Google Talk's relay server
  * @STUN_USAGE_TURN_COMPATIBILITY_MSN: Use the specification compatible with
  * MSN TURN servers
+ * @STUN_USAGE_TURN_COMPATIBILITY_OC2007: Use the specification compatible with
+ * Microsoft Office Communicator 2007
+ * @STUN_USAGE_TURN_COMPATIBILITY_RFC5766: Use the specification compatible with
+ * RFC 5766 (the final, canonical TURN standard)
  *
  * Specifies which TURN specification compatibility to use
  */
@@ -205,7 +209,28 @@ size_t stun_usage_turn_create_refresh (StunAgent *agent, StunMessage *msg,
     uint8_t *password, size_t password_len,
     StunUsageTurnCompatibility compatibility);
 
-
+/**
+ * stun_usage_turn_create_permission:
+ * @agent: The #StunAgent to use to build the request
+ * @msg: The #StunMessage to build
+ * @buffer: The buffer to use for creating the #StunMessage
+ * @buffer_len: The size of the @buffer
+ * @username: The username to use in the request
+ * @username_len: The length of @username
+ * @password: The key to use for building the MESSAGE-INTEGRITY
+ * @password_len: The length of @password
+ * @realm: The realm identifier to use in the request
+ * @realm_len: The length of @realm
+ * @nonce: Unique and securely random nonce to use in the request
+ * @nonce_len: The length of @nonce
+ * @peer: Server-reflexive host address to request permission for
+ * @compatibility: The compatibility mode to use for building the
+ * CreatePermission request
+ *
+ * Create a new TURN CreatePermission request
+ *
+ * Returns: The length of the message to send
+ */
 size_t stun_usage_turn_create_permission (StunAgent *agent, StunMessage *msg,
     uint8_t *buffer, size_t buffer_len,
     uint8_t *username, size_t username_len,

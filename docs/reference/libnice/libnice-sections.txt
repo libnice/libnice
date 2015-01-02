@@ -49,6 +49,7 @@ nice_agent_parse_remote_stream_sdp
 nice_agent_parse_remote_candidate_sdp
 nice_agent_get_io_stream
 nice_agent_get_selected_socket
+nice_agent_get_component_state
 nice_component_state_to_string
 <SUBSECTION Standard>
 NICE_AGENT
@@ -139,6 +140,7 @@ StunAgentUsageFlags
 StunValidationStatus
 StunMessageIntegrityValidate
 StunDefaultValidaterData
+StunDebugHandler
 stun_agent_init
 stun_agent_validate
 stun_agent_default_validater
@@ -152,8 +154,12 @@ stun_agent_forget_transaction
 stun_agent_set_software
 stun_debug_enable
 stun_debug_disable
+stun_set_debug_handler
 <SUBSECTION Private>
 StunAgentSavedIds
+stun_debug
+stun_debug_bytes
+stun_agent_t
 </SECTION>
 
 
@@ -266,6 +272,8 @@ stun_timer_start
 stun_timer_start_reliable
 stun_timer_refresh
 stun_timer_remainder
+<SUBSECTION Private>
+stun_timer_s
 </SECTION>
 
 <SECTION>

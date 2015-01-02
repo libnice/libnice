@@ -38,6 +38,107 @@
 #define _STUN_CONSTANTS_H
 
 
+/**
+ * SECTION:stunconstants
+ * @short_description: STUN constants
+ * @include: stun/constants.h
+ * @stability: Stable
+ *
+ * Various constants defining parts of the STUN and TURN protocols and
+ * on-the-wire packet formats.
+ */
+
+/**
+ * STUN_ATTRIBUTE_LENGTH_LEN:
+ *
+ * Length of the length field of a STUN attribute (in bytes).
+ */
+/**
+ * STUN_ATTRIBUTE_LENGTH_POS:
+ *
+ * Offset of the length field of a STUN attribute (in bytes).
+ */
+/**
+ * STUN_ATTRIBUTE_TYPE_LEN:
+ *
+ * Length of the type field of a STUN attribute (in bytes).
+ */
+/**
+ * STUN_ATTRIBUTE_TYPE_POS:
+ *
+ * Offset of the type field of a STUN attribute (in bytes).
+ */
+/**
+ * STUN_ATTRIBUTE_VALUE_POS:
+ *
+ * Offset of the value field of a STUN attribute (in bytes).
+ */
+/**
+ * STUN_ID_LEN:
+ *
+ * Length of the ID field of a STUN message (in bytes).
+ */
+/**
+ * STUN_MAGIC_COOKIE:
+ *
+ * Magic cookie value used to identify STUN messages.
+ */
+/**
+ * TURN_MAGIC_COOKIE:
+ *
+ * Magic cookie value used to identify TURN messages.
+ */
+/**
+ * STUN_MAX_MESSAGE_SIZE_IPV4:
+ *
+ * Maximum size of a STUN message sent over IPv4 (in bytes).
+ */
+/**
+ * STUN_MAX_MESSAGE_SIZE_IPV6:
+ *
+ * Maximum size of a STUN message sent over IPv6 (in bytes).
+ */
+/**
+ * STUN_MESSAGE_ATTRIBUTES_POS:
+ *
+ * Offset of the attributes of a STUN message (in bytes).
+ */
+/**
+ * STUN_MESSAGE_HEADER_LENGTH:
+ *
+ * Total length of a STUN message header (in bytes).
+ */
+/**
+ * STUN_MESSAGE_LENGTH_LEN:
+ *
+ * Length of the length field of a STUN message (in bytes).
+ */
+/**
+ * STUN_MESSAGE_LENGTH_POS:
+ *
+ * Offset of the length field of a STUN message (in bytes).
+ */
+/**
+ * STUN_MESSAGE_TRANS_ID_LEN:
+ *
+ * Length of the transaction ID field of a STUN message (in bytes).
+ */
+/**
+ * STUN_MESSAGE_TRANS_ID_POS:
+ *
+ * Offset of the transaction ID field of a STUN message (in bytes).
+ */
+/**
+ * STUN_MESSAGE_TYPE_LEN:
+ *
+ * Length of the type field of a STUN message (in bytes).
+ */
+/**
+ * STUN_MESSAGE_TYPE_POS:
+ *
+ * Offset of the type field of a STUN message (in bytes).
+ */
+
 #define STUN_MESSAGE_TYPE_POS 0
 #define STUN_MESSAGE_TYPE_LEN 2
 #define STUN_MESSAGE_LENGTH_POS \
@@ -59,6 +160,11 @@
 #define STUN_ATTRIBUTE_VALUE_POS \
   (STUN_ATTRIBUTE_LENGTH_POS + STUN_ATTRIBUTE_LENGTH_LEN)
 
+/**
+ * STUN_ATTRIBUTE_HEADER_LENGTH:
+ *
+ * Length of a single STUN attribute header (in bytes).
+ */
 #define STUN_ATTRIBUTE_HEADER_LENGTH STUN_ATTRIBUTE_VALUE_POS
 
 
@@ -68,7 +174,19 @@
 
 #define STUN_ID_LEN 16
 
+/**
+ * STUN_AGENT_MAX_SAVED_IDS:
+ *
+ * Maximum number of simultaneously ongoing STUN transactions.
+ */
 #define STUN_AGENT_MAX_SAVED_IDS 200
+
+/**
+ * STUN_AGENT_MAX_UNKNOWN_ATTRIBUTES:
+ *
+ * Maximum number of unknown attribute which can be handled in a single STUN
+ * message.
+ */
 #define STUN_AGENT_MAX_UNKNOWN_ATTRIBUTES 256
 
 #define STUN_MAGIC_COOKIE 0x2112A442
