@@ -3276,31 +3276,11 @@ agent_recv_message_unlocked (
 {
   NiceAddress from;
   GList *item;
-  GSList *cand_i;
   gint retval;
 
   /* We need an address for packet parsing, below. */
   if (message->from == NULL) {
     message->from = &from;
-  }
-
-  /* In case of ICE-TCP on UDP-TURN (OC2007 compat), we need to do the recv
-   * on the UDP_TURN socket, but it's possible we receive the source event on
-   * the UDP_TURN_OVER_TCP socket, so in that case, we need to replace the
-   * socket we do the recv on to the topmost socket
-   */
-  for (cand_i = component->local_candidates; cand_i; cand_i = cand_i->next) {
-    NiceCandidate *cand = cand_i->data;
-
-    if (cand->type == NICE_CANDIDATE_TYPE_RELAYED &&
-        cand->stream_id == stream->id &&
-        cand->component_id == component->id &&
-        ((NiceSocket *)cand->sockptr)->fileno == nicesock->fileno) {
-      nice_debug ("Agent %p : Packet received from a TURN socket.",
-          agent);
-      nicesock = cand->sockptr;
-      break;
-    }
   }
 
   /* ICE-TCP requires that all packets be framed with RFC4571 */
@@ -3310,12 +3290,31 @@ agent_recv_message_unlocked (
      * always return an entire frame, so we must read it as is */
     if (nicesock->type == NICE_SOCKET_TYPE_UDP_TURN_OVER_TCP ||
         nicesock->type == NICE_SOCKET_TYPE_UDP_TURN) {
+      GSList *cand_i;
       GInputVector *local_bufs;
       NiceInputMessage local_message;
       guint n_bufs = 0;
       guint16 rfc4571_frame;
       guint i;
 
+      /* In case of ICE-TCP on UDP-TURN (OC2007 compat), we need to do the recv
+       * on the UDP_TURN socket, but it's possible we receive the source event
+       * on the UDP_TURN_OVER_TCP socket, so in that case, we need to replace
+       * the socket we do the recv on to the topmost socket
+       */
+      for (cand_i = component->local_candidates; cand_i; cand_i = cand_i->next) {
+        NiceCandidate *cand = cand_i->data;
+
+        if (cand->type == NICE_CANDIDATE_TYPE_RELAYED &&
+            cand->stream_id == stream->id &&
+            cand->component_id == component->id &&
+            ((NiceSocket *)cand->sockptr)->fileno == nicesock->fileno) {
+          nice_debug ("Agent %p : Packet received from a TURN socket.",
+              agent);
+          nicesock = cand->sockptr;
+          break;
+        }
+      }
       /* Count the number of buffers. */
       if (message->n_buffers == -1) {
         for (i = 0; message->buffers[i].buffer != NULL; i++)
