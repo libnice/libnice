@@ -1,3 +1,9 @@
+libnice 0.1.9 (2015-01-28)
+==========================
+Make it possible to statically build the GStreamer plugins
+Bug fixes, in particular fix compatibility with coTurn servers
+Documentation fixes
+
 libnice 0.1.8 (2014-10-09)
 ==========================
 Added FIN-ACK behavior in the PseudoTCP
