@@ -12,7 +12,7 @@ AC_CANONICAL_TARGET
 
 AC_CONFIG_SRCDIR([agent/agent.c])
 AC_CONFIG_HEADERS([config.h])
-AM_INIT_AUTOMAKE([1.12 -Wall -Wno-portability])
+AM_INIT_AUTOMAKE([1.12 -Wall -Wno-portability subdir-objects])
 
 AC_CONFIG_FILES([
 	Makefile
