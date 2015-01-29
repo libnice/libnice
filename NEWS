@@ -1,3 +1,7 @@
+libnice 0.1.10 (2015-01-28)
+===========================
+Fix bug on component change on the sink
+
 libnice 0.1.9 (2015-01-28)
 ==========================
 Make it possible to statically build the GStreamer plugins
