@@ -79,11 +79,12 @@ void stun_debug_bytes (const char *prefix, const void *data, size_t len)
 {
   size_t i;
   size_t prefix_len = strlen (prefix);
-  char bytes[prefix_len + 2 + (len * 2) + 1];
+  char *bytes;
 
   if (!debug_enabled)
     return;
 
+  bytes = malloc (prefix_len + 2 + (len * 2) + 1);
   bytes[0] = 0;
   strcpy (bytes, prefix);
   strcpy (bytes + prefix_len, "0x");
@@ -92,6 +93,7 @@ void stun_debug_bytes (const char *prefix, const void *data, size_t len)
     sprintf (bytes + prefix_len + 2 + (i * 2), "%02x", ((const unsigned char *)data)[i]);
 
   stun_debug ("%s", bytes);
+  free (bytes);
 }
 
 
