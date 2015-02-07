@@ -199,6 +199,30 @@
 				>
 			</File>
 			<File
+				RelativePath="..\..\agent\iostream.h"
+				>
+			</File>
+			<File
+				RelativePath="..\..\agent\iostream.c"
+				>
+			</File>
+			<File
+				RelativePath="..\..\agent\inputstream.h"
+				>
+			</File>
+			<File
+				RelativePath="..\..\agent\inputstream.c"
+				>
+			</File>
+			<File
+				RelativePath="..\..\agent\outputstream.h"
+				>
+			</File>
+			<File
+				RelativePath="..\..\agent\outputstream.c"
+				>
+			</File>
+			<File
 				RelativePath="..\..\stun\usages\bind.c"
 				>
 			</File>
@@ -287,6 +311,22 @@
 				>
 			</File>
 			<File
+				RelativePath="..\..\socket\tcp-active.c"
+				>
+			</File>
+			<File
+				RelativePath="..\..\socket\tcp-active.h"
+				>
+			</File>
+			<File
+				RelativePath="..\..\socket\tcp-passive.c"
+				>
+			</File>
+			<File
+				RelativePath="..\..\socket\tcp-passive.h"
+				>
+			</File>
+			<File
 				RelativePath="..\..\stun\usages\ice.c"
 				>
 			</File>
@@ -328,6 +368,14 @@
 			</File>
 			<File
 				RelativePath="..\..\agent\pseudotcp.h"
+				>
+			</File>
+			<File
+				RelativePath="..\..\agent\discovery.c"
+				>
+			</File>
+			<File
+				RelativePath="..\..\agent\discovery.h"
 				>
 			</File>
 			<File
@@ -376,6 +424,22 @@
 			</File>
 			<File
 				RelativePath="..\..\socket\socks5.h"
+				>
+			</File>			
+			<File
+				RelativePath="..\..\socket\udp-turn-over-tcp.c"
+				>
+			</File>
+			<File
+				RelativePath="..\..\socket\udp-turn-over-tcp.h"
+				>
+			</File>			
+			<File
+				RelativePath="..\..\socket\udp-turn.c"
+				>
+			</File>
+			<File
+				RelativePath="..\..\socket\udp-turn.h"
 				>
 			</File>
 			<File
@@ -435,14 +499,6 @@
 				>
 			</File>
 			<File
-				RelativePath="..\..\socket\tcp-turn.c"
-				>
-			</File>
-			<File
-				RelativePath="..\..\socket\tcp-turn.h"
-				>
-			</File>
-			<File
 				RelativePath="..\..\stun\usages\timer.c"
 				>
 			</File>
@@ -469,10 +525,6 @@
 						ObjectFile="$(IntDir)\turn-stun.obj"
 					/>
 				</FileConfiguration>
-			</File>
-			<File
-				RelativePath="..\..\socket\turn.c"
-				>
 			</File>
 			<File
 				RelativePath="..\..\stun\usages\turn.h"
