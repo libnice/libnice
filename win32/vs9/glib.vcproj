@@ -62,30 +62,6 @@
 	</References>
 	<Files>
 		<File
-			RelativePath="..\..\glib\bin\intl.dll"
-			>
-			<FileConfiguration
-				Name="Debug|Win32"
-				>
-				<Tool
-					Name="VCCustomBuildTool"
-					Description="copying $(InputFileName) to OutDir"
-					CommandLine="copy /y $(InputPath) $(OutDir) &gt;NUL&#x0D;&#x0A;"
-					Outputs="$(OutDir)\$(InputFileName)"
-				/>
-			</FileConfiguration>
-			<FileConfiguration
-				Name="Release|Win32"
-				>
-				<Tool
-					Name="VCCustomBuildTool"
-					Description="copying $(InputFileName) to OutDir"
-					CommandLine="copy /y $(InputPath) $(OutDir) &gt;NUL&#x0D;&#x0A;"
-					Outputs="$(OutDir)\$(InputFileName)"
-				/>
-			</FileConfiguration>
-		</File>
-		<File
 			RelativePath="..\..\glib\bin\libgio-2.0-0.dll"
 			>
 			<FileConfiguration
@@ -201,30 +177,6 @@
 					Name="VCCustomBuildTool"
 					Description="copying $(InputFileName) to OutDir"
 					CommandLine="copy /y $(InputPath) $(OutDir) &gt;NUL&#x0D;&#x0A;"
-					Outputs="$(OutDir)\$(InputFileName)"
-				/>
-			</FileConfiguration>
-		</File>
-		<File
-			RelativePath="..\..\glib\bin\zlib1.dll"
-			>
-			<FileConfiguration
-				Name="Debug|Win32"
-				>
-				<Tool
-					Name="VCCustomBuildTool"
-					Description="copying $(InputFileName) to OutDir"
-					CommandLine="copy /y $(InputPath) $(OutDir) &gt;NUL"
-					Outputs="$(OutDir)\$(InputFileName)"
-				/>
-			</FileConfiguration>
-			<FileConfiguration
-				Name="Release|Win32"
-				>
-				<Tool
-					Name="VCCustomBuildTool"
-					Description="copying $(InputFileName) to OutDir"
-					CommandLine="copy /y $(InputPath) $(OutDir) &gt;NUL"
 					Outputs="$(OutDir)\$(InputFileName)"
 				/>
 			</FileConfiguration>
