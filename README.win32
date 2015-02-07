@@ -12,6 +12,14 @@ Links are
 http://ftp.gnome.org/pub/gnome/binaries/win32/dependencies/zlib_1.2.5-2_win32.zip
 http://ftp.gnome.org/pub/gnome/binaries/win32/dependencies/gettext-runtime_0.18.1.1-2_win32.zip
 
+Please not: these packages are no longer supported by libnice and newer packages are not provided.
+You could use a gstreamer windows build for a current GLib build. Install the devel and runtime installer
+and copy the glib directory over to your libnice source file as described below
+
+http://gstreamer.freedesktop.org/data/pkg/windows/
+
+libnice compiles fine with the version 1.4.5
+
 2) Put glib in the correct path
 Create a folder glib under libnice root as in the following picture:
 
