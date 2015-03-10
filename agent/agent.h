@@ -563,9 +563,9 @@ nice_agent_gather_candidates (
  * nice_agent_set_remote_credentials:
  * @agent: The #NiceAgent Object
  * @stream_id: The ID of the stream
- * @ufrag: NULL-terminated string containing an ICE username fragment
+ * @ufrag: nul-terminated string containing an ICE username fragment
  *    (length must be between 22 and 256 chars)
- * @pwd: NULL-terminated string containing an ICE password
+ * @pwd: nul-terminated string containing an ICE password
  *    (length must be between 4 and 256 chars)
  *
  * Sets the remote credentials for stream @stream_id.
