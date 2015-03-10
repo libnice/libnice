@@ -2357,6 +2357,9 @@ nice_agent_add_stream (
   guint ret = 0;
   guint i;
 
+  g_return_val_if_fail (NICE_IS_AGENT (agent), 0);
+  g_return_val_if_fail (n_components >= 1, 0);
+
   agent_lock();
   stream = stream_new (n_components, agent);
 
@@ -2397,6 +2400,9 @@ nice_agent_set_relay_info(NiceAgent *agent,
   gboolean ret = TRUE;
   TurnServer *turn;
 
+  g_return_val_if_fail (NICE_IS_AGENT (agent), FALSE);
+  g_return_val_if_fail (stream_id >= 1, FALSE);
+  g_return_val_if_fail (component_id >= 1, FALSE);
   g_return_val_if_fail (server_ip, FALSE);
   g_return_val_if_fail (server_port, FALSE);
   g_return_val_if_fail (username, FALSE);
@@ -2610,6 +2616,9 @@ nice_agent_gather_candidates (
   Stream *stream;
   GSList *local_addresses = NULL;
   gboolean ret = TRUE;
+
+  g_return_val_if_fail (NICE_IS_AGENT (agent), FALSE);
+  g_return_val_if_fail (stream_id >= 1, FALSE);
 
   agent_lock();
 
@@ -2931,6 +2940,9 @@ nice_agent_remove_stream (
 
   Stream *stream;
 
+  g_return_if_fail (NICE_IS_AGENT (agent));
+  g_return_if_fail (stream_id >= 1);
+
   agent_lock();
   stream = agent_find_stream (agent, stream_id);
 
@@ -2971,6 +2983,10 @@ nice_agent_set_port_range (NiceAgent *agent, guint stream_id, guint component_id
   Stream *stream;
   Component *component;
 
+  g_return_if_fail (NICE_IS_AGENT (agent));
+  g_return_if_fail (stream_id >= 1);
+  g_return_if_fail (component_id >= 1);
+
   agent_lock();
 
   if (agent_find_component (agent, stream_id, component_id, &stream,
@@ -2990,6 +3006,9 @@ NICEAPI_EXPORT gboolean
 nice_agent_add_local_address (NiceAgent *agent, NiceAddress *addr)
 {
   NiceAddress *dupaddr;
+
+  g_return_val_if_fail (NICE_IS_AGENT (agent), FALSE);
+  g_return_val_if_fail (addr != NULL, FALSE);
 
   agent_lock();
 
@@ -3120,6 +3139,9 @@ nice_agent_set_remote_credentials (
   Stream *stream;
   gboolean ret = FALSE;
 
+  g_return_val_if_fail (NICE_IS_AGENT (agent), FALSE);
+  g_return_val_if_fail (stream_id >= 1, FALSE);
+
   agent_lock();
 
   stream = agent_find_stream (agent, stream_id);
@@ -3147,6 +3169,9 @@ nice_agent_get_local_credentials (
 {
   Stream *stream;
   gboolean ret = TRUE;
+
+  g_return_val_if_fail (NICE_IS_AGENT (agent), FALSE);
+  g_return_val_if_fail (stream_id >= 1, FALSE);
 
   agent_lock();
 
@@ -3215,6 +3240,10 @@ nice_agent_set_remote_candidates (NiceAgent *agent, guint stream_id, guint compo
   int added = 0;
   Stream *stream;
   Component *component;
+
+  g_return_val_if_fail (NICE_IS_AGENT (agent), 0);
+  g_return_val_if_fail (stream_id >= 1, 0);
+  g_return_val_if_fail (component_id >= 1, 0);
 
   nice_debug ("Agent %p: set_remote_candidates %d %d", agent, stream_id, component_id);
 
@@ -4171,6 +4200,13 @@ nice_agent_recv (NiceAgent *agent, guint stream_id, guint component_id,
   GInputVector local_bufs = { buf, buf_len };
   NiceInputMessage local_messages = { &local_bufs, 1, NULL, 0 };
 
+  g_return_val_if_fail (NICE_IS_AGENT (agent), -1);
+  g_return_val_if_fail (stream_id >= 1, -1);
+  g_return_val_if_fail (component_id >= 1, -1);
+  g_return_val_if_fail (buf != NULL || buf_len == 0, -1);
+  g_return_val_if_fail (cancellable == NULL || G_IS_CANCELLABLE (cancellable), -1);
+  g_return_val_if_fail (error == NULL || *error == NULL, -1);
+
   if (buf_len > G_MAXSSIZE) {
     g_set_error (error, G_IO_ERROR, G_IO_ERROR_INVALID_ARGUMENT,
         "The buffer length can't exceed G_MAXSSIZE: %" G_GSSIZE_FORMAT,
@@ -4204,6 +4240,13 @@ nice_agent_recv_nonblocking (NiceAgent *agent, guint stream_id,
   gint n_valid_messages;
   GInputVector local_bufs = { buf, buf_len };
   NiceInputMessage local_messages = { &local_bufs, 1, NULL, 0 };
+
+  g_return_val_if_fail (NICE_IS_AGENT (agent), -1);
+  g_return_val_if_fail (stream_id >= 1, -1);
+  g_return_val_if_fail (component_id >= 1, -1);
+  g_return_val_if_fail (buf != NULL || buf_len == 0, -1);
+  g_return_val_if_fail (cancellable == NULL || G_IS_CANCELLABLE (cancellable), -1);
+  g_return_val_if_fail (error == NULL || *error == NULL, -1);
 
   if (buf_len > G_MAXSSIZE) {
     g_set_error (error, G_IO_ERROR, G_IO_ERROR_INVALID_ARGUMENT,
@@ -4488,6 +4531,10 @@ nice_agent_get_local_candidates (
   GSList * ret = NULL;
   GSList * item = NULL;
 
+  g_return_val_if_fail (NICE_IS_AGENT (agent), NULL);
+  g_return_val_if_fail (stream_id >= 1, NULL);
+  g_return_val_if_fail (component_id >= 1, NULL);
+
   agent_lock();
 
   if (!agent_find_component (agent, stream_id, component_id, NULL, &component)) {
@@ -4511,6 +4558,10 @@ nice_agent_get_remote_candidates (
 {
   Component *component;
   GSList *ret = NULL, *item = NULL;
+
+  g_return_val_if_fail (NICE_IS_AGENT (agent), NULL);
+  g_return_val_if_fail (stream_id >= 1, NULL);
+  g_return_val_if_fail (component_id >= 1, NULL);
 
   agent_lock();
   if (!agent_find_component (agent, stream_id, component_id, NULL, &component))
@@ -4881,6 +4932,10 @@ nice_agent_attach_recv (
   Stream *stream = NULL;
   gboolean ret = FALSE;
 
+  g_return_val_if_fail (NICE_IS_AGENT (agent), FALSE);
+  g_return_val_if_fail (stream_id >= 1, FALSE);
+  g_return_val_if_fail (component_id >= 1, FALSE);
+
   agent_lock();
 
   /* attach candidates */
@@ -4930,6 +4985,12 @@ nice_agent_set_selected_pair (
   CandidatePair pair;
   gboolean ret = FALSE;
 
+  g_return_val_if_fail (NICE_IS_AGENT (agent), FALSE);
+  g_return_val_if_fail (stream_id >= 1, FALSE);
+  g_return_val_if_fail (component_id >= 1, FALSE);
+  g_return_val_if_fail (lfoundation, FALSE);
+  g_return_val_if_fail (rfoundation, FALSE);
+
   agent_lock();
 
   /* step: check that params specify an existing pair */
@@ -4975,6 +5036,12 @@ nice_agent_get_selected_pair (NiceAgent *agent, guint stream_id,
   Stream *stream;
   gboolean ret = FALSE;
 
+  g_return_val_if_fail (NICE_IS_AGENT (agent), FALSE);
+  g_return_val_if_fail (stream_id >= 1, FALSE);
+  g_return_val_if_fail (component_id >= 1, FALSE);
+  g_return_val_if_fail (local != NULL, FALSE);
+  g_return_val_if_fail (remote != NULL, FALSE);
+
   agent_lock();
 
   /* step: check that params specify an existing pair */
@@ -5002,6 +5069,10 @@ nice_agent_get_selected_socket (NiceAgent *agent, guint stream_id,
   Stream *stream;
   NiceSocket *nice_socket;
   GSocket *g_socket = NULL;
+
+  g_return_val_if_fail (NICE_IS_AGENT (agent), NULL);
+  g_return_val_if_fail (stream_id >= 1, NULL);
+  g_return_val_if_fail (component_id >= 1, NULL);
 
   agent_lock();
 
@@ -5086,11 +5157,6 @@ nice_agent_set_selected_remote_candidate (
   g_return_val_if_fail (component_id != 0, FALSE);
   g_return_val_if_fail (candidate != NULL, FALSE);
 
-  g_return_val_if_fail (NICE_IS_AGENT (agent), FALSE);
-  g_return_val_if_fail (stream_id != 0, FALSE);
-  g_return_val_if_fail (component_id != 0, FALSE);
-  g_return_val_if_fail (candidate != NULL, FALSE);
-
   agent_lock();
 
   /* step: check if the component exists*/
@@ -5166,6 +5232,9 @@ nice_agent_set_stream_tos (NiceAgent *agent,
   GSList *i, *j;
   Stream *stream;
 
+  g_return_if_fail (NICE_IS_AGENT (agent));
+  g_return_if_fail (stream_id >= 1);
+
   agent_lock();
 
   stream = agent_find_stream (agent, stream_id);
@@ -5190,6 +5259,8 @@ nice_agent_set_stream_tos (NiceAgent *agent,
 NICEAPI_EXPORT void
 nice_agent_set_software (NiceAgent *agent, const gchar *software)
 {
+  g_return_if_fail (NICE_IS_AGENT (agent));
+
   agent_lock();
 
   g_free (agent->software_attribute);
@@ -5209,6 +5280,9 @@ nice_agent_set_stream_name (NiceAgent *agent, guint stream_id,
   Stream *stream_to_name = NULL;
   GSList *i;
   gboolean ret = FALSE;
+
+  g_return_val_if_fail (NICE_IS_AGENT (agent), FALSE);
+  g_return_val_if_fail (stream_id >= 1, FALSE);
 
   agent_lock();
 
@@ -5243,6 +5317,9 @@ nice_agent_get_stream_name (NiceAgent *agent, guint stream_id)
 {
   Stream *stream;
   gchar *name = NULL;
+
+  g_return_val_if_fail (NICE_IS_AGENT (agent), NULL);
+  g_return_val_if_fail (stream_id >= 1, NULL);
 
   agent_lock();
 
@@ -5309,6 +5386,10 @@ nice_agent_get_default_local_candidate (NiceAgent *agent,
   Stream *stream = NULL;
   Component *component = NULL;
   NiceCandidate *default_candidate = NULL;
+
+  g_return_val_if_fail (NICE_IS_AGENT (agent), NULL);
+  g_return_val_if_fail (stream_id >= 1, NULL);
+  g_return_val_if_fail (component_id >= 1, NULL);
 
   agent_lock ();
 
@@ -5464,6 +5545,8 @@ nice_agent_generate_local_sdp (NiceAgent *agent)
   GString * sdp = g_string_new (NULL);
   GSList *i;
 
+  g_return_val_if_fail (NICE_IS_AGENT (agent), NULL);
+
   agent_lock();
 
   for (i = agent->streams; i; i = i->next) {
@@ -5484,6 +5567,9 @@ nice_agent_generate_local_stream_sdp (NiceAgent *agent, guint stream_id,
   GString *sdp = NULL;
   gchar *ret = NULL;
   Stream *stream;
+
+  g_return_val_if_fail (NICE_IS_AGENT (agent), NULL);
+  g_return_val_if_fail (stream_id >= 1, NULL);
 
   agent_lock();
 
@@ -5507,7 +5593,8 @@ nice_agent_generate_local_candidate_sdp (NiceAgent *agent,
 {
   GString *sdp = NULL;
 
-  g_return_val_if_fail(candidate, NULL);
+  g_return_val_if_fail (NICE_IS_AGENT (agent), NULL);
+  g_return_val_if_fail (candidate != NULL, NULL);
 
   agent_lock();
 
@@ -5527,6 +5614,9 @@ nice_agent_parse_remote_sdp (NiceAgent *agent, const gchar *sdp)
   GSList *l;
   gint i;
   gint ret = 0;
+
+  g_return_val_if_fail (NICE_IS_AGENT (agent), -1);
+  g_return_val_if_fail (sdp != NULL, -1);
 
   agent_lock();
 
@@ -5622,6 +5712,10 @@ nice_agent_parse_remote_stream_sdp (NiceAgent *agent, guint stream_id,
   GSList *candidates = NULL;
   gint i;
 
+  g_return_val_if_fail (NICE_IS_AGENT (agent), NULL);
+  g_return_val_if_fail (stream_id >= 1, NULL);
+  g_return_val_if_fail (sdp != NULL, NULL);
+
   agent_lock();
 
   stream = agent_find_stream (agent, stream_id);
@@ -5678,6 +5772,10 @@ nice_agent_parse_remote_candidate_sdp (NiceAgent *agent, guint stream_id,
   static const gchar *type_names[] = {"host", "srflx", "prflx", "relay"};
   NiceCandidateTransport ctransport;
   guint i;
+
+  g_return_val_if_fail (NICE_IS_AGENT (agent), NULL);
+  g_return_val_if_fail (stream_id >= 1, NULL);
+  g_return_val_if_fail (sdp != NULL, NULL);
 
   if (!g_str_has_prefix (sdp, "a=candidate:"))
     goto done;
