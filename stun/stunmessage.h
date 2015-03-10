@@ -625,7 +625,7 @@ StunMessageReturn stun_message_find64 (const StunMessage *msg,
  *
  <note>
    <para>
-    The string will be NULL-terminated.
+    The string will be nul-terminated.
    </para>
  </note>
  *
@@ -779,7 +779,7 @@ StunMessageReturn stun_message_append64 (StunMessage *msg,
  * @type: The #StunAttribute to append
  * @str: The string to append
  *
- * Adds an attribute from a NULL-terminated string to a STUN message
+ * Adds an attribute from a nul-terminated string to a STUN message
  *
  * Returns: A #StunMessageReturn value.
  */
@@ -1001,7 +1001,7 @@ bool stun_optional (uint16_t t);
  *
  * Transforms a STUN error-code into a human readable string
  *
- * Returns: A static pointer to a NULL-terminated error message string.
+ * Returns: A static pointer to a nul-terminated error message string.
  */
 const char *stun_strerror (StunError code);
 
