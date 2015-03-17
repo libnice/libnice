@@ -49,6 +49,12 @@ static GstFlowReturn
 gst_nice_sink_render (
   GstBaseSink *basesink,
   GstBuffer *buffer);
+#if GST_CHECK_VERSION (1,0,0)
+static GstFlowReturn
+gst_nice_sink_render_list (
+  GstBaseSink *basesink,
+  GstBufferList *buffer_list);
+#endif
 
 static gboolean
 gst_nice_sink_unlock (GstBaseSink *basesink);
@@ -79,6 +85,10 @@ gst_nice_sink_get_property (
 
 static void
 gst_nice_sink_dispose (GObject *object);
+#if GST_CHECK_VERSION (1,0,0)
+static void
+gst_nice_sink_finalize (GObject *object);
+#endif
 
 static GstStateChangeReturn
 gst_nice_sink_change_state (
@@ -113,6 +123,9 @@ gst_nice_sink_class_init (GstNiceSinkClass *klass)
 
   gstbasesink_class = (GstBaseSinkClass *) klass;
   gstbasesink_class->render = GST_DEBUG_FUNCPTR (gst_nice_sink_render);
+#if GST_CHECK_VERSION (1,0,0)
+  gstbasesink_class->render_list = GST_DEBUG_FUNCPTR (gst_nice_sink_render_list);
+#endif
   gstbasesink_class->unlock = GST_DEBUG_FUNCPTR (gst_nice_sink_unlock);
   gstbasesink_class->unlock_stop = GST_DEBUG_FUNCPTR (gst_nice_sink_unlock_stop);
 
@@ -120,6 +133,9 @@ gst_nice_sink_class_init (GstNiceSinkClass *klass)
   gobject_class->set_property = gst_nice_sink_set_property;
   gobject_class->get_property = gst_nice_sink_get_property;
   gobject_class->dispose = gst_nice_sink_dispose;
+#if GST_CHECK_VERSION (1,0,0)
+  gobject_class->finalize = gst_nice_sink_finalize;
+#endif
 
   gstelement_class = (GstElementClass *) klass;
   gstelement_class->change_state = gst_nice_sink_change_state;
@@ -169,7 +185,26 @@ gst_nice_sink_class_init (GstNiceSinkClass *klass)
 static void
 gst_nice_sink_init (GstNiceSink *sink)
 {
+#if GST_CHECK_VERSION (1,0,0)
+  guint max_mem;
+#endif
+
   g_cond_init (&sink->writable_cond);
+
+#if GST_CHECK_VERSION (1,0,0)
+  /* pre-allocate OutputVector, MapInfo and OutputMessage arrays
+   * for use in the render and render_list functions */
+  max_mem = gst_buffer_get_max_memory ();
+
+  sink->n_vecs = max_mem;
+  sink->vecs = g_new (GOutputVector, sink->n_vecs);
+
+  sink->n_maps = max_mem;
+  sink->maps = g_new (GstMapInfo, sink->n_maps);
+
+  sink->n_messages = 1;
+  sink->messages = g_new (NiceOutputMessage, sink->n_messages);
+#endif
 }
 
 static void
@@ -183,26 +218,128 @@ _reliable_transport_writable (NiceAgent *agent, guint stream_id,
   GST_OBJECT_UNLOCK (sink);
 }
 
+#if GST_CHECK_VERSION (1,0,0)
+static gsize
+fill_vectors (GOutputVector * vecs, GstMapInfo * maps, guint n, GstBuffer * buf)
+{
+  GstMemory *mem;
+  gsize size = 0;
+  guint i;
+
+  g_assert (gst_buffer_n_memory (buf) == n);
+
+  for (i = 0; i < n; ++i) {
+    mem = gst_buffer_peek_memory (buf, i);
+    if (gst_memory_map (mem, &maps[i], GST_MAP_READ)) {
+      vecs[i].buffer = maps[i].data;
+      vecs[i].size = maps[i].size;
+    } else {
+      GST_WARNING ("Failed to map memory %p for reading", mem);
+      vecs[i].buffer = "";
+      vecs[i].size = 0;
+    }
+    size += vecs[i].size;
+  }
+
+  return size;
+}
+
+/* Buffer list code written by
+ *   Tim-Philipp Müller <tim@centricular.com>
+ * taken from
+ *   gst-plugins-good/gst/udp/gstmultiudpsink.c
+ */
+static GstFlowReturn
+gst_nice_sink_render_buffers (GstNiceSink * sink, GstBuffer ** buffers,
+    guint num_buffers, guint8 * mem_nums, guint total_mem_num)
+{
+  NiceOutputMessage *msgs;
+  GOutputVector *vecs;
+  GstMapInfo *map_infos;
+  guint i, mem;
+  guint written = 0;
+  gint ret;
+  GstFlowReturn flow_ret = GST_FLOW_OK;
+
+  GST_LOG_OBJECT (sink, "%u buffers, %u memories -> to be sent",
+      num_buffers, total_mem_num);
+
+  if (sink->n_vecs < total_mem_num) {
+    sink->n_vecs = GST_ROUND_UP_16 (total_mem_num);
+    g_free (sink->vecs);
+    sink->vecs = g_new (GOutputVector, sink->n_vecs);
+  }
+  vecs = sink->vecs;
+
+  if (sink->n_maps < total_mem_num) {
+    sink->n_maps = GST_ROUND_UP_16 (total_mem_num);
+    g_free (sink->maps);
+    sink->maps = g_new (GstMapInfo, sink->n_maps);
+  }
+  map_infos = sink->maps;
+
+  if (sink->n_messages < num_buffers) {
+    sink->n_messages = GST_ROUND_UP_16 (num_buffers);
+    g_free (sink->messages);
+    sink->messages = g_new (NiceOutputMessage, sink->n_messages);
+  }
+  msgs = sink->messages;
+
+  for (i = 0, mem = 0; i < num_buffers; ++i) {
+    fill_vectors (&vecs[mem], &map_infos[mem], mem_nums[i], buffers[i]);
+    msgs[i].buffers = &vecs[mem];
+    msgs[i].n_buffers = mem_nums[i];
+    mem += mem_nums[i];
+  }
+
+  GST_OBJECT_LOCK (sink);
+  do {
+    ret = nice_agent_send_messages_nonblocking(sink->agent, sink->stream_id,
+        sink->component_id, msgs + written, num_buffers - written, NULL, NULL);
+
+    if (ret > 0)
+      written += ret;
+
+    if (sink->reliable && written < num_buffers)
+      g_cond_wait (&sink->writable_cond, GST_OBJECT_GET_LOCK (sink));
+
+    if (sink->flushing) {
+      flow_ret = GST_FLOW_FLUSHING;
+      break;
+    }
+  } while (sink->reliable && written < num_buffers);
+  GST_OBJECT_UNLOCK (sink);
+
+  for (i = 0; i < mem; ++i)
+    gst_memory_unmap (map_infos[i].memory, &map_infos[i]);
+
+  return flow_ret;
+}
+#endif
+
 static GstFlowReturn
 gst_nice_sink_render (GstBaseSink *basesink, GstBuffer *buffer)
 {
   GstNiceSink *nicesink = GST_NICE_SINK (basesink);
+  GstFlowReturn flow_ret = GST_FLOW_OK;
+#if GST_CHECK_VERSION (1,0,0)
+  guint8 n_mem;
+
+  n_mem = gst_buffer_n_memory (buffer);
+
+  if (n_mem > 0) {
+    flow_ret = gst_nice_sink_render_buffers (nicesink, &buffer, 1, &n_mem,
+        n_mem);
+  }
+
+#else
   guint written = 0;
   gint ret;
   gchar *data = NULL;
   guint size = 0;
-  GstFlowReturn flow_ret = GST_FLOW_OK;
 
-#if GST_CHECK_VERSION (1,0,0)
-  GstMapInfo info;
-
-  gst_buffer_map (buffer, &info, GST_MAP_READ);
-  data = (gchar *) info.data;
-  size = info.size;
-#else
   data = (gchar *) GST_BUFFER_DATA (buffer);
   size = GST_BUFFER_SIZE (buffer);
-#endif
 
   GST_OBJECT_LOCK (nicesink);
   do {
@@ -214,22 +351,53 @@ gst_nice_sink_render (GstBaseSink *basesink, GstBuffer *buffer)
     if (nicesink->reliable && written < size)
       g_cond_wait (&nicesink->writable_cond, GST_OBJECT_GET_LOCK (nicesink));
     if (nicesink->flushing) {
-#if GST_CHECK_VERSION (1,0,0)
-      flow_ret = GST_FLOW_FLUSHING;
-#else
       flow_ret = GST_FLOW_WRONG_STATE;
-#endif
       break;
     }
   } while (nicesink->reliable && written < size);
   GST_OBJECT_UNLOCK (nicesink);
 
-#if GST_CHECK_VERSION (1,0,0)
-  gst_buffer_unmap (buffer, &info);
 #endif
+  return flow_ret;
+}
+
+#if GST_CHECK_VERSION (1,0,0)
+static GstFlowReturn
+gst_nice_sink_render_list (GstBaseSink *basesink, GstBufferList *buffer_list)
+{
+  GstNiceSink *nicesink = GST_NICE_SINK (basesink);
+  GstBuffer **buffers;
+  GstFlowReturn flow_ret = GST_FLOW_OK;
+  guint8 *mem_nums;
+  guint total_mems;
+  guint i, num_buffers;
+
+  num_buffers = gst_buffer_list_length (buffer_list);
+  if (num_buffers == 0)
+    goto no_data;
+
+  buffers = g_newa (GstBuffer *, num_buffers);
+  mem_nums = g_newa (guint8, num_buffers);
+  for (i = 0, total_mems = 0; i < num_buffers; ++i) {
+    buffers[i] = gst_buffer_list_get (buffer_list, i);
+    mem_nums[i] = gst_buffer_n_memory (buffers[i]);
+    total_mems += mem_nums[i];
+  }
+
+  flow_ret = gst_nice_sink_render_buffers (nicesink, buffers, num_buffers,
+      mem_nums, total_mems);
+
+  return flow_ret;
+
+no_data:
+  {
+    GST_LOG_OBJECT (nicesink, "empty buffer");
+    return GST_FLOW_OK;
+  }
 
   return flow_ret;
 }
+#endif
 
 static gboolean gst_nice_sink_unlock (GstBaseSink *basesink)
 {
@@ -254,7 +422,6 @@ static gboolean gst_nice_sink_unlock_stop (GstBaseSink *basesink)
   return TRUE;
 }
 
-
 static void
 gst_nice_sink_dispose (GObject *object)
 {
@@ -269,6 +436,26 @@ gst_nice_sink_dispose (GObject *object)
 
   G_OBJECT_CLASS (gst_nice_sink_parent_class)->dispose (object);
 }
+
+#if GST_CHECK_VERSION (1,0,0)
+static void
+gst_nice_sink_finalize (GObject *object)
+{
+  GstNiceSink *sink = GST_NICE_SINK (object);
+
+  g_free (sink->vecs);
+  sink->vecs = NULL;
+  sink->n_vecs = 0;
+  g_free (sink->maps);
+  sink->maps = NULL;
+  sink->n_maps = 0;
+  g_free (sink->messages);
+  sink->messages = NULL;
+  sink->n_messages = 0;
+
+  G_OBJECT_CLASS (gst_nice_sink_parent_class)->finalize (object);
+}
+#endif
 
 static void
 gst_nice_sink_set_property (

@@ -69,6 +69,16 @@ struct _GstNiceSink
   GCond writable_cond;
   gulong writable_id;
   gboolean flushing;
+
+#if GST_CHECK_VERSION (1,0,0)
+  /* pre-allocated scrap space for render function */
+  GOutputVector *vecs;
+  guint n_vecs;
+  GstMapInfo *maps;
+  guint n_maps;
+  NiceOutputMessage *messages;
+  guint n_messages;
+#endif
 };
 
 typedef struct _GstNiceSinkClass GstNiceSinkClass;
