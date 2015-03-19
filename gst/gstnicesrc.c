@@ -322,8 +322,10 @@ gst_nice_src_dispose (GObject *object)
     g_main_context_unref (src->mainctx);
   src->mainctx = NULL;
 
-  if (src->outbufs)
+  if (src->outbufs) {
+    g_queue_foreach (src->outbufs, (GFunc) gst_buffer_unref, NULL);
     g_queue_free (src->outbufs);
+  }
   src->outbufs = NULL;
 
   G_OBJECT_CLASS (gst_nice_src_parent_class)->dispose (object);
@@ -416,6 +418,10 @@ gst_nice_src_change_state (GstElement * element, GstStateChange transition)
     case GST_STATE_CHANGE_READY_TO_NULL:
       nice_agent_attach_recv (src->agent, src->stream_id, src->component_id,
           src->mainctx, NULL, NULL);
+      GST_OBJECT_LOCK (src);
+      g_queue_foreach (src->outbufs, (GFunc) gst_buffer_unref, NULL);
+      g_queue_clear (src->outbufs);
+      GST_OBJECT_UNLOCK (src);
       break;
     case GST_STATE_CHANGE_READY_TO_PAUSED:
     case GST_STATE_CHANGE_PAUSED_TO_PLAYING:
