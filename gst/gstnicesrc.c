@@ -425,13 +425,8 @@ gst_nice_src_change_state (GstElement * element, GstStateChange transition)
                 "Trying to start Nice source without a component set");
             return GST_STATE_CHANGE_FAILURE;
           }
-      else
-        {
-          nice_agent_attach_recv (src->agent, src->stream_id, src->component_id,
-              src->mainctx, gst_nice_src_read_callback, (gpointer) src);
-        }
       break;
-    case GST_STATE_CHANGE_READY_TO_NULL:
+    case GST_STATE_CHANGE_PAUSED_TO_READY:
       nice_agent_attach_recv (src->agent, src->stream_id, src->component_id,
           src->mainctx, NULL, NULL);
       GST_OBJECT_LOCK (src);
@@ -442,13 +437,27 @@ gst_nice_src_change_state (GstElement * element, GstStateChange transition)
     case GST_STATE_CHANGE_READY_TO_PAUSED:
     case GST_STATE_CHANGE_PAUSED_TO_PLAYING:
     case GST_STATE_CHANGE_PLAYING_TO_PAUSED:
-    case GST_STATE_CHANGE_PAUSED_TO_READY:
+    case GST_STATE_CHANGE_READY_TO_NULL:
     default:
       break;
   }
 
   ret = GST_ELEMENT_CLASS (gst_nice_src_parent_class)->change_state (element,
       transition);
+
+  switch (transition) {
+    case GST_STATE_CHANGE_READY_TO_PAUSED:
+      nice_agent_attach_recv (src->agent, src->stream_id, src->component_id,
+          src->mainctx, gst_nice_src_read_callback, (gpointer) src);
+      break;
+    case GST_STATE_CHANGE_NULL_TO_READY:
+    case GST_STATE_CHANGE_PAUSED_TO_PLAYING:
+    case GST_STATE_CHANGE_PLAYING_TO_PAUSED:
+    case GST_STATE_CHANGE_PAUSED_TO_READY:
+    case GST_STATE_CHANGE_READY_TO_NULL:
+    default:
+      break;
+  }
 
   return ret;
 }
