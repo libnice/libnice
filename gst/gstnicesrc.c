@@ -205,9 +205,10 @@ gst_nice_src_read_callback (NiceAgent *agent,
   buffer = gst_buffer_new_and_alloc (len);
   memcpy (GST_BUFFER_DATA (buffer), buf, len);
 #endif
+  GST_OBJECT_LOCK (nicesrc);
   g_queue_push_tail (nicesrc->outbufs, buffer);
-
   g_main_loop_quit (nicesrc->mainloop);
+  GST_OBJECT_UNLOCK (nicesrc);
 }
 
 static gboolean
@@ -285,12 +286,15 @@ gst_nice_src_create (
     return GST_FLOW_WRONG_STATE;
 #endif
   }
-  GST_OBJECT_UNLOCK (basesrc);
-
-  if (g_queue_is_empty (nicesrc->outbufs))
+  if (g_queue_is_empty (nicesrc->outbufs)) {
+    GST_OBJECT_UNLOCK (basesrc);
     g_main_loop_run (nicesrc->mainloop);
+    GST_OBJECT_LOCK (basesrc);
+  }
 
   *buffer = g_queue_pop_head (nicesrc->outbufs);
+  GST_OBJECT_UNLOCK (basesrc);
+
   if (*buffer != NULL) {
     GST_LOG_OBJECT (nicesrc, "Got buffer, pushing");
     return GST_FLOW_OK;
