@@ -1530,4 +1530,3 @@ nice_agent_get_component_state (NiceAgent *agent,
 G_END_DECLS
 
 #endif /* _AGENT_H */
-

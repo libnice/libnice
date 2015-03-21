@@ -1003,7 +1003,7 @@ nice_agent_class_init (NiceAgentClass *klass)
   nice_debug_init ();
 }
 
-static void priv_generate_tie_breaker (NiceAgent *agent) 
+static void priv_generate_tie_breaker (NiceAgent *agent)
 {
   nice_rng_generate_bytes (agent->rng, 8, (gchar*)&agent->tie_breaker);
 }
@@ -4591,7 +4591,7 @@ nice_agent_restart (
   for (i = agent->streams; i; i = i->next) {
     Stream *stream = i->data;
 
-    /* step: reset local credentials for the stream and 
+    /* step: reset local credentials for the stream and
      * clean up the list of remote candidates */
     stream_restart (agent, stream);
   }
