@@ -203,7 +203,7 @@ AC_ARG_WITH(gstreamer-0.10,
 	[with_gstreamer010=auto])
 
 AS_IF([test "$with_gstreamer" != no], [
-  
+
 	PKG_CHECK_MODULES(GST, [
 		gstreamer-1.0 >= 0.11.91
 		gstreamer-base-1.0 >= 0.11.91
@@ -220,6 +220,19 @@ AS_IF([test "$with_gstreamer" != no], [
 
 		with_gstreamer=no
 		])
+
+	PKG_CHECK_MODULES(GST_CHECK, [
+		gstreamer-check-1.0 >= 0.11.91
+		],
+		[
+		have_gst_check=yes
+		],
+		[
+		have_gst_check=no
+		])
+
+	AM_CONDITIONAL(HAVE_GST_CHECK, test "$have_gst_check" = yes)
+
 ])
 
 AS_IF([test "$with_gstreamer010" != no], [

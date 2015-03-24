@@ -8,6 +8,9 @@
 
 include $(top_srcdir)/common.mk
 
+TESTS_ENVIRONMENT=\
+	GST_PLUGIN_PATH=${GST_PLUGIN_PATH}:$(top_builddir)/gst
+
 AM_CFLAGS = \
 	$(LIBNICE_CFLAGS) \
 	$(GLIB_CFLAGS) \
@@ -50,6 +53,10 @@ check_PROGRAMS = \
 dist_check_SCRIPTS = \
 	check-test-fullmode-with-stun.sh \
 	test-pseudotcp-random.sh
+
+if HAVE_GST_CHECK
+check_PROGRAMS += test-gstreamer
+endif
 
 TESTS = $(check_PROGRAMS) $(dist_check_SCRIPTS)
 
@@ -108,6 +115,9 @@ test_new_dribble_LDADD = $(COMMON_LDADD)
 test_tcp_LDADD = $(COMMON_LDADD)
 
 test_icetcp_LDADD = $(COMMON_LDADD)
+
+test_gstreamer_CFLAGS = $(AM_CFLAGS) $(GST_CHECK_CFLAGS)
+test_gstreamer_LDADD = -lnice -L$(top_builddir)/nice/.libs $(GLIB_LIBS) $(GUPNP_LIBS) $(GST_CHECK_LIBS) $(GST_LIBS)
 
 all-local:
 	chmod a+x $(srcdir)/check-test-fullmode-with-stun.sh
