@@ -335,7 +335,7 @@ AM_CONDITIONAL(GST_PLUGIN_BUILD_STATIC, test "x$enable_static_plugins" = "xyes")
 
 case $host_os in
   solaris*)
-    LDFLAGS="$LDFLAGS -lsocket -lnls"
+    LDFLAGS="$LDFLAGS -lsocket -lnsl"
     ;;
   *)
     ;;
