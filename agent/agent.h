@@ -54,12 +54,21 @@
  *
  * A #NiceAgent must always be used with a #GMainLoop running the #GMainContext
  * passed into nice_agent_new() (or nice_agent_new_reliable()). Without the
- * #GMainContext being iterated, the agent’s timers will not fire and, if
- * nice_agent_attach_recv() is used, packets will not be received.
+ * #GMainContext being iterated, the agent’s timers will not fire, etc.
  *
  * Streams and their components are referenced by integer IDs (with respect to a
  * given #NiceAgent). These IDs are guaranteed to be positive (i.e. non-zero)
  * for valid streams/components.
+ *
+ * To complete the ICE connectivity checks, the user must either register
+ * an I/O callback (with nice_agent_attach_recv()) or call nice_agent_recv_messages()
+ * in a loop on a dedicated thread.
+ * Technically, #NiceAgent does not poll the streams on its own, since
+ * user data could arrive at any time; to receive STUN packets
+ * required for establishing ICE connectivity, it is backpiggying
+ * on the facility chosen by the user. #NiceAgent will handle all STUN
+ * packets internally; they're never actually passed to the I/O callback
+ * or returned from nice_agent_recv_messages() and related functions.
  *
  * Each stream can receive data in one of two ways: using
  * nice_agent_attach_recv() or nice_agent_recv_messages() (and the derived
@@ -98,7 +107,9 @@
  *   stream_id = nice_agent_add_stream (agent, 1);
  *   nice_agent_gather_candidates (agent, stream_id);
  *
- *   // Attach to the component to receive the data
+ *   // Attach I/O callback the component to ensure that:
+ *   // 1) agent gets its STUN packets (not delivered to cb_nice_recv)
+ *   // 2) you get your own data
  *   nice_agent_attach_recv (agent, stream_id, 1, NULL,
  *                          cb_nice_recv, NULL);
  *
@@ -881,11 +892,14 @@ nice_agent_restart_stream (
  * @component_id: The ID of the component
  * @ctx: The Glib Mainloop Context to use for listening on the component
  * @func: The callback function to be called when data is received on
- * the stream's component
+ * the stream's component (will not be called for STUN messages that
+ * should be handled by #NiceAgent itself)
  * @data: user data associated with the callback
  *
  * Attaches the stream's component's sockets to the Glib Mainloop Context in
- * order to be notified whenever data becomes available for a component.
+ * order to be notified whenever data becomes available for a component,
+ * and to enable #NiceAgent to receive STUN messages (during the
+ * establishment of ICE connectivity).
  *
  * This must not be used in combination with nice_agent_recv_messages() (or
  * #NiceIOStream or #NiceInputStream) on the same stream/component pair.
@@ -954,6 +968,11 @@ nice_agent_recv (
  * @agent, returning only once exactly @n_messages messages have been received
  * and written into @messages, the stream is closed by the other end or by
  * calling nice_agent_remove_stream(), or @cancellable is cancelled.
+ *
+ * Any STUN packets received will not be added to @messages; instead,
+ * they'll be passed for processing to #NiceAgent itself. Since #NiceAgent
+ * does not poll for messages on its own, it's therefore essential to keep
+ * calling this function for ICE connection establishment to work.
  *
  * In the non-error case, in reliable mode, this will block until all buffers in
  * all @n_messages have been filled with received data (i.e. @messages is
@@ -1050,6 +1069,11 @@ nice_agent_recv_nonblocking (
  * mode) exactly @n_messages messages. In reliable mode, it will receive bytes
  * into @messages until it would block; in non-reliable mode, it will receive
  * messages until it would block.
+ *
+ * Any STUN packets received will not be added to @messages; instead,
+ * they'll be passed for processing to #NiceAgent itself. Since #NiceAgent
+ * does not poll for messages on its own, it's therefore essential to keep
+ * calling this function for ICE connection establishment to work.
  *
  * As this function is non-blocking, @cancellable is included only for parity
  * with nice_agent_recv_messages(). If @cancellable is cancelled before this
