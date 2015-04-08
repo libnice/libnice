@@ -48,7 +48,8 @@ check_PROGRAMS = \
 	test-dribble \
 	test-new-dribble \
 	test-tcp \
-	test-icetcp
+	test-icetcp \
+	test-credentials
 
 dist_check_SCRIPTS = \
 	check-test-fullmode-with-stun.sh \
@@ -115,6 +116,8 @@ test_new_dribble_LDADD = $(COMMON_LDADD)
 test_tcp_LDADD = $(COMMON_LDADD)
 
 test_icetcp_LDADD = $(COMMON_LDADD)
+
+test_credentials_LDADD = $(COMMON_LDADD)
 
 test_gstreamer_CFLAGS = $(AM_CFLAGS) $(GST_CHECK_CFLAGS)
 test_gstreamer_LDADD = -lnice -L$(top_builddir)/nice/.libs $(GLIB_LIBS) $(GUPNP_LIBS) $(GST_CHECK_LIBS) $(GST_LIBS)
