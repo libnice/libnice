@@ -555,6 +555,18 @@ gst_nice_sink_change_state (GstElement * element, GstStateChange transition)
               "Trying to start Nice sink without an agent set");
           return GST_STATE_CHANGE_FAILURE;
         }
+      else if (sink->stream_id == 0)
+          {
+            GST_ERROR_OBJECT (element,
+                "Trying to start Nice sink without a stream set");
+            return GST_STATE_CHANGE_FAILURE;
+          }
+      else if (sink->component_id == 0)
+          {
+            GST_ERROR_OBJECT (element,
+                "Trying to start Nice sink without a component set");
+            return GST_STATE_CHANGE_FAILURE;
+          }
       break;
     case GST_STATE_CHANGE_READY_TO_PAUSED:
     case GST_STATE_CHANGE_PAUSED_TO_PLAYING:

@@ -403,12 +403,24 @@ gst_nice_src_change_state (GstElement * element, GstStateChange transition)
 
   switch (transition) {
     case GST_STATE_CHANGE_NULL_TO_READY:
-      if (src->agent == NULL || src->stream_id == 0 || src->component_id == 0)
+      if (src->agent == NULL)
         {
           GST_ERROR_OBJECT (element,
               "Trying to start Nice source without an agent set");
           return GST_STATE_CHANGE_FAILURE;
         }
+      else if (src->stream_id == 0)
+          {
+            GST_ERROR_OBJECT (element,
+                "Trying to start Nice source without a stream set");
+            return GST_STATE_CHANGE_FAILURE;
+          }
+      else if (src->component_id == 0)
+          {
+            GST_ERROR_OBJECT (element,
+                "Trying to start Nice source without a component set");
+            return GST_STATE_CHANGE_FAILURE;
+          }
       else
         {
           nice_agent_attach_recv (src->agent, src->stream_id, src->component_id,
