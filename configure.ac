@@ -284,7 +284,7 @@ if test "x$WANT_GUPNP" != "xno"; then
     [ HAVE_GUPNP=no ])
 fi
 if test "x$WANT_GUPNP" = "xyes" && test "x$HAVE_GUPNP" = "xno"; then
-   AC_MSG_ERROR(Requested GUPnP IGD, but it is not available)
+   AC_MSG_ERROR([Requested GUPnP IGD, but it is not available])
 fi
 
 if test "x$HAVE_GUPNP" = "xyes"; then
