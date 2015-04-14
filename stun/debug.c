@@ -55,6 +55,15 @@ void stun_debug_disable (void) {
   debug_enabled = 0;
 }
 
+#if     __GNUC__ > 2 || (__GNUC__ == 2 && __GNUC_MINOR__ > 4)
+#define GNUC_PRINTF(format_idx, arg_idx) \
+  __attribute__((__format__ (__printf__, format_idx, arg_idx)))
+#else
+#define GNUC_PRINTF( format_idx, arg_idx)
+#endif
+
+static void
+default_handler (const char *format, va_list ap) GNUC_PRINTF (1, 0);
 
 static void
 default_handler (const char *format, va_list ap)

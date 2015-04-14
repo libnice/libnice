@@ -66,7 +66,12 @@ void stun_debug_disable (void);
  *
  * Callback for a debug message from the STUN code.
  */
+#if defined(__GNUC__) && (__GNUC__ > 2 || (__GNUC__ == 2 && __GNUC_MINOR__ > 4))
+typedef void (*StunDebugHandler) (const char *format, va_list ap)
+  __attribute__((__format__ (__printf__, 1, 0)));
+#else
 typedef void (*StunDebugHandler) (const char *format, va_list ap);
+#endif
 
 /**
  * stun_set_debug_handler:

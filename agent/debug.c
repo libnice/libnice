@@ -63,6 +63,9 @@ static const GDebugKey keys[] = {
 };
 
 static void
+stun_handler (const char *format, va_list ap) G_GNUC_PRINTF (1, 0);
+
+static void
 stun_handler (const char *format, va_list ap)
 {
   g_logv ("libnice-stun", G_LOG_LEVEL_DEBUG, format, ap);
