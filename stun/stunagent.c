@@ -117,7 +117,7 @@ StunValidationStatus stun_agent_validate (StunAgent *agent, StunMessage *msg,
   uint16_t unknown;
   int error_code;
   int ignore_credentials = 0;
-  uint8_t long_term_key[16];
+  uint8_t long_term_key[16] = { 0 };
   bool long_term_key_valid = FALSE;
 
   len = stun_message_validate_buffer_length (buffer, buffer_len,
