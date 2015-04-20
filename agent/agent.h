@@ -1253,8 +1253,12 @@ void nice_agent_set_software (
  * @stream_id: The ID of the stream to change
  * @name: The new name of the stream or %NULL
  *
- * This function will assign a unique name to a stream.
- * This is only useful when parsing and generating an SDP of the candidates.
+ * This function will assign a media type to a stream. The only values
+ * that can be used to produce a valid SDP are: "audio", "video",
+ * "text", "application", "image" and "message".
+ *
+ * This is only useful when parsing and generating an SDP of the
+ * candidates.
  *
  * <para>See also: nice_agent_generate_local_sdp()</para>
  * <para>See also: nice_agent_parse_remote_sdp()</para>

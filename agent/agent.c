@@ -5314,6 +5314,18 @@ nice_agent_set_stream_name (NiceAgent *agent, guint stream_id,
 
   g_return_val_if_fail (NICE_IS_AGENT (agent), FALSE);
   g_return_val_if_fail (stream_id >= 1, FALSE);
+  g_return_val_if_fail (name, FALSE);
+
+  if (strcmp (name, "audio") &&
+      strcmp (name, "video") &&
+      strcmp (name, "text") &&
+      strcmp (name, "application") &&
+      strcmp (name, "message") &&
+      strcmp (name, "image")) {
+    g_critical ("Stream name %s will produce invalid SDP, only \"audio\","
+        " \"video\", \"text\", \"application\", \"image\" and \"message\""
+        " are valid", name);
+  }
 
   agent_lock();
 
