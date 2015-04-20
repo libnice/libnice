@@ -37,8 +37,8 @@
  * file under either the MPL or the LGPL.
  */
 
-#ifndef _ADDRESS_H
-#define _ADDRESS_H
+#ifndef __LIBNICE_ADDRESS_H__
+#define __LIBNICE_ADDRESS_H__
 
 /**
  * SECTION:address
@@ -303,5 +303,5 @@ nice_address_ip_version (const NiceAddress *addr);
 
 G_END_DECLS
 
-#endif /* _ADDRESS_H */
+#endif /* __LIBNICE_ADDRESS_H__ */
 

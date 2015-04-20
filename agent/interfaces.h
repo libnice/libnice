@@ -22,8 +22,8 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301 USA
  */
 
-#ifndef __INTERFACES_H__
-#define __INTERFACES_H__
+#ifndef __LIBNICE_INTERFACES_H__
+#define __LIBNICE_INTERFACES_H__
 
 /**
  * SECTION:interfaces
@@ -79,4 +79,4 @@ GList * nice_interfaces_get_local_interfaces (void);
 
 G_END_DECLS
 
-#endif
+#endif /* __LIBNICE_INTERFACES_H__ */

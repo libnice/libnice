@@ -34,8 +34,8 @@
  * file under either the MPL or the LGPL.
  */
 
-#ifndef _DEBUG_H
-#define _DEBUG_H
+#ifndef __LIBNICE_DEBUG_H__
+#define __LIBNICE_DEBUG_H__
 
 
 /**
@@ -101,5 +101,5 @@ void nice_debug_disable (gboolean with_stun);
 
 G_END_DECLS
 
-#endif /* _DEBUG_H */
+#endif /* __LIBNICE_DEBUG_H__ */
 

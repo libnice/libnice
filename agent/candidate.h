@@ -37,8 +37,8 @@
  * file under either the MPL or the LGPL.
  */
 
-#ifndef _CANDIDATE_H
-#define _CANDIDATE_H
+#ifndef __LIBNICE_CANDIDATE_H__
+#define __LIBNICE_CANDIDATE_H__
 
 #include <glib.h>
 #include <glib-object.h>
@@ -241,5 +241,5 @@ GType nice_candidate_get_type (void);
 
 G_END_DECLS
 
-#endif /* _CANDIDATE_H */
+#endif /* __LIBNICE_CANDIDATE_H__ */
 

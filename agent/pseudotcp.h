@@ -35,8 +35,8 @@
  * file under either the MPL or the LGPL.
  */
 
-#ifndef _PSEUDOTCP_H
-#define _PSEUDOTCP_H
+#ifndef __LIBNICE_PSEUDOTCP_H__
+#define __LIBNICE_PSEUDOTCP_H__
 
 /**
  * SECTION:pseudotcp
@@ -586,5 +586,5 @@ gboolean pseudo_tcp_socket_is_closed_remotely (PseudoTcpSocket *self);
 
 G_END_DECLS
 
-#endif /* _PSEUDOTCP_H */
+#endif /* __LIBNICE_PSEUDOTCP_H__ */
 

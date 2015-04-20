@@ -37,8 +37,8 @@
  * file under either the MPL or the LGPL.
  */
 
-#ifndef _AGENT_H
-#define _AGENT_H
+#ifndef __LIBNICE_AGENT_H__
+#define __LIBNICE_AGENT_H__
 
 /**
  * SECTION:agent
@@ -1580,4 +1580,4 @@ nice_agent_get_component_state (NiceAgent *agent,
 
 G_END_DECLS
 
-#endif /* _AGENT_H */
+#endif /* __LIBNICE_AGENT_H__ */
