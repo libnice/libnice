@@ -1,3 +1,11 @@
+libnice 0.1.11 (2015-04-20)
+===========================
+API: nice_agent_set_local_credentials() for WebRTC
+Nicesink: support GstBufferList
+Better warnings on programming errors
+Build fixes for Solaris and Windows
+Bug and documentation fixes
+
 libnice 0.1.10 (2015-01-28)
 ===========================
 Fix bug on component change on the sink
