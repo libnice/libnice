@@ -5654,7 +5654,7 @@ nice_agent_parse_remote_sdp (NiceAgent *agent, const gchar *sdp)
 {
   Stream *current_stream = NULL;
   gchar **sdp_lines = NULL;
-  GSList *l, *stream_item;
+  GSList *l, *stream_item = NULL;
   gint i;
   gint ret = 0;
 
@@ -5673,11 +5673,12 @@ nice_agent_parse_remote_sdp (NiceAgent *agent, const gchar *sdp)
   }
 
   sdp_lines = g_strsplit (sdp, "\n", 0);
-  stream_item = agent->streams;
-  current_stream = stream_item->data;
   for (i = 0; sdp_lines && sdp_lines[i]; i++) {
     if (g_str_has_prefix (sdp_lines[i], "m=")) {
-      stream_item = stream_item->next;
+      if (stream_item == NULL)
+        stream_item = agent->streams;
+      else
+        stream_item = stream_item->next;
       if (!stream_item) {
         g_critical("More streams in SDP than in agent");
         ret = -1;
