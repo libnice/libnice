@@ -5533,7 +5533,7 @@ _generate_stream_sdp (NiceAgent *agent, Stream *stream,
 
   if (include_non_ice) {
     NiceAddress rtp, rtcp;
-    gchar ip4[INET6_ADDRSTRLEN];
+    gchar ip4[INET6_ADDRSTRLEN] = "";
 
     nice_address_init (&rtp);
     nice_address_set_ipv4 (&rtp, 0);
