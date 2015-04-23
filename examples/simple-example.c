@@ -42,7 +42,10 @@
 #include <string.h>
 #include <ctype.h>
 
+#include <gio/gnetworking.h>
+
 #include <agent.h>
+
 
 static GMainLoop *gloop;
 static GIOChannel* io_stdin;
@@ -104,9 +107,14 @@ main(int argc, char *argv[])
 #if !GLIB_CHECK_VERSION(2, 36, 0)
   g_type_init();
 #endif
+  g_networking_init();
 
   gloop = g_main_loop_new(NULL, FALSE);
+#ifdef G_OS_WIN32
+  io_stdin = g_io_channel_win32_new(_fileno(stdin));
+#else
   io_stdin = g_io_channel_unix_new(fileno(stdin));
+#endif
 
   // Create the nice agent
   agent = nice_agent_new(g_main_loop_get_context (gloop),
