@@ -44,7 +44,9 @@
 
 #include <agent.h>
 
+#if GLIB_CHECK_VERSION(2, 36, 0)
 #include <gio/gnetworking.h>
+#endif
 
 static GMainLoop *gloop;
 static gchar *stun_addr = NULL;
@@ -102,7 +104,9 @@ main(int argc, char *argv[])
     g_debug("Using stun server '[%s]:%u'\n", stun_addr, stun_port);
   }
 
-#if !GLIB_CHECK_VERSION(2, 36, 0)
+#if GLIB_CHECK_VERSION(2, 36, 0)
+  g_networking_init();
+#else
   g_type_init();
 #endif
   g_networking_init();

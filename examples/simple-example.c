@@ -42,10 +42,11 @@
 #include <string.h>
 #include <ctype.h>
 
-#include <gio/gnetworking.h>
-
 #include <agent.h>
 
+#if GLIB_CHECK_VERSION(2, 36, 0)
+#include <gio/gnetworking.h>
+#endif
 
 static GMainLoop *gloop;
 static GIOChannel* io_stdin;
@@ -104,10 +105,11 @@ main(int argc, char *argv[])
     g_debug("Using stun server '[%s]:%u'\n", stun_addr, stun_port);
   }
 
-#if !GLIB_CHECK_VERSION(2, 36, 0)
+#if GLIB_CHECK_VERSION(2, 36, 0)
+  g_networking_init();
+#else
   g_type_init();
 #endif
-  g_networking_init();
 
   gloop = g_main_loop_new(NULL, FALSE);
 #ifdef G_OS_WIN32
