@@ -197,7 +197,8 @@ int main (void)
 
   /* Invalid socket address */
   assert (stun_agent_init_request (&agent, &req, req_buf, sizeof(req_buf), STUN_BINDING));
-  val = stun_message_append_string (&req, STUN_ATTRIBUTE_USERNAME, ufrag);
+  val = stun_message_append_string (&req, STUN_ATTRIBUTE_USERNAME,
+      (char *) ufrag);
   assert (val == STUN_MESSAGE_RETURN_SUCCESS);
   rlen = stun_agent_finish_message (&agent, &req, pass, pass_len);
   assert (rlen > 0);
@@ -216,7 +217,8 @@ int main (void)
   assert (stun_agent_init_request (&agent, &req, req_buf, sizeof(req_buf), STUN_BINDING));
   val = stun_message_append64 (&req, STUN_ATTRIBUTE_ICE_CONTROLLING, tie + 1);
   assert (val == STUN_MESSAGE_RETURN_SUCCESS);
-  val = stun_message_append_string (&req, STUN_ATTRIBUTE_USERNAME, ufrag);
+  val = stun_message_append_string (&req, STUN_ATTRIBUTE_USERNAME,
+     (char *) ufrag);
   assert (val == STUN_MESSAGE_RETURN_SUCCESS);
   rlen = stun_agent_finish_message (&agent, &req, pass, pass_len);
   assert (rlen > 0);
@@ -238,7 +240,8 @@ int main (void)
   assert (stun_agent_init_request (&agent, &req, req_buf, sizeof(req_buf), STUN_BINDING));
   val = stun_message_append64 (&req, STUN_ATTRIBUTE_ICE_CONTROLLED, tie - 1);
   assert (val == STUN_MESSAGE_RETURN_SUCCESS);
-  val = stun_message_append_string (&req, STUN_ATTRIBUTE_USERNAME, ufrag);
+  val = stun_message_append_string (&req, STUN_ATTRIBUTE_USERNAME,
+      (char *) ufrag);
   assert (val == STUN_MESSAGE_RETURN_SUCCESS);
   rlen = stun_agent_finish_message (&agent, &req, pass, pass_len);
   assert (rlen > 0);
