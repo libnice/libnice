@@ -328,7 +328,7 @@ nice_interfaces_get_local_ips (gboolean include_loopback)
       else
         nice_debug ("Ignoring loopback interface");
     } else {
-      if (nice_interfaces_is_private_ip (sa)) {
+      if (nice_interfaces_is_private_ip ((struct sockaddr *) sa)) {
         ips = add_ip_to_list (ips, g_strdup (inet_ntoa (sa->sin_addr)), TRUE);
       } else {
         ips = add_ip_to_list (ips, g_strdup (inet_ntoa (sa->sin_addr)), FALSE);
