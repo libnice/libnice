@@ -190,11 +190,6 @@ nice_interfaces_is_private_ip (const struct sockaddr *_sa)
   return FALSE;
 }
 
-#ifdef HAVE_GETIFADDRS
-
-static gchar *
-sockaddr_to_string (const struct sockaddr *addr);
-
 static GList *
 add_ip_to_list (GList *list, gchar *ip, gboolean append)
 {
@@ -211,6 +206,11 @@ add_ip_to_list (GList *list, gchar *ip, gboolean append)
   else
     return g_list_prepend (list, ip);
 }
+
+#ifdef HAVE_GETIFADDRS
+
+static gchar *
+sockaddr_to_string (const struct sockaddr *addr);
 
 GList *
 nice_interfaces_get_local_ips (gboolean include_loopback)
