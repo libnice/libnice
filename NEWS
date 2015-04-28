@@ -1,3 +1,8 @@
+libnice 0.1.13 (2015-04-28)
+===========================
+Fix build on non-Windows platforms that don't have getifaddrs()
+Fix build regression on Windows
+
 libnice 0.1.12 (2015-04-22)
 ===========================
 Fix regression in SDP parser
