@@ -136,7 +136,7 @@ example_thread(void *data)
   int rval;
 
 #ifdef G_OS_WIN32
-  io_stdin = g_io_channel_win32_new(_fileno(stdin));
+  io_stdin = g_io_channel_win32_new_fd(_fileno(stdin));
 #else
   io_stdin = g_io_channel_unix_new(fileno(stdin));
 #endif

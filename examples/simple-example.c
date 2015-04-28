@@ -113,7 +113,7 @@ main(int argc, char *argv[])
 
   gloop = g_main_loop_new(NULL, FALSE);
 #ifdef G_OS_WIN32
-  io_stdin = g_io_channel_win32_new(_fileno(stdin));
+  io_stdin = g_io_channel_win32_new_fd(_fileno(stdin));
 #else
   io_stdin = g_io_channel_unix_new(fileno(stdin));
 #endif
