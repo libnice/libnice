@@ -5329,16 +5329,14 @@ nice_agent_set_stream_name (NiceAgent *agent, guint stream_id,
 
   agent_lock();
 
-  if (name != NULL) {
-    for (i = agent->streams; i; i = i->next) {
-      Stream *stream = i->data;
+  for (i = agent->streams; i; i = i->next) {
+    Stream *stream = i->data;
 
-      if (stream->id != stream_id &&
-          g_strcmp0 (stream->name, name) == 0)
-        goto done;
-      else if (stream->id == stream_id)
-        stream_to_name = stream;
-    }
+    if (stream->id != stream_id &&
+        g_strcmp0 (stream->name, name) == 0)
+      goto done;
+    else if (stream->id == stream_id)
+      stream_to_name = stream;
   }
 
   if (stream_to_name == NULL)
