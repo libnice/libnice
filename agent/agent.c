@@ -3051,7 +3051,6 @@ static gboolean priv_add_remote_candidate (
           username, password, priority);
     }
     /* case 1: an existing candidate, update the attributes */
-    candidate->type = type;
     if (base_addr)
       candidate->base_addr = *base_addr;
     candidate->priority = priority;
