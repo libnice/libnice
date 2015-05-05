@@ -3041,7 +3041,7 @@ static gboolean priv_add_remote_candidate (
 
   /* step: check whether the candidate already exists */
   candidate = component_find_remote_candidate(component, addr, transport);
-  if (candidate) {
+  if (candidate && candidate->type == type) {
     if (nice_debug_is_enabled ()) {
       gchar tmpbuf[INET6_ADDRSTRLEN];
       nice_address_to_string (addr, tmpbuf);
