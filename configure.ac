@@ -231,9 +231,6 @@ AS_IF([test "$with_gstreamer" != no], [
 		[
 		have_gst_check=no
 		])
-
-	AM_CONDITIONAL(HAVE_GST_CHECK, test "$have_gst_check" = yes)
-
 ])
 
 AS_IF([test "$with_gstreamer010" != no], [
@@ -260,6 +257,7 @@ AC_SUBST(gstplugindir)
 AC_SUBST(gstplugin010dir)
 
 AM_CONDITIONAL(WITH_GSTREAMER, test "$with_gstreamer" = yes)
+AM_CONDITIONAL(HAVE_GST_CHECK, test "$have_gst_check" = yes)
 AM_CONDITIONAL(WITH_GSTREAMER010, test "$with_gstreamer010" = yes)
 
 GUPNP_IGD_REQUIRED=0.2.4
