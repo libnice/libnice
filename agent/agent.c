@@ -1837,7 +1837,7 @@ adjust_tcp_clock (NiceAgent *agent, Stream *stream, Component *component)
   }
 }
 
-static void
+void
 _tcp_sock_is_writable (NiceSocket *sock, gpointer user_data)
 {
   Component *component = user_data;

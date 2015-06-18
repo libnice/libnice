@@ -1914,6 +1914,12 @@ int conn_check_send (NiceAgent *agent, CandidateCheckPair *pair)
           if (new_socket) {
             pair->sockptr = new_socket;
             _priv_set_socket_tos (agent, pair->sockptr, stream2->tos);
+
+            if (agent->reliable) {
+              nice_socket_set_writable_callback (pair->sockptr,
+                  _tcp_sock_is_writable, component2);
+            }
+
             component_attach_socket (component2, new_socket);
           }
         }

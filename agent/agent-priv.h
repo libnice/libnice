@@ -220,6 +220,8 @@ void nice_agent_init_stun_agent (NiceAgent *agent, StunAgent *stun_agent);
 
 void _priv_set_socket_tos (NiceAgent *agent, NiceSocket *sock, gint tos);
 
+void _tcp_sock_is_writable (NiceSocket *sock, gpointer user_data);
+
 gboolean
 component_io_cb (
   GSocket *gsocket,
