@@ -2465,10 +2465,11 @@ pseudo_tcp_socket_get_available_send_space (PseudoTcpSocket *self)
   PseudoTcpSocketPrivate *priv = self->priv;
   gsize ret;
 
-  if (!pseudo_tcp_state_has_sent_fin (priv->state))
+  if (!pseudo_tcp_state_has_sent_fin (priv->state)) {
     ret = pseudo_tcp_fifo_get_write_remaining (&priv->sbuf);
-  else
+  } else {
     ret = 0;
+  }
 
   if (ret == 0)
     priv->bWriteEnable = TRUE;

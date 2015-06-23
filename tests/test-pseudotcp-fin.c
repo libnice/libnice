@@ -1152,6 +1152,13 @@ pseudotcp_close_recv_queued (void)
   /* Establish a connection. */
   establish_connection (&data);
 
+  g_assert_cmpint (pseudo_tcp_socket_get_available_bytes (data.left), ==, 0);
+  g_assert_cmpint (pseudo_tcp_socket_get_available_bytes (data.right), ==, 0);
+  g_assert_cmpint (pseudo_tcp_socket_get_available_send_space (data.right), >,
+      0);
+  g_assert_cmpint (pseudo_tcp_socket_get_available_send_space (data.left), >,
+      0);
+
   g_assert_cmpint (pseudo_tcp_socket_send (data.left, "foo", 3), ==, 3);
   expect_data (data.left, data.left_sent, 7, 7, 3);
   forward_segment_ltr (&data);
@@ -1164,8 +1171,23 @@ pseudotcp_close_recv_queued (void)
   expect_fin (data.left, data.left_sent, 10, 7);
   forward_segment_ltr (&data);
 
+  expect_socket_state (data.left, TCP_FIN_WAIT_1);
+  expect_socket_state (data.right, TCP_CLOSE_WAIT);
+
+  g_assert_cmpint (pseudo_tcp_socket_get_available_bytes (data.left), ==, 0);
+  g_assert_cmpint (pseudo_tcp_socket_get_available_send_space (data.left), ==,
+      0);
+
   expect_ack (data.right, data.right_sent, 7, 11);
   forward_segment_rtl (&data);
+
+  expect_socket_state (data.left, TCP_FIN_WAIT_2);
+
+
+  g_assert_cmpint (pseudo_tcp_socket_get_available_bytes (data.right), ==, 3);
+
+  g_assert_cmpint (pseudo_tcp_socket_get_available_send_space (data.right), >,
+      0);
 
   /* Check that the data can be read */
   g_assert_cmpint (pseudo_tcp_socket_recv (data.right, (char *) buf, sizeof (buf)), ==, 3);
