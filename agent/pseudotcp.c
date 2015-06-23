@@ -968,6 +968,8 @@ pseudo_tcp_socket_notify_clock(PseudoTcpSocket *self)
           priv->rx_rto, priv->rto_base, now, (guint) priv->dup_acks);
 
       if (!transmit(self, g_queue_peek_head (&priv->slist), now)) {
+        DEBUG (PSEUDO_TCP_DEBUG_NORMAL,
+            "Error transmitting segment. Closing down.");
         closedown (self, ECONNABORTED, CLOSEDOWN_LOCAL);
         return;
       }
@@ -988,6 +990,7 @@ pseudo_tcp_socket_notify_clock(PseudoTcpSocket *self)
   if ((priv->snd_wnd == 0)
         && (time_diff(priv->lastsend + priv->rx_rto, now) <= 0)) {
     if (time_diff(now, priv->lastrecv) >= 15000) {
+      DEBUG (PSEUDO_TCP_DEBUG_NORMAL, "Receive window closed. Closing down.");
       closedown (self, ECONNABORTED, CLOSEDOWN_LOCAL);
       return;
     }
@@ -1408,7 +1411,7 @@ packet(PseudoTcpSocket *self, guint32 seq, TcpFlags flags,
     g_assert (bytes_read == len);
   }
 
-  DEBUG (PSEUDO_TCP_DEBUG_VERBOSE, "<-- <CONV=%u><FLG=%u><SEQ=%u:%u><ACK=%u>"
+  DEBUG (PSEUDO_TCP_DEBUG_VERBOSE, "Sending <CONV=%u><FLG=%u><SEQ=%u:%u><ACK=%u>"
       "<WND=%u><TS=%u><TSR=%u><LEN=%u>",
       priv->conv, (unsigned)flags, seq, seq + len, priv->rcv_nxt, priv->rcv_wnd,
       now % 10000, priv->ts_recent % 10000, len);
@@ -1461,7 +1464,8 @@ parse (PseudoTcpSocket *self, const guint8 *_header_buf, gsize header_buf_len,
   seg.data = (const gchar *) data_buf;
   seg.len = data_buf_len;
 
-  DEBUG (PSEUDO_TCP_DEBUG_VERBOSE, "--> <CONV=%u><FLG=%u><SEQ=%u:%u><ACK=%u>"
+  DEBUG (PSEUDO_TCP_DEBUG_VERBOSE,
+      "Received <CONV=%u><FLG=%u><SEQ=%u:%u><ACK=%u>"
       "<WND=%u><TS=%u><TSR=%u><LEN=%u>",
       seg.conv, (unsigned)seg.flags, seg.seq, seg.seq + seg.len, seg.ack,
       seg.wnd, seg.tsval % 10000, seg.tsecr % 10000, seg.len);
@@ -1549,15 +1553,18 @@ process(PseudoTcpSocket *self, Segment *seg)
   if (priv->state == TCP_CLOSED ||
       (pseudo_tcp_state_has_received_fin (priv->state) && seg->len > 0)) {
     /* Send an RST segment. See: RFC 1122, §4.2.2.13. */
+    DEBUG (PSEUDO_TCP_DEBUG_NORMAL,
+        "Segment received while closed; sending RST.");
     if ((seg->flags & FLAG_RST) == 0) {
       closedown (self, 0, CLOSEDOWN_LOCAL);
     }
-    DEBUG (PSEUDO_TCP_DEBUG_NORMAL, "Segment received while closed; sent RST.");
+
     return FALSE;
   }
 
   // Check if this is a reset segment
   if (seg->flags & FLAG_RST) {
+    DEBUG (PSEUDO_TCP_DEBUG_NORMAL, "Received RST segment; closing down.");
     closedown (self, ECONNRESET, CLOSEDOWN_REMOTE);
     return FALSE;
   }
@@ -1671,6 +1678,8 @@ process(PseudoTcpSocket *self, Segment *seg)
       } else {
         DEBUG (PSEUDO_TCP_DEBUG_NORMAL, "recovery retransmit");
         if (!transmit(self, g_queue_peek_head (&priv->slist), now)) {
+          DEBUG (PSEUDO_TCP_DEBUG_NORMAL,
+              "Error transmitting recovery retransmit segment. Closing down.");
           closedown (self, ECONNABORTED, CLOSEDOWN_LOCAL);
           return FALSE;
         }
@@ -1701,6 +1710,9 @@ process(PseudoTcpSocket *self, Segment *seg)
         DEBUG (PSEUDO_TCP_DEBUG_NORMAL, "enter recovery");
         DEBUG (PSEUDO_TCP_DEBUG_NORMAL, "recovery retransmit");
         if (!transmit(self, g_queue_peek_head (&priv->slist), now)) {
+          DEBUG (PSEUDO_TCP_DEBUG_NORMAL,
+              "Error transmitting recovery retransmit segment. Closing down.");
+
           closedown (self, ECONNABORTED, CLOSEDOWN_LOCAL);
           return FALSE;
         }
@@ -2058,6 +2070,8 @@ attempt_send(PseudoTcpSocket *self, SendFlags sflags)
   guint32 now = get_current_time (self);
   gboolean bFirst = TRUE;
 
+  DEBUG (PSEUDO_TCP_DEBUG_NORMAL, "Attempting send with flags %u.", sflags);
+
   if (time_diff(now, priv->lastsend) > (long) priv->rx_rto) {
     priv->cwnd = priv->mss;
   }
@@ -2165,6 +2179,9 @@ static void
 closedown (PseudoTcpSocket *self, guint32 err, ClosedownSource source)
 {
   PseudoTcpSocketPrivate *priv = self->priv;
+
+  DEBUG (PSEUDO_TCP_DEBUG_NORMAL, "Closing down socket %p with %s error %u.",
+      self, (source == CLOSEDOWN_LOCAL) ? "local" : "remote", err);
 
   if (source == CLOSEDOWN_LOCAL && priv->support_fin_ack) {
     queue_rst_message (self);
