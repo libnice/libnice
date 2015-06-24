@@ -1152,9 +1152,7 @@ pseudo_tcp_socket_recv(PseudoTcpSocket *self, char * buffer, size_t len)
   gsize available_space;
 
   /* Received a FIN from the peer, so return 0. RFC 793, §3.5, Case 2. */
-  if (priv->support_fin_ack &&
-      (priv->shutdown_reads ||
-       pseudo_tcp_state_has_received_fin (priv->state))) {
+  if (priv->support_fin_ack && priv->shutdown_reads) {
     return 0;
   }
 
@@ -1176,7 +1174,7 @@ pseudo_tcp_socket_recv(PseudoTcpSocket *self, char * buffer, size_t len)
   bytesread = pseudo_tcp_fifo_read (&priv->rbuf, (guint8 *) buffer, len);
 
  // If there's no data in |m_rbuf|.
-  if (bytesread == 0) {
+  if (bytesread == 0 && !pseudo_tcp_state_has_received_fin (priv->state)) {
     priv->bReadEnable = TRUE;
     priv->error = EWOULDBLOCK;
     return -1;

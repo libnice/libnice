@@ -1141,6 +1141,41 @@ pseudotcp_compatibility (void)
   data_clear (&data);
 }
 
+
+/* Check that after receiving a FIN, queued data can still be read */
+static void
+pseudotcp_close_recv_queued (void)
+{
+  Data data = { 0, };
+  guint8 buf[100];
+
+  /* Establish a connection. */
+  establish_connection (&data);
+
+  g_assert_cmpint (pseudo_tcp_socket_send (data.left, "foo", 3), ==, 3);
+  expect_data (data.left, data.left_sent, 7, 7, 3);
+  forward_segment_ltr (&data);
+
+  increment_time_both (&data, 100);  /* Delayed ACK */
+  expect_ack (data.right, data.right_sent, 7, 10);
+  forward_segment_rtl (&data);
+
+  close_socket (data.left);
+  expect_fin (data.left, data.left_sent, 10, 7);
+  forward_segment_ltr (&data);
+
+  expect_ack (data.right, data.right_sent, 7, 11);
+  forward_segment_rtl (&data);
+
+  /* Check that the data can be read */
+  g_assert_cmpint (pseudo_tcp_socket_recv (data.right, (char *) buf, sizeof (buf)), ==, 3);
+
+  /* Now the socket should be empty */
+  g_assert_cmpint (pseudo_tcp_socket_recv (data.right, (char *) buf, sizeof (buf)), ==, 0);
+
+  data_clear (&data);
+}
+
 int
 main (int argc, char *argv[])
 {
@@ -1208,6 +1243,9 @@ main (int argc, char *argv[])
       pseudotcp_close_pending_received);
   g_test_add_func ("/pseudotcp/close/rst-afterwards",
       pseudotcp_close_rst_afterwards);
+
+  g_test_add_func ("/pseudotcp/close/recv-queued",
+      pseudotcp_close_recv_queued);
 
   g_test_add_func ("/pseudotcp/compatibility",
       pseudotcp_compatibility);
