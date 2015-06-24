@@ -471,6 +471,7 @@ struct _PseudoTcpSocketPrivate {
   guint32 rbuf_len, rcv_nxt, rcv_wnd, lastrecv;
   guint8 rwnd_scale; // Window scale factor
   PseudoTcpFifo rbuf;
+  guint32 rcv_fin;  /* sequence number of the received FIN octet, or 0 */
 
   // Outgoing data
   GQueue slist;
@@ -809,6 +810,8 @@ pseudo_tcp_socket_init (PseudoTcpSocket *obj)
   priv->snd_una = priv->rcv_nxt = 0;
   priv->bReadEnable = TRUE;
   priv->bWriteEnable = FALSE;
+  priv->rcv_fin = 0;
+
   priv->t_ack = 0;
 
   priv->msslevel = 0;
@@ -1529,6 +1532,7 @@ process(PseudoTcpSocket *self, Segment *seg)
   gsize available_space;
   guint32 kIdealRefillSize;
   gboolean is_valuable_ack, is_duplicate_ack, is_fin_ack = FALSE;
+  gboolean received_fin = FALSE;
 
   /* If this is the wrong conversation, send a reset!?!
      (with the correct conversation?) */
@@ -1545,7 +1549,7 @@ process(PseudoTcpSocket *self, Segment *seg)
   priv->bOutgoing = FALSE;
 
   if (priv->state == TCP_CLOSED ||
-      (pseudo_tcp_state_has_sent_fin (priv->state) && seg->len > 0)) {
+      (pseudo_tcp_state_has_received_fin (priv->state) && seg->len > 0)) {
     /* Send an RST segment. See: RFC 1122, §4.2.2.13. */
     if ((seg->flags & FLAG_RST) == 0) {
       closedown (self, 0, CLOSEDOWN_LOCAL);
@@ -1720,19 +1724,34 @@ process(PseudoTcpSocket *self, Segment *seg)
     set_state_established (self);
   }
 
-  /* Check for connection closure. */
+  /* Check for connection closure. Only pay attention to FIN segments if they
+   * are in sequence; otherwise we’ve missed a packet earlier in the stream and
+   * need to request retransmission first. */
   if (priv->support_fin_ack) {
+    /* @received_fin is set when, and only when, all segments preceding the FIN
+     * have been acknowledged. This is to handle the case where the FIN arrives
+     * out of order with a preceding data segment. */
+    if (seg->flags & FLAG_FIN && priv->rcv_fin == 0) {
+      priv->rcv_fin = seg->seq;
+      DEBUG (PSEUDO_TCP_DEBUG_NORMAL, "Setting rcv_fin = %u", priv->rcv_fin);
+    } else if (seg->flags & FLAG_FIN && seg->seq != priv->rcv_fin) {
+      DEBUG (PSEUDO_TCP_DEBUG_NORMAL, "Second FIN segment received; ignored");
+      return FALSE;
+    }
+
     /* For the moment, FIN segments must not contain data. */
     if (seg->flags & FLAG_FIN && seg->len != 0) {
       DEBUG (PSEUDO_TCP_DEBUG_NORMAL, "FIN segment contained data; ignored");
       return FALSE;
     }
 
+    received_fin = (priv->rcv_nxt != 0 && priv->rcv_nxt + seg->len == priv->rcv_fin);
+
     /* Update the state machine, implementing all transitions on ‘rcv FIN’ or
      * ‘rcv ACK of FIN’ from RFC 793, Figure 6; and RFC 1122, §4.2.2.8. */
     switch (priv->state) {
     case TCP_ESTABLISHED:
-      if (seg->flags & FLAG_FIN) {
+      if (received_fin) {
         /* Received a FIN from the network, RFC 793, §3.5, Case 2.
          * The code below will send an ACK for the FIN. */
          set_state (self, TCP_CLOSE_WAIT);
@@ -1751,20 +1770,20 @@ process(PseudoTcpSocket *self, Segment *seg)
       }
       break;
     case TCP_FIN_WAIT_1:
-      if (is_fin_ack && seg->flags & FLAG_FIN) {
+      if (is_fin_ack && received_fin) {
         /* Simultaneous close with an ACK for a FIN previously sent,
          * RFC 793, §3.5, Case 3. */
         set_state (self, TCP_TIME_WAIT);
       } else if (is_fin_ack) {
         /* Handle the ACK of a locally-sent FIN flag. RFC 793, §3.5, Case 1. */
         set_state (self, TCP_FIN_WAIT_2);
-      } else if (seg->flags & FLAG_FIN) {
+      } else if (received_fin) {
         /* Simultaneous close, RFC 793, §3.5, Case 3. */
         set_state (self, TCP_CLOSING);
       }
       break;
     case TCP_FIN_WAIT_2:
-      if (seg->flags & FLAG_FIN) {
+      if (received_fin) {
         /* Local user closed the connection, RFC 793, §3.5, Case 1. */
         set_state (self, TCP_TIME_WAIT);
       }
@@ -1776,7 +1795,7 @@ process(PseudoTcpSocket *self, Segment *seg)
     case TCP_CLOSED:
     case TCP_CLOSE_WAIT:
       /* Shouldn’t ever hit these cases. */
-      if (seg->flags & FLAG_FIN) {
+      if (received_fin) {
         DEBUG (PSEUDO_TCP_DEBUG_NORMAL,
            "Unexpected state %u when FIN received", priv->state);
       } else if (is_fin_ack) {
@@ -1827,9 +1846,10 @@ process(PseudoTcpSocket *self, Segment *seg)
     } else {
       sflags = sfDelayedAck;
     }
-  } else if (seg->flags & FLAG_FIN) {
+  } else if (received_fin) {
+    /* FIN flags have a sequence number. Only acknowledge them after all
+     * preceding octets have been acknowledged. */
     sflags = sfImmediateAck;
-    priv->rcv_nxt += 1;
   }
 
   if (sflags == sfImmediateAck) {
@@ -1869,12 +1889,7 @@ process(PseudoTcpSocket *self, Segment *seg)
 
   bNewData = FALSE;
 
-  if (seg->flags & FLAG_FIN) {
-    /* FIN flags have a sequence number. */
-    if (seg->seq == priv->rcv_nxt) {
-      priv->rcv_nxt++;
-    }
-  } else if (seg->len > 0) {
+  if (seg->len > 0) {
     if (bIgnoreData) {
       if (seg->seq == priv->rcv_nxt) {
         priv->rcv_nxt += seg->len;
@@ -1928,6 +1943,12 @@ process(PseudoTcpSocket *self, Segment *seg)
       }
     }
   }
+
+  if (received_fin) {
+    /* FIN flags have a sequence number. */
+    priv->rcv_nxt++;
+  }
+
 
   attempt_send(self, sflags);
 
