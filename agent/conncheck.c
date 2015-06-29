@@ -2957,7 +2957,7 @@ static bool conncheck_stun_validater (StunAgent *agent,
     if (ufrag == NULL)
       continue;
 
-    stun_debug ("Comparing username/ufrag of len %d and %zu, equal=%d",
+    stun_debug ("Comparing username/ufrag of len %d and %" G_GSIZE_FORMAT ", equal=%d",
         username_len, ufrag_len, username_len >= ufrag_len ?
         memcmp (username, ufrag, ufrag_len) : 0);
     stun_debug_bytes ("  username: ", username, username_len);
