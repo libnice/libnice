@@ -713,9 +713,12 @@ nice_agent_class_init (NiceAgentClass *klass)
    * @agent: The #NiceAgent object
    * @stream_id: The ID of the stream
    * @component_id: The ID of the component
-   * @state: The #NiceComponentState of the component
+   * @state: The new #NiceComponentState of the component
    *
-   * This signal is fired whenever a component's state changes
+   * This signal is fired whenever a component’s state changes. There are many
+   * valid state transitions.
+   *
+   * ![State transition diagram](states.png)
    */
   signals[SIGNAL_COMPONENT_STATE_CHANGED] =
       g_signal_new (
@@ -2121,28 +2124,65 @@ nice_component_state_to_string (NiceComponentState state)
     }
 }
 
-void agent_signal_component_state_change (NiceAgent *agent, guint stream_id, guint component_id, NiceComponentState state)
+void agent_signal_component_state_change (NiceAgent *agent, guint stream_id, guint component_id, NiceComponentState new_state)
 {
+  NiceComponentState old_state;
   Component *component;
   Stream *stream;
+
+  g_return_if_fail (new_state < NICE_COMPONENT_STATE_LAST);
 
   if (!agent_find_component (agent, stream_id, component_id,
           &stream, &component))
     return;
 
-  if (component->state != state && state < NICE_COMPONENT_STATE_LAST) {
-    nice_debug ("Agent %p : stream %u component %u STATE-CHANGE %s -> %s.", agent,
-        stream_id, component_id, nice_component_state_to_string (component->state),
-        nice_component_state_to_string (state));
+  /* Validate the state change. */
+  old_state = component->state;
 
-    component->state = state;
-
-    if (agent->reliable)
-      process_queued_tcp_packets (agent, stream, component);
-
-    agent_queue_signal (agent, signals[SIGNAL_COMPONENT_STATE_CHANGED],
-        stream_id, component_id, state);
+  if (new_state == old_state) {
+    return;
   }
+
+  nice_debug ("Agent %p : stream %u component %u STATE-CHANGE %s -> %s.", agent,
+      stream_id, component_id, nice_component_state_to_string (old_state),
+      nice_component_state_to_string (new_state));
+
+  /* Check whether it’s a valid state transition. */
+#define TRANSITION(OLD, NEW) \
+  (old_state == NICE_COMPONENT_STATE_##OLD && \
+   new_state == NICE_COMPONENT_STATE_##NEW)
+
+  g_assert (/* Can (almost) always transition to FAILED (including
+             * DISCONNECTED → FAILED which happens if one component fails
+             * before another leaves DISCONNECTED): */
+            TRANSITION (DISCONNECTED, FAILED) ||
+            TRANSITION (GATHERING, FAILED) ||
+            TRANSITION (CONNECTING, FAILED) ||
+            TRANSITION (CONNECTED, FAILED) ||
+            TRANSITION (READY, FAILED) ||
+            /* Standard progression towards a ready connection: */
+            TRANSITION (DISCONNECTED, GATHERING) ||
+            TRANSITION (GATHERING, CONNECTING) ||
+            TRANSITION (CONNECTING, CONNECTED) ||
+            TRANSITION (CONNECTED, READY) ||
+            /* priv_conn_check_add_for_candidate_pair_matched(): */
+            TRANSITION (READY, CONNECTED) ||
+            /* If set_remote_candidates() is called with new candidates after
+             * reaching FAILED: */
+            TRANSITION (FAILED, CONNECTING) ||
+            /* Possible by calling set_remote_candidates() without calling
+             * nice_agent_gather_candidates(): */
+            TRANSITION (DISCONNECTED, CONNECTING));
+
+#undef TRANSITION
+
+  component->state = new_state;
+
+  if (agent->reliable)
+    process_queued_tcp_packets (agent, stream, component);
+
+  agent_queue_signal (agent, signals[SIGNAL_COMPONENT_STATE_CHANGED],
+      stream_id, component_id, new_state);
 }
 
 guint64
@@ -5044,8 +5084,18 @@ nice_agent_set_selected_pair (
     goto done;
   }
 
-  /* step: change component state */
-  agent_signal_component_state_change (agent, stream_id, component_id, NICE_COMPONENT_STATE_READY);
+  /* step: change component state; we could be in STATE_DISCONNECTED; skip
+   * STATE_GATHERING and continue through the states to give client code a nice
+   * logical progression. See http://phabricator.freedesktop.org/D218 for
+   * discussion. */
+  if (component->state < NICE_COMPONENT_STATE_CONNECTING)
+    agent_signal_component_state_change (agent, stream_id, component_id,
+        NICE_COMPONENT_STATE_CONNECTING);
+  if (component->state < NICE_COMPONENT_STATE_CONNECTED)
+    agent_signal_component_state_change (agent, stream_id, component_id,
+        NICE_COMPONENT_STATE_CONNECTED);
+  agent_signal_component_state_change (agent, stream_id, component_id,
+      NICE_COMPONENT_STATE_READY);
 
   /* step: set the selected pair */
   component_update_selected_pair (component, &pair);
@@ -5222,8 +5272,18 @@ nice_agent_set_selected_remote_candidate (
     goto done;
   }
 
-  /* step: change component state */
-  agent_signal_component_state_change (agent, stream_id, component_id, NICE_COMPONENT_STATE_READY);
+  /* step: change component state; we could be in STATE_DISCONNECTED; skip
+   * STATE_GATHERING and continue through the states to give client code a nice
+   * logical progression. See http://phabricator.freedesktop.org/D218 for
+   * discussion. */
+  if (component->state < NICE_COMPONENT_STATE_CONNECTING)
+    agent_signal_component_state_change (agent, stream_id, component_id,
+        NICE_COMPONENT_STATE_CONNECTING);
+  if (component->state < NICE_COMPONENT_STATE_CONNECTED)
+    agent_signal_component_state_change (agent, stream_id, component_id,
+        NICE_COMPONENT_STATE_CONNECTED);
+  agent_signal_component_state_change (agent, stream_id, component_id,
+      NICE_COMPONENT_STATE_READY);
 
   agent_signal_new_selected_pair (agent, stream_id, component_id,
       lcandidate, candidate);

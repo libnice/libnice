@@ -1326,6 +1326,15 @@ static void priv_update_check_list_state_for_ready (NiceAgent *agent, Stream *st
      * any that are kept, then this function will be called again when the
      * conncheck tick timer finishes them all */
     if (priv_prune_pending_checks (stream, component->id) == 0) {
+      /* Continue through the states to give client code a nice
+       * logical progression. See http://phabricator.freedesktop.org/D218 for
+       * discussion. */
+      if (component->state < NICE_COMPONENT_STATE_CONNECTING)
+        agent_signal_component_state_change (agent, stream->id, component->id,
+            NICE_COMPONENT_STATE_CONNECTING);
+      if (component->state < NICE_COMPONENT_STATE_CONNECTED)
+        agent_signal_component_state_change (agent, stream->id, component->id,
+            NICE_COMPONENT_STATE_CONNECTED);
       agent_signal_component_state_change (agent, stream->id,
           component->id, NICE_COMPONENT_STATE_READY);
     }
