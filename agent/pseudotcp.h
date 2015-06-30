@@ -62,10 +62,22 @@
 #ifndef __GTK_DOC_IGNORE__
 #ifdef G_OS_WIN32
 #  include <winsock2.h>
+
+#ifndef ECONNABORTED
 #  define ECONNABORTED WSAECONNABORTED
+#endif
+
+#ifndef ENOTCONN
 #  define ENOTCONN WSAENOTCONN
+#endif
+
+#ifndef EWOULDBLOCK
 #  define EWOULDBLOCK WSAEWOULDBLOCK
+#endif
+
+#ifndef ECONNRESET
 #  define ECONNRESET WSAECONNRESET
+#endif
 #endif
 #endif
 
