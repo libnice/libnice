@@ -51,7 +51,6 @@
 #include "address.h"
 
 #ifdef G_OS_WIN32
-#define inet_pton inet_pton_win32
 #define inet_ntop inet_ntop_win32
 
 /* Defined in recent versions of mingw:
@@ -84,36 +83,6 @@ inet_ntop_win32 (int af, const void *src, char *dst, socklen_t cnt)
     return dst;
   }
   return NULL;
-}
-
-static int
-inet_pton_win32(int af, const char *src, void *dst)
-{
-  struct addrinfo hints, *res, *ressave;
-
-  memset(&hints, 0, sizeof(struct addrinfo));
-  hints.ai_family = af;
-
-  if (getaddrinfo(src, NULL, &hints, &res) != 0) {
-    return 0;
-  }
-
-  ressave = res;
-
-  while (res)  {
-    if( res->ai_addr->sa_family == AF_INET) {
-      memcpy(dst, &((struct sockaddr_in *) res->ai_addr)->sin_addr,
-          sizeof(struct in_addr));
-      res = res->ai_next;
-    } else if(res->ai_addr->sa_family == AF_INET6) {
-      memcpy(dst, &((struct sockaddr_in6 *) res->ai_addr)->sin6_addr,
-          sizeof(struct in_addr6));
-      res = res->ai_next;
-    }
-  }
-
-  freeaddrinfo(ressave);
-  return 1;
 }
 
 #endif
