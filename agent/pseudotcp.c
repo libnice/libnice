@@ -567,6 +567,7 @@ static void set_state_closed (PseudoTcpSocket *self, guint32 err);
 static const gchar *pseudo_tcp_state_get_name (PseudoTcpState state);
 static gboolean pseudo_tcp_state_has_sent_fin (PseudoTcpState state);
 static gboolean pseudo_tcp_state_has_received_fin (PseudoTcpState state);
+static gboolean pseudo_tcp_state_has_received_fin_ack (PseudoTcpState state);
 
 // The following logging is for detailed (packet-level) pseudotcp analysis only.
 static PseudoTcpDebugLevel debug_level = PSEUDO_TCP_DEBUG_NONE;
@@ -1179,7 +1180,9 @@ pseudo_tcp_socket_recv(PseudoTcpSocket *self, char * buffer, size_t len)
   bytesread = pseudo_tcp_fifo_read (&priv->rbuf, (guint8 *) buffer, len);
 
  // If there's no data in |m_rbuf|.
-  if (bytesread == 0 && !pseudo_tcp_state_has_received_fin (priv->state)) {
+  if (bytesread == 0 &&
+      !(pseudo_tcp_state_has_received_fin (priv->state) ||
+        pseudo_tcp_state_has_received_fin_ack (priv->state))) {
     priv->bReadEnable = TRUE;
     priv->error = EWOULDBLOCK;
     return -1;
@@ -1523,6 +1526,30 @@ pseudo_tcp_state_has_received_fin (PseudoTcpState state)
   }
 }
 
+/* True iff the @state requires that a FIN-ACK has already been received from
+ * the peer. */
+static gboolean
+pseudo_tcp_state_has_received_fin_ack (PseudoTcpState state)
+{
+  switch (state) {
+  case TCP_LISTEN:
+  case TCP_SYN_SENT:
+  case TCP_SYN_RECEIVED:
+  case TCP_ESTABLISHED:
+  case TCP_FIN_WAIT_1:
+  case TCP_FIN_WAIT_2:
+  case TCP_CLOSING:
+  case TCP_CLOSE_WAIT:
+  case TCP_LAST_ACK:
+    return FALSE;
+  case TCP_CLOSED:
+  case TCP_TIME_WAIT:
+    return TRUE;
+  default:
+    return FALSE;
+  }
+}
+
 static gboolean
 process(PseudoTcpSocket *self, Segment *seg)
 {
@@ -1553,8 +1580,11 @@ process(PseudoTcpSocket *self, Segment *seg)
   priv->bOutgoing = FALSE;
 
   if (priv->state == TCP_CLOSED ||
-      (pseudo_tcp_state_has_received_fin (priv->state) && seg->len > 0)) {
-    /* Send an RST segment. See: RFC 1122, §4.2.2.13. */
+      (pseudo_tcp_state_has_received_fin_ack (priv->state) && seg->len > 0)) {
+    /* Send an RST segment. See: RFC 1122, §4.2.2.13; RFC 793, §3.4, point 3,
+     * page 37. We can only send RST if we know the peer knows we’re closed;
+     * otherwise this could be a timeout retransmit from them, due to our
+     * packets from data through to FIN being dropped. */
     DEBUG (PSEUDO_TCP_DEBUG_NORMAL,
         "Segment received while closed; sending RST.");
     if ((seg->flags & FLAG_RST) == 0) {
@@ -2420,10 +2450,6 @@ pseudo_tcp_socket_get_available_bytes (PseudoTcpSocket *self)
 {
   PseudoTcpSocketPrivate *priv = self->priv;
 
-  if (priv->state != TCP_ESTABLISHED) {
-    return -1;
-  }
-
   return pseudo_tcp_fifo_get_buffered (&priv->rbuf);
 }
 
@@ -2439,8 +2465,7 @@ pseudo_tcp_socket_get_available_send_space (PseudoTcpSocket *self)
   PseudoTcpSocketPrivate *priv = self->priv;
   gsize ret;
 
-
-  if (priv->state == TCP_ESTABLISHED)
+  if (!pseudo_tcp_state_has_sent_fin (priv->state))
     ret = pseudo_tcp_fifo_get_write_remaining (&priv->sbuf);
   else
     ret = 0;
