@@ -551,7 +551,7 @@ static gboolean parse (PseudoTcpSocket *self,
     const guint8 *_header_buf, gsize header_buf_len,
     const guint8 *data_buf, gsize data_buf_len);
 static gboolean process(PseudoTcpSocket *self, Segment *seg);
-static gboolean transmit(PseudoTcpSocket *self, SSegment *sseg, guint32 now);
+static int transmit(PseudoTcpSocket *self, SSegment *sseg, guint32 now);
 static void attempt_send(PseudoTcpSocket *self, SendFlags sflags);
 static void closedown (PseudoTcpSocket *self, guint32 err,
     ClosedownSource source);
@@ -962,15 +962,17 @@ pseudo_tcp_socket_notify_clock(PseudoTcpSocket *self)
       // retransmit segments
       guint32 nInFlight;
       guint32 rto_limit;
+      int transmit_status;
 
       DEBUG (PSEUDO_TCP_DEBUG_NORMAL, "timeout retransmit (rto: %u) "
           "(rto_base: %u) (now: %u) (dup_acks: %u)",
           priv->rx_rto, priv->rto_base, now, (guint) priv->dup_acks);
 
-      if (!transmit(self, g_queue_peek_head (&priv->slist), now)) {
+      transmit_status = transmit(self, g_queue_peek_head (&priv->slist), now);
+      if (transmit_status != 0) {
         DEBUG (PSEUDO_TCP_DEBUG_NORMAL,
             "Error transmitting segment. Closing down.");
-        closedown (self, ECONNABORTED, CLOSEDOWN_LOCAL);
+        closedown (self, transmit_status, CLOSEDOWN_LOCAL);
         return;
       }
 
@@ -1676,11 +1678,14 @@ process(PseudoTcpSocket *self, Segment *seg)
         DEBUG (PSEUDO_TCP_DEBUG_NORMAL, "exit recovery");
         priv->dup_acks = 0;
       } else {
+        int transmit_status;
+
         DEBUG (PSEUDO_TCP_DEBUG_NORMAL, "recovery retransmit");
-        if (!transmit(self, g_queue_peek_head (&priv->slist), now)) {
+        transmit_status = transmit(self, g_queue_peek_head (&priv->slist), now);
+        if (transmit_status != 0) {
           DEBUG (PSEUDO_TCP_DEBUG_NORMAL,
               "Error transmitting recovery retransmit segment. Closing down.");
-          closedown (self, ECONNABORTED, CLOSEDOWN_LOCAL);
+          closedown (self, transmit_status, CLOSEDOWN_LOCAL);
           return FALSE;
         }
         priv->cwnd += priv->mss - min(nAcked, priv->cwnd);
@@ -1707,13 +1712,17 @@ process(PseudoTcpSocket *self, Segment *seg)
 
       priv->dup_acks += 1;
       if (priv->dup_acks == 3) { // (Fast Retransmit)
+        int transmit_status;
+
         DEBUG (PSEUDO_TCP_DEBUG_NORMAL, "enter recovery");
         DEBUG (PSEUDO_TCP_DEBUG_NORMAL, "recovery retransmit");
-        if (!transmit(self, g_queue_peek_head (&priv->slist), now)) {
+
+        transmit_status = transmit(self, g_queue_peek_head (&priv->slist), now);
+        if (transmit_status != 0) {
           DEBUG (PSEUDO_TCP_DEBUG_NORMAL,
               "Error transmitting recovery retransmit segment. Closing down.");
 
-          closedown (self, ECONNABORTED, CLOSEDOWN_LOCAL);
+          closedown (self, transmit_status, CLOSEDOWN_LOCAL);
           return FALSE;
         }
         priv->recover = priv->snd_nxt;
@@ -1983,7 +1992,7 @@ transmit(PseudoTcpSocket *self, SSegment *segment, guint32 now)
 
   if (segment->xmit >= ((priv->state == TCP_ESTABLISHED) ? 15 : 30)) {
     DEBUG (PSEUDO_TCP_DEBUG_NORMAL, "too many retransmits");
-    return FALSE;
+    return ETIMEDOUT;
   }
 
   while (TRUE) {
@@ -2003,7 +2012,7 @@ transmit(PseudoTcpSocket *self, SSegment *segment, guint32 now)
 
     if (wres == WR_FAIL) {
       DEBUG (PSEUDO_TCP_DEBUG_NORMAL, "packet failed");
-      return FALSE;
+      return ECONNABORTED;  /* FIXME: This error code doesn’t quite seem right */
     }
 
     g_assert(wres == WR_TOO_LARGE);
@@ -2011,7 +2020,7 @@ transmit(PseudoTcpSocket *self, SSegment *segment, guint32 now)
     while (TRUE) {
       if (PACKET_MAXIMUMS[priv->msslevel + 1] == 0) {
         DEBUG (PSEUDO_TCP_DEBUG_NORMAL, "MTU too small");
-        return FALSE;
+        return EMSGSIZE;
       }
       /* !?! We need to break up all outstanding and pending packets
          and then retransmit!?! */
@@ -2060,7 +2069,7 @@ transmit(PseudoTcpSocket *self, SSegment *segment, guint32 now)
     priv->rto_base = now;
   }
 
-  return TRUE;
+  return 0;
 }
 
 static void
@@ -2161,7 +2170,7 @@ attempt_send(PseudoTcpSocket *self, SendFlags sflags)
           subseg);
     }
 
-    if (!transmit(self, sseg, now)) {
+    if (transmit(self, sseg, now) != 0) {
       DEBUG (PSEUDO_TCP_DEBUG_NORMAL, "transmit failed");
       // TODO: consider closing socket
       return;
