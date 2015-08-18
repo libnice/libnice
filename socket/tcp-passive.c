@@ -176,6 +176,12 @@ socket_close (NiceSocket *sock)
 {
   TcpPassivePriv *priv = sock->priv;
 
+  if (sock->fileno != NULL) {
+    g_socket_close (sock->fileno, NULL);
+    g_object_unref (sock->fileno);
+    sock->fileno = NULL;
+  }
+
   if (priv->context)
     g_main_context_unref (priv->context);
   g_hash_table_unref (priv->connections);
