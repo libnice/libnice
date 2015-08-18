@@ -204,7 +204,10 @@ socket_recv_messages (NiceSocket *sock,
     recv_message->length = MAX (recvd, 0);
 
     if (recvd < 0) {
-      if (g_error_matches (gerr, G_IO_ERROR, G_IO_ERROR_WOULD_BLOCK))
+      /* Handle ECONNRESET here as if it were EWOULDBLOCK; see
+       * https://phabricator.freedesktop.org/T121 */
+      if (g_error_matches (gerr, G_IO_ERROR, G_IO_ERROR_WOULD_BLOCK) ||
+          g_error_matches (gerr, G_IO_ERROR, G_IO_ERROR_CONNECTION_CLOSED))
         recvd = 0;
       else
         error = TRUE;
