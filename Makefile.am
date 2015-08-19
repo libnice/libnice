@@ -56,7 +56,7 @@ win32/vs9/libnice.def: nice/libnice.sym
 	            echo "stun_debug_bytes"; \
 	            echo "stun_hash_creds") > $@
 
-CLEANFILES = win32/vs9/libnice.def
+CLEANFILES += win32/vs9/libnice.def
 
 lcov:
 	find -name '*.gcda' -delete
