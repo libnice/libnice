@@ -93,6 +93,7 @@ stun/tests/test-conncheck
 stun/tests/test-format
 stun/tests/test-hmac
 stun/tests/test-parse
+stun/usages/.dirstamp
 
 # local/ stuff
 local/liblocal.la
