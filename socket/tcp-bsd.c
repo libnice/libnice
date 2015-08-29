@@ -54,6 +54,11 @@
 #include <unistd.h>
 #endif
 
+/* FIXME: This should be defined in gio/gnetworking.h, which we should include;
+ * but we cannot do that without refactoring.
+ * (See: https://phabricator.freedesktop.org/D230). */
+#define TCP_NODELAY 1
+
 typedef struct {
   NiceAddress remote_addr;
   GQueue send_queue;
@@ -167,6 +172,9 @@ nice_tcp_bsd_socket_new (GMainContext *ctx, NiceAddress *local_addr,
 
   /* GSocket: All socket file descriptors are set to be close-on-exec. */
   g_socket_set_blocking (gsock, false);
+
+  /* setting TCP_NODELAY to TRUE in order to avoid packet batching */
+  g_socket_set_option (gsock, IPPROTO_TCP, TCP_NODELAY, TRUE, NULL);
 
   gret = g_socket_connect (gsock, gaddr, NULL, &gerr);
   g_object_unref (gaddr);
