@@ -1700,7 +1700,6 @@ pseudo_tcp_socket_readable (PseudoTcpSocket *sock, gpointer user_data)
 out:
 
   g_object_unref (agent);
-
 }
 
 static void
@@ -4775,6 +4774,7 @@ component_io_cb (GSocket *gsocket, GIOCondition condition, gpointer user_data)
 
     component_detach_socket (component, socket_source->socket);
     agent_unlock ();
+    g_object_unref (agent);
     return G_SOURCE_REMOVE;
   }
 
@@ -4945,6 +4945,7 @@ done:
 
 out:
   g_object_unref (agent);
+
   agent_unlock_and_emit (agent);
   return G_SOURCE_REMOVE;
 }
