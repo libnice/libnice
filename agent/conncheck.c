@@ -579,6 +579,7 @@ static guint32 peer_reflexive_candidate_priority (NiceAgent *agent,
 
   candidate_priority->transport = local_candidate->transport;
   candidate_priority->component_id = local_candidate->component_id;
+  candidate_priority->base_addr = local_candidate->addr;
   if (agent->compatibility == NICE_COMPATIBILITY_GOOGLE) {
     priority = nice_candidate_jingle_priority (candidate_priority);
   } else if (agent->compatibility == NICE_COMPATIBILITY_MSN ||

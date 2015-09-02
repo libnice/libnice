@@ -623,6 +623,10 @@ discovery_add_server_reflexive_candidate (
   candidate->component_id = component_id;
   candidate->addr = *address;
 
+  /* step: link to the base candidate+socket */
+  candidate->sockptr = base_socket;
+  candidate->base_addr = base_socket->addr;
+
   if (agent->compatibility == NICE_COMPATIBILITY_GOOGLE) {
     candidate->priority = nice_candidate_jingle_priority (candidate);
   } else if (agent->compatibility == NICE_COMPATIBILITY_MSN ||
@@ -635,10 +639,6 @@ discovery_add_server_reflexive_candidate (
     candidate->priority =  nice_candidate_ice_priority (candidate,
         agent->reliable, nat_assisted);
   }
-
-  /* step: link to the base candidate+socket */
-  candidate->sockptr = base_socket;
-  candidate->base_addr = base_socket->addr;
 
   priv_generate_candidate_credentials (agent, candidate);
   priv_assign_foundation (agent, candidate);
@@ -732,6 +732,17 @@ discovery_add_relay_candidate (
   candidate->addr = *address;
   candidate->turn = turn_server_ref (turn);
 
+  /* step: link to the base candidate+socket */
+  relay_socket = nice_udp_turn_socket_new (agent->main_context, address,
+      base_socket, &turn->server,
+      turn->username, turn->password,
+      agent_to_turn_socket_compatibility (agent));
+  if (!relay_socket)
+    goto errors;
+
+  candidate->sockptr = relay_socket;
+  candidate->base_addr = base_socket->addr;
+
   if (agent->compatibility == NICE_COMPATIBILITY_GOOGLE) {
     candidate->priority = nice_candidate_jingle_priority (candidate);
   } else if (agent->compatibility == NICE_COMPATIBILITY_MSN ||
@@ -744,17 +755,6 @@ discovery_add_relay_candidate (
     candidate->priority =  nice_candidate_ice_priority (candidate,
         agent->reliable, FALSE);
   }
-
-  /* step: link to the base candidate+socket */
-  relay_socket = nice_udp_turn_socket_new (agent->main_context, address,
-      base_socket, &turn->server,
-      turn->username, turn->password,
-      agent_to_turn_socket_compatibility (agent));
-  if (!relay_socket)
-    goto errors;
-
-  candidate->sockptr = relay_socket;
-  candidate->base_addr = base_socket->addr;
 
   priv_generate_candidate_credentials (agent, candidate);
 
