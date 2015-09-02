@@ -216,7 +216,8 @@ nice_candidate_ice_local_preference (const NiceCandidate *candidate)
         break;
     }
 
-  return nice_candidate_ice_local_preference_full (direction_preference, 1);
+  return nice_candidate_ice_local_preference_full (direction_preference,
+      nice_candidate_ip_local_preference (candidate));
 }
 
 static guint32
