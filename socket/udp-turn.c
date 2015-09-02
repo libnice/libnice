@@ -816,7 +816,8 @@ socket_send_message (NiceSocket *sock, const NiceAddress *to,
     /* Finish the message. */
     msg_len = stun_agent_finish_message (&priv->agent, &msg,
         priv->password, priv->password_len);
-    if (msg_len > 0 && stun_message_get_class (&msg) == STUN_REQUEST) {
+    if (msg_len > 0 && stun_message_get_class (&msg) == STUN_REQUEST &&
+        priv->compatibility != NICE_TURN_SOCKET_COMPATIBILITY_OC2007) {
       SendRequest *req = g_slice_new0 (SendRequest);
 
       req->priv = priv;
