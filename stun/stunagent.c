@@ -513,8 +513,20 @@ size_t stun_agent_finish_message (StunAgent *agent, StunMessage *msg,
   uint32_t fpr;
   int saved_id_idx = 0;
   uint8_t md5[16];
+  bool remember_transaction;
 
-  if (stun_message_get_class (msg) == STUN_REQUEST) {
+  remember_transaction = (stun_message_get_class (msg) == STUN_REQUEST);
+
+  if (agent->compatibility == STUN_COMPATIBILITY_OC2007 &&
+      stun_message_get_method (msg) == STUN_SEND) {
+    /* As per [MS-TURN] Section 2.2.1, the TURN server doesn't send responses to
+     * STUN_SEND requests, so don't bother waiting for them. More details at
+     * https://msdn.microsoft.com/en-us/library/dd946797%28v=office.12%29.aspx.
+     */
+    remember_transaction = FALSE;
+  }
+
+  if (remember_transaction) {
     for (saved_id_idx = 0; saved_id_idx < STUN_AGENT_MAX_SAVED_IDS; saved_id_idx++) {
       if (agent->sent_ids[saved_id_idx].valid == FALSE) {
         break;
@@ -620,7 +632,7 @@ size_t stun_agent_finish_message (StunAgent *agent, StunMessage *msg,
   }
 
 
-  if (stun_message_get_class (msg) == STUN_REQUEST) {
+  if (remember_transaction) {
     stun_message_id (msg, agent->sent_ids[saved_id_idx].id);
     agent->sent_ids[saved_id_idx].method = stun_message_get_method (msg);
     agent->sent_ids[saved_id_idx].key = (uint8_t *) key;
