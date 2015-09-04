@@ -46,7 +46,7 @@
 #include "debug.h"
 
 
-static int debug_enabled = 1;
+static int debug_enabled = 0;
 
 void stun_debug_enable (void) {
   debug_enabled = 1;
