@@ -1851,7 +1851,7 @@ _tcp_sock_is_writable (NiceSocket *sock, gpointer user_data)
   /* Don't signal writable if the socket that has become writable is not
    * the selected pair */
   if (component->selected_pair.local == NULL ||
-      component->selected_pair.local->sockptr != sock) {
+      !nice_socket_is_base_of (sock, component->selected_pair.local->sockptr)) {
     agent_unlock ();
     return;
   }
