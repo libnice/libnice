@@ -88,6 +88,7 @@ struct _NiceSocket
   gboolean (*can_send) (NiceSocket *sock, NiceAddress *addr);
   void (*set_writable_callback) (NiceSocket *sock,
       NiceSocketWritableCb callback, gpointer user_data);
+  gboolean (*is_base_of) (NiceSocket *sock, NiceSocket *other);
   void (*close) (NiceSocket *sock);
   void *priv;
 };
@@ -123,6 +124,21 @@ nice_socket_can_send (NiceSocket *sock, NiceAddress *addr);
 void
 nice_socket_set_writable_callback (NiceSocket *sock,
     NiceSocketWritableCb callback, gpointer user_data);
+
+/**
+ * nice_socket_is_base_of:
+ * @sock: a #NiceSocket
+ * @other: another #NiceSocket
+ *
+ * Check whether @sock is equal to, or a base socket of, @other or one of
+ * @other's base sockets.
+ *
+ * Returns: %TRUE if @sock is a base socket of @other, %FALSE otherwise
+ *
+ * Since: UNRELEASED
+ */
+gboolean
+nice_socket_is_base_of (NiceSocket *sock, NiceSocket *other);
 
 void
 nice_socket_free (NiceSocket *sock);

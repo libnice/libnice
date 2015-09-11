@@ -265,6 +265,14 @@ nice_socket_set_writable_callback (NiceSocket *sock,
     sock->set_writable_callback (sock, callback, user_data);
 }
 
+gboolean
+nice_socket_is_base_of (NiceSocket *sock, NiceSocket *other)
+{
+  if (sock->is_base_of)
+    return sock->is_base_of (sock, other);
+  return (sock == other);
+}
+
 void
 nice_socket_free (NiceSocket *sock)
 {

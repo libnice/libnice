@@ -86,6 +86,7 @@ static gboolean socket_is_reliable (NiceSocket *sock);
 static gboolean socket_can_send (NiceSocket *sock, NiceAddress *addr);
 static void socket_set_writable_callback (NiceSocket *sock,
     NiceSocketWritableCb callback, gpointer user_data);
+static gboolean socket_is_base_of (NiceSocket *sock, NiceSocket *other);
 
 NiceSocket *
 nice_udp_turn_over_tcp_socket_new (NiceSocket *base_socket,
@@ -107,6 +108,7 @@ nice_udp_turn_over_tcp_socket_new (NiceSocket *base_socket,
   sock->is_reliable = socket_is_reliable;
   sock->can_send = socket_can_send;
   sock->set_writable_callback = socket_set_writable_callback;
+  sock->is_base_of = socket_is_base_of;
   sock->close = socket_close;
 
   return sock;
@@ -457,4 +459,12 @@ socket_set_writable_callback (NiceSocket *sock,
   TurnTcpPriv *priv = sock->priv;
 
   nice_socket_set_writable_callback (priv->base_socket, callback, user_data);
+}
+
+static gboolean
+socket_is_base_of (NiceSocket *sock, NiceSocket *other)
+{
+  TurnTcpPriv *priv = other->priv;
+
+  return (sock == other) || nice_socket_is_base_of (sock, priv->base_socket);
 }
