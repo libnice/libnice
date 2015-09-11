@@ -2285,9 +2285,9 @@ static void priv_check_for_role_conflict (NiceAgent *agent, gboolean control)
  * @param socketptr socket used to send the reply
  * @param mapped_sockaddr mapped address in the response
  *
- * @return pointer to a new pair if one was created, otherwise NULL
+ * @return pointer to a candidate pair, found in conncheck list or newly created
  */
-static CandidateCheckPair *priv_process_response_check_for_peer_reflexive(NiceAgent *agent, Stream *stream, Component *component, CandidateCheckPair *p, NiceSocket *sockptr, struct sockaddr *mapped_sockaddr, NiceCandidate *local_candidate, NiceCandidate *remote_candidate)
+static CandidateCheckPair *priv_process_response_check_for_reflexive(NiceAgent *agent, Stream *stream, Component *component, CandidateCheckPair *p, NiceSocket *sockptr, struct sockaddr *mapped_sockaddr, NiceCandidate *local_candidate, NiceCandidate *remote_candidate)
 {
   CandidateCheckPair *new_pair = NULL;
   NiceAddress mapped;
@@ -2426,7 +2426,7 @@ static gboolean priv_map_reply_to_conn_check_request (NiceAgent *agent, Stream *
                 " conncheck %p SUCCEEDED.", agent, p);
             priv_conn_check_unfreeze_related (agent, stream, p);
           } else {
-            ok_pair = priv_process_response_check_for_peer_reflexive (agent,
+            ok_pair = priv_process_response_check_for_reflexive (agent,
                 stream, component, p, sockptr, &sockaddr.addr,
                 local_candidate, remote_candidate);
           }
