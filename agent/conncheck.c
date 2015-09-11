@@ -2292,14 +2292,14 @@ static CandidateCheckPair *priv_process_response_check_for_peer_reflexive(NiceAg
   CandidateCheckPair *new_pair = NULL;
   NiceAddress mapped;
   GSList *i, *j;
-  gboolean local_cand_matches = FALSE;
+  NiceCandidate *local_cand = NULL;
 
   nice_address_set_from_sockaddr (&mapped, mapped_sockaddr);
 
   for (j = component->local_candidates; j; j = j->next) {
     NiceCandidate *cand = j->data;
     if (nice_address_equal (&mapped, &cand->addr)) {
-      local_cand_matches = TRUE;
+      local_cand = cand;
 
       /* We always need to select the peer-reflexive Candidate Pair in the case
        * of a TCP-ACTIVE local candidate, so we find it even if an incoming
@@ -2316,7 +2316,7 @@ static CandidateCheckPair *priv_process_response_check_for_peer_reflexive(NiceAg
     }
   }
 
-  if (local_cand_matches == TRUE) {
+  if (new_pair) {
     /* note: this is same as "adding to VALID LIST" in the spec
        text */
     p->state = NICE_CHECK_SUCCEEDED;
@@ -2324,20 +2324,22 @@ static CandidateCheckPair *priv_process_response_check_for_peer_reflexive(NiceAg
     priv_conn_check_unfreeze_related (agent, stream, p);
   }
   else {
-    NiceCandidate *cand =
-      discovery_add_peer_reflexive_candidate (agent,
-					      stream->id,
-					      component->id,
-					      &mapped,
-					      sockptr,
-					      local_candidate,
-					      remote_candidate);
-    p->state = NICE_CHECK_FAILED;
-    nice_debug ("Agent %p : pair %p state FAILED", agent, p);
+    if (!local_cand) {
+      local_cand = discovery_add_peer_reflexive_candidate (agent,
+                                                           stream->id,
+                                                           component->id,
+                                                           &mapped,
+                                                           sockptr,
+                                                           local_candidate,
+                                                           remote_candidate);
+      p->state = NICE_CHECK_FAILED;
+      nice_debug ("Agent %p : pair %p state FAILED", agent, p);
+    }
 
     /* step: add a new discovered pair (see RFC 5245 7.1.3.2.2
 	       "Constructing a Valid Pair") */
-    new_pair = priv_add_peer_reflexive_pair (agent, stream->id, component->id, cand, p);
+    new_pair = priv_add_peer_reflexive_pair (agent, stream->id, component->id,
+                                             local_cand, p);
     nice_debug ("Agent %p : conncheck %p FAILED, %p DISCOVERED.", agent, p, new_pair);
   }
 
