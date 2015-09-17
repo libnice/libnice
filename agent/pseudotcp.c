@@ -77,8 +77,19 @@
 #include "pseudotcp.h"
 #include "agent-priv.h"
 
-G_DEFINE_TYPE (PseudoTcpSocket, pseudo_tcp_socket, G_TYPE_OBJECT);
+struct _PseudoTcpSocketClass {
+    GIOStreamClass parent_class;
+};
 
+typedef struct _PseudoTcpSocketPrivate PseudoTcpSocketPrivate;
+
+
+struct _PseudoTcpSocket {
+    GIOStream parent;
+    PseudoTcpSocketPrivate *priv;
+};
+
+G_DEFINE_TYPE (PseudoTcpSocket, pseudo_tcp_socket, G_TYPE_OBJECT);
 
 //////////////////////////////////////////////////////////////////////
 // Network Constants
