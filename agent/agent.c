@@ -2149,6 +2149,8 @@ void agent_signal_component_state_change (NiceAgent *agent, guint stream_id, gui
             /* If set_remote_candidates() is called with new candidates after
              * reaching FAILED: */
             TRANSITION (FAILED, CONNECTING) ||
+            /* if new relay servers are added to a failed connection */
+            TRANSITION (FAILED, GATHERING) ||
             /* Possible by calling set_remote_candidates() without calling
              * nice_agent_gather_candidates(): */
             TRANSITION (DISCONNECTED, CONNECTING));

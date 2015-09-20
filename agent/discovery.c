@@ -1022,10 +1022,12 @@ static gboolean priv_discovery_tick_unlocked (gpointer pointer)
           (cand->type == NICE_CANDIDATE_TYPE_SERVER_REFLEXIVE ||
               cand->type == NICE_CANDIDATE_TYPE_RELAYED)) {
 
-	agent_signal_component_state_change (agent,
-					     cand->stream->id,
-					     cand->component->id,
-					     NICE_COMPONENT_STATE_GATHERING);
+        if (cand->component->state == NICE_COMPONENT_STATE_DISCONNECTED ||
+            cand->component->state == NICE_COMPONENT_STATE_FAILED)
+          agent_signal_component_state_change (agent,
+					       cand->stream->id,
+					       cand->component->id,
+					       NICE_COMPONENT_STATE_GATHERING);
 
         if (cand->type == NICE_CANDIDATE_TYPE_SERVER_REFLEXIVE) {
           buffer_len = stun_usage_bind_create (&cand->stun_agent,
