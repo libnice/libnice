@@ -42,7 +42,8 @@
 
 #include <glib.h>
 
-typedef struct _Stream Stream;
+typedef struct _Stream Stream G_GNUC_DEPRECATED_FOR(NiceStream);
+typedef Stream NiceStream;
 
 #include "component.h"
 #include "random.h"
@@ -59,8 +60,23 @@ G_BEGIN_DECLS
 #define NICE_STREAM_DEF_UFRAG   4 + 1    /* ufrag + NULL */
 #define NICE_STREAM_DEF_PWD     22 + 1   /* pwd + NULL */
 
+#define NICE_TYPE_STREAM nice_stream_get_type()
+#define NICE_STREAM(obj) \
+  (G_TYPE_CHECK_INSTANCE_CAST ((obj), NICE_TYPE_STREAM, NiceStream))
+#define NICE_STREAM_CLASS(klass) \
+  (G_TYPE_CHECK_CLASS_CAST ((klass), NICE_TYPE_STREAM, NiceStreamClass))
+#define NICE_IS_STREAM(obj) \
+  (G_TYPE_CHECK_INSTANCE_TYPE ((obj), NICE_TYPE_STREAM))
+#define NICE_IS_STREAM_CLASS(klass) \
+  (G_TYPE_CHECK_CLASS_TYPE ((klass), NICE_TYPE_STREAM))
+#define NICE_STREAM_GET_CLASS(obj) \
+  (G_TYPE_INSTANCE_GET_CLASS ((obj), NICE_TYPE_STREAM, NiceStreamClass))
+
 struct _Stream
 {
+  /*< private >*/
+  GObject parent;
+
   gchar *name;
   guint id;
   guint n_components;
@@ -76,25 +92,37 @@ struct _Stream
   gint tos;
 };
 
+typedef struct {
+  GObjectClass parent_class;
+} NiceStreamClass;
 
+GType nice_stream_get_type (void);
+
+G_DEPRECATED
 Stream *
 stream_new (guint n_components, NiceAgent *agent);
 
+G_DEPRECATED
 void
 stream_close (Stream *stream);
 
+G_DEPRECATED_FOR(g_object_unref)
 void
 stream_free (Stream *stream);
 
+G_DEPRECATED
 gboolean
 stream_all_components_ready (const Stream *stream);
 
+G_DEPRECATED
 Component *
 stream_find_component_by_id (const Stream *stream, guint id);
 
+G_DEPRECATED
 void
 stream_initialize_credentials (Stream *stream, NiceRNG *rng);
 
+G_DEPRECATED
 void
 stream_restart (NiceAgent *agent, Stream *stream);
 
