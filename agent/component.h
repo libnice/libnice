@@ -42,7 +42,8 @@
 
 #include <glib.h>
 
-typedef struct _Component Component;
+typedef struct _Component Component G_GNUC_DEPRECATED_FOR(NiceComponent);
+typedef Component NiceComponent;
 
 #include "agent.h"
 #include "agent-priv.h"
@@ -137,9 +138,23 @@ io_callback_data_new (const guint8 *buf, gsize buf_len);
 void
 io_callback_data_free (IOCallbackData *data);
 
+#define NICE_TYPE_COMPONENT nice_component_get_type()
+#define NICE_COMPONENT(obj) \
+  (G_TYPE_CHECK_INSTANCE_CAST ((obj), NICE_TYPE_COMPONENT, NiceComponent))
+#define NICE_COMPONENT_CLASS(klass) \
+  (G_TYPE_CHECK_CLASS_CAST ((klass), NICE_TYPE_COMPONENT, NiceComponentClass))
+#define NICE_IS_COMPONENT(obj) \
+  (G_TYPE_CHECK_INSTANCE_TYPE ((obj), NICE_TYPE_COMPONENT))
+#define NICE_IS_COMPONENT_CLASS(klass) \
+  (G_TYPE_CHECK_CLASS_TYPE ((klass), NICE_TYPE_COMPONENT))
+#define NICE_COMPONENT_GET_CLASS(obj) \
+  (G_TYPE_INSTANCE_GET_CLASS ((obj), NICE_TYPE_COMPONENT, NiceComponentClass))
 
 struct _Component
 {
+  /*< private >*/
+  GObject parent;
+
   NiceComponentType type;
   guint id;                    /* component id */
   NiceComponentState state;
@@ -212,37 +227,58 @@ struct _Component
   GQueue queued_tcp_packets;
 };
 
+typedef struct {
+  GObjectClass parent_class;
+} NiceComponentClass;
+
+GType nice_component_get_type (void);
+
+G_DEPRECATED
 Component *
 component_new (guint component_id, NiceAgent *agent, Stream *stream);
 
+G_DEPRECATED
 void
 component_close (Component *cmp);
 
+G_DEPRECATED_FOR(g_object_unref)
 void
 component_free (Component *cmp);
 
+G_DEPRECATED
 gboolean
 component_find_pair (Component *cmp, NiceAgent *agent, const gchar *lfoundation, const gchar *rfoundation, CandidatePair *pair);
 
+G_DEPRECATED
 void
 component_restart (Component *cmp);
 
+G_DEPRECATED
 void
 component_update_selected_pair (Component *component, const CandidatePair *pair);
 
+G_DEPRECATED
 NiceCandidate *
 component_find_remote_candidate (const Component *component, const NiceAddress *addr, NiceCandidateTransport transport);
 
+G_DEPRECATED
 NiceCandidate *
 component_set_selected_remote_candidate (NiceAgent *agent, Component *component,
     NiceCandidate *candidate);
 
+G_DEPRECATED
 void
 component_attach_socket (Component *component, NiceSocket *nsocket);
+
+G_DEPRECATED
 void
 component_detach_socket (Component *component, NiceSocket *nsocket);
+
+G_DEPRECATED
 void
 component_detach_all_sockets (Component *component);
+
+G_DEPRECATED
 void
 component_free_socket_sources (Component *component);
 
@@ -251,22 +287,26 @@ component_input_source_new (NiceAgent *agent, guint stream_id,
     guint component_id, GPollableInputStream *pollable_istream,
     GCancellable *cancellable);
 
+G_DEPRECATED
 GMainContext *
 component_dup_io_context (Component *component);
+G_DEPRECATED
 void
 component_set_io_context (Component *component, GMainContext *context);
+G_DEPRECATED
 void
 component_set_io_callback (Component *component,
     NiceAgentRecvFunc func, gpointer user_data,
     NiceInputMessage *recv_messages, guint n_recv_messages,
     GError **error);
+G_DEPRECATED
 void
 component_emit_io_callback (Component *component,
     const guint8 *buf, gsize buf_len);
-
+G_DEPRECATED
 gboolean
 component_has_io_callback (Component *component);
-
+G_DEPRECATED
 void
 component_clean_turn_servers (Component *component);
 

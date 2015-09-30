@@ -59,6 +59,24 @@ static volatile unsigned int n_components_destroyed = 0;
 #include "discovery.h"
 #include "agent-priv.h"
 
+G_DEFINE_TYPE (NiceComponent, nice_component, G_TYPE_OBJECT);
+
+typedef enum {
+  PROP_ID = 1,
+  PROP_AGENT,
+  PROP_STREAM,
+} NiceComponentProperty;
+
+static void
+nice_component_constructed (GObject *obj);
+static void
+nice_component_get_property (GObject *obj,
+    guint property_id, GValue *value, GParamSpec *pspec);
+static void
+nice_component_set_property (GObject *obj,
+    guint property_id, const GValue *value, GParamSpec *pspec);
+static void
+nice_component_finalize (GObject *obj);
 
 static void
 component_schedule_io_callback (Component *component);
@@ -124,43 +142,11 @@ socket_source_free (SocketSource *source)
 Component *
 component_new (guint id, NiceAgent *agent, Stream *stream)
 {
-  Component *component;
-
-  g_atomic_int_inc (&n_components_created);
-  nice_debug ("Created NiceComponent (%u created, %u destroyed)",
-      n_components_created, n_components_destroyed);
-
-  component = g_slice_new0 (Component);
-  component->id = id;
-  component->state = NICE_COMPONENT_STATE_DISCONNECTED;
-  component->restart_candidate = NULL;
-  component->tcp = NULL;
-  component->agent = agent;
-  component->stream = stream;
-
-  nice_agent_init_stun_agent (agent, &component->stun_agent);
-
-  g_mutex_init (&component->io_mutex);
-  g_queue_init (&component->pending_io_messages);
-  component->io_callback_id = 0;
-
-  component->own_ctx = g_main_context_new ();
-  component->stop_cancellable = g_cancellable_new ();
-  component->stop_cancellable_source =
-      g_cancellable_source_new (component->stop_cancellable);
-  g_source_set_dummy_callback (component->stop_cancellable_source);
-  g_source_attach (component->stop_cancellable_source, component->own_ctx);
-  component->ctx = g_main_context_ref (component->own_ctx);
-
-  /* Start off with a fresh main context and all I/O paused. This
-   * will be updated when nice_agent_attach_recv() or nice_agent_recv_messages()
-   * are called. */
-  component_set_io_context (component, NULL);
-  component_set_io_callback (component, NULL, NULL, NULL, 0, NULL);
-
-  g_queue_init (&component->queued_tcp_packets);
-
-  return component;
+  return g_object_new (NICE_TYPE_COMPONENT,
+                       "id", id,
+                       "agent", agent,
+                       "stream", stream,
+                       NULL);
 }
 
 void
@@ -304,33 +290,7 @@ component_close (Component *cmp)
 void
 component_free (Component *cmp)
 {
-  /* Component should have been closed already. */
-  g_warn_if_fail (cmp->local_candidates == NULL);
-  g_warn_if_fail (cmp->remote_candidates == NULL);
-  g_warn_if_fail (cmp->incoming_checks == NULL);
-
-  g_clear_object (&cmp->tcp);
-  g_clear_object (&cmp->stop_cancellable);
-  g_clear_object (&cmp->iostream);
-  g_mutex_clear (&cmp->io_mutex);
-
-  if (cmp->stop_cancellable_source != NULL) {
-    g_source_destroy (cmp->stop_cancellable_source);
-    g_source_unref (cmp->stop_cancellable_source);
-  }
-
-  if (cmp->ctx != NULL) {
-    g_main_context_unref (cmp->ctx);
-    cmp->ctx = NULL;
-  }
-
-  g_main_context_unref (cmp->own_ctx);
-
-  g_slice_free (Component, cmp);
-
-  g_atomic_int_inc (&n_components_destroyed);
-  nice_debug ("Destroyed NiceComponent (%u created, %u destroyed)",
-      n_components_created, n_components_destroyed);
+  g_object_unref (cmp);
 }
 
 /*
@@ -936,6 +896,202 @@ component_deschedule_io_callback (Component *component)
 
   g_source_remove (component->io_callback_id);
   component->io_callback_id = 0;
+}
+
+static void
+nice_component_class_init (NiceComponentClass *klass)
+{
+  GObjectClass *object_class = G_OBJECT_CLASS (klass);
+
+  object_class->constructed = nice_component_constructed;
+  object_class->get_property = nice_component_get_property;
+  object_class->set_property = nice_component_set_property;
+  object_class->finalize = nice_component_finalize;
+
+  /**
+   * NiceComponent:id:
+   *
+   * The unique numeric ID of the component.
+   *
+   * Since: UNRELEASED
+   */
+  g_object_class_install_property (object_class, PROP_ID,
+      g_param_spec_uint (
+         "id",
+         "ID",
+         "The unique numeric ID of the component.",
+         1, G_MAXUINT, 1,
+         G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY));
+
+  /**
+   * NiceComponent:agent:
+   *
+   * The #NiceAgent this component belongs to.
+   *
+   * Since: UNRELEASED
+   */
+  g_object_class_install_property (object_class, PROP_AGENT,
+      g_param_spec_object (
+         "agent",
+         "Agent",
+         "The NiceAgent this component belongs to.",
+         NICE_TYPE_AGENT,
+         G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY));
+
+  /**
+   * NiceComponent:stream:
+   *
+   * The #NiceStream this component belongs to.
+   *
+   * Since: UNRELEASED
+   */
+  g_object_class_install_property (object_class, PROP_STREAM,
+      g_param_spec_object (
+         "stream",
+         "Stream",
+         "The NiceStream this component belongs to.",
+         NICE_TYPE_STREAM,
+         G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY));
+}
+
+static void
+nice_component_init (NiceComponent *component)
+{
+  g_atomic_int_inc (&n_components_created);
+  nice_debug ("Created NiceComponent (%u created, %u destroyed)",
+      n_components_created, n_components_destroyed);
+
+  component->id = 0;
+  component->state = NICE_COMPONENT_STATE_DISCONNECTED;
+  component->restart_candidate = NULL;
+  component->tcp = NULL;
+  component->agent = NULL;
+  component->stream = NULL;
+
+  g_mutex_init (&component->io_mutex);
+  g_queue_init (&component->pending_io_messages);
+  component->io_callback_id = 0;
+
+  component->own_ctx = g_main_context_new ();
+  component->stop_cancellable = g_cancellable_new ();
+  component->stop_cancellable_source =
+      g_cancellable_source_new (component->stop_cancellable);
+  g_source_set_dummy_callback (component->stop_cancellable_source);
+  g_source_attach (component->stop_cancellable_source, component->own_ctx);
+  component->ctx = g_main_context_ref (component->own_ctx);
+
+  /* Start off with a fresh main context and all I/O paused. This
+   * will be updated when nice_agent_attach_recv() or nice_agent_recv_messages()
+   * are called. */
+  component_set_io_context (component, NULL);
+  component_set_io_callback (component, NULL, NULL, NULL, 0, NULL);
+
+  g_queue_init (&component->queued_tcp_packets);
+}
+
+static void
+nice_component_constructed (GObject *obj)
+{
+  NiceComponent *component;
+
+  component = NICE_COMPONENT (obj);
+
+  g_assert (component->agent != NULL);
+  nice_agent_init_stun_agent (component->agent, &component->stun_agent);
+
+  G_OBJECT_CLASS (nice_component_parent_class)->constructed (obj);
+}
+
+static void
+nice_component_get_property (GObject *obj,
+    guint property_id, GValue *value, GParamSpec *pspec)
+{
+  NiceComponent *component;
+
+  component = NICE_COMPONENT (obj);
+
+  switch ((NiceComponentProperty) property_id)
+    {
+    case PROP_ID:
+      g_value_set_uint (value, component->id);
+      break;
+
+    case PROP_AGENT:
+      g_value_set_object (value, component->agent);
+      break;
+
+    case PROP_STREAM:
+      g_value_set_object (value, component->stream);
+      break;
+
+    default:
+      G_OBJECT_WARN_INVALID_PROPERTY_ID (obj, property_id, pspec);
+    }
+}
+
+static void
+nice_component_set_property (GObject *obj,
+    guint property_id, const GValue *value, GParamSpec *pspec)
+{
+  NiceComponent *component;
+
+  component = NICE_COMPONENT (obj);
+
+  switch ((NiceComponentProperty) property_id)
+    {
+    case PROP_ID:
+      component->id = g_value_get_uint (value);
+      break;
+
+    case PROP_AGENT:
+      component->agent = g_value_get_object (value);
+      break;
+
+    case PROP_STREAM:
+      component->stream = g_value_get_object (value);
+      break;
+
+    default:
+      G_OBJECT_WARN_INVALID_PROPERTY_ID (obj, property_id, pspec);
+    }
+}
+
+/* Must be called with the agent lock released as it could dispose of
+ * NiceIOStreams. */
+static void
+nice_component_finalize (GObject *obj)
+{
+  NiceComponent *cmp;
+
+  cmp = NICE_COMPONENT (obj);
+
+  /* Component should have been closed already. */
+  g_warn_if_fail (cmp->local_candidates == NULL);
+  g_warn_if_fail (cmp->remote_candidates == NULL);
+  g_warn_if_fail (cmp->incoming_checks == NULL);
+
+  g_clear_object (&cmp->tcp);
+  g_clear_object (&cmp->stop_cancellable);
+  g_clear_object (&cmp->iostream);
+  g_mutex_clear (&cmp->io_mutex);
+
+  if (cmp->stop_cancellable_source != NULL) {
+    g_source_destroy (cmp->stop_cancellable_source);
+    g_source_unref (cmp->stop_cancellable_source);
+  }
+
+  if (cmp->ctx != NULL) {
+    g_main_context_unref (cmp->ctx);
+    cmp->ctx = NULL;
+  }
+
+  g_main_context_unref (cmp->own_ctx);
+
+  g_atomic_int_inc (&n_components_destroyed);
+  nice_debug ("Destroyed NiceComponent (%u created, %u destroyed)",
+      n_components_created, n_components_destroyed);
+
+  G_OBJECT_CLASS (nice_component_parent_class)->finalize (obj);
 }
 
 /**
