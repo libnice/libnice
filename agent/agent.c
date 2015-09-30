@@ -133,11 +133,7 @@ enum
 
 static guint signals[N_SIGNALS];
 
-#if GLIB_CHECK_VERSION(2,31,8)
 static GMutex agent_mutex;    /* Mutex used for thread-safe lib */
-#else
-static GStaticMutex agent_mutex = G_STATIC_MUTEX_INIT;
-#endif
 
 static void priv_stop_upnp (NiceAgent *agent);
 
@@ -156,7 +152,6 @@ static void nice_agent_get_property (GObject *object,
 static void nice_agent_set_property (GObject *object,
   guint property_id, const GValue *value, GParamSpec *pspec);
 
-#if GLIB_CHECK_VERSION(2,31,8)
 void agent_lock (void)
 {
   g_mutex_lock (&agent_mutex);
@@ -166,19 +161,6 @@ void agent_unlock (void)
 {
   g_mutex_unlock (&agent_mutex);
 }
-
-#else
-void agent_lock(void)
-{
-  g_static_mutex_lock (&agent_mutex);
-}
-
-void agent_unlock(void)
-{
-  g_static_mutex_unlock (&agent_mutex);
-}
-
-#endif
 
 static GType _nice_agent_stream_ids_get_type (void);
 
@@ -1811,13 +1793,7 @@ adjust_tcp_clock (NiceAgent *agent, Stream *stream, Component *component)
       if (timeout != component->last_clock_timeout) {
         component->last_clock_timeout = timeout;
         if (component->tcp_clock) {
-#if GLIB_CHECK_VERSION (2, 36, 0)
           g_source_set_ready_time (component->tcp_clock, timeout * 1000);
-#else
-          g_source_destroy (component->tcp_clock);
-          g_source_unref (component->tcp_clock);
-          component->tcp_clock = NULL;
-#endif
         }
         if (!component->tcp_clock) {
           long interval = timeout - (guint32) (g_get_monotonic_time () / 1000);

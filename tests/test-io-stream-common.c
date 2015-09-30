@@ -335,12 +335,7 @@ spawn_thread (const gchar *thread_name, GThreadFunc thread_func,
 {
   GThread *thread;
 
-#if !GLIB_CHECK_VERSION(2, 31, 8)
-  thread = g_thread_create (thread_func, user_data, TRUE, NULL);
-#else
   thread = g_thread_new (thread_name, thread_func, user_data);
-#endif
-
   g_assert (thread);
 
   return thread;

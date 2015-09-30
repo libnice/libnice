@@ -44,9 +44,7 @@
 
 #include <agent.h>
 
-#if GLIB_CHECK_VERSION(2, 36, 0)
 #include <gio/gnetworking.h>
-#endif
 
 static GMainLoop *gloop;
 static GIOChannel* io_stdin;
