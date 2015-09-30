@@ -47,8 +47,11 @@ main (void)
 {
   NiceCandidate *candidate;
 
-  /* test 1 */
   candidate = nice_candidate_new (NICE_CANDIDATE_TYPE_HOST);
+  nice_address_set_from_string (&candidate->addr, "127.0.0.1");
+  nice_address_set_from_string (&candidate->base_addr, "127.0.0.1");
+
+  /* test 1 */
   g_assert (nice_candidate_jingle_priority (candidate) == 1000);
   /* Host UDP */
   candidate->transport = NICE_CANDIDATE_TRANSPORT_UDP;
