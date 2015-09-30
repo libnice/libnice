@@ -56,21 +56,14 @@
 #define LEFT_AGENT GINT_TO_POINTER(1)
 #define RIGHT_AGENT GINT_TO_POINTER(2)
 
-#if !GLIB_CHECK_VERSION(2,31,8)
-  static GMutex *stun_mutex_ptr = NULL;
-  static GCond *stun_signal_ptr = NULL;
-  static GMutex *stun_thread_mutex_ptr = NULL;
-  static GCond *stun_thread_signal_ptr = NULL
-#else
-  static GMutex stun_mutex;
-  static GMutex *stun_mutex_ptr = &stun_mutex;
-  static GCond stun_signal;
-  static GCond *stun_signal_ptr = &stun_signal;
-  static GMutex stun_thread_mutex;
-  static GMutex *stun_thread_mutex_ptr = &stun_thread_mutex;
-  static GCond stun_thread_signal;
-  static GCond *stun_thread_signal_ptr = &stun_thread_signal;
-#endif
+static GMutex stun_mutex;
+static GMutex *stun_mutex_ptr = &stun_mutex;
+static GCond stun_signal;
+static GCond *stun_signal_ptr = &stun_signal;
+static GMutex stun_thread_mutex;
+static GMutex *stun_thread_mutex_ptr = &stun_thread_mutex;
+static GCond stun_thread_signal;
+static GCond *stun_thread_signal_ptr = &stun_thread_signal;
 
 static NiceComponentState global_lagent_state = NICE_COMPONENT_STATE_LAST;
 static NiceComponentState global_ragent_state = NICE_COMPONENT_STATE_LAST;
@@ -737,16 +730,8 @@ int main(void)
   }
 
 
-#if !GLIB_CHECK_VERSION(2,31,8)
-  g_thread_init (NULL);
-  stun_thread = g_thread_create (stun_thread_func, GINT_TO_POINTER (sock),
-      TRUE, NULL);
- stun_mutex_ptr = g_mutex_new ();
- stun_signal_ptr = g_cond_new ();
-#else
   stun_thread = g_thread_new ("listen for STUN requests",
       stun_thread_func, GINT_TO_POINTER (sock));
-#endif
 
   // Once the the thread is forked, we want to listen for a signal 
   // that the socket was opened successfully
@@ -801,10 +786,6 @@ int main(void)
   g_object_unref (ragent);
 
   g_thread_join (stun_thread);
-#if !GLIB_CHECK_VERSION(2,31,8)
-  g_mutex_free (stun_mutex_ptr);
-  g_cond_free (stun_signal_ptr);
-#endif
   g_object_unref (global_cancellable);
 
   g_source_destroy (src);

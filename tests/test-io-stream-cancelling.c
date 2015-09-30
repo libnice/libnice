@@ -112,7 +112,6 @@ int main (void)
   WSADATA w;
   WSAStartup (0x0202, &w);
 #endif
-  g_thread_init (NULL);
 
   l_data.cancellable = g_cancellable_new ();
   l_data.blocking = FALSE;

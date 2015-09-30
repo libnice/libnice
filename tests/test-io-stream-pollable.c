@@ -159,7 +159,6 @@ int main (void)
   WSADATA w;
   WSAStartup (0x0202, &w);
 #endif
-  g_thread_init (NULL);
 
   l_data = g_malloc0 (sizeof (ThreadData));
   r_data = g_malloc0 (sizeof (ThreadData));

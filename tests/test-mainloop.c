@@ -72,7 +72,6 @@ main (void)
   guint stream;
 
   nice_address_init (&addr);
-  g_thread_init(NULL);
 
   loop = g_main_loop_new (NULL, FALSE);
 

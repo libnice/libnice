@@ -397,9 +397,6 @@ int main (void)
 
   WSAStartup(0x0202, &w);
 #endif
-#if !GLIB_CHECK_VERSION(2,31,8)
-  g_thread_init(NULL);
-#endif
 
   global_mainloop = g_main_loop_new (NULL, FALSE);
 

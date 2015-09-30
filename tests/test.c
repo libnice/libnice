@@ -76,8 +76,6 @@ main (void)
   nice_address_init (&addr_local);
   nice_address_init (&addr_remote);
 
-  g_thread_init(NULL);
-
   g_assert (nice_address_set_from_string (&addr_local, "127.0.0.1"));
   g_assert (nice_address_set_from_string (&addr_remote, "127.0.0.1"));
   nice_address_set_port (&addr_remote, 2345);

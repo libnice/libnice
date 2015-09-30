@@ -172,7 +172,6 @@ int main (void)
   WSADATA w;
   WSAStartup(0x0202, &w);
 #endif
-  g_thread_init (NULL);
 
   loop = g_main_loop_new (NULL, FALSE);
 
