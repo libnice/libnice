@@ -368,8 +368,6 @@ test_multi_message_recv (guint n_sends, guint n_receives,
 int
 main (void)
 {
-  g_type_init ();
-
   test_socket_initial_properties ();
   test_socket_address_properties ();
   test_simple_send_recv ();

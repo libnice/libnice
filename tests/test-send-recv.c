@@ -1202,7 +1202,6 @@ main (int argc, char *argv[])
   WSADATA w;
   WSAStartup (0x0202, &w);
 #endif
-  g_type_init ();
   g_thread_init (NULL);
 
   if (!long_mode) {

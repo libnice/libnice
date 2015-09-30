@@ -834,7 +834,6 @@ int main (void)
 
   WSAStartup(0x0202, &w);
 #endif
-  g_type_init ();
   g_thread_init(NULL);
 
   global_mainloop = g_main_loop_new (NULL, FALSE);

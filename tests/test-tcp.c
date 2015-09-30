@@ -88,8 +88,6 @@ main (void)
   NiceAddress active_bind_addr, passive_bind_addr;
   GSource *srv_listen_source, *srv_input_source, *cli_input_source;
 
-  g_type_init ();
-
   mainloop = g_main_loop_new (NULL, FALSE);
 
   nice_address_init (&active_bind_addr);

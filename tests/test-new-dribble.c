@@ -725,8 +725,6 @@ int main(void)
   GSource *src;
   int sock;
 
-  g_type_init();
-
   global_cancellable = g_cancellable_new ();
   src = g_cancellable_source_new (global_cancellable);
   g_source_set_dummy_callback (src);

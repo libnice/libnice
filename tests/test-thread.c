@@ -211,7 +211,6 @@ int main (void)
   WSADATA w;
   WSAStartup(0x0202, &w);
 #endif
-  g_type_init ();
   g_thread_init(NULL);
 
   lmainctx = g_main_context_new ();

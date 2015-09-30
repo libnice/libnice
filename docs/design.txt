@@ -90,7 +90,6 @@ NiceAgent GObject interface defined in 'nice/agent.h'.
 
 The rough order of control follow is as follows:
 
-- client should initialize glib with g_type_init()
 - creation of NiceAgent object instance
 - setting agent properties such as STUN and TURN server addresses
 - connecting the GObject signals with g_signal_connect() to application

@@ -395,7 +395,6 @@ int main (int argc, char *argv[])
   GError *error = NULL;
 
   setlocale (LC_ALL, "");
-  g_type_init ();
 
   /* Configuration. */
   context = g_option_context_new ("— fuzz-test the pseudotcp socket");
