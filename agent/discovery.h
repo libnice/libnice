@@ -54,7 +54,7 @@ typedef struct
   gboolean pending;         /* is discovery in progress? */
   gboolean done;            /* is discovery complete? */
   NiceStream *stream;
-  Component *component;
+  NiceComponent *component;
   TurnServer *turn;
   StunAgent stun_agent;
   StunTimer timer;
@@ -71,7 +71,7 @@ typedef struct
   NiceAddress server;       /* STUN/TURN server address */
   NiceCandidate *candidate; /* candidate to refresh */
   NiceStream *stream;
-  Component *component;
+  NiceComponent *component;
   StunAgent stun_agent;
   GSource *timer_source;
   GSource *tick_source;
@@ -152,7 +152,7 @@ NiceCandidate *
 discovery_learn_remote_peer_reflexive_candidate (
   NiceAgent *agent,
   NiceStream *stream,
-  Component *component,
+  NiceComponent *component,
   guint32 priority, 
   const NiceAddress *remote_address,
   NiceSocket *udp_socket,

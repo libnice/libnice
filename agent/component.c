@@ -79,9 +79,9 @@ static void
 nice_component_finalize (GObject *obj);
 
 static void
-component_schedule_io_callback (Component *component);
+nice_component_schedule_io_callback (NiceComponent *component);
 static void
-component_deschedule_io_callback (Component *component);
+nice_component_deschedule_io_callback (NiceComponent *component);
 
 
 void
@@ -92,7 +92,7 @@ incoming_check_free (IncomingCheck *icheck)
 }
 
 /* Must *not* take the agent lock, since it’s called from within
- * component_set_io_context(), which holds the Component’s I/O lock. */
+ * nice_component_set_io_context(), which holds the Component’s I/O lock. */
 static void
 socket_source_attach (SocketSource *socket_source, GMainContext *context)
 {
@@ -139,8 +139,8 @@ socket_source_free (SocketSource *source)
   g_slice_free (SocketSource, source);
 }
 
-Component *
-component_new (guint id, NiceAgent *agent, NiceStream *stream)
+NiceComponent *
+nice_component_new (guint id, NiceAgent *agent, NiceStream *stream)
 {
   return g_object_new (NICE_TYPE_COMPONENT,
                        "id", id,
@@ -150,7 +150,7 @@ component_new (guint id, NiceAgent *agent, NiceStream *stream)
 }
 
 void
-component_clean_turn_servers (Component *cmp)
+nice_component_clean_turn_servers (NiceComponent *cmp)
 {
   GSList *i;
 
@@ -181,7 +181,7 @@ component_clean_turn_servers (Component *cmp)
         discovery_prune_socket (cmp->agent, cmp->turn_candidate->sockptr);
         conn_check_prune_socket (cmp->agent, cmp->stream, cmp,
             cmp->turn_candidate->sockptr);
-        component_detach_socket (cmp, cmp->turn_candidate->sockptr);
+        nice_component_detach_socket (cmp, cmp->turn_candidate->sockptr);
 	nice_candidate_free (cmp->turn_candidate);
       }
       /* Bring the priority down to 0, so that it will be replaced
@@ -194,7 +194,7 @@ component_clean_turn_servers (Component *cmp)
       discovery_prune_socket (cmp->agent, candidate->sockptr);
       conn_check_prune_socket (cmp->agent, cmp->stream, cmp,
           candidate->sockptr);
-      component_detach_socket (cmp, candidate->sockptr);
+      nice_component_detach_socket (cmp, candidate->sockptr);
       agent_remove_local_candidate (cmp->agent, candidate);
       nice_candidate_free (candidate);
     }
@@ -204,7 +204,7 @@ component_clean_turn_servers (Component *cmp)
 }
 
 static void
-component_clear_selected_pair (Component *component)
+nice_component_clear_selected_pair (NiceComponent *component)
 {
   if (component->selected_pair.keepalive.tick_source != NULL) {
     g_source_destroy (component->selected_pair.keepalive.tick_source);
@@ -218,7 +218,7 @@ component_clear_selected_pair (Component *component)
 /* Must be called with the agent lock held as it touches internal Component
  * state. */
 void
-component_close (Component *cmp)
+nice_component_close (NiceComponent *cmp)
 {
   IOCallbackData *data;
   GOutputVector *vec;
@@ -226,13 +226,13 @@ component_close (Component *cmp)
   /* Start closing the pseudo-TCP socket first. FIXME: There is a very big and
    * reliably triggerable race here. pseudo_tcp_socket_close() does not block
    * on the socket closing — it only sends the first packet of the FIN
-   * handshake. component_close() will immediately afterwards close the
+   * handshake. nice_component_close() will immediately afterwards close the
    * underlying component sockets, aborting the handshake.
    *
    * On the principle that starting the FIN handshake is better than not
    * starting it, even if it’s later truncated, call pseudo_tcp_socket_close().
-   * A long-term fix is needed in the form of making component_close() (and all
-   * its callers) async, so we can properly block on closure. */
+   * A long-term fix is needed in the form of making nice_component_close() (and
+   * all its callers) async, so we can properly block on closure. */
   if (cmp->tcp) {
     pseudo_tcp_socket_close (cmp->tcp, TRUE);
   }
@@ -255,12 +255,12 @@ component_close (Component *cmp)
   g_slist_free_full (cmp->remote_candidates,
       (GDestroyNotify) nice_candidate_free);
   cmp->remote_candidates = NULL;
-  component_free_socket_sources (cmp);
+  nice_component_free_socket_sources (cmp);
   g_slist_free_full (cmp->incoming_checks,
       (GDestroyNotify) incoming_check_free);
   cmp->incoming_checks = NULL;
 
-  component_clean_turn_servers (cmp);
+  nice_component_clean_turn_servers (cmp);
 
   if (cmp->tcp_clock) {
     g_source_destroy (cmp->tcp_clock);
@@ -275,7 +275,7 @@ component_close (Component *cmp)
   while ((data = g_queue_pop_head (&cmp->pending_io_messages)) != NULL)
     io_callback_data_free (data);
 
-  component_deschedule_io_callback (cmp);
+  nice_component_deschedule_io_callback (cmp);
 
   g_cancellable_cancel (cmp->stop_cancellable);
 
@@ -285,21 +285,13 @@ component_close (Component *cmp)
   }
 }
 
-/* Must be called with the agent lock released as it could dispose of
- * NiceIOStreams. */
-void
-component_free (Component *cmp)
-{
-  g_object_unref (cmp);
-}
-
 /*
  * Finds a candidate pair that has matching foundation ids.
  *
  * @return TRUE if pair found, pointer to pair stored at 'pair'
  */
 gboolean
-component_find_pair (Component *cmp, NiceAgent *agent, const gchar *lfoundation, const gchar *rfoundation, CandidatePair *pair)
+nice_component_find_pair (NiceComponent *cmp, NiceAgent *agent, const gchar *lfoundation, const gchar *rfoundation, CandidatePair *pair)
 {
   GSList *i;
   CandidatePair result = { 0, };
@@ -335,7 +327,7 @@ component_find_pair (Component *cmp, NiceAgent *agent, const gchar *lfoundation,
  * session.
  */
 void
-component_restart (Component *cmp)
+nice_component_restart (NiceComponent *cmp)
 {
   GSList *i;
 
@@ -370,7 +362,8 @@ component_restart (Component *cmp)
  * Changes the selected pair for the component to 'pair'. Does not
  * emit the "selected-pair-changed" signal.
  */ 
-void component_update_selected_pair (Component *component, const CandidatePair *pair)
+void
+nice_component_update_selected_pair (NiceComponent *component, const CandidatePair *pair)
 {
   g_assert (component);
   g_assert (pair);
@@ -385,12 +378,12 @@ void component_update_selected_pair (Component *component, const CandidatePair *
         component->turn_candidate->sockptr);
     conn_check_prune_socket (component->agent, component->stream, component,
         component->turn_candidate->sockptr);
-    component_detach_socket (component, component->turn_candidate->sockptr);
+    nice_component_detach_socket (component, component->turn_candidate->sockptr);
     nice_candidate_free (component->turn_candidate);
     component->turn_candidate = NULL;
   }
 
-  component_clear_selected_pair (component);
+  nice_component_clear_selected_pair (component);
 
   component->selected_pair.local = pair->local;
   component->selected_pair.remote = pair->remote;
@@ -405,7 +398,7 @@ void component_update_selected_pair (Component *component, const CandidatePair *
  * @return pointer to candidate or NULL if not found
  */
 NiceCandidate *
-component_find_remote_candidate (const Component *component, const NiceAddress *addr, NiceCandidateTransport transport)
+nice_component_find_remote_candidate (NiceComponent *component, const NiceAddress *addr, NiceCandidateTransport transport)
 {
   GSList *i;
 
@@ -429,8 +422,8 @@ component_find_remote_candidate (const Component *component, const NiceAddress *
  */
 
 NiceCandidate *
-component_set_selected_remote_candidate (NiceAgent *agent, Component *component,
-    NiceCandidate *candidate)
+nice_component_set_selected_remote_candidate (NiceComponent *component,
+    NiceAgent *agent, NiceCandidate *candidate)
 {
   NiceCandidate *local = NULL;
   NiceCandidate *remote = NULL;
@@ -459,7 +452,7 @@ component_set_selected_remote_candidate (NiceAgent *agent, Component *component,
   if (local == NULL)
     return NULL;
 
-  remote = component_find_remote_candidate (component, &candidate->addr,
+  remote = nice_component_find_remote_candidate (component, &candidate->addr,
       candidate->transport);
 
   if (!remote) {
@@ -469,7 +462,7 @@ component_set_selected_remote_candidate (NiceAgent *agent, Component *component,
     agent_signal_new_remote_candidate (agent, remote);
   }
 
-  component_clear_selected_pair (component);
+  nice_component_clear_selected_pair (component);
 
   component->selected_pair.local = local;
   component->selected_pair.remote = remote;
@@ -490,7 +483,7 @@ _find_socket_source (gconstpointer a, gconstpointer b)
 /* This takes ownership of the socket.
  * It creates and attaches a source to the component’s context. */
 void
-component_attach_socket (Component *component, NiceSocket *nicesock)
+nice_component_attach_socket (NiceComponent *component, NiceSocket *nicesock)
 {
   GSList *l;
   SocketSource *socket_source;
@@ -531,9 +524,9 @@ component_attach_socket (Component *component, NiceSocket *nicesock)
 /* Reattaches socket handles of @component to the main context.
  *
  * Must *not* take the agent lock, since it’s called from within
- * component_set_io_context(), which holds the Component’s I/O lock. */
+ * nice_component_set_io_context(), which holds the Component’s I/O lock. */
 static void
-component_reattach_all_sockets (Component *component)
+nice_component_reattach_all_sockets (NiceComponent *component)
 {
   GSList *i;
 
@@ -546,7 +539,7 @@ component_reattach_all_sockets (Component *component)
 }
 
 /**
- * component_detach_socket:
+ * nice_component_detach_socket:
  * @component: a #Component
  * @socket: the socket to detach the source for
  *
@@ -556,7 +549,7 @@ component_reattach_all_sockets (Component *component)
  * If the @socket doesn’t exist in this @component, do nothing.
  */
 void
-component_detach_socket (Component *component, NiceSocket *nicesock)
+nice_component_detach_socket (NiceComponent *component, NiceSocket *nicesock)
 {
   GSList *l;
   SocketSource *socket_source;
@@ -597,10 +590,10 @@ component_detach_socket (Component *component, NiceSocket *nicesock)
  * sockets themselves untouched.
  *
  * Must *not* take the agent lock, since it’s called from within
- * component_set_io_context(), which holds the Component’s I/O lock.
+ * nice_component_set_io_context(), which holds the Component’s I/O lock.
  */
 void
-component_detach_all_sockets (Component *component)
+nice_component_detach_all_sockets (NiceComponent *component)
 {
   GSList *i;
 
@@ -613,7 +606,7 @@ component_detach_all_sockets (Component *component)
 }
 
 void
-component_free_socket_sources (Component *component)
+nice_component_free_socket_sources (NiceComponent *component)
 {
   nice_debug ("Free socket sources for component %p.", component);
 
@@ -622,11 +615,11 @@ component_free_socket_sources (Component *component)
   component->socket_sources = NULL;
   component->socket_sources_age++;
 
-  component_clear_selected_pair (component);
+  nice_component_clear_selected_pair (component);
 }
 
 GMainContext *
-component_dup_io_context (Component *component)
+nice_component_dup_io_context (NiceComponent *component)
 {
   return g_main_context_ref (component->own_ctx);
 }
@@ -634,7 +627,7 @@ component_dup_io_context (Component *component)
 /* If @context is %NULL, it's own context is used, so component->ctx is always
  * guaranteed to be non-%NULL. */
 void
-component_set_io_context (Component *component, GMainContext *context)
+nice_component_set_io_context (NiceComponent *component, GMainContext *context)
 {
   g_mutex_lock (&component->io_mutex);
 
@@ -644,11 +637,11 @@ component_set_io_context (Component *component, GMainContext *context)
     else
       g_main_context_ref (context);
 
-    component_detach_all_sockets (component);
+    nice_component_detach_all_sockets (component);
     g_main_context_unref (component->ctx);
 
     component->ctx = context;
-    component_reattach_all_sockets (component);
+    nice_component_reattach_all_sockets (component);
   }
 
   g_mutex_unlock (&component->io_mutex);
@@ -665,7 +658,7 @@ component_set_io_context (Component *component, GMainContext *context)
  * emitted for it (which could cause data loss if the I/O callback function was
  * unset in that time). */
 void
-component_set_io_callback (Component *component,
+nice_component_set_io_callback (NiceComponent *component,
     NiceAgentRecvFunc func, gpointer user_data,
     NiceInputMessage *recv_messages, guint n_recv_messages,
     GError **error)
@@ -682,14 +675,14 @@ component_set_io_callback (Component *component,
     component->recv_messages = NULL;
     component->n_recv_messages = 0;
 
-    component_schedule_io_callback (component);
+    nice_component_schedule_io_callback (component);
   } else {
     component->io_callback = NULL;
     component->io_user_data = NULL;
     component->recv_messages = recv_messages;
     component->n_recv_messages = n_recv_messages;
 
-    component_deschedule_io_callback (component);
+    nice_component_deschedule_io_callback (component);
   }
 
   nice_input_message_iter_reset (&component->recv_messages_iter);
@@ -699,7 +692,7 @@ component_set_io_callback (Component *component,
 }
 
 gboolean
-component_has_io_callback (Component *component)
+nice_component_has_io_callback (NiceComponent *component)
 {
   gboolean has_io_callback;
 
@@ -735,7 +728,7 @@ io_callback_data_free (IOCallbackData *data)
 static gboolean
 emit_io_callback_cb (gpointer user_data)
 {
-  Component *component = user_data;
+  NiceComponent *component = user_data;
   IOCallbackData *data;
   NiceAgentRecvFunc io_callback;
   gpointer io_user_data;
@@ -752,7 +745,7 @@ emit_io_callback_cb (gpointer user_data)
   g_mutex_lock (&component->io_mutex);
 
   /* The members of Component are guaranteed not to have changed since this
-   * GSource was attached in component_emit_io_callback(). The Component’s agent
+   * GSource was attached in nice_component_emit_io_callback(). The Component’s agent
    * and stream are immutable after construction, as are the stream and
    * component IDs. The callback and its user data may have changed, but are
    * guaranteed to be non-%NULL at the start as the idle source is removed when
@@ -762,7 +755,7 @@ emit_io_callback_cb (gpointer user_data)
    *
    * If the component is destroyed (which happens if the agent or stream are
    * destroyed) between attaching the GSource and firing it, the GSource is
-   * detached in component_free() and this callback is never invoked. If the
+   * detached during dispose and this callback is never invoked. If the
    * agent is destroyed during an io_callback, its weak pointer will be
    * nullified. Similarly, the Component needs to be re-queried for after every
    * iteration, just in case the client has removed the stream in the
@@ -805,7 +798,7 @@ emit_io_callback_cb (gpointer user_data)
 
 /* This must be called with the agent lock *held*. */
 void
-component_emit_io_callback (Component *component,
+nice_component_emit_io_callback (NiceComponent *component,
     const guint8 *buf, gsize buf_len)
 {
   NiceAgent *agent;
@@ -857,7 +850,7 @@ component_emit_io_callback (Component *component,
 
     nice_debug ("%s: **WARNING: SLOW PATH**", G_STRFUNC);
 
-    component_schedule_io_callback (component);
+    nice_component_schedule_io_callback (component);
 
     g_mutex_unlock (&component->io_mutex);
   }
@@ -865,7 +858,7 @@ component_emit_io_callback (Component *component,
 
 /* Note: Must be called with the io_mutex held. */
 static void
-component_schedule_io_callback (Component *component)
+nice_component_schedule_io_callback (NiceComponent *component)
 {
   GSource *source;
 
@@ -888,7 +881,7 @@ component_schedule_io_callback (Component *component)
 
 /* Note: Must be called with the io_mutex held. */
 static void
-component_deschedule_io_callback (Component *component)
+nice_component_deschedule_io_callback (NiceComponent *component)
 {
   /* Already descheduled? */
   if (component->io_callback_id == 0)
@@ -983,8 +976,8 @@ nice_component_init (NiceComponent *component)
   /* Start off with a fresh main context and all I/O paused. This
    * will be updated when nice_agent_attach_recv() or nice_agent_recv_messages()
    * are called. */
-  component_set_io_context (component, NULL);
-  component_set_io_callback (component, NULL, NULL, NULL, 0, NULL);
+  nice_component_set_io_context (component, NULL);
+  nice_component_set_io_callback (component, NULL, NULL, NULL, 0, NULL);
 
   g_queue_init (&component->queued_tcp_packets);
 }
@@ -1136,7 +1129,7 @@ component_source_prepare (GSource *source, gint *timeout_)
 {
   ComponentSource *component_source = (ComponentSource *) source;
   NiceAgent *agent;
-  Component *component;
+  NiceComponent *component;
   GSList *parentl, *childl;
 
   agent = g_weak_ref_get (&component_source->agent_ref);
@@ -1306,7 +1299,7 @@ static GSourceFuncs component_source_funcs = {
  * Returns: (transfer full): a new #ComponentSource; unref with g_source_unref()
  */
 GSource *
-component_input_source_new (NiceAgent *agent, guint stream_id,
+nice_component_input_source_new (NiceAgent *agent, guint stream_id,
     guint component_id, GPollableInputStream *pollable_istream,
     GCancellable *cancellable)
 {

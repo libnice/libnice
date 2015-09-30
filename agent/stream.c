@@ -67,9 +67,9 @@ nice_stream_new (guint n_components, NiceAgent *agent)
 
   /* Create the components. */
   for (n = 0; n < n_components; n++) {
-    Component *component = NULL;
+    NiceComponent *component = NULL;
 
-    component = component_new (n + 1, agent, stream);
+    component = nice_component_new (n + 1, agent, stream);
     stream->components = g_slist_append (stream->components, component);
   }
 
@@ -84,18 +84,18 @@ nice_stream_close (NiceStream *stream)
   GSList *i;
 
   for (i = stream->components; i; i = i->next) {
-    Component *component = i->data;
-    component_close (component);
+    NiceComponent *component = i->data;
+    nice_component_close (component);
   }
 }
 
-Component *
+NiceComponent *
 nice_stream_find_component_by_id (NiceStream *stream, guint id)
 {
   GSList *i;
 
   for (i = stream->components; i; i = i->next) {
-    Component *component = i->data;
+    NiceComponent *component = i->data;
     if (component && component->id == id)
       return component;
   }
@@ -113,7 +113,7 @@ nice_stream_all_components_ready (NiceStream *stream)
   GSList *i;
 
   for (i = stream->components; i; i = i->next) {
-    Component *component = i->data;
+    NiceComponent *component = i->data;
     if (component &&
 	!(component->state == NICE_COMPONENT_STATE_CONNECTED ||
 	 component->state == NICE_COMPONENT_STATE_READY))
@@ -153,9 +153,9 @@ nice_stream_restart (NiceStream *stream, NiceAgent *agent)
   nice_stream_initialize_credentials (stream, agent->rng);
 
   for (i = stream->components; i; i = i->next) {
-    Component *component = i->data;
+    NiceComponent *component = i->data;
 
-    component_restart (component);
+    nice_component_restart (component);
   }
 }
 
@@ -188,7 +188,7 @@ nice_stream_finalize (GObject *obj)
   stream = NICE_STREAM (obj);
 
   g_free (stream->name);
-  g_slist_free_full (stream->components, (GDestroyNotify) component_free);
+  g_slist_free_full (stream->components, (GDestroyNotify) g_object_unref);
 
   g_atomic_int_inc (&n_streams_destroyed);
   nice_debug ("Destroyed NiceStream (%u created, %u destroyed)",

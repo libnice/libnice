@@ -79,7 +79,7 @@ struct _NiceStream {
   guint id;
   guint n_components;
   gboolean initial_binding_request_received;
-  GSList *components; /* list of 'Component' structs */
+  GSList *components; /* list of 'NiceComponent' objects */
   GSList *conncheck_list;         /* list of CandidateCheckPair items */
   gchar local_ufrag[NICE_STREAM_MAX_UFRAG];
   gchar local_password[NICE_STREAM_MAX_PWD];
@@ -105,7 +105,7 @@ nice_stream_close (NiceStream *stream);
 gboolean
 nice_stream_all_components_ready (NiceStream *stream);
 
-Component *
+NiceComponent *
 nice_stream_find_component_by_id (NiceStream *stream, guint id);
 
 void

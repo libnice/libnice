@@ -476,7 +476,7 @@ nice_output_stream_close (GOutputStream *stream, GCancellable *cancellable,
     GError **error)
 {
   NiceOutputStreamPrivate *priv = NICE_OUTPUT_STREAM (stream)->priv;
-  Component *component = NULL;
+  NiceComponent *component = NULL;
   NiceStream *_stream = NULL;
   NiceAgent *agent;  /* owned */
 
@@ -505,7 +505,7 @@ static gboolean
 nice_output_stream_is_writable (GPollableOutputStream *stream)
 {
   NiceOutputStreamPrivate *priv = NICE_OUTPUT_STREAM (stream)->priv;
-  Component *component = NULL;
+  NiceComponent *component = NULL;
   NiceStream *_stream = NULL;
   gboolean retval = FALSE;
   NiceAgent *agent;  /* owned */
@@ -595,7 +595,7 @@ nice_output_stream_create_source (GPollableOutputStream *stream,
 {
   NiceOutputStreamPrivate *priv = NICE_OUTPUT_STREAM (stream)->priv;
   GSource *component_source = NULL;
-  Component *component = NULL;
+  NiceComponent *component = NULL;
   NiceStream *_stream = NULL;
   NiceAgent *agent;  /* owned */
 

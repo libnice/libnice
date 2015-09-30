@@ -305,7 +305,7 @@ void refresh_cancel (CandidateRefresh *refresh)
  * defined in ICE spec section 4.1.3 "Eliminating Redundant
  * Candidates" (ID-19).
  */
-static gboolean priv_add_local_candidate_pruned (NiceAgent *agent, guint stream_id, Component *component, NiceCandidate *candidate)
+static gboolean priv_add_local_candidate_pruned (NiceAgent *agent, guint stream_id, NiceComponent *component, NiceCandidate *candidate)
 {
   GSList *i;
 
@@ -329,7 +329,7 @@ static gboolean priv_add_local_candidate_pruned (NiceAgent *agent, guint stream_
   return TRUE;
 }
 
-static guint priv_highest_remote_foundation (Component *component)
+static guint priv_highest_remote_foundation (NiceComponent *component)
 {
   GSList *i;
   guint highest = 1;
@@ -384,7 +384,7 @@ static void priv_assign_foundation (NiceAgent *agent, NiceCandidate *candidate)
   for (i = agent->streams; i; i = i->next) {
     NiceStream *stream = i->data;
     for (j = stream->components; j; j = j->next) {
-      Component *component = j->data;
+      NiceComponent *component = j->data;
       for (k = component->local_candidates; k; k = k->next) {
 	NiceCandidate *n = k->data;
 
@@ -427,12 +427,12 @@ static void priv_assign_remote_foundation (NiceAgent *agent, NiceCandidate *cand
 {
   GSList *i, *j, *k;
   guint next_remote_id;
-  Component *component = NULL;
+  NiceComponent *component = NULL;
 
   for (i = agent->streams; i; i = i->next) {
     NiceStream *stream = i->data;
     for (j = stream->components; j; j = j->next) {
-      Component *c = j->data;
+      NiceComponent *c = j->data;
 
       if (c->id == candidate->component_id)
         component = c;
@@ -523,7 +523,7 @@ HostCandidateResult discovery_add_local_host_candidate (
   NiceCandidate **outcandidate)
 {
   NiceCandidate *candidate;
-  Component *component;
+  NiceComponent *component;
   NiceStream *stream;
   NiceSocket *nicesock = NULL;
   HostCandidateResult res = HOST_CANDIDATE_FAILED;
@@ -580,7 +580,7 @@ HostCandidateResult discovery_add_local_host_candidate (
   }
 
   _priv_set_socket_tos (agent, nicesock, stream->tos);
-  component_attach_socket (component, nicesock);
+  nice_component_attach_socket (component, nicesock);
 
   *outcandidate = candidate;
 
@@ -610,7 +610,7 @@ discovery_add_server_reflexive_candidate (
   gboolean nat_assisted)
 {
   NiceCandidate *candidate;
-  Component *component;
+  NiceComponent *component;
   NiceStream *stream;
   gboolean result = FALSE;
 
@@ -670,7 +670,7 @@ discovery_discover_tcp_server_reflexive_candidates (
   NiceAddress *address,
   NiceSocket *base_socket)
 {
-  Component *component;
+  NiceComponent *component;
   NiceStream *stream;
   NiceAddress base_addr = base_socket->addr;
   GSList *i;
@@ -718,7 +718,7 @@ discovery_add_relay_candidate (
   TurnServer *turn)
 {
   NiceCandidate *candidate;
-  Component *component;
+  NiceComponent *component;
   NiceStream *stream;
   NiceSocket *relay_socket = NULL;
 
@@ -769,7 +769,7 @@ discovery_add_relay_candidate (
   if (!priv_add_local_candidate_pruned (agent, stream_id, component, candidate))
     goto errors;
 
-  component_attach_socket (component, relay_socket);
+  nice_component_attach_socket (component, relay_socket);
   agent_signal_new_candidate (agent, candidate);
 
   return candidate;
@@ -798,7 +798,7 @@ discovery_add_peer_reflexive_candidate (
   NiceCandidate *remote)
 {
   NiceCandidate *candidate;
-  Component *component;
+  NiceComponent *component;
   NiceStream *stream;
   gboolean result;
 
@@ -892,7 +892,7 @@ discovery_add_peer_reflexive_candidate (
 NiceCandidate *discovery_learn_remote_peer_reflexive_candidate (
   NiceAgent *agent,
   NiceStream *stream,
-  Component *component,
+  NiceComponent *component,
   guint32 priority,
   const NiceAddress *remote_address,
   NiceSocket *nicesock,

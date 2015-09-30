@@ -42,8 +42,7 @@
 
 #include <glib.h>
 
-typedef struct _Component Component G_GNUC_DEPRECATED_FOR(NiceComponent);
-typedef Component NiceComponent;
+typedef struct _NiceComponent NiceComponent;
 
 #include "agent.h"
 #include "agent-priv.h"
@@ -111,7 +110,7 @@ incoming_check_free (IncomingCheck *icheck);
 typedef struct {
   NiceSocket *socket;
   GSource *source;
-  Component *component;
+  NiceComponent *component;
 } SocketSource;
 
 
@@ -150,8 +149,7 @@ io_callback_data_free (IOCallbackData *data);
 #define NICE_COMPONENT_GET_CLASS(obj) \
   (G_TYPE_INSTANCE_GET_CLASS ((obj), NICE_TYPE_COMPONENT, NiceComponentClass))
 
-struct _Component
-{
+struct _NiceComponent {
   /*< private >*/
   GObject parent;
 
@@ -233,82 +231,64 @@ typedef struct {
 
 GType nice_component_get_type (void);
 
-G_DEPRECATED
-Component *
-component_new (guint component_id, NiceAgent *agent, NiceStream *stream);
+NiceComponent *
+nice_component_new (guint component_id, NiceAgent *agent, NiceStream *stream);
 
-G_DEPRECATED
 void
-component_close (Component *cmp);
+nice_component_close (NiceComponent *component);
 
-G_DEPRECATED_FOR(g_object_unref)
-void
-component_free (Component *cmp);
-
-G_DEPRECATED
 gboolean
-component_find_pair (Component *cmp, NiceAgent *agent, const gchar *lfoundation, const gchar *rfoundation, CandidatePair *pair);
+nice_component_find_pair (NiceComponent *component, NiceAgent *agent,
+    const gchar *lfoundation, const gchar *rfoundation, CandidatePair *pair);
 
-G_DEPRECATED
 void
-component_restart (Component *cmp);
+nice_component_restart (NiceComponent *component);
 
-G_DEPRECATED
 void
-component_update_selected_pair (Component *component, const CandidatePair *pair);
+nice_component_update_selected_pair (NiceComponent *component,
+    const CandidatePair *pair);
 
-G_DEPRECATED
 NiceCandidate *
-component_find_remote_candidate (const Component *component, const NiceAddress *addr, NiceCandidateTransport transport);
+nice_component_find_remote_candidate (NiceComponent *component,
+    const NiceAddress *addr, NiceCandidateTransport transport);
 
-G_DEPRECATED
 NiceCandidate *
-component_set_selected_remote_candidate (NiceAgent *agent, Component *component,
-    NiceCandidate *candidate);
+nice_component_set_selected_remote_candidate (NiceComponent *component,
+    NiceAgent *agent, NiceCandidate *candidate);
 
-G_DEPRECATED
 void
-component_attach_socket (Component *component, NiceSocket *nsocket);
+nice_component_attach_socket (NiceComponent *component, NiceSocket *nsocket);
 
-G_DEPRECATED
 void
-component_detach_socket (Component *component, NiceSocket *nsocket);
+nice_component_detach_socket (NiceComponent *component, NiceSocket *nsocket);
 
-G_DEPRECATED
 void
-component_detach_all_sockets (Component *component);
+nice_component_detach_all_sockets (NiceComponent *component);
 
-G_DEPRECATED
 void
-component_free_socket_sources (Component *component);
+nice_component_free_socket_sources (NiceComponent *component);
 
 GSource *
-component_input_source_new (NiceAgent *agent, guint stream_id,
+nice_component_input_source_new (NiceAgent *agent, guint stream_id,
     guint component_id, GPollableInputStream *pollable_istream,
     GCancellable *cancellable);
 
-G_DEPRECATED
 GMainContext *
-component_dup_io_context (Component *component);
-G_DEPRECATED
+nice_component_dup_io_context (NiceComponent *component);
 void
-component_set_io_context (Component *component, GMainContext *context);
-G_DEPRECATED
+nice_component_set_io_context (NiceComponent *component, GMainContext *context);
 void
-component_set_io_callback (Component *component,
+nice_component_set_io_callback (NiceComponent *component,
     NiceAgentRecvFunc func, gpointer user_data,
     NiceInputMessage *recv_messages, guint n_recv_messages,
     GError **error);
-G_DEPRECATED
 void
-component_emit_io_callback (Component *component,
+nice_component_emit_io_callback (NiceComponent *component,
     const guint8 *buf, gsize buf_len);
-G_DEPRECATED
 gboolean
-component_has_io_callback (Component *component);
-G_DEPRECATED
+nice_component_has_io_callback (NiceComponent *component);
 void
-component_clean_turn_servers (Component *component);
+nice_component_clean_turn_servers (NiceComponent *component);
 
 
 TurnServer *

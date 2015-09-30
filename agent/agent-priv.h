@@ -172,7 +172,7 @@ agent_find_component (
   guint stream_id,
   guint component_id,
   NiceStream **stream,
-  Component **component);
+  NiceComponent **component);
 
 NiceStream *agent_find_stream (NiceAgent *agent, guint stream_id);
 
