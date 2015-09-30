@@ -57,8 +57,8 @@ nice_stream_finalize (GObject *obj);
  * @file stream.c
  * @brief ICE stream functionality
  */
-Stream *
-stream_new (guint n_components, NiceAgent *agent)
+NiceStream *
+nice_stream_new (guint n_components, NiceAgent *agent)
 {
   NiceStream *stream = NULL;
   guint n;
@@ -79,7 +79,7 @@ stream_new (guint n_components, NiceAgent *agent)
 }
 
 void
-stream_close (Stream *stream)
+nice_stream_close (NiceStream *stream)
 {
   GSList *i;
 
@@ -89,14 +89,8 @@ stream_close (Stream *stream)
   }
 }
 
-void
-stream_free (Stream *stream)
-{
-  g_object_unref (stream);
-}
-
 Component *
-stream_find_component_by_id (const Stream *stream, guint id)
+nice_stream_find_component_by_id (NiceStream *stream, guint id)
 {
   GSList *i;
 
@@ -114,7 +108,7 @@ stream_find_component_by_id (const Stream *stream, guint id)
  * 'CONNECTED' or 'READY' (connected plus nominated).
  */
 gboolean
-stream_all_components_ready (const Stream *stream)
+nice_stream_all_components_ready (NiceStream *stream)
 {
   GSList *i;
 
@@ -133,7 +127,8 @@ stream_all_components_ready (const Stream *stream)
 /*
  * Initialized the local crendentials for the stream.
  */
-void stream_initialize_credentials (Stream *stream, NiceRNG *rng)
+void
+nice_stream_initialize_credentials (NiceStream *stream, NiceRNG *rng)
 {
   /* note: generate ufrag/pwd for the stream (see ICE 15.4.
    *       '"ice-ufrag" and "ice-pwd" Attributes', ID-19) */
@@ -146,7 +141,7 @@ void stream_initialize_credentials (Stream *stream, NiceRNG *rng)
  * session.
  */
 void
-stream_restart (NiceAgent *agent, Stream *stream)
+nice_stream_restart (NiceStream *stream, NiceAgent *agent)
 {
   GSList *i;
 
@@ -155,7 +150,7 @@ stream_restart (NiceAgent *agent, Stream *stream)
 
   stream->initial_binding_request_received = FALSE;
 
-  stream_initialize_credentials (stream, agent->rng);
+  nice_stream_initialize_credentials (stream, agent->rng);
 
   for (i = stream->components; i; i = i->next) {
     Component *component = i->data;

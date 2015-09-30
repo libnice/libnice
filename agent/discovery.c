@@ -382,7 +382,7 @@ static void priv_assign_foundation (NiceAgent *agent, NiceCandidate *candidate)
   GSList *i, *j, *k;
 
   for (i = agent->streams; i; i = i->next) {
-    Stream *stream = i->data;
+    NiceStream *stream = i->data;
     for (j = stream->components; j; j = j->next) {
       Component *component = j->data;
       for (k = component->local_candidates; k; k = k->next) {
@@ -430,7 +430,7 @@ static void priv_assign_remote_foundation (NiceAgent *agent, NiceCandidate *cand
   Component *component = NULL;
 
   for (i = agent->streams; i; i = i->next) {
-    Stream *stream = i->data;
+    NiceStream *stream = i->data;
     for (j = stream->components; j; j = j->next) {
       Component *c = j->data;
 
@@ -524,7 +524,7 @@ HostCandidateResult discovery_add_local_host_candidate (
 {
   NiceCandidate *candidate;
   Component *component;
-  Stream *stream;
+  NiceStream *stream;
   NiceSocket *nicesock = NULL;
   HostCandidateResult res = HOST_CANDIDATE_FAILED;
 
@@ -611,7 +611,7 @@ discovery_add_server_reflexive_candidate (
 {
   NiceCandidate *candidate;
   Component *component;
-  Stream *stream;
+  NiceStream *stream;
   gboolean result = FALSE;
 
   if (!agent_find_component (agent, stream_id, component_id, &stream, &component))
@@ -671,7 +671,7 @@ discovery_discover_tcp_server_reflexive_candidates (
   NiceSocket *base_socket)
 {
   Component *component;
-  Stream *stream;
+  NiceStream *stream;
   NiceAddress base_addr = base_socket->addr;
   GSList *i;
 
@@ -719,7 +719,7 @@ discovery_add_relay_candidate (
 {
   NiceCandidate *candidate;
   Component *component;
-  Stream *stream;
+  NiceStream *stream;
   NiceSocket *relay_socket = NULL;
 
   if (!agent_find_component (agent, stream_id, component_id, &stream, &component))
@@ -799,7 +799,7 @@ discovery_add_peer_reflexive_candidate (
 {
   NiceCandidate *candidate;
   Component *component;
-  Stream *stream;
+  NiceStream *stream;
   gboolean result;
 
   if (!agent_find_component (agent, stream_id, component_id, &stream, &component))
@@ -891,7 +891,7 @@ discovery_add_peer_reflexive_candidate (
  */
 NiceCandidate *discovery_learn_remote_peer_reflexive_candidate (
   NiceAgent *agent,
-  Stream *stream,
+  NiceStream *stream,
   Component *component,
   guint32 priority,
   const NiceAddress *remote_address,

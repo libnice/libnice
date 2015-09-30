@@ -140,7 +140,7 @@ socket_source_free (SocketSource *source)
 }
 
 Component *
-component_new (guint id, NiceAgent *agent, Stream *stream)
+component_new (guint id, NiceAgent *agent, NiceStream *stream)
 {
   return g_object_new (NICE_TYPE_COMPONENT,
                        "id", id,

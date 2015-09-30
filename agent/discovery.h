@@ -53,7 +53,7 @@ typedef struct
   GTimeVal next_tick;       /* next tick timestamp */
   gboolean pending;         /* is discovery in progress? */
   gboolean done;            /* is discovery complete? */
-  Stream *stream;
+  NiceStream *stream;
   Component *component;
   TurnServer *turn;
   StunAgent stun_agent;
@@ -70,7 +70,7 @@ typedef struct
   NiceSocket *nicesock;     /* existing socket to use */
   NiceAddress server;       /* STUN/TURN server address */
   NiceCandidate *candidate; /* candidate to refresh */
-  Stream *stream;
+  NiceStream *stream;
   Component *component;
   StunAgent stun_agent;
   GSource *timer_source;
@@ -151,7 +151,7 @@ discovery_add_peer_reflexive_candidate (
 NiceCandidate *
 discovery_learn_remote_peer_reflexive_candidate (
   NiceAgent *agent,
-  Stream *stream,
+  NiceStream *stream,
   Component *component,
   guint32 priority, 
   const NiceAddress *remote_address,

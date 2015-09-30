@@ -201,8 +201,8 @@ struct _Component
 
   NiceAgent *agent;  /* unowned, immutable: can be accessed without holding the
                       * agent lock */
-  Stream *stream;  /* unowned, immutable: can be accessed without holding the
-                    * agent lock */
+  NiceStream *stream;  /* unowned, immutable: can be accessed without holding
+                        * the agent lock */
 
   StunAgent stun_agent; /* This stun agent is used to validate all stun requests */
 
@@ -235,7 +235,7 @@ GType nice_component_get_type (void);
 
 G_DEPRECATED
 Component *
-component_new (guint component_id, NiceAgent *agent, Stream *stream);
+component_new (guint component_id, NiceAgent *agent, NiceStream *stream);
 
 G_DEPRECATED
 void

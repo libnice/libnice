@@ -61,15 +61,15 @@
 #include "stun/usages/bind.h"
 #include "stun/usages/turn.h"
 
-static void priv_update_check_list_failed_components (NiceAgent *agent, Stream *stream);
-static void priv_update_check_list_state_for_ready (NiceAgent *agent, Stream *stream, Component *component);
-static guint priv_prune_pending_checks (Stream *stream, guint component_id);
-static gboolean priv_schedule_triggered_check (NiceAgent *agent, Stream *stream, Component *component, NiceSocket *local_socket, NiceCandidate *remote_cand, gboolean use_candidate);
-static void priv_mark_pair_nominated (NiceAgent *agent, Stream *stream, Component *component, NiceCandidate *remotecand);
-static size_t priv_create_username (NiceAgent *agent, Stream *stream,
+static void priv_update_check_list_failed_components (NiceAgent *agent, NiceStream *stream);
+static void priv_update_check_list_state_for_ready (NiceAgent *agent, NiceStream *stream, Component *component);
+static guint priv_prune_pending_checks (NiceStream *stream, guint component_id);
+static gboolean priv_schedule_triggered_check (NiceAgent *agent, NiceStream *stream, Component *component, NiceSocket *local_socket, NiceCandidate *remote_cand, gboolean use_candidate);
+static void priv_mark_pair_nominated (NiceAgent *agent, NiceStream *stream, Component *component, NiceCandidate *remotecand);
+static size_t priv_create_username (NiceAgent *agent, NiceStream *stream,
     guint component_id, NiceCandidate *remote, NiceCandidate *local,
     uint8_t *dest, guint dest_len, gboolean inbound);
-static size_t priv_get_password (NiceAgent *agent, Stream *stream,
+static size_t priv_get_password (NiceAgent *agent, NiceStream *stream,
     NiceCandidate *remote, uint8_t **password);
 static void conn_check_free_item (gpointer data);
 static void priv_conn_check_add_for_candidate_pair_matched (NiceAgent *agent, guint stream_id, Component *component, NiceCandidate *local, NiceCandidate *remote, NiceCheckState initial_state);
@@ -142,7 +142,7 @@ static gboolean priv_conn_check_unfreeze_next (NiceAgent *agent)
    */
 
   for (i = agent->streams; i; i = i->next) {
-    Stream *stream = i->data;
+    NiceStream *stream = i->data;
     guint64 max_frozen_priority = 0;
 
 
@@ -185,7 +185,7 @@ static gboolean priv_conn_check_unfreeze_next (NiceAgent *agent)
  *
  * @return TRUE on success, and FALSE if no frozen candidates were found.
  */
-static void priv_conn_check_unfreeze_related (NiceAgent *agent, Stream *stream, CandidateCheckPair *ok_check)
+static void priv_conn_check_unfreeze_related (NiceAgent *agent, NiceStream *stream, CandidateCheckPair *ok_check)
 {
   GSList *i, *j;
   guint unfrozen = 0;
@@ -212,10 +212,10 @@ static void priv_conn_check_unfreeze_related (NiceAgent *agent, Stream *stream, 
 
   /* step: perform the step (2) of 'Updating Pair States' */
   stream = agent_find_stream (agent, ok_check->stream_id);
-  if (stream_all_components_ready (stream)) {
+  if (nice_stream_all_components_ready (stream)) {
     /* step: unfreeze checks from other streams */
     for (i = agent->streams; i ; i = i->next) {
-      Stream *s = i->data;
+      NiceStream *s = i->data;
       for (j = stream->conncheck_list; j ; j = j->next) {
 	CandidateCheckPair *p = j->data;
 
@@ -242,12 +242,12 @@ static void priv_conn_check_unfreeze_related (NiceAgent *agent, Stream *stream, 
 }
 
 static void
-candidate_check_pair_fail (Stream *stream, NiceAgent *agent, CandidateCheckPair *p)
+candidate_check_pair_fail (NiceStream *stream, NiceAgent *agent, CandidateCheckPair *p)
 {
   StunTransactionId id;
   Component *component;
 
-  component = stream_find_component_by_id (stream, p->component_id);
+  component = nice_stream_find_component_by_id (stream, p->component_id);
 
   p->state = NICE_CHECK_FAILED;
   nice_debug ("Agent %p : pair %p state FAILED", agent, p);
@@ -269,7 +269,7 @@ candidate_check_pair_fail (Stream *stream, NiceAgent *agent, CandidateCheckPair 
  *
  * @return will return FALSE when no more pending timers.
  */
-static gboolean priv_conn_check_tick_stream (Stream *stream, NiceAgent *agent, GTimeVal *now)
+static gboolean priv_conn_check_tick_stream (NiceStream *stream, NiceAgent *agent, GTimeVal *now)
 {
   gboolean keep_timer_going = FALSE;
   guint s_inprogress = 0, s_succeeded = 0, s_discovered = 0,
@@ -417,7 +417,7 @@ static gboolean priv_conn_check_tick_unlocked (NiceAgent *agent)
 
   /* step: find the highest priority waiting check and send it */
   for (i = agent->streams; i ; i = i->next) {
-    Stream *stream = i->data;
+    NiceStream *stream = i->data;
 
     pair = priv_conn_check_find_next_waiting (stream->conncheck_list);
     if (pair)
@@ -432,7 +432,7 @@ static gboolean priv_conn_check_tick_unlocked (NiceAgent *agent)
   }
 
   for (j = agent->streams; j; j = j->next) {
-    Stream *stream = j->data;
+    NiceStream *stream = j->data;
     gboolean res =
       priv_conn_check_tick_stream (stream, agent, &now);
     if (res)
@@ -443,7 +443,7 @@ static gboolean priv_conn_check_tick_unlocked (NiceAgent *agent)
   if (keep_timer_going != TRUE) {
     nice_debug ("Agent %p : %s: stopping conncheck timer", agent, G_STRFUNC);
     for (i = agent->streams; i; i = i->next) {
-      Stream *stream = i->data;
+      NiceStream *stream = i->data;
       priv_update_check_list_failed_components (agent, stream);
       for (j = stream->components; j; j = j->next) {
         Component *component = j->data;
@@ -618,7 +618,7 @@ static gboolean priv_conn_keepalive_tick_unlocked (NiceAgent *agent)
    *         (ref ICE sect 10 "Keepalives" ID-19)  */
   for (i = agent->streams; i; i = i->next) {
 
-    Stream *stream = i->data;
+    NiceStream *stream = i->data;
     for (j = stream->components; j; j = j->next) {
       Component *component = j->data;
       if (component->selected_pair.local != NULL) {
@@ -710,7 +710,7 @@ static gboolean priv_conn_keepalive_tick_unlocked (NiceAgent *agent)
   /* case 2: connectivity establishment ongoing
    *         (ref ICE sect 4.1.1.4 "Keeping Candidates Alive" ID-19)  */
   for (i = agent->streams; i; i = i->next) {
-    Stream *stream = i->data;
+    NiceStream *stream = i->data;
     for (j = stream->components; j; j = j->next) {
       Component *component = j->data;
       if (component->state < NICE_COMPONENT_STATE_READY &&
@@ -996,7 +996,7 @@ gint conn_check_compare (const CandidateCheckPair *a, const CandidateCheckPair *
  * @param component pointer to component object to which 'pair'has been added
  * @param pair newly added connectivity check
  */
-static void priv_preprocess_conn_check_pending_data (NiceAgent *agent, Stream *stream, Component *component, CandidateCheckPair *pair)
+static void priv_preprocess_conn_check_pending_data (NiceAgent *agent, NiceStream *stream, Component *component, CandidateCheckPair *pair)
 {
   GSList *i;
   for (i = component->incoming_checks; i; i = i->next) {
@@ -1045,10 +1045,10 @@ void conn_check_remote_candidates_set(NiceAgent *agent)
   GSList *i, *j, *k, *l, *m, *n;
 
   for (i = agent->streams; i ; i = i->next) {
-    Stream *stream = i->data;
+    NiceStream *stream = i->data;
     for (j = stream->conncheck_list; j ; j = j->next) {
       CandidateCheckPair *pair = j->data;
-      Component *component = stream_find_component_by_id (stream, pair->component_id);
+      Component *component = nice_stream_find_component_by_id (stream, pair->component_id);
       gboolean match = FALSE;
 
       /* performn delayed processing of spec steps section 7.2.1.4,
@@ -1240,7 +1240,7 @@ static gboolean priv_update_selected_pair (NiceAgent *agent, Component *componen
  *
  * Sends a component state changesignal via 'agent'.
  */
-static void priv_update_check_list_failed_components (NiceAgent *agent, Stream *stream)
+static void priv_update_check_list_failed_components (NiceAgent *agent, NiceStream *stream)
 {
   GSList *i;
   /* note: emitting a signal might cause the client 
@@ -1300,7 +1300,7 @@ static void priv_update_check_list_failed_components (NiceAgent *agent, Stream *
  *
  * Sends a component state changesignal via 'agent'.
  */
-static void priv_update_check_list_state_for_ready (NiceAgent *agent, Stream *stream, Component *component)
+static void priv_update_check_list_state_for_ready (NiceAgent *agent, NiceStream *stream, Component *component)
 {
   GSList *i;
   guint succeeded = 0, nominated = 0;
@@ -1347,7 +1347,7 @@ static void priv_update_check_list_state_for_ready (NiceAgent *agent, Stream *st
  * described by 'component' and 'remotecand' is nominated
  * for use.
  */
-static void priv_mark_pair_nominated (NiceAgent *agent, Stream *stream, Component *component, NiceCandidate *remotecand)
+static void priv_mark_pair_nominated (NiceAgent *agent, NiceStream *stream, Component *component, NiceCandidate *remotecand)
 {
   GSList *i;
 
@@ -1376,7 +1376,7 @@ static void priv_mark_pair_nominated (NiceAgent *agent, Stream *stream, Componen
  */
 static void priv_add_new_check_pair (NiceAgent *agent, guint stream_id, Component *component, NiceCandidate *local, NiceCandidate *remote, NiceCheckState initial_state, gboolean use_candidate)
 {
-  Stream *stream;
+  NiceStream *stream;
   CandidateCheckPair *pair;
 
   g_assert (local != NULL);
@@ -1584,7 +1584,7 @@ void conn_check_free (NiceAgent *agent)
 {
   GSList *i;
   for (i = agent->streams; i; i = i->next) {
-    Stream *stream = i->data;
+    NiceStream *stream = i->data;
 
     if (stream->conncheck_list) {
       nice_debug ("Agent %p, freeing conncheck_list of stream %p", agent,
@@ -1603,7 +1603,7 @@ void conn_check_free (NiceAgent *agent)
  *
  * @return TRUE on success, FALSE on a fatal error
  */
-void conn_check_prune_stream (NiceAgent *agent, Stream *stream)
+void conn_check_prune_stream (NiceAgent *agent, NiceStream *stream)
 {
   GSList *i;
   gboolean keep_going = FALSE;
@@ -1616,7 +1616,7 @@ void conn_check_prune_stream (NiceAgent *agent, Stream *stream)
   }
 
   for (i = agent->streams; i; i = i->next) {
-    Stream *s = i->data;
+    NiceStream *s = i->data;
     if (s->conncheck_list) {
       keep_going = TRUE;
       break;
@@ -1727,7 +1727,7 @@ size_t priv_gen_username (NiceAgent *agent, guint component_id,
  * NULL) is ever written to the 'dest'.
  */
 static
-size_t priv_create_username (NiceAgent *agent, Stream *stream,
+size_t priv_create_username (NiceAgent *agent, NiceStream *stream,
     guint component_id, NiceCandidate *remote, NiceCandidate *local,
     uint8_t *dest, guint dest_len, gboolean inbound)
 {
@@ -1770,7 +1770,7 @@ size_t priv_create_username (NiceAgent *agent, Stream *stream,
  * check.
  */
 static
-size_t priv_get_password (NiceAgent *agent, Stream *stream,
+size_t priv_get_password (NiceAgent *agent, NiceStream *stream,
     NiceCandidate *remote, uint8_t **password)
 {
   if (agent->compatibility == NICE_COMPATIBILITY_GOOGLE)
@@ -1792,7 +1792,7 @@ size_t priv_get_password (NiceAgent *agent, Stream *stream,
 /* Implement the computation specific in RFC 5245 section 16 */
 
 static unsigned int priv_compute_conncheck_timer (NiceAgent *agent,
-    Stream *stream)
+    NiceStream *stream)
 {
   GSList *item;
   guint waiting_and_in_progress = 0;
@@ -1807,7 +1807,7 @@ static unsigned int priv_compute_conncheck_timer (NiceAgent *agent,
   }
 
   /* FIXME: This should also be multiple by "N", which I believe is the
-   * number of Streams currently in the conncheck state. */
+   * number of NiceStreams currently in the conncheck state. */
   rto = agent->timer_ta  * waiting_and_in_progress;
 
   /* We assume non-reliable streams are RTP, so we use 100 as the max */
@@ -1835,7 +1835,7 @@ int conn_check_send (NiceAgent *agent, CandidateCheckPair *pair)
   guint32 priority;
 
   uint8_t uname[NICE_STREAM_MAX_UNAME];
-  Stream *stream;
+  NiceStream *stream;
   Component *component;
   gsize uname_len;
   uint8_t *password = NULL;
@@ -1913,7 +1913,7 @@ int conn_check_send (NiceAgent *agent, CandidateCheckPair *pair)
        * check pair, until we discover a new local peer reflexive */
       if (pair->sockptr->fileno == NULL &&
           pair->local->transport == NICE_CANDIDATE_TRANSPORT_TCP_ACTIVE) {
-        Stream *stream2 = NULL;
+        NiceStream *stream2 = NULL;
         Component *component2 = NULL;
         NiceSocket *new_socket;
 
@@ -1964,7 +1964,7 @@ int conn_check_send (NiceAgent *agent, CandidateCheckPair *pair)
  *
  * @see priv_update_check_list_state_failed_components()
  */
-static guint priv_prune_pending_checks (Stream *stream, guint component_id)
+static guint priv_prune_pending_checks (NiceStream *stream, guint component_id)
 {
   GSList *i;
   guint64 highest_nominated_priority = 0;
@@ -2031,7 +2031,7 @@ static guint priv_prune_pending_checks (Stream *stream, guint component_id)
  * @param remote_cand remote candidate from which the inbound check was sent
  * @param use_candidate whether the original check had USE-CANDIDATE attribute set
  */
-static gboolean priv_schedule_triggered_check (NiceAgent *agent, Stream *stream, Component *component, NiceSocket *local_socket, NiceCandidate *remote_cand, gboolean use_candidate)
+static gboolean priv_schedule_triggered_check (NiceAgent *agent, NiceStream *stream, Component *component, NiceSocket *local_socket, NiceCandidate *remote_cand, gboolean use_candidate)
 {
   GSList *i;
   NiceCandidate *local = NULL;
@@ -2137,7 +2137,7 @@ static gboolean priv_schedule_triggered_check (NiceAgent *agent, Stream *stream,
  * 
  * @pre (rcand == NULL || nice_address_equal(rcand->addr, toaddr) == TRUE)
  */
-static void priv_reply_to_conn_check (NiceAgent *agent, Stream *stream, Component *component, NiceCandidate *rcand, const NiceAddress *toaddr, NiceSocket *sockptr, size_t  rbuf_len, uint8_t *rbuf, gboolean use_candidate)
+static void priv_reply_to_conn_check (NiceAgent *agent, NiceStream *stream, Component *component, NiceCandidate *rcand, const NiceAddress *toaddr, NiceSocket *sockptr, size_t  rbuf_len, uint8_t *rbuf, gboolean use_candidate)
 {
   g_assert (rcand == NULL || nice_address_equal(&rcand->addr, toaddr) == TRUE);
 
@@ -2209,7 +2209,7 @@ static int priv_store_pending_check (NiceAgent *agent, Component *component,
 static CandidateCheckPair *priv_add_peer_reflexive_pair (NiceAgent *agent, guint stream_id, guint component_id, NiceCandidate *local_cand, CandidateCheckPair *parent_pair)
 {
   CandidateCheckPair *pair = g_slice_new0 (CandidateCheckPair);
-  Stream *stream = agent_find_stream (agent, stream_id);
+  NiceStream *stream = agent_find_stream (agent, stream_id);
 
   pair->agent = agent;
   pair->stream_id = stream_id;
@@ -2246,7 +2246,7 @@ static void priv_recalculate_pair_priorities (NiceAgent *agent)
   GSList *i, *j;
 
   for (i = agent->streams; i; i = i->next) {
-    Stream *stream = i->data;
+    NiceStream *stream = i->data;
     for (j = stream->conncheck_list; j; j = j->next) {
       CandidateCheckPair *p = j->data;
       p->priority = agent_candidate_pair_priority (agent, p->local, p->remote);
@@ -2287,7 +2287,7 @@ static void priv_check_for_role_conflict (NiceAgent *agent, gboolean control)
  *
  * @return pointer to a candidate pair, found in conncheck list or newly created
  */
-static CandidateCheckPair *priv_process_response_check_for_reflexive(NiceAgent *agent, Stream *stream, Component *component, CandidateCheckPair *p, NiceSocket *sockptr, struct sockaddr *mapped_sockaddr, NiceCandidate *local_candidate, NiceCandidate *remote_candidate)
+static CandidateCheckPair *priv_process_response_check_for_reflexive(NiceAgent *agent, NiceStream *stream, Component *component, CandidateCheckPair *p, NiceSocket *sockptr, struct sockaddr *mapped_sockaddr, NiceCandidate *local_candidate, NiceCandidate *remote_candidate)
 {
   CandidateCheckPair *new_pair = NULL;
   NiceAddress mapped;
@@ -2353,7 +2353,7 @@ static CandidateCheckPair *priv_process_response_check_for_reflexive(NiceAgent *
  *
  * @return TRUE if a matching transaction is found
  */
-static gboolean priv_map_reply_to_conn_check_request (NiceAgent *agent, Stream *stream, Component *component, NiceSocket *sockptr, const NiceAddress *from, NiceCandidate *local_candidate, NiceCandidate *remote_candidate, StunMessage *resp)
+static gboolean priv_map_reply_to_conn_check_request (NiceAgent *agent, NiceStream *stream, Component *component, NiceSocket *sockptr, const NiceAddress *from, NiceCandidate *local_candidate, NiceCandidate *remote_candidate, StunMessage *resp)
 {
   union {
     struct sockaddr_storage storage;
@@ -2935,7 +2935,7 @@ static gboolean priv_map_reply_to_keepalive_conncheck (NiceAgent *agent,
 
 typedef struct {
   NiceAgent *agent;
-  Stream *stream;
+  NiceStream *stream;
   Component *component;
   uint8_t *password;
 } conncheck_validater_data;
@@ -3032,7 +3032,7 @@ static bool conncheck_stun_validater (StunAgent *agent,
  *
  * @return XXX (what FALSE means exactly?)
  */
-gboolean conn_check_handle_inbound_stun (NiceAgent *agent, Stream *stream,
+gboolean conn_check_handle_inbound_stun (NiceAgent *agent, NiceStream *stream,
     Component *component, NiceSocket *nicesock, const NiceAddress *from,
     gchar *buf, guint len)
 {
@@ -3378,7 +3378,7 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, Stream *stream,
 /* Remove all pointers to the given @sock from the connection checking process.
  * These are entirely NiceCandidates pointed to from various places. */
 void
-conn_check_prune_socket (NiceAgent *agent, Stream *stream, Component *component,
+conn_check_prune_socket (NiceAgent *agent, NiceStream *stream, Component *component,
     NiceSocket *sock)
 {
   GSList *l;

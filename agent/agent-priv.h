@@ -171,10 +171,10 @@ agent_find_component (
   NiceAgent *agent,
   guint stream_id,
   guint component_id,
-  Stream **stream,
+  NiceStream **stream,
   Component **component);
 
-Stream *agent_find_stream (NiceAgent *agent, guint stream_id);
+NiceStream *agent_find_stream (NiceAgent *agent, guint stream_id);
 
 void agent_gathering_done (NiceAgent *agent);
 void agent_signal_gathering_done (NiceAgent *agent);
@@ -202,7 +202,7 @@ void agent_signal_new_candidate (
 
 void agent_signal_new_remote_candidate (NiceAgent *agent, NiceCandidate *candidate);
 
-void agent_signal_initial_binding_request_received (NiceAgent *agent, Stream *stream);
+void agent_signal_initial_binding_request_received (NiceAgent *agent, NiceStream *stream);
 
 guint64 agent_candidate_pair_priority (NiceAgent *agent, NiceCandidate *local, NiceCandidate *remote);
 

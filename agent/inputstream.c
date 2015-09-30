@@ -333,7 +333,7 @@ nice_input_stream_close (GInputStream *stream, GCancellable *cancellable,
 {
   NiceInputStreamPrivate *priv = NICE_INPUT_STREAM (stream)->priv;
   Component *component = NULL;
-  Stream *_stream = NULL;
+  NiceStream *_stream = NULL;
   NiceAgent *agent;  /* owned */
 
   /* Has the agent disappeared? */
@@ -362,7 +362,7 @@ nice_input_stream_is_readable (GPollableInputStream *stream)
 {
   NiceInputStreamPrivate *priv = NICE_INPUT_STREAM (stream)->priv;
   Component *component = NULL;
-  Stream *_stream = NULL;
+  NiceStream *_stream = NULL;
   gboolean retval = FALSE;
   GSList *i;
   NiceAgent *agent;  /* owned */
