@@ -61,17 +61,17 @@ main (void)
   g_assert_cmpuint (nice_candidate_ice_priority (candidate, TRUE, FALSE), ==, 0x3C0001FF);
   /* Host tcp-active unreliable */
   candidate->transport = NICE_CANDIDATE_TRANSPORT_TCP_ACTIVE;
-  g_assert_cmpuint (nice_candidate_ice_priority (candidate, FALSE, FALSE), ==, 0x3CC001FF);
+  g_assert_cmpuint (nice_candidate_ice_priority (candidate, FALSE, FALSE), ==, 0x3CC003FF);
   /* Host tcp-active reliable */
   candidate->transport = NICE_CANDIDATE_TRANSPORT_TCP_ACTIVE;
   /* Host tcp-active reliable */
-  g_assert_cmpuint (nice_candidate_ice_priority (candidate, TRUE, FALSE), ==, 0x78C001FF);
+  g_assert_cmpuint (nice_candidate_ice_priority (candidate, TRUE, FALSE), ==, 0x78C003FF);
   /* srv-reflexive tcp-active reliable */
   candidate->type = NICE_CANDIDATE_TYPE_SERVER_REFLEXIVE;
   candidate->transport = NICE_CANDIDATE_TRANSPORT_TCP_ACTIVE;
-  g_assert_cmpuint (nice_candidate_ice_priority (candidate, TRUE, FALSE), ==, 0x648001FF);
+  g_assert_cmpuint (nice_candidate_ice_priority (candidate, TRUE, FALSE), ==, 0x648003FF);
   /* nat-assisted srv-reflexive tcp-active reliable */
-  g_assert_cmpuint (nice_candidate_ice_priority (candidate, TRUE, TRUE), ==, 0x698001FF);
+  g_assert_cmpuint (nice_candidate_ice_priority (candidate, TRUE, TRUE), ==, 0x698003FF);
   nice_candidate_free (candidate);
 
   /* test 2 */
