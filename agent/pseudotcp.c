@@ -1607,7 +1607,7 @@ process(PseudoTcpSocket *self, Segment *seg)
           priv->rx_rttvar = rtt / 2;
         } else {
           priv->rx_rttvar = (3 * priv->rx_rttvar +
-              abs((long)(rtt - priv->rx_srtt))) / 4;
+              labs((long)(rtt - priv->rx_srtt))) / 4;
           priv->rx_srtt = (7 * priv->rx_srtt + rtt) / 8;
         }
         priv->rx_rto = bound(MIN_RTO,
