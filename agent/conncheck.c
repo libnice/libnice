@@ -3180,6 +3180,11 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, NiceStream *stream,
     }
   }
 
+  if (local_candidate != NULL && local_candidate->transport == NICE_CANDIDATE_TRANSPORT_TCP_PASSIVE) {
+        local_candidate->sockptr = nicesock;
+  }
+
+
   if (agent->compatibility == NICE_COMPATIBILITY_GOOGLE ||
       agent->compatibility == NICE_COMPATIBILITY_MSN ||
       agent->compatibility == NICE_COMPATIBILITY_OC2007) {
