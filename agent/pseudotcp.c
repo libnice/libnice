@@ -2136,6 +2136,7 @@ attempt_send(PseudoTcpSocket *self, SendFlags sflags)
     gsize snd_buffered;
     GList *iter;
     SSegment *sseg;
+    int transmit_status;
 
     cwnd = priv->cwnd;
     if ((priv->dup_acks == 1) || (priv->dup_acks == 2)) { // Limited Transmit
@@ -2211,9 +2212,12 @@ attempt_send(PseudoTcpSocket *self, SendFlags sflags)
           subseg);
     }
 
-    if (transmit(self, sseg, now) != 0) {
+    transmit_status = transmit(self, sseg, now);
+    if (transmit_status != 0) {
       DEBUG (PSEUDO_TCP_DEBUG_NORMAL, "transmit failed");
-      // TODO: consider closing socket
+
+      // TODO: Is this the right thing ?
+      closedown (self, transmit_status, CLOSEDOWN_REMOTE);
       return;
     }
 
