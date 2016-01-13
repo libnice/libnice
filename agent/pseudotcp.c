@@ -118,7 +118,9 @@ const guint16 PACKET_MAXIMUMS[] = {
   0,      // End of list marker
 };
 
-#define MAX_PACKET 65535
+// FIXME: This is a reasonable MTU, but we should get it from the lower layer
+#define DEF_MTU 1400
+#define MAX_PACKET 65532
 // Note: we removed lowest level because packet overhead was larger!
 #define MIN_PACKET 296
 
@@ -829,7 +831,7 @@ pseudo_tcp_socket_init (PseudoTcpSocket *obj)
   priv->msslevel = 0;
   priv->largest = 0;
   priv->mss = MIN_PACKET - PACKET_OVERHEAD;
-  priv->mtu_advise = MAX_PACKET;
+  priv->mtu_advise = DEF_MTU;
 
   priv->rto_base = 0;
 
@@ -1032,9 +1034,11 @@ pseudo_tcp_socket_notify_packet(PseudoTcpSocket *self,
 
   if (len > MAX_PACKET) {
     //LOG_F(WARNING) << "packet too large";
+    self->priv->error = EMSGSIZE;
     return FALSE;
   } else if (len < HEADER_SIZE) {
     //LOG_F(WARNING) << "packet too small";
+    self->priv->error = EINVAL;
     return FALSE;
   }
 
