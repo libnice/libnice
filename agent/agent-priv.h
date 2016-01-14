@@ -173,7 +173,7 @@ agent_find_component (
   guint stream_id,
   guint component_id,
   NiceStream **stream,
-  NiceComponent **component);
+  NiceComponent **component) G_GNUC_WARN_UNUSED_RESULT;
 
 NiceStream *agent_find_stream (NiceAgent *agent, guint stream_id);
 
