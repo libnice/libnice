@@ -82,6 +82,10 @@ static void
 nice_component_schedule_io_callback (NiceComponent *component);
 static void
 nice_component_deschedule_io_callback (NiceComponent *component);
+static void
+nice_component_detach_socket (NiceComponent *component, NiceSocket *nicesock);
+static void
+nice_component_clear_selected_pair (NiceComponent *component);
 
 
 void
@@ -150,6 +154,45 @@ nice_component_new (guint id, NiceAgent *agent, NiceStream *stream)
                        "agent", agent,
                        "stream", stream,
                        NULL);
+}
+
+void
+nice_component_remove_socket (NiceComponent *cmp, NiceSocket *nsocket)
+{
+  GSList *i;
+
+  for (i = cmp->local_candidates; i;) {
+    NiceCandidate *candidate = i->data;
+    GSList *next = i->next;
+
+    if (!nice_socket_is_based_on (candidate->sockptr, nsocket)) {
+      i = next;
+      continue;
+    }
+
+    if (candidate == cmp->selected_pair.local) {
+      nice_component_clear_selected_pair (cmp);
+      agent_signal_component_state_change (cmp->agent, cmp->stream->id,
+          cmp->id, NICE_COMPONENT_STATE_FAILED);
+    }
+
+    refresh_prune_candidate (cmp->agent, candidate);
+    if (candidate->sockptr != nsocket) {
+      discovery_prune_socket (cmp->agent, candidate->sockptr);
+      conn_check_prune_socket (cmp->agent, cmp->stream, cmp,
+          candidate->sockptr);
+      nice_component_detach_socket (cmp, candidate->sockptr);
+    }
+    agent_remove_local_candidate (cmp->agent, candidate);
+    nice_candidate_free (candidate);
+
+    cmp->local_candidates = g_slist_delete_link (cmp->local_candidates, i);
+    i = next;
+  }
+
+  discovery_prune_socket (cmp->agent, nsocket);
+  conn_check_prune_socket (cmp->agent, cmp->stream, cmp, nsocket);
+  nice_component_detach_socket (cmp, nsocket);
 }
 
 void
@@ -541,7 +584,7 @@ nice_component_reattach_all_sockets (NiceComponent *component)
 
 /**
  * nice_component_detach_socket:
- * @component: a #Component
+ * @component: a #NiceComponent
  * @socket: the socket to detach the source for
  *
  * Detach the #GSource for the single specified @socket. It also closes it
@@ -549,7 +592,7 @@ nice_component_reattach_all_sockets (NiceComponent *component)
  *
  * If the @socket doesn’t exist in this @component, do nothing.
  */
-void
+static void
 nice_component_detach_socket (NiceComponent *component, NiceSocket *nicesock)
 {
   GSList *l;
@@ -1281,7 +1324,7 @@ static GSourceFuncs component_source_funcs = {
 };
 
 /**
- * component_source_new:
+ * nice_component_source_new:
  * @agent: a #NiceAgent
  * @stream_id: The stream's id
  * @component_id: The component's number

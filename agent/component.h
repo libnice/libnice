@@ -261,8 +261,7 @@ void
 nice_component_attach_socket (NiceComponent *component, NiceSocket *nsocket);
 
 void
-nice_component_detach_socket (NiceComponent *component, NiceSocket *nsocket);
-
+nice_component_remove_socket (NiceComponent *component, NiceSocket *nsocket);
 void
 nice_component_detach_all_sockets (NiceComponent *component);
 

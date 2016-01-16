@@ -4872,7 +4872,7 @@ component_io_cb (GSocket *gsocket, GIOCondition condition, gpointer user_data)
           stream->id, component->id, NICE_COMPONENT_STATE_FAILED);
     }
 
-    nice_component_detach_socket (component, socket_source->socket);
+    nice_component_remove_socket (component, socket_source->socket);
     agent_unlock ();
     g_object_unref (agent);
     return G_SOURCE_REMOVE;
