@@ -2659,9 +2659,6 @@ nice_agent_gather_candidates (
     agent->upnp = gupnp_simple_igd_thread_new ();
 
     if (agent->upnp) {
-      agent_timeout_add_with_context (agent, &agent->upnp_timer_source,
-          "UPnP timeout", agent->upnp_timeout, priv_upnp_timeout_cb, agent);
-
       g_signal_connect (agent->upnp, "mapped-external-port",
           G_CALLBACK (_upnp_mapped_external_port), agent);
       g_signal_connect (agent->upnp, "error-mapping-port",
@@ -2808,6 +2805,9 @@ nice_agent_gather_candidates (
             0, local_ip, nice_address_get_port (base_addr),
             0, PACKAGE_STRING);
         agent->upnp_mapping = g_slist_prepend (agent->upnp_mapping, base_addr);
+
+        agent_timeout_add_with_context (agent, &agent->upnp_timer_source,
+            "UPnP timeout", agent->upnp_timeout, priv_upnp_timeout_cb, agent);
       }
 #endif
 
