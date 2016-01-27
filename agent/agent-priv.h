@@ -130,6 +130,7 @@ struct _NiceAgent
   gboolean controlling_mode;      /* property: controlling-mode */
   guint timer_ta;                 /* property: timer Ta */
   guint max_conn_checks;          /* property: max connectivity checks */
+  gboolean force_relay;           /* property: force relay */
 
   GSList *local_addresses;        /* list of NiceAddresses for local
 				     interfaces */

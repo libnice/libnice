@@ -1730,8 +1730,11 @@ int conn_check_add_for_candidate (NiceAgent *agent, guint stream_id, NiceCompone
   g_assert (remote != NULL);
 
   for (i = component->local_candidates; i ; i = i->next) {
-
     NiceCandidate *local = i->data;
+
+    if (agent->force_relay && local->type != NICE_CANDIDATE_TYPE_RELAYED)
+        continue;
+
     ret = conn_check_add_for_candidate_pair (agent, stream_id, component, local, remote);
 
     if (ret) {
@@ -2561,21 +2564,23 @@ static CandidateCheckPair *priv_process_response_check_for_reflexive(NiceAgent *
   }
   else {
     if (!local_cand) {
-      local_cand = discovery_add_peer_reflexive_candidate (agent,
-                                                           stream->id,
-                                                           component->id,
-                                                           &mapped,
-                                                           sockptr,
-                                                           local_candidate,
-                                                           remote_candidate);
+      if (!agent->force_relay)
+        local_cand = discovery_add_peer_reflexive_candidate (agent,
+                                                             stream->id,
+                                                             component->id,
+                                                            &mapped,
+                                                             sockptr,
+                                                             local_candidate,
+                                                             remote_candidate);
       p->state = NICE_CHECK_FAILED;
       nice_debug ("Agent %p : pair %p state FAILED", agent, p);
     }
 
     /* step: add a new discovered pair (see RFC 5245 7.1.3.2.2
 	       "Constructing a Valid Pair") */
-    new_pair = priv_add_peer_reflexive_pair (agent, stream->id, component,
-        local_cand, p);
+    if (local_cand)
+      new_pair = priv_add_peer_reflexive_pair (agent, stream->id, component,
+          local_cand, p);
     nice_debug ("Agent %p : conncheck %p FAILED, %p DISCOVERED.", agent, p, new_pair);
   }
 
@@ -2780,25 +2785,27 @@ static gboolean priv_map_reply_to_discovery_request (NiceAgent *agent, StunMessa
           d->pending = FALSE;
         } else if (res == STUN_USAGE_BIND_RETURN_SUCCESS) {
           /* case: successful binding discovery, create a new local candidate */
-          NiceAddress niceaddr;
-          nice_address_set_from_sockaddr (&niceaddr, &sockaddr.addr);
 
-          discovery_add_server_reflexive_candidate (
-              d->agent,
-              d->stream->id,
-              d->component->id,
-              &niceaddr,
-              NICE_CANDIDATE_TRANSPORT_UDP,
-              d->nicesock,
-              FALSE);
-          if (d->agent->use_ice_tcp)
-            discovery_discover_tcp_server_reflexive_candidates (
+          if (!agent->force_relay) {
+            NiceAddress niceaddr;
+
+            nice_address_set_from_sockaddr (&niceaddr, &sockaddr.addr);
+            discovery_add_server_reflexive_candidate (
                 d->agent,
                 d->stream->id,
                 d->component->id,
                 &niceaddr,
-                d->nicesock);
-
+                NICE_CANDIDATE_TRANSPORT_UDP,
+                d->nicesock,
+                FALSE);
+            if (d->agent->use_ice_tcp)
+              discovery_discover_tcp_server_reflexive_candidates (
+                  d->agent,
+                  d->stream->id,
+                  d->component->id,
+                  &niceaddr,
+                  d->nicesock);
+          }
           d->stun_message.buffer = NULL;
           d->stun_message.buffer_len = 0;
           d->done = TRUE;
@@ -2931,7 +2938,8 @@ static gboolean priv_map_reply_to_relay_request (NiceAgent *agent, StunMessage *
              * on a TCP connection, which cannot be used for server-reflexive
              * discovery of candidates.
              */
-            if (d->turn->type == NICE_RELAY_TYPE_TURN_UDP) {
+            if (d->turn->type == NICE_RELAY_TYPE_TURN_UDP &&
+                !agent->force_relay) {
               discovery_add_server_reflexive_candidate (
                   d->agent,
                   d->stream->id,
