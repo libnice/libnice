@@ -1787,6 +1787,15 @@ int conn_check_add_for_candidate (NiceAgent *agent, guint stream_id, NiceCompone
 
   g_assert (remote != NULL);
 
+  /* note: according to 7.2.1.3, "Learning Peer Reflexive Candidates",
+   * the agent does not pair this candidate with any local candidates.
+   */
+  if (agent->compatibility == NICE_COMPATIBILITY_RFC5245 &&
+      remote->type == NICE_CANDIDATE_TYPE_PEER_REFLEXIVE)
+  {
+    return added;
+  }
+
   for (i = component->local_candidates; i ; i = i->next) {
     NiceCandidate *local = i->data;
 
@@ -1820,6 +1829,18 @@ int conn_check_add_for_local_candidate (NiceAgent *agent, guint stream_id, NiceC
   int ret = 0;
 
   g_assert (local != NULL);
+
+  /*
+   * note: according to 7.1.3.2.1 "Discovering Peer Reflexive
+   * Candidates", the peer reflexive candidate is not paired
+   * with other remote candidates
+   */
+
+  if (agent->compatibility == NICE_COMPATIBILITY_RFC5245 &&
+      local->type == NICE_CANDIDATE_TYPE_PEER_REFLEXIVE)
+  {
+    return added;
+  }
 
   for (i = component->remote_candidates; i ; i = i->next) {
 
