@@ -992,6 +992,8 @@ pseudo_tcp_socket_notify_clock(PseudoTcpSocket *self)
 
       nInFlight = priv->snd_nxt - priv->snd_una;
       priv->ssthresh = max(nInFlight / 2, 2 * priv->mss);
+      DEBUG (PSEUDO_TCP_DEBUG_NORMAL, "ssthresh: %u = (nInFlight: %u / 2) + "
+          "2 * mss: %u", priv->ssthresh, nInFlight, priv->mss);
       //LOG(LS_INFO) << "priv->ssthresh: " << priv->ssthresh << "  nInFlight: " << nInFlight << "  priv->mss: " << priv->mss;
       priv->cwnd = priv->mss;
 
@@ -1669,8 +1671,8 @@ process(PseudoTcpSocket *self, Segment *seg)
         priv->rx_rto = bound(MIN_RTO,
             priv->rx_srtt + max(1LU, 4 * priv->rx_rttvar), MAX_RTO);
 
-        DEBUG (PSEUDO_TCP_DEBUG_VERBOSE, "rtt: %ld   srtt: %u  rto: %u",
-                rtt, priv->rx_srtt, priv->rx_rto);
+        DEBUG (PSEUDO_TCP_DEBUG_VERBOSE, "rtt: %ld srtt: %u rttvar: %u rto: %u",
+            rtt, priv->rx_srtt, priv->rx_rttvar, priv->rx_rto);
       } else {
         DEBUG (PSEUDO_TCP_DEBUG_NORMAL, "Invalid RTT: %ld", rtt);
         return FALSE;
@@ -1720,7 +1722,7 @@ process(PseudoTcpSocket *self, Segment *seg)
         guint32 nInFlight = priv->snd_nxt - priv->snd_una;
         // (Fast Retransmit)
         priv->cwnd = min(priv->ssthresh, nInFlight + priv->mss);
-        DEBUG (PSEUDO_TCP_DEBUG_NORMAL, "exit recovery");
+        DEBUG (PSEUDO_TCP_DEBUG_NORMAL, "exit recovery cwnd=%d ssthresh=%d nInFlight=%d mss: %d", priv->cwnd, priv->ssthresh, nInFlight, priv->mss);
         priv->dup_acks = 0;
       } else {
         int transmit_status;
@@ -1773,6 +1775,8 @@ process(PseudoTcpSocket *self, Segment *seg)
         priv->recover = priv->snd_nxt;
         nInFlight = priv->snd_nxt - priv->snd_una;
         priv->ssthresh = max(nInFlight / 2, 2 * priv->mss);
+        DEBUG (PSEUDO_TCP_DEBUG_NORMAL, "ssthresh: %u = (nInFlight: %u / 2) + "
+            "2 * mss: %u", priv->ssthresh, nInFlight, priv->mss);
         //LOG(LS_INFO) << "priv->ssthresh: " << priv->ssthresh << "  nInFlight: " << nInFlight << "  priv->mss: " << priv->mss;
         priv->cwnd = priv->ssthresh + 3 * priv->mss;
       } else if (priv->dup_acks > 3) {
@@ -2166,12 +2170,13 @@ attempt_send(PseudoTcpSocket *self, SendFlags sflags)
 
     if (bFirst) {
       gsize available_space = pseudo_tcp_fifo_get_write_remaining (&priv->sbuf);
+
       bFirst = FALSE;
       DEBUG (PSEUDO_TCP_DEBUG_VERBOSE, "[cwnd: %u  nWindow: %u  nInFlight: %u "
           "nAvailable: %u nQueued: %" G_GSIZE_FORMAT " nEmpty: %" G_GSIZE_FORMAT
-          "  ssthresh: %u]",
+          "  nWaiting: %zu ssthresh: %u]",
           priv->cwnd, nWindow, nInFlight, nAvailable, snd_buffered,
-          available_space, priv->ssthresh);
+          available_space, snd_buffered - nInFlight, priv->ssthresh);
     }
 
     if (nAvailable == 0 && sflags != sfFin && sflags != sfRst) {
@@ -2305,6 +2310,7 @@ apply_window_scale_option (PseudoTcpSocket *self, guint8 scale_factor)
    PseudoTcpSocketPrivate *priv = self->priv;
 
    priv->swnd_scale = scale_factor;
+   DEBUG (PSEUDO_TCP_DEBUG_NORMAL, "Setting scale factor to %u", scale_factor);
 }
 
 static void
