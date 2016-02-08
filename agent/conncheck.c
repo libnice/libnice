@@ -708,7 +708,6 @@ static gboolean priv_conn_keepalive_tick_unlocked (NiceAgent *agent)
 
         if (agent->compatibility == NICE_COMPATIBILITY_GOOGLE ||
             agent->keepalive_conncheck) {
-          guint32 priority;
           uint8_t uname[NICE_STREAM_MAX_UNAME];
           size_t uname_len =
               priv_create_username (agent, agent_find_stream (agent, stream->id),
@@ -717,8 +716,6 @@ static gboolean priv_conn_keepalive_tick_unlocked (NiceAgent *agent)
           uint8_t *password = NULL;
           size_t password_len = priv_get_password (agent,
               agent_find_stream (agent, stream->id), p->remote, &password);
-
-          priority = peer_reflexive_candidate_priority (agent, p->local);
 
           if (p->keepalive.stun_message.buffer != NULL) {
             nice_debug ("Agent %p: Keepalive for s%u:c%u still"
@@ -735,14 +732,16 @@ static gboolean priv_conn_keepalive_tick_unlocked (NiceAgent *agent)
                 "password='%.*s' (%" G_GSIZE_FORMAT "), priority=%u.", agent,
                 tmpbuf, nice_address_get_port (&p->remote->addr),
                 component->id, (int) uname_len, uname, uname_len,
-                (int) password_len, password, password_len, priority);
+                (int) password_len, password, password_len,
+                p->prflx_priority);
           }
           if (uname_len > 0) {
             buf_len = stun_usage_ice_conncheck_create (&component->stun_agent,
                 &p->keepalive.stun_message, p->keepalive.stun_buffer,
                 sizeof(p->keepalive.stun_buffer),
                 uname, uname_len, password, password_len,
-                agent->controlling_mode, agent->controlling_mode, priority,
+                agent->controlling_mode, agent->controlling_mode,
+                p->prflx_priority,
                 agent->tie_breaker,
                 NULL,
                 agent_to_ice_compatibility (agent));
@@ -1446,6 +1445,38 @@ static void priv_mark_pair_nominated (NiceAgent *agent, NiceStream *stream, Nice
   }
 }
 
+guint32
+ensure_unique_priority (Component *component, guint32 priority)
+{
+  GSList *item;
+
+ again:
+  if (priority == 0)
+    priority--;
+
+  for (item = component->local_candidates; item; item = item->next) {
+    NiceCandidate *cand = item->data;
+
+    if (cand->priority == priority) {
+      priority--;
+      goto again;
+    }
+  }
+
+  for (item = component->stream->conncheck_list; item; item = item->next) {
+    CandidateCheckPair *p = item->data;
+
+    if (p->component_id == component->id &&
+        p->prflx_priority == priority) {
+      priority--;
+      goto again;
+    }
+  }
+
+  return priority;
+}
+
+
 /*
  * Creates a new connectivity check pair and adds it to
  * the agent's list of checks.
@@ -1486,6 +1517,8 @@ static void priv_add_new_check_pair (NiceAgent *agent, guint stream_id, NiceComp
   }
   pair->nominated = use_candidate;
   pair->controlling = agent->controlling_mode;
+  pair->prflx_priority = ensure_unique_priority (component,
+      peer_reflexive_candidate_priority (agent, local));
 
   stream->conncheck_list = g_slist_insert_sorted (stream->conncheck_list, pair,
       (GCompareFunc)conn_check_compare);
@@ -1913,7 +1946,6 @@ int conn_check_send (NiceAgent *agent, CandidateCheckPair *pair)
    *  - ICE-CONTROLLED/ICE-CONTROLLING (for role conflicts)
    *  - USE-CANDIDATE (if sent by the controlling agent)
    */
-  guint32 priority;
 
   uint8_t uname[NICE_STREAM_MAX_UNAME];
   NiceStream *stream;
@@ -1934,8 +1966,6 @@ int conn_check_send (NiceAgent *agent, CandidateCheckPair *pair)
   uname_len = priv_create_username (agent, stream, pair->component_id,
       pair->remote, pair->local, uname, sizeof (uname), FALSE);
   password_len = priv_get_password (agent, stream, pair->remote, &password);
-
-  priority = peer_reflexive_candidate_priority (agent, pair->local);
 
   if (password != NULL &&
       (agent->compatibility == NICE_COMPATIBILITY_MSN ||
@@ -1958,8 +1988,7 @@ int conn_check_send (NiceAgent *agent, CandidateCheckPair *pair)
 	     (unsigned long long)agent->tie_breaker,
         (int) uname_len, uname, uname_len,
         (int) password_len, password, password_len,
-        priority, controlling);
-
+        pair->prflx_priority, controlling);
   }
 
   if (cand_use)
@@ -1969,7 +1998,7 @@ int conn_check_send (NiceAgent *agent, CandidateCheckPair *pair)
     buffer_len = stun_usage_ice_conncheck_create (&component->stun_agent,
         &pair->stun_message, pair->stun_buffer, sizeof(pair->stun_buffer),
         uname, uname_len, password, password_len,
-        cand_use, controlling, priority,
+        cand_use, controlling, pair->prflx_priority,
         agent->tie_breaker,
         pair->local->foundation,
         agent_to_ice_compatibility (agent));
@@ -2290,14 +2319,14 @@ static int priv_store_pending_check (NiceAgent *agent, NiceComponent *component,
  *
  * @return created pair, or NULL on fatal (memory allocation) errors
  */
-static CandidateCheckPair *priv_add_peer_reflexive_pair (NiceAgent *agent, guint stream_id, guint component_id, NiceCandidate *local_cand, CandidateCheckPair *parent_pair)
+static CandidateCheckPair *priv_add_peer_reflexive_pair (NiceAgent *agent, guint stream_id, Component *component, NiceCandidate *local_cand, CandidateCheckPair *parent_pair)
 {
   CandidateCheckPair *pair = g_slice_new0 (CandidateCheckPair);
   NiceStream *stream = agent_find_stream (agent, stream_id);
 
   pair->agent = agent;
   pair->stream_id = stream_id;
-  pair->component_id = component_id;;
+  pair->component_id = component->id;;
   pair->local = local_cand;
   pair->remote = parent_pair->remote;
   pair->sockptr = local_cand->sockptr;
@@ -2322,6 +2351,8 @@ static CandidateCheckPair *priv_add_peer_reflexive_pair (NiceAgent *agent, guint
         pair->local->priority);
   pair->nominated = FALSE;
   pair->controlling = agent->controlling_mode;
+  pair->prflx_priority = ensure_unique_priority (component,
+      peer_reflexive_candidate_priority (agent, local_cand));
   nice_debug ("Agent %p : added a new peer-discovered pair with foundation of '%s'.",  agent, pair->foundation);
 
   stream->conncheck_list = g_slist_insert_sorted (stream->conncheck_list, pair,
@@ -2431,8 +2462,8 @@ static CandidateCheckPair *priv_process_response_check_for_reflexive(NiceAgent *
 
     /* step: add a new discovered pair (see RFC 5245 7.1.3.2.2
 	       "Constructing a Valid Pair") */
-    new_pair = priv_add_peer_reflexive_pair (agent, stream->id, component->id,
-                                             local_cand, p);
+    new_pair = priv_add_peer_reflexive_pair (agent, stream->id, component,
+        local_cand, p);
     nice_debug ("Agent %p : conncheck %p FAILED, %p DISCOVERED.", agent, p, new_pair);
   }
 

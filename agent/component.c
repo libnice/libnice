@@ -391,7 +391,7 @@ nice_component_update_selected_pair (NiceComponent *component, const CandidatePa
   component->selected_pair.local = pair->local;
   component->selected_pair.remote = pair->remote;
   component->selected_pair.priority = pair->priority;
-
+  component->selected_pair.prflx_priority = pair->prflx_priority;
 }
 
 /*

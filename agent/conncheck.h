@@ -89,6 +89,7 @@ struct _CandidateCheckPair
   gboolean timer_restarted;
   gboolean valid;
   guint64 priority;
+  guint32 prflx_priority;
   GTimeVal next_tick;       /* next tick timestamp */
   StunTimer timer;
   uint8_t stun_buffer[STUN_MAX_MESSAGE_SIZE_IPV6];
@@ -109,5 +110,7 @@ NiceCandidateTransport conn_check_match_transport (NiceCandidateTransport transp
 void
 conn_check_prune_socket (NiceAgent *agent, NiceStream *stream, NiceComponent *component,
     NiceSocket *sock);
+
+guint32 ensure_unique_priority (Component *component, guint32 priority);
 
 #endif /*_NICE_CONNCHECK_H */
