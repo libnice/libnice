@@ -2838,6 +2838,9 @@ static gboolean priv_map_reply_to_relay_request (NiceAgent *agent, StunMessage *
           }
 
           if (relay_cand) {
+	    if (d->stun_resp_msg.buffer)
+	      nice_udp_turn_socket_cache_realm_nonce (relay_cand->sockptr,
+                  &d->stun_resp_msg);
             if (agent->compatibility == NICE_COMPATIBILITY_OC2007 ||
                 agent->compatibility == NICE_COMPATIBILITY_OC2007R2) {
               /* These data are needed on TURN socket when sending requests,

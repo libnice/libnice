@@ -75,6 +75,9 @@ nice_udp_turn_socket_set_ms_realm(NiceSocket *sock, StunMessage *msg);
 void
 nice_udp_turn_socket_set_ms_connection_id (NiceSocket *sock, StunMessage *msg);
 
+void
+nice_udp_turn_socket_cache_realm_nonce (NiceSocket *sock, StunMessage *msg);
+
 
 G_END_DECLS
 

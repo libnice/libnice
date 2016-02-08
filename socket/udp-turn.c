@@ -98,6 +98,11 @@ typedef struct {
   GHashTable *send_data_queues; /* stores a send data queue for per peer */
   GSource *permission_timeout_source;      /* timer used to invalidate
                                            permissions */
+
+  guint8 *cached_realm;
+  uint16_t cached_realm_len;
+  guint8 *cached_nonce;
+  uint16_t cached_nonce_len;
 } UdpTurnPriv;
 
 
@@ -132,9 +137,9 @@ static gboolean priv_retransmissions_tick_unlocked (UdpTurnPriv *priv);
 static gboolean priv_retransmissions_tick (gpointer pointer);
 static void priv_schedule_tick (UdpTurnPriv *priv);
 static void priv_send_turn_message (UdpTurnPriv *priv, TURNMessage *msg);
-static gboolean priv_send_create_permission (UdpTurnPriv *priv,  StunMessage *resp,
+static gboolean priv_send_create_permission (UdpTurnPriv *priv,
     const NiceAddress *peer);
-static gboolean priv_send_channel_bind (UdpTurnPriv *priv, StunMessage *resp,
+static gboolean priv_send_channel_bind (UdpTurnPriv *priv,
     uint16_t channel,
     const NiceAddress *peer);
 static gboolean priv_add_channel_binding (UdpTurnPriv *priv,
@@ -319,6 +324,8 @@ socket_close (NiceSocket *sock)
   g_list_free(priv->pending_permissions);
   g_free (priv->username);
   g_free (priv->password);
+  g_free (priv->cached_realm);
+  g_free (priv->cached_nonce);
   g_free (priv);
 
   sock->priv = NULL;
@@ -834,7 +841,7 @@ socket_send_message (NiceSocket *sock, const NiceAddress *to,
     if (priv->compatibility == NICE_TURN_SOCKET_COMPATIBILITY_RFC5766 &&
         !priv_has_permission_for_peer (priv, to)) {
       if (!priv_has_sent_permission_for_peer (priv, to)) {
-        priv_send_create_permission (priv, NULL, to);
+        priv_send_create_permission (priv, to);
       }
 
       /* enque data */
@@ -1097,7 +1104,7 @@ priv_binding_timeout (gpointer data)
 
       /* Send renewal */
       if (!priv->current_binding_msg)
-        priv_send_channel_bind (priv, NULL, b->channel, &b->peer);
+        priv_send_channel_bind (priv, b->channel, &b->peer);
       break;
     }
   }
@@ -1105,6 +1112,31 @@ priv_binding_timeout (gpointer data)
   agent_unlock ();
 
   return FALSE;
+}
+
+void
+nice_udp_turn_socket_cache_realm_nonce (NiceSocket *sock, StunMessage *msg)
+{
+  UdpTurnPriv *priv = sock->priv;
+  gconstpointer tmp;
+
+  g_assert (sock->type == NICE_SOCKET_TYPE_UDP_TURN);
+
+  g_free (priv->cached_realm);
+  priv->cached_realm = NULL;
+  priv->cached_realm_len = 0;
+
+  g_free (priv->cached_nonce);
+  priv->cached_nonce = NULL;
+  priv->cached_nonce_len = 0;
+
+  tmp = stun_message_find (msg, STUN_ATTRIBUTE_REALM, &priv->cached_realm_len);
+  if (tmp && priv->cached_realm_len < 764)
+    priv->cached_realm = g_memdup (tmp, priv->cached_realm_len);
+
+  tmp = stun_message_find (msg, STUN_ATTRIBUTE_NONCE, &priv->cached_nonce_len);
+  if (tmp && priv->cached_nonce_len < 764)
+    priv->cached_nonce = g_memdup (tmp, priv->cached_nonce_len);
 }
 
 guint
@@ -1310,8 +1342,9 @@ nice_udp_turn_socket_parse_recv (NiceSocket *sock, NiceSocket **from_sock,
 
                 g_free (priv->current_binding_msg);
                 priv->current_binding_msg = NULL;
+                nice_udp_turn_socket_cache_realm_nonce (sock, &msg);
                 if (binding)
-                  priv_send_channel_bind (priv, &msg, binding->channel,
+                  priv_send_channel_bind (priv, binding->channel,
                       &binding->peer);
               } else {
                 g_free (priv->current_binding);
@@ -1412,8 +1445,10 @@ nice_udp_turn_socket_parse_recv (NiceSocket *sock, NiceSocket **from_sock,
                     priv->pending_permissions, i);
                 g_free (current_create_permission_msg);
                 current_create_permission_msg = NULL;
+
+                nice_udp_turn_socket_cache_realm_nonce (sock, &msg);
                 /* resend CreatePermission */
-                priv_send_create_permission (priv, &msg, &to);
+                priv_send_create_permission (priv, &to);
                 return 0;
               }
             }
@@ -1480,7 +1515,7 @@ nice_udp_turn_socket_parse_recv (NiceSocket *sock, NiceSocket **from_sock,
         if (priv->compatibility == NICE_TURN_SOCKET_COMPATIBILITY_RFC5766 &&
                 !priv_has_permission_for_peer (priv, from)) {
           if (!priv_has_sent_permission_for_peer (priv, from)) {
-            priv_send_create_permission (priv, NULL, from);
+            priv_send_create_permission (priv, from);
           }
         }
 
@@ -1566,7 +1601,7 @@ priv_process_pending_bindings (UdpTurnPriv *priv)
     for (i = priv->channels ; i; i = i->next) {
       ChannelBinding *b = i->data;
       if (b->renew) {
-        priv_send_channel_bind (priv, NULL, b->channel, &b->peer);
+        priv_send_channel_bind (priv, b->channel, &b->peer);
         break;
       }
     }
@@ -1821,7 +1856,7 @@ priv_send_turn_message (UdpTurnPriv *priv, TURNMessage *msg)
 }
 
 static gboolean
-priv_send_create_permission(UdpTurnPriv *priv, StunMessage *resp,
+priv_send_create_permission(UdpTurnPriv *priv,
     const NiceAddress *peer)
 {
   guint msg_buf_len;
@@ -1831,17 +1866,6 @@ priv_send_create_permission(UdpTurnPriv *priv, StunMessage *resp,
     struct sockaddr_storage storage;
     struct sockaddr addr;
   } addr;
-  uint8_t *realm = NULL;
-  uint16_t realm_len = 0;
-  uint8_t *nonce = NULL;
-  uint16_t nonce_len = 0;
-
-  if (resp) {
-    realm = (uint8_t *) stun_message_find (resp,
-        STUN_ATTRIBUTE_REALM, &realm_len);
-    nonce = (uint8_t *) stun_message_find (resp,
-        STUN_ATTRIBUTE_NONCE, &nonce_len);
-  }
 
   /* register this peer as being pening a permission (if not already pending) */
   if (!priv_has_sent_permission_for_peer (priv, peer)) {
@@ -1858,8 +1882,8 @@ priv_send_create_permission(UdpTurnPriv *priv, StunMessage *resp,
       priv->username_len,
       priv->password,
       priv->password_len,
-      realm, realm_len,
-      nonce, nonce_len,
+      priv->cached_realm, priv->cached_realm_len,
+      priv->cached_nonce, priv->cached_nonce_len,
       &addr.storage,
       STUN_USAGE_TURN_COMPATIBILITY_RFC5766);
 
@@ -1893,8 +1917,8 @@ priv_send_create_permission(UdpTurnPriv *priv, StunMessage *resp,
 }
 
 static gboolean
-priv_send_channel_bind (UdpTurnPriv *priv,  StunMessage *resp,
-    uint16_t channel, const NiceAddress *peer)
+priv_send_channel_bind (UdpTurnPriv *priv, uint16_t channel,
+    const NiceAddress *peer)
 {
   uint32_t channel_attr = channel << 16;
   size_t stun_len;
@@ -1927,37 +1951,29 @@ priv_send_channel_bind (UdpTurnPriv *priv,  StunMessage *resp,
     return FALSE;
   }
 
-  if (priv->username != NULL && priv->username_len > 0) {
+  if (priv->username != NULL && priv->username_len > 0 &&
+      priv->cached_realm != NULL && priv->cached_realm_len > 0 &&
+      priv->cached_nonce != NULL && priv->cached_nonce_len > 0) {
+
     if (stun_message_append_bytes (&msg->message, STUN_ATTRIBUTE_USERNAME,
             priv->username, priv->username_len)
         != STUN_MESSAGE_RETURN_SUCCESS) {
       g_free (msg);
       return FALSE;
     }
-  }
 
-  if (resp) {
-    uint8_t *realm;
-    uint8_t *nonce;
-    uint16_t len;
-
-    realm = (uint8_t *) stun_message_find (resp, STUN_ATTRIBUTE_REALM, &len);
-    if (realm != NULL) {
-      if (stun_message_append_bytes (&msg->message, STUN_ATTRIBUTE_REALM,
-              realm, len)
-          != STUN_MESSAGE_RETURN_SUCCESS) {
-        g_free (msg);
-        return 0;
-      }
+    if (stun_message_append_bytes (&msg->message, STUN_ATTRIBUTE_REALM,
+            priv->cached_realm,  priv->cached_realm_len)
+        != STUN_MESSAGE_RETURN_SUCCESS) {
+      g_free (msg);
+      return 0;
     }
-    nonce = (uint8_t *) stun_message_find (resp, STUN_ATTRIBUTE_NONCE, &len);
-    if (nonce != NULL) {
-      if (stun_message_append_bytes (&msg->message, STUN_ATTRIBUTE_NONCE,
-              nonce, len)
-          != STUN_MESSAGE_RETURN_SUCCESS) {
-        g_free (msg);
-        return 0;
-      }
+
+    if (stun_message_append_bytes (&msg->message, STUN_ATTRIBUTE_NONCE,
+            priv->cached_nonce, priv->cached_nonce_len)
+        != STUN_MESSAGE_RETURN_SUCCESS) {
+      g_free (msg);
+      return 0;
     }
   }
 
@@ -2005,7 +2021,7 @@ priv_add_channel_binding (UdpTurnPriv *priv, const NiceAddress *peer)
     }
 
     if (channel >= 0x4000 && channel < 0xffff) {
-      gboolean ret = priv_send_channel_bind (priv, NULL, channel, peer);
+      gboolean ret = priv_send_channel_bind (priv, channel, peer);
       if (ret) {
         priv->current_binding = g_new0 (ChannelBinding, 1);
         priv->current_binding->channel = channel;
