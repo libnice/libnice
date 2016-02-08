@@ -152,7 +152,9 @@ size_t stun_usage_turn_create (StunAgent *agent, StunMessage *msg,
     }
   }
 
-  if (username != NULL && username_len > 0) {
+  if (username != NULL && username_len > 0 &&
+      (agent->usage_flags & STUN_AGENT_USAGE_SHORT_TERM_CREDENTIALS ||
+       previous_response)) {
     if (stun_message_append_bytes (msg, STUN_ATTRIBUTE_USERNAME,
             username, username_len) != STUN_MESSAGE_RETURN_SUCCESS)
       return 0;
@@ -205,7 +207,9 @@ size_t stun_usage_turn_create_refresh (StunAgent *agent, StunMessage *msg,
   }
 
 
-  if (username != NULL && username_len > 0) {
+  if (username != NULL && username_len > 0 &&
+      (agent->usage_flags & STUN_AGENT_USAGE_SHORT_TERM_CREDENTIALS ||
+       previous_response)) {
     if (stun_message_append_bytes (msg, STUN_ATTRIBUTE_USERNAME,
             username, username_len) != STUN_MESSAGE_RETURN_SUCCESS)
       return 0;
@@ -251,7 +255,9 @@ size_t stun_usage_turn_create_permission (StunAgent *agent, StunMessage *msg,
   }
 
   /* username */
-  if (username != NULL) {
+  if (username != NULL &&
+      (agent->usage_flags & STUN_AGENT_USAGE_SHORT_TERM_CREDENTIALS ||
+       (nonce != NULL && realm != NULL))) {
     if (stun_message_append_bytes (msg, STUN_ATTRIBUTE_USERNAME,
             username, username_len) != STUN_MESSAGE_RETURN_SUCCESS)
       return 0;
