@@ -3419,7 +3419,7 @@ agent_recv_message_unlocked (
         n_bufs = message->n_buffers;
       }
 
-      local_bufs = g_malloc_n (n_bufs + 1, sizeof (GInputVector));
+      local_bufs = g_alloca ((n_bufs + 1) * sizeof (GInputVector));
       local_message.buffers = local_bufs;
       local_message.n_buffers = n_bufs + 1;
       local_message.from = message->from;
@@ -3436,7 +3436,6 @@ agent_recv_message_unlocked (
       if (retval == 1) {
         message->length = ntohs (rfc4571_frame);
       }
-      g_free (local_bufs);
     } else {
       if (nicesock->type == NICE_SOCKET_TYPE_TCP_PASSIVE) {
         NiceSocket *new_socket;
@@ -3517,7 +3516,7 @@ agent_recv_message_unlocked (
             n_bufs = message->n_buffers;
           }
 
-          local_bufs = g_malloc_n (n_bufs, sizeof (GInputVector));
+          local_bufs = g_alloca (n_bufs * sizeof (GInputVector));
           local_message.buffers = local_bufs;
           local_message.from = message->from;
           local_message.length = 0;
@@ -3544,7 +3543,6 @@ agent_recv_message_unlocked (
             message->length = local_message.length;
             agent->rfc4571_expecting_length -= local_message.length;
           }
-          g_free (local_bufs);
         }
       }
     }

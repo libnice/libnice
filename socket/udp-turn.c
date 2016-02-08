@@ -584,7 +584,7 @@ _socket_send_messages_wrapped (NiceSocket *sock, const NiceAddress *to,
       n_bufs = message->n_buffers;
     }
 
-    local_bufs = g_malloc_n (n_bufs + 1, sizeof (GOutputVector));
+    local_bufs = g_alloca ((n_bufs + 1) * sizeof (GOutputVector));
     local_message.buffers = local_bufs;
     local_message.n_buffers = n_bufs + 1;
 
@@ -606,8 +606,6 @@ _socket_send_messages_wrapped (NiceSocket *sock, const NiceAddress *to,
 
     if (ret == 1)
       ret = message_len;
-
-    g_free (local_bufs);
 
     return ret;
   }

@@ -303,7 +303,7 @@ socket_send_message (NiceSocket *sock, const NiceAddress *to,
 
   /* Allocate a new array of buffers, covering all the buffers in the input
    * @message, but with an additional one for a header and one for a footer. */
-  local_bufs = g_malloc_n (n_bufs + 1, sizeof (GOutputVector));
+  local_bufs = g_alloca ((n_bufs + 1) * sizeof (GOutputVector));
   local_message.buffers = local_bufs;
   local_message.n_buffers = n_bufs + 1;
 
@@ -378,8 +378,6 @@ socket_send_message (NiceSocket *sock, const NiceAddress *to,
 
   if (ret == 1)
     ret = output_message_get_size (&local_message);
-
-  g_free (local_bufs);
 
   return ret;
 }
