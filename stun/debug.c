@@ -89,6 +89,9 @@ void stun_debug_bytes (const char *prefix, const void *data, size_t len)
   size_t i;
   size_t prefix_len = strlen (prefix);
   char *bytes;
+  char *j;
+  unsigned char k;
+  const char *hex = "0123456789abcdef";
 
   if (!debug_enabled)
     return;
@@ -98,9 +101,14 @@ void stun_debug_bytes (const char *prefix, const void *data, size_t len)
   strcpy (bytes, prefix);
   strcpy (bytes + prefix_len, "0x");
 
-  for (i = 0; i < len; i++)
-    sprintf (bytes + prefix_len + 2 + (i * 2), "%02x", ((const unsigned char *)data)[i]);
-
+  j = bytes + prefix_len + 2;
+  for (i = 0; i < len; i++) {
+    k = ((const unsigned char *)data)[i];
+    j[0] = hex[(k & 0xf0) >> 4];
+    j[1] = hex[k & 0xf];
+    j = j + 2;
+  }
+  j[0] = 0;
   stun_debug ("%s", bytes);
   free (bytes);
 }
