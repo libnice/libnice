@@ -2456,7 +2456,9 @@ nice_agent_set_relay_info(NiceAgent *agent,
       NiceCandidate *candidate = i->data;
 
       if  (candidate->type == NICE_CANDIDATE_TYPE_HOST &&
-           candidate->transport != NICE_CANDIDATE_TRANSPORT_TCP_PASSIVE)
+           candidate->transport != NICE_CANDIDATE_TRANSPORT_TCP_PASSIVE &&
+          nice_address_ip_version (&candidate->addr) ==
+          nice_address_ip_version (&turn->server))
         priv_add_new_candidate_discovery_turn (agent,
             candidate->sockptr, turn, stream, component_id,
             candidate->transport != NICE_CANDIDATE_TRANSPORT_UDP);
