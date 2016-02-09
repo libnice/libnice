@@ -434,6 +434,17 @@ static gboolean priv_conn_check_tick_stream (NiceStream *stream, NiceAgent *agen
 
 }
 
+static void
+conn_check_stop (NiceAgent *agent)
+{
+  if (agent->conncheck_timer_source == NULL)
+    return;
+
+  g_source_destroy (agent->conncheck_timer_source);
+  g_source_unref (agent->conncheck_timer_source);
+  agent->conncheck_timer_source = NULL;
+}
+
 
 /*
  * Timer callback that handles initiating and managing connectivity
@@ -524,11 +535,7 @@ static gboolean priv_conn_check_tick_unlocked (NiceAgent *agent)
     /* Stopping the timer so destroy the source.. this will allow
        the timer to be reset if we get a set_remote_candidates after this
        point */
-    if (agent->conncheck_timer_source != NULL) {
-      g_source_destroy (agent->conncheck_timer_source);
-      g_source_unref (agent->conncheck_timer_source);
-      agent->conncheck_timer_source = NULL;
-    }
+    conn_check_stop (agent);
 
     /* XXX: what to signal, is all processing now really done? */
     nice_debug ("Agent %p : changing conncheck state to COMPLETED.", agent);
@@ -1630,17 +1637,6 @@ static void conn_check_free_item (gpointer data)
   pair->stun_message.buffer = NULL;
   pair->stun_message.buffer_len = 0;
   g_slice_free (CandidateCheckPair, pair);
-}
-
-static void
-conn_check_stop (NiceAgent *agent)
-{
-  if (agent->conncheck_timer_source == NULL)
-    return;
-
-  g_source_destroy (agent->conncheck_timer_source);
-  g_source_unref (agent->conncheck_timer_source);
-  agent->conncheck_timer_source = NULL;
 }
 
 /*
