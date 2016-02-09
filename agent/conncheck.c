@@ -1424,8 +1424,17 @@ static void priv_mark_pair_nominated (NiceAgent *agent, NiceStream *stream, Nice
       nice_debug ("Agent %p : marking pair %p (%s) as nominated", agent, pair, pair->foundation);
       pair->nominated = TRUE;
       if (pair->state == NICE_CHECK_SUCCEEDED ||
-	  pair->state == NICE_CHECK_DISCOVERED)
+	  pair->state == NICE_CHECK_DISCOVERED) {
 	priv_update_selected_pair (agent, component, pair);
+        /* Do not step down to CONNECTED if we're already at state READY*/
+        if (component->state != NICE_COMPONENT_STATE_READY) {
+          /* step: notify the client of a new component state (must be done
+           *       before the possible check list state update step */
+          agent_signal_component_state_change (agent,
+              stream->id, component->id, NICE_COMPONENT_STATE_CONNECTED);
+        }
+
+      }
       priv_update_check_list_state_for_ready (agent, stream, component);
     }
   }
