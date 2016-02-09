@@ -5066,7 +5066,8 @@ nice_agent_set_selected_pair (
    * STATE_GATHERING and continue through the states to give client code a nice
    * logical progression. See http://phabricator.freedesktop.org/D218 for
    * discussion. */
-  if (component->state < NICE_COMPONENT_STATE_CONNECTING)
+  if (component->state < NICE_COMPONENT_STATE_CONNECTING ||
+      component->state == NICE_COMPONENT_STATE_FAILED)
     agent_signal_component_state_change (agent, stream_id, component_id,
         NICE_COMPONENT_STATE_CONNECTING);
   if (component->state < NICE_COMPONENT_STATE_CONNECTED)
@@ -5254,7 +5255,8 @@ nice_agent_set_selected_remote_candidate (
    * STATE_GATHERING and continue through the states to give client code a nice
    * logical progression. See http://phabricator.freedesktop.org/D218 for
    * discussion. */
-  if (component->state < NICE_COMPONENT_STATE_CONNECTING)
+  if (component->state < NICE_COMPONENT_STATE_CONNECTING ||
+      component->state == NICE_COMPONENT_STATE_FAILED)
     agent_signal_component_state_change (agent, stream_id, component_id,
         NICE_COMPONENT_STATE_CONNECTING);
   if (component->state < NICE_COMPONENT_STATE_CONNECTED)

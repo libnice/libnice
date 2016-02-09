@@ -1385,7 +1385,8 @@ static void priv_update_check_list_state_for_ready (NiceAgent *agent, NiceStream
       /* Continue through the states to give client code a nice
        * logical progression. See http://phabricator.freedesktop.org/D218 for
        * discussion. */
-      if (component->state < NICE_COMPONENT_STATE_CONNECTING)
+      if (component->state < NICE_COMPONENT_STATE_CONNECTING ||
+          component->state == NICE_COMPONENT_STATE_FAILED)
         agent_signal_component_state_change (agent, stream->id, component->id,
             NICE_COMPONENT_STATE_CONNECTING);
       if (component->state < NICE_COMPONENT_STATE_CONNECTED)
