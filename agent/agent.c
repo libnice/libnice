@@ -86,6 +86,7 @@
 static void
 nice_debug_input_message_composition (const NiceInputMessage *messages,
     guint n_messages);
+static const gchar *_cand_type_to_sdp (NiceCandidateType type);
 
 G_DEFINE_TYPE (NiceAgent, nice_agent, G_TYPE_OBJECT);
 
@@ -3060,6 +3061,19 @@ static gboolean priv_add_remote_candidate (
 
   /* step: check whether the candidate already exists */
   candidate = nice_component_find_remote_candidate (component, addr, transport);
+
+  /* If it was a discovered remote peer reflexive candidate, then it should
+   * be updated according to RFC 5245 section 7.2.1.3 */
+  if (candidate && candidate->type == NICE_CANDIDATE_TYPE_PEER_REFLEXIVE &&
+      candidate->priority == priority) {
+    nice_debug ("Agent %p : Updating existing peer-rfx remote candidate to %s",
+        agent, _cand_type_to_sdp (type));
+    candidate->type = type;
+    /* If it got there, the next one will also be ran, so the foundation
+     * will be set.
+     */
+  }
+
   if (candidate && candidate->type == type) {
     if (nice_debug_is_enabled ()) {
       gchar tmpbuf[INET6_ADDRSTRLEN];
