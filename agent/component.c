@@ -1005,6 +1005,18 @@ nice_component_class_init (NiceComponentClass *klass)
          G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY));
 }
 
+static gboolean
+dummy_callback (gpointer data)
+{
+  return G_SOURCE_CONTINUE;
+}
+
+static void
+source_set_dummy_callback (GSource *source)
+{
+  g_source_set_callback (source, dummy_callback, NULL, NULL);
+}
+
 static void
 nice_component_init (NiceComponent *component)
 {
@@ -1027,7 +1039,7 @@ nice_component_init (NiceComponent *component)
   component->stop_cancellable = g_cancellable_new ();
   component->stop_cancellable_source =
       g_cancellable_source_new (component->stop_cancellable);
-  g_source_set_dummy_callback (component->stop_cancellable_source);
+  source_set_dummy_callback (component->stop_cancellable_source);
   g_source_attach (component->stop_cancellable_source, component->own_ctx);
   component->ctx = g_main_context_ref (component->own_ctx);
 
@@ -1242,7 +1254,7 @@ component_source_prepare (GSource *source, gint *timeout_)
     child_socket_source->source =
         g_socket_create_source (child_socket_source->socket->fileno, G_IO_IN,
             NULL);
-    g_source_set_dummy_callback (child_socket_source->source);
+    source_set_dummy_callback (child_socket_source->source);
     g_source_add_child_source (source, child_socket_source->source);
     g_source_unref (child_socket_source->source);
     component_source->socket_sources =
@@ -1387,7 +1399,7 @@ nice_component_input_source_new (NiceAgent *agent, guint stream_id,
     GSource *cancellable_source;
 
     cancellable_source = g_cancellable_source_new (cancellable);
-    g_source_set_dummy_callback (cancellable_source);
+    source_set_dummy_callback (cancellable_source);
     g_source_add_child_source ((GSource *) component_source,
         cancellable_source);
     g_source_unref (cancellable_source);
