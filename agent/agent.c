@@ -4156,7 +4156,7 @@ nice_agent_recv_messages_blocking_or_nonblocking (NiceAgent *agent,
     memcpy (&prev_recv_messages_iter, &component->recv_messages_iter,
         sizeof (NiceInputMessageIter));
 
-    agent_unlock_and_emit (agent);
+    agent_unlock ();
     g_main_context_iteration (context, blocking);
     agent_lock ();
 
