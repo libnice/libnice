@@ -3192,9 +3192,11 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, NiceStream *stream,
       valid == STUN_VALIDATION_UNMATCHED_RESPONSE) {
     for (i = agent->refresh_list; i; i = i->next) {
       CandidateRefresh *r = i->data;
-      nice_debug ("Comparing %p to %p, %p to %p and %p and %p to %p", r->stream,
-          stream, r->component, component, r->nicesock, r->candidate->sockptr,
-          nicesock);
+
+      nice_debug_verbose ("Comparing %p to %p, %p to %p and %p and %p to %p",
+          r->stream, stream, r->component, component, r->nicesock,
+          r->candidate->sockptr, nicesock);
+
       if (r->stream == stream && r->component == component &&
           (r->nicesock == nicesock || r->candidate->sockptr == nicesock)) {
         valid = stun_agent_validate (&r->stun_agent, &req,
