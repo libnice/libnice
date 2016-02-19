@@ -438,7 +438,7 @@ static void keepalive (void)
 
 static void test (void (*func) (void), const char *name)
 {
-  alarm (20);
+  alarm (30);
 
   printf ("%s test... ", name);
   func ();

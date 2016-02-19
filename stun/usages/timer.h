@@ -130,15 +130,18 @@ struct stun_timer_s {
  * STUN_TIMER_DEFAULT_TIMEOUT:
  *
  * The default intial timeout to use for the timer
+ * RFC recommendds 500, but it's ridiculous, 50ms is known to work in most
+ * cases as it is also what is used by SIP style VoIP when sending A-Law and
+ * mu-Law audio, so 200ms should be hyper safe.
  */
-#define STUN_TIMER_DEFAULT_TIMEOUT 600
+#define STUN_TIMER_DEFAULT_TIMEOUT 200
 
 /**
  * STUN_TIMER_DEFAULT_MAX_RETRANSMISSIONS:
  *
  * The default maximum retransmissions allowed before a timer decides to timeout
  */
-#define STUN_TIMER_DEFAULT_MAX_RETRANSMISSIONS 3
+#define STUN_TIMER_DEFAULT_MAX_RETRANSMISSIONS 7
 
 /**
  * STUN_TIMER_DEFAULT_RELIABLE_TIMEOUT:
