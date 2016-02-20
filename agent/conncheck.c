@@ -723,10 +723,9 @@ static gboolean priv_conn_keepalive_tick_unlocked (NiceAgent *agent)
             gchar tmpbuf[INET6_ADDRSTRLEN];
             nice_address_to_string (&p->remote->addr, tmpbuf);
             nice_debug ("Agent %p : Keepalive STUN-CC REQ to '%s:%u', "
-                "socket=%u (c-id:%u), username='%.*s' (%" G_GSIZE_FORMAT "), "
+                "(c-id:%u), username='%.*s' (%" G_GSIZE_FORMAT "), "
                 "password='%.*s' (%" G_GSIZE_FORMAT "), priority=%u.", agent,
                 tmpbuf, nice_address_get_port (&p->remote->addr),
-                g_socket_get_fd(((NiceSocket *)p->local->sockptr)->fileno),
                 component->id, (int) uname_len, uname, uname_len,
                 (int) password_len, password, password_len, priority);
           }
