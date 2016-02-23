@@ -604,13 +604,12 @@ static gboolean priv_conn_keepalive_retransmissions_tick (gpointer pointer)
 
         stun_message_id (&pair->keepalive.stun_message, id);
         stun_agent_forget_transaction (&component->stun_agent, id);
+        pair->keepalive.stun_message.buffer = NULL;
 
         if (pair->keepalive.agent->media_after_tick) {
           nice_debug ("Agent %p : Keepalive conncheck timed out!! "
               "but media was received. Suspecting keepalive lost because of "
               "network bottleneck", pair->keepalive.agent);
-
-          pair->keepalive.stun_message.buffer = NULL;
         } else {
           nice_debug ("Agent %p : Keepalive conncheck timed out!! "
               "peer probably lost connection", pair->keepalive.agent);
@@ -640,7 +639,7 @@ static gboolean priv_conn_keepalive_retransmissions_tick (gpointer pointer)
           priv_conn_keepalive_retransmissions_tick, pair);
       break;
     default:
-      /* Nothing to do. */
+      g_assert_not_reached();
       break;
   }
 
@@ -720,6 +719,13 @@ static gboolean priv_conn_keepalive_tick_unlocked (NiceAgent *agent)
               agent_find_stream (agent, stream->id), p->remote, &password);
 
           priority = peer_reflexive_candidate_priority (agent, p->local);
+
+          if (p->keepalive.stun_message.buffer != NULL) {
+            nice_debug ("Agent %p: Keepalive for s%u:c%u still"
+                " retransmitting, not restarting", agent, stream->id,
+                component->id);
+            continue;
+          }
 
           if (nice_debug_is_enabled ()) {
             gchar tmpbuf[INET6_ADDRSTRLEN];
