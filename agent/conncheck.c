@@ -1385,6 +1385,7 @@ static void priv_update_check_list_state_for_ready (NiceAgent *agent, NiceStream
 	++valid;
 	if (p->nominated == TRUE) {
           ++nominated;
+          priv_update_selected_pair (agent, component, p);
 	}
       }
     }
