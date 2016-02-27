@@ -3618,8 +3618,7 @@ agent_recv_message_unlocked (
         nice_address_get_port (message->from), message->length);
   }
 
-  if (nicesock->type == NICE_SOCKET_TYPE_UDP_TURN ||
-      nicesock->type == NICE_SOCKET_TYPE_UDP_TURN_OVER_TCP)
+  if (nicesock->type == NICE_SOCKET_TYPE_UDP_TURN)
     is_turn = TRUE;
 
   if (!is_turn && component->turn_candidate &&
