@@ -1098,6 +1098,13 @@ priv_binding_timeout (gpointer data)
     ChannelBinding *b = i->data;
     if (b->timeout_source == source) {
       b->renew = TRUE;
+
+      /* Remove any existing timer */
+      if (b->timeout_source) {
+        g_source_destroy (b->timeout_source);
+        g_source_unref (b->timeout_source);
+      }
+
       /* Install timer to expire the permission */
       b->timeout_source = priv_timeout_add_with_context (priv,
           STUN_EXPIRE_TIMEOUT, TRUE, priv_binding_expired_timeout, priv);
