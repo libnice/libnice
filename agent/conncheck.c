@@ -1209,16 +1209,19 @@ static void priv_limit_conn_check_list_size (GSList *conncheck_list, guint upper
  */
 static gboolean priv_update_selected_pair (NiceAgent *agent, NiceComponent *component, CandidateCheckPair *pair)
 {
-  CandidatePair cpair;
+  CandidatePair cpair = { 0, };
 
   g_assert (component);
   g_assert (pair);
-  if (pair->priority > component->selected_pair.priority &&
-      nice_component_find_pair (component, agent, pair->local->foundation,
-          pair->remote->foundation, &cpair)) {
+  if (pair->priority > component->selected_pair.priority) {
     nice_debug ("Agent %p : changing SELECTED PAIR for component %u: %s:%s "
         "(prio:%" G_GUINT64_FORMAT ").", agent, component->id,
         pair->local->foundation, pair->remote->foundation, pair->priority);
+
+    cpair.local = pair->local;
+    cpair.remote = pair->remote;
+    cpair.priority = pair->priority;
+    /* cpair.keepalive is not used by nice_component_update_selected_pair() */
 
     nice_component_update_selected_pair (component, &cpair);
 
