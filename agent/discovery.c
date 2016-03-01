@@ -393,7 +393,6 @@ static void priv_assign_foundation (NiceAgent *agent, NiceCandidate *candidate)
 
 	if (candidate->type == n->type &&
             candidate->transport == n->transport &&
-            candidate->stream_id == n->stream_id &&
 	    nice_address_equal_no_port (&candidate->base_addr, &n->base_addr) &&
             (candidate->type != NICE_CANDIDATE_TYPE_RELAYED ||
                 priv_compare_turn_servers (candidate->turn, n->turn)) &&
