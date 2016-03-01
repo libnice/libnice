@@ -220,7 +220,7 @@ cb_component_state_changed(NiceAgent *agent, guint _stream_id,
   g_debug("SIGNAL: state changed %d %d %s[%d]\n",
       _stream_id, component_id, state_name[state], state);
 
-  if (state == NICE_COMPONENT_STATE_READY) {
+  if (state == NICE_COMPONENT_STATE_CONNECTED) {
     NiceCandidate *local, *remote;
 
     // Get current selected candidate pair and print IP address used
