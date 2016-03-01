@@ -731,12 +731,7 @@ static gboolean priv_conn_keepalive_tick_unlocked (NiceAgent *agent)
 
           nice_address_set_port (&stun_server, agent->stun_server_port);
 
-          /* FIXME: This will cause the stun response to arrive on the socket
-           * but the stun agent will not be able to parse it due to an invalid
-           * stun message since RFC3489 will not be compatible, and the response
-           * will be forwarded to the application as user data */
-          stun_agent_init (&stun_agent, STUN_ALL_KNOWN_ATTRIBUTES,
-              STUN_COMPATIBILITY_RFC3489, 0);
+          nice_agent_init_stun_agent (agent, &stun_agent);
 
           buffer_len = stun_usage_bind_create (&stun_agent,
               &stun_message, stun_buffer, sizeof(stun_buffer));
