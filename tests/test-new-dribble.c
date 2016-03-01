@@ -523,6 +523,10 @@ static void standard_test(NiceAgent *lagent, NiceAgent *ragent)
 
   g_assert (lagent_candidate_gathering_done);
 
+  while (global_ragent_state < NICE_COMPONENT_STATE_CONNECTED)
+    g_main_context_iteration (NULL, TRUE);
+  g_cancellable_reset (global_cancellable);
+
   g_assert (global_lagent_state == NICE_COMPONENT_STATE_READY);
   g_assert (global_ragent_state >= NICE_COMPONENT_STATE_CONNECTED);
 
