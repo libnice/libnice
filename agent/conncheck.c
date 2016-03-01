@@ -290,7 +290,13 @@ static gboolean priv_conn_check_tick_stream (NiceStream *stream, NiceAgent *agen
           case STUN_USAGE_TIMER_RETURN_TIMEOUT:
             {
               /* case: error, abort processing */
+              gchar tmpbuf1[INET6_ADDRSTRLEN], tmpbuf2[INET6_ADDRSTRLEN];
+              nice_address_to_string (&p->local->addr, tmpbuf1);
+              nice_address_to_string (&p->remote->addr, tmpbuf2);
               nice_debug ("Agent %p : Retransmissions failed, giving up on connectivity check %p", agent, p);
+              nice_debug ("Agent %p : Failed pair is [%s]:%u --> [%s]:%u", agent,
+                  tmpbuf1, nice_address_get_port (&p->local->addr),
+                  tmpbuf2, nice_address_get_port (&p->remote->addr));
               candidate_check_pair_fail (stream, agent, p);
 
               break;
@@ -299,8 +305,9 @@ static gboolean priv_conn_check_tick_stream (NiceStream *stream, NiceAgent *agen
             {
               /* case: not ready, so schedule a new timeout */
               unsigned int timeout = stun_timer_remainder (&p->timer);
-              nice_debug ("Agent %p :STUN transaction retransmitted (timeout %dms).",
-                  agent, timeout);
+              nice_debug ("Agent %p :STUN transaction retransmitted on pair %p "
+                  "(timeout %dms, delay=%dms, retrans=%d).",
+                  agent, p, timeout, p->timer.delay, p->timer.retransmissions);
 
               agent_socket_send (p->sockptr, &p->remote->addr,
                   stun_message_length (&p->stun_message),
@@ -385,9 +392,9 @@ static gboolean priv_conn_check_tick_stream (NiceStream *stream, NiceAgent *agen
     {
     static int tick_counter = 0;
     if (tick_counter++ % 50 == 0 || keep_timer_going != TRUE)
-      nice_debug ("Agent %p : timer tick #%u: %u frozen, %u in-progress, "
+      nice_debug ("Agent %p : stream %u: timer tick #%u: %u frozen, %u in-progress, "
           "%u waiting, %u succeeded, %u discovered, %u nominated, "
-          "%u waiting-for-nom.", agent,
+          "%u waiting-for-nom.", agent, stream->id,
           tick_counter, frozen, s_inprogress, waiting, s_succeeded,
           s_discovered, s_nominated, s_waiting_for_nomination);
   }
@@ -1399,6 +1406,15 @@ static void priv_add_new_check_pair (NiceAgent *agent, guint stream_id, NiceComp
   pair->priority = agent_candidate_pair_priority (agent, local, remote);
   pair->state = initial_state;
   nice_debug ("Agent %p : creating new pair %p state %d", agent, pair, initial_state);
+  {
+      gchar tmpbuf1[INET6_ADDRSTRLEN];
+      gchar tmpbuf2[INET6_ADDRSTRLEN];
+      nice_address_to_string (&pair->local->addr, tmpbuf1);
+      nice_address_to_string (&pair->remote->addr, tmpbuf2);
+      nice_debug ("Agent %p : new pair %p : [%s]:%u --> [%s]:%u", agent, pair,
+          tmpbuf1, nice_address_get_port (&pair->local->addr),
+          tmpbuf2, nice_address_get_port (&pair->remote->addr));
+  }
   pair->nominated = use_candidate;
   pair->controlling = agent->controlling_mode;
 
@@ -1436,8 +1452,9 @@ static void priv_conn_check_add_for_candidate_pair_matched (NiceAgent *agent,
     guint stream_id, NiceComponent *component, NiceCandidate *local,
     NiceCandidate *remote, NiceCheckState initial_state)
 {
-  nice_debug ("Agent %p, Adding check pair between %s and %s", agent,
-      local->foundation, remote->foundation);
+  nice_debug ("Agent %p : Adding check pair between %s and %s for s%d/c%d",
+      agent, local->foundation, remote->foundation,
+      stream_id, component->id);
   priv_add_new_check_pair (agent, stream_id, component, local, remote,
       initial_state, FALSE);
   if (component->state == NICE_COMPONENT_STATE_CONNECTED ||
@@ -1811,6 +1828,9 @@ static unsigned int priv_compute_conncheck_timer (NiceAgent *agent,
   rto = agent->timer_ta  * waiting_and_in_progress;
 
   /* We assume non-reliable streams are RTP, so we use 100 as the max */
+  nice_debug ("Agent %p : timer set to %dms (waiting+in_progress=%d)",
+    agent, agent->reliable ? MAX (rto, 500) : MAX (rto, 100),
+    waiting_and_in_progress);
   if (agent->reliable)
     return MAX (rto, 500);
   else
@@ -1863,13 +1883,15 @@ int conn_check_send (NiceAgent *agent, CandidateCheckPair *pair)
   }
 
   if (nice_debug_is_enabled ()) {
-    gchar tmpbuf[INET6_ADDRSTRLEN];
-    nice_address_to_string (&pair->remote->addr, tmpbuf);
-    nice_debug ("Agent %p : STUN-CC REQ to '%s:%u', socket=%u, "
+    gchar tmpbuf1[INET6_ADDRSTRLEN];
+    gchar tmpbuf2[INET6_ADDRSTRLEN];
+    nice_address_to_string (&pair->local->addr, tmpbuf1);
+    nice_address_to_string (&pair->remote->addr, tmpbuf2);
+    nice_debug ("Agent %p : STUN-CC REQ [%s]:%u --> [%s]:%u, socket=%u, "
         "pair=%s (c-id:%u), tie=%llu, username='%.*s' (%" G_GSIZE_FORMAT "), "
         "password='%.*s' (%" G_GSIZE_FORMAT "), priority=%u.", agent,
-	     tmpbuf,
-             nice_address_get_port (&pair->remote->addr),
+	     tmpbuf1, nice_address_get_port (&pair->local->addr),
+	     tmpbuf2, nice_address_get_port (&pair->remote->addr),
              pair->sockptr->fileno ? g_socket_get_fd(pair->sockptr->fileno) : -1,
 	     pair->foundation, pair->component_id,
 	     (unsigned long long)agent->tie_breaker,
@@ -2218,7 +2240,16 @@ static CandidateCheckPair *priv_add_peer_reflexive_pair (NiceAgent *agent, guint
   pair->remote = parent_pair->remote;
   pair->sockptr = local_cand->sockptr;
   pair->state = NICE_CHECK_DISCOVERED;
-  nice_debug ("Agent %p : pair %p state DISCOVERED", agent, pair);
+  nice_debug ("Agent %p : new pair %p state DISCOVERED", agent, pair);
+  {
+      gchar tmpbuf1[INET6_ADDRSTRLEN];
+      gchar tmpbuf2[INET6_ADDRSTRLEN];
+      nice_address_to_string (&pair->local->addr, tmpbuf1);
+      nice_address_to_string (&pair->remote->addr, tmpbuf2);
+      nice_debug ("Agent %p : new pair %p : [%s]:%u --> [%s]:%u", agent, pair,
+          tmpbuf1, nice_address_get_port (&pair->local->addr),
+          tmpbuf2, nice_address_get_port (&pair->remote->addr));
+  }
   g_snprintf (pair->foundation, NICE_CANDIDATE_PAIR_MAX_FOUNDATION, "%s:%s",
       local_cand->foundation, parent_pair->remote->foundation);
   if (agent->controlling_mode == TRUE)

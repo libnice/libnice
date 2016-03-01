@@ -1368,12 +1368,17 @@ nice_udp_turn_socket_parse_recv (NiceSocket *sock, NiceSocket **from_sock,
             } peer;
             socklen_t peer_len = sizeof(peer);
             NiceAddress to;
+            gchar tmpbuf[INET6_ADDRSTRLEN];
 
-            nice_debug ("got response for CreatePermission");
             stun_message_find_xor_addr (
                 &current_create_permission_msg->message,
                 STUN_ATTRIBUTE_XOR_PEER_ADDRESS, &peer.storage, &peer_len);
             nice_address_set_from_sockaddr (&to, &peer.addr);
+            nice_address_to_string (&to, tmpbuf);
+            nice_debug ("TURN: got response for CreatePermission "
+                "with XOR_PEER_ADDRESS=[%s]:%u : %s",
+                tmpbuf, nice_address_get_port (&to),
+                stun_message_get_class (&msg) == STUN_ERROR ? "unauthorized" : "ok");
 
             /* unathorized => resend with realm and nonce */
             if (stun_message_get_class (&msg) == STUN_ERROR) {
