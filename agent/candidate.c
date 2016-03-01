@@ -277,7 +277,10 @@ nice_candidate_ice_type_preference (const NiceCandidate *candidate,
         type_preference = NICE_CANDIDATE_TYPE_PREF_SERVER_REFLEXIVE;
       break;
     case NICE_CANDIDATE_TYPE_RELAYED:
-      type_preference = NICE_CANDIDATE_TYPE_PREF_RELAYED;
+      if (candidate->turn->type == NICE_RELAY_TYPE_TURN_UDP)
+        type_preference = NICE_CANDIDATE_TYPE_PREF_RELAYED_UDP;
+      else
+        type_preference = NICE_CANDIDATE_TYPE_PREF_RELAYED;
       break;
     default:
       type_preference = 0;
