@@ -98,6 +98,9 @@ socket_source_attach (SocketSource *socket_source, GMainContext *context)
 {
   GSource *source;
 
+  if (socket_source->socket->fileno == NULL)
+    return;
+
   /* Create a source. */
   source = g_socket_create_source (socket_source->socket->fileno,
       G_IO_IN, NULL);
@@ -493,9 +496,6 @@ nice_component_attach_socket (NiceComponent *component, NiceSocket *nicesock)
 
   g_assert (component->ctx != NULL);
 
-  if (nicesock->fileno == NULL)
-    return;
-
   /* Find an existing SocketSource in the component which contains @socket, or
    * create a new one.
    *
@@ -512,7 +512,8 @@ nice_component_attach_socket (NiceComponent *component, NiceSocket *nicesock)
     socket_source->component = component;
     component->socket_sources =
         g_slist_prepend (component->socket_sources, socket_source);
-    component->socket_sources_age++;
+    if (nicesock->fileno != NULL)
+      component->socket_sources_age++;
   }
 
   /* Create and attach a source */
@@ -1159,6 +1160,9 @@ component_source_prepare (GSource *source, gint *timeout_)
   for (parentl = component->socket_sources; parentl; parentl = parentl->next) {
     SocketSource *parent_socket_source = parentl->data;
     SocketSource *child_socket_source;
+
+    if (parent_socket_source->socket->fileno == NULL)
+      continue;
 
     /* Iterating the list of socket sources every time isn't a big problem
      * because the number of pairs is limited ~100 normally, so there will
