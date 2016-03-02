@@ -3574,7 +3574,8 @@ agent_recv_message_unlocked (
 
       if (cand->type == NICE_CANDIDATE_TYPE_RELAYED &&
           cand->stream_id == stream->id &&
-          cand->component_id == component->id) {
+          cand->component_id == component->id &&
+          nice_socket_is_base_of (nicesock, cand->sockptr)) {
         retval = nice_udp_turn_socket_parse_recv_message (cand->sockptr, &nicesock,
             message);
         break;
