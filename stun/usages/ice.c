@@ -265,6 +265,9 @@ stun_usage_ice_conncheck_create_reply (StunAgent *agent, StunMessage *req,
   if (stun_message_find64 (req, *control ? STUN_ATTRIBUTE_ICE_CONTROLLING
           : STUN_ATTRIBUTE_ICE_CONTROLLED, &q) == STUN_MESSAGE_RETURN_SUCCESS)
   {
+    /* we have the ice-controlling/controlled attribute,
+     * and there's a role conflict
+     */
     stun_debug ("STUN Role Conflict detected:");
 
     if (tie < q)
@@ -282,7 +285,18 @@ stun_usage_ice_conncheck_create_reply (StunAgent *agent, StunMessage *req,
       return STUN_USAGE_ICE_RETURN_SUCCESS;
     }
   } else {
-    stun_debug ("STUN Role not specified by peer!");
+    if (stun_message_find64 (req, *control ? STUN_ATTRIBUTE_ICE_CONTROLLED
+            : STUN_ATTRIBUTE_ICE_CONTROLLING, &q) != STUN_MESSAGE_RETURN_SUCCESS)
+    {
+      /* we don't have the expected ice-controlling/controlled
+       * attribute
+       */
+      if (compatibility == STUN_USAGE_ICE_COMPATIBILITY_RFC5245 ||
+          compatibility == STUN_USAGE_ICE_COMPATIBILITY_WLM2009)
+      {
+        stun_debug ("STUN Role not specified by peer!");
+      }
+    }
   }
 
   if (stun_agent_init_response (agent, msg, buf, len, req) == FALSE) {
