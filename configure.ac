@@ -301,6 +301,22 @@ AC_SUBST([GUPNP_PACKAGES])
 AC_SUBST(HAVE_GUPNP)
 AC_SUBST([UPNP_ENABLED])
 
+dnl libgcrypt
+GCRYPT_VERSION=1.4.5
+GCRYPT_LIBVER=1
+
+AM_PATH_LIBGCRYPT($GCRYPT_LIBVER:$GCRYPT_VERSION,,AC_MSG_ERROR([[
+***
+*** libgcrypt was not found. You may want to get it from
+*** ftp://ftp.gnupg.org/gcrypt/libgcrypt/
+***
+]]))
+libgcrypt=yes
+AC_DEFINE_UNQUOTED(LIBGCRYPT_VERSION, "$GCRYPT_VERSION", [Version of GCRYPT we expect])
+
+AC_SUBST([LIBGCRYPT_CFLAGS])
+AC_SUBST([LIBGCRYPT_LIBS])
+
 dnl Test coverage
 AC_ARG_ENABLE([coverage],
 	[AS_HELP_STRING([--enable-coverage],

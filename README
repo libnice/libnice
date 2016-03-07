@@ -20,6 +20,7 @@ Requirements
  pkg-config
  gupnp-igd >= 0.1.2 (optional)
  gstreamer-0.10 >= 0.10.0 (optional)
+ gcrypt >= 1.4.5
 
 Build instructions
 ------------------
