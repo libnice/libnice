@@ -2760,6 +2760,13 @@ static CandidateCheckPair *priv_process_response_check_for_reflexive(NiceAgent *
   }
 
   if (new_pair) {
+    /* note: when new_pair is distinct from p, it means new_pair is a
+     * previously discovered peer-reflexive candidate pair, so we don't
+     * set the valid flag on p in this case, because the valid flag is
+     * already set on the discovered pair.
+     */
+    if (new_pair == p)
+      p->valid = TRUE;
     p->state = NICE_CHECK_SUCCEEDED;
     nice_debug ("Agent %p : conncheck %p SUCCEEDED.", agent, p);
     priv_conn_check_unfreeze_related (agent, stream, p);
@@ -2788,6 +2795,10 @@ static CandidateCheckPair *priv_process_response_check_for_reflexive(NiceAgent *
     if (local_cand)
       new_pair = priv_add_peer_reflexive_pair (agent, stream->id, component,
           local_cand, p);
+    /* note: this is same as "adding to VALID LIST" in the spec
+       text */
+    if (new_pair)
+      new_pair->valid = TRUE;
     /* step: The agent sets the state of the pair that *generated* the check to
      * Succeeded, RFC 5245, 7.1.3.2.3, "Updating Pair States"
      */
@@ -2796,12 +2807,9 @@ static CandidateCheckPair *priv_process_response_check_for_reflexive(NiceAgent *
         agent, p, new_pair);
   }
 
-  /* note: this is same as "adding to VALID LIST" in the spec
-     text */
-  if (new_pair) {
-    new_pair->valid = TRUE;
+  if (new_pair && new_pair->valid)
     nice_component_add_valid_candidate (component, remote_candidate);
-  }
+
 
   return new_pair;
 }
