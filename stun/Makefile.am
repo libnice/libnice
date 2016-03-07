@@ -30,7 +30,6 @@ libstun_la_SOURCES = constants.h \
 	stun5389.c stun5389.h \
 	stuncrc32.c stuncrc32.h \
 	sha1.c sha1.h \
-	md5.c md5.h \
 	rand.c rand.h \
 	stunhmac.c stunhmac.h \
 	utils.c  utils.h \

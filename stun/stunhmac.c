@@ -41,7 +41,6 @@
 #endif
 
 #include "sha1.h"
-#include "md5.h"
 #include "rand.h"
 
 #include "stunmessage.h"
@@ -104,19 +103,23 @@ void stun_hash_creds (const uint8_t *realm, size_t realm_len,
     const uint8_t *password, size_t password_len,
     unsigned char md5[16])
 {
-  MD5_CTX ctx;
   const uint8_t *username_trimmed = priv_trim_var (username, &username_len);
   const uint8_t *password_trimmed = priv_trim_var (password, &password_len);
   const uint8_t *realm_trimmed = priv_trim_var (realm, &realm_len);
   const uint8_t *colon = (uint8_t *)":";
 
-  MD5Init (&ctx);
-  MD5Update (&ctx, username_trimmed, username_len);
-  MD5Update (&ctx, colon, 1);
-  MD5Update (&ctx, realm_trimmed, realm_len);
-  MD5Update (&ctx, colon, 1);
-  MD5Update (&ctx, password_trimmed, password_len);
-  MD5Final (md5, &ctx);
+  /* https://gnupg.org/documentation/manuals/gcrypt/Buffer-description.html */
+  const gcry_buffer_t iov[] = {
+      /* size, off, len, data */
+      { 0, 0, username_len, (void *) username_trimmed },
+      { 0, 0, 1, (void *) colon },
+      { 0, 0, realm_len, (void *) realm_trimmed },
+      { 0, 0, 1, (void *) colon },
+      { 0, 0, password_len, (void *) password_trimmed },
+  };
+
+  gcry_md_hash_buffers (GCRY_MD_MD5, 0  /* flags */, md5,
+                        iov, sizeof (iov) / sizeof (*iov));
 }
 
 
