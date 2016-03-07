@@ -40,7 +40,6 @@
 # include <config.h>
 #endif
 
-#include "sha1.h"
 #include "rand.h"
 
 #include "stunmessage.h"
@@ -48,37 +47,40 @@
 
 #include <string.h>
 #include <assert.h>
+#include <gcrypt.h>
 
 void stun_sha1 (const uint8_t *msg, size_t len, size_t msg_len, uint8_t *sha,
     const void *key, size_t keylen, int padding)
 {
   uint16_t fakelen = htons (msg_len);
-  const uint8_t *vector[4];
-  size_t lengths[4];
   uint8_t pad_char[64] = {0};
-  size_t num_elements;
+  gcry_mac_hd_t hd;
+  size_t sha_len = 20;
+
+#define TRY(s) \
+  if (!(s)) \
+    abort ();
 
   assert (len >= 44u);
 
-  vector[0] = msg;
-  lengths[0] = 2;
-  vector[1] = (const uint8_t *)&fakelen;
-  lengths[1] = 2;
-  vector[2] = msg + 4;
-  lengths[2] = len - 28;
-  num_elements = 3;
+  TRY (gcry_mac_open (&hd, GCRY_MAC_HMAC_SHA1, 0  /* flags */, NULL) == 0);
+  TRY (gcry_mac_setkey (hd, key, keylen) == 0);
+
+  TRY (gcry_mac_write (hd, msg, 2) == 0);
+  TRY (gcry_mac_write (hd, &fakelen, 2) == 0);
+  TRY (gcry_mac_write (hd, msg + 4, len - 28) == 0);
 
   /* RFC 3489 specifies that the message's size should be 64 bytes,
      and \x00 padding should be done */
   if (padding && ((len - 24) % 64) > 0) {
     uint16_t pad_size = 64 - ((len - 24) % 64);
-
-    vector[3] = pad_char;
-    lengths[3] = pad_size;
-    num_elements++;
+    TRY (gcry_mac_write (hd, pad_char, pad_size) == 0);
   }
 
-  hmac_sha1_vector(key, keylen, num_elements, vector, lengths, sha);
+  TRY (gcry_mac_read (hd, sha, &sha_len) == 0);
+  assert (sha_len == 20);
+
+  gcry_mac_close (hd);
 }
 
 static const uint8_t *priv_trim_var (const uint8_t *var, size_t *var_len)
