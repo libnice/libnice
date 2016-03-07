@@ -38,12 +38,13 @@
 #endif
 
 
-#include "stun/sha1.h"
-#include "stun/md5.h"
+#include <stdint.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 #include <assert.h>
+
+#include <stun/stunhmac.h>
 
 static void print_bytes (const uint8_t *bytes, int len)
 {
@@ -55,89 +56,35 @@ static void print_bytes (const uint8_t *bytes, int len)
   printf ("\n");
 }
 
-static void test_sha1 (const uint8_t *str, const uint8_t *expected) {
-  SHA1_CTX ctx;
-  uint8_t sha1[20];
-
-  SHA1Init(&ctx);
-  SHA1Update(&ctx, str, strlen ((char *) str));
-  SHA1Final(sha1, &ctx);
-
-  printf ("SHA1 of '%s' : ", str);
-  print_bytes (sha1, SHA1_MAC_LEN);
-  printf ("Expected : ");
-  print_bytes (expected, SHA1_MAC_LEN);
-
-  if (memcmp (sha1, expected, SHA1_MAC_LEN))
-    exit (1);
-
-}
-
 static void test_hmac (const uint8_t *key, const uint8_t *str,
     const uint8_t *expected) {
   uint8_t hmac[20];
 
-  hmac_sha1(key, strlen ((char *) key), str, strlen ((char *) str), hmac);
+  /* Arbitrary. */
+  size_t msg_len = 300;
+
+  stun_sha1 (str, strlen ((const char *) str), msg_len, hmac,
+             key, strlen ((const char *) key), TRUE  /* padding */);
+
   printf ("HMAC of '%s' with key '%s' is : ", str, key);
-  print_bytes (hmac, SHA1_MAC_LEN);
+  print_bytes (hmac, sizeof (hmac));
   printf ("Expected : ");
-  print_bytes (expected, SHA1_MAC_LEN);
+  print_bytes (expected, sizeof (hmac));
 
-  if (memcmp (hmac, expected, SHA1_MAC_LEN))
-    exit (1);
-}
-
-static void test_md5 (const uint8_t *str,  const uint8_t *expected) {
-  MD5_CTX ctx;
-  uint8_t md5[20];
-
-  MD5Init(&ctx);
-  MD5Update(&ctx, str, strlen ((char *) str));
-  MD5Final(md5, &ctx);
-
-  printf ("MD5 of '%s' : 0x", str);
-  print_bytes (md5, MD5_MAC_LEN);
-  printf ("Expected : ");
-  print_bytes (expected, MD5_MAC_LEN);
-
-  if (memcmp (md5, expected, MD5_MAC_LEN))
+  if (memcmp (hmac, expected, sizeof (hmac)))
     exit (1);
 }
 
 int main (void)
 {
+  const uint8_t hmac1[] = { 0x83, 0x5a, 0x9b, 0x05, 0xea,
+                            0xd7, 0x68, 0x45, 0x48, 0x74,
+                            0x6b, 0xa3, 0x37, 0xe0, 0xa9,
+                            0x3f, 0x4d, 0xb3, 0x9c, 0xa1 };
 
-  uint8_t hello_world_hmac[] = {0x8a, 0x3a, 0x84, 0xbc, 0xd0,
-                                0xd0, 0x06, 0x5e, 0x97, 0xf1,
-                                0x75, 0xd3, 0x70, 0x44, 0x7c,
-                                0x7d, 0x02, 0xe0, 0x09, 0x73};
-  uint8_t abc_sha1[] = {0xa9, 0x99, 0x3e, 0x36, 0x47,
-                        0x06, 0x81, 0x6a, 0xba, 0x3e,
-                        0x25, 0x71, 0x78, 0x50, 0xc2,
-                        0x6c, 0x9c, 0xd0, 0xd8, 0x9d};
-  uint8_t abcd_etc_sha1[] = {0x84, 0x98, 0x3e, 0x44, 0x1c,
-                             0x3b, 0xd2, 0x6e, 0xba, 0xae,
-                             0x4a, 0xa1, 0xf9, 0x51, 0x29,
-                             0xe5, 0xe5, 0x46, 0x70, 0xf1};
-  uint8_t abc_md5[] = {0x90, 0x01, 0x50, 0x98,
-                       0x3c, 0xd2, 0x4f, 0xb0,
-                       0xd6, 0x96, 0x3f, 0x7d,
-                       0x28, 0xe1, 0x7f, 0x72};
-  uint8_t abcd_etc_md5[] = {0x82, 0x15, 0xef, 0x07,
-                            0x96, 0xa2, 0x0b, 0xca,
-                            0xaa, 0xe1, 0x16, 0xd3,
-                            0x87, 0x6c, 0x66, 0x4a};
-
-  test_hmac ((const uint8_t *) "hello", (const uint8_t*) "world",
-      hello_world_hmac);
-
-  test_sha1 ((const uint8_t *) "abc", abc_sha1);
-  test_md5 ((const uint8_t *) "abc", abc_md5);
-
-  test_sha1 ((const uint8_t *)
-      "abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq", abcd_etc_sha1);
-  test_md5 ((const uint8_t *)
-      "abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq", abcd_etc_md5);
+  test_hmac ((const uint8_t *) "key",
+             (const uint8_t *) "some complicated input string which is over 44 bytes long",
+             hmac1);
 
   return 0;
 }
