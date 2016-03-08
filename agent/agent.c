@@ -5031,6 +5031,10 @@ component_io_cb (GSocket *gsocket, GIOCondition condition, gpointer user_data)
   }
 
 done:
+
+  if (remove_source)
+    nice_component_remove_socket (component, socket_source->socket);
+
   /* If we’re in the middle of a read, don’t emit any signals, or we could cause
    * re-entrancy by (e.g.) emitting component-state-changed and having the
    * client perform a read. */
