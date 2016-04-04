@@ -88,7 +88,7 @@ struct _NiceSocket
   gboolean (*can_send) (NiceSocket *sock, NiceAddress *addr);
   void (*set_writable_callback) (NiceSocket *sock,
       NiceSocketWritableCb callback, gpointer user_data);
-  gboolean (*is_base_of) (NiceSocket *sock, NiceSocket *other);
+  gboolean (*is_based_on) (NiceSocket *sock, NiceSocket *other);
   void (*close) (NiceSocket *sock);
   void *priv;
 };
@@ -126,19 +126,21 @@ nice_socket_set_writable_callback (NiceSocket *sock,
     NiceSocketWritableCb callback, gpointer user_data);
 
 /**
- * nice_socket_is_base_of:
+ * nice_socket_is_based_on:
  * @sock: a #NiceSocket
  * @other: another #NiceSocket
  *
- * Check whether @sock is equal to, or a base socket of, @other or one of
- * @other's base sockets.
+ * Checks whether @sock wraps @other as a source and destination of its read and
+ * write operations. The function traverses the whole chain of @sock's base
+ * sockets until @other is found or the end is reached.
  *
- * Returns: %TRUE if @sock is a base socket of @other, %FALSE otherwise
+ * Returns: %TRUE if @sock is based on @other or if @sock and @other are
+ * the same socket, %FALSE otherwise.
  *
  * Since: UNRELEASED
  */
 gboolean
-nice_socket_is_base_of (NiceSocket *sock, NiceSocket *other);
+nice_socket_is_based_on (NiceSocket *sock, NiceSocket *other);
 
 void
 nice_socket_free (NiceSocket *sock);

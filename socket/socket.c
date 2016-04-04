@@ -266,10 +266,10 @@ nice_socket_set_writable_callback (NiceSocket *sock,
 }
 
 gboolean
-nice_socket_is_base_of (NiceSocket *sock, NiceSocket *other)
+nice_socket_is_based_on (NiceSocket *sock, NiceSocket *other)
 {
-  if (other->is_base_of)
-    return other->is_base_of (sock, other);
+  if (sock->is_based_on)
+    return sock->is_based_on (sock, other);
   return (sock == other);
 }
 

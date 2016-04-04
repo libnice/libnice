@@ -1827,7 +1827,7 @@ _tcp_sock_is_writable (NiceSocket *sock, gpointer user_data)
   /* Don't signal writable if the socket that has become writable is not
    * the selected pair */
   if (component->selected_pair.local == NULL ||
-      !nice_socket_is_base_of (sock, component->selected_pair.local->sockptr)) {
+      !nice_socket_is_based_on (component->selected_pair.local->sockptr, sock)) {
     agent_unlock ();
     return;
   }
@@ -3573,7 +3573,7 @@ agent_recv_message_unlocked (
       if (cand->type == NICE_CANDIDATE_TYPE_RELAYED &&
           cand->stream_id == stream->id &&
           cand->component_id == component->id &&
-          nice_socket_is_base_of (cand->sockptr, nicesock)) {
+          nice_socket_is_based_on (cand->sockptr, nicesock)) {
         retval = nice_udp_turn_socket_parse_recv_message (cand->sockptr, &nicesock,
             message);
         break;

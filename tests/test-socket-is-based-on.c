@@ -44,37 +44,37 @@ static NiceSocket *udp_turn_over_tcp;
 static void
 socket_base_udp_bsd (void)
 {
-  g_assert (nice_socket_is_base_of (udp_bsd, udp_bsd));
-  g_assert (!nice_socket_is_base_of (udp_bsd, tcp_active));
-  g_assert (!nice_socket_is_base_of (udp_bsd, pseudossl));
-  g_assert (!nice_socket_is_base_of (udp_bsd, udp_turn_over_tcp));
+  g_assert (nice_socket_is_based_on (udp_bsd, udp_bsd));
+  g_assert (!nice_socket_is_based_on (udp_bsd, tcp_active));
+  g_assert (!nice_socket_is_based_on (udp_bsd, pseudossl));
+  g_assert (!nice_socket_is_based_on (udp_bsd, udp_turn_over_tcp));
 }
 
 static void
 socket_base_tcp_active (void)
 {
-  g_assert (!nice_socket_is_base_of (tcp_active, udp_bsd));
-  g_assert (nice_socket_is_base_of (tcp_active, tcp_active));
-  g_assert (nice_socket_is_base_of (tcp_active, pseudossl));
-  g_assert (nice_socket_is_base_of (tcp_active, udp_turn_over_tcp));
+  g_assert (!nice_socket_is_based_on (tcp_active, udp_bsd));
+  g_assert (nice_socket_is_based_on (tcp_active, tcp_active));
+  g_assert (!nice_socket_is_based_on (tcp_active, pseudossl));
+  g_assert (!nice_socket_is_based_on (tcp_active, udp_turn_over_tcp));
 }
 
 static void
 socket_base_pseudossl (void)
 {
-  g_assert (!nice_socket_is_base_of (pseudossl, udp_bsd));
-  g_assert (!nice_socket_is_base_of (pseudossl, tcp_active));
-  g_assert (nice_socket_is_base_of (pseudossl, pseudossl));
-  g_assert (nice_socket_is_base_of (pseudossl, udp_turn_over_tcp));
+  g_assert (!nice_socket_is_based_on (pseudossl, udp_bsd));
+  g_assert (nice_socket_is_based_on (pseudossl, tcp_active));
+  g_assert (nice_socket_is_based_on (pseudossl, pseudossl));
+  g_assert (!nice_socket_is_based_on (pseudossl, udp_turn_over_tcp));
 }
 
 static void
 socket_base_udp_turn_over_tcp (void)
 {
-  g_assert (!nice_socket_is_base_of (udp_turn_over_tcp, udp_bsd));
-  g_assert (!nice_socket_is_base_of (udp_turn_over_tcp, tcp_active));
-  g_assert (!nice_socket_is_base_of (udp_turn_over_tcp, pseudossl));
-  g_assert (nice_socket_is_base_of (udp_turn_over_tcp, udp_turn_over_tcp));
+  g_assert (!nice_socket_is_based_on (udp_turn_over_tcp, udp_bsd));
+  g_assert (nice_socket_is_based_on (udp_turn_over_tcp, tcp_active));
+  g_assert (nice_socket_is_based_on (udp_turn_over_tcp, pseudossl));
+  g_assert (nice_socket_is_based_on (udp_turn_over_tcp, udp_turn_over_tcp));
 }
 
 int
