@@ -2196,7 +2196,7 @@ priv_add_new_candidate_discovery_stun (NiceAgent *agent,
        agent->compatibility == NICE_COMPATIBILITY_OC2007R2) ?
         STUN_AGENT_USAGE_NO_ALIGNED_ATTRIBUTES : 0);
 
-  nice_debug ("Agent %p : Adding new srv-rflx candidate discovery %p\n",
+  nice_debug ("Agent %p : Adding new srv-rflx candidate discovery %p",
       agent, cdisco);
 
   agent->discovery_list = g_slist_append (agent->discovery_list, cdisco);
@@ -2359,7 +2359,7 @@ priv_add_new_candidate_discovery_turn (NiceAgent *agent,
   }
   stun_agent_set_software (&cdisco->stun_agent, agent->software_attribute);
 
-  nice_debug ("Agent %p : Adding new relay-rflx candidate discovery %p\n",
+  nice_debug ("Agent %p : Adding new relay-rflx candidate discovery %p",
       agent, cdisco);
   agent->discovery_list = g_slist_append (agent->discovery_list, cdisco);
   ++agent->discovery_unsched_items;
