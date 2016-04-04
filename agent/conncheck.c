@@ -1938,7 +1938,7 @@ int conn_check_send (NiceAgent *agent, CandidateCheckPair *pair)
     nice_address_to_string (&pair->remote->addr, tmpbuf2);
     nice_debug ("Agent %p : STUN-CC REQ [%s]:%u --> [%s]:%u, socket=%u, "
         "pair=%s (c-id:%u), tie=%llu, username='%.*s' (%" G_GSIZE_FORMAT "), "
-        "password='%.*s' (%" G_GSIZE_FORMAT "), priority=%u.", agent,
+        "password='%.*s' (%" G_GSIZE_FORMAT "), prio=%u, cont=%d.", agent,
 	     tmpbuf1, nice_address_get_port (&pair->local->addr),
 	     tmpbuf2, nice_address_get_port (&pair->remote->addr),
              pair->sockptr->fileno ? g_socket_get_fd(pair->sockptr->fileno) : -1,
@@ -1946,7 +1946,7 @@ int conn_check_send (NiceAgent *agent, CandidateCheckPair *pair)
 	     (unsigned long long)agent->tie_breaker,
         (int) uname_len, uname, uname_len,
         (int) password_len, password, password_len,
-        priority);
+        priority, controlling);
 
   }
 
