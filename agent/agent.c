@@ -3272,9 +3272,7 @@ _set_remote_candidates_locked (NiceAgent *agent, NiceStream *stream,
   conn_check_remote_candidates_set(agent);
 
   if (added > 0) {
-    gboolean res = conn_check_schedule_next (agent);
-    if (res != TRUE)
-      nice_debug ("Agent %p : Warning: unable to schedule any conn checks!", agent);
+    conn_check_schedule_next (agent);
   }
 
   return added;

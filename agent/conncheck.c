@@ -81,6 +81,41 @@ static int priv_timer_expired (GTimeVal *timer, GTimeVal *now)
     now->tv_sec >= timer->tv_sec;
 }
 
+/* Add the pair to the triggered checks list, if not already present
+ */
+static void
+priv_add_pair_to_triggered_check_queue (NiceAgent *agent, CandidateCheckPair *pair)
+{
+  g_assert (pair);
+
+  if (agent->triggered_check_queue == NULL ||
+      g_slist_find (agent->triggered_check_queue, pair) == NULL)
+    agent->triggered_check_queue = g_slist_append (agent->triggered_check_queue, pair);
+}
+
+/* Remove the pair from the triggered checks list
+ */
+static void
+priv_remove_pair_from_triggered_check_queue (NiceAgent *agent, CandidateCheckPair *pair)
+{
+  g_assert (pair);
+  agent->triggered_check_queue = g_slist_remove (agent->triggered_check_queue, pair);
+}
+
+/* Get the pair from the triggered checks list
+ */
+static CandidateCheckPair *
+priv_get_pair_from_triggered_check_queue (NiceAgent *agent)
+{
+  CandidateCheckPair *pair = NULL;
+
+  if (agent->triggered_check_queue) {
+    pair = (CandidateCheckPair *)agent->triggered_check_queue->data;
+    priv_remove_pair_from_triggered_check_queue (agent, pair);
+  }
+  return pair;
+}
+
 /*
  * Finds the next connectivity check in WAITING state.
  */
@@ -107,10 +142,6 @@ static CandidateCheckPair *priv_conn_check_find_next_waiting (GSList *conn_check
  */
 static gboolean priv_conn_check_initiate (NiceAgent *agent, CandidateCheckPair *pair)
 {
-  /* XXX: from ID-16 onwards, the checks should not be sent
-   * immediately, but be put into the "triggered queue",
-   * see  "7.2.1.4 Triggered Checks"
-   */
   g_get_current_time (&pair->next_tick);
   g_time_val_add (&pair->next_tick, agent->timer_ta * 1000);
   pair->state = NICE_CHECK_IN_PROGRESS;
@@ -269,7 +300,7 @@ candidate_check_pair_fail (NiceStream *stream, NiceAgent *agent, CandidateCheckP
  *
  * @return will return FALSE when no more pending timers.
  */
-static gboolean priv_conn_check_tick_stream (NiceStream *stream, NiceAgent *agent, GTimeVal *now)
+static gboolean priv_conn_check_tick_stream (NiceStream *stream, NiceAgent *agent, GTimeVal *now, gboolean *stun_transmitted)
 {
   gboolean keep_timer_going = FALSE;
   guint s_inprogress = 0, s_succeeded = 0, s_discovered = 0,
@@ -318,8 +349,8 @@ static gboolean priv_conn_check_tick_stream (NiceStream *stream, NiceAgent *agen
               p->next_tick = *now;
               g_time_val_add (&p->next_tick, timeout * 1000);
 
-              keep_timer_going = TRUE;
-              break;
+              *stun_transmitted = TRUE;
+              return TRUE;
             }
           case STUN_USAGE_TIMER_RETURN_SUCCESS:
             {
@@ -382,7 +413,7 @@ static gboolean priv_conn_check_tick_stream (NiceStream *stream, NiceAgent *agen
                p->state == NICE_CHECK_DISCOVERED)) {
 	    nice_debug ("Agent %p : restarting check %p as the nominated pair.", agent, p);
 	    p->nominated = TRUE;
-	    priv_conn_check_initiate (agent, p);
+            priv_add_pair_to_triggered_check_queue (agent, p);
 	    break; /* move to the next component */
 	  }
 	}
@@ -416,13 +447,37 @@ static gboolean priv_conn_check_tick_unlocked (NiceAgent *agent)
 {
   CandidateCheckPair *pair = NULL;
   gboolean keep_timer_going = FALSE;
+  gboolean res;
+  /* note: we try to only generate a single stun transaction per timer
+   * callback, to respect some pacing of STUN transaction, as per
+   * appendix B.1 of ICE spec.
+   */
+  gboolean stun_transmitted = FALSE;
   GSList *i, *j;
   GTimeVal now;
 
   /* step: process ongoing STUN transactions */
   g_get_current_time (&now);
 
-  /* step: find the highest priority waiting check and send it */
+  for (j = agent->streams; j; j = j->next) {
+    NiceStream *stream = j->data;
+    res = priv_conn_check_tick_stream (stream, agent, &now, &stun_transmitted);
+    if (res)
+      keep_timer_going = res;
+    if (stun_transmitted)
+      return TRUE;
+  }
+
+  /* step: first initiate a conncheck with a pair from the triggered list */
+  pair = priv_get_pair_from_triggered_check_queue (agent);
+
+  if (pair) {
+    priv_conn_check_initiate (agent, pair);
+    return TRUE;
+  }
+
+  /* step: when the triggered list is empty,
+   * find the highest priority waiting check and send it */
   for (i = agent->streams; i ; i = i->next) {
     NiceStream *stream = i->data;
 
@@ -433,17 +488,25 @@ static gboolean priv_conn_check_tick_unlocked (NiceAgent *agent)
 
   if (pair) {
     priv_conn_check_initiate (agent, pair);
-    keep_timer_going = TRUE;
-  } else {
-    keep_timer_going = priv_conn_check_unfreeze_next (agent);
+    return TRUE;
   }
 
-  for (j = agent->streams; j; j = j->next) {
-    NiceStream *stream = j->data;
-    gboolean res =
-      priv_conn_check_tick_stream (stream, agent, &now);
-    if (res)
-      keep_timer_going = res;
+  /* step: when there's no pair in the Waiting state,
+   * unfreeze a new pair and check it
+   */
+  res = priv_conn_check_unfreeze_next (agent);
+
+  for (i = agent->streams; i ; i = i->next) {
+    NiceStream *stream = i->data;
+
+    pair = priv_conn_check_find_next_waiting (stream->conncheck_list);
+    if (pair)
+      break;
+  }
+
+  if (pair) {
+    priv_conn_check_initiate (agent, pair);
+    return TRUE;
   }
 
   /* step: stop timer if no work left */
@@ -940,23 +1003,14 @@ static gboolean priv_turn_allocate_refresh_tick (gpointer pointer)
 
 /*
  * Initiates the next pending connectivity check.
- * 
- * @return TRUE if a pending check was scheduled
  */
-gboolean conn_check_schedule_next (NiceAgent *agent)
+void conn_check_schedule_next (NiceAgent *agent)
 {
-  gboolean res = priv_conn_check_unfreeze_next (agent);
-  nice_debug ("Agent %p : priv_conn_check_unfreeze_next returned %d", agent, res);
-
   if (agent->discovery_unsched_items > 0)
     nice_debug ("Agent %p : WARN: starting conn checks before local candidate gathering is finished.", agent);
 
-  /* step: call once imediately */
-  res = priv_conn_check_tick_unlocked (agent);
-  nice_debug ("Agent %p : priv_conn_check_tick_unlocked returned %d", agent, res);
-
   /* step: schedule timer if not running yet */
-  if (res && agent->conncheck_timer_source == NULL) {
+  if (agent->conncheck_timer_source == NULL) {
     agent_timeout_add_with_context (agent, &agent->conncheck_timer_source,
         "Connectivity check schedule", agent->timer_ta,
         priv_conn_check_tick, agent);
@@ -968,9 +1022,6 @@ gboolean conn_check_schedule_next (NiceAgent *agent)
         "Connectivity keepalive timeout", NICE_AGENT_TIMER_TR_DEFAULT,
         priv_conn_keepalive_tick, agent);
   }
-
-  nice_debug ("Agent %p : conn_check_schedule_next returning %d", agent, res);
-  return res;
 }
 
 /*
@@ -1573,6 +1624,8 @@ static void conn_check_free_item (gpointer data)
 {
   CandidateCheckPair *pair = data;
 
+  if (pair->agent)
+    priv_remove_pair_from_triggered_check_queue (pair->agent, pair);
   pair->stun_message.buffer = NULL;
   pair->stun_message.buffer_len = 0;
   g_slice_free (CandidateCheckPair, pair);
@@ -1803,23 +1856,24 @@ size_t priv_get_password (NiceAgent *agent, NiceStream *stream,
 
 /* Implement the computation specific in RFC 5245 section 16 */
 
-static unsigned int priv_compute_conncheck_timer (NiceAgent *agent,
-    NiceStream *stream)
+static unsigned int priv_compute_conncheck_timer (NiceAgent *agent)
 {
-  GSList *item;
+  GSList *item1, *item2;
   guint waiting_and_in_progress = 0;
   unsigned int rto = 0;
 
-  for (item = stream->conncheck_list; item; item = item->next) {
-    CandidateCheckPair *pair = item->data;
 
-    if (pair->state == NICE_CHECK_IN_PROGRESS ||
-        pair->state == NICE_CHECK_WAITING)
-      waiting_and_in_progress++;
+  for (item1 = agent->streams; item1; item1 = item1->next) {
+    NiceStream *stream = item1->data;;
+    for (item2 = stream->conncheck_list; item2; item2 = item2->next) {
+      CandidateCheckPair *pair = item2->data;
+
+      if (pair->state == NICE_CHECK_IN_PROGRESS ||
+          pair->state == NICE_CHECK_WAITING)
+        waiting_and_in_progress++;
+    }
   }
 
-  /* FIXME: This should also be multiple by "N", which I believe is the
-   * number of NiceStreams currently in the conncheck state. */
   rto = agent->timer_ta  * waiting_and_in_progress;
 
   /* We assume non-reliable streams are RTP, so we use 100 as the max */
@@ -1921,7 +1975,7 @@ int conn_check_send (NiceAgent *agent, CandidateCheckPair *pair)
         stun_timer_start_reliable(&pair->timer, STUN_TIMER_DEFAULT_RELIABLE_TIMEOUT);
       } else {
         stun_timer_start (&pair->timer,
-            priv_compute_conncheck_timer (agent, stream),
+            priv_compute_conncheck_timer (agent),
             STUN_TIMER_DEFAULT_MAX_RETRANSMISSIONS);
       }
 
@@ -2071,7 +2125,7 @@ static gboolean priv_schedule_triggered_check (NiceAgent *agent, NiceStream *str
 	
 	if (p->state == NICE_CHECK_WAITING ||
 	    p->state == NICE_CHECK_FROZEN)
-	  priv_conn_check_initiate (agent, p);
+          priv_add_pair_to_triggered_check_queue (agent, p);
         else if (p->state == NICE_CHECK_IN_PROGRESS) {
 	  /* XXX: according to ICE 7.2.1.4 "Triggered Checks" (ID-19),
 	   * we should cancel the existing one, instead we reset our timer, so
@@ -2082,7 +2136,7 @@ static gboolean priv_schedule_triggered_check (NiceAgent *agent, NiceStream *str
             p->timer_restarted ? "no" : "yes");
 	  if (!nice_socket_is_reliable (p->sockptr) && !p->timer_restarted) {
 	    stun_timer_start (&p->timer,
-                priv_compute_conncheck_timer (agent, stream),
+                priv_compute_conncheck_timer (agent),
                 STUN_TIMER_DEFAULT_MAX_RETRANSMISSIONS);
 	    p->timer_restarted = TRUE;
 	  }
@@ -2100,15 +2154,17 @@ static gboolean priv_schedule_triggered_check (NiceAgent *agent, NiceStream *str
 	  if ((agent->compatibility == NICE_COMPATIBILITY_RFC5245 ||
                   agent->compatibility == NICE_COMPATIBILITY_WLM2009 ||
                   agent->compatibility == NICE_COMPATIBILITY_OC2007R2) &&
-              agent->controlling_mode)
-	    priv_conn_check_initiate (agent, p);
+              agent->controlling_mode) {
+            priv_add_pair_to_triggered_check_queue (agent, p);
+            conn_check_schedule_next(agent);
+          }
 	} else if (p->state == NICE_CHECK_FAILED) {
           /* 7.2.1.4 Triggered Checks
            * If the state of the pair is Failed, it is changed to Waiting
              and the agent MUST create a new connectivity check for that
              pair (representing a new STUN Binding request transaction), by
              enqueueing the pair in the triggered check queue. */
-          priv_conn_check_initiate (agent, p);
+          priv_add_pair_to_triggered_check_queue (agent, p);
         }
 
 	/* note: the spec says the we SHOULD retransmit in-progress
@@ -2493,6 +2549,7 @@ static gboolean priv_map_reply_to_conn_check_request (NiceAgent *agent, NiceStre
           p->stun_message.buffer = NULL;
           p->stun_message.buffer_len = 0;
           p->state = NICE_CHECK_WAITING;
+          priv_add_pair_to_triggered_check_queue (agent, p);
           nice_debug ("Agent %p : pair %p state WAITING", agent, p);
           trans_found = TRUE;
         } else {

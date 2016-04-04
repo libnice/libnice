@@ -139,6 +139,7 @@ struct _NiceAgent
   guint next_stream_id;           /* id of next created candidate */
   NiceRNG *rng;                   /* random number generator */
   GSList *discovery_list;         /* list of CandidateDiscovery items */
+  GSList *triggered_check_queue;  /* pairs in the triggered check list */
   guint discovery_unsched_items;  /* number of discovery items unscheduled */
   GSource *discovery_timer_source; /* source of discovery timer */
   GSource *conncheck_timer_source; /* source of conncheck timer */
