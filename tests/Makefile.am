@@ -43,6 +43,7 @@ check_PROGRAMS = \
 	test-io-stream-cancelling \
 	test-io-stream-pollable \
 	test-send-recv \
+	test-socket-is-base-of \
 	test-priority \
 	test-mainloop \
 	test-fullmode \
@@ -102,6 +103,8 @@ test_io_stream_pollable_LDADD = $(COMMON_LDADD)
 
 test_send_recv_SOURCES = test-send-recv.c test-io-stream-common.c
 test_send_recv_LDADD = $(COMMON_LDADD)
+
+test_socket_is_base_of_LDADD = $(COMMON_LDADD)
 
 test_priority_LDADD = $(COMMON_LDADD)
 
