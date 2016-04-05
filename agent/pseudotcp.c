@@ -509,6 +509,7 @@ struct _PseudoTcpSocketPrivate {
   guint32 ssthresh, cwnd;
   guint8 dup_acks;
   guint32 recover;
+  gboolean fast_recovery;
   guint32 t_ack;  /* time a delayed ack was scheduled; 0 if no acks scheduled */
 
   gboolean use_nagling;
@@ -1001,6 +1002,13 @@ pseudo_tcp_socket_notify_clock(PseudoTcpSocket *self)
       rto_limit = (priv->state < TCP_ESTABLISHED) ? DEF_RTO : MAX_RTO;
       priv->rx_rto = min(rto_limit, priv->rx_rto * 2);
       priv->rto_base = now;
+
+      priv->recover = priv->snd_nxt;
+      if (priv->dup_acks >= 3) {
+        priv->dup_acks = 0;
+        priv->fast_recovery = FALSE;
+        DEBUG (PSEUDO_TCP_DEBUG_NORMAL, "exit recovery on timeout");
+      }
     }
   }
 
@@ -1721,8 +1729,10 @@ process(PseudoTcpSocket *self, Segment *seg)
       if (LARGER_OR_EQUAL (priv->snd_una, priv->recover)) { // NewReno
         guint32 nInFlight = priv->snd_nxt - priv->snd_una;
         // (Fast Retransmit)
-        priv->cwnd = min(priv->ssthresh, nInFlight + priv->mss);
+        priv->cwnd = min(priv->ssthresh,
+            max (nInFlight, priv->mss) + priv->mss);
         DEBUG (PSEUDO_TCP_DEBUG_NORMAL, "exit recovery cwnd=%d ssthresh=%d nInFlight=%d mss: %d", priv->cwnd, priv->ssthresh, nInFlight, priv->mss);
+        priv->fast_recovery = FALSE;
         priv->dup_acks = 0;
       } else {
         int transmit_status;
@@ -1735,7 +1745,8 @@ process(PseudoTcpSocket *self, Segment *seg)
           closedown (self, transmit_status, CLOSEDOWN_LOCAL);
           return FALSE;
         }
-        priv->cwnd += priv->mss - min(nAcked, priv->cwnd);
+        priv->cwnd += (nAcked > priv->mss ? priv->mss : 0) -
+            min(nAcked, priv->cwnd);
       }
     } else {
       priv->dup_acks = 0;
@@ -1758,29 +1769,42 @@ process(PseudoTcpSocket *self, Segment *seg)
       guint32 nInFlight;
 
       priv->dup_acks += 1;
+      DEBUG (PSEUDO_TCP_DEBUG_VERBOSE, "Received dup ack (dups: %u)",
+          priv->dup_acks);
       if (priv->dup_acks == 3) { // (Fast Retransmit)
         int transmit_status;
 
-        DEBUG (PSEUDO_TCP_DEBUG_NORMAL, "enter recovery");
-        DEBUG (PSEUDO_TCP_DEBUG_NORMAL, "recovery retransmit");
 
-        transmit_status = transmit(self, g_queue_peek_head (&priv->slist), now);
-        if (transmit_status != 0) {
+        if (LARGER_OR_EQUAL (priv->snd_una, priv->recover)) { /* NewReno */
+          /* Invoke fast retransmit  RFC3782 section 3 step 1A*/
+          DEBUG (PSEUDO_TCP_DEBUG_NORMAL, "enter recovery");
+          DEBUG (PSEUDO_TCP_DEBUG_NORMAL, "recovery retransmit");
+
+          transmit_status = transmit(self, g_queue_peek_head (&priv->slist),
+              now);
+          if (transmit_status != 0) {
+            DEBUG (PSEUDO_TCP_DEBUG_NORMAL,
+                "Error transmitting recovery retransmit segment. Closing down.");
+
+            closedown (self, transmit_status, CLOSEDOWN_LOCAL);
+            return FALSE;
+          }
+          priv->recover = priv->snd_nxt;
+          nInFlight = priv->snd_nxt - priv->snd_una;
+          priv->ssthresh = max(nInFlight / 2, 2 * priv->mss);
           DEBUG (PSEUDO_TCP_DEBUG_NORMAL,
-              "Error transmitting recovery retransmit segment. Closing down.");
-
-          closedown (self, transmit_status, CLOSEDOWN_LOCAL);
-          return FALSE;
+              "ssthresh: %u = max((nInFlight: %u / 2), 2 * mss: %u)",
+              priv->ssthresh, nInFlight, priv->mss);
+          priv->cwnd = priv->ssthresh + 3 * priv->mss;
+          priv->fast_recovery = TRUE;
+        } else {
+          DEBUG (PSEUDO_TCP_DEBUG_VERBOSE,
+              "Skipping fast recovery: recover: %u snd_una: %u", priv->recover,
+              priv->snd_una);
         }
-        priv->recover = priv->snd_nxt;
-        nInFlight = priv->snd_nxt - priv->snd_una;
-        priv->ssthresh = max(nInFlight / 2, 2 * priv->mss);
-        DEBUG (PSEUDO_TCP_DEBUG_NORMAL, "ssthresh: %u = (nInFlight: %u / 2) + "
-            "2 * mss: %u", priv->ssthresh, nInFlight, priv->mss);
-        //LOG(LS_INFO) << "priv->ssthresh: " << priv->ssthresh << "  nInFlight: " << nInFlight << "  priv->mss: " << priv->mss;
-        priv->cwnd = priv->ssthresh + 3 * priv->mss;
       } else if (priv->dup_acks > 3) {
-        priv->cwnd += priv->mss;
+        if (priv->fast_recovery)
+          priv->cwnd += priv->mss;
       }
     } else {
       priv->dup_acks = 0;
