@@ -164,8 +164,8 @@ const guint16 PACKET_MAXIMUMS[] = {
 #define PACKET_OVERHEAD (HEADER_SIZE + UDP_HEADER_SIZE + \
       IP_HEADER_SIZE + JINGLE_HEADER_SIZE)
 
-// MIN_RTO = 250 ms (RFC1122, Sec 4.2.3.1 "fractions of a second")
-#define MIN_RTO      250
+// MIN_RTO = 1 second (RFC6298, Sec 2.4)
+#define MIN_RTO     1000
 #define DEF_RTO     1000 /* 1 seconds (RFC 6298 sect 2.1) */
 #define MAX_RTO    60000 /* 60 seconds */
 #define DEFAULT_ACK_DELAY    100 /* 100 milliseconds */

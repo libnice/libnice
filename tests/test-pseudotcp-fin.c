@@ -647,7 +647,7 @@ pseudotcp_close_normal_recovery1 (void)
   expect_fin (data.left, data.left_sent, 7, 7);
   drop_segment (data.left, data.left_sent);
 
-  increment_time_both (&data, 300);  /* retransmit timeout */
+  increment_time_both (&data, 1100);  /* retransmit timeout */
 
   expect_fin (data.left, data.left_sent, 7, 7);
   forward_segment_ltr (&data);
@@ -682,7 +682,7 @@ pseudotcp_close_normal_recovery2 (void)
 
   expect_ack (data.right, data.right_sent, 7, 8);
   drop_segment (data.right, data.right_sent);
-  increment_time_both (&data, 300);  /* retransmit timeout */
+  increment_time_both (&data, 1100);  /* retransmit timeout */
   expect_fin (data.left, data.left_sent, 7, 7);
   forward_segment_ltr (&data);
   expect_ack (data.right, data.right_sent, 7, 8);
@@ -852,7 +852,7 @@ pseudotcp_close_simultaneous_recovery1 (void)
   drop_segment (data.left, data.left_sent);
   drop_segment (data.right, data.right_sent);
 
-  increment_time_both (&data, 400);  /* retransmit timeout */
+  increment_time_both (&data, 1200);  /* retransmit timeout */
 
   expect_fin (data.left, data.left_sent, 7, 7);
   expect_fin (data.right, data.right_sent, 7, 7);
@@ -896,7 +896,7 @@ pseudotcp_close_simultaneous_recovery2 (void)
   drop_segment (data.left, data.left_sent);
   drop_segment (data.right, data.right_sent);
 
-  increment_time_both (&data, 400);  /* retransmit timeout */
+  increment_time_both (&data, 1200);  /* retransmit timeout */
 
   expect_fin (data.left, data.left_sent, 7, 8);
   expect_fin (data.right, data.right_sent, 7, 8);
