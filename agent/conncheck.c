@@ -64,7 +64,7 @@
 
 static void priv_update_check_list_failed_components (NiceAgent *agent, NiceStream *stream);
 static void priv_update_check_list_state_for_ready (NiceAgent *agent, NiceStream *stream, NiceComponent *component);
-static guint priv_prune_pending_checks (NiceStream *stream, guint component_id);
+static guint priv_prune_pending_checks (NiceAgent *agent, NiceStream *stream, guint component_id);
 static gboolean priv_schedule_triggered_check (NiceAgent *agent, NiceStream *stream, NiceComponent *component, NiceSocket *local_socket, NiceCandidate *remote_cand);
 static void priv_mark_pair_nominated (NiceAgent *agent, NiceStream *stream, NiceComponent *component, NiceCandidate *localcand, NiceCandidate *remotecand);
 static size_t priv_create_username (NiceAgent *agent, NiceStream *stream,
@@ -174,6 +174,16 @@ priv_print_conn_check_lists (NiceAgent *agent, const gchar *where, const gchar *
       }
     }
   }
+}
+
+/* Verify if the pair is in the triggered checks list
+ */
+
+static gboolean
+priv_is_pair_in_triggered_check_queue (NiceAgent *agent, CandidateCheckPair *pair)
+{
+  g_assert (pair);
+  return (g_slist_find (agent->triggered_check_queue, pair) != NULL);
 }
 
 /* Add the pair to the triggered checks list, if not already present
@@ -1897,7 +1907,7 @@ static void priv_update_check_list_state_for_ready (NiceAgent *agent, NiceStream
     /* Only go to READY if no checks are left in progress. If there are
      * any that are kept, then this function will be called again when the
      * conncheck tick timer finishes them all */
-    if (priv_prune_pending_checks (stream, component->id) == 0) {
+    if (priv_prune_pending_checks (agent, stream, component->id) == 0) {
       /* Continue through the states to give client code a nice
        * logical progression. See http://phabricator.freedesktop.org/D218 for
        * discussion. */
@@ -2693,14 +2703,14 @@ int conn_check_send (NiceAgent *agent, CandidateCheckPair *pair)
  *
  * @see priv_update_check_list_state_failed_components()
  */
-static guint priv_prune_pending_checks (NiceStream *stream, guint component_id)
+static guint priv_prune_pending_checks (NiceAgent *agent, NiceStream *stream, guint component_id)
 {
   GSList *i;
   guint64 highest_nominated_priority = 0;
   guint in_progress = 0;
 
-  nice_debug ("Agent XXX: Finding highest priority for component %d",
-      component_id);
+  nice_debug ("Agent %p: Finding highest priority for component %d",
+      agent, component_id);
 
   for (i = stream->conncheck_list; i; i = i->next) {
     CandidateCheckPair *p = i->data;
@@ -2712,41 +2722,47 @@ static guint priv_prune_pending_checks (NiceStream *stream, guint component_id)
     }
   }
 
-  nice_debug ("Agent XXX: Pruning pending checks. Highest nominated priority "
-      "is %" G_GUINT64_FORMAT, highest_nominated_priority);
+  nice_debug ("Agent %p: Pruning pending checks. Highest nominated priority "
+      "is %" G_GUINT64_FORMAT, agent, highest_nominated_priority);
 
   /* step: cancel all FROZEN and WAITING pairs for the component */
   /* note: this case is not covered by the ICE spec, 8.1.2
    * "Updating States", but a pair in waiting state which will be
    * nominated on response receipt should be treated the same way
-   * that an in-progress pair.
+   * that an in-progress pair. A pair in waiting state and in
+   * the triggered check list should also be treated like an in-progress
+   * pair.
    */
   for (i = stream->conncheck_list; i; i = i->next) {
     CandidateCheckPair *p = i->data;
+
     if (p->component_id == component_id) {
+      gboolean like_in_progress =
+          p->mark_nominated_on_response_arrival ||
+          priv_is_pair_in_triggered_check_queue (agent, p);
+
       if (p->state == NICE_CHECK_FROZEN ||
-          (p->state == NICE_CHECK_WAITING &&
-          !p->mark_nominated_on_response_arrival)) {
+          (p->state == NICE_CHECK_WAITING && !like_in_progress)) {
 	p->state = NICE_CHECK_CANCELLED;
-        nice_debug ("Agent XXX : pair %p state CANCELED", p);
+        nice_debug ("Agent %p : pair %p state CANCELED", agent, p);
       }
 
       /* note: a SHOULD level req. in ICE 8.1.2. "Updating States" (ID-19) */
       if (p->state == NICE_CHECK_IN_PROGRESS ||
-          (p->state == NICE_CHECK_WAITING &&
-          p->mark_nominated_on_response_arrival)) {
+          (p->state == NICE_CHECK_WAITING && like_in_progress)) {
         if (highest_nominated_priority != 0 &&
             p->priority < highest_nominated_priority) {
           p->stun_message.buffer = NULL;
           p->stun_message.buffer_len = 0;
           p->state = NICE_CHECK_CANCELLED;
-          nice_debug ("Agent XXX : pair %p state CANCELED", p);
+          nice_debug ("Agent %p : pair %p state CANCELED", agent, p);
         } else {
           /* We must keep the higher priority pairs running because if a udp
            * packet was lost, we might end up using a bad candidate */
-          nice_debug ("Agent XXX : pair %p kept IN_PROGRESS because priority %"
+          nice_debug ("Agent %p : pair %p kept IN_PROGRESS because priority %"
               G_GUINT64_FORMAT " is higher than currently nominated pair %"
-              G_GUINT64_FORMAT, p, p->priority, highest_nominated_priority);
+              G_GUINT64_FORMAT, agent,
+              p, p->priority, highest_nominated_priority);
           in_progress++;
         }
       }
