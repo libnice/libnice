@@ -642,6 +642,8 @@ static gboolean priv_conn_check_tick_stream (NiceStream *stream, NiceAgent *agen
    */
   pair = priv_conn_check_find_next_waiting (stream->conncheck_list);
   if (pair) {
+    priv_print_conn_check_lists (agent, G_STRFUNC,
+        ", got a pair in Waiting state");
     priv_conn_check_initiate (agent, pair);
     return TRUE;
   }
@@ -661,6 +663,8 @@ static gboolean priv_conn_check_tick_stream (NiceStream *stream, NiceAgent *agen
    */
   pair = priv_conn_check_find_next_frozen (stream->conncheck_list);
   if (pair) {
+    priv_print_conn_check_lists (agent, G_STRFUNC,
+        ", got a pair in Frozen state");
     pair->state = NICE_CHECK_WAITING;
     nice_debug ("Agent %p : pair %p state WAITING", agent, pair);
     priv_conn_check_initiate (agent, pair);
@@ -891,6 +895,8 @@ static gboolean priv_conn_check_tick_unlocked (NiceAgent *agent)
   pair = priv_get_pair_from_triggered_check_queue (agent);
 
   if (pair) {
+    priv_print_conn_check_lists (agent, G_STRFUNC,
+        ", got a pair from triggered check list");
     priv_conn_check_initiate (agent, pair);
     return TRUE;
   }
