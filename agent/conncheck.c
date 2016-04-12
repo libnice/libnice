@@ -2654,7 +2654,10 @@ static CandidateCheckPair *priv_process_response_check_for_reflexive(NiceAgent *
   }
   else {
     if (!local_cand) {
-      if (!agent->force_relay)
+      if (!agent->force_relay) {
+        /* step: find a new local candidate, see RFC 5245 7.1.3.2.1.
+         * "Discovering Peer Reflexive Candidates"
+         */
         local_cand = discovery_add_peer_reflexive_candidate (agent,
                                                              stream->id,
                                                              component->id,
@@ -2662,8 +2665,9 @@ static CandidateCheckPair *priv_process_response_check_for_reflexive(NiceAgent *
                                                              sockptr,
                                                              local_candidate,
                                                              remote_candidate);
-      p->state = NICE_CHECK_FAILED;
-      nice_debug ("Agent %p : pair %p state FAILED", agent, p);
+        nice_debug ("Agent %p : added a new peer-reflexive local candidate %p",
+            agent, local_cand);
+      }
     }
 
     /* step: add a new discovered pair (see RFC 5245 7.1.3.2.2
@@ -2671,7 +2675,12 @@ static CandidateCheckPair *priv_process_response_check_for_reflexive(NiceAgent *
     if (local_cand)
       new_pair = priv_add_peer_reflexive_pair (agent, stream->id, component,
           local_cand, p);
-    nice_debug ("Agent %p : conncheck %p FAILED, %p DISCOVERED.", agent, p, new_pair);
+    /* step: The agent sets the state of the pair that *generated* the check to
+     * Succeeded, RFC 5245, 7.1.3.2.3, "Updating Pair States"
+     */
+    p->state = NICE_CHECK_SUCCEEDED;
+    nice_debug ("Agent %p : conncheck %p SUCCEEDED, %p DISCOVERED.",
+        agent, p, new_pair);
   }
 
   /* note: this is same as "adding to VALID LIST" in the spec
