@@ -264,6 +264,8 @@ static gboolean priv_conn_check_unfreeze_next (NiceAgent *agent)
    *     priority)
    */
 
+  priv_print_conn_check_lists (agent, G_STRFUNC, NULL);
+
   for (i = agent->streams; i; i = i->next) {
     NiceStream *stream = i->data;
     guint64 max_frozen_priority = 0;
@@ -317,6 +319,8 @@ static void priv_conn_check_unfreeze_related (NiceAgent *agent, NiceStream *stre
   g_assert (ok_check->state == NICE_CHECK_SUCCEEDED);
   g_assert (stream);
   g_assert (stream->id == ok_check->stream_id);
+
+  priv_print_conn_check_lists (agent, G_STRFUNC, NULL);
 
   /* step: perform the step (1) of 'Updating Pair States' */
   for (i = stream->conncheck_list; i ; i = i->next) {
@@ -401,8 +405,6 @@ static gboolean priv_conn_check_tick_stream (NiceStream *stream, NiceAgent *agen
   guint frozen = 0, waiting = 0;
   GSList *i, *k;
 
-  priv_print_conn_check_lists (agent, G_STRFUNC, NULL);
-
   for (i = stream->conncheck_list; i ; i = i->next) {
     CandidateCheckPair *p = i->data;
 
@@ -424,6 +426,8 @@ static gboolean priv_conn_check_tick_stream (NiceStream *stream, NiceAgent *agen
                   tmpbuf1, nice_address_get_port (&p->local->addr),
                   tmpbuf2, nice_address_get_port (&p->remote->addr));
               candidate_check_pair_fail (stream, agent, p);
+              priv_print_conn_check_lists (agent, G_STRFUNC,
+                  ", retransmission failed");
 
               break;
             }
@@ -577,6 +581,8 @@ static gboolean priv_conn_check_tick_unlocked (NiceAgent *agent)
   pair = priv_get_pair_from_triggered_check_queue (agent);
 
   if (pair) {
+    priv_print_conn_check_lists (agent, G_STRFUNC,
+        ", got a pair from triggered check list");
     priv_conn_check_initiate (agent, pair);
     return TRUE;
   }
@@ -627,6 +633,9 @@ static gboolean priv_conn_check_tick_unlocked (NiceAgent *agent)
         priv_update_check_list_state_for_ready (agent, stream, component);
       }
     }
+
+    priv_print_conn_check_lists (agent, G_STRFUNC,
+        ", conncheck timer stopped");
 
     /* Stopping the timer so destroy the source.. this will allow
        the timer to be reset if we get a set_remote_candidates after this
@@ -2690,6 +2699,8 @@ static gboolean priv_map_reply_to_conn_check_request (NiceAgent *agent, NiceStre
              Nominated Flag" (ID-19) */
           if (ok_pair->nominated == TRUE) {
             priv_update_selected_pair (agent, component, ok_pair);
+            priv_print_conn_check_lists (agent, G_STRFUNC,
+                ", got a nominated pair");
 
             /* Do not step down to CONNECTED if we're already at state READY*/
             if (component->state != NICE_COMPONENT_STATE_READY) {
@@ -2699,8 +2710,6 @@ static gboolean priv_map_reply_to_conn_check_request (NiceAgent *agent, NiceStre
                   stream->id, component->id, NICE_COMPONENT_STATE_CONNECTED);
             }
           }
-
-          priv_print_conn_check_lists (agent, G_STRFUNC, NULL);
 
           /* step: update pair states (ICE 7.1.2.2.3 "Updating pair
              states" and 8.1.2 "Updating States", ID-19) */
