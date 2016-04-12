@@ -89,6 +89,7 @@ struct _CandidateCheckPair
   gboolean use_candidate_on_next_check;
   gboolean mark_nominated_on_response_arrival;
   gboolean recheck_on_timeout;
+  struct _CandidateCheckPair *discovered_pair;
   guint64 priority;
   guint32 prflx_priority;
   GTimeVal next_tick;       /* next tick timestamp */

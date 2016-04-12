@@ -1928,6 +1928,12 @@ static void priv_mark_pair_nominated (NiceAgent *agent, NiceStream *stream, Nice
        * candidate, generating a "discovered" pair that can be
        * nominated.
        */
+      if (pair->state == NICE_CHECK_SUCCEEDED &&
+          pair->discovered_pair != NULL) {
+        pair = pair->discovered_pair;
+        g_assert (pair->state == NICE_CHECK_DISCOVERED);
+      }
+
       if (pair->valid) {
         nice_debug ("Agent %p : marking pair %p (%s) as nominated",
             agent, pair, pair->foundation);
@@ -2936,6 +2942,7 @@ static CandidateCheckPair *priv_add_peer_reflexive_pair (NiceAgent *agent, guint
   pair->remote = parent_pair->remote;
   pair->sockptr = local_cand->sockptr;
   pair->state = NICE_CHECK_DISCOVERED;
+  parent_pair->discovered_pair = pair;
   nice_debug ("Agent %p : new pair %p state DISCOVERED", agent, pair);
   {
       gchar tmpbuf1[INET6_ADDRSTRLEN];
