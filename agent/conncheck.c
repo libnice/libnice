@@ -3134,14 +3134,16 @@ static void priv_check_for_role_conflict (NiceAgent *agent, gboolean control)
 {
   /* role conflict, change mode; wait for a new conn. check */
   if (control != agent->controlling_mode) {
-    nice_debug ("Agent %p : Role conflict, changing agent role to %d.", agent, control);
+    nice_debug ("Agent %p : Role conflict, changing agent role to \"%s\".",
+        agent, control ? "controlling" : "controlled");
     agent->controlling_mode = control;
     /* the pair priorities depend on the roles, so recalculation
      * is needed */
     priv_recalculate_pair_priorities (agent);
   }
   else 
-    nice_debug ("Agent %p : Role conflict, agent role already changed to %d.", agent, control);
+    nice_debug ("Agent %p : Role conflict, staying with role \"%s\".",
+        agent, control ? "controlling" : "controlled");
 }
 
 /*
@@ -3429,13 +3431,25 @@ static gboolean priv_map_reply_to_conn_check_request (NiceAgent *agent, NiceStre
           /* case: role conflict error, need to restart with new role */
           nice_debug ("Agent %p : conncheck %p ROLE CONFLICT, restarting", agent, p);
 
+          /* note: this res value indicates that the role of the peer
+           * agent has not changed after the tie-breaker comparison, so
+           * this is our role that must change. see ICE sect. 7.1.3.1
+           * "Failure Cases". Our role might already have changed due to
+           * an earlier incoming request, but if not, change role now.
+           *
+           * Sect. 7.1.3.1 is not clear on this point, but we choose to
+           * put the candidate pair in the triggered check list even
+           * when the agent did not switch its role. The reason for this
+           * interpretation is that the reception of the stun reply, even
+           * an error reply, is a good sign that this pair will be
+           * valid, if we retry the check after the role of both peers
+           * has been fixed.
+           */
+
           if (p->stun_message.buffer != NULL) {
             guint64 tie;
             gboolean controlled_mode;
 
-            /* note: our role might already have changed due to an
-             * incoming request, but if not, change role now;
-             * follows ICE 7.1.2.1 "Failure Cases" (ID-19) */
             controlled_mode = (stun_message_find64 (&p->stun_message,
                     STUN_ATTRIBUTE_ICE_CONTROLLED, &tie) ==
                 STUN_MESSAGE_RETURN_SUCCESS);
