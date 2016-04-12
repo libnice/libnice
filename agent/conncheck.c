@@ -183,6 +183,8 @@ priv_add_pair_to_triggered_check_queue (NiceAgent *agent, CandidateCheckPair *pa
 {
   g_assert (pair);
 
+  pair->state = NICE_CHECK_WAITING;
+  nice_debug ("Agent %p : pair %p state WAITING", agent, pair);
   if (agent->triggered_check_queue == NULL ||
       g_slist_find (agent->triggered_check_queue, pair) == NULL)
     agent->triggered_check_queue = g_slist_append (agent->triggered_check_queue, pair);
@@ -580,8 +582,6 @@ priv_conn_recheck_on_timeout (NiceAgent *agent, CandidateCheckPair *p)
     nice_debug ("Agent %p : pair %p was cancelled, "
         "triggering a new connection check", agent, p);
     p->recheck_on_timeout = FALSE;
-    p->state = NICE_CHECK_WAITING;
-    nice_debug ("Agent %p : pair %p state WAITING", agent, p);
     priv_add_pair_to_triggered_check_queue (agent, p);
     return TRUE;
   }
@@ -1571,10 +1571,10 @@ static void priv_preprocess_conn_check_pending_data (NiceAgent *agent, NiceStrea
     if (nice_address_equal (&icheck->from, &pair->remote->addr) &&
 	icheck->local_socket == pair->sockptr) {
       nice_debug ("Agent %p : Updating check %p with stored early-icheck %p, %p/%u/%u (agent/stream/component).", agent, pair, icheck, agent, stream->id, component->id);
-      if (icheck->use_candidate)
-	priv_mark_pair_nominated (agent, stream, component, pair->local, pair->remote);
       priv_schedule_triggered_check (agent, stream, component,
           icheck->local_socket, pair->remote);
+      if (icheck->use_candidate)
+	priv_mark_pair_nominated (agent, stream, component, pair->local, pair->remote);
     }
   }
 }
@@ -1715,10 +1715,10 @@ void conn_check_remote_credentials_set(NiceAgent *agent, NiceStream *stream)
             else
               conn_check_add_for_candidate (agent, stream->id, component, candidate);
 
-            if (icheck->use_candidate)
-              priv_mark_pair_nominated (agent, stream, component, local_candidate, candidate);
             priv_schedule_triggered_check (agent, stream, component,
                 icheck->local_socket, candidate);
+            if (icheck->use_candidate)
+              priv_mark_pair_nominated (agent, stream, component, local_candidate, candidate);
           }
         }
       }
@@ -1967,24 +1967,13 @@ static void priv_mark_pair_nominated (NiceAgent *agent, NiceStream *stream, Nice
       }
       /* note: this case is not covered by the ICE spec, 7.2.1.5,
        * "Updating the Nominated Flag", but a pair in waiting state
-       * deserves the same treatment than a pair in-progress.
+       * deserves the same treatment than a pair in-progress. A pair
+       * can be in waiting state as the result of being enqueued in
+       * the triggered check list for example.
        */
       if (pair->state == NICE_CHECK_WAITING) {
         pair->mark_nominated_on_response_arrival = TRUE;
         nice_debug ("Agent %p : pair %p (%s) is waiting, "
-            "will be nominated on response receipt.",
-            agent, pair, pair->foundation);
-      }
-      /* note: this case is not covered by the ICE spec, 7.2.1.5,
-       * "Updating the Nominated Flag" either, but a pair in frozen
-       * state, and in the triggered check list should also be
-       * considered like a pair in-progress. This case happens with
-       * the new-dribble test, when an agent replays incoming early
-       * connchecks.
-       */
-      if (pair->state == NICE_CHECK_FROZEN) {
-        pair->mark_nominated_on_response_arrival = TRUE;
-        nice_debug ("Agent %p : pair %p (%s) is frozen, "
             "will be nominated on response receipt.",
             agent, pair, pair->foundation);
       }
@@ -2926,9 +2915,7 @@ static void priv_reply_to_conn_check (NiceAgent *agent, NiceStream *stream,
   }
 
   if (rcand) {
-    /* note: upon successful check, make the reserve check immediately */
     priv_schedule_triggered_check (agent, stream, component, sockptr, rcand);
-
     if (use_candidate)
       priv_mark_pair_nominated (agent, stream, component, lcand, rcand);
   }
@@ -3345,9 +3332,7 @@ static gboolean priv_map_reply_to_conn_check_request (NiceAgent *agent, NiceStre
 
             p->stun_message.buffer = NULL;
             p->stun_message.buffer_len = 0;
-            p->state = NICE_CHECK_WAITING;
             priv_add_pair_to_triggered_check_queue (agent, p);
-            nice_debug ("Agent %p : pair %p state WAITING", agent, p);
           }
           trans_found = TRUE;
         } else {
