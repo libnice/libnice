@@ -65,7 +65,7 @@
 static void priv_update_check_list_failed_components (NiceAgent *agent, NiceStream *stream);
 static void priv_update_check_list_state_for_ready (NiceAgent *agent, NiceStream *stream, NiceComponent *component);
 static guint priv_prune_pending_checks (NiceStream *stream, guint component_id);
-static gboolean priv_schedule_triggered_check (NiceAgent *agent, NiceStream *stream, NiceComponent *component, NiceSocket *local_socket, NiceCandidate *remote_cand, gboolean use_candidate);
+static gboolean priv_schedule_triggered_check (NiceAgent *agent, NiceStream *stream, NiceComponent *component, NiceSocket *local_socket, NiceCandidate *remote_cand);
 static void priv_mark_pair_nominated (NiceAgent *agent, NiceStream *stream, NiceComponent *component, NiceCandidate *localcand, NiceCandidate *remotecand);
 static size_t priv_create_username (NiceAgent *agent, NiceStream *stream,
     guint component_id, NiceCandidate *remote, NiceCandidate *local,
@@ -1573,7 +1573,8 @@ static void priv_preprocess_conn_check_pending_data (NiceAgent *agent, NiceStrea
       nice_debug ("Agent %p : Updating check %p with stored early-icheck %p, %p/%u/%u (agent/stream/component).", agent, pair, icheck, agent, stream->id, component->id);
       if (icheck->use_candidate)
 	priv_mark_pair_nominated (agent, stream, component, pair->local, pair->remote);
-      priv_schedule_triggered_check (agent, stream, component, icheck->local_socket, pair->remote, icheck->use_candidate);
+      priv_schedule_triggered_check (agent, stream, component,
+          icheck->local_socket, pair->remote);
     }
   }
 }
@@ -1716,7 +1717,8 @@ void conn_check_remote_credentials_set(NiceAgent *agent, NiceStream *stream)
 
             if (icheck->use_candidate)
               priv_mark_pair_nominated (agent, stream, component, local_candidate, candidate);
-            priv_schedule_triggered_check (agent, stream, component, icheck->local_socket, candidate, icheck->use_candidate);
+            priv_schedule_triggered_check (agent, stream, component,
+                icheck->local_socket, candidate);
           }
         }
       }
@@ -2043,7 +2045,7 @@ ensure_unique_priority (NiceComponent *component, guint32 priority)
  */
 static CandidateCheckPair *priv_add_new_check_pair (NiceAgent *agent,
     guint stream_id, NiceComponent *component, NiceCandidate *local,
-    NiceCandidate *remote, NiceCheckState initial_state, gboolean use_candidate)
+    NiceCandidate *remote, NiceCheckState initial_state)
 {
   NiceStream *stream;
   CandidateCheckPair *pair;
@@ -2081,7 +2083,6 @@ static CandidateCheckPair *priv_add_new_check_pair (NiceAgent *agent,
           tmpbuf1, nice_address_get_port (&pair->local->addr),
           tmpbuf2, nice_address_get_port (&pair->remote->addr));
   }
-  pair->nominated = use_candidate;
   pair->prflx_priority = ensure_unique_priority (component,
       peer_reflexive_candidate_priority (agent, local));
 
@@ -2127,7 +2128,7 @@ static CandidateCheckPair *priv_conn_check_add_for_candidate_pair_matched (
       agent, local->foundation, remote->foundation,
       stream_id, component->id);
   pair = priv_add_new_check_pair (agent, stream_id, component, local, remote,
-      initial_state, FALSE);
+      initial_state);
   if (component->state == NICE_COMPONENT_STATE_CONNECTED ||
       component->state == NICE_COMPONENT_STATE_READY) {
     agent_signal_component_state_change (agent,
@@ -2774,9 +2775,8 @@ static guint priv_prune_pending_checks (NiceStream *stream, guint component_id)
  * @param component the check is related to
  * @param local_socket socket from which the inbound check was received
  * @param remote_cand remote candidate from which the inbound check was sent
- * @param use_candidate whether the original check had USE-CANDIDATE attribute set
  */
-static gboolean priv_schedule_triggered_check (NiceAgent *agent, NiceStream *stream, NiceComponent *component, NiceSocket *local_socket, NiceCandidate *remote_cand, gboolean use_candidate)
+static gboolean priv_schedule_triggered_check (NiceAgent *agent, NiceStream *stream, NiceComponent *component, NiceSocket *local_socket, NiceCandidate *remote_cand)
 {
   GSList *i;
   NiceCandidate *local = NULL;
@@ -2872,7 +2872,8 @@ static gboolean priv_schedule_triggered_check (NiceAgent *agent, NiceStream *str
 
   if (i) {
     nice_debug ("Agent %p : Adding a triggered check to conn.check list (local=%p).", agent, local);
-    priv_add_new_check_pair (agent, stream->id, component, local, remote_cand, NICE_CHECK_WAITING, use_candidate);
+    priv_add_new_check_pair (agent, stream->id, component,
+        local, remote_cand, NICE_CHECK_WAITING);
     return TRUE;
   }
   else {
@@ -2926,7 +2927,7 @@ static void priv_reply_to_conn_check (NiceAgent *agent, NiceStream *stream,
 
   if (rcand) {
     /* note: upon successful check, make the reserve check immediately */
-    priv_schedule_triggered_check (agent, stream, component, sockptr, rcand, use_candidate);
+    priv_schedule_triggered_check (agent, stream, component, sockptr, rcand);
 
     if (use_candidate)
       priv_mark_pair_nominated (agent, stream, component, lcand, rcand);
