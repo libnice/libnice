@@ -1963,6 +1963,29 @@ static void priv_mark_pair_nominated (NiceAgent *agent, NiceStream *stream, Nice
             "will be nominated on response receipt.",
             agent, pair, pair->foundation);
       }
+      /* note: this case is not covered by the ICE spec, 7.2.1.5,
+       * "Updating the Nominated Flag", but a pair in waiting state
+       * deserves the same treatment than a pair in-progress.
+       */
+      if (pair->state == NICE_CHECK_WAITING) {
+        pair->mark_nominated_on_response_arrival = TRUE;
+        nice_debug ("Agent %p : pair %p (%s) is waiting, "
+            "will be nominated on response receipt.",
+            agent, pair, pair->foundation);
+      }
+      /* note: this case is not covered by the ICE spec, 7.2.1.5,
+       * "Updating the Nominated Flag" either, but a pair in frozen
+       * state, and in the triggered check list should also be
+       * considered like a pair in-progress. This case happens with
+       * the new-dribble test, when an agent replays incoming early
+       * connchecks.
+       */
+      if (pair->state == NICE_CHECK_FROZEN) {
+        pair->mark_nominated_on_response_arrival = TRUE;
+        nice_debug ("Agent %p : pair %p (%s) is frozen, "
+            "will be nominated on response receipt.",
+            agent, pair, pair->foundation);
+      }
     } else if (pair->local == localcand && pair->remote == remotecand) {
       nice_debug ("Agent %p : marking pair %p (%s) as nominated", agent, pair, pair->foundation);
       pair->nominated = TRUE;
@@ -2703,17 +2726,25 @@ static guint priv_prune_pending_checks (NiceStream *stream, guint component_id)
       "is %" G_GUINT64_FORMAT, highest_nominated_priority);
 
   /* step: cancel all FROZEN and WAITING pairs for the component */
+  /* note: this case is not covered by the ICE spec, 8.1.2
+   * "Updating States", but a pair in waiting state which will be
+   * nominated on response receipt should be treated the same way
+   * that an in-progress pair.
+   */
   for (i = stream->conncheck_list; i; i = i->next) {
     CandidateCheckPair *p = i->data;
     if (p->component_id == component_id) {
       if (p->state == NICE_CHECK_FROZEN ||
-	  p->state == NICE_CHECK_WAITING) {
+          (p->state == NICE_CHECK_WAITING &&
+          !p->mark_nominated_on_response_arrival)) {
 	p->state = NICE_CHECK_CANCELLED;
         nice_debug ("Agent XXX : pair %p state CANCELED", p);
       }
 
       /* note: a SHOULD level req. in ICE 8.1.2. "Updating States" (ID-19) */
-      if (p->state == NICE_CHECK_IN_PROGRESS) {
+      if (p->state == NICE_CHECK_IN_PROGRESS ||
+          (p->state == NICE_CHECK_WAITING &&
+          p->mark_nominated_on_response_arrival)) {
         if (highest_nominated_priority != 0 &&
             p->priority < highest_nominated_priority) {
           p->stun_message.buffer = NULL;
