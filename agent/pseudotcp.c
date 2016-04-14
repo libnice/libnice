@@ -429,6 +429,7 @@ typedef enum {
   sfImmediateAck,
   sfFin,
   sfRst,
+  sfDuplicateAck,
 } SendFlags;
 
 typedef struct {
@@ -1936,7 +1937,7 @@ process(PseudoTcpSocket *self, Segment *seg)
    *    see RFC 793, §3.3. Also see: RFC 793, §3.5.
    */
   if (seg->seq != priv->rcv_nxt) {
-    sflags = sfImmediateAck; // (Fast Recovery)
+    sflags = sfDuplicateAck; // (Fast Recovery)
   } else if (seg->len != 0) {
     if (priv->ack_delay == 0) {
       sflags = sfImmediateAck;
@@ -1949,7 +1950,7 @@ process(PseudoTcpSocket *self, Segment *seg)
     sflags = sfImmediateAck;
   }
 
-  if (sflags == sfImmediateAck) {
+  if (sflags == sfDuplicateAck) {
     if (seg->seq > priv->rcv_nxt) {
       DEBUG (PSEUDO_TCP_DEBUG_NORMAL, "too new");
     } else if (SMALLER_OR_EQUAL(seg->seq + seg->len, priv->rcv_nxt)) {
@@ -2208,12 +2209,19 @@ attempt_send(PseudoTcpSocket *self, SendFlags sflags)
           available_space, snd_buffered - nInFlight, priv->ssthresh);
     }
 
+    if (sflags == sfDuplicateAck) {
+      packet(self, priv->snd_nxt, 0, 0, 0, now);
+      sflags = sfNone;
+      continue;
+    }
+
     if (nAvailable == 0 && sflags != sfFin && sflags != sfRst) {
       if (sflags == sfNone)
         return;
 
       // If this is an immediate ack, or the second delayed ack
-      if ((sflags == sfImmediateAck) || priv->t_ack) {
+      if ((sflags == sfImmediateAck || sflags == sfDuplicateAck) ||
+          priv->t_ack) {
         packet(self, priv->snd_nxt, 0, 0, 0, now);
       } else {
         priv->t_ack = now;
