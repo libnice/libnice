@@ -511,6 +511,7 @@ struct _PseudoTcpSocketPrivate {
   guint32 recover;
   gboolean fast_recovery;
   guint32 t_ack;  /* time a delayed ack was scheduled; 0 if no acks scheduled */
+  guint32 last_acked_ts;
 
   gboolean use_nagling;
   guint32 ack_delay;
@@ -843,6 +844,7 @@ pseudo_tcp_socket_init (PseudoTcpSocket *obj)
 
   priv->dup_acks = 0;
   priv->recover = 0;
+  priv->last_acked_ts = 0;
 
   priv->ts_recent = priv->ts_lastack = 0;
 
@@ -1685,6 +1687,8 @@ process(PseudoTcpSocket *self, Segment *seg)
         DEBUG (PSEUDO_TCP_DEBUG_NORMAL, "Invalid RTT: %ld", rtt);
         return FALSE;
       }
+
+      priv->last_acked_ts = seg->tsecr;
     }
 
     priv->snd_wnd = seg->wnd << priv->swnd_scale;
@@ -1775,7 +1779,8 @@ process(PseudoTcpSocket *self, Segment *seg)
         int transmit_status;
 
 
-        if (LARGER_OR_EQUAL (priv->snd_una, priv->recover)) { /* NewReno */
+        if (LARGER_OR_EQUAL (priv->snd_una, priv->recover) ||
+            seg->tsecr == priv->last_acked_ts) { /* NewReno */
           /* Invoke fast retransmit  RFC3782 section 3 step 1A*/
           DEBUG (PSEUDO_TCP_DEBUG_NORMAL, "enter recovery");
           DEBUG (PSEUDO_TCP_DEBUG_NORMAL, "recovery retransmit");
