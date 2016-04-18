@@ -3181,7 +3181,6 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, NiceStream *stream,
   }
 
   if (local_candidate != NULL && local_candidate->transport == NICE_CANDIDATE_TRANSPORT_TCP_PASSIVE) {
-    g_assert (local_candidate->sockptr == NULL);
     local_candidate->sockptr = nicesock;
   }
 
