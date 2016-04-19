@@ -333,7 +333,8 @@ static void priv_conn_check_unfreeze_related (NiceAgent *agent, NiceStream *stre
    
     if (p->stream_id == ok_check->stream_id) {
       if (p->state == NICE_CHECK_FROZEN &&
-	  strcmp (p->foundation, ok_check->foundation) == 0) {
+          strncmp (p->foundation, ok_check->foundation,
+              NICE_CANDIDATE_PAIR_MAX_FOUNDATION) == 0) {
 	nice_debug ("Agent %p : Unfreezing check %p (after successful check %p).", agent, p, ok_check);
 	p->state = NICE_CHECK_WAITING;
         nice_debug ("Agent %p : pair %p state WAITING", agent, p);
