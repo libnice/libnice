@@ -847,6 +847,16 @@ priv_conn_check_tick_stream_nominate (NiceStream *stream, NiceAgent *agent)
                 !p->nominated &&
                 !p->use_candidate_on_next_check &&
                 p->valid) {
+              /* According a ICE spec, sect 8.1.1.1.  "Regular
+               * Nomination", we enqueue the check that produced this
+               * valid pair. When this pair has been discovered, we want
+               * to test its parent pair instead.
+               */
+              if (p->succeeded_pair != NULL) {
+                g_assert (p->state == NICE_CHECK_DISCOVERED);
+                p = p->succeeded_pair;
+              }
+              g_assert (p->state == NICE_CHECK_SUCCEEDED);
               nice_debug ("Agent %p : restarting check %p with "
                   "USE-CANDIDATE attrib (regular nomination)", agent, p);
               p->recheck_on_timeout = FALSE;
@@ -2754,6 +2764,11 @@ static gboolean priv_schedule_triggered_check (NiceAgent *agent, NiceStream *str
          * tcp-active we don't want to retrigger a check on a pair that
          * was FAILED when a peer-reflexive pair was created */
 
+        if (p->succeeded_pair != NULL) {
+          g_assert (p->state == NICE_CHECK_DISCOVERED);
+          p = p->succeeded_pair;
+        }
+
 	nice_debug ("Agent %p : Found a matching pair %p for triggered check.", agent, p);
 	
 	if (p->state == NICE_CHECK_WAITING ||
@@ -2775,8 +2790,7 @@ static gboolean priv_schedule_triggered_check (NiceAgent *agent, NiceStream *str
             p->recheck_on_timeout = TRUE;
           }
 	}
-	else if (p->state == NICE_CHECK_SUCCEEDED ||
-		 p->state == NICE_CHECK_DISCOVERED) {
+	else if (p->state == NICE_CHECK_SUCCEEDED) {
 	  nice_debug ("Agent %p : Skipping triggered check, already completed..", agent); 
 	  /* note: this is a bit unsure corner-case -- let's do the
 	     same state update as for processing responses to our own checks */
@@ -2943,6 +2957,7 @@ static CandidateCheckPair *priv_add_peer_reflexive_pair (NiceAgent *agent, guint
   pair->sockptr = local_cand->sockptr;
   pair->state = NICE_CHECK_DISCOVERED;
   parent_pair->discovered_pair = pair;
+  pair->succeeded_pair = parent_pair;
   nice_debug ("Agent %p : new pair %p state DISCOVERED", agent, pair);
   {
       gchar tmpbuf1[INET6_ADDRSTRLEN];
@@ -4163,7 +4178,7 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, NiceStream *stream,
 
             pair = priv_conn_check_add_for_candidate_pair_matched (agent,
                 stream->id, component, local_candidate, remote_candidate,
-                NICE_CHECK_DISCOVERED);
+                NICE_CHECK_SUCCEEDED);
             if (pair) {
               pair->valid = TRUE;
             }
