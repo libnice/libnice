@@ -104,27 +104,6 @@ nice_stream_find_component_by_id (NiceStream *stream, guint id)
 }
 
 /*
- * Returns true if all components of the stream are either
- * 'CONNECTED' or 'READY' (connected plus nominated).
- */
-gboolean
-nice_stream_all_components_ready (NiceStream *stream)
-{
-  GSList *i;
-
-  for (i = stream->components; i; i = i->next) {
-    NiceComponent *component = i->data;
-    if (component &&
-	!(component->state == NICE_COMPONENT_STATE_CONNECTED ||
-	 component->state == NICE_COMPONENT_STATE_READY))
-      return FALSE;
-  }
-
-  return TRUE;
-}
-
-
-/*
  * Initialized the local crendentials for the stream.
  */
 void

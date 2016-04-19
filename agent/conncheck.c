@@ -212,6 +212,89 @@ priv_get_pair_from_triggered_check_queue (NiceAgent *agent)
 }
 
 /*
+ * Check if the conncheck list if Active according to
+ * ICE spec, 5.7.4 (Computing States)
+ *
+ * note: the ICE spec in unclear about that, but the check list should
+ * be considered active when there is at least a pair in Waiting state
+ * OR a pair in In-Progress state.
+ */
+static gboolean
+priv_is_checklist_active (NiceStream *stream)
+{
+  GSList *i;
+
+  for (i = stream->conncheck_list; i ; i = i->next) {
+    CandidateCheckPair *p = i->data;
+    if (p->state == NICE_CHECK_WAITING || p->state == NICE_CHECK_IN_PROGRESS)
+      return TRUE;
+  }
+  return FALSE;
+}
+
+/*
+ * Check if the conncheck list if Frozen according to
+ * ICE spec, 5.7.4 (Computing States)
+ */
+static gboolean
+priv_is_checklist_frozen (NiceStream *stream)
+{
+  GSList *i;
+
+  if (stream->conncheck_list == NULL)
+    return FALSE;
+
+  for (i = stream->conncheck_list; i ; i = i->next) {
+    CandidateCheckPair *p = i->data;
+    if (p->state != NICE_CHECK_FROZEN)
+      return FALSE;
+  }
+  return TRUE;
+}
+
+/*
+ * Check if all components of the stream have
+ * a valid pair (used for ICE spec, 7.1.3.2.3, point 2.)
+ */
+static gboolean
+priv_all_components_have_valid_pair (NiceStream *stream)
+{
+  guint i;
+  GSList *j;
+
+  for (i = 1; i <= stream->n_components; i++) {
+    for (j = stream->conncheck_list; j ; j = j->next) {
+      CandidateCheckPair *p = j->data;
+      if (p->component_id == i && p->valid)
+        break;
+    }
+    if (j == NULL)
+      return FALSE;
+  }
+  return TRUE;
+}
+
+/*
+ * Check if the foundation in parameter matches the foundation
+ * of a valid pair in the conncheck list [of stream] (used for ICE spec,
+ * 7.1.3.2.3, point 2.)
+ */
+static gboolean
+priv_foundation_matches_a_valid_pair (const gchar *foundation, NiceStream *stream)
+{
+  GSList *i;
+
+  for (i = stream->conncheck_list; i ; i = i->next) {
+    CandidateCheckPair *p = i->data;
+    if (p->valid &&
+        strncmp (p->foundation, foundation,
+            NICE_CANDIDATE_PAIR_MAX_FOUNDATION) == 0)
+      return TRUE;
+  }
+  return FALSE;
+}
+
+/*
  * Finds the next connectivity check in WAITING state.
  */
 static CandidateCheckPair *priv_conn_check_find_next_waiting (GSList *conn_check_list)
@@ -220,13 +303,80 @@ static CandidateCheckPair *priv_conn_check_find_next_waiting (GSList *conn_check
 
   /* note: list is sorted in priority order to first waiting check has
    *       the highest priority */
-
   for (i = conn_check_list; i ; i = i->next) {
     CandidateCheckPair *p = i->data;
     if (p->state == NICE_CHECK_WAITING)
       return p;
   }
 
+  return NULL;
+}
+
+/*
+ * Finds the next connectivity check in FROZEN state.
+ */
+static CandidateCheckPair *
+priv_conn_check_find_next_frozen (GSList *conn_check_list)
+{
+  GSList *i;
+
+  /* note: list is sorted in priority order to first frozen check has
+   *       the highest priority */
+  for (i = conn_check_list; i ; i = i->next) {
+    CandidateCheckPair *p = i->data;
+    if (p->state == NICE_CHECK_FROZEN)
+      return p;
+  }
+
+  return NULL;
+}
+
+/*
+ * Returns the number of check lists of the agent
+ */
+static guint
+priv_number_of_check_lists (NiceAgent *agent)
+{
+  guint n = 0;
+  GSList *i;
+
+  for (i = agent->streams; i ; i = i->next) {
+    NiceStream *stream = i->data;
+    if (stream->conncheck_list != NULL)
+      n++;
+  }
+  return n;
+}
+
+/*
+ * Returns the number of active check lists of the agent
+ */
+static guint
+priv_number_of_active_check_lists (NiceAgent *agent)
+{
+  guint n = 0;
+  GSList *i;
+
+  for (i = agent->streams; i ; i = i->next)
+    if (priv_is_checklist_active (i->data))
+      n++;
+  return n;
+}
+
+/*
+ * Returns the first stream of the agent having a Frozen
+ * connection check list
+ */
+static NiceStream *
+priv_find_first_frozen_check_list (NiceAgent *agent)
+{
+  GSList *i;
+
+  for (i = agent->streams; i ; i = i->next) {
+    NiceStream *stream = i->data;
+    if (priv_is_checklist_frozen (stream))
+      return stream;
+  }
   return NULL;
 }
 
@@ -248,58 +398,55 @@ static gboolean priv_conn_check_initiate (NiceAgent *agent, CandidateCheckPair *
 /*
  * Unfreezes the next connectivity check in the list. Follows the
  * algorithm (2.) defined in 5.7.4 (Computing States) of the ICE spec
- * (ID-19), with some exceptions (see comments in code).
+ * (RFC5245)
  *
  * See also sect 7.1.2.2.3 (Updating Pair States), and
  * priv_conn_check_unfreeze_related().
  * 
  * @return TRUE on success, and FALSE if no frozen candidates were found.
  */
-static gboolean priv_conn_check_unfreeze_next (NiceAgent *agent)
+static gboolean priv_conn_check_unfreeze_next (NiceAgent *agent, NiceStream *stream)
 {
-  CandidateCheckPair *pair = NULL;
   GSList *i, *j;
-
-  /* XXX: the unfreezing is implemented a bit differently than in the
-   *      current ICE spec, but should still be interoperate:
-   *   - checks are not grouped by foundation
-   *   - one frozen check is unfrozen (lowest component-id, highest
-   *     priority)
-   */
+  GSList *found_list = NULL;
+  gboolean result = FALSE;
 
   priv_print_conn_check_lists (agent, G_STRFUNC, NULL);
 
-  for (i = agent->streams; i; i = i->next) {
-    NiceStream *stream = i->data;
-    guint64 max_frozen_priority = 0;
+  for (i = stream->conncheck_list; i ; i = i->next) {
+    CandidateCheckPair *p1 = i->data;
+    CandidateCheckPair *pair = NULL;
+    guint lowest_component_id = stream->n_components + 1;
+    guint64 highest_priority = 0;
 
+    if (g_slist_find_custom (found_list, p1->foundation, (GCompareFunc)strcmp))
+      continue;
+    found_list = g_slist_prepend (found_list, p1->foundation);
 
     for (j = stream->conncheck_list; j ; j = j->next) {
-      CandidateCheckPair *p = j->data;
-
-      /* XXX: the prio check could be removed as the pairs are sorted
-       *       already */
-
-      if (p->state == NICE_CHECK_FROZEN) {
-	if (p->priority > max_frozen_priority) {
-	  max_frozen_priority = p->priority;
-	  pair = p;
-	}
+      CandidateCheckPair *p2 = i->data;
+      if (strncmp (p2->foundation, p1->foundation,
+              NICE_CANDIDATE_PAIR_MAX_FOUNDATION) == 0) {
+        if (p2->component_id < lowest_component_id ||
+            (p2->component_id == lowest_component_id &&
+             p2->priority > highest_priority)) {
+          pair = p2;
+          lowest_component_id = p2->component_id;
+          highest_priority = p2->priority;
+        }
       }
     }
 
-    if (pair) 
-      break;
+    if (pair) {
+      nice_debug ("Agent %p : Pair %p with s/c-id %u/%u (%s) unfrozen.",
+          agent, pair, pair->stream_id, pair->component_id, pair->foundation);
+      pair->state = NICE_CHECK_WAITING;
+      nice_debug ("Agent %p : pair %p state WAITING", agent, pair);
+      result = TRUE;
+    }
   }
-  
-  if (pair) {
-    nice_debug ("Agent %p : Pair %p with s/c-id %u/%u (%s) unfrozen.", agent, pair, pair->stream_id, pair->component_id, pair->foundation);
-    pair->state = NICE_CHECK_WAITING;
-    nice_debug ("Agent %p : pair %p state WAITING", agent, pair);
-    return TRUE;
-  }
-
-  return FALSE;
+  g_slist_free (found_list);
+  return result;
 }
 
 /*
@@ -316,7 +463,6 @@ static gboolean priv_conn_check_unfreeze_next (NiceAgent *agent)
 static void priv_conn_check_unfreeze_related (NiceAgent *agent, NiceStream *stream, CandidateCheckPair *ok_check)
 {
   GSList *i, *j;
-  guint unfrozen = 0;
 
   g_assert (ok_check);
   g_assert (ok_check->state == NICE_CHECK_SUCCEEDED);
@@ -336,40 +482,59 @@ static void priv_conn_check_unfreeze_related (NiceAgent *agent, NiceStream *stre
 	nice_debug ("Agent %p : Unfreezing check %p (after successful check %p).", agent, p, ok_check);
 	p->state = NICE_CHECK_WAITING;
         nice_debug ("Agent %p : pair %p state WAITING", agent, p);
-	++unfrozen;
       }
     }
   }
 
   /* step: perform the step (2) of 'Updating Pair States' */
   stream = agent_find_stream (agent, ok_check->stream_id);
-  if (nice_stream_all_components_ready (stream)) {
-    /* step: unfreeze checks from other streams */
+  if (priv_all_components_have_valid_pair (stream)) {
     for (i = agent->streams; i ; i = i->next) {
+      /* the agent examines the check list for each other
+       * media stream in turn
+       */
       NiceStream *s = i->data;
-      for (j = stream->conncheck_list; j ; j = j->next) {
-	CandidateCheckPair *p = j->data;
-
-	if (p->stream_id == s->id &&
-	    p->stream_id != ok_check->stream_id) {
-	  if (p->state == NICE_CHECK_FROZEN &&
-	      strcmp (p->foundation, ok_check->foundation) == 0) {
+      if (s->id == ok_check->stream_id)
+        continue;
+      if (priv_is_checklist_active (s)) {
+        /* checklist is Active
+         */
+        for (j = s->conncheck_list; j ; j = j->next) {
+	  CandidateCheckPair *p = j->data;
+          if (p->state == NICE_CHECK_FROZEN &&
+              priv_foundation_matches_a_valid_pair (p->foundation, stream)) {
 	    nice_debug ("Agent %p : Unfreezing check %p from stream %u (after successful check %p).", agent, p, s->id, ok_check);
 	    p->state = NICE_CHECK_WAITING;
             nice_debug ("Agent %p : pair %p state WAITING", agent, p);
-	    ++unfrozen;
-					    
-	  }
-	}
+          }
+        }
+      } else if (priv_is_checklist_frozen (s)) {
+        /* checklist is Frozen
+         */
+        gboolean match_found = FALSE;
+        /* check if there is one pair in the check list whose
+         * foundation matches a pair in the valid list under
+         * consideration
+         */
+        for (j = s->conncheck_list; j ; j = j->next) {
+	  CandidateCheckPair *p = j->data;
+          if (priv_foundation_matches_a_valid_pair (p->foundation, stream)) {
+            match_found = TRUE;
+            nice_debug ("Agent %p : Unfreezing check %p from stream %u (after successful check %p).", agent, p, s->id, ok_check);
+            p->state = NICE_CHECK_WAITING;
+            nice_debug ("Agent %p : pair %p state WAITING", agent, p);
+          }
+        }
+
+        if (!match_found) {
+          /* set the pair with the lowest component ID
+           * and highest priority to Waiting
+           */
+          priv_conn_check_unfreeze_next (agent, s);
+        }
       }
-      /* note: only unfreeze check from one stream at a time */
-      if (unfrozen)
-	break;
     }
   }    
-
-  if (unfrozen == 0) 
-    priv_conn_check_unfreeze_next (agent);
 }
 
 static void
@@ -400,14 +565,13 @@ candidate_check_pair_fail (NiceStream *stream, NiceAgent *agent, CandidateCheckP
  *
  * @return will return FALSE when no more pending timers.
  */
-static gboolean priv_conn_check_tick_stream (NiceStream *stream, NiceAgent *agent, GTimeVal *now, gboolean *stun_transmitted)
+static gboolean priv_conn_check_tick_stream (NiceStream *stream, NiceAgent *agent, GTimeVal *now)
 {
   gboolean keep_timer_going = FALSE;
-  guint s_inprogress = 0, s_succeeded = 0, s_discovered = 0,
-      s_nominated = 0, s_waiting_for_nomination = 0, s_valid = 0;
-  guint frozen = 0, waiting = 0;
-  GSList *i, *k;
+  GSList *i;
+  CandidateCheckPair *pair;
 
+  /* step: process ongoing STUN transactions */
   for (i = stream->conncheck_list; i ; i = i->next) {
     CandidateCheckPair *p = i->data;
 
@@ -451,7 +615,6 @@ static gboolean priv_conn_check_tick_stream (NiceStream *stream, NiceAgent *agen
               p->next_tick = *now;
               g_time_val_add (&p->next_tick, timeout * 1000);
 
-              *stun_transmitted = TRUE;
               return TRUE;
             }
           case STUN_USAGE_TIMER_RETURN_SUCCESS:
@@ -471,7 +634,57 @@ static gboolean priv_conn_check_tick_stream (NiceStream *stream, NiceAgent *agen
         }
       }
     }
+   }
 
+  /* step: perform an ordinary check, ICE spec, 5.8 "Scheduling Checks"
+   * note: This code is executed when the triggered checks list is
+   * empty, and when no STUN message has been sent (pacing constraint)
+   */
+  pair = priv_conn_check_find_next_waiting (stream->conncheck_list);
+  if (pair) {
+    priv_conn_check_initiate (agent, pair);
+    return TRUE;
+  }
+
+  /* note: this is unclear in the ICE spec, but a check list in Frozen
+   * state (where all pairs are in Frozen state) is not supposed to
+   * change its state by an ordinary check, but only by the success of
+   * checks in other check lists, in priv_conn_check_unfreeze_related().
+   * The underlying idea is to concentrate the checks on a single check
+   * list initially.
+   */
+  if (priv_is_checklist_frozen (stream))
+    return keep_timer_going;
+
+  /* step: ordinary check continued, if there's no pair in the waiting
+   * state, pick a pair in the frozen state
+   */
+  pair = priv_conn_check_find_next_frozen (stream->conncheck_list);
+  if (pair) {
+    pair->state = NICE_CHECK_WAITING;
+    nice_debug ("Agent %p : pair %p state WAITING", agent, pair);
+    priv_conn_check_initiate (agent, pair);
+    return TRUE;
+  }
+  return keep_timer_going;
+}
+
+static gboolean
+priv_conn_check_tick_stream_nominate (NiceStream *stream, NiceAgent *agent)
+{
+  gboolean keep_timer_going = FALSE;
+  guint s_inprogress = 0;
+  guint s_succeeded = 0;
+  guint s_discovered = 0;
+  guint s_nominated = 0;
+  guint s_waiting_for_nomination = 0;
+  guint s_valid = 0;
+  guint frozen = 0;
+  guint waiting = 0;
+  GSList *i, *k;
+
+  for (i = stream->conncheck_list; i ; i = i->next) {
+    CandidateCheckPair *p = i->data;
     if (p->state == NICE_CHECK_FROZEN)
       ++frozen;
     else if (p->state == NICE_CHECK_IN_PROGRESS)
@@ -504,13 +717,13 @@ static gboolean priv_conn_check_tick_stream (NiceStream *stream, NiceAgent *agen
     keep_timer_going = TRUE;
     if (NICE_AGENT_IS_COMPATIBLE_WITH_RFC5245_OR_OC2007R2 (agent)) {
       if (agent->nomination_mode == NICE_NOMINATION_MODE_REGULAR &&
-          agent->controlling_mode &&
-          ((waiting == 0 && s_inprogress == 0) ||
-           (s_succeeded + s_discovered) >= 5 * stream->n_components)){
+          agent->controlling_mode) {
+#define NICE_MIN_NUMBER_OF_VALID_PAIRS 2
         /* ICE 8.1.1.1 Regular nomination
-         * we choose to nominate the valid pair if
-         * there is no pair left waiting or in-progress or
-         * if there are at least 5 valid pairs per stream on average.
+         * we choose to nominate the valid pair of a component if
+         * - there is no pair left frozen, waiting or in-progress, or
+         * - if there are at least two valid pairs, or
+         * - if there is at least one valid pair of type HOST-HOST
          *
          * This is the "stopping criterion" described in 8.1.1.1, and is
          * a "local optimization" between accumulating more valid pairs,
@@ -523,36 +736,63 @@ static gboolean priv_conn_check_tick_stream (NiceStream *stream, NiceAgent *agen
              component_item = component_item->next) {
           NiceComponent *component = component_item->data;
           gboolean already_done = FALSE;
+          gboolean stopping_criterion = FALSE;
+          guint p_valid = 0;
+          guint p_frozen = 0;
+          guint p_waiting = 0;
+          guint p_inprogress = 0;
+          guint p_host_host_valid = 0;
 
           /* verify that the choice of the pair to be nominated
            * has not already been done
            */
           for (k = stream->conncheck_list; k ; k = k->next) {
             CandidateCheckPair *p = k->data;
-            if (p->component_id == component->id &&
-                p->use_candidate_on_next_check) {
-              already_done = TRUE;
-              break;
+            if (p->component_id == component->id) {
+              if (p->use_candidate_on_next_check)
+                already_done = TRUE;
+              if (p->state == NICE_CHECK_FROZEN)
+                p_frozen++;
+              else if (p->state == NICE_CHECK_WAITING)
+                p_waiting++;
+              else if (p->state == NICE_CHECK_IN_PROGRESS)
+                p_inprogress++;
+              if (p->valid)
+                p_valid++;
+              if (p->valid &&
+                  p->local->type == NICE_CANDIDATE_TYPE_HOST &&
+                  p->remote->type == NICE_CANDIDATE_TYPE_HOST)
+                p_host_host_valid++;
             }
           }
 
-          /* choose a pair to be nominated in the list of valid
-           * pairs, and add it to the triggered checks list
+          if (already_done)
+            continue;
+
+          stopping_criterion =
+              (p_host_host_valid > 0 ||
+               p_valid >= NICE_MIN_NUMBER_OF_VALID_PAIRS ||
+               (p_waiting == 0 && p_inprogress == 0 && p_frozen == 0));
+
+          if (!stopping_criterion)
+            continue;
+
+          /* when the stopping criterion is satisfied, we choose
+           * a pair to be nominated in the list of valid pairs,
+           * and add it to the triggered checks list
            */
-          if (!already_done) {
-	    for (k = stream->conncheck_list; k ; k = k->next) {
-	      CandidateCheckPair *p = k->data;
-              /* note: highest priority item selected (list always sorted) */
-	      if (p->component_id == component->id &&
-                  !p->nominated &&
-                  !p->use_candidate_on_next_check &&
-                  p->valid) {
-	        nice_debug ("Agent %p : restarting check %p with "
-                    "USE-CANDIDATE attrib (regular nomination)", agent, p);
-	        p->use_candidate_on_next_check = TRUE;
-	        priv_add_pair_to_triggered_check_queue (agent, p);
-	        break; /* move to the next component */
-              }
+          for (k = stream->conncheck_list; k ; k = k->next) {
+            CandidateCheckPair *p = k->data;
+            /* note: highest priority item selected (list always sorted) */
+            if (p->component_id == component->id &&
+                !p->nominated &&
+                !p->use_candidate_on_next_check &&
+                p->valid) {
+              nice_debug ("Agent %p : restarting check %p with "
+                  "USE-CANDIDATE attrib (regular nomination)", agent, p);
+              p->use_candidate_on_next_check = TRUE;
+              priv_add_pair_to_triggered_check_queue (agent, p);
+              break; /* move to the next component */
             }
           }
         }
@@ -615,70 +855,55 @@ static gboolean priv_conn_check_tick_unlocked (NiceAgent *agent)
 {
   CandidateCheckPair *pair = NULL;
   gboolean keep_timer_going = FALSE;
-  gboolean res;
-  /* note: we try to only generate a single stun transaction per timer
-   * callback, to respect some pacing of STUN transaction, as per
-   * appendix B.1 of ICE spec.
-   */
-  gboolean stun_transmitted = FALSE;
   GSList *i, *j;
   GTimeVal now;
 
-  /* step: process ongoing STUN transactions */
   g_get_current_time (&now);
 
-  for (j = agent->streams; j; j = j->next) {
-    NiceStream *stream = j->data;
-    res = priv_conn_check_tick_stream (stream, agent, &now, &stun_transmitted);
-    if (res)
-      keep_timer_going = res;
-    if (stun_transmitted)
-      return TRUE;
+  /* the conncheck really starts when we have built
+   * a connection check list for each stream
+   */
+  if (priv_number_of_check_lists (agent) < g_slist_length (agent->streams))
+    return TRUE;
+
+  /* configure the initial state of the check lists of the agent
+   * as described in ICE spec, 5.7.4
+   *
+   * if all pairs in all check lists are in frozen state, then
+   * we are in the initial state (5.7.4, point 1.)
+   */
+  if (priv_number_of_active_check_lists (agent) == 0) {
+    /* set some pairs of the first stream in the waiting state
+     * ICE spec, 5.7.4, point 2.
+     *
+     * note: we adapt the ICE spec here, by selecting the first
+     * frozen check list, which is not necessarily the check
+     * list of the first stream (the first stream may be completed)
+     */
+    NiceStream *stream = priv_find_first_frozen_check_list (agent);
+    if (stream)
+      priv_conn_check_unfreeze_next (agent, stream);
   }
 
-  /* step: first initiate a conncheck with a pair from the triggered list */
+  /* step: perform a test from the triggered checks list,
+   * ICE spec, 5.8 "Scheduling Checks"
+   */
   pair = priv_get_pair_from_triggered_check_queue (agent);
 
   if (pair) {
-    priv_print_conn_check_lists (agent, G_STRFUNC,
-        ", got a pair from triggered check list");
     priv_conn_check_initiate (agent, pair);
     return TRUE;
   }
 
-  /* step: when the triggered list is empty,
-   * find the highest priority waiting check and send it */
-  for (i = agent->streams; i ; i = i->next) {
-    NiceStream *stream = i->data;
-
-    pair = priv_conn_check_find_next_waiting (stream->conncheck_list);
-    if (pair)
-      break;
-  }
-
-  if (pair) {
-    priv_conn_check_initiate (agent, pair);
-    return TRUE;
-  }
-
-  /* step: when there's no pair in the Waiting state,
-   * unfreeze a new pair and check it
+  /* step: process ongoing STUN transactions and
+   * perform an ordinary check, ICE spec, 5.8, "Scheduling Checks"
    */
-  priv_conn_check_unfreeze_next (agent);
-
   for (i = agent->streams; i ; i = i->next) {
     NiceStream *stream = i->data;
-
-    pair = priv_conn_check_find_next_waiting (stream->conncheck_list);
-    if (pair)
-      break;
-  }
-
-  if (pair) {
-    priv_print_conn_check_lists (agent, G_STRFUNC,
-        ", got a pair in Waiting state");
-    priv_conn_check_initiate (agent, pair);
-    return TRUE;
+    if (priv_conn_check_tick_stream (stream, agent, &now))
+      keep_timer_going = TRUE;
+    if (priv_conn_check_tick_stream_nominate (stream, agent))
+      keep_timer_going = TRUE;
   }
 
   /* step: stop timer if no work left */
@@ -2169,30 +2394,28 @@ size_t priv_get_password (NiceAgent *agent, NiceStream *stream,
 
 /* Implement the computation specific in RFC 5245 section 16 */
 
-static unsigned int priv_compute_conncheck_timer (NiceAgent *agent)
+static unsigned int priv_compute_conncheck_timer (NiceAgent *agent, NiceStream *stream)
 {
-  GSList *item1, *item2;
+  GSList *i;
   guint waiting_and_in_progress = 0;
+  guint n = 0;
   unsigned int rto = 0;
 
-
-  for (item1 = agent->streams; item1; item1 = item1->next) {
-    NiceStream *stream = item1->data;;
-    for (item2 = stream->conncheck_list; item2; item2 = item2->next) {
-      CandidateCheckPair *pair = item2->data;
-
-      if (pair->state == NICE_CHECK_IN_PROGRESS ||
-          pair->state == NICE_CHECK_WAITING)
-        waiting_and_in_progress++;
-    }
+  for (i = stream->conncheck_list; i ; i = i->next) {
+    CandidateCheckPair *p = i->data;
+    if (p->state == NICE_CHECK_IN_PROGRESS ||
+        p->state == NICE_CHECK_WAITING)
+      waiting_and_in_progress++;
   }
 
-  rto = agent->timer_ta  * waiting_and_in_progress;
+  n = priv_number_of_active_check_lists (agent);
+  rto = agent->timer_ta  * n * waiting_and_in_progress;
 
   /* We assume non-reliable streams are RTP, so we use 100 as the max */
-  nice_debug ("Agent %p : timer set to %dms (waiting+in_progress=%d)",
+  nice_debug ("Agent %p : timer set to %dms, "
+    "waiting+in_progress=%d, nb_active=%d",
     agent, agent->reliable ? MAX (rto, 500) : MAX (rto, 100),
-    waiting_and_in_progress);
+    waiting_and_in_progress, n);
   if (agent->reliable)
     return MAX (rto, 500);
   else
@@ -2312,7 +2535,7 @@ int conn_check_send (NiceAgent *agent, CandidateCheckPair *pair)
         stun_timer_start_reliable(&pair->timer, agent->stun_reliable_timeout);
       } else {
         stun_timer_start (&pair->timer,
-            priv_compute_conncheck_timer (agent),
+            priv_compute_conncheck_timer (agent, stream),
             agent->stun_max_retransmissions);
       }
 
@@ -2477,7 +2700,7 @@ static gboolean priv_schedule_triggered_check (NiceAgent *agent, NiceStream *str
             p->timer_restarted ? "no" : "yes");
 	  if (!nice_socket_is_reliable (p->sockptr) && !p->timer_restarted) {
 	    stun_timer_start (&p->timer,
-                priv_compute_conncheck_timer (agent),
+                priv_compute_conncheck_timer (agent, stream),
                 agent->stun_max_retransmissions);
 	    p->timer_restarted = TRUE;
 	  }
@@ -2769,7 +2992,6 @@ static CandidateCheckPair *priv_process_response_check_for_reflexive(NiceAgent *
       p->valid = TRUE;
     p->state = NICE_CHECK_SUCCEEDED;
     nice_debug ("Agent %p : conncheck %p SUCCEEDED.", agent, p);
-    priv_conn_check_unfreeze_related (agent, stream, p);
     nice_component_add_valid_candidate (component, remote_candidate);
   }
   else {
@@ -2894,13 +3116,18 @@ static gboolean priv_map_reply_to_conn_check_request (NiceAgent *agent, NiceStre
             g_assert_not_reached ();
             nice_debug ("Agent %p : Mapped address not found."
                 " conncheck %p SUCCEEDED.", agent, p);
-            priv_conn_check_unfreeze_related (agent, stream, p);
             nice_component_add_valid_candidate (component, p->remote);
           } else {
             ok_pair = priv_process_response_check_for_reflexive (agent,
                 stream, component, p, sockptr, &sockaddr.addr,
                 local_candidate, remote_candidate);
           }
+
+          /* note: The success of this check might also
+           * cause the state of other checks to change as well, ICE
+           * spec 7.1.3.2.3
+           */
+          priv_conn_check_unfreeze_related (agent, stream, p);
 
           /* Note: this assignment helps to reduce the numbers of cases
            * to be tested. If ok_pair and p refer to distinct pairs, it

@@ -103,9 +103,6 @@ nice_stream_new (guint n_components, NiceAgent *agent);
 void
 nice_stream_close (NiceStream *stream);
 
-gboolean
-nice_stream_all_components_ready (NiceStream *stream);
-
 NiceComponent *
 nice_stream_find_component_by_id (NiceStream *stream, guint id);
 
