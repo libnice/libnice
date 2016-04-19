@@ -85,10 +85,10 @@ struct _CandidateCheckPair
   gchar foundation[NICE_CANDIDATE_PAIR_MAX_FOUNDATION];
   NiceCheckState state;
   gboolean nominated;
-  gboolean timer_restarted;
   gboolean valid;
   gboolean use_candidate_on_next_check;
   gboolean mark_nominated_on_response_arrival;
+  gboolean recheck_on_timeout;
   guint64 priority;
   guint32 prflx_priority;
   GTimeVal next_tick;       /* next tick timestamp */

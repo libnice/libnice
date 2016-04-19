@@ -558,6 +558,37 @@ candidate_check_pair_fail (NiceStream *stream, NiceAgent *agent, CandidateCheckP
 }
 
 /*
+ * Function that resubmits a new connection check, after a previous
+ * check in in-progress state got cancelled due to an incoming stun
+ * request matching this same pair
+ *
+ * @return will return TRUE if the pair is scheduled for recheck
+ */
+static gboolean
+priv_conn_recheck_on_timeout (NiceAgent *agent, CandidateCheckPair *p)
+{
+  if (p->recheck_on_timeout) {
+    g_assert (p->state == NICE_CHECK_IN_PROGRESS);
+    /* this cancelled pair may have the flag 'mark nominated
+     * on response arrival' set, we want to keep it, because
+     * this is needed to nominate this pair in aggressive
+     * nomination, when the agent is in controlled mode.
+     *
+     * this cancelled pair may also have the flag 'use candidate
+     * on next check' set, that we want to preserve too.
+     */
+    nice_debug ("Agent %p : pair %p was cancelled, "
+        "triggering a new connection check", agent, p);
+    p->recheck_on_timeout = FALSE;
+    p->state = NICE_CHECK_WAITING;
+    nice_debug ("Agent %p : pair %p state WAITING", agent, p);
+    priv_add_pair_to_triggered_check_queue (agent, p);
+    return TRUE;
+  }
+  return FALSE;
+}
+
+/*
  * Helper function for connectivity check timer callback that
  * runs through the stream specific part of the state machine. 
  *
@@ -584,8 +615,17 @@ static gboolean priv_conn_check_tick_stream (NiceStream *stream, NiceAgent *agen
         switch (stun_timer_refresh (&p->timer)) {
           case STUN_USAGE_TIMER_RETURN_TIMEOUT:
             {
-              /* case: error, abort processing */
               gchar tmpbuf1[INET6_ADDRSTRLEN], tmpbuf2[INET6_ADDRSTRLEN];
+
+              /* case: conncheck cancelled due to in-progress incoming
+               * check, requeing the pair, ICE spec, sect 7.2.1.4
+               * "Triggered Checks", "If the state of that pair is
+               * In-Progress..."
+               */
+              if (priv_conn_recheck_on_timeout (agent, p))
+                break;
+
+              /* case: error, abort processing */
               nice_address_to_string (&p->local->addr, tmpbuf1);
               nice_address_to_string (&p->remote->addr, tmpbuf2);
               nice_debug ("Agent %p : Retransmissions failed, giving up on connectivity check %p", agent, p);
@@ -600,8 +640,17 @@ static gboolean priv_conn_check_tick_stream (NiceStream *stream, NiceAgent *agen
             }
           case STUN_USAGE_TIMER_RETURN_RETRANSMIT:
             {
-              /* case: not ready, so schedule a new timeout */
               unsigned int timeout = stun_timer_remainder (&p->timer);
+
+              /* case: conncheck cancelled due to in-progress incoming
+               * check, requeing the pair, ICE spec, sect 7.2.1.4
+               * "Triggered Checks", "If the state of that pair is
+               * In-Progress..."
+               */
+              if (priv_conn_recheck_on_timeout (agent, p))
+                break;
+
+              /* case: not ready, so schedule a new timeout */
               nice_debug ("Agent %p :STUN transaction retransmitted on pair %p "
                   "(timeout %dms, delay=%dms, retrans=%d).",
                   agent, p, timeout, p->timer.delay, p->timer.retransmissions);
@@ -642,6 +691,12 @@ static gboolean priv_conn_check_tick_stream (NiceStream *stream, NiceAgent *agen
    */
   pair = priv_conn_check_find_next_waiting (stream->conncheck_list);
   if (pair) {
+    /* remove the pair from the triggered check list if needed. This
+     * may happen with the cancelled pair, that's just been added
+     * in state waiting to the triggered check list above in the
+     * same function.
+     */
+    priv_remove_pair_from_triggered_check_queue (agent, pair);
     priv_print_conn_check_lists (agent, G_STRFUNC,
         ", got a pair in Waiting state");
     priv_conn_check_initiate (agent, pair);
@@ -794,6 +849,7 @@ priv_conn_check_tick_stream_nominate (NiceStream *stream, NiceAgent *agent)
                 p->valid) {
               nice_debug ("Agent %p : restarting check %p with "
                   "USE-CANDIDATE attrib (regular nomination)", agent, p);
+              p->recheck_on_timeout = FALSE;
               p->use_candidate_on_next_check = TRUE;
               priv_add_pair_to_triggered_check_queue (agent, p);
               break; /* move to the next component */
@@ -816,6 +872,7 @@ priv_conn_check_tick_stream_nominate (NiceStream *stream, NiceAgent *agent)
                p->state == NICE_CHECK_DISCOVERED)) {
 	    nice_debug ("Agent %p : restarting check %p as the nominated pair.", agent, p);
 	    p->nominated = TRUE;
+            p->recheck_on_timeout = FALSE;
             priv_update_selected_pair (agent, component, p);
             priv_add_pair_to_triggered_check_queue (agent, p);
 	    break; /* move to the next component */
@@ -2697,19 +2754,20 @@ static gboolean priv_schedule_triggered_check (NiceAgent *agent, NiceStream *str
 	    p->state == NICE_CHECK_FROZEN)
           priv_add_pair_to_triggered_check_queue (agent, p);
         else if (p->state == NICE_CHECK_IN_PROGRESS) {
-	  /* XXX: according to ICE 7.2.1.4 "Triggered Checks" (ID-19),
-	   * we should cancel the existing one, instead we reset our timer, so
-	   * we'll resend the exiting transactions faster if needed...? :P
-	   */
-	  nice_debug ("Agent %p : check already in progress, "
-	    "restarting the timer again?: %s ..", agent,
-            p->timer_restarted ? "no" : "yes");
-	  if (!nice_socket_is_reliable (p->sockptr) && !p->timer_restarted) {
-	    stun_timer_start (&p->timer,
-                priv_compute_conncheck_timer (agent, stream),
-                agent->stun_max_retransmissions);
-	    p->timer_restarted = TRUE;
-	  }
+	  /* note: according to ICE SPEC sect 7.2.1.4 "Triggered Checks"
+           * we cancel the in-progress transaction, and after the
+           * retransmission timeout, we create a new connectivity check
+           * for that pair.  The controlling role of this new check may
+           * be different from the role of this cancelled check.
+           */
+          if (!nice_socket_is_reliable (p->sockptr)) {
+            nice_debug ("Agent %p : check already in progress, "
+                "cancelling this check..", agent);
+            /* this flag will determine the action at the retransmission
+             * timeout of the stun timer
+             */
+            p->recheck_on_timeout = TRUE;
+          }
 	}
 	else if (p->state == NICE_CHECK_SUCCEEDED ||
 		 p->state == NICE_CHECK_DISCOVERED) {
