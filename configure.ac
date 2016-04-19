@@ -57,6 +57,7 @@ AC_PROG_CC
 AM_PROG_AR
 LT_PREREQ([2.2.6])
 LT_INIT([dlopen win32-dll disable-static])
+AC_PATH_PROG([GLIB_MKENUMS],[glib-mkenums])
 
 # Check Operating System
 AC_MSG_CHECKING([operating system])

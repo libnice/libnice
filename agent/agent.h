@@ -377,6 +377,26 @@ typedef enum
   NICE_PROXY_TYPE_LAST = NICE_PROXY_TYPE_HTTP,
 } NiceProxyType;
 
+/**
+ * NiceNominationMode:
+ * @NICE_NOMINATION_MODE_AGGRESSIVE: Aggressive nomination mode
+ * @NICE_NOMINATION_MODE_REGULAR: Regular nomination mode
+ *
+ * An enum to specity the kind of nomination mode to use by
+ * the agent, as described in RFC 5245. Two modes exists,
+ * regular and aggressive. They differ by the way the controlling
+ * agent chooses to put the USE-CANDIDATE attribute in its STUN
+ * messages. The aggressive mode is supposed to nominate a pair
+ * faster, than the regular mode, potentially causing the nominated
+ * pair to change until the connection check completes.
+ *
+ * Since: UNRELEASED
+ */
+typedef enum
+{
+  NICE_NOMINATION_MODE_REGULAR = 0,
+  NICE_NOMINATION_MODE_AGGRESSIVE,
+} NiceNominationMode;
 
 /**
  * NiceAgentRecvFunc:
@@ -429,6 +449,28 @@ NiceAgent *
 nice_agent_new_reliable (GMainContext *ctx, NiceCompatibility compat);
 
 /**
+ * nice_agent_new_full:
+ * @ctx: The Glib Mainloop Context to use for timers
+ * @compat: The compatibility mode of the agent
+ * @reliable: The reliability mode of the agent
+ * @nomination: The nomination mode of the agent
+ *
+ * Create a new #NiceAgent with parameters that must be be defined at
+ * construction time.
+ * The returned object must be freed with g_object_unref()
+ * <para> See also: #NiceNominationMode </para>
+ *
+ * Since: UNRELEASED
+ *
+ * Returns: The new agent GObject
+ */
+NiceAgent *
+nice_agent_new_full (GMainContext *ctx,
+  NiceCompatibility compat,
+  gboolean reliable,
+  NiceNominationMode nomination);
+
+/**
  * nice_agent_add_local_address:
  * @agent: The #NiceAgent Object
  * @addr: The address to listen to
@@ -446,7 +488,6 @@ nice_agent_new_reliable (GMainContext *ctx, NiceCompatibility compat);
  */
 gboolean
 nice_agent_add_local_address (NiceAgent *agent, NiceAddress *addr);
-
 
 /**
  * nice_agent_add_stream:

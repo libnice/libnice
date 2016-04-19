@@ -115,6 +115,13 @@ nice_input_message_iter_compare (const NiceInputMessageIter *a,
 
 #define NICE_COMPONENT_MAX_VALID_CANDIDATES 50 /* maximum number of validates remote candidates to keep, the number is arbitrary but hopefully large enough */
 
+/* A convenient macro to test if the agent is compatible with RFC5245
+ * or OC2007R2. Specifically these two modes share the support
+ * of the regular or aggressive nomination mode */
+#define NICE_AGENT_IS_COMPATIBLE_WITH_RFC5245_OR_OC2007R2(obj) \
+  ((obj)->compatibility == NICE_COMPATIBILITY_RFC5245 || \
+  (obj)->compatibility == NICE_COMPATIBILITY_OC2007R2)
+
 struct _NiceAgent
 {
   GObject parent;                 /* gobject pointer */
@@ -134,6 +141,7 @@ struct _NiceAgent
   guint stun_max_retransmissions; /* property: stun max retransmissions, Rc */
   guint stun_initial_timeout;     /* property: stun initial timeout, RTO */
   guint stun_reliable_timeout;    /* property: stun reliable timeout */
+  NiceNominationMode nomination_mode; /* property: Nomination mode */
 
   GSList *local_addresses;        /* list of NiceAddresses for local
 				     interfaces */

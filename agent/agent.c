@@ -73,6 +73,7 @@
 #include "interfaces.h"
 
 #include "pseudotcp.h"
+#include "agent-enum-types.h"
 
 /* Maximum size of a UDP packet’s payload, as the packet’s length field is 16b
  * wide. */
@@ -116,6 +117,7 @@ enum
   PROP_STUN_MAX_RETRANSMISSIONS,
   PROP_STUN_INITIAL_TIMEOUT,
   PROP_STUN_RELIABLE_TIMEOUT,
+  PROP_NOMINATION_MODE,
 };
 
 
@@ -438,6 +440,24 @@ nice_agent_class_init (NiceAgentClass *klass)
         0, 0xffffffff,
 	0, /* default set in init */
         G_PARAM_READWRITE));
+
+  /**
+   * NiceAgent:nomination-mode:
+   *
+   * The nomination mode used in the ICE specification for describing
+   * the selection of valid pairs to be used upstream.
+   * <para> See also: #NiceNominationMode </para>
+   *
+   * Since: UNRELEASED
+   */
+  g_object_class_install_property (gobject_class, PROP_NOMINATION_MODE,
+      g_param_spec_enum (
+         "nomination-mode",
+         "ICE nomination mode",
+         "Nomination mode used in the ICE specification for describing "
+         "the selection of valid pairs to be used upstream",
+         NICE_TYPE_NOMINATION_MODE, NICE_NOMINATION_MODE_AGGRESSIVE,
+         G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY));
 
   /**
    * NiceAgent:proxy-ip:
@@ -1096,6 +1116,7 @@ nice_agent_init (NiceAgent *agent)
   agent->stun_server_port = DEFAULT_STUN_PORT;
   agent->controlling_mode = TRUE;
   agent->max_conn_checks = NICE_AGENT_MAX_CONNECTIVITY_CHECKS_DEFAULT;
+  agent->nomination_mode = NICE_NOMINATION_MODE_AGGRESSIVE;
 
   agent->discovery_list = NULL;
   agent->discovery_unsched_items = 0;
@@ -1138,6 +1159,23 @@ nice_agent_new_reliable (GMainContext *ctx, NiceCompatibility compat)
       "compatibility", compat,
       "main-context", ctx,
       "reliable", TRUE,
+      NULL);
+
+  return agent;
+}
+
+
+NICEAPI_EXPORT NiceAgent *
+nice_agent_new_full (GMainContext *ctx,
+  NiceCompatibility compat,
+  gboolean reliable,
+  NiceNominationMode nomination)
+{
+  NiceAgent *agent = g_object_new (NICE_TYPE_AGENT,
+      "compatibility", compat,
+      "main-context", ctx,
+      "reliable", reliable,
+      "nomination-mode", nomination,
       NULL);
 
   return agent;
@@ -1188,6 +1226,10 @@ nice_agent_get_property (
     case PROP_MAX_CONNECTIVITY_CHECKS:
       g_value_set_uint (value, agent->max_conn_checks);
       /* XXX: should we prune the list of already existing checks? */
+      break;
+
+    case PROP_NOMINATION_MODE:
+      g_value_set_enum (value, agent->nomination_mode);
       break;
 
     case PROP_PROXY_IP:
@@ -1392,6 +1434,10 @@ nice_agent_set_property (
 
     case PROP_MAX_CONNECTIVITY_CHECKS:
       agent->max_conn_checks = g_value_get_uint (value);
+      break;
+
+    case PROP_NOMINATION_MODE:
+      agent->nomination_mode = g_value_get_enum (value);
       break;
 
     case PROP_PROXY_IP:
@@ -3296,6 +3342,19 @@ static gboolean priv_add_remote_candidate (
           _transport_to_string (transport), tmpbuf,
           addr? nice_address_get_port (addr) : 0, stream_id, component_id,
           username, password, priority);
+    }
+
+    if (NICE_AGENT_IS_COMPATIBLE_WITH_RFC5245_OR_OC2007R2 (agent)) {
+      /* note:  If there are TCP candidates for a media stream,
+       * a controlling agent MUST use the regular selection algorithm,
+       * RFC 6544, sect 8, "Concluding ICE Processing"
+       */
+      if (agent->nomination_mode == NICE_NOMINATION_MODE_AGGRESSIVE &&
+          transport != NICE_CANDIDATE_TRANSPORT_UDP) {
+        nice_debug ("Agent %p : we have TCP candidates, switching back "
+          "to regular nomination mode", agent);
+        agent->nomination_mode = NICE_NOMINATION_MODE_REGULAR;
+      }
     }
 
     if (base_addr)

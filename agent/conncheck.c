@@ -502,7 +502,62 @@ static gboolean priv_conn_check_tick_stream (NiceStream *stream, NiceAgent *agen
   if (s_nominated < stream->n_components &&
       s_waiting_for_nomination) {
     keep_timer_going = TRUE;
-    if (agent->controlling_mode) {
+    if (NICE_AGENT_IS_COMPATIBLE_WITH_RFC5245_OR_OC2007R2 (agent)) {
+      if (agent->nomination_mode == NICE_NOMINATION_MODE_REGULAR &&
+          agent->controlling_mode &&
+          ((waiting == 0 && s_inprogress == 0) ||
+           (s_succeeded + s_discovered) >= 5 * stream->n_components)){
+        /* ICE 8.1.1.1 Regular nomination
+         * we choose to nominate the valid pair if
+         * there is no pair left waiting or in-progress or
+         * if there are at least 5 valid pairs per stream on average.
+         *
+         * This is the "stopping criterion" described in 8.1.1.1, and is
+         * a "local optimization" between accumulating more valid pairs,
+         * and limiting the time spent waiting for in-progress connections
+         * checks until they finally fail.
+         */
+        GSList *component_item;
+
+        for (component_item = stream->components; component_item;
+             component_item = component_item->next) {
+          NiceComponent *component = component_item->data;
+          gboolean already_done = FALSE;
+
+          /* verify that the choice of the pair to be nominated
+           * has not already been done
+           */
+          for (k = stream->conncheck_list; k ; k = k->next) {
+            CandidateCheckPair *p = k->data;
+            if (p->component_id == component->id &&
+                p->use_candidate_on_next_check) {
+              already_done = TRUE;
+              break;
+            }
+          }
+
+          /* choose a pair to be nominated in the list of valid
+           * pairs, and add it to the triggered checks list
+           */
+          if (!already_done) {
+	    for (k = stream->conncheck_list; k ; k = k->next) {
+	      CandidateCheckPair *p = k->data;
+              /* note: highest priority item selected (list always sorted) */
+	      if (p->component_id == component->id &&
+                  !p->nominated &&
+                  !p->use_candidate_on_next_check &&
+                  p->valid) {
+	        nice_debug ("Agent %p : restarting check %p with "
+                    "USE-CANDIDATE attrib (regular nomination)", agent, p);
+	        p->use_candidate_on_next_check = TRUE;
+	        priv_add_pair_to_triggered_check_queue (agent, p);
+	        break; /* move to the next component */
+              }
+            }
+          }
+        }
+      }
+    } else if (agent->controlling_mode) {
       GSList *component_item;
 
       for (component_item = stream->components; component_item;
@@ -1571,10 +1626,40 @@ static void priv_mark_pair_nominated (NiceAgent *agent, NiceStream *stream, Nice
 
   g_assert (component);
 
+  if (NICE_AGENT_IS_COMPATIBLE_WITH_RFC5245_OR_OC2007R2 (agent) &&
+      agent->controlling_mode)
+    return;
+
   /* step: search for at least one nominated pair */
   for (i = stream->conncheck_list; i; i = i->next) {
     CandidateCheckPair *pair = i->data;
-    if (pair->local == localcand && pair->remote == remotecand) {
+    if (pair->local == localcand && pair->remote == remotecand &&
+        NICE_AGENT_IS_COMPATIBLE_WITH_RFC5245_OR_OC2007R2 (agent)) {
+      /* ICE, 7.2.1.5. Updating the Nominated Flag */
+      /* note: TCP candidates typically produce peer reflexive
+       * candidate, generating a "discovered" pair that can be
+       * nominated.
+       */
+      if (pair->valid) {
+        nice_debug ("Agent %p : marking pair %p (%s) as nominated",
+            agent, pair, pair->foundation);
+        pair->nominated = TRUE;
+        priv_update_selected_pair (agent, component, pair);
+        /* Do not step down to CONNECTED if we're already at state READY*/
+        if (component->state != NICE_COMPONENT_STATE_READY) {
+          /* step: notify the client of a new component state (must be done
+           *       before the possible check list state update step */
+          agent_signal_component_state_change (agent,
+              stream->id, component->id, NICE_COMPONENT_STATE_CONNECTED);
+        }
+        priv_update_check_list_state_for_ready (agent, stream, component);
+      } else if (pair->state == NICE_CHECK_IN_PROGRESS) {
+        pair->mark_nominated_on_response_arrival = TRUE;
+        nice_debug ("Agent %p : pair %p (%s) is in-progress, "
+            "will be nominated on response receipt.",
+            agent, pair, pair->foundation);
+      }
+    } else if (pair->local == localcand && pair->remote == remotecand) {
       nice_debug ("Agent %p : marking pair %p (%s) as nominated", agent, pair, pair->foundation);
       pair->nominated = TRUE;
       if (pair->valid) {
@@ -2174,7 +2259,35 @@ int conn_check_send (NiceAgent *agent, CandidateCheckPair *pair)
         pair->prflx_priority, controlling);
   }
 
-  if (cand_use)
+  if (NICE_AGENT_IS_COMPATIBLE_WITH_RFC5245_OR_OC2007R2 (agent)) {
+    switch (agent->nomination_mode) {
+      case NICE_NOMINATION_MODE_REGULAR:
+        {
+          /* We are doing regular nomination, so we set the use-candidate
+           * attrib, when the controlling agent decided which valid pair to
+           * resend with this flag in priv_conn_check_tick_stream()
+           */
+          cand_use = pair->use_candidate_on_next_check;
+          nice_debug ("Agent %p : %s: set cand_use=%d "
+              "(regular nomination).", agent, G_STRFUNC, cand_use);
+          break;
+        }
+      case NICE_NOMINATION_MODE_AGGRESSIVE:
+        {
+          /* We are doing aggressive nomination, we set the use-candidate
+           * attrib in every check we send, when we are the controlling
+           * agent, RFC 5245, 8.1.1.2
+           */
+          cand_use = controlling;
+          nice_debug ("Agent %p : %s: set cand_use=%d "
+              "(aggressive nomination).", agent, G_STRFUNC, cand_use);
+          break;
+        }
+      default:
+        /* Nothing to do. */
+        break;
+    }
+  } else if (cand_use)
     pair->nominated = controlling;
 
   if (uname_len > 0) {
@@ -2781,12 +2894,66 @@ static gboolean priv_map_reply_to_conn_check_request (NiceAgent *agent, NiceStre
                 local_candidate, remote_candidate);
           }
 
-
+          /* Note: this assignment helps to reduce the numbers of cases
+           * to be tested. If ok_pair and p refer to distinct pairs, it
+           * means that ok_pair is a discovered peer reflexive one,
+           * caused by the check made on pair p.  In that case, the
+           * flags to be tested are on p, but the nominated flag will be
+           * set on ok_pair. When there's no discovered pair, p and
+           * ok_pair refer to the same pair.
+           * To summarize : p is a SUCCEEDED pair, ok_pair is a
+           * DISCOVERED, VALID, and eventually NOMINATED pair. 
+           */
           if (!ok_pair)
             ok_pair = p;
 
           /* step: updating nominated flag (ICE 7.1.2.2.4 "Updating the
              Nominated Flag" (ID-19) */
+	  if (NICE_AGENT_IS_COMPATIBLE_WITH_RFC5245_OR_OC2007R2 (agent)) {
+            nice_debug ("Agent %p : Updating nominated flag (%s): "
+                "ok_pair=%p (%d/%d) p=%p (%d/%d) (ucnc/mnora)",
+                agent, p->local->transport == NICE_CANDIDATE_TRANSPORT_UDP ?
+                  "UDP" : "TCP",
+                ok_pair, ok_pair->use_candidate_on_next_check,
+                ok_pair->mark_nominated_on_response_arrival,
+                p, p->use_candidate_on_next_check,
+                p->mark_nominated_on_response_arrival);
+
+            if (agent->controlling_mode) {
+              switch (agent->nomination_mode) {
+                case NICE_NOMINATION_MODE_REGULAR:
+                  if (p->use_candidate_on_next_check) {
+                    nice_debug ("Agent %p : marking pair %p (%s) as nominated "
+                        "(regular nomination, control=1, "
+                        "use_cand_on_next_check=1).",
+                        agent, ok_pair, ok_pair->foundation);
+                    ok_pair->nominated = TRUE;
+                  }
+                  break;
+                case NICE_NOMINATION_MODE_AGGRESSIVE:
+                  if (!p->nominated) {
+                    nice_debug ("Agent %p : marking pair %p (%s) as nominated "
+                        "(aggressive nomination, control=1).",
+                        agent, ok_pair, ok_pair->foundation);
+                    ok_pair->nominated = TRUE;
+                  }
+                  break;
+                default:
+                  /* Nothing to do */
+                  break;
+              }
+            } else {
+              if (p->mark_nominated_on_response_arrival) {
+                nice_debug ("Agent %p : marking pair %p (%s) as nominated "
+                    "(%s nomination, control=0, mark_on_response=1).",
+                    agent, ok_pair, ok_pair->foundation,
+                    agent->nomination_mode == NICE_NOMINATION_MODE_AGGRESSIVE ?
+                      "aggressive" : "regular");
+                ok_pair->nominated = TRUE;
+              }
+            }
+          }
+
           if (ok_pair->nominated == TRUE) {
             priv_update_selected_pair (agent, component, ok_pair);
             priv_print_conn_check_lists (agent, G_STRFUNC,
@@ -3668,8 +3835,7 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, NiceStream *stream,
           stun_usage_ice_conncheck_use_candidate (&req);
       uint32_t priority = stun_usage_ice_conncheck_priority (&req);
 
-      if (agent->controlling_mode ||
-          agent->compatibility == NICE_COMPATIBILITY_GOOGLE ||
+      if (agent->compatibility == NICE_COMPATIBILITY_GOOGLE ||
           agent->compatibility == NICE_COMPATIBILITY_MSN ||
           agent->compatibility == NICE_COMPATIBILITY_OC2007)
         use_candidate = TRUE;
