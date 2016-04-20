@@ -2287,11 +2287,22 @@ static gboolean priv_schedule_triggered_check (NiceAgent *agent, NiceStream *str
 	  nice_debug ("Agent %p : Skipping triggered check, already completed..", agent); 
 	  /* note: this is a bit unsure corner-case -- let's do the
 	     same state update as for processing responses to our own checks */
+          /* note: this update is required by the dribble test, to
+           * ensure the transition ready -> connected -> ready, because
+           * an incoming stun request generates a discovered peer reflexive,
+           * that causes the ready -> connected transition.
+           */
 	  priv_update_check_list_state_for_ready (agent, stream, component);
 
-	  /* note: to take care of the controlling-controlling case in
-	   *       aggressive nomination mode, send a new triggered
-	   *       check to nominate the pair */
+          /* note: this new check is required by the new-dribble test,
+           * when early icheck on the peer controlled agent causes an
+           * incoming stun request to an already succeeded (and
+           * nominated) pair on the controlling agent. If the
+           * controlling agent doesn't retrigger a check with
+           * USE-CANDIDATE=1, the peer agent has no way to nominate it.
+           *
+           * This behavior differs from ICE spec 7.2.1.4
+           */
 	  if ((agent->compatibility == NICE_COMPATIBILITY_RFC5245 ||
                   agent->compatibility == NICE_COMPATIBILITY_WLM2009 ||
                   agent->compatibility == NICE_COMPATIBILITY_OC2007R2) &&
