@@ -270,7 +270,12 @@ stun_usage_ice_conncheck_create_reply (StunAgent *agent, StunMessage *req,
      */
     stun_debug ("STUN Role Conflict detected:");
 
-    if (tie < q)
+    /* According to ICE RFC 5245, section 7.2.1.1, we consider the four
+     * possible cases when a role conflict is detected: two cases are
+     * resolved by switching role locally, and the two other cases are
+     * handled by responding with a STUN error.
+     */
+    if ((tie < q && *control) || (tie >= q && !*control))
     {
       stun_debug (" switching role from \"controll%s\" to \"controll%s\"",
            *control ? "ing" : "ed", *control ? "ed" : "ing");
@@ -282,7 +287,7 @@ stun_usage_ice_conncheck_create_reply (StunAgent *agent, StunMessage *req,
       stun_debug (" staying \"controll%s\" (sending error)",
            *control ? "ing" : "ed");
       err (STUN_ERROR_ROLE_CONFLICT);
-      return STUN_USAGE_ICE_RETURN_SUCCESS;
+      return STUN_USAGE_ICE_RETURN_ROLE_CONFLICT;
     }
   } else {
     if (stun_message_find64 (req, *control ? STUN_ATTRIBUTE_ICE_CONTROLLED

@@ -213,7 +213,7 @@ int main (void)
 
   addr.ip4.sin_family = AF_INET;
 
-  /* Lost role conflict */
+  /* Role conflict, controlling + ICE-CONTROLLING, switching controlled */
   assert (stun_agent_init_request (&agent, &req, req_buf, sizeof(req_buf), STUN_BINDING));
   val = stun_message_append64 (&req, STUN_ATTRIBUTE_ICE_CONTROLLING, tie + 1);
   assert (val == STUN_MESSAGE_RETURN_SUCCESS);
@@ -222,7 +222,6 @@ int main (void)
   assert (val == STUN_MESSAGE_RETURN_SUCCESS);
   rlen = stun_agent_finish_message (&agent, &req, pass, pass_len);
   assert (rlen > 0);
-
 
   len = sizeof (resp_buf);
   control = true;
@@ -236,7 +235,7 @@ int main (void)
           stun_agent_default_validater, validater_data) == STUN_VALIDATION_SUCCESS);
   assert (stun_message_get_class (&resp) == STUN_RESPONSE);
 
-  /* Won role conflict */
+  /* Role conflict, controlled + ICE-CONTROLLED, switching controlling */
   assert (stun_agent_init_request (&agent, &req, req_buf, sizeof(req_buf), STUN_BINDING));
   val = stun_message_append64 (&req, STUN_ATTRIBUTE_ICE_CONTROLLED, tie - 1);
   assert (val == STUN_MESSAGE_RETURN_SUCCESS);
@@ -251,7 +250,53 @@ int main (void)
   val2 = stun_usage_ice_conncheck_create_reply (&agent, &req,
       &resp, resp_buf, &len, &addr.storage,
       sizeof (addr.ip4), &control, tie, STUN_USAGE_ICE_COMPATIBILITY_RFC5245);
-  assert (val2 == STUN_USAGE_ICE_RETURN_SUCCESS);
+  assert (val2 == STUN_USAGE_ICE_RETURN_ROLE_CONFLICT);
+  assert (len > 0);
+  assert (control == true);
+  assert (stun_agent_validate (&agent, &resp, resp_buf, len,
+          stun_agent_default_validater, validater_data) == STUN_VALIDATION_SUCCESS);
+  assert (stun_message_get_class (&resp) == STUN_RESPONSE);
+
+  /* Role conflict, controlling + ICE-CONTROLLING, staying controlling */
+  assert (stun_agent_init_request (&agent, &req, req_buf, sizeof(req_buf), STUN_BINDING));
+  val = stun_message_append64 (&req, STUN_ATTRIBUTE_ICE_CONTROLLING, tie - 1);
+  assert (val == STUN_MESSAGE_RETURN_SUCCESS);
+  val = stun_message_append_string (&req, STUN_ATTRIBUTE_USERNAME,
+     (char *) ufrag);
+  assert (val == STUN_MESSAGE_RETURN_SUCCESS);
+  rlen = stun_agent_finish_message (&agent, &req, pass, pass_len);
+  assert (rlen > 0);
+
+  len = sizeof (resp_buf);
+  control = true;
+  val2 = stun_usage_ice_conncheck_create_reply (&agent, &req,
+      &resp, resp_buf, &len, &addr.storage,
+      sizeof (addr.ip4), &control, tie, STUN_USAGE_ICE_COMPATIBILITY_RFC5245);
+  assert (val2 == STUN_USAGE_ICE_RETURN_ROLE_CONFLICT);
+  assert (len > 0);
+  assert (control == true);
+  assert (stun_agent_validate (&agent, &resp, resp_buf, len,
+          stun_agent_default_validater, validater_data) == STUN_VALIDATION_SUCCESS);
+  assert (stun_message_get_class (&resp) == STUN_ERROR);
+  stun_message_find_error (&resp, &code);
+  assert (code == STUN_ERROR_ROLE_CONFLICT);
+
+  /* Role conflict, controlled + ICE-CONTROLLED, staying controlling */
+  assert (stun_agent_init_request (&agent, &req, req_buf, sizeof(req_buf), STUN_BINDING));
+  val = stun_message_append64 (&req, STUN_ATTRIBUTE_ICE_CONTROLLED, tie + 1);
+  assert (val == STUN_MESSAGE_RETURN_SUCCESS);
+  val = stun_message_append_string (&req, STUN_ATTRIBUTE_USERNAME,
+      (char *) ufrag);
+  assert (val == STUN_MESSAGE_RETURN_SUCCESS);
+  rlen = stun_agent_finish_message (&agent, &req, pass, pass_len);
+  assert (rlen > 0);
+
+  len = sizeof (resp_buf);
+  control = false;
+  val2 = stun_usage_ice_conncheck_create_reply (&agent, &req,
+      &resp, resp_buf, &len, &addr.storage,
+      sizeof (addr.ip4), &control, tie, STUN_USAGE_ICE_COMPATIBILITY_RFC5245);
+  assert (val2 == STUN_USAGE_ICE_RETURN_ROLE_CONFLICT);
   assert (len > 0);
   assert (control == false);
   assert (stun_agent_validate (&agent, &resp, resp_buf, len,
@@ -259,7 +304,6 @@ int main (void)
   assert (stun_message_get_class (&resp) == STUN_ERROR);
   stun_message_find_error (&resp, &code);
   assert (code == STUN_ERROR_ROLE_CONFLICT);
-
 
   return 0;
 }
