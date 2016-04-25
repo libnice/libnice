@@ -439,7 +439,7 @@ nice_component_set_selected_remote_candidate (NiceComponent *component,
     NiceCandidate *tmp = item->data;
     guint64 tmp_prio = 0;
 
-    if (tmp->transport != candidate->transport ||
+    if (tmp->transport != conn_check_match_transport(candidate->transport) ||
 	tmp->addr.s.addr.sa_family != candidate->addr.s.addr.sa_family ||
         tmp->type != NICE_CANDIDATE_TYPE_HOST)
       continue;
