@@ -2783,8 +2783,7 @@ nice_agent_gather_candidates (
                 " s%d:%d. Invalid interface?", agent, ip, stream->id,
                 component->id);
           }
-          ret = FALSE;
-          goto error;
+          continue;
         }
 
         nice_address_set_port (addr, 0);
