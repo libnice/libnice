@@ -304,7 +304,7 @@ static gboolean priv_conn_check_tick_stream (NiceStream *stream, NiceAgent *agen
 {
   gboolean keep_timer_going = FALSE;
   guint s_inprogress = 0, s_succeeded = 0, s_discovered = 0,
-      s_nominated = 0, s_waiting_for_nomination = 0;
+      s_nominated = 0, s_waiting_for_nomination = 0, s_valid = 0;
   guint frozen = 0, waiting = 0;
   GSList *i, *k;
 
@@ -380,6 +380,8 @@ static gboolean priv_conn_check_tick_stream (NiceStream *stream, NiceAgent *agen
       ++s_succeeded;
     else if (p->state == NICE_CHECK_DISCOVERED)
       ++s_discovered;
+    if (p->valid)
+      ++s_valid;
 
     if ((p->state == NICE_CHECK_SUCCEEDED || p->state == NICE_CHECK_DISCOVERED)
         && p->nominated)
@@ -425,9 +427,9 @@ static gboolean priv_conn_check_tick_stream (NiceStream *stream, NiceAgent *agen
     if (tick_counter++ % 50 == 0 || keep_timer_going != TRUE)
       nice_debug ("Agent %p : stream %u: timer tick #%u: %u frozen, %u in-progress, "
           "%u waiting, %u succeeded, %u discovered, %u nominated, "
-          "%u waiting-for-nom.", agent, stream->id,
+          "%u waiting-for-nom, %u valid.", agent, stream->id,
           tick_counter, frozen, s_inprogress, waiting, s_succeeded,
-          s_discovered, s_nominated, s_waiting_for_nomination);
+          s_discovered, s_nominated, s_waiting_for_nomination, s_valid);
   }
 
   return keep_timer_going;
@@ -1365,7 +1367,7 @@ static void priv_update_check_list_failed_components (NiceAgent *agent, NiceStre
 static void priv_update_check_list_state_for_ready (NiceAgent *agent, NiceStream *stream, NiceComponent *component)
 {
   GSList *i;
-  guint succeeded = 0, nominated = 0;
+  guint valid = 0, nominated = 0;
 
   g_assert (component);
 
@@ -1373,9 +1375,8 @@ static void priv_update_check_list_state_for_ready (NiceAgent *agent, NiceStream
   for (i = stream->conncheck_list; i; i = i->next) {
     CandidateCheckPair *p = i->data;
     if (p->component_id == component->id) {
-      if (p->state == NICE_CHECK_SUCCEEDED ||
-	  p->state == NICE_CHECK_DISCOVERED) {
-	++succeeded;
+      if (p->valid) {
+	++valid;
 	if (p->nominated == TRUE) {
           ++nominated;
 	}
@@ -1383,7 +1384,7 @@ static void priv_update_check_list_state_for_ready (NiceAgent *agent, NiceStream
     }
   }
 
-  if (nominated > 0) {
+  if (valid > 0) {
     /* Only go to READY if no checks are left in progress. If there are
      * any that are kept, then this function will be called again when the
      * conncheck tick timer finishes them all */
@@ -1402,7 +1403,7 @@ static void priv_update_check_list_state_for_ready (NiceAgent *agent, NiceStream
           component->id, NICE_COMPONENT_STATE_READY);
     }
   }
-  nice_debug ("Agent %p : conn.check list status: %u nominated, %u succeeded, c-id %u.", agent, nominated, succeeded, component->id);
+  nice_debug ("Agent %p : conn.check list status: %u nominated, %u valid, c-id %u.", agent, nominated, valid, component->id);
 }
 
 /*
@@ -1422,8 +1423,7 @@ static void priv_mark_pair_nominated (NiceAgent *agent, NiceStream *stream, Nice
     if (pair->local == localcand && pair->remote == remotecand) {
       nice_debug ("Agent %p : marking pair %p (%s) as nominated", agent, pair, pair->foundation);
       pair->nominated = TRUE;
-      if (pair->state == NICE_CHECK_SUCCEEDED ||
-	  pair->state == NICE_CHECK_DISCOVERED) {
+      if (pair->valid) {
 	priv_update_selected_pair (agent, component, pair);
         /* Do not step down to CONNECTED if we're already at state READY*/
         if (component->state != NICE_COMPONENT_STATE_READY) {
@@ -2051,10 +2051,8 @@ static guint priv_prune_pending_checks (NiceStream *stream, guint component_id)
 
   for (i = stream->conncheck_list; i; i = i->next) {
     CandidateCheckPair *p = i->data;
-    if (p->component_id == component_id &&
-        (p->state == NICE_CHECK_SUCCEEDED ||
-            p->state == NICE_CHECK_DISCOVERED) &&
-        p->nominated == TRUE){
+    if (p->component_id == component_id && p->valid == TRUE &&
+        p->nominated == TRUE) {
       if (p->priority > highest_nominated_priority) {
         highest_nominated_priority = p->priority;
       }
@@ -2406,8 +2404,6 @@ static CandidateCheckPair *priv_process_response_check_for_reflexive(NiceAgent *
   }
 
   if (new_pair) {
-    /* note: this is same as "adding to VALID LIST" in the spec
-       text */
     p->state = NICE_CHECK_SUCCEEDED;
     nice_debug ("Agent %p : conncheck %p SUCCEEDED.", agent, p);
     priv_conn_check_unfreeze_related (agent, stream, p);
@@ -2431,6 +2427,11 @@ static CandidateCheckPair *priv_process_response_check_for_reflexive(NiceAgent *
                                              local_cand, p);
     nice_debug ("Agent %p : conncheck %p FAILED, %p DISCOVERED.", agent, p, new_pair);
   }
+
+  /* note: this is same as "adding to VALID LIST" in the spec
+     text */
+  if (new_pair)
+    new_pair->valid = TRUE;
 
   return new_pair;
 }
@@ -2511,6 +2512,8 @@ static gboolean priv_map_reply_to_conn_check_request (NiceAgent *agent, NiceStre
             /* note: this is same as "adding to VALID LIST" in the spec
                text */
             p->state = NICE_CHECK_SUCCEEDED;
+            p->valid = TRUE;
+            g_assert_not_reached ();
             nice_debug ("Agent %p : Mapped address not found."
                 " conncheck %p SUCCEEDED.", agent, p);
             priv_conn_check_unfreeze_related (agent, stream, p);

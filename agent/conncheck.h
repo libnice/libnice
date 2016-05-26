@@ -87,6 +87,7 @@ struct _CandidateCheckPair
   gboolean nominated;
   gboolean controlling;
   gboolean timer_restarted;
+  gboolean valid;
   guint64 priority;
   GTimeVal next_tick;       /* next tick timestamp */
   StunTimer timer;
