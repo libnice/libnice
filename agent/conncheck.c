@@ -1446,7 +1446,7 @@ static void priv_mark_pair_nominated (NiceAgent *agent, NiceStream *stream, Nice
 }
 
 guint32
-ensure_unique_priority (Component *component, guint32 priority)
+ensure_unique_priority (NiceComponent *component, guint32 priority)
 {
   GSList *item;
 
@@ -2319,7 +2319,7 @@ static int priv_store_pending_check (NiceAgent *agent, NiceComponent *component,
  *
  * @return created pair, or NULL on fatal (memory allocation) errors
  */
-static CandidateCheckPair *priv_add_peer_reflexive_pair (NiceAgent *agent, guint stream_id, Component *component, NiceCandidate *local_cand, CandidateCheckPair *parent_pair)
+static CandidateCheckPair *priv_add_peer_reflexive_pair (NiceAgent *agent, guint stream_id, NiceComponent *component, NiceCandidate *local_cand, CandidateCheckPair *parent_pair)
 {
   CandidateCheckPair *pair = g_slice_new0 (CandidateCheckPair);
   NiceStream *stream = agent_find_stream (agent, stream_id);

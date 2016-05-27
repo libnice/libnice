@@ -111,6 +111,6 @@ void
 conn_check_prune_socket (NiceAgent *agent, NiceStream *stream, NiceComponent *component,
     NiceSocket *sock);
 
-guint32 ensure_unique_priority (Component *component, guint32 priority);
+guint32 ensure_unique_priority (NiceComponent *component, guint32 priority);
 
 #endif /*_NICE_CONNCHECK_H */
