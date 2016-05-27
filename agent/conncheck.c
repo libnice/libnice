@@ -1106,15 +1106,13 @@ static GSList *prune_cancelled_conn_check (GSList *conncheck_list)
  * reaches us. The special case is documented in sect 7.2 
  * if ICE spec (ID-19).
  */
-void conn_check_remote_candidates_set(NiceAgent *agent)
+void conn_check_remote_candidates_set(NiceAgent *agent, NiceStream *stream, NiceComponent *component)
 {
-  GSList *i, *j, *k, *l, *m, *n;
+  GSList *j, *k, *l, *m, *n;
 
-  for (i = agent->streams; i ; i = i->next) {
-    NiceStream *stream = i->data;
-    for (j = stream->conncheck_list; j ; j = j->next) {
-      CandidateCheckPair *pair = j->data;
-      NiceComponent *component = nice_stream_find_component_by_id (stream, pair->component_id);
+  for (j = stream->conncheck_list; j ; j = j->next) {
+    CandidateCheckPair *pair = j->data;
+    if (pair->component_id == component->id) {
       gboolean match = FALSE;
 
       /* performn delayed processing of spec steps section 7.2.1.4,
@@ -1221,18 +1219,18 @@ void conn_check_remote_candidates_set(NiceAgent *agent)
           }
         }
       }
-
-      /* Once we process the pending checks, we should free them to avoid
-       * reprocessing them again if a dribble-mode set_remote_candidates
-       * is called */
-      g_slist_free_full (component->incoming_checks,
-          (GDestroyNotify) incoming_check_free);
-      component->incoming_checks = NULL;
     }
-
-    stream->conncheck_list =
-        prune_cancelled_conn_check (stream->conncheck_list);
   }
+
+  /* Once we process the pending checks, we should free them to avoid
+   * reprocessing them again if a dribble-mode set_remote_candidates
+   * is called */
+  g_slist_free_full (component->incoming_checks,
+      (GDestroyNotify) incoming_check_free);
+  component->incoming_checks = NULL;
+
+  stream->conncheck_list =
+      prune_cancelled_conn_check (stream->conncheck_list);
 }
 
 /*
