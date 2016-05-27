@@ -1995,6 +1995,7 @@ int conn_check_send (NiceAgent *agent, CandidateCheckPair *pair)
        * by connecting to the peer. The new socket is stored in the candidate
        * check pair, until we discover a new local peer reflexive */
       if (pair->sockptr->fileno == NULL &&
+          pair->sockptr->type != NICE_SOCKET_TYPE_UDP_TURN &&
           pair->local->transport == NICE_CANDIDATE_TRANSPORT_TCP_ACTIVE) {
         NiceStream *stream2 = NULL;
         NiceComponent *component2 = NULL;
