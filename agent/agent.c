@@ -2786,6 +2786,10 @@ nice_agent_gather_candidates (
                 " s%d:%d. Invalid interface?", agent, ip, stream->id,
                 component->id);
           }
+          if (agent->local_addresses == NULL) {
+            /* Ignore when an auto-generated address fails. */
+            continue;
+          }
           ret = FALSE;
           goto error;
         }
