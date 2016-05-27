@@ -81,6 +81,105 @@ static int priv_timer_expired (GTimeVal *timer, GTimeVal *now)
     now->tv_sec >= timer->tv_sec;
 }
 
+static gchar
+priv_state_to_gchar (NiceCheckState state)
+{
+  switch (state) {
+    case NICE_CHECK_WAITING:
+      return 'W';
+    case NICE_CHECK_IN_PROGRESS:
+      return 'I';
+    case NICE_CHECK_SUCCEEDED:
+      return 'S';
+    case NICE_CHECK_FAILED:
+      return 'F';
+    case NICE_CHECK_FROZEN:
+      return 'Z';
+    case NICE_CHECK_CANCELLED:
+      return 'C';
+    case NICE_CHECK_DISCOVERED:
+      return 'D';
+    default:
+      g_assert_not_reached ();
+  }
+}
+
+static const gchar *
+priv_candidate_type_to_string (NiceCandidateType type)
+{
+  switch (type) {
+    case NICE_CANDIDATE_TYPE_HOST:
+      return "host";
+    case NICE_CANDIDATE_TYPE_SERVER_REFLEXIVE:
+      return "srflx";
+    case NICE_CANDIDATE_TYPE_PEER_REFLEXIVE:
+      return "prflx";
+    case NICE_CANDIDATE_TYPE_RELAYED:
+      return "relay";
+    default:
+      g_assert_not_reached ();
+  }
+}
+
+/*
+ * Dump the conncheck lists of the agent
+ */
+static void
+priv_print_conn_check_lists (NiceAgent *agent, const gchar *where, const gchar *detail)
+{
+  GSList *i, *k;
+  guint j;
+
+  if (!nice_debug_is_verbose ())
+    return;
+
+#define PRIORITY_LEN 32
+
+  nice_debug ("Agent %p : *** conncheck list DUMP (called from %s%s)",
+      agent, where, detail ? detail : "");
+  for (i = agent->streams; i ; i = i->next) {
+    NiceStream *stream = i->data;
+    for (j = 1; j <= stream->n_components; j++) {
+      for (k = stream->conncheck_list; k ; k = k->next) {
+        CandidateCheckPair *pair = k->data;
+        if (pair->component_id == j) {
+          gchar priority[PRIORITY_LEN];
+          guint p1, p2, p3;
+          gchar local_addr[INET6_ADDRSTRLEN];
+          gchar remote_addr[INET6_ADDRSTRLEN];
+
+          p1 = (pair->priority >> 32);
+          p2 = (pair->priority >> 1) & 0x7fffffff;
+          p3 = (pair->priority & 1);
+
+          g_snprintf (priority, PRIORITY_LEN,
+            "%02x:%04x:%02x:%02x:%04x:%02x:%1x",
+            (p1 >> 24) & 0x7f, (p1 >> 8) & 0xffff, (p1 & 0xff),
+            (p2 >> 24) & 0x7f, (p2 >> 8) & 0xffff, (p2 & 0xff),
+            p3);
+
+          nice_address_to_string (&pair->local->addr, local_addr);
+          nice_address_to_string (&pair->remote->addr, remote_addr);
+
+          nice_debug ("Agent %p : *** sc=%d/%d : pair %p : "
+              "f=%s t=%s:%s p=%s [%s]:%u > [%s]:%u state=%c%s%s%s",
+              agent, pair->stream_id, pair->component_id, pair,
+              pair->foundation,
+              priv_candidate_type_to_string (pair->local->type),
+              priv_candidate_type_to_string (pair->remote->type),
+              priority,
+              local_addr, nice_address_get_port (&pair->local->addr),
+              remote_addr, nice_address_get_port (&pair->remote->addr),
+              priv_state_to_gchar (pair->state),
+              pair->valid ? "V" : "",
+              pair->nominated ? "N" : "",
+              g_slist_find (agent->triggered_check_queue, pair) ? "T" : "");
+        }
+      }
+    }
+  }
+}
+
 /* Add the pair to the triggered checks list, if not already present
  */
 static void
@@ -308,6 +407,8 @@ static gboolean priv_conn_check_tick_stream (NiceStream *stream, NiceAgent *agen
   guint frozen = 0, waiting = 0;
   GSList *i, *k;
 
+  priv_print_conn_check_lists (agent, G_STRFUNC, NULL);
+
   for (i = stream->conncheck_list; i ; i = i->next) {
     CandidateCheckPair *p = i->data;
 
@@ -518,6 +619,8 @@ static gboolean priv_conn_check_tick_unlocked (NiceAgent *agent)
   }
 
   if (pair) {
+    priv_print_conn_check_lists (agent, G_STRFUNC,
+        ", got a pair in Waiting state");
     priv_conn_check_initiate (agent, pair);
     return TRUE;
   }
@@ -2577,6 +2680,8 @@ static gboolean priv_map_reply_to_conn_check_request (NiceAgent *agent, NiceStre
                   stream->id, component->id, NICE_COMPONENT_STATE_CONNECTED);
             }
           }
+
+          priv_print_conn_check_lists (agent, G_STRFUNC, NULL);
 
           /* step: update pair states (ICE 7.1.2.2.3 "Updating pair
              states" and 8.1.2 "Updating States", ID-19) */
