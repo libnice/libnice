@@ -72,7 +72,9 @@ static size_t priv_create_username (NiceAgent *agent, NiceStream *stream,
 static size_t priv_get_password (NiceAgent *agent, NiceStream *stream,
     NiceCandidate *remote, uint8_t **password);
 static void conn_check_free_item (gpointer data);
-static void priv_conn_check_add_for_candidate_pair_matched (NiceAgent *agent, guint stream_id, NiceComponent *component, NiceCandidate *local, NiceCandidate *remote, NiceCheckState initial_state);
+static CandidateCheckPair *priv_conn_check_add_for_candidate_pair_matched (
+    NiceAgent *agent, guint stream_id, NiceComponent *component,
+    NiceCandidate *local, NiceCandidate *remote, NiceCheckState initial_state);
 
 static int priv_timer_expired (GTimeVal *timer, GTimeVal *now)
 {
@@ -1582,7 +1584,9 @@ ensure_unique_priority (NiceComponent *component, guint32 priority)
  * Creates a new connectivity check pair and adds it to
  * the agent's list of checks.
  */
-static void priv_add_new_check_pair (NiceAgent *agent, guint stream_id, NiceComponent *component, NiceCandidate *local, NiceCandidate *remote, NiceCheckState initial_state, gboolean use_candidate)
+static CandidateCheckPair *priv_add_new_check_pair (NiceAgent *agent,
+    guint stream_id, NiceComponent *component, NiceCandidate *local,
+    NiceCandidate *remote, NiceCheckState initial_state, gboolean use_candidate)
 {
   NiceStream *stream;
   CandidateCheckPair *pair;
@@ -1631,6 +1635,8 @@ static void priv_add_new_check_pair (NiceAgent *agent, guint stream_id, NiceComp
   if (agent->compatibility == NICE_COMPATIBILITY_RFC5245) {
     priv_limit_conn_check_list_size (stream->conncheck_list, agent->max_conn_checks);
   }
+
+  return pair;
 }
 
 NiceCandidateTransport
@@ -1651,14 +1657,16 @@ conn_check_match_transport (NiceCandidateTransport transport)
   }
 }
 
-static void priv_conn_check_add_for_candidate_pair_matched (NiceAgent *agent,
-    guint stream_id, NiceComponent *component, NiceCandidate *local,
-    NiceCandidate *remote, NiceCheckState initial_state)
+static CandidateCheckPair *priv_conn_check_add_for_candidate_pair_matched (
+    NiceAgent *agent, guint stream_id, NiceComponent *component,
+     NiceCandidate *local, NiceCandidate *remote, NiceCheckState initial_state)
 {
+  CandidateCheckPair *pair;
+
   nice_debug ("Agent %p : Adding check pair between %s and %s for s%d/c%d",
       agent, local->foundation, remote->foundation,
       stream_id, component->id);
-  priv_add_new_check_pair (agent, stream_id, component, local, remote,
+  pair = priv_add_new_check_pair (agent, stream_id, component, local, remote,
       initial_state, FALSE);
   if (component->state == NICE_COMPONENT_STATE_CONNECTED ||
       component->state == NICE_COMPONENT_STATE_READY) {
@@ -1672,6 +1680,8 @@ static void priv_conn_check_add_for_candidate_pair_matched (NiceAgent *agent,
         component->id,
         NICE_COMPONENT_STATE_CONNECTING);
   }
+
+  return pair;
 }
 
 gboolean conn_check_add_for_candidate_pair (NiceAgent *agent,
@@ -3574,10 +3584,16 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, NiceStream *stream,
             remote_candidate2 ? remote_candidate2 : remote_candidate);
         if(remote_candidate) {
           if (local_candidate &&
-              local_candidate->transport == NICE_CANDIDATE_TRANSPORT_TCP_PASSIVE)
-            priv_conn_check_add_for_candidate_pair_matched (agent,
-                stream->id, component, local_candidate, remote_candidate, NICE_CHECK_DISCOVERED);
-          else
+              local_candidate->transport == NICE_CANDIDATE_TRANSPORT_TCP_PASSIVE) {
+            CandidateCheckPair *pair;
+
+            pair = priv_conn_check_add_for_candidate_pair_matched (agent,
+                stream->id, component, local_candidate, remote_candidate,
+                NICE_CHECK_DISCOVERED);
+            if (pair) {
+              pair->valid = TRUE;
+            }
+          } else
             conn_check_add_for_candidate (agent, stream->id, component, remote_candidate);
         }
       }
