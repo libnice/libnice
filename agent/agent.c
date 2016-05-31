@@ -3622,6 +3622,7 @@ agent_recv_message_unlocked (
     is_turn = TRUE;
 
   if (!is_turn && component->turn_candidate &&
+      component->turn_candidate->turn->type == NICE_RELAY_TYPE_TURN_UDP &&
       nice_address_equal (message->from,
           &component->turn_candidate->turn->server)) {
     is_turn = TRUE;
@@ -3633,7 +3634,8 @@ agent_recv_message_unlocked (
     TurnServer *turn = item->data;
     GSList *i = NULL;
 
-    if (!nice_address_equal (message->from, &turn->server))
+    if (turn->type != NICE_RELAY_TYPE_TURN_UDP ||
+        !nice_address_equal (message->from, &turn->server))
       continue;
 
     nice_debug_verbose ("Agent %p : Packet received from TURN server candidate.",
@@ -3644,6 +3646,7 @@ agent_recv_message_unlocked (
       NiceCandidate *cand = i->data;
 
       if (cand->type == NICE_CANDIDATE_TYPE_RELAYED &&
+          cand->turn == turn &&
           cand->stream_id == stream->id) {
         retval = nice_udp_turn_socket_parse_recv_message (cand->sockptr, &nicesock,
             message);
