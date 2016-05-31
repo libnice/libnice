@@ -3659,7 +3659,8 @@ conn_check_prune_socket (NiceAgent *agent, NiceStream *stream, NiceComponent *co
     CandidateCheckPair *p = l->data;
 
     if ((p->local != NULL && p->local->sockptr == sock) ||
-        (p->remote != NULL && p->remote->sockptr == sock)) {
+        (p->remote != NULL && p->remote->sockptr == sock) ||
+        (p->sockptr == sock)) {
       nice_debug ("Agent %p : Retransmissions failed, giving up on "
           "connectivity check %p", agent, p);
       candidate_check_pair_fail (stream, agent, p);
