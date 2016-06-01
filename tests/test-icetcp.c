@@ -125,6 +125,14 @@ static void cb_candidate_gathering_done(NiceAgent *agent, guint stream_id, gpoin
   (void)agent;
 }
 
+static void check_loop_quit_condition (void)
+{
+  if (global_ready_reached &&
+      global_lagent_cands >= 2 && global_ragent_cands >= 2) {
+    g_main_loop_quit (global_mainloop);
+  }
+}
+
 static void cb_component_state_changed (NiceAgent *agent, guint stream_id, guint component_id, guint state, gpointer data)
 {
   gboolean ready_to_connected = FALSE;
@@ -158,9 +166,9 @@ static void cb_component_state_changed (NiceAgent *agent, guint stream_id, guint
       global_ready_reached == FALSE) {
     g_debug ("Components ready/failed achieved. Stopping mailoop");
     global_ready_reached = TRUE;
-    g_main_loop_quit (global_mainloop); 
-    return;
   }
+
+  check_loop_quit_condition ();
 
 #if 0
   /* signal status via a global variable */
@@ -183,6 +191,8 @@ static void cb_new_selected_pair(NiceAgent *agent, guint stream_id, guint compon
     ++global_lagent_cands;
   else if (GPOINTER_TO_UINT (data) == 2)
     ++global_ragent_cands;
+
+  check_loop_quit_condition ();
 
   /* XXX: dear compiler, these are for you: */
   (void)agent; (void)stream_id; (void)component_id; (void)lfoundation; (void)rfoundation;
