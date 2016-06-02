@@ -3622,12 +3622,14 @@ agent_recv_message_unlocked (
     is_turn = TRUE;
 
   if (!is_turn && component->turn_candidate &&
+      nice_socket_is_based_on (component->turn_candidate->sockptr, nicesock) &&
       nice_address_equal (message->from,
           &component->turn_candidate->turn->server)) {
     is_turn = TRUE;
     retval = nice_udp_turn_socket_parse_recv_message (
         component->turn_candidate->sockptr, &nicesock, message);
   }
+
   for (item = component->turn_servers; item && !is_turn;
        item = g_list_next (item)) {
     TurnServer *turn = item->data;
@@ -3644,7 +3646,9 @@ agent_recv_message_unlocked (
       NiceCandidate *cand = i->data;
 
       if (cand->type == NICE_CANDIDATE_TYPE_RELAYED &&
-          cand->stream_id == stream->id) {
+          cand->turn == turn &&
+          cand->stream_id == stream->id &&
+          nice_socket_is_based_on (cand->sockptr, nicesock)) {
         retval = nice_udp_turn_socket_parse_recv_message (cand->sockptr, &nicesock,
             message);
         break;
