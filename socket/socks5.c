@@ -169,9 +169,8 @@ socket_recv_messages (NiceSocket *sock,
   guint i;
   gint ret = -1;
 
-  /* Socket has been closed: */
-  if (sock->priv == NULL)
-    return 0;
+  /* Make sure socket has not been freed: */
+  g_assert (sock->priv != NULL);
 
   switch (priv->state) {
     case SOCKS_STATE_CONNECTED:
@@ -425,9 +424,8 @@ socket_send_messages (NiceSocket *sock, const NiceAddress *to,
 {
   Socks5Priv *priv = sock->priv;
 
-  /* Socket has been closed: */
-  if (sock->priv == NULL)
-    return -1;
+  /* Make sure socket has not been freed: */
+  g_assert (sock->priv != NULL);
 
   if (priv->state == SOCKS_STATE_CONNECTED) {
     /* Fast path: pass through to the base socket once connected. */

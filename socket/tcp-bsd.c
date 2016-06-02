@@ -237,9 +237,8 @@ socket_recv_messages (NiceSocket *sock,
   TcpPriv *priv = sock->priv;
   guint i;
 
-  /* Socket has been closed: */
-  if (sock->priv == NULL)
-    return 0;
+  /* Make sure socket has not been freed: */
+  g_assert (sock->priv != NULL);
 
   /* Don't try to access the socket if it had an error */
   if (priv->error)
@@ -291,9 +290,8 @@ socket_send_message (NiceSocket *sock,
   GError *gerr = NULL;
   gsize message_len;
 
-  /* Socket has been closed: */
-  if (sock->priv == NULL)
-    return -1;
+  /* Make sure socket has not been freed: */
+  g_assert (sock->priv != NULL);
 
   /* Don't try to access the socket if it had an error, otherwise we risk a
    * crash with SIGPIPE (Broken pipe) */
@@ -352,9 +350,8 @@ socket_send_messages (NiceSocket *sock, const NiceAddress *to,
 {
   guint i;
 
-  /* Socket has been closed: */
-  if (sock->priv == NULL)
-    return -1;
+  /* Make sure socket has not been freed: */
+  g_assert (sock->priv != NULL);
 
   for (i = 0; i < n_messages; i++) {
     const NiceOutputMessage *message = &messages[i];

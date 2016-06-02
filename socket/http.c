@@ -283,9 +283,8 @@ socket_recv_messages (NiceSocket *sock,
   HttpPriv *priv = sock->priv;
   gint ret = -1;
 
-  /* Socket has been closed: */
-  if (sock->priv == NULL)
-    return 0;
+  /* Make sure socket has not been freed: */
+  g_assert (sock->priv != NULL);
 
   if (priv->state == HTTP_STATE_CONNECTED) {
     guint i;
@@ -578,9 +577,8 @@ socket_send_messages (NiceSocket *sock, const NiceAddress *to,
 {
   HttpPriv *priv = sock->priv;
 
-  /* Socket has been closed: */
-  if (sock->priv == NULL)
-    return -1;
+  /* Make sure socket has not been freed: */
+  g_assert (sock->priv != NULL);
 
   if (priv->state == HTTP_STATE_CONNECTED) {
     /* Fast path. */

@@ -206,9 +206,8 @@ socket_recv_messages (NiceSocket *sock,
 {
   PseudoSSLPriv *priv = sock->priv;
 
-  /* Socket has been closed: */
-  if (sock->priv == NULL)
-    return 0;
+  /* Make sure socket has not been freed: */
+  g_assert (sock->priv != NULL);
 
   if (priv->handshaken) {
     if (priv->base_socket) {
@@ -258,9 +257,8 @@ socket_send_messages (NiceSocket *sock, const NiceAddress *to,
 {
   PseudoSSLPriv *priv = sock->priv;
 
-  /* Socket has been closed: */
-  if (sock->priv == NULL)
-    return -1;
+  /* Make sure socket has not been freed: */
+  g_assert (sock->priv != NULL);
 
   if (priv->handshaken) {
     /* Fast path: pass directly through to the base socket once the handshake is

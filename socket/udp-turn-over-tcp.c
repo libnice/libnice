@@ -136,9 +136,8 @@ socket_recv_message (NiceSocket *sock, NiceInputMessage *recv_message)
   GInputVector local_recv_buf;
   NiceInputMessage local_recv_message;
 
-  /* Socket has been closed: */
-  if (sock->priv == NULL)
-    return 0;
+  /* Make sure socket has not been freed: */
+  g_assert (sock->priv != NULL);
 
   if (priv->expecting_len == 0) {
     guint headerlen = 0;
@@ -243,9 +242,8 @@ socket_recv_messages (NiceSocket *nicesock,
   guint i;
   gboolean error = FALSE;
 
-  /* Socket has been closed: */
-  if (nicesock->priv == NULL)
-    return 0;
+  /* Make sure socket has not been freed: */
+  g_assert (nicesock->priv != NULL);
 
   for (i = 0; i < n_recv_messages; i++) {
     gssize len;
@@ -287,9 +285,8 @@ socket_send_message (NiceSocket *sock, const NiceAddress *to,
   } header_buf;
   guint offset = 0;
 
-  /* Socket has been closed: */
-  if (sock->priv == NULL)
-    return -1;
+  /* Make sure socket has not been freed: */
+  g_assert (sock->priv != NULL);
 
   /* Count the number of buffers. */
   if (message->n_buffers == -1) {
@@ -388,9 +385,8 @@ socket_send_messages (NiceSocket *sock, const NiceAddress *to,
 {
   guint i;
 
-  /* Socket has been closed: */
-  if (sock->priv == NULL)
-    return -1;
+  /* Make sure socket has not been freed: */
+  g_assert (sock->priv != NULL);
 
   for (i = 0; i < n_messages; i++) {
     const NiceOutputMessage *message = &messages[i];

@@ -341,9 +341,8 @@ socket_recv_messages (NiceSocket *sock,
   gboolean error = FALSE;
   guint n_valid_messages;
 
-  /* Socket has been closed: */
-  if (sock->priv == NULL)
-    return 0;
+  /* Make sure socket has not been freed: */
+  g_assert (sock->priv != NULL);
 
   nice_debug_verbose ("received message on TURN socket");
 
@@ -700,9 +699,8 @@ socket_send_message (NiceSocket *sock, const NiceAddress *to,
   ChannelBinding *binding = NULL;
   gint ret;
 
-  /* Socket has been closed: */
-  if (sock->priv == NULL)
-    return -1;
+  /* Make sure socket has not been freed: */
+  g_assert (sock->priv != NULL);
 
   for (i = priv->channels; i; i = i->next) {
     ChannelBinding *b = i->data;
@@ -876,9 +874,8 @@ socket_send_messages (NiceSocket *sock, const NiceAddress *to,
 {
   guint i;
 
-  /* Socket has been closed: */
-  if (sock->priv == NULL)
-    return -1;
+  /* Make sure socket has not been freed: */
+  g_assert (sock->priv != NULL);
 
   for (i = 0; i < n_messages; i++) {
     const NiceOutputMessage *message = &messages[i];
