@@ -78,14 +78,14 @@
 #include "agent-priv.h"
 
 struct _PseudoTcpSocketClass {
-    GIOStreamClass parent_class;
+    GObjectClass parent_class;
 };
 
 typedef struct _PseudoTcpSocketPrivate PseudoTcpSocketPrivate;
 
 
 struct _PseudoTcpSocket {
-    GIOStream parent;
+    GObject parent;
     PseudoTcpSocketPrivate *priv;
 };
 
