@@ -3671,8 +3671,9 @@ conn_check_prune_socket (NiceAgent *agent, NiceStream *stream, NiceComponent *co
   }
 
   /* Prune from the candidate check pairs. */
-  for (l = stream->conncheck_list; l != NULL; l = l->next) {
+  for (l = stream->conncheck_list; l != NULL;) {
     CandidateCheckPair *p = l->data;
+    GSList *next = l->next;
 
     if ((p->local != NULL && p->local->sockptr == sock) ||
         (p->remote != NULL && p->remote->sockptr == sock) ||
@@ -3680,6 +3681,10 @@ conn_check_prune_socket (NiceAgent *agent, NiceStream *stream, NiceComponent *co
       nice_debug ("Agent %p : Retransmissions failed, giving up on "
           "connectivity check %p", agent, p);
       candidate_check_pair_fail (stream, agent, p);
+      conn_check_free_item (p);
+      stream->conncheck_list = g_slist_delete_link (stream->conncheck_list, l);
     }
+
+    l = next;
   }
 }
