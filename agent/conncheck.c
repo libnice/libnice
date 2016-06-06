@@ -1493,7 +1493,7 @@ static void priv_update_check_list_state_for_ready (NiceAgent *agent, NiceStream
     }
   }
 
-  if (valid > 0) {
+  if (nominated > 0) {
     /* Only go to READY if no checks are left in progress. If there are
      * any that are kept, then this function will be called again when the
      * conncheck tick timer finishes them all */
