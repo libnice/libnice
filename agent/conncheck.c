@@ -76,6 +76,8 @@ static void conn_check_free_item (gpointer data);
 static CandidateCheckPair *priv_conn_check_add_for_candidate_pair_matched (
     NiceAgent *agent, guint stream_id, NiceComponent *component,
     NiceCandidate *local, NiceCandidate *remote, NiceCheckState initial_state);
+static gboolean priv_update_selected_pair (NiceAgent *agent,
+    NiceComponent *component, CandidateCheckPair *pair);
 
 static int priv_timer_expired (GTimeVal *timer, GTimeVal *now)
 {
@@ -515,6 +517,7 @@ static gboolean priv_conn_check_tick_stream (NiceStream *stream, NiceAgent *agen
                p->state == NICE_CHECK_DISCOVERED)) {
 	    nice_debug ("Agent %p : restarting check %p as the nominated pair.", agent, p);
 	    p->nominated = TRUE;
+            priv_update_selected_pair (agent, component, p);
             priv_add_pair_to_triggered_check_queue (agent, p);
 	    break; /* move to the next component */
 	  }
@@ -1530,7 +1533,6 @@ static void priv_update_check_list_state_for_ready (NiceAgent *agent, NiceStream
 	++valid;
 	if (p->nominated == TRUE) {
           ++nominated;
-          priv_update_selected_pair (agent, component, p);
 	}
       }
     }
