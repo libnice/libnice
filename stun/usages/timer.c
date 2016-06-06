@@ -104,7 +104,7 @@ void stun_timer_start (StunTimer *timer, unsigned int initial_timeout,
     unsigned int max_retransmissions)
 {
   stun_gettime (&timer->deadline);
-  timer->retransmissions = 0;
+  timer->retransmissions = 1;
   timer->delay = initial_timeout;
   timer->max_retransmissions = max_retransmissions;
   add_delay (&timer->deadline, timer->delay);
