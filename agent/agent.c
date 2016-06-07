@@ -2742,28 +2742,29 @@ nice_agent_gather_candidates (
     }
   }
 
-  /* generate a local host candidate for each local address */
-  for (i = local_addresses; i; i = i->next) {
-    NiceAddress *addr = i->data;
-    NiceCandidate *host_candidate;
+  for (cid = 1; cid <= stream->n_components; cid++) {
+    NiceComponent *component = nice_stream_find_component_by_id (stream, cid);
+    gboolean found_local_address = FALSE;
+    enum {
+      ADD_HOST_MIN = 0,
+      ADD_HOST_UDP = ADD_HOST_MIN,
+      ADD_HOST_TCP_ACTIVE,
+      ADD_HOST_TCP_PASSIVE,
+      ADD_HOST_MAX = ADD_HOST_TCP_PASSIVE
+    } add_type;
+
+    if (component == NULL)
+      continue;
+
+    /* generate a local host candidate for each local address */
+    for (i = local_addresses; i; i = i->next) {
+      NiceAddress *addr = i->data;
+      NiceCandidate *host_candidate;
 
 #ifdef HAVE_GUPNP
-    gchar local_ip[NICE_ADDRESS_STRING_LEN];
-    nice_address_to_string (addr, local_ip);
+      gchar local_ip[NICE_ADDRESS_STRING_LEN];
+      nice_address_to_string (addr, local_ip);
 #endif
-
-    for (cid = 1; cid <= stream->n_components; cid++) {
-      NiceComponent *component = nice_stream_find_component_by_id (stream, cid);
-      enum {
-        ADD_HOST_MIN = 0,
-        ADD_HOST_UDP = ADD_HOST_MIN,
-        ADD_HOST_TCP_ACTIVE,
-        ADD_HOST_TCP_PASSIVE,
-        ADD_HOST_MAX = ADD_HOST_TCP_PASSIVE
-      } add_type;
-
-      if (component == NULL)
-        continue;
 
       for (add_type = ADD_HOST_MIN; add_type <= ADD_HOST_MAX; add_type++) {
         NiceCandidateTransport transport;
@@ -2814,8 +2815,7 @@ nice_agent_gather_candidates (
         } else if (res == HOST_CANDIDATE_FAILED) {
           nice_debug ("Agent %p: Could ot retrieive component %d/%d", agent,
               stream->id, cid);
-          ret = FALSE;
-          goto error;
+          continue;
         } else if (res == HOST_CANDIDATE_CANT_CREATE_SOCKET) {
           if (nice_debug_is_enabled ()) {
             gchar ip[NICE_ADDRESS_STRING_LEN];
@@ -2824,14 +2824,10 @@ nice_agent_gather_candidates (
                 " s%d:%d. Invalid interface?", agent, ip, stream->id,
                 component->id);
           }
-          if (agent->local_addresses == NULL) {
-            /* Ignore when an auto-generated address fails. */
-            continue;
-          }
-          ret = FALSE;
-          goto error;
+          continue;
         }
 
+        found_local_address = TRUE;
         nice_address_set_port (addr, 0);
 
 
@@ -2887,6 +2883,13 @@ nice_agent_gather_candidates (
           }
         }
       }
+    }
+    /* Go to error if we could not find a local address for a given
+     * component
+     */
+    if (!found_local_address) {
+      ret = FALSE;
+      goto error;
     }
   }
 
