@@ -145,7 +145,11 @@ StunUsageTimerReturn stun_timer_refresh (StunTimer *timer)
     if (timer->retransmissions >= timer->max_retransmissions)
       return STUN_USAGE_TIMER_RETURN_TIMEOUT;
 
-    add_delay (&timer->deadline, timer->delay *= 2);
+    if (timer->retransmissions == timer->max_retransmissions - 1)
+      timer->delay = timer->delay / 2;
+    else
+      timer->delay = timer->delay * 2;
+    add_delay (&timer->deadline, timer->delay);
     timer->retransmissions++;
     return STUN_USAGE_TIMER_RETURN_RETRANSMIT;
   }
