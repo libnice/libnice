@@ -113,6 +113,9 @@ enum
   PROP_BYTESTREAM_TCP,
   PROP_KEEPALIVE_CONNCHECK,
   PROP_FORCE_RELAY,
+  PROP_STUN_MAX_RETRANSMISSIONS,
+  PROP_STUN_INITIAL_TIMEOUT,
+  PROP_STUN_RELIABLE_TIMEOUT,
 };
 
 
@@ -708,6 +711,76 @@ nice_agent_class_init (NiceAgentClass *klass)
 	FALSE,
         G_PARAM_READWRITE));
 
+   /**
+   * NiceAgent:stun-max-retransmissions
+   *
+   * The maximum number of retransmissions of the STUN binding requests
+   * used in the gathering stage, to find our local candidates, and used
+   * in the connection check stage, to test the validity of each
+   * constructed pair. This property is described as 'Rc' in the RFC
+   * 5389, with a default value of 7. The timeout of each STUN request
+   * is doubled for each retransmission, so the choice of this value has
+   * a direct impact on the time needed to move from the CONNECTED state
+   * to the READY state, and on the time needed to complete the GATHERING
+   * state.
+   *
+   * Since: UNRELEASED
+   */
+
+   g_object_class_install_property (gobject_class, PROP_STUN_MAX_RETRANSMISSIONS,
+      g_param_spec_uint (
+        "stun-max-retransmissions",
+        "STUN Max Retransmissions",
+        "Maximum number of STUN binding requests retransmissions "
+        "described as 'Rc' in the STUN specification.",
+        1, 99,
+        STUN_TIMER_DEFAULT_MAX_RETRANSMISSIONS,
+        G_PARAM_READWRITE | G_PARAM_CONSTRUCT));
+
+   /**
+   * NiceAgent:stun-initial-timeout
+   *
+   * The initial timeout (msecs) of the STUN binding requests
+   * used in the gathering stage, to find our local candidates.
+   * This property is described as 'RTO' in the RFC 5389 and RFC 5245.
+   * This timeout is doubled for each retransmission, until
+   * #NiceAgent:stun-max-retransmissions have been done,
+   * with an exception for the last restransmission, where the timeout is
+   * divided by two instead (RFC 5389 indicates that a customisable
+   * multiplier 'Rm' to 'RTO' should be used).
+   *
+   * Since: UNRELEASED
+   */
+
+   g_object_class_install_property (gobject_class, PROP_STUN_INITIAL_TIMEOUT,
+      g_param_spec_uint (
+        "stun-initial-timeout",
+        "STUN Initial Timeout",
+        "STUN timeout in msecs of the initial binding requests used in the "
+        "gathering state, described as 'RTO' in the ICE specification.",
+        20, 9999,
+        STUN_TIMER_DEFAULT_TIMEOUT,
+        G_PARAM_READWRITE | G_PARAM_CONSTRUCT));
+
+   /**
+   * NiceAgent:stun-reliable-timeout
+   *
+   * The initial timeout of the STUN binding requests used
+   * for a reliable timer.
+   *
+   * Since: UNRELEASED
+   */
+
+   g_object_class_install_property (gobject_class, PROP_STUN_RELIABLE_TIMEOUT,
+      g_param_spec_uint (
+        "stun-reliable-timeout",
+        "STUN Reliable Timeout",
+        "STUN timeout in msecs of the initial binding requests used for "
+        "a reliable timer.",
+        20, 99999,
+        STUN_TIMER_DEFAULT_RELIABLE_TIMEOUT,
+        G_PARAM_READWRITE | G_PARAM_CONSTRUCT));
+
   /* install signals */
 
   /**
@@ -1187,6 +1260,18 @@ nice_agent_get_property (
       g_value_set_boolean (value, agent->force_relay);
       break;
 
+    case PROP_STUN_MAX_RETRANSMISSIONS:
+      g_value_set_uint (value, agent->stun_max_retransmissions);
+      break;
+
+    case PROP_STUN_INITIAL_TIMEOUT:
+      g_value_set_uint (value, agent->stun_initial_timeout);
+      break;
+
+    case PROP_STUN_RELIABLE_TIMEOUT:
+      g_value_set_uint (value, agent->stun_reliable_timeout);
+      break;
+
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
     }
@@ -1372,6 +1457,18 @@ nice_agent_set_property (
 
     case PROP_FORCE_RELAY:
       agent->force_relay = g_value_get_boolean (value);
+      break;
+
+    case PROP_STUN_MAX_RETRANSMISSIONS:
+      agent->stun_max_retransmissions = g_value_get_uint (value);
+      break;
+
+    case PROP_STUN_INITIAL_TIMEOUT:
+      agent->stun_initial_timeout = g_value_get_uint (value);
+      break;
+
+    case PROP_STUN_RELIABLE_TIMEOUT:
+      agent->stun_reliable_timeout = g_value_get_uint (value);
       break;
 
     default:

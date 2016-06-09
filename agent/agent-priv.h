@@ -106,7 +106,6 @@ nice_input_message_iter_compare (const NiceInputMessageIter *a,
 
 #define NICE_AGENT_TIMER_TA_DEFAULT 20      /* timer Ta, msecs (impl. defined) */
 #define NICE_AGENT_TIMER_TR_DEFAULT 25000   /* timer Tr, msecs (impl. defined) */
-#define NICE_AGENT_TIMER_TR_MIN     15000   /* timer Tr, msecs (ICE ID-19) */
 #define NICE_AGENT_MAX_CONNECTIVITY_CHECKS_DEFAULT 100 /* see spec 5.7.3 (ID-19) */
 
 
@@ -132,6 +131,9 @@ struct _NiceAgent
   guint timer_ta;                 /* property: timer Ta */
   guint max_conn_checks;          /* property: max connectivity checks */
   gboolean force_relay;           /* property: force relay */
+  guint stun_max_retransmissions; /* property: stun max retransmissions, Rc */
+  guint stun_initial_timeout;     /* property: stun initial timeout, RTO */
+  guint stun_reliable_timeout;    /* property: stun reliable timeout */
 
   GSList *local_addresses;        /* list of NiceAddresses for local
 				     interfaces */

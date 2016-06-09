@@ -1072,11 +1072,11 @@ static gboolean priv_discovery_tick_unlocked (gpointer pointer)
 
 	if (buffer_len > 0) {
           if (nice_socket_is_reliable (cand->nicesock)) {
-            stun_timer_start_reliable (&cand->timer,
-                STUN_TIMER_DEFAULT_RELIABLE_TIMEOUT);
+            stun_timer_start_reliable (&cand->timer, agent->stun_reliable_timeout);
           } else {
-            stun_timer_start (&cand->timer, 200,
-                STUN_TIMER_DEFAULT_MAX_RETRANSMISSIONS);
+            stun_timer_start (&cand->timer,
+                agent->stun_initial_timeout,
+                agent->stun_max_retransmissions);
           }
 
           /* send the conncheck */

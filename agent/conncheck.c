@@ -888,8 +888,9 @@ static gboolean priv_conn_keepalive_tick_unlocked (NiceAgent *agent)
                 agent, buf_len, p->keepalive.stun_message.buffer);
 
             if (buf_len > 0) {
-              stun_timer_start (&p->keepalive.timer, STUN_TIMER_DEFAULT_TIMEOUT,
-                  STUN_TIMER_DEFAULT_MAX_RETRANSMISSIONS);
+              stun_timer_start (&p->keepalive.timer,
+                  agent->stun_initial_timeout,
+                  agent->stun_max_retransmissions);
 
               agent->media_after_tick = FALSE;
 
@@ -1116,8 +1117,9 @@ static void priv_turn_allocate_refresh_tick_unlocked (CandidateRefresh *cand)
   }
 
   if (buffer_len > 0) {
-    stun_timer_start (&cand->timer, STUN_TIMER_DEFAULT_TIMEOUT,
-        STUN_TIMER_DEFAULT_MAX_RETRANSMISSIONS);
+    stun_timer_start (&cand->timer,
+        cand->agent->stun_initial_timeout,
+        cand->agent->stun_max_retransmissions);
 
     /* send the refresh */
     agent_socket_send (cand->nicesock, &cand->server,
@@ -2171,11 +2173,11 @@ int conn_check_send (NiceAgent *agent, CandidateCheckPair *pair)
 
     if (buffer_len > 0) {
       if (nice_socket_is_reliable(pair->sockptr)) {
-        stun_timer_start_reliable(&pair->timer, STUN_TIMER_DEFAULT_RELIABLE_TIMEOUT);
+        stun_timer_start_reliable(&pair->timer, agent->stun_reliable_timeout);
       } else {
         stun_timer_start (&pair->timer,
             priv_compute_conncheck_timer (agent),
-            STUN_TIMER_DEFAULT_MAX_RETRANSMISSIONS);
+            agent->stun_max_retransmissions);
       }
 
       /* TCP-ACTIVE candidate must create a new socket before sending
@@ -2340,7 +2342,7 @@ static gboolean priv_schedule_triggered_check (NiceAgent *agent, NiceStream *str
 	  if (!nice_socket_is_reliable (p->sockptr) && !p->timer_restarted) {
 	    stun_timer_start (&p->timer,
                 priv_compute_conncheck_timer (agent),
-                STUN_TIMER_DEFAULT_MAX_RETRANSMISSIONS);
+                agent->stun_max_retransmissions);
 	    p->timer_restarted = TRUE;
 	  }
 	}

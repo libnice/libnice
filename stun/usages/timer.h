@@ -132,7 +132,11 @@ struct stun_timer_s {
  * The default intial timeout to use for the timer
  * RFC recommendds 500, but it's ridiculous, 50ms is known to work in most
  * cases as it is also what is used by SIP style VoIP when sending A-Law and
- * mu-Law audio, so 200ms should be hyper safe.
+ * mu-Law audio, so 200ms should be hyper safe. With an initial timeout
+ * of 200ms, a default of 7 transmissions, the last timeout will be
+ * 16 * 200ms, and we expect to receive a response from the stun server
+ * before (1 + 2 + 4 + 8 + 16 + 32 + 16) * 200ms = 15200 ms after the initial
+ * stun request has been sent.
  */
 #define STUN_TIMER_DEFAULT_TIMEOUT 200
 
