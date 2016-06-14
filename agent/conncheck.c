@@ -1591,7 +1591,11 @@ static CandidateCheckPair *priv_add_new_check_pair (NiceAgent *agent,
   pair->component_id = component->id;;
   pair->local = local;
   pair->remote = remote;
-  if (remote->type == NICE_CANDIDATE_TYPE_PEER_REFLEXIVE)
+  /* note: we use the remote sockptr only in the case
+   * of TCP transport
+   */
+  if (local->transport == NICE_CANDIDATE_TRANSPORT_TCP_PASSIVE &&
+      remote->type == NICE_CANDIDATE_TYPE_PEER_REFLEXIVE)
     pair->sockptr = (NiceSocket *) remote->sockptr;
   else
     pair->sockptr = (NiceSocket *) local->sockptr;
