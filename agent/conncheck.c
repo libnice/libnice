@@ -3117,6 +3117,16 @@ static CandidateCheckPair *priv_process_response_check_for_reflexive(NiceAgent *
     if (new_pair == p)
       p->valid = TRUE;
     p->state = NICE_CHECK_SUCCEEDED;
+    /* note: we cancel the potential in-progress transaction
+     * cancellation, caused by sect 7.2.1.4 "Triggered Checks", if
+     * we receive a valid reply before transmission timeout...
+     */
+    p->recheck_on_timeout = FALSE;
+    /* ... or just after the transmission timeout, while the pair is
+     * temporarily put on the triggered check list on the way to be
+     * be rechecked: we remove it from the list too.
+     */
+    priv_remove_pair_from_triggered_check_queue (agent, p);
     nice_debug ("Agent %p : conncheck %p SUCCEEDED.", agent, p);
     nice_component_add_valid_candidate (component, remote_candidate);
   }
@@ -3151,6 +3161,8 @@ static CandidateCheckPair *priv_process_response_check_for_reflexive(NiceAgent *
      * Succeeded, RFC 5245, 7.1.3.2.3, "Updating Pair States"
      */
     p->state = NICE_CHECK_SUCCEEDED;
+    p->recheck_on_timeout = FALSE;
+    priv_remove_pair_from_triggered_check_queue (agent, p);
     nice_debug ("Agent %p : conncheck %p SUCCEEDED, %p DISCOVERED.",
         agent, p, new_pair);
   }
