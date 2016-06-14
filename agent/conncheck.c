@@ -591,7 +591,6 @@ priv_conn_recheck_on_timeout (NiceAgent *agent, CandidateCheckPair *p)
      */
     nice_debug ("Agent %p : pair %p was cancelled, "
         "triggering a new connection check", agent, p);
-    p->recheck_on_timeout = FALSE;
     priv_add_pair_to_triggered_check_queue (agent, p);
     return TRUE;
   }
@@ -2650,9 +2649,32 @@ int conn_check_send (NiceAgent *agent, CandidateCheckPair *pair)
       if (nice_socket_is_reliable(pair->sockptr)) {
         stun_timer_start_reliable(&pair->timer, agent->stun_reliable_timeout);
       } else {
-        stun_timer_start (&pair->timer,
-            priv_compute_conncheck_timer (agent, stream),
-            agent->stun_max_retransmissions);
+        StunTimer *timer = &pair->timer;
+
+        if (pair->recheck_on_timeout)
+          /* The pair recheck on timeout can easily cause repetitive rechecks in
+           * a ping-pong effect, if both peers with the same behaviour try to
+           * check the same pair almost simultaneously, and if the network rtt
+           * is greater than the initial timer rto. The reply to the initial
+           * stun request may arrive after the in-progress conncheck
+           * cancellation (described in RFC 5245, sect 7.2.1.4). Cancellation
+           * creates a new stun request, and forgets the initial one.
+           * The conncheck timer is restarted with the same initial value,
+           * so the same situation happens again later.
+           *
+           * We choose to avoid resetting the timer in such situation.
+           * After enough retransmissions, the timeout delay becomes
+           * longer than the rtt, and the stun reply can be handled.
+           */
+          nice_debug("Agent %p : reusing timer of pair %p: %d/%d %d/%dms",
+              agent, pair,
+              timer->retransmissions, timer->max_retransmissions,
+              timer->delay - stun_timer_remainder (timer), timer->delay);
+        else
+          stun_timer_start (timer,
+              priv_compute_conncheck_timer (agent, stream),
+              agent->stun_max_retransmissions);
+        pair->recheck_on_timeout = FALSE;
       }
 
       /* TCP-ACTIVE candidate must create a new socket before sending
