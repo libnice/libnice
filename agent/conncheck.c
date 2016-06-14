@@ -626,6 +626,7 @@ static gboolean priv_conn_check_tick_stream (NiceStream *stream, NiceAgent *agen
           case STUN_USAGE_TIMER_RETURN_TIMEOUT:
             {
               gchar tmpbuf1[INET6_ADDRSTRLEN], tmpbuf2[INET6_ADDRSTRLEN];
+              NiceComponent *component;
 
               /* case: conncheck cancelled due to in-progress incoming
                * check, requeing the pair, ICE spec, sect 7.2.1.4
@@ -646,6 +647,16 @@ static gboolean priv_conn_check_tick_stream (NiceStream *stream, NiceAgent *agen
               priv_print_conn_check_lists (agent, G_STRFUNC,
                   ", retransmission failed");
 
+              /* perform a check if a transition state from connected to
+               * ready can be performed. This may happen here, when the last
+               * in-progress pair has expired its retransmission count
+               * in priv_conn_check_tick_stream(), which is a condition to
+               * make the transition connected to ready.
+               */
+              if (agent_find_component (agent, p->stream_id, p->component_id,
+                  NULL, &component))
+                priv_update_check_list_state_for_ready (agent, stream,
+                    component);
               break;
             }
           case STUN_USAGE_TIMER_RETURN_RETRANSMIT:
