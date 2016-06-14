@@ -1973,12 +1973,14 @@ static void priv_mark_pair_nominated (NiceAgent *agent, NiceStream *stream, Nice
         pair->nominated = TRUE;
         priv_update_selected_pair (agent, component, pair);
         /* Do not step down to CONNECTED if we're already at state READY*/
-        if (component->state != NICE_COMPONENT_STATE_READY) {
+        if (component->state == NICE_COMPONENT_STATE_FAILED)
+          agent_signal_component_state_change (agent,
+              stream->id, component->id, NICE_COMPONENT_STATE_CONNECTING);
+        if (component->state == NICE_COMPONENT_STATE_CONNECTING)
           /* step: notify the client of a new component state (must be done
            *       before the possible check list state update step */
           agent_signal_component_state_change (agent,
               stream->id, component->id, NICE_COMPONENT_STATE_CONNECTED);
-        }
         priv_update_check_list_state_for_ready (agent, stream, component);
       } else if (pair->state == NICE_CHECK_IN_PROGRESS) {
         pair->mark_nominated_on_response_arrival = TRUE;
@@ -2004,13 +2006,14 @@ static void priv_mark_pair_nominated (NiceAgent *agent, NiceStream *stream, Nice
       if (pair->valid) {
 	priv_update_selected_pair (agent, component, pair);
         /* Do not step down to CONNECTED if we're already at state READY*/
-        if (component->state != NICE_COMPONENT_STATE_READY) {
+        if (component->state == NICE_COMPONENT_STATE_FAILED)
+          agent_signal_component_state_change (agent,
+              stream->id, component->id, NICE_COMPONENT_STATE_CONNECTING);
+        if (component->state == NICE_COMPONENT_STATE_CONNECTING)
           /* step: notify the client of a new component state (must be done
            *       before the possible check list state update step */
           agent_signal_component_state_change (agent,
               stream->id, component->id, NICE_COMPONENT_STATE_CONNECTED);
-        }
-
       }
       priv_update_check_list_state_for_ready (agent, stream, component);
     }
@@ -2854,6 +2857,14 @@ static gboolean priv_schedule_triggered_check (NiceAgent *agent, NiceStream *str
              pair (representing a new STUN Binding request transaction), by
              enqueueing the pair in the triggered check queue. */
           priv_add_pair_to_triggered_check_queue (agent, p);
+          /* If the component for this pair is in failed state, move it
+           * back to connecting, and reinitiate the timers
+           */
+          if (component->state == NICE_COMPONENT_STATE_FAILED) {
+            agent_signal_component_state_change (agent, stream->id,
+                component->id, NICE_COMPONENT_STATE_CONNECTING);
+            conn_check_schedule_next (agent);
+          }
         }
 
 	/* note: the spec says the we SHOULD retransmit in-progress
