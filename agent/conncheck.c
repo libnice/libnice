@@ -145,31 +145,22 @@ priv_print_conn_check_lists (NiceAgent *agent, const gchar *where, const gchar *
       for (k = stream->conncheck_list; k ; k = k->next) {
         CandidateCheckPair *pair = k->data;
         if (pair->component_id == j) {
-          gchar priority[PRIORITY_LEN];
-          guint p1, p2, p3;
           gchar local_addr[INET6_ADDRSTRLEN];
           gchar remote_addr[INET6_ADDRSTRLEN];
-
-          p1 = (pair->priority >> 32);
-          p2 = (pair->priority >> 1) & 0x7fffffff;
-          p3 = (pair->priority & 1);
-
-          g_snprintf (priority, PRIORITY_LEN,
-            "%02x:%04x:%02x:%02x:%04x:%02x:%1x",
-            (p1 >> 24) & 0x7f, (p1 >> 8) & 0xffff, (p1 & 0xff),
-            (p2 >> 24) & 0x7f, (p2 >> 8) & 0xffff, (p2 & 0xff),
-            p3);
+          StunTimer *timer = &pair->timer;
 
           nice_address_to_string (&pair->local->addr, local_addr);
           nice_address_to_string (&pair->remote->addr, remote_addr);
 
           nice_debug ("Agent %p : *** sc=%d/%d : pair %p : "
-              "f=%s t=%s:%s p=%s [%s]:%u > [%s]:%u state=%c%s%s%s",
+              "f=%s t=%s:%s timer=%d/%d %d/%dms "
+              "[%s]:%u > [%s]:%u state=%c%s%s%s",
               agent, pair->stream_id, pair->component_id, pair,
               pair->foundation,
               priv_candidate_type_to_string (pair->local->type),
               priv_candidate_type_to_string (pair->remote->type),
-              priority,
+              timer->retransmissions, timer->max_retransmissions,
+              timer->delay - stun_timer_remainder (timer), timer->delay,
               local_addr, nice_address_get_port (&pair->local->addr),
               remote_addr, nice_address_get_port (&pair->remote->addr),
               priv_state_to_gchar (pair->state),
