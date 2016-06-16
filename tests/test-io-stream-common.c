@@ -500,7 +500,7 @@ run_io_stream_test (guint deadlock_timeout, gboolean reliable,
  * This must only be called from the read thread implementation. */
 void
 check_for_termination (TestIOStreamThreadData *data, gsize *recv_count,
-    gsize *other_recv_count, gsize *send_count, gsize expected_recv_count)
+    gsize *other_recv_count, volatile gsize *send_count, gsize expected_recv_count)
 {
   guint stream_id;
   gpointer tmp;

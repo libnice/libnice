@@ -102,6 +102,6 @@ void run_io_stream_test (guint deadlock_timeout, gboolean reliable,
     gpointer l_user_data, GDestroyNotify l_user_data_free,
     gpointer r_user_data, GDestroyNotify r_user_data_free);
 void check_for_termination (TestIOStreamThreadData *data, gsize *recv_count,
-    gsize *other_recv_count, gsize *send_count, gsize expected_recv_count);
+    gsize *other_recv_count, volatile gsize *send_count, gsize expected_recv_count);
 
 void stop_main_loop (GMainLoop *loop);
