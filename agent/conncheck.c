@@ -100,8 +100,6 @@ priv_state_to_gchar (NiceCheckState state)
       return 'F';
     case NICE_CHECK_FROZEN:
       return 'Z';
-    case NICE_CHECK_CANCELLED:
-      return 'C';
     case NICE_CHECK_DISCOVERED:
       return 'D';
     default:
@@ -627,6 +625,7 @@ static gboolean priv_conn_check_tick_stream (NiceStream *stream, NiceAgent *agen
               gchar tmpbuf1[INET6_ADDRSTRLEN], tmpbuf2[INET6_ADDRSTRLEN];
               NiceComponent *component;
 
+timer_timeout:
               /* case: conncheck cancelled due to in-progress incoming
                * check, requeing the pair, ICE spec, sect 7.2.1.4
                * "Triggered Checks", "If the state of that pair is
@@ -661,6 +660,13 @@ static gboolean priv_conn_check_tick_stream (NiceStream *stream, NiceAgent *agen
           case STUN_USAGE_TIMER_RETURN_RETRANSMIT:
             {
               unsigned int timeout = stun_timer_remainder (&p->timer);
+
+              /* case: retransmission stopped, due to the nomination of
+               * a pair with a higher priority than this in-progress pair,
+               * ICE spec, sect 8.1.2 "Updating States", item 2.2
+               */
+              if (!p->retransmit_on_timeout)
+                goto timer_timeout;
 
               /* case: conncheck cancelled due to in-progress incoming
                * check, requeing the pair, ICE spec, sect 7.2.1.4
@@ -1600,26 +1606,6 @@ static void priv_preprocess_conn_check_pending_data (NiceAgent *agent, NiceStrea
 }
 
 
-static GSList *prune_cancelled_conn_check (GSList *conncheck_list)
-{
-  GSList *item = conncheck_list;
-
-  while (item) {
-    CandidateCheckPair *pair = item->data;
-    GSList *next = item->next;
-
-    if (pair->state == NICE_CHECK_CANCELLED) {
-      conn_check_free_item (pair);
-      conncheck_list = g_slist_delete_link (conncheck_list, item);
-    }
-
-    item = next;
-  }
-
-  return conncheck_list;
-}
-
-
 /*
  * Handle any processing steps for connectivity checks after
  * remote credentials have been set. This function handles
@@ -1754,9 +1740,6 @@ void conn_check_remote_credentials_set(NiceAgent *agent, NiceStream *stream)
         (GDestroyNotify) incoming_check_free);
     component->incoming_checks = NULL;
   }
-
-  stream->conncheck_list =
-      prune_cancelled_conn_check (stream->conncheck_list);
 }
 
 /*
@@ -1764,7 +1747,7 @@ void conn_check_remote_credentials_set(NiceAgent *agent, NiceStream *stream)
  * in ICE spec section 5.7.3 (ID-19). See also 
  * conn_check_add_for_candidate().
  */
-static void priv_limit_conn_check_list_size (GSList *conncheck_list, guint upper_limit)
+static GSList *priv_limit_conn_check_list_size (GSList *conncheck_list, guint upper_limit)
 {
   guint valid = 0;
   guint cancelled = 0;
@@ -1772,22 +1755,22 @@ static void priv_limit_conn_check_list_size (GSList *conncheck_list, guint upper
 
   while (item) {
     CandidateCheckPair *pair = item->data;
+    GSList *next = item->next;
 
-    if (pair->state != NICE_CHECK_CANCELLED) {
-      valid++;
-      if (valid > upper_limit) {
-        pair->state = NICE_CHECK_CANCELLED;
+    valid++;
+    if (valid > upper_limit) {
+        conn_check_free_item (pair);
+        conncheck_list = g_slist_delete_link (conncheck_list, item);
         cancelled++;
-      }
     }
-
-    item = item->next;
+    item = next;
   }
 
   if (cancelled > 0)
     nice_debug ("Agent : Pruned %d candidates. Conncheck list has %d elements"
         " left. Maximum connchecks allowed : %d", cancelled, valid,
         upper_limit);
+  return conncheck_list;
 }
 
 /*
@@ -2097,6 +2080,7 @@ static CandidateCheckPair *priv_add_new_check_pair (NiceAgent *agent,
   }
   pair->prflx_priority = ensure_unique_priority (component,
       peer_reflexive_candidate_priority (agent, local));
+  pair->retransmit_on_timeout = TRUE;
 
   stream->conncheck_list = g_slist_insert_sorted (stream->conncheck_list, pair,
       (GCompareFunc)conn_check_compare);
@@ -2106,7 +2090,8 @@ static CandidateCheckPair *priv_add_new_check_pair (NiceAgent *agent,
   /* implement the hard upper limit for number of
      checks (see sect 5.7.3 ICE ID-19): */
   if (agent->compatibility == NICE_COMPATIBILITY_RFC5245) {
-    priv_limit_conn_check_list_size (stream->conncheck_list, agent->max_conn_checks);
+    stream->conncheck_list = priv_limit_conn_check_list_size (
+        stream->conncheck_list, agent->max_conn_checks);
   }
 
   return pair;
@@ -2769,8 +2754,10 @@ static guint priv_prune_pending_checks (NiceAgent *agent, NiceStream *stream, gu
    * the triggered check list should also be treated like an in-progress
    * pair.
    */
-  for (i = stream->conncheck_list; i; i = i->next) {
+  i = stream->conncheck_list;
+  while (i) {
     CandidateCheckPair *p = i->data;
+    GSList *next = i->next;
 
     if (p->component_id == component_id) {
       gboolean like_in_progress =
@@ -2779,19 +2766,20 @@ static guint priv_prune_pending_checks (NiceAgent *agent, NiceStream *stream, gu
 
       if (p->state == NICE_CHECK_FROZEN ||
           (p->state == NICE_CHECK_WAITING && !like_in_progress)) {
-	p->state = NICE_CHECK_CANCELLED;
-        nice_debug ("Agent %p : pair %p state CANCELED", agent, p);
+        nice_debug ("Agent %p : pair %p removed.", agent, p);
+	conn_check_free_item (p);
+        stream->conncheck_list = g_slist_delete_link(stream->conncheck_list, i);
       }
 
       /* note: a SHOULD level req. in ICE 8.1.2. "Updating States" (ID-19) */
-      if (p->state == NICE_CHECK_IN_PROGRESS ||
+      else if (p->state == NICE_CHECK_IN_PROGRESS ||
           (p->state == NICE_CHECK_WAITING && like_in_progress)) {
         if (highest_nominated_priority != 0 &&
             p->priority < highest_nominated_priority) {
-          p->stun_message.buffer = NULL;
-          p->stun_message.buffer_len = 0;
-          p->state = NICE_CHECK_CANCELLED;
-          nice_debug ("Agent %p : pair %p state CANCELED", agent, p);
+          p->retransmit_on_timeout = FALSE;
+          p->recheck_on_timeout = FALSE;
+          nice_debug ("Agent %p : pair %p will not be retransmitted.",
+              agent, p);
         } else {
           /* We must keep the higher priority pairs running because if a udp
            * packet was lost, we might end up using a bad candidate */
@@ -2803,6 +2791,7 @@ static guint priv_prune_pending_checks (NiceAgent *agent, NiceStream *stream, gu
         }
       }
     }
+    i = next;
   }
 
   return in_progress;
@@ -2841,29 +2830,42 @@ static gboolean priv_schedule_triggered_check (NiceAgent *agent, NiceStream *str
           p = p->succeeded_pair;
         }
 
-	nice_debug ("Agent %p : Found a matching pair %p for triggered check.", agent, p);
+	nice_debug ("Agent %p : Found a matching pair %p (%s) (state=%c) ...",
+            agent, p, p->foundation, priv_state_to_gchar (p->state));
 	
 	if (p->state == NICE_CHECK_WAITING ||
-	    p->state == NICE_CHECK_FROZEN)
+	    p->state == NICE_CHECK_FROZEN) {
+	  nice_debug ("Agent %p : pair %p added for a triggered check.",
+              agent, p);
           priv_add_pair_to_triggered_check_queue (agent, p);
+        }
         else if (p->state == NICE_CHECK_IN_PROGRESS) {
 	  /* note: according to ICE SPEC sect 7.2.1.4 "Triggered Checks"
            * we cancel the in-progress transaction, and after the
            * retransmission timeout, we create a new connectivity check
            * for that pair.  The controlling role of this new check may
            * be different from the role of this cancelled check.
+           *
+           * note: the flag retransmit_on_timeout unset means that
+           * another pair, with a higher priority is already nominated,
+           * so there's no reason to recheck this pair, since it can in
+           * no way replace the nominated one.
            */
           if (!nice_socket_is_reliable (p->sockptr)) {
-            nice_debug ("Agent %p : check already in progress, "
-                "cancelling this check..", agent);
-            /* this flag will determine the action at the retransmission
-             * timeout of the stun timer
-             */
-            p->recheck_on_timeout = TRUE;
+            if (p->retransmit_on_timeout) {
+              nice_debug ("Agent %p : pair %p will be rechecked "
+                  "on stun timer timeout.", agent, p);
+              /* this flag will determine the action at the retransmission
+               * timeout of the stun timer
+               */
+              p->recheck_on_timeout = TRUE;
+            } else
+              nice_debug ("Agent %p : pair %p won't be retransmitted.",
+                  agent, p);
           }
 	}
 	else if (p->state == NICE_CHECK_SUCCEEDED) {
-	  nice_debug ("Agent %p : Skipping triggered check, already completed..", agent); 
+	  nice_debug ("Agent %p : nothing to do for pair %p.", agent, p);
 	  /* note: this is a bit unsure corner-case -- let's do the
 	     same state update as for processing responses to our own checks */
           /* note: this update is required by the dribble test, to
@@ -2875,18 +2877,30 @@ static gboolean priv_schedule_triggered_check (NiceAgent *agent, NiceStream *str
 	} else if (p->state == NICE_CHECK_FAILED) {
           /* 7.2.1.4 Triggered Checks
            * If the state of the pair is Failed, it is changed to Waiting
-             and the agent MUST create a new connectivity check for that
-             pair (representing a new STUN Binding request transaction), by
-             enqueueing the pair in the triggered check queue. */
-          priv_add_pair_to_triggered_check_queue (agent, p);
-          /* If the component for this pair is in failed state, move it
-           * back to connecting, and reinitiate the timers
+           * and the agent MUST create a new connectivity check for that
+           * pair (representing a new STUN Binding request transaction), by
+           * enqueueing the pair in the triggered check queue.
+           *
+           * note: the flag retransmit_on_timeout unset means that
+           * another pair, with a higher priority is already nominated,
+           * we apply the same strategy than with an in-progress pair
+           * above.
            */
-          if (component->state == NICE_COMPONENT_STATE_FAILED) {
-            agent_signal_component_state_change (agent, stream->id,
-                component->id, NICE_COMPONENT_STATE_CONNECTING);
-            conn_check_schedule_next (agent);
-          }
+          if (p->retransmit_on_timeout) {
+	    nice_debug ("Agent %p : pair %p added for a triggered check.",
+                agent, p);
+            priv_add_pair_to_triggered_check_queue (agent, p);
+            /* If the component for this pair is in failed state, move it
+             * back to connecting, and reinitiate the timers
+             */
+            if (component->state == NICE_COMPONENT_STATE_FAILED) {
+              agent_signal_component_state_change (agent, stream->id,
+                  component->id, NICE_COMPONENT_STATE_CONNECTING);
+              conn_check_schedule_next (agent);
+            }
+          } else
+            nice_debug ("Agent %p : pair %p won't be retransmitted.",
+                agent, p);
         }
 
 	/* note: the spec says the we SHOULD retransmit in-progress
@@ -3400,10 +3414,6 @@ static gboolean priv_map_reply_to_conn_check_request (NiceAgent *agent, NiceStre
       }
     }
   }
-
-
-  stream->conncheck_list =
-      prune_cancelled_conn_check (stream->conncheck_list);
 
   return trans_found;
 }

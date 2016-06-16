@@ -56,7 +56,6 @@
  * @NICE_CHECK_SUCCEEDED: Connection successfully checked.
  * @NICE_CHECK_FAILED: No connectivity; retransmissions ceased.
  * @NICE_CHECK_FROZEN: Waiting to be scheduled to %NICE_CHECK_WAITING.
- * @NICE_CHECK_CANCELLED: Check cancelled.
  * @NICE_CHECK_DISCOVERED: A valid candidate pair not on the check list.
  *
  * States for checking a candidate pair.
@@ -68,7 +67,6 @@ typedef enum
   NICE_CHECK_SUCCEEDED,
   NICE_CHECK_FAILED,
   NICE_CHECK_FROZEN,
-  NICE_CHECK_CANCELLED,
   NICE_CHECK_DISCOVERED,
 } NiceCheckState;
 
@@ -89,6 +87,7 @@ struct _CandidateCheckPair
   gboolean use_candidate_on_next_check;
   gboolean mark_nominated_on_response_arrival;
   gboolean recheck_on_timeout;
+  gboolean retransmit_on_timeout;
   struct _CandidateCheckPair *discovered_pair;
   struct _CandidateCheckPair *succeeded_pair;
   guint64 priority;
