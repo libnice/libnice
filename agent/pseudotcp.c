@@ -1829,12 +1829,9 @@ process(PseudoTcpSocket *self, Segment *seg)
     /* @received_fin is set when, and only when, all segments preceding the FIN
      * have been acknowledged. This is to handle the case where the FIN arrives
      * out of order with a preceding data segment. */
-    if (seg->flags & FLAG_FIN && priv->rcv_fin == 0) {
+    if (seg->flags & FLAG_FIN) {
       priv->rcv_fin = seg->seq;
       DEBUG (PSEUDO_TCP_DEBUG_NORMAL, "Setting rcv_fin = %u", priv->rcv_fin);
-    } else if (seg->flags & FLAG_FIN && seg->seq != priv->rcv_fin) {
-      DEBUG (PSEUDO_TCP_DEBUG_NORMAL, "Second FIN segment received; ignored");
-      return FALSE;
     }
 
     /* For the moment, FIN segments must not contain data. */
