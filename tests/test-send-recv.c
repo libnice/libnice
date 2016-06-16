@@ -1138,7 +1138,7 @@ guint32 option_transmit_seed = 0;
 guint32 option_receive_seed = 0;
 gsize option_n_bytes = 10000;
 guint option_n_messages = 50;
-guint option_timeout = 1200;  /* seconds */
+guint option_timeout = 15;  /* seconds */
 gboolean option_long_mode = FALSE;
 
 static GOptionEntry entries[] = {
@@ -1151,7 +1151,7 @@ static GOptionEntry entries[] = {
   { "n-messages", 'm', 0, G_OPTION_ARG_INT64, &option_n_messages,
     "Number of messages to send in each test (default 50)", "M" },
   { "timeout", 't', 0, G_OPTION_ARG_INT, &option_timeout,
-    "Deadlock detection timeout length, in seconds (default: 1200)", "S" },
+    "Deadlock detection timeout length, in seconds (default: 15)", "S" },
   { "long-mode", 'l', 0, G_OPTION_ARG_NONE, &option_long_mode,
     "Enable all tests, rather than a fast subset", NULL },
   { NULL },
