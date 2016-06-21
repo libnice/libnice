@@ -709,7 +709,7 @@ timer_timeout:
         }
       }
     }
-   }
+  }
 
   /* step: perform an ordinary check, ICE spec, 5.8 "Scheduling Checks"
    * note: This code is executed when the triggered checks list is
@@ -795,11 +795,8 @@ priv_conn_check_tick_stream_nominate (NiceStream *stream, NiceAgent *agent)
   if (s_inprogress)
     keep_timer_going = TRUE;
   
-    /* note: if some components have established connectivity,
-     *       but yet no nominated pair, keep timer going */
   if (s_nominated < stream->n_components &&
       s_waiting_for_nomination) {
-    keep_timer_going = TRUE;
     if (NICE_AGENT_IS_COMPATIBLE_WITH_RFC5245_OR_OC2007R2 (agent)) {
       if (agent->nomination_mode == NICE_NOMINATION_MODE_REGULAR &&
           agent->controlling_mode) {
@@ -888,6 +885,7 @@ priv_conn_check_tick_stream_nominate (NiceStream *stream, NiceAgent *agent)
               p->recheck_on_timeout = FALSE;
               p->use_candidate_on_next_check = TRUE;
               priv_add_pair_to_triggered_check_queue (agent, p);
+              keep_timer_going = TRUE;
               break; /* move to the next component */
             }
           }
@@ -911,6 +909,7 @@ priv_conn_check_tick_stream_nominate (NiceStream *stream, NiceAgent *agent)
             p->recheck_on_timeout = FALSE;
             priv_update_selected_pair (agent, component, p);
             priv_add_pair_to_triggered_check_queue (agent, p);
+            keep_timer_going = TRUE;
 	    break; /* move to the next component */
 	  }
 	}
@@ -937,6 +936,7 @@ conn_check_stop (NiceAgent *agent)
   g_source_destroy (agent->conncheck_timer_source);
   g_source_unref (agent->conncheck_timer_source);
   agent->conncheck_timer_source = NULL;
+  agent->conncheck_timer_grace_period = 0;
 }
 
 
@@ -1005,9 +1005,39 @@ static gboolean priv_conn_check_tick_unlocked (NiceAgent *agent)
       keep_timer_going = TRUE;
   }
 
+  /* step: if no work left and a conncheck list of a stream is still
+   * frozen, set the pairs to waiting, according to ICE SPEC, sect
+   * 7.1.3.3.  "Check List and Timer State Updates"
+   */
+  if (!keep_timer_going) {
+    for (i = agent->streams; i ; i = i->next) {
+      NiceStream *stream = i->data;
+      if (priv_is_checklist_frozen (stream)) {
+        nice_debug ("Agent %p : stream %d conncheck list is still "
+            "frozen, while other lists are completed. Unfreeze it.",
+            agent, stream->id);
+        keep_timer_going = priv_conn_check_unfreeze_next (agent, stream);
+      }
+    }
+  }
+
+  /* note: we provide a grace period before declaring a component as
+   * failed. Components marked connected, and then ready follow another
+   * code path, and are not concerned by this grace period.
+   */
+  if (!keep_timer_going && agent->conncheck_timer_grace_period == 0)
+    nice_debug ("Agent %p : waiting %d msecs before checking "
+        "for failed components.", agent, NICE_AGENT_MAX_TIMER_GRACE_PERIOD);
+
+  if (keep_timer_going)
+    agent->conncheck_timer_grace_period = 0;
+  else
+    agent->conncheck_timer_grace_period += agent->timer_ta;
+
   /* step: stop timer if no work left */
-  if (keep_timer_going != TRUE) {
-    nice_debug ("Agent %p : %s: stopping conncheck timer", agent, G_STRFUNC);
+  if (!keep_timer_going &&
+      agent->conncheck_timer_grace_period >= NICE_AGENT_MAX_TIMER_GRACE_PERIOD) {
+    nice_debug ("Agent %p : checking for failed components now.", agent);
     for (i = agent->streams; i; i = i->next) {
       NiceStream *stream = i->data;
       priv_update_check_list_failed_components (agent, stream);
@@ -1017,6 +1047,7 @@ static gboolean priv_conn_check_tick_unlocked (NiceAgent *agent)
       }
     }
 
+    nice_debug ("Agent %p : %s: stopping conncheck timer", agent, G_STRFUNC);
     priv_print_conn_check_lists (agent, G_STRFUNC,
         ", conncheck timer stopped");
 
@@ -1027,9 +1058,10 @@ static gboolean priv_conn_check_tick_unlocked (NiceAgent *agent)
 
     /* XXX: what to signal, is all processing now really done? */
     nice_debug ("Agent %p : changing conncheck state to COMPLETED.", agent);
+    return FALSE;
   }
 
-  return keep_timer_going;
+  return TRUE;
 }
 
 static gboolean priv_conn_check_tick (gpointer pointer)
@@ -1810,15 +1842,18 @@ static gboolean priv_update_selected_pair (NiceAgent *agent, NiceComponent *comp
  * Updates the check list state.
  *
  * Implements parts of the algorithm described in 
- * ICE sect 8.1.2. "Updating States" (ID-19): if for any 
+ * ICE sect 8.1.2. "Updating States" (RFC 5245): if for any
  * component, all checks have been completed and have
- * failed, mark that component's state to NICE_CHECK_FAILED.
+ * failed to produce a nominated pair, mark that component's
+ * state to NICE_CHECK_FAILED.
  *
  * Sends a component state changesignal via 'agent'.
  */
 static void priv_update_check_list_failed_components (NiceAgent *agent, NiceStream *stream)
 {
   GSList *i;
+  gboolean completed;
+  guint nominated;
   /* note: emitting a signal might cause the client 
    *       to remove the stream, thus the component count
    *       must be fetched before entering the loop*/
@@ -1842,6 +1877,8 @@ static void priv_update_check_list_failed_components (NiceAgent *agent, NiceStre
     if (!agent_find_component (agent, stream->id, c+1, NULL, &comp))
       continue;
 
+    nominated = 0;
+    completed = TRUE;
     for (i = stream->conncheck_list; i; i = i->next) {
       CandidateCheckPair *p = i->data;
 
@@ -1849,16 +1886,22 @@ static void priv_update_check_list_failed_components (NiceAgent *agent, NiceStre
       g_assert (p->stream_id == stream->id);
 
       if (p->component_id == (c + 1)) {
-	if (p->state != NICE_CHECK_FAILED)
-	  break;
+        if (p->nominated)
+          ++nominated;
+	if (p->state != NICE_CHECK_FAILED &&
+            p->state != NICE_CHECK_SUCCEEDED &&
+            p->state != NICE_CHECK_DISCOVERED)
+	  completed = FALSE;
       }
     }
  
-    /* note: all checks have failed
+    /* note: all pairs are either failed or succeeded, and the component
+     * has not produced a nominated pair.
      * Set the component to FAILED only if it actually had remote candidates
      * that failed.. */
-    if (i == NULL && comp != NULL && comp->remote_candidates != NULL)
-      agent_signal_component_state_change (agent, 
+    if (completed && nominated == 0 &&
+        comp != NULL && comp->remote_candidates != NULL)
+      agent_signal_component_state_change (agent,
 					   stream->id,
 					   (c + 1), /* component-id */
 					   NICE_COMPONENT_STATE_FAILED);

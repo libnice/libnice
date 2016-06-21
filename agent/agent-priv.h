@@ -122,6 +122,18 @@ nice_input_message_iter_compare (const NiceInputMessageIter *a,
   ((obj)->compatibility == NICE_COMPATIBILITY_RFC5245 || \
   (obj)->compatibility == NICE_COMPATIBILITY_OC2007R2)
 
+/* A grace period before declaring a component as failed, in msecs. This
+ * delay is added to reduce the chance to see the agent receiving new
+ * stun activity just after the conncheck list has been declared failed,
+ * reactiviting conncheck activity, and causing a (valid) state
+ * transitions like that: connecting -> failed -> connecting ->
+ * connected -> ready.
+ * Such transitions are not buggy per-se, but may break the
+ * test-suite, that counts precisely the number of time each state
+ * has been set, and doesnt expect these transcient failed states.
+ */
+#define NICE_AGENT_MAX_TIMER_GRACE_PERIOD 1000
+
 struct _NiceAgent
 {
   GObject parent;                 /* gobject pointer */
@@ -176,6 +188,8 @@ struct _NiceAgent
   guint16 rfc4571_expecting_length;
   gboolean use_ice_udp;
   gboolean use_ice_tcp;
+
+  guint conncheck_timer_grace_period; /* ongoing delay before timer stop */
   /* XXX: add pointer to internal data struct for ABI-safe extensions */
 };
 
