@@ -224,9 +224,11 @@ run_test(guint turn_port, gboolean is_ipv6,
   g_assert (global_lagent_gathering_done == FALSE);
   g_assert (global_ragent_gathering_done == FALSE);
   g_debug ("test-turn: Added streams, running context until 'candidate-gathering-done'...");
-  while (!global_lagent_gathering_done && !global_ragent_gathering_done)
+  while (!global_lagent_gathering_done)
     g_main_context_iteration (NULL, TRUE);
   g_assert (global_lagent_gathering_done == TRUE);
+  while (!global_ragent_gathering_done)
+    g_main_context_iteration (NULL, TRUE);
   g_assert (global_ragent_gathering_done == TRUE);
 
   set_credentials (lagent, ls_id, ragent, rs_id);
