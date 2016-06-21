@@ -2965,6 +2965,9 @@ void agent_remove_local_candidate (NiceAgent *agent, NiceCandidate *candidate)
   if (candidate->type != NICE_CANDIDATE_TYPE_HOST)
     return;
 
+  if (nice_address_get_port (&candidate->addr) == 0)
+    return;
+
   nice_address_to_string (&candidate->addr, local_ip);
 
   gupnp_simple_igd_remove_port_local (GUPNP_SIMPLE_IGD (agent->upnp), "UDP",
