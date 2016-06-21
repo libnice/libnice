@@ -88,6 +88,7 @@ struct _NiceStream {
   gboolean gathering;
   gboolean gathering_started;
   gint tos;
+  guint tick_counter;
 };
 
 typedef struct {

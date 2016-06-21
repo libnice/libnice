@@ -517,15 +517,12 @@ static gboolean priv_conn_check_tick_stream (NiceStream *stream, NiceAgent *agen
       }
     }
   }
-    {
-    static int tick_counter = 0;
-    if (tick_counter++ % 50 == 0 || keep_timer_going != TRUE)
-      nice_debug ("Agent %p : stream %u: timer tick #%u: %u frozen, %u in-progress, "
-          "%u waiting, %u succeeded, %u discovered, %u nominated, "
-          "%u waiting-for-nom, %u valid.", agent, stream->id,
-          tick_counter, frozen, s_inprogress, waiting, s_succeeded,
-          s_discovered, s_nominated, s_waiting_for_nomination, s_valid);
-  }
+  if (stream->tick_counter++ % 50 == 0)
+    nice_debug ("Agent %p : stream %u: timer tick #%u: %u frozen, %u in-progress, "
+        "%u waiting, %u succeeded, %u discovered, %u nominated, "
+        "%u waiting-for-nom, %u valid.", agent, stream->id,
+        stream->tick_counter, frozen, s_inprogress, waiting, s_succeeded,
+        s_discovered, s_nominated, s_waiting_for_nomination, s_valid);
 
   return keep_timer_going;
 
