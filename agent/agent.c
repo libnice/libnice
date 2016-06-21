@@ -3448,7 +3448,7 @@ agent_recv_message_unlocked (
         if (cand->type == NICE_CANDIDATE_TYPE_RELAYED &&
             cand->stream_id == stream->id &&
             cand->component_id == component->id &&
-            ((NiceSocket *)cand->sockptr)->fileno == nicesock->fileno) {
+            nice_socket_is_based_on(cand->sockptr, nicesock)) {
           nice_debug ("Agent %p : Packet received from a TURN socket.",
               agent);
           nicesock = cand->sockptr;
