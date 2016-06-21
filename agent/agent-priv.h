@@ -119,7 +119,6 @@ struct _NiceAgent
   GObject parent;                 /* gobject pointer */
 
   gboolean full_mode;             /* property: full-mode */
-  GTimeVal next_check_tv;         /* property: next conncheck timestamp */
   gchar *stun_server_ip;          /* property: STUN server IP */
   guint stun_server_port;         /* property: STUN server port */
   gchar *proxy_ip;                /* property: Proxy server IP */
