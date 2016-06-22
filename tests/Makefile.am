@@ -55,7 +55,8 @@ check_PROGRAMS = \
 	test-icetcp \
 	test-credentials \
 	test-turn \
-	test-drop-invalid
+	test-drop-invalid \
+	test-nomination
 
 dist_check_SCRIPTS = \
 	check-test-fullmode-with-stun.sh \
@@ -130,6 +131,8 @@ test_credentials_LDADD = $(COMMON_LDADD)
 test_turn_LDADD = $(COMMON_LDADD)
 
 test_drop_invalid_LDADD = $(COMMON_LDADD)
+
+test_nomination_LDADD = $(COMMON_LDADD)
 
 test_gstreamer_CFLAGS = $(AM_CFLAGS) $(GST_CHECK_CFLAGS)
 test_gstreamer_LDADD = -lnice -L$(top_builddir)/nice/.libs $(GLIB_LIBS) $(GUPNP_LIBS) $(GST_CHECK_LIBS) $(GST_LIBS)
