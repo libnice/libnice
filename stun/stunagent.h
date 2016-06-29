@@ -79,21 +79,26 @@ typedef struct stun_agent_t StunAgent;
  * RFC 3489
  * @STUN_COMPATIBILITY_RFC5389: Use the STUN specifications compatible with
  * RFC 5389
- * @STUN_COMPATIBILITY_WLM2009: Use the STUN specifications compatible with
- * Windows Live Messenger 2009 (a mix between RFC3489 and RFC5389, as well as
- * a special usecase against a typo in their code)
+ * @STUN_COMPATIBILITY_MSICE2: Use the STUN specifications compatible with
+ * [MS-ICE2] (a mix between RFC3489 and RFC5389)
  * @STUN_COMPATIBILITY_OC2007: Use the STUN specifications compatible with
  * Microsoft Office Communicator 2007 (basically RFC3489 with swapped
  * REALM and NONCE attribute hex IDs, attributes are not aligned)
+ * @STUN_COMPATIBILITY_WLM2009: An alias for @STUN_COMPATIBILITY_MSICE2
  * @STUN_COMPATIBILITY_LAST: Dummy last compatibility mode
  *
  * Enum that specifies the STUN compatibility mode of the #StunAgent
+ *
+ * <warning>@STUN_COMPATIBILITY_WLM2009 is deprecated and should not be used
+ * in newly-written code. It is kept for compatibility reasons and represents
+ * the same compatibility as @STUN_COMPATIBILITY_MSICE2.</warning>
  */
 typedef enum {
   STUN_COMPATIBILITY_RFC3489,
   STUN_COMPATIBILITY_RFC5389,
-  STUN_COMPATIBILITY_WLM2009,
+  STUN_COMPATIBILITY_MSICE2,
   STUN_COMPATIBILITY_OC2007,
+  STUN_COMPATIBILITY_WLM2009 = STUN_COMPATIBILITY_MSICE2,
   STUN_COMPATIBILITY_LAST = STUN_COMPATIBILITY_OC2007
 } StunCompatibility;
 
@@ -147,7 +152,7 @@ typedef enum {
  * to the STUN messages it creates. Calling nice_agent_set_software() will have
  * the same effect as enabling this Usage. STUN Indications do not have the
  * SOFTWARE attributes added to them though. The SOFTWARE attribute is only
- * added for the RFC5389 and WLM2009 compatibility modes.
+ * added for the RFC5389 and MSICE2 compatibility modes.
  * @STUN_AGENT_USAGE_IGNORE_CREDENTIALS: The agent should ignore any credentials
  * in the STUN messages it receives (the MESSAGE-INTEGRITY attribute
  * will never be validated by stun_agent_validate())
@@ -296,7 +301,7 @@ bool stun_agent_default_validater (StunAgent *agent,
     <para>
     The #STUN_AGENT_USAGE_USE_FINGERPRINT and #STUN_AGENT_USAGE_ADD_SOFTWARE
     usage flags are only valid if the #STUN_COMPATIBILITY_RFC5389 or
-    #STUN_COMPATIBILITY_WLM2009 @compatibility is used
+    #STUN_COMPATIBILITY_MSICE2 @compatibility is used
     </para>
  </note>
  */
@@ -494,7 +499,7 @@ bool stun_agent_forget_transaction (StunAgent *agent, StunTransactionId id);
  * STUN requests, responses and error responses.
  * <para>
  * Calling this function will automatically enable the addition of the SOFTWARE
- * attribute for RFC5389 and WLM2009 compatibility modes.
+ * attribute for RFC5389 and MSICE2 compatibility modes.
  *
  * </para>
  * <note>

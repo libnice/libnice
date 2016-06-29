@@ -139,14 +139,14 @@ StunValidationStatus stun_agent_validate (StunAgent *agent, StunMessage *msg,
 
   /* TODO: reject it or not ? */
   if ((agent->compatibility == STUN_COMPATIBILITY_RFC5389 ||
-          agent->compatibility == STUN_COMPATIBILITY_WLM2009) &&
+       agent->compatibility == STUN_COMPATIBILITY_MSICE2) &&
       !stun_message_has_cookie (msg)) {
       stun_debug ("STUN demux error: no cookie!");
       return STUN_VALIDATION_BAD_REQUEST;
   }
 
   if ((agent->compatibility == STUN_COMPATIBILITY_RFC5389 ||
-          agent->compatibility == STUN_COMPATIBILITY_WLM2009) &&
+       agent->compatibility == STUN_COMPATIBILITY_MSICE2) &&
       agent->usage_flags & STUN_AGENT_USAGE_USE_FINGERPRINT) {
     /* Looks for FINGERPRINT */
     if (stun_message_find32 (msg, STUN_ATTRIBUTE_FINGERPRINT, &fpr) !=
@@ -263,7 +263,7 @@ StunValidationStatus stun_agent_validate (StunAgent *agent, StunMessage *msg,
             agent->compatibility == STUN_COMPATIBILITY_OC2007) {
           stun_sha1 (msg->buffer, hash + 20 - msg->buffer, hash - msg->buffer,
               sha, md5, sizeof(md5), TRUE);
-        } else if (agent->compatibility == STUN_COMPATIBILITY_WLM2009) {
+        } else if (agent->compatibility == STUN_COMPATIBILITY_MSICE2) {
           stun_sha1 (msg->buffer, hash + 20 - msg->buffer,
               stun_message_length (msg) - 20, sha, md5, sizeof(md5), TRUE);
         } else {
@@ -275,7 +275,7 @@ StunValidationStatus stun_agent_validate (StunAgent *agent, StunMessage *msg,
             agent->compatibility == STUN_COMPATIBILITY_OC2007) {
           stun_sha1 (msg->buffer, hash + 20 - msg->buffer, hash - msg->buffer,
               sha, key, key_len, TRUE);
-        } else if (agent->compatibility == STUN_COMPATIBILITY_WLM2009) {
+        } else if (agent->compatibility == STUN_COMPATIBILITY_MSICE2) {
           stun_sha1 (msg->buffer, hash + 20 - msg->buffer,
               stun_message_length (msg) - 20, sha, key, key_len, TRUE);
         } else {
@@ -356,12 +356,12 @@ bool stun_agent_init_request (StunAgent *agent, StunMessage *msg,
 
   if (ret) {
     if (agent->compatibility == STUN_COMPATIBILITY_RFC5389 ||
-        agent->compatibility == STUN_COMPATIBILITY_WLM2009) {
+        agent->compatibility == STUN_COMPATIBILITY_MSICE2) {
       uint32_t cookie = htonl (STUN_MAGIC_COOKIE);
       memcpy (msg->buffer + STUN_MESSAGE_TRANS_ID_POS, &cookie, sizeof (cookie));
     }
     if ((agent->compatibility == STUN_COMPATIBILITY_RFC5389 ||
-            agent->compatibility == STUN_COMPATIBILITY_WLM2009) &&
+         agent->compatibility == STUN_COMPATIBILITY_MSICE2) &&
         (agent->software_attribute != NULL ||
             agent->usage_flags & STUN_AGENT_USAGE_ADD_SOFTWARE)) {
       stun_message_append_software (msg, agent->software_attribute);
@@ -390,7 +390,7 @@ bool stun_agent_init_indication (StunAgent *agent, StunMessage *msg,
 
   if (ret) {
     if (agent->compatibility == STUN_COMPATIBILITY_RFC5389 ||
-        agent->compatibility == STUN_COMPATIBILITY_WLM2009) {
+        agent->compatibility == STUN_COMPATIBILITY_MSICE2) {
       uint32_t cookie = htonl (STUN_MAGIC_COOKIE);
       memcpy (msg->buffer + STUN_MESSAGE_TRANS_ID_POS, &cookie, sizeof (cookie));
     }
@@ -425,7 +425,7 @@ bool stun_agent_init_response (StunAgent *agent, StunMessage *msg,
           stun_message_get_method (request), id)) {
 
     if ((agent->compatibility == STUN_COMPATIBILITY_RFC5389 ||
-            agent->compatibility == STUN_COMPATIBILITY_WLM2009) &&
+         agent->compatibility == STUN_COMPATIBILITY_MSICE2) &&
         (agent->software_attribute != NULL ||
             agent->usage_flags & STUN_AGENT_USAGE_ADD_SOFTWARE)) {
       stun_message_append_software (msg, agent->software_attribute);
@@ -462,7 +462,7 @@ bool stun_agent_init_error (StunAgent *agent, StunMessage *msg,
           stun_message_get_method (request), id)) {
 
     if ((agent->compatibility == STUN_COMPATIBILITY_RFC5389 ||
-            agent->compatibility == STUN_COMPATIBILITY_WLM2009) &&
+         agent->compatibility == STUN_COMPATIBILITY_MSICE2) &&
         (agent->software_attribute != NULL ||
             agent->usage_flags & STUN_AGENT_USAGE_ADD_SOFTWARE)) {
       stun_message_append_software (msg, agent->software_attribute);
@@ -580,7 +580,7 @@ size_t stun_agent_finish_message (StunAgent *agent, StunMessage *msg,
             agent->compatibility == STUN_COMPATIBILITY_OC2007) {
           stun_sha1 (msg->buffer, stun_message_length (msg),
               stun_message_length (msg) - 20, ptr, md5, sizeof(md5), TRUE);
-        } else if (agent->compatibility == STUN_COMPATIBILITY_WLM2009) {
+        } else if (agent->compatibility == STUN_COMPATIBILITY_MSICE2) {
           size_t minus = 20;
           if (agent->usage_flags & STUN_AGENT_USAGE_USE_FINGERPRINT)
             minus -= 8;
@@ -596,7 +596,7 @@ size_t stun_agent_finish_message (StunAgent *agent, StunMessage *msg,
             agent->compatibility == STUN_COMPATIBILITY_OC2007) {
           stun_sha1 (msg->buffer, stun_message_length (msg),
               stun_message_length (msg) - 20, ptr, key, key_len, TRUE);
-        } else if (agent->compatibility == STUN_COMPATIBILITY_WLM2009) {
+        } else if (agent->compatibility == STUN_COMPATIBILITY_MSICE2) {
           size_t minus = 20;
           if (agent->usage_flags & STUN_AGENT_USAGE_USE_FINGERPRINT)
             minus -= 8;
@@ -616,7 +616,7 @@ size_t stun_agent_finish_message (StunAgent *agent, StunMessage *msg,
   }
 
   if ((agent->compatibility == STUN_COMPATIBILITY_RFC5389 ||
-          agent->compatibility == STUN_COMPATIBILITY_WLM2009) &&
+       agent->compatibility == STUN_COMPATIBILITY_MSICE2) &&
       agent->usage_flags & STUN_AGENT_USAGE_USE_FINGERPRINT) {
     ptr = stun_message_append (msg, STUN_ATTRIBUTE_FINGERPRINT, 4);
     if (ptr == NULL) {

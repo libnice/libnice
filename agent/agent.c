@@ -1209,7 +1209,7 @@ nice_agent_init_stun_agent (NiceAgent *agent, StunAgent *stun_agent)
         STUN_AGENT_USAGE_FORCE_VALIDATER);
   } else if (agent->compatibility == NICE_COMPATIBILITY_WLM2009) {
     stun_agent_init (stun_agent, STUN_ALL_KNOWN_ATTRIBUTES,
-        STUN_COMPATIBILITY_WLM2009,
+        STUN_COMPATIBILITY_MSICE2,
         STUN_AGENT_USAGE_SHORT_TERM_CREDENTIALS |
         STUN_AGENT_USAGE_USE_FINGERPRINT);
   } else if (agent->compatibility == NICE_COMPATIBILITY_OC2007) {
@@ -1220,7 +1220,7 @@ nice_agent_init_stun_agent (NiceAgent *agent, StunAgent *stun_agent)
         STUN_AGENT_USAGE_NO_ALIGNED_ATTRIBUTES);
   } else if (agent->compatibility == NICE_COMPATIBILITY_OC2007R2) {
     stun_agent_init (stun_agent, STUN_ALL_KNOWN_ATTRIBUTES,
-        STUN_COMPATIBILITY_WLM2009,
+        STUN_COMPATIBILITY_MSICE2,
         STUN_AGENT_USAGE_SHORT_TERM_CREDENTIALS |
         STUN_AGENT_USAGE_USE_FINGERPRINT |
         STUN_AGENT_USAGE_NO_ALIGNED_ATTRIBUTES);
