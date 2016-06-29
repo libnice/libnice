@@ -73,7 +73,7 @@ stun_usage_ice_conncheck_create (StunAgent *agent, StunMessage *msg,
   stun_agent_init_request (agent, msg, buffer, buffer_len, STUN_BINDING);
 
   if (compatibility == STUN_USAGE_ICE_COMPATIBILITY_RFC5245 ||
-      compatibility == STUN_USAGE_ICE_COMPATIBILITY_WLM2009) {
+      compatibility == STUN_USAGE_ICE_COMPATIBILITY_MSICE2) {
     if (cand_use)
     {
       val = stun_message_append_flag (msg, STUN_ATTRIBUTE_USE_CANDIDATE);
@@ -100,7 +100,7 @@ stun_usage_ice_conncheck_create (StunAgent *agent, StunMessage *msg,
       return 0;
   }
 
-  if (compatibility == STUN_USAGE_ICE_COMPATIBILITY_WLM2009) {
+  if (compatibility == STUN_USAGE_ICE_COMPATIBILITY_MSICE2) {
     size_t identifier_len = strlen(candidate_identifier);
     size_t attribute_len = identifier_len;
     int modulo4 = identifier_len % 4;
@@ -297,7 +297,7 @@ stun_usage_ice_conncheck_create_reply (StunAgent *agent, StunMessage *req,
        * attribute
        */
       if (compatibility == STUN_USAGE_ICE_COMPATIBILITY_RFC5245 ||
-          compatibility == STUN_USAGE_ICE_COMPATIBILITY_WLM2009)
+          compatibility == STUN_USAGE_ICE_COMPATIBILITY_MSICE2)
       {
         stun_debug ("STUN Role not specified by peer!");
       }

@@ -65,23 +65,27 @@ extern "C" {
  * implementation of ICE
  * @STUN_USAGE_ICE_COMPATIBILITY_MSN: The ICE compatibility with MSN's
  * implementation of ICE
- * @STUN_USAGE_ICE_COMPATIBILITY_WLM2009: The ICE compatibility with Windows
- * Live Messenger and Microsoft Office Communicator 2007 R2 implementation of ICE
+ * @STUN_USAGE_ICE_COMPATIBILITY_MSICE2: The ICE compatibility with [MS-ICE2]
+ * specification
  * @STUN_USAGE_ICE_COMPATIBILITY_DRAFT19: The ICE compatibility with draft 19
+ * @STUN_USAGE_ICE_COMPATIBILITY_WLM2009: An alias
+ * for @STUN_USAGE_ICE_COMPATIBILITY_MSICE2
  *
  * This enum defines which compatibility modes this ICE usage can use
  *
- * <warning>@STUN_USAGE_ICE_COMPATIBILITY_DRAFT19 is deprecated and should not
- * be used in newly-written code. It is kept for compatibility reasons and
- * represents the same compatibility as @STUN_USAGE_ICE_COMPATIBILITY_RFC5245
- * </warning>
+ * <warning>@STUN_USAGE_ICE_COMPATIBILITY_DRAFT19 and
+ * @STUN_USAGE_ICE_COMPATIBILITY_WLM2009 are deprecated and should not be used
+ * in newly-written code. They are kept for compatibility reasons and represent
+ * the same compatibilities as @STUN_USAGE_ICE_COMPATIBILITY_RFC5245 and
+ * @STUN_USAGE_ICE_COMPATIBILITY_MSICE2 respectively.</warning>
  */
 typedef enum {
   STUN_USAGE_ICE_COMPATIBILITY_RFC5245,
   STUN_USAGE_ICE_COMPATIBILITY_GOOGLE,
   STUN_USAGE_ICE_COMPATIBILITY_MSN,
-  STUN_USAGE_ICE_COMPATIBILITY_WLM2009,
+  STUN_USAGE_ICE_COMPATIBILITY_MSICE2,
   STUN_USAGE_ICE_COMPATIBILITY_DRAFT19 = STUN_USAGE_ICE_COMPATIBILITY_RFC5245,
+  STUN_USAGE_ICE_COMPATIBILITY_WLM2009 = STUN_USAGE_ICE_COMPATIBILITY_MSICE2,
 } StunUsageIceCompatibility;
 
 
@@ -141,7 +145,7 @@ typedef enum {
  * Builds an ICE connectivity check STUN message.
  * If the compatibility is not #STUN_USAGE_ICE_COMPATIBILITY_RFC5245, the
  * @cand_use, @controlling, @priority and @tie arguments are not used.
- * If the compatibility is not #STUN_USAGE_ICE_COMPATIBILITY_WLM2009, the
+ * If the compatibility is not #STUN_USAGE_ICE_COMPATIBILITY_MSICE2, the
  * @candidate_identifier argument is not used.
  * Returns: The length of the message built.
  */
