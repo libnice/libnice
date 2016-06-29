@@ -57,6 +57,7 @@
 #include "agent-priv.h"
 #include "conncheck.h"
 #include "discovery.h"
+#include "stun/stun5389.h"
 #include "stun/usages/ice.h"
 #include "stun/usages/bind.h"
 #include "stun/usages/turn.h"
@@ -778,7 +779,37 @@ static guint32 peer_reflexive_candidate_priority (NiceAgent *agent,
   return priority;
 }
 
+static void ms_ice2_legacy_conncheck_send(StunMessage *msg, NiceSocket *sock,
+    const NiceAddress *remote_addr)
+{
+  uint32_t *fingerprint_attr;
+  uint32_t fingerprint_orig;
+  uint16_t fingerprint_len;
+  size_t buffer_len;
 
+  fingerprint_attr = (uint32_t *)stun_message_find (msg,
+      STUN_ATTRIBUTE_FINGERPRINT, &fingerprint_len);
+
+  if (fingerprint_attr == NULL) {
+    nice_debug ("FINGERPRINT not found.");
+    return;
+  }
+
+  if (fingerprint_len != sizeof (fingerprint_orig)) {
+    nice_debug ("Unexpected FINGERPRINT length %u.", fingerprint_len);
+    return;
+  }
+
+  memcpy (&fingerprint_orig, fingerprint_attr, sizeof (fingerprint_orig));
+
+  buffer_len = stun_message_length (msg);
+
+  *fingerprint_attr = stun_fingerprint (msg->buffer, buffer_len, TRUE);
+
+  agent_socket_send (sock, remote_addr, buffer_len, (gchar *)msg->buffer);
+
+  memcpy (fingerprint_attr, &fingerprint_orig, sizeof (fingerprint_orig));
+}
 
 /*
  * Timer callback that handles initiating and managing connectivity
@@ -882,6 +913,11 @@ static gboolean priv_conn_keepalive_tick_unlocked (NiceAgent *agent)
           if (buf_len > 0) {
             agent_socket_send (p->local->sockptr, &p->remote->addr, buf_len,
                 (gchar *)p->keepalive.stun_buffer);
+
+            if (agent->compatibility == NICE_COMPATIBILITY_OC2007R2) {
+              ms_ice2_legacy_conncheck_send (&p->keepalive.stun_message,
+                  p->local->sockptr, &p->remote->addr);
+            }
 
             nice_debug ("Agent %p : stun_bind_keepalive for pair %p res %d.",
                 agent, p, (int) buf_len);
@@ -2167,6 +2203,11 @@ int conn_check_send (NiceAgent *agent, CandidateCheckPair *pair)
       agent_socket_send (pair->sockptr, &pair->remote->addr,
           buffer_len, (gchar *)pair->stun_buffer);
 
+      if (agent->compatibility == NICE_COMPATIBILITY_OC2007R2) {
+        ms_ice2_legacy_conncheck_send (&pair->stun_message, pair->sockptr,
+            &pair->remote->addr);
+      }
+
       timeout = stun_timer_remainder (&pair->timer);
       /* note: convert from milli to microseconds for g_time_val_add() */
       g_get_current_time (&pair->next_tick);
@@ -2372,12 +2413,15 @@ static gboolean priv_schedule_triggered_check (NiceAgent *agent, NiceStream *str
  * @param toaddr address to which reply is sent
  * @param socket the socket over which the request came
  * @param rbuf_len length of STUN message to send
- * @param rbuf buffer containing the STUN message to send
+ * @param msg the STUN message to send
  * @param use_candidate whether the request had USE_CANDIDATE attribute
  * 
  * @pre (rcand == NULL || nice_address_equal(rcand->addr, toaddr) == TRUE)
  */
-static void priv_reply_to_conn_check (NiceAgent *agent, NiceStream *stream, NiceComponent *component, NiceCandidate *lcand, NiceCandidate *rcand, const NiceAddress *toaddr, NiceSocket *sockptr, size_t  rbuf_len, uint8_t *rbuf, gboolean use_candidate)
+static void priv_reply_to_conn_check (NiceAgent *agent, NiceStream *stream,
+    NiceComponent *component, NiceCandidate *lcand, NiceCandidate *rcand,
+    const NiceAddress *toaddr, NiceSocket *sockptr, size_t rbuf_len,
+    StunMessage *msg, gboolean use_candidate)
 {
   g_assert (rcand == NULL || nice_address_equal(&rcand->addr, toaddr) == TRUE);
 
@@ -2393,7 +2437,10 @@ static void priv_reply_to_conn_check (NiceAgent *agent, NiceStream *stream, Nice
 	     (int)use_candidate);
   }
 
-  agent_socket_send (sockptr, toaddr, rbuf_len, (const gchar*)rbuf);
+  agent_socket_send (sockptr, toaddr, rbuf_len, (const gchar*)msg->buffer);
+  if (agent->compatibility == NICE_COMPATIBILITY_OC2007R2) {
+    ms_ice2_legacy_conncheck_send(msg, sockptr, toaddr);
+  }
 
   if (rcand) {
     /* note: upon successful check, make the reserve check immediately */
@@ -3601,7 +3648,7 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, NiceStream *stream,
       }
 
       priv_reply_to_conn_check (agent, stream, component, local_candidate,
-          remote_candidate, from, nicesock, rbuf_len, rbuf, use_candidate);
+          remote_candidate, from, nicesock, rbuf_len, &msg, use_candidate);
 
       if (component->remote_candidates == NULL) {
         /* case: We've got a valid binding request to a local candidate

@@ -98,13 +98,48 @@ bool stun_agent_default_validater (StunAgent *agent,
 
 }
 
+static bool stun_agent_check_fingerprint(StunAgent *agent, StunMessage *msg)
+{
+  uint32_t fpr;
+  uint32_t crc32;
+  uint16_t msg_len;
+
+  /* Looks for FINGERPRINT */
+  if (stun_message_find32 (msg, STUN_ATTRIBUTE_FINGERPRINT, &fpr) !=
+      STUN_MESSAGE_RETURN_SUCCESS) {
+    stun_debug ("STUN demux error: no FINGERPRINT attribute!");
+    return FALSE;
+  }
+
+  msg_len = stun_message_length (msg);
+
+  /* Checks FINGERPRINT */
+  crc32 = stun_fingerprint (msg->buffer, msg_len, FALSE);
+  fpr = ntohl (fpr);
+  if (fpr != crc32) {
+    uint16_t palen;
+
+    /* [MS-ICE2] 3.1.4.8.2 Connectivity Checks Phase - legacy compatibility */
+    if (agent->compatibility == STUN_COMPATIBILITY_MSICE2 &&
+        stun_message_find (msg, STUN_ATTRIBUTE_MS_IMPLEMENTATION_VERSION,
+            &palen) == NULL &&
+        fpr == stun_fingerprint (msg->buffer, msg_len, TRUE)) {
+      return TRUE;
+    }
+
+    stun_debug ("STUN demux error: bad fingerprint: 0x%08x, expected: 0x%08x!",
+        fpr, crc32);
+    return FALSE;
+  }
+
+  return TRUE;
+}
+
 StunValidationStatus stun_agent_validate (StunAgent *agent, StunMessage *msg,
     const uint8_t *buffer, size_t buffer_len,
     StunMessageIntegrityValidate validater, void * validater_data)
 {
   StunTransactionId msg_id;
-  uint32_t fpr;
-  uint32_t crc32;
   int len;
   uint8_t *username = NULL;
   uint16_t username_len;
@@ -148,18 +183,7 @@ StunValidationStatus stun_agent_validate (StunAgent *agent, StunMessage *msg,
   if ((agent->compatibility == STUN_COMPATIBILITY_RFC5389 ||
        agent->compatibility == STUN_COMPATIBILITY_MSICE2) &&
       agent->usage_flags & STUN_AGENT_USAGE_USE_FINGERPRINT) {
-    /* Looks for FINGERPRINT */
-    if (stun_message_find32 (msg, STUN_ATTRIBUTE_FINGERPRINT, &fpr) !=
-        STUN_MESSAGE_RETURN_SUCCESS) {
-      stun_debug ("STUN demux error: no FINGERPRINT attribute!");
-      return STUN_VALIDATION_BAD_REQUEST;
-    }
-    /* Checks FINGERPRINT */
-    crc32 = stun_fingerprint (msg->buffer, stun_message_length (msg), FALSE);
-    fpr = ntohl (fpr);
-    if (fpr != crc32) {
-      stun_debug ("STUN demux error: bad fingerprint: 0x%08x,"
-          " expected: 0x%08x!", fpr, crc32);
+    if (stun_agent_check_fingerprint(agent, msg) == FALSE) {
       return STUN_VALIDATION_BAD_REQUEST;
     }
 
