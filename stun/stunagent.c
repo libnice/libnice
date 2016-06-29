@@ -62,6 +62,8 @@ void stun_agent_init (StunAgent *agent, const uint16_t *known_attributes,
   agent->compatibility = compatibility;
   agent->usage_flags = usage_flags;
   agent->software_attribute = NULL;
+  agent->ms_ice2_send_legacy_connchecks =
+      compatibility == STUN_COMPATIBILITY_MSICE2;
 
   for (i = 0; i < STUN_AGENT_MAX_SAVED_IDS; i++) {
     agent->sent_ids[i].valid = FALSE;
@@ -148,6 +150,7 @@ StunValidationStatus stun_agent_validate (StunAgent *agent, StunMessage *msg,
   uint8_t *hash;
   uint8_t sha[20];
   uint16_t hlen;
+  uint32_t implementation_version;
   int sent_id_idx = -1;
   uint16_t unknown;
   int error_code;
@@ -333,6 +336,12 @@ StunValidationStatus stun_agent_validate (StunAgent *agent, StunMessage *msg,
 
   if (sent_id_idx != -1 && sent_id_idx < STUN_AGENT_MAX_SAVED_IDS) {
     agent->sent_ids[sent_id_idx].valid = FALSE;
+  }
+
+  /* [MS-ICE2] 3.1.4.8.2 stop sending additional connectivity checks */
+  if (stun_message_find32(msg, STUN_ATTRIBUTE_MS_IMPLEMENTATION_VERSION,
+      &implementation_version) == STUN_MESSAGE_RETURN_SUCCESS) {
+    msg->agent->ms_ice2_send_legacy_connchecks = FALSE;
   }
 
   if (stun_agent_find_unknowns (agent, msg, &unknown, 1) > 0) {

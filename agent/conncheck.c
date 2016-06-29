@@ -787,6 +787,10 @@ static void ms_ice2_legacy_conncheck_send(StunMessage *msg, NiceSocket *sock,
   uint16_t fingerprint_len;
   size_t buffer_len;
 
+  if (msg->agent->ms_ice2_send_legacy_connchecks == FALSE) {
+    return;
+  }
+
   fingerprint_attr = (uint32_t *)stun_message_find (msg,
       STUN_ATTRIBUTE_FINGERPRINT, &fingerprint_len);
 

@@ -203,6 +203,7 @@ struct stun_agent_t {
   uint16_t *known_attributes;
   StunAgentUsageFlags usage_flags;
   const char *software_attribute;
+  bool ms_ice2_send_legacy_connchecks;
 };
 
 /**
