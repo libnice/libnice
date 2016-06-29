@@ -155,8 +155,7 @@ StunValidationStatus stun_agent_validate (StunAgent *agent, StunMessage *msg,
       return STUN_VALIDATION_BAD_REQUEST;
     }
     /* Checks FINGERPRINT */
-    crc32 = stun_fingerprint (msg->buffer, stun_message_length (msg),
-        agent->compatibility == STUN_COMPATIBILITY_WLM2009);
+    crc32 = stun_fingerprint (msg->buffer, stun_message_length (msg), FALSE);
     fpr = ntohl (fpr);
     if (fpr != crc32) {
       stun_debug ("STUN demux error: bad fingerprint: 0x%08x,"
@@ -624,8 +623,7 @@ size_t stun_agent_finish_message (StunAgent *agent, StunMessage *msg,
       return 0;
     }
 
-    fpr = stun_fingerprint (msg->buffer, stun_message_length (msg),
-        agent->compatibility == STUN_COMPATIBILITY_WLM2009);
+    fpr = stun_fingerprint (msg->buffer, stun_message_length (msg), FALSE);
     memcpy (ptr, &fpr, sizeof (fpr));
 
     stun_debug_bytes (" Message HMAC-SHA1 fingerprint: ", ptr, 4);

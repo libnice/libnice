@@ -122,6 +122,12 @@ stun_usage_ice_conncheck_create (StunAgent *agent, StunMessage *msg,
 
     if (val != STUN_MESSAGE_RETURN_SUCCESS)
 		return 0;
+
+    val = stun_message_append32 (msg,
+        STUN_ATTRIBUTE_MS_IMPLEMENTATION_VERSION, 2);
+
+    if (val != STUN_MESSAGE_RETURN_SUCCESS)
+      return 0;
   }
 
   return stun_agent_finish_message (agent, msg, password, password_len);
@@ -344,7 +350,15 @@ stun_usage_ice_conncheck_create_reply (StunAgent *agent, StunMessage *req,
     goto failure;
   }
 
+  if (compatibility == STUN_USAGE_ICE_COMPATIBILITY_MSICE2) {
+    val = stun_message_append32 (msg,
+        STUN_ATTRIBUTE_MS_IMPLEMENTATION_VERSION, 2);
 
+    if (val != STUN_MESSAGE_RETURN_SUCCESS) {
+      stun_debug ("Error appending implementation version: %d", val);
+      goto failure;
+    }
+  }
 
   /* the stun agent will automatically use the password of the request */
   len = stun_agent_finish_message (agent, msg, NULL, 0);
