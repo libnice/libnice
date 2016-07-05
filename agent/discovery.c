@@ -338,7 +338,7 @@ static guint priv_highest_remote_foundation (NiceComponent *component)
   for (highest = 1;; highest++) {
     gboolean taken = FALSE;
 
-    g_snprintf (foundation, NICE_CANDIDATE_MAX_FOUNDATION, "remote-%u",
+    g_snprintf (foundation, NICE_CANDIDATE_MAX_FOUNDATION, "remote%u",
         highest);
     for (i = component->remote_candidates; i; i = i->next) {
       NiceCandidate *cand = i->data;
@@ -468,7 +468,7 @@ static void priv_assign_remote_foundation (NiceAgent *agent, NiceCandidate *cand
   if (component) {
     next_remote_id = priv_highest_remote_foundation (component);
     g_snprintf (candidate->foundation, NICE_CANDIDATE_MAX_FOUNDATION,
-        "remote-%u", next_remote_id);
+        "remote%u", next_remote_id);
   }
 }
 
