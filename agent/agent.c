@@ -2032,6 +2032,17 @@ void agent_gathering_done (NiceAgent *agent)
 
   for (i = agent->streams; i; i = i->next) {
     NiceStream *stream = i->data;
+
+    /* We ignore streams not in gathering state, typically already in
+     * ready state. Such streams may have couples (local,remote)
+     * candidates that have not resulted in the creation a new pair
+     * during a previous conncheck session, and we don't want these new
+     * pairs to be added now, because it would generate unneeded
+     * transition changes for a stream unconcerned by this gathering.
+     */
+    if (!stream->gathering)
+      continue;
+
     for (j = stream->components; j; j = j->next) {
       NiceComponent *component = j->data;
 
