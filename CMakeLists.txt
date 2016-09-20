@@ -103,7 +103,7 @@ CHECK_C_SOURCE_COMPILES("#include <unistd.h>
     #endif
     int main(int argc, char** argv) { return 0; }" _POSIX_1_SOURCE)
 
-CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/config.h.in ${CMAKE_CURRENT_BINARY_DIR}/config.h)
+CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/config.h.in.cmake ${CMAKE_CURRENT_BINARY_DIR}/config.h)
 include_directories("${CMAKE_CURRENT_BINARY_DIR}") #this adds config.h to the include path
 
 add_library(nice STATIC ${LibNice_SOURCES})
