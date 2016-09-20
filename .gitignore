@@ -1,3 +1,4 @@
+CMakeLists.txt.user
 *.lo
 *.loT
 *.o
