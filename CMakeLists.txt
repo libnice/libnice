@@ -94,6 +94,7 @@ CHECK_INCLUDE_FILES (string.h HAVE_STRING_H)
 CHECK_INCLUDE_FILES (sys/stat.h HAVE_SYS_STAT_H)
 CHECK_INCLUDE_FILES (sys/types.h HAVE_SYS_TYPES_H)
 CHECK_INCLUDE_FILES (unistd.h HAVE_UNISTD_H)
+CHECK_INCLUDE_FILES (netdb.h HAVE_NETDB_H)
 
 INCLUDE (CheckCSourceCompiles)
 CHECK_C_SOURCE_COMPILES("void test(int len) { int vla[len]; }; int main(int argc, char** argv) { return 0; }" HAVE_C_VARARRAYS)

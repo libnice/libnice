@@ -26,6 +26,9 @@
 /* Define to 1 if you have the <net/in.h> header file. */
 #cmakedefine  HAVE_NET_IN_H 1
 
+/* Define to 1 if you have the <netdb.h> header file. */
+#cmakedefine  HAVE_NETDB_H 1
+
 /* Define to 1 if you have the `poll' function. */
 /* #undef HAVE_POLL */
 
