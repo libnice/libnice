@@ -53,6 +53,14 @@ set(LibNice_SOURCES
     stun/utils.h
     stun/utils.c
     stun/win32_common.h
+    stun/usages/bind.c
+    stun/usages/bind.h
+    stun/usages/ice.c
+    stun/usages/ice.h
+    stun/usages/timer.c
+    stun/usages/timer.h
+    stun/usages/turn.c
+    stun/usages/turn.h
     socket/udp-turn-over-tcp.h
     socket/udp-turn-over-tcp.c
     socket/udp-turn.h
@@ -114,13 +122,15 @@ include_directories("${CMAKE_CURRENT_SOURCE_DIR}/agent")
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/random")
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/stun")
 
-#find_package(GLib)
-#target_link_libraries(LibNice glib-2.0)
+find_package(PkgConfig REQUIRED)
 
-find_package (PkgConfig REQUIRED)
-pkg_check_modules (GLIB2 REQUIRED glib-2.0)
+pkg_check_modules(GIO2 REQUIRED gio-2.0)
 
-include_directories (${GLIB2_INCLUDE_DIRS})
-link_directories (${GLIB2_LIBRARY_DIRS})
-add_definitions (${GLIB2_CFLAGS_OTHER})
-target_link_libraries (nice ${GLIB2_LIBRARIES})
+include_directories(${GIO2_INCLUDE_DIRS})
+link_directories(${GIO2_LIBRARY_DIRS})
+add_definitions(${GIO2_CFLAGS_OTHER})
+
+target_link_libraries(${PROJECT_NAME} ${GIO2_LIBRARIES})
+
+find_package(GnuTLS)
+target_link_libraries(${PROJECT_NAME} ${GNUTLS_LIBRARIES})
