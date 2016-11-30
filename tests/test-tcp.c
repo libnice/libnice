@@ -99,8 +99,11 @@ main (void)
 
   nice_address_init (&tmp);
 
-  passive_sock = nice_tcp_passive_socket_new (g_main_loop_get_context (mainloop),
-      &passive_bind_addr);
+  NiceAgent *agent = nice_agent_new(
+      g_main_loop_get_context (mainloop), NICE_COMPATIBILITY_RFC5245);
+
+  passive_sock = nice_tcp_passive_socket_new (agent,
+      g_main_loop_get_context (mainloop), &passive_bind_addr);
   g_assert (passive_sock);
 
   srv_listen_source = g_socket_create_source (passive_sock->fileno,
@@ -149,7 +152,7 @@ main (void)
 
   nice_socket_free (client);
   nice_socket_free (server);
-
+  g_object_unref (agent);
   g_source_unref (srv_listen_source);
   g_source_unref (srv_input_source);
   g_source_unref (cli_input_source);

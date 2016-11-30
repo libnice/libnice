@@ -94,9 +94,12 @@ main (int argc, char *argv[])
   /* Standalone socket */
   udp_bsd = nice_udp_bsd_socket_new (&addr);
 
+  NiceAgent *agent = nice_agent_new(
+      g_main_loop_get_context (mainloop), NICE_COMPATIBILITY_RFC5245);
+
   /* tcp_passive -> pseudossl -> udp_turn_over_tcp */
-  tcp_active = nice_tcp_active_socket_new (g_main_loop_get_context (mainloop),
-      &addr);
+  tcp_active = nice_tcp_active_socket_new (agent,
+      g_main_loop_get_context (mainloop), &addr);
   pseudossl = nice_pseudossl_socket_new (tcp_active,
       NICE_PSEUDOSSL_SOCKET_COMPATIBILITY_GOOGLE);
   udp_turn_over_tcp = nice_udp_turn_over_tcp_socket_new (pseudossl,
@@ -116,6 +119,7 @@ main (int argc, char *argv[])
   nice_socket_free (udp_bsd);
   nice_socket_free (udp_turn_over_tcp);
 
+  g_object_unref (agent);
   g_main_loop_unref (mainloop);
 
   return 0;

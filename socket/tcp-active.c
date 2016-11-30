@@ -56,6 +56,7 @@
 #define TCP_NODELAY 1
 
 typedef struct {
+  NiceAgent *agent;
   GSocketAddress *local_addr;
   GMainContext *context;
 } TcpActivePriv;
@@ -75,7 +76,8 @@ static void socket_set_writable_callback (NiceSocket *sock,
 
 
 NiceSocket *
-nice_tcp_active_socket_new (GMainContext *ctx, NiceAddress *addr)
+nice_tcp_active_socket_new (NiceAgent *agent, GMainContext *ctx,
+    NiceAddress *addr)
 {
   union {
     struct sockaddr_storage storage;
@@ -112,6 +114,7 @@ nice_tcp_active_socket_new (GMainContext *ctx, NiceAddress *addr)
 
   sock->priv = priv = g_slice_new0 (TcpActivePriv);
 
+  priv->agent = agent;
   priv->context = g_main_context_ref (ctx);
   priv->local_addr = gaddr;
 
@@ -260,8 +263,8 @@ nice_tcp_active_socket_connect (NiceSocket *sock, NiceAddress *addr)
 
   nice_address_set_from_sockaddr (&local_addr, &name.addr);
 
-  new_socket = nice_tcp_bsd_socket_new_from_gsock (priv->context, gsock,
-      &local_addr, addr, TRUE);
+  new_socket = nice_tcp_bsd_socket_new_from_gsock (priv->agent, priv->context,
+      gsock, &local_addr, addr, TRUE);
   g_object_unref (gsock);
 
   return new_socket;

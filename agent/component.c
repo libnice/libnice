@@ -880,7 +880,7 @@ nice_component_emit_io_callback (NiceComponent *component,
     agent_unlock_and_emit (agent);
     io_callback (agent, stream_id,
         component_id, buf_len, (gchar *) buf, io_user_data);
-    agent_lock ();
+    agent_lock (agent);
   } else {
     IOCallbackData *data;
 
@@ -1181,7 +1181,7 @@ component_source_prepare (GSource *source, gint *timeout_)
     return FALSE;
 
   /* Needed due to accessing the Component. */
-  agent_lock ();
+  agent_lock (agent);
 
   if (!agent_find_component (agent,
           component_source->stream_id, component_source->component_id, NULL,

@@ -65,7 +65,7 @@ gboolean
 nice_udp_turn_socket_set_peer (NiceSocket *sock, NiceAddress *peer);
 
 NiceSocket *
-nice_udp_turn_socket_new (GMainContext *ctx, NiceAddress *addr,
+nice_udp_turn_socket_new (NiceAgent *agent, GMainContext *ctx, NiceAddress *addr,
     NiceSocket *base_socket, NiceAddress *server_addr,
     gchar *username, gchar *password, NiceTurnSocketCompatibility compatibility);
 

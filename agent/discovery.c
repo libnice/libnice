@@ -559,9 +559,9 @@ HostCandidateResult discovery_add_local_host_candidate (
   if (transport == NICE_CANDIDATE_TRANSPORT_UDP) {
     nicesock = nice_udp_bsd_socket_new (address);
   } else if (transport == NICE_CANDIDATE_TRANSPORT_TCP_ACTIVE) {
-    nicesock = nice_tcp_active_socket_new (agent->main_context, address);
+    nicesock = nice_tcp_active_socket_new (agent, agent->main_context, address);
   } else if (transport == NICE_CANDIDATE_TRANSPORT_TCP_PASSIVE) {
-    nicesock = nice_tcp_passive_socket_new (agent->main_context, address);
+    nicesock = nice_tcp_passive_socket_new (agent, agent->main_context, address);
   } else {
     /* TODO: Add TCP-SO */
   }
@@ -736,7 +736,7 @@ discovery_add_relay_candidate (
   candidate->turn = turn_server_ref (turn);
 
   /* step: link to the base candidate+socket */
-  relay_socket = nice_udp_turn_socket_new (agent->main_context, address,
+  relay_socket = nice_udp_turn_socket_new (agent, agent->main_context, address,
       base_socket, &turn->server,
       turn->username, turn->password,
       agent_to_turn_socket_compatibility (agent));
@@ -1187,11 +1187,11 @@ static gboolean priv_discovery_tick (gpointer pointer)
   NiceAgent *agent = pointer;
   gboolean ret;
 
-  agent_lock();
+  agent_lock(agent);
   if (g_source_is_destroyed (g_main_current_source ())) {
     nice_debug ("Source was destroyed. "
         "Avoided race condition in priv_discovery_tick");
-    agent_unlock ();
+    agent_unlock (agent);
     return FALSE;
   }
 
