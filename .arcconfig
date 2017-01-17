@@ -2,5 +2,6 @@
 	"phabricator.uri" : "https:\/\/phabricator.freedesktop.org\/",
 	"history.immutable" : true,
 	"project.name" : "libnice",
-	"repository.callsign" : "LIBNICE"
+	"repository.callsign" : "LIBNICE",
+	"default-reviewers" : "#libnice"
 }
