@@ -60,6 +60,7 @@
 #define TCP_NODELAY 1
 
 typedef struct {
+  NiceAgent *agent;
   NiceAddress remote_addr;
   GQueue send_queue;
   GMainContext *context;
@@ -88,8 +89,9 @@ static gboolean socket_send_more (GSocket *gsocket, GIOCondition condition,
     gpointer data);
 
 NiceSocket *
-nice_tcp_bsd_socket_new_from_gsock (GMainContext *ctx, GSocket *gsock,
-    NiceAddress *local_addr, NiceAddress *remote_addr, gboolean reliable)
+nice_tcp_bsd_socket_new_from_gsock (NiceAgent *agent, GMainContext *ctx,
+    GSocket *gsock, NiceAddress *local_addr, NiceAddress *remote_addr,
+    gboolean reliable)
 {
   NiceSocket *sock;
   TcpPriv *priv;
@@ -101,6 +103,7 @@ nice_tcp_bsd_socket_new_from_gsock (GMainContext *ctx, GSocket *gsock,
 
   if (ctx == NULL)
     ctx = g_main_context_default ();
+  priv->agent = agent;
   priv->context = g_main_context_ref (ctx);
   priv->remote_addr = *remote_addr;
   priv->error = FALSE;
@@ -123,8 +126,8 @@ nice_tcp_bsd_socket_new_from_gsock (GMainContext *ctx, GSocket *gsock,
 }
 
 NiceSocket *
-nice_tcp_bsd_socket_new (GMainContext *ctx, NiceAddress *local_addr,
-    NiceAddress *remote_addr, gboolean reliable)
+nice_tcp_bsd_socket_new (NiceAgent *agent, GMainContext *ctx,
+    NiceAddress *local_addr, NiceAddress *remote_addr, gboolean reliable)
 {
   union {
     struct sockaddr_storage storage;
@@ -199,8 +202,8 @@ nice_tcp_bsd_socket_new (GMainContext *ctx, NiceAddress *local_addr,
   g_socket_bind (gsock, gaddr, FALSE, NULL);
   g_object_unref (gaddr);
 
-  sock = nice_tcp_bsd_socket_new_from_gsock (ctx, gsock, local_addr, remote_addr,
-      reliable);
+  sock = nice_tcp_bsd_socket_new_from_gsock (agent, ctx, gsock,
+      local_addr, remote_addr, reliable);
   g_object_unref (gsock);
 
   return sock;
@@ -424,12 +427,12 @@ socket_send_more (
   NiceSocket *sock = (NiceSocket *) data;
   TcpPriv *priv = sock->priv;
 
-  agent_lock ();
+  agent_lock (priv->agent);
 
   if (g_source_is_destroyed (g_main_current_source ())) {
     nice_debug ("Source was destroyed. "
         "Avoided race condition in tcp-bsd.c:socket_send_more");
-    agent_unlock ();
+    agent_unlock (priv->agent);
     return FALSE;
   }
 
@@ -441,7 +444,7 @@ socket_send_more (
     g_source_unref (priv->io_source);
     priv->io_source = NULL;
 
-    agent_unlock ();
+    agent_unlock (priv->agent);
 
     if (priv->writable_cb)
       priv->writable_cb (sock, priv->writable_data);
@@ -449,6 +452,6 @@ socket_send_more (
     return FALSE;
   }
 
-  agent_unlock ();
+  agent_unlock (priv->agent);
   return TRUE;
 }

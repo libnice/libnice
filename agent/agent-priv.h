@@ -118,6 +118,10 @@ struct _NiceAgent
 {
   GObject parent;                 /* gobject pointer */
 
+  gint agent_mutex_count;
+  GThread *agent_mutex_th;
+  GRecMutex agent_mutex;          /* Mutex used for thread-safe lib */
+
   gboolean full_mode;             /* property: full-mode */
   gchar *stun_server_ip;          /* property: STUN server IP */
   guint stun_server_port;         /* property: STUN server port */
@@ -180,8 +184,8 @@ NiceStream *agent_find_stream (NiceAgent *agent, guint stream_id);
 void agent_gathering_done (NiceAgent *agent);
 void agent_signal_gathering_done (NiceAgent *agent);
 
-void agent_lock (void);
-void agent_unlock (void);
+void agent_lock (NiceAgent *agent);
+void agent_unlock (NiceAgent *agent);
 void agent_unlock_and_emit (NiceAgent *agent);
 
 void agent_signal_new_selected_pair (

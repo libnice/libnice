@@ -341,7 +341,7 @@ nice_input_stream_close (GInputStream *stream, GCancellable *cancellable,
   if (agent == NULL)
     return TRUE;
 
-  agent_lock ();
+  agent_lock (agent);
 
   /* Shut down the read side of the pseudo-TCP stream, if it still exists. */
   if (agent_find_component (agent, priv->stream_id, priv->component_id,
@@ -350,7 +350,7 @@ nice_input_stream_close (GInputStream *stream, GCancellable *cancellable,
     pseudo_tcp_socket_shutdown (component->tcp, PSEUDO_TCP_SHUTDOWN_RD);
   }
 
-  agent_unlock ();
+  agent_unlock (agent);
 
   g_object_unref (agent);
 
@@ -376,7 +376,7 @@ nice_input_stream_is_readable (GPollableInputStream *stream)
   if (agent == NULL)
     return FALSE;
 
-  agent_lock ();
+  agent_lock (agent);
 
   if (!agent_find_component (agent, priv->stream_id, priv->component_id,
           &_stream, &component)) {
@@ -405,7 +405,7 @@ nice_input_stream_is_readable (GPollableInputStream *stream)
   }
 
 done:
-  agent_unlock ();
+  agent_unlock (agent);
 
   g_object_unref (agent);
 

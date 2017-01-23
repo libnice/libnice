@@ -43,7 +43,7 @@
 G_BEGIN_DECLS
 
 
-NiceSocket * nice_tcp_passive_socket_new (GMainContext *ctx, NiceAddress *addr);
+NiceSocket * nice_tcp_passive_socket_new (NiceAgent *agent, GMainContext *ctx, NiceAddress *addr);
 NiceSocket * nice_tcp_passive_socket_accept (NiceSocket *socket);
 
 
