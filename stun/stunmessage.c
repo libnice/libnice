@@ -427,14 +427,22 @@ stun_message_append_addr (StunMessage *msg, StunAttribute type,
   uint16_t alen, port;
   uint8_t family;
 
+  union {
+    const struct sockaddr *addr;
+    const struct sockaddr_in *in;
+    const struct sockaddr_in6 *in6;
+  } sa;
+
   if ((size_t) addrlen < sizeof (struct sockaddr))
     return STUN_MESSAGE_RETURN_INVALID;
+
+  sa.addr = addr;
 
   switch (addr->sa_family)
   {
     case AF_INET:
       {
-        const struct sockaddr_in *ip4 = (const struct sockaddr_in *)addr;
+        const struct sockaddr_in *ip4 = sa.in;
         family = 1;
         port = ip4->sin_port;
         alen = 4;
@@ -444,7 +452,7 @@ stun_message_append_addr (StunMessage *msg, StunAttribute type,
 
     case AF_INET6:
       {
-        const struct sockaddr_in6 *ip6 = (const struct sockaddr_in6 *)addr;
+        const struct sockaddr_in6 *ip6 = sa.in6;
         if ((size_t) addrlen < sizeof (*ip6))
           return STUN_MESSAGE_RETURN_INVALID;
 
