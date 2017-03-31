@@ -108,6 +108,8 @@ states.png: states.gv
 	dot -Tpng -Gsize=9.6,2.9\! -Gdpi=200 $^ > $@
 
 if ENABLE_GTK_DOC
-TESTS_ENVIRONMENT = cd $(builddir) &&
+TESTS_ENVIRONMENT = \
+  DOC_MODULE=$(DOC_MODULE) DOC_MAIN_SGML_FILE=$(DOC_MAIN_SGML_FILE) \
+  SRCDIR=$(abs_srcdir) BUILDDIR=$(abs_builddir)
 TESTS = $(GTKDOC_CHECK)
 endif
