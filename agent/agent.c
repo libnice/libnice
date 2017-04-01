@@ -3597,11 +3597,10 @@ agent_recv_message_unlocked (
     retval = nice_socket_recv_messages (nicesock, message, 1);
   }
 
-  nice_debug_verbose ("%s: Received %d valid messages of length %" G_GSIZE_FORMAT
-      " from base socket %p.", G_STRFUNC, retval, message->length, nicesock);
-
   if (retval == 0) {
     retval = RECV_WOULD_BLOCK;  /* EWOULDBLOCK */
+    nice_debug_verbose ("%s: Agent %p: no message available on read attempt",
+        G_STRFUNC, agent);
     goto done;
   } else if (retval < 0) {
     nice_debug ("Agent %p: %s returned %d, errno (%d) : %s",
@@ -3613,14 +3612,17 @@ agent_recv_message_unlocked (
 
   if (retval == RECV_OOB || message->length == 0) {
     retval = RECV_OOB;
+    nice_debug_verbose ("%s: Agent %p: message handled out-of-band", G_STRFUNC,
+        agent);
     goto done;
   }
 
   if (nice_debug_is_verbose ()) {
     gchar tmpbuf[INET6_ADDRSTRLEN];
     nice_address_to_string (message->from, tmpbuf);
-    nice_debug_verbose ("Agent %p : Packet received on local socket %d from [%s]:%u (%" G_GSSIZE_FORMAT " octets).", agent,
-        g_socket_get_fd (nicesock->fileno), tmpbuf,
+    nice_debug_verbose ("%s: Agent %p : Packet received on local socket %p "
+        "(fd %d) from [%s]:%u (%" G_GSSIZE_FORMAT " octets).", G_STRFUNC, agent,
+        nicesock, g_socket_get_fd (nicesock->fileno), tmpbuf,
         nice_address_get_port (message->from), message->length);
   }
 
