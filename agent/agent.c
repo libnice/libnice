@@ -3240,6 +3240,8 @@ nice_agent_set_remote_credentials (
     g_strlcpy (stream->remote_ufrag, ufrag, NICE_STREAM_MAX_UFRAG);
     g_strlcpy (stream->remote_password, pwd, NICE_STREAM_MAX_PWD);
 
+    conn_check_remote_credentials_set(agent, stream);
+
     ret = TRUE;
     goto done;
   }
@@ -3341,8 +3343,6 @@ _set_remote_candidates_locked (NiceAgent *agent, NiceStream *stream,
         ++added;
     }
   }
-
-  conn_check_remote_candidates_set(agent, stream, component);
 
   if (added > 0) {
     conn_check_schedule_next (agent);
