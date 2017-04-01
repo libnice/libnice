@@ -10,5 +10,4 @@ Version: @VERSION@
 Requires: @NICE_PACKAGES_PUBLIC@ @GUPNP_PACKAGES_PUBLIC@
 Requires.private: @NICE_PACKAGES_PRIVATE@ @GUPNP_PACKAGES_PRIVATE@
 Libs: -L${libdir} -lnice
-Libs.private: @LIBGCRYPT_LIBS@
 Cflags: -I${includedir}/nice -I${includedir}

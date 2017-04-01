@@ -68,23 +68,13 @@ void nice_RAND_bytes (uint8_t *dst, int len)
 }
 #else
 
-#include <gcrypt.h>
+#include <sys/types.h>
+#include <gnutls/gnutls.h>
+#include <gnutls/crypto.h>
 
 void nice_RAND_bytes (uint8_t *dst, int len)
 {
-  /* Initialise libgcrypt. The application might do this first, but we need to
-   * do it otherwise. Abort if this fails, as we can’t do random number
-   * generation. */
-  if (!gcry_check_version (GCRYPT_VERSION))
-    abort ();
-
-  if (!gcry_control (GCRYCTL_INITIALIZATION_FINISHED_P))
-    {
-      gcry_control (GCRYCTL_DISABLE_SECMEM, 0);
-      gcry_control (GCRYCTL_INITIALIZATION_FINISHED, 0);
-    }
-
-  gcry_randomize (dst, len, GCRY_STRONG_RANDOM);
+  gnutls_rnd (GNUTLS_RND_NONCE, dst, len);
 }
 
 #endif /* _WIN32 */

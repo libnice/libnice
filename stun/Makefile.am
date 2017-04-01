@@ -14,7 +14,7 @@ AM_CFLAGS = \
 	-std=gnu99 \
 	-DG_LOG_DOMAIN=\"libnice-stun\" \
 	$(LIBNICE_CFLAGS) \
-	$(LIBGCRYPT_CFLAGS) \
+	$(GNUTLS_CFLAGS) \
 	$(NULL)
 AM_CPPFLAGS = -I$(top_srcdir)
 
@@ -38,7 +38,7 @@ libstun_la_SOURCES = constants.h \
 	usages/turn.c usages/turn.h \
 	usages/timer.c usages/timer.h
 
-libstun_la_LIBADD = $(LIBRT) $(LIBGCRYPT_LIBS)
+libstun_la_LIBADD = $(LIBRT) $(GNUTLS_LIBS)
 
 EXTRA_DIST = win32_common.h
 
