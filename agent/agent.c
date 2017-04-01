@@ -4975,21 +4975,26 @@ component_io_cb (GSocket *gsocket, GIOCondition condition, gpointer user_data)
       retval = agent_recv_message_unlocked (agent, stream, component,
           socket_source->socket, &local_message);
 
-      nice_debug_verbose ("%s: %p: received %d valid messages with %" G_GSSIZE_FORMAT
-           " bytes", G_STRFUNC, agent, retval, local_message.length);
-
       if (retval == RECV_WOULD_BLOCK) {
         /* EWOULDBLOCK. */
+        nice_debug_verbose ("%s: %p: no message available on read attempt",
+            G_STRFUNC, agent);
         break;
       } else if (retval == RECV_ERROR) {
         /* Other error. */
-        nice_debug ("%s: error receiving message", G_STRFUNC);
+        nice_debug ("%s: %p: error receiving message", G_STRFUNC, agent);
         remove_source = TRUE;
         break;
       }
 
-      if (retval == RECV_SUCCESS && local_message.length > 0)
-        nice_component_emit_io_callback (component, local_buf, local_message.length);
+      if (retval == RECV_SUCCESS) {
+        nice_debug_verbose ("%s: %p: received a valid message with %" G_GSSIZE_FORMAT
+            " bytes", G_STRFUNC, agent, local_message.length);
+
+        if (local_message.length > 0) {
+          nice_component_emit_io_callback (component, local_buf, local_message.length);
+        }
+      }
 
       if (g_source_is_destroyed (g_main_current_source ())) {
         nice_debug ("Component IO source disappeared during the callback");
