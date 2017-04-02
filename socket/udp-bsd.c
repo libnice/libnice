@@ -50,6 +50,7 @@
 #include <fcntl.h>
 
 #include "udp-bsd.h"
+#include "agent-priv.h"
 
 #ifndef G_OS_WIN32
 #include <unistd.h>
@@ -275,8 +276,12 @@ socket_send_message (NiceSocket *sock, const NiceAddress *to,
       message->n_buffers, NULL, 0, G_SOCKET_MSG_NONE, NULL, &child_error);
 
   if (len < 0) {
-    if (g_error_matches (child_error, G_IO_ERROR, G_IO_ERROR_WOULD_BLOCK))
+    if (g_error_matches (child_error, G_IO_ERROR, G_IO_ERROR_WOULD_BLOCK)) {
       len = 0;
+    } else {
+      nice_debug_verbose ("%s: udp-bsd socket %p: error: %s", G_STRFUNC, sock,
+          child_error->message);
+    }
 
     g_error_free (child_error);
   }
