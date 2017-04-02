@@ -2870,9 +2870,14 @@ nice_agent_gather_candidates (
         if (agent->full_mode && component &&
             transport != NICE_CANDIDATE_TRANSPORT_TCP_PASSIVE) {
           GList *item;
+          int host_ip_version = nice_address_ip_version (&host_candidate->addr);
 
           for (item = component->turn_servers; item; item = item->next) {
             TurnServer *turn = item->data;
+
+            if (host_ip_version != nice_address_ip_version (&turn->server)) {
+              continue;
+            }
 
             priv_add_new_candidate_discovery_turn (agent,
                 host_candidate->sockptr,
