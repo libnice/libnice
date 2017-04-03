@@ -74,7 +74,7 @@ int main (void)
   } addr;
   uint8_t req_buf[STUN_MAX_MESSAGE_SIZE];
   uint8_t resp_buf[STUN_MAX_MESSAGE_SIZE];
-  const const uint64_t tie = 0x8000000000000000LL;
+  const uint64_t tie = 0x8000000000000000LL;
   StunMessageReturn val;
   StunUsageIceReturn val2;
   size_t len;
