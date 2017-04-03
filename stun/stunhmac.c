@@ -56,31 +56,36 @@ void stun_sha1 (const uint8_t *msg, size_t len, size_t msg_len, uint8_t *sha,
   uint16_t fakelen = htons (msg_len);
   uint8_t pad_char[64] = {0};
   gnutls_hmac_hd_t handle;
+
+#ifdef NDEBUG
+#define TRY(x) x;
+#else
   int ret;
+#define TRY(x)                                  \
+  ret = x;                                      \
+  assert (ret >= 0);
+#endif
 
   assert (len >= 44u);
 
   assert (gnutls_hmac_get_len (GNUTLS_MAC_SHA1) == 20);
-  ret = gnutls_hmac_init (&handle, GNUTLS_MAC_SHA1, key, keylen);
-  assert (ret >= 0);
+  TRY (gnutls_hmac_init (&handle, GNUTLS_MAC_SHA1, key, keylen));
 
-  ret = gnutls_hmac (handle, msg, 2);
-  assert (ret >= 0);
-  ret = gnutls_hmac (handle, &fakelen, 2);
-  assert (ret >= 0);
-  ret = gnutls_hmac (handle, msg + 4, len - 28);
-  assert (ret >= 0);
+  TRY (gnutls_hmac (handle, msg, 2));
+  TRY (gnutls_hmac (handle, &fakelen, 2));
+  TRY (gnutls_hmac (handle, msg + 4, len - 28));
 
   /* RFC 3489 specifies that the message's size should be 64 bytes,
      and \x00 padding should be done */
   if (padding && ((len - 24) % 64) > 0) {
     uint16_t pad_size = 64 - ((len - 24) % 64);
 
-    ret = gnutls_hmac (handle, pad_char, pad_size);
-    assert (ret >= 0);
+    TRY (gnutls_hmac (handle, pad_char, pad_size));
   }
 
   gnutls_hmac_deinit (handle, sha);
+
+#undef TRY
 }
 
 static const uint8_t *priv_trim_var (const uint8_t *var, size_t *var_len)
