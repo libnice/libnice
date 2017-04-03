@@ -99,6 +99,12 @@ StunUsageBindReturn stun_usage_bind_process (StunMessage *msg,
 {
   int code = -1;
   StunMessageReturn val;
+  union {
+    struct sockaddr *sa;
+    struct sockaddr_storage *sas;
+  } sa;
+
+  sa.sa = addr;
 
   if (stun_message_get_method (msg) != STUN_BINDING)
     return STUN_USAGE_BIND_RETURN_INVALID;
@@ -124,9 +130,15 @@ StunUsageBindReturn stun_usage_bind_process (StunMessage *msg,
 
       /* ALTERNATE-SERVER mechanism */
       if ((code / 100) == 3) {
+        union {
+          struct sockaddr *sa;
+          struct sockaddr_storage *sas;
+        } alternate_sa;
+
+        alternate_sa.sa = alternate_server;
         if (alternate_server && alternate_server_len) {
           if (stun_message_find_addr (msg, STUN_ATTRIBUTE_ALTERNATE_SERVER,
-                  (struct sockaddr_storage *) alternate_server,
+                  alternate_sa.sas,
                   alternate_server_len) != STUN_MESSAGE_RETURN_SUCCESS) {
             stun_debug (" Unexpectedly missing ALTERNATE-SERVER attribute");
             return STUN_USAGE_BIND_RETURN_ERROR;
@@ -152,13 +164,13 @@ StunUsageBindReturn stun_usage_bind_process (StunMessage *msg,
   stun_debug ("Received %u-bytes STUN message", stun_message_length (msg));
 
   val = stun_message_find_xor_addr (msg,
-      STUN_ATTRIBUTE_XOR_MAPPED_ADDRESS, (struct sockaddr_storage *)addr,
+      STUN_ATTRIBUTE_XOR_MAPPED_ADDRESS, sa.sas,
       addrlen);
   if (val != STUN_MESSAGE_RETURN_SUCCESS)
   {
     stun_debug (" No XOR-MAPPED-ADDRESS: %d", val);
     val = stun_message_find_addr (msg,
-        STUN_ATTRIBUTE_MAPPED_ADDRESS, (struct sockaddr_storage *)addr,
+        STUN_ATTRIBUTE_MAPPED_ADDRESS, sa.sas,
         addrlen);
     if (val != STUN_MESSAGE_RETURN_SUCCESS)
     {

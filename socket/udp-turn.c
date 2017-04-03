@@ -448,12 +448,15 @@ static StunMessageReturn
 stun_message_append_ms_connection_id(StunMessage *msg,
     uint8_t *ms_connection_id, uint32_t ms_sequence_num)
 {
-  uint8_t buf[24];
+  union {
+    uint8_t buf8[24];
+    uint32_t buf32[24/4];
+  } buf;
 
-  memcpy(buf, ms_connection_id, 20);
-  *(uint32_t*)(buf + 20) = htonl(ms_sequence_num);
+  memcpy(buf.buf8, ms_connection_id, 20);
+  buf.buf32[5] = htonl(ms_sequence_num);
   return stun_message_append_bytes (msg, STUN_ATTRIBUTE_MS_SEQUENCE_NUMBER,
-      buf, 24);
+      buf.buf8, 24);
 }
 
 static void
