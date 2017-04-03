@@ -145,7 +145,6 @@ AS_IF([test "$enable_compile_warnings" = "yes" -o \
     NICE_ADD_FLAG([-Winline])
     NICE_ADD_FLAG([-Wpacked])
     NICE_ADD_FLAG([-Wmissing-format-attribute])
-    NICE_ADD_FLAG([-Wmissing-noreturn])
     NICE_ADD_FLAG([-Winit-self])
     NICE_ADD_FLAG([-Wredundant-decls])
     NICE_ADD_FLAG([-Wmissing-include-dirs])
