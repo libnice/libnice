@@ -72,7 +72,7 @@ void nice_RAND_bytes (uint8_t *dst, int len)
 #include <gnutls/gnutls.h>
 #include <gnutls/crypto.h>
 
-void nice_RAND_bytes (uint8_t *dst, int len)
+void nice_RAND_nonce (uint8_t *dst, int len)
 {
   gnutls_rnd (GNUTLS_RND_NONCE, dst, len);
 }
