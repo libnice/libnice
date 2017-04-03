@@ -16,7 +16,7 @@ See the file COPYING.
 Requirements
 ------------
 
- glib >= 2.10
+ glib >= 2.44
  pkg-config
  gupnp-igd >= 0.1.2 (optional)
  gstreamer-0.10 >= 0.10.0 (optional)
