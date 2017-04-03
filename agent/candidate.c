@@ -191,21 +191,21 @@ nice_candidate_ice_local_preference (const NiceCandidate *candidate)
     {
       case NICE_CANDIDATE_TRANSPORT_TCP_ACTIVE:
         if (candidate->type == NICE_CANDIDATE_TYPE_SERVER_REFLEXIVE ||
-            candidate->type == NICE_CANDIDATE_TYPE_PREF_NAT_ASSISTED)
+            candidate->type == NICE_CANDIDATE_TYPE_HOST)
           direction_preference = 4;
         else
           direction_preference = 6;
         break;
       case NICE_CANDIDATE_TRANSPORT_TCP_PASSIVE:
         if (candidate->type == NICE_CANDIDATE_TYPE_SERVER_REFLEXIVE ||
-            candidate->type == NICE_CANDIDATE_TYPE_PREF_NAT_ASSISTED)
+            candidate->type == NICE_CANDIDATE_TYPE_HOST)
           direction_preference = 2;
         else
           direction_preference = 4;
         break;
       case NICE_CANDIDATE_TRANSPORT_TCP_SO:
         if (candidate->type == NICE_CANDIDATE_TYPE_SERVER_REFLEXIVE ||
-            candidate->type == NICE_CANDIDATE_TYPE_PREF_NAT_ASSISTED)
+            candidate->type == NICE_CANDIDATE_TYPE_HOST)
           direction_preference = 6;
         else
           direction_preference = 2;
