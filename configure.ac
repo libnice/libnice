@@ -108,7 +108,7 @@ AC_ARG_ENABLE(compile-warnings,
                   [enable_compile_warnings="error"])])
 
 AC_DEFUN([NICE_ADD_FLAG],
-  AS_COMPILER_FLAG([$1], LIBNICE_CFLAGS="$LIBNICE_CFLAGS $1", [])
+  AS_COMPILER_FLAG([-Werror $1], LIBNICE_CFLAGS="$LIBNICE_CFLAGS $1", [])
 )
 
 NICE_ADD_FLAG([-fno-strict-aliasing])
