@@ -5,7 +5,7 @@ Nice: GLib ICE library
 Copyright
 ---------
 
- (C) 2006-2011 Collabora Ltd.
+ (C) 2006-2017 Collabora Ltd.
  (C) 2006-2011 Nokia Corporation
 
 License
@@ -18,9 +18,10 @@ Requirements
 
  glib >= 2.44
  pkg-config
+ gnutls >= 2.12.0
  gupnp-igd >= 0.1.2 (optional)
  gstreamer-0.10 >= 0.10.0 (optional)
- gnutls >= 2.12.0
+ gstreamer-1.0 (optional)
 
 Build instructions
 ------------------
@@ -51,7 +52,7 @@ Relevant standards
 
 These standards are relevant to nice's current implementation.
 
-ICE draft 15
+ICE RFC 5245
   http://tools.ietf.org/html/rfc5245
 STUN
   http://tools.ietf.org/html/rfc3489

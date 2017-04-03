@@ -1,3 +1,12 @@
+libnice 0.1.14 (2017-04-03)
+===========================
+Improved RFC compliance
+Split verbose logs into a separate option
+Numerous bug fixes
+Use GnuTLS for hash functions
+Implement NewReno in PseudoTCP
+Requires GLib 2.44 GnuTLS 2.12
+
 libnice 0.1.13 (2015-04-28)
 ===========================
 Fix build on non-Windows platforms that don't have getifaddrs()

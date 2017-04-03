@@ -950,7 +950,7 @@ nice_component_class_init (NiceComponentClass *klass)
    *
    * The unique numeric ID of the component.
    *
-   * Since: UNRELEASED
+   * Since: 0.1.14
    */
   g_object_class_install_property (object_class, PROP_ID,
       g_param_spec_uint (
@@ -965,7 +965,7 @@ nice_component_class_init (NiceComponentClass *klass)
    *
    * The #NiceAgent this component belongs to.
    *
-   * Since: UNRELEASED
+   * Since: 0.1.14
    */
   g_object_class_install_property (object_class, PROP_AGENT,
       g_param_spec_object (
@@ -980,7 +980,7 @@ nice_component_class_init (NiceComponentClass *klass)
    *
    * The #NiceStream this component belongs to.
    *
-   * Since: UNRELEASED
+   * Since: 0.1.14
    */
   g_object_class_install_property (object_class, PROP_STREAM,
       g_param_spec_object (

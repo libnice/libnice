@@ -698,7 +698,7 @@ nice_agent_class_init (NiceAgentClass *klass)
    * local candidates are available before relay servers have been set
    * with nice_agent_set_relay_info().
    *
-   * Since: UNRELEASED
+   * Since: 0.1.14
    */
    g_object_class_install_property (gobject_class, PROP_FORCE_RELAY,
       g_param_spec_boolean (

@@ -137,7 +137,7 @@ nice_socket_set_writable_callback (NiceSocket *sock,
  * Returns: %TRUE if @sock is based on @other or if @sock and @other are
  * the same socket, %FALSE otherwise.
  *
- * Since: UNRELEASED
+ * Since: 0.1.14
  */
 gboolean
 nice_socket_is_based_on (NiceSocket *sock, NiceSocket *other);
