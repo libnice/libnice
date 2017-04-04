@@ -3617,7 +3617,8 @@ agent_recv_message_unlocked (
     retval = sockret;
   }
 
-  if (retval == RECV_OOB || message->length == 0) {
+  g_assert (retval != RECV_OOB);
+  if (message->length == 0) {
     retval = RECV_OOB;
     nice_debug_verbose ("%s: Agent %p: message handled out-of-band", G_STRFUNC,
         agent);
