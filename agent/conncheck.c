@@ -3638,7 +3638,7 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, NiceStream *stream,
             agent, stream, component, priority, from, nicesock,
             local_candidate,
             remote_candidate2 ? remote_candidate2 : remote_candidate);
-        if(remote_candidate && stream->remote_ufrag != NULL) {
+        if(remote_candidate && stream->remote_ufrag[0]) {
           if (local_candidate &&
               local_candidate->transport == NICE_CANDIDATE_TRANSPORT_TCP_PASSIVE) {
             CandidateCheckPair *pair;
@@ -3657,7 +3657,7 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, NiceStream *stream,
       priv_reply_to_conn_check (agent, stream, component, local_candidate,
           remote_candidate, from, nicesock, rbuf_len, &msg, use_candidate);
 
-      if (stream->remote_ufrag == NULL) {
+      if (stream->remote_ufrag[0] == 0) {
         /* case: We've got a valid binding request to a local candidate
          *       but we do not yet know remote credentials.
          *       As per sect 7.2 of ICE (ID-19), we send a reply
