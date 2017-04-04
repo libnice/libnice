@@ -58,6 +58,7 @@ nice_agent_set_software
 nice_agent_set_stream_name
 nice_agent_set_stream_tos
 nice_candidate_copy
+nice_candidate_equal_target
 nice_candidate_free
 nice_candidate_new
 nice_component_state_to_string

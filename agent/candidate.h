@@ -230,7 +230,23 @@ nice_candidate_free (NiceCandidate *candidate);
 NiceCandidate *
 nice_candidate_copy (const NiceCandidate *candidate);
 
-GType nice_candidate_get_type (void);
+/**
+ * nice_candidate_equal_target:
+ * @candidate1: A candidate
+ * @candidate2: A candidate
+ *
+ * Verifies that the candidates point to the same place, meaning they have
+ * the same transport and the same address. It ignores all other aspects.
+ *
+ * Returns: %TRUE if the candidates point to the same place
+ *
+ * Since: 0.1.15
+ */
+gboolean
+nice_candidate_equal_target (const NiceCandidate *candidate1,
+    const NiceCandidate *candidate2);
+
+  GType nice_candidate_get_type (void);
 
 /**
  * NICE_TYPE_CANDIDATE:

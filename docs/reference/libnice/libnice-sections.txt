@@ -76,6 +76,7 @@ NICE_CANDIDATE_MAX_FOUNDATION
 nice_candidate_new
 nice_candidate_free
 nice_candidate_copy
+nice_candidate_equal_target
 <SUBSECTION Standard>
 NICE_TYPE_CANDIDATE
 nice_candidate_get_type

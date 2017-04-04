@@ -360,3 +360,14 @@ nice_candidate_copy (const NiceCandidate *candidate)
 
   return copy;
 }
+
+NICEAPI_EXPORT gboolean
+nice_candidate_equal_target (const NiceCandidate *candidate1,
+    const NiceCandidate *candidate2)
+{
+  g_return_val_if_fail (candidate1 != NULL, FALSE);
+  g_return_val_if_fail (candidate2 != NULL, FALSE);
+
+  return (candidate1->transport == candidate2->transport &&
+      nice_address_equal (&candidate1->addr, &candidate2->addr));
+}
