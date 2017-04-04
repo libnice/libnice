@@ -59,15 +59,16 @@ nice_udp_turn_socket_parse_recv_message (NiceSocket *sock, NiceSocket **from_soc
 gsize
 nice_udp_turn_socket_parse_recv (NiceSocket *sock, NiceSocket **from_sock,
     NiceAddress *from, gsize len, guint8 *buf,
-    NiceAddress *recv_from, guint8 *recv_buf, gsize recv_len);
+    const NiceAddress *recv_from, const guint8 *recv_buf, gsize recv_len);
 
 gboolean
 nice_udp_turn_socket_set_peer (NiceSocket *sock, NiceAddress *peer);
 
 NiceSocket *
 nice_udp_turn_socket_new (GMainContext *ctx, NiceAddress *addr,
-    NiceSocket *base_socket, NiceAddress *server_addr,
-    gchar *username, gchar *password, NiceTurnSocketCompatibility compatibility);
+    NiceSocket *base_socket, const NiceAddress *server_addr,
+    const gchar *username, const gchar *password,
+    NiceTurnSocketCompatibility compatibility);
 
 void
 nice_udp_turn_socket_set_ms_realm(NiceSocket *sock, StunMessage *msg);

@@ -380,7 +380,7 @@ nice_component_restart (NiceComponent *cmp)
   for (i = cmp->remote_candidates; i; i = i->next) {
     NiceCandidate *candidate = i->data;
 
-    /* note: do not remove the local candidate that is
+    /* note: do not remove the remote candidate that is
      *       currently part of the 'selected pair', see ICE
      *       9.1.1.1. "ICE Restarts" (ID-19) */
     if (candidate == cmp->selected_pair.remote) {
