@@ -479,7 +479,7 @@ StunUsageBindReturn stun_usage_bind_run (const struct sockaddr *srv,
   size_t len;
   StunUsageTransReturn ret;
   int val;
-  struct sockaddr_storage alternate_server;
+  struct sockaddr_storage alternate_server = { AF_UNSPEC } ;
   socklen_t alternate_server_len = sizeof (alternate_server);
   StunUsageBindReturn bind_ret;
 
@@ -547,6 +547,8 @@ StunUsageBindReturn stun_usage_bind_run (const struct sockaddr *srv,
           addrlen, (struct sockaddr *) &alternate_server, &alternate_server_len);
       if (bind_ret == STUN_USAGE_BIND_RETURN_ALTERNATE_SERVER) {
         stun_trans_deinit (&trans);
+
+        assert (alternate_server.ss_family != AF_UNSPEC);
 
         ret = stun_trans_create (&trans, SOCK_DGRAM, 0,
             (struct sockaddr *) &alternate_server, alternate_server_len);

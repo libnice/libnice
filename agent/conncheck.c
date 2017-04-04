@@ -606,7 +606,7 @@ static gboolean priv_conn_check_tick_unlocked (NiceAgent *agent)
   /* step: when there's no pair in the Waiting state,
    * unfreeze a new pair and check it
    */
-  res = priv_conn_check_unfreeze_next (agent);
+  priv_conn_check_unfreeze_next (agent);
 
   for (i = agent->streams; i ; i = i->next) {
     NiceStream *stream = i->data;

@@ -406,9 +406,8 @@ socket_recv_messages (NiceSocket *sock,
 
     /* Split up the monolithic buffer again into the caller-provided buffers. */
     if (parsed_buffer_length > 0 && allocated_buffer) {
-      parsed_buffer_length =
-          memcpy_buffer_to_input_message (message, buffer,
-              parsed_buffer_length);
+      memcpy_buffer_to_input_message (message, buffer,
+          parsed_buffer_length);
     }
 
     if (allocated_buffer)

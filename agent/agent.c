@@ -1552,7 +1552,6 @@ pseudo_tcp_socket_recv_messages (PseudoTcpSocket *self,
 
         if (len == 0) {
           /* Reached EOS. */
-          len = 0;
           goto done;
         } else if (len < 0 &&
             pseudo_tcp_socket_get_error (self) == EWOULDBLOCK) {
