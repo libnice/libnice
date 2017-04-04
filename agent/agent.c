@@ -4245,7 +4245,6 @@ nice_agent_recv_messages_blocking_or_nonblocking (NiceAgent *agent,
           "Component removed during call.");
 
       component = NULL;
-      error_reported = TRUE;
 
       goto recv_error;
     }
