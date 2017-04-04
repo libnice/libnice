@@ -4,6 +4,8 @@ pkgincludedir = $(includedir)/nice
 
 
 check-valgrind:
-	$(MAKE) TESTS_ENVIRONMENT="sh $$(cd "$(top_srcdir)" && pwd)/scripts/valgrind.sh" check
+	$(MAKE) TESTS_ENVIRONMENT="USE_VALGRIND=1 " check
+
+LOG_DRIVER=$(top_srcdir)/scripts/valgrind-test-driver
 
 .PHONY: check-valgrind
