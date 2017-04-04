@@ -3422,7 +3422,8 @@ agent_recv_message_unlocked (
 {
   NiceAddress from;
   GList *item;
-  gint retval;
+  RecvStatus retval;
+  gint sockret;
   gboolean is_turn = FALSE;
 
   /* We need an address for packet parsing, below. */
@@ -3483,8 +3484,8 @@ agent_recv_message_unlocked (
         local_bufs[i + 1].buffer = message->buffers[i].buffer;
         local_bufs[i + 1].size = message->buffers[i].size;
       }
-      retval = nice_socket_recv_messages (nicesock, &local_message, 1);
-      if (retval == 1) {
+      sockret = nice_socket_recv_messages (nicesock, &local_message, 1);
+      if (sockret == 1) {
         message->length = ntohs (rfc4571_frame);
       }
     } else {
@@ -3499,7 +3500,7 @@ agent_recv_message_unlocked (
           _priv_set_socket_tos (agent, new_socket, stream->tos);
           nice_component_attach_socket (component, new_socket);
         }
-        retval = 0;
+        sockret = 0;
       } else {
         /* In the case of a real ICE-TCP connection, we can use the socket as a
          * bytestream and do the read here with caching of data being read
@@ -3508,9 +3509,9 @@ agent_recv_message_unlocked (
 
         /* TODO: Support bytestream reads */
         message->length = 0;
-        retval = 0;
+        sockret = 0;
         if (available <= 0) {
-          retval = available;
+          sockret = available;
 
           /* If we don't call check_connect_result on an outbound connection,
            * then is_connected will always return FALSE. That's why we check
@@ -3523,7 +3524,7 @@ agent_recv_message_unlocked (
              * not connected, it means that it failed to connect, so we must
              * return an error to make the socket fail/closed
              */
-            retval = -1;
+            sockret = -1;
           } else {
             gint flags = G_SOCKET_MSG_PEEK;
 
@@ -3536,7 +3537,7 @@ agent_recv_message_unlocked (
              */
             if (g_socket_receive_message (nicesock->fileno, NULL,
                     NULL, 0, NULL, NULL, &flags, NULL, NULL) == 0)
-              retval = -1;
+              sockret = -1;
           }
         } else if (agent->rfc4571_expecting_length == 0) {
           if ((gsize) available >= sizeof(guint16)) {
@@ -3544,8 +3545,8 @@ agent_recv_message_unlocked (
             GInputVector local_buf = { &rfc4571_frame, sizeof(guint16)};
             NiceInputMessage local_message = { &local_buf, 1, message->from, 0};
 
-            retval = nice_socket_recv_messages (nicesock, &local_message, 1);
-            if (retval == 1) {
+            sockret = nice_socket_recv_messages (nicesock, &local_message, 1);
+            if (sockret == 1) {
               agent->rfc4571_expecting_length = ntohs (rfc4571_frame);
               available = g_socket_get_available_bytes (nicesock->fileno);
             }
@@ -3589,8 +3590,8 @@ agent_recv_message_unlocked (
               off += local_bufs[i].size;
             }
           }
-          retval = nice_socket_recv_messages (nicesock, &local_message, 1);
-          if (retval == 1) {
+          sockret = nice_socket_recv_messages (nicesock, &local_message, 1);
+          if (sockret == 1) {
             message->length = local_message.length;
             agent->rfc4571_expecting_length -= local_message.length;
           }
@@ -3598,20 +3599,22 @@ agent_recv_message_unlocked (
       }
     }
   } else {
-    retval = nice_socket_recv_messages (nicesock, message, 1);
+    sockret = nice_socket_recv_messages (nicesock, message, 1);
   }
 
-  if (retval == 0) {
+  if (sockret == 0) {
     retval = RECV_WOULD_BLOCK;  /* EWOULDBLOCK */
     nice_debug_verbose ("%s: Agent %p: no message available on read attempt",
         G_STRFUNC, agent);
     goto done;
-  } else if (retval < 0) {
+  } else if (sockret < 0) {
     nice_debug ("Agent %p: %s returned %d, errno (%d) : %s",
-        agent, G_STRFUNC, retval, errno, g_strerror (errno));
+        agent, G_STRFUNC, sockret, errno, g_strerror (errno));
 
     retval = RECV_ERROR;
     goto done;
+  } else {
+    retval = sockret;
   }
 
   if (retval == RECV_OOB || message->length == 0) {
