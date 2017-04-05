@@ -3682,8 +3682,6 @@ agent_recv_message_unlocked (
   if (retval == RECV_OOB)
     goto done;
 
-  agent->media_after_tick = TRUE;
-
   /* If the message’s stated length is equal to its actual length, it’s probably
    * a STUN message; otherwise it’s probably data. */
   if (stun_message_validate_buffer_length_fast (
@@ -3715,6 +3713,7 @@ agent_recv_message_unlocked (
         nice_debug ("%s: Valid STUN packet received.", G_STRFUNC);
         retval = RECV_OOB;
         g_free (big_buf);
+        agent->media_after_tick = TRUE;
         goto done;
       }
     }
@@ -3724,6 +3723,23 @@ agent_recv_message_unlocked (
 
     g_free (big_buf);
   }
+
+  if (!nice_component_verify_remote_candidate (component,
+      message->from, nicesock)) {
+    if (nice_debug_is_verbose ()) {
+      gchar str[INET6_ADDRSTRLEN];
+
+      nice_address_to_string (message->from, str);
+      nice_debug_verbose ("Agent %p : %d:%d DROPPING packet from unknown source"
+          " %s:%d sock-type: %d\n", agent, stream->id, component->id, str,
+          nice_address_get_port (message->from), nicesock->type);
+    }
+
+    retval = RECV_OOB;
+    goto done;
+  }
+
+  agent->media_after_tick = TRUE;
 
   /* Unhandled STUN; try handling TCP data, then pass to the client. */
   if (message->length > 0  && agent->reliable) {

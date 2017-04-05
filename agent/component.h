@@ -159,12 +159,14 @@ struct _NiceComponent {
   NiceComponentState state;
   GSList *local_candidates;    /* list of NiceCandidate objs */
   GSList *remote_candidates;   /* list of NiceCandidate objs */
+  GList *valid_candidates;     /* list of owned remote NiceCandidates that are part of valid pairs */
   GSList *socket_sources;      /* list of SocketSource objs; must only grow monotonically */
   guint socket_sources_age;    /* incremented when socket_sources changes */
   GSList *incoming_checks;     /* list of IncomingCheck objs */
   GList *turn_servers;             /* List of TurnServer objs */
   CandidatePair selected_pair; /* independent from checklists, 
 				    see ICE 11.1. "Sending Media" (ID-19) */
+  gboolean fallback_mode;      /* in this case, accepts packets from all, ignore candidate validation */
   NiceCandidate *restart_candidate; /* for storing active remote candidate during a restart */
   NiceCandidate *turn_candidate; /* for storing active turn candidate if turn servers have been cleared */
   /* I/O handling. The main context must always be non-NULL, and is used for all
@@ -300,6 +302,14 @@ turn_server_ref (TurnServer *turn);
 
 void
 turn_server_unref (TurnServer *turn);
+
+void
+nice_component_add_valid_candidate (NiceComponent *component,
+    const NiceCandidate *candidate);
+
+gboolean
+nice_component_verify_remote_candidate (NiceComponent *component,
+    const NiceAddress *address, NiceSocket *nicesock);
 
 
 G_END_DECLS

@@ -45,7 +45,6 @@ check_PROGRAMS = \
 	test-send-recv \
 	test-socket-is-based-on \
 	test-priority \
-	test-mainloop \
 	test-fullmode \
 	test-restart \
 	test-fallback \

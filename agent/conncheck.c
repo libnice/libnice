@@ -2627,6 +2627,7 @@ static CandidateCheckPair *priv_process_response_check_for_reflexive(NiceAgent *
     p->state = NICE_CHECK_SUCCEEDED;
     nice_debug ("Agent %p : conncheck %p SUCCEEDED.", agent, p);
     priv_conn_check_unfreeze_related (agent, stream, p);
+    nice_component_add_valid_candidate (component, remote_candidate);
   }
   else {
     if (!local_cand) {
@@ -2652,8 +2653,10 @@ static CandidateCheckPair *priv_process_response_check_for_reflexive(NiceAgent *
 
   /* note: this is same as "adding to VALID LIST" in the spec
      text */
-  if (new_pair)
+  if (new_pair) {
     new_pair->valid = TRUE;
+    nice_component_add_valid_candidate (component, remote_candidate);
+  }
 
   return new_pair;
 }
@@ -2739,6 +2742,7 @@ static gboolean priv_map_reply_to_conn_check_request (NiceAgent *agent, NiceStre
             nice_debug ("Agent %p : Mapped address not found."
                 " conncheck %p SUCCEEDED.", agent, p);
             priv_conn_check_unfreeze_related (agent, stream, p);
+            nice_component_add_valid_candidate (component, p->remote);
           } else {
             ok_pair = priv_process_response_check_for_reflexive (agent,
                 stream, component, p, sockptr, &sockaddr.addr,
@@ -3653,6 +3657,8 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, NiceStream *stream,
             conn_check_add_for_candidate (agent, stream->id, component, remote_candidate);
         }
       }
+
+      nice_component_add_valid_candidate (component, remote_candidate);
 
       priv_reply_to_conn_check (agent, stream, component, local_candidate,
           remote_candidate, from, nicesock, rbuf_len, &msg, use_candidate);
