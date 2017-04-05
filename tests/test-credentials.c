@@ -184,6 +184,8 @@ int main (void)
   nice_agent_get_local_credentials (lagent, 1, &ufrag, &password);
   g_assert (g_strcmp0("unicorns", ufrag) == 0);
   g_assert (g_strcmp0("awesome", password) == 0);
+  g_free (ufrag);
+  g_free (password);
 
   nice_agent_gather_candidates (lagent, 1);
   nice_agent_gather_candidates (ragent, 1);
