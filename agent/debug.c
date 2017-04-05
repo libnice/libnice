@@ -102,7 +102,7 @@ void nice_debug_init (void)
       flags |= g_parse_debug_string (gflags_string, gkeys,  4);
     if (gflags_string && strstr (gflags_string, "libnice-pseudotcp-verbose"))
       flags |= NICE_DEBUG_PSEUDOTCP_VERBOSE;
-    if (gflags_string && strstr (gflags_string, "libnice-nice-verbose")) {
+    if (gflags_string && strstr (gflags_string, "libnice-verbose")) {
       flags |= NICE_DEBUG_NICE_VERBOSE;
     }
 
