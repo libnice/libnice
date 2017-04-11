@@ -1666,7 +1666,6 @@ static CandidateCheckPair *priv_add_new_check_pair (NiceAgent *agent,
           tmpbuf2, nice_address_get_port (&pair->remote->addr));
   }
   pair->nominated = use_candidate;
-  pair->controlling = agent->controlling_mode;
   pair->prflx_priority = ensure_unique_priority (component,
       peer_reflexive_candidate_priority (agent, local));
 
@@ -2531,7 +2530,6 @@ static CandidateCheckPair *priv_add_peer_reflexive_pair (NiceAgent *agent, guint
     pair->priority = nice_candidate_pair_priority (pair->remote->priority,
         pair->local->priority);
   pair->nominated = FALSE;
-  pair->controlling = agent->controlling_mode;
   pair->prflx_priority = ensure_unique_priority (component,
       peer_reflexive_candidate_priority (agent, local_cand));
   nice_debug ("Agent %p : added a new peer-discovered pair with foundation of '%s'.",  agent, pair->foundation);
@@ -2777,16 +2775,26 @@ static gboolean priv_map_reply_to_conn_check_request (NiceAgent *agent, NiceStre
         } else if (res == STUN_USAGE_ICE_RETURN_ROLE_CONFLICT) {
           /* case: role conflict error, need to restart with new role */
           nice_debug ("Agent %p : conncheck %p ROLE CONFLICT, restarting", agent, p);
-          /* note: our role might already have changed due to an
-           * incoming request, but if not, change role now;
-           * follows ICE 7.1.2.1 "Failure Cases" (ID-19) */
-          priv_check_for_role_conflict (agent, !p->controlling);
 
-          p->stun_message.buffer = NULL;
-          p->stun_message.buffer_len = 0;
-          p->state = NICE_CHECK_WAITING;
-          priv_add_pair_to_triggered_check_queue (agent, p);
-          nice_debug ("Agent %p : pair %p state WAITING", agent, p);
+          if (p->stun_message.buffer != NULL) {
+            guint64 tie;
+            gboolean controlled_mode;
+
+            /* note: our role might already have changed due to an
+             * incoming request, but if not, change role now;
+             * follows ICE 7.1.2.1 "Failure Cases" (ID-19) */
+            controlled_mode = (stun_message_find64 (&p->stun_message,
+                    STUN_ATTRIBUTE_ICE_CONTROLLED, &tie) ==
+                STUN_MESSAGE_RETURN_SUCCESS);
+
+            priv_check_for_role_conflict (agent, controlled_mode);
+
+            p->stun_message.buffer = NULL;
+            p->stun_message.buffer_len = 0;
+            p->state = NICE_CHECK_WAITING;
+            priv_add_pair_to_triggered_check_queue (agent, p);
+            nice_debug ("Agent %p : pair %p state WAITING", agent, p);
+          }
           trans_found = TRUE;
         } else {
           /* case: STUN error, the check STUN context was freed */

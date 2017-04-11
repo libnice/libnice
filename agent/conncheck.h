@@ -85,7 +85,6 @@ struct _CandidateCheckPair
   gchar foundation[NICE_CANDIDATE_PAIR_MAX_FOUNDATION];
   NiceCheckState state;
   gboolean nominated;
-  gboolean controlling;
   gboolean timer_restarted;
   gboolean valid;
   guint64 priority;
