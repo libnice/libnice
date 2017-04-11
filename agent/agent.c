@@ -3112,6 +3112,13 @@ static gboolean priv_add_remote_candidate (
   NiceComponent *component;
   NiceCandidate *candidate;
 
+  if (transport == NICE_CANDIDATE_TRANSPORT_UDP &&
+      !agent->use_ice_udp)
+    return FALSE;
+  if (transport != NICE_CANDIDATE_TRANSPORT_UDP &&
+      !agent->use_ice_tcp)
+    return FALSE;
+
   if (!agent_find_component (agent, stream_id, component_id, NULL, &component))
     return FALSE;
 
