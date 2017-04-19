@@ -1510,7 +1510,8 @@ nice_component_verify_remote_candidate (NiceComponent *component,
                 (cand->transport == NICE_CANDIDATE_TRANSPORT_TCP_ACTIVE ||
                     cand->transport == NICE_CANDIDATE_TRANSPORT_TCP_PASSIVE ||
                     cand->transport == NICE_CANDIDATE_TRANSPORT_TCP_SO)) ||
-            cand->transport == NICE_CANDIDATE_TRANSPORT_UDP) &&
+            cand->transport == NICE_CANDIDATE_TRANSPORT_UDP ||
+            nicesock->type == NICE_SOCKET_TYPE_UDP_TURN) &&
         nice_address_equal (address, &cand->addr)) {
       /* fast return if it's already the first */
       if (item == component->valid_candidates)
