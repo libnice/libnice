@@ -2547,9 +2547,8 @@ priv_add_new_candidate_discovery_turn (NiceAgent *agent,
     if (nicesock == NULL)
       return;
 
-    if (agent->reliable)
-      nice_socket_set_writable_callback (nicesock, _tcp_sock_is_writable,
-          component);
+    nice_socket_set_writable_callback (nicesock, _tcp_sock_is_writable, component);
+
     if (turn->type ==  NICE_RELAY_TYPE_TURN_TLS &&
         agent->compatibility == NICE_COMPATIBILITY_GOOGLE) {
       nicesock = nice_pseudossl_socket_new (nicesock,
@@ -3033,10 +3032,8 @@ nice_agent_gather_candidates (
         found_local_address = TRUE;
         nice_address_set_port (addr, 0);
 
-
-        if (agent->reliable)
-          nice_socket_set_writable_callback (host_candidate->sockptr,
-              _tcp_sock_is_writable, component);
+        nice_socket_set_writable_callback (host_candidate->sockptr,
+            _tcp_sock_is_writable, component);
 
 #ifdef HAVE_GUPNP
       if (agent->upnp_enabled && agent->upnp &&
