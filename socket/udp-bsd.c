@@ -54,6 +54,10 @@
 
 #ifndef G_OS_WIN32
 #include <unistd.h>
+#else
+#include <winsock2.h>
+#include <ws2tcpip.h>
+#define SIO_UDP_CONNRESET _WSAIOW(IOC_VENDOR,12)
 #endif
 
 
@@ -87,6 +91,11 @@ nice_udp_bsd_socket_new (NiceAddress *addr)
   gboolean gret = FALSE;
   GSocketAddress *gaddr;
   struct UdpBsdSocketPrivate *priv;
+
+#ifdef G_OS_WIN32
+  DWORD winsock_bytes_returned = 0;
+  BOOL  winsock_use_new_behvaiour = FALSE;
+#endif
 
   if (addr != NULL) {
     nice_address_copy_to_sockaddr(addr, &name.addr);
@@ -156,6 +165,12 @@ nice_udp_bsd_socket_new (NiceAddress *addr)
   sock->can_send = socket_can_send;
   sock->set_writable_callback = socket_set_writable_callback;
   sock->close = socket_close;
+
+#ifdef G_OS_WIN32
+  WSAIoctl(g_socket_get_fd(gsock), SIO_UDP_CONNRESET,
+          &winsock_use_new_behvaiour, sizeof(winsock_use_new_behvaiour),
+          NULL, 0, &winsock_bytes_returned, NULL, NULL);
+#endif
 
   return sock;
 }
