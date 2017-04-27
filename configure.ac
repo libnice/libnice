@@ -92,6 +92,14 @@ AC_CHECK_HEADERS([ifaddrs.h], \
 		       [Whether getifaddrs() is available on the system])])
 AC_CHECK_TYPES([size_t, ssize_t])
 
+AC_CHECK_MEMBER([struct sockaddr.sa_len], \
+		      [AC_DEFINE(HAVE_SOCKADDR_SA_LEN, 1, \
+            [Check if we have sockaddr.sa_len])], [], \
+            [
+            #include <sys/types.h>
+            #include <sys/socket.h>
+            ])
+
 # Also put matching version in LIBNICE_CFLAGS
 GLIB_REQ=2.44
 

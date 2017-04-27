@@ -73,6 +73,9 @@
 
 #endif /* G_OS_UNIX */
 
+#define DEFAULT_NUMBER_INTERFACES 10
+#define MAX_IFCONF_SIZE DEFAULT_NUMBER_INTERFACES * 1024 * 1024
+
 #if (defined(G_OS_UNIX) && defined(HAVE_GETIFADDRS)) || defined(G_OS_WIN32)
 /* Works on both UNIX and Windows. Magic! */
 static gchar *
@@ -300,6 +303,9 @@ nice_interfaces_get_local_ips (gboolean include_loopback)
   GList *ips = NULL;
   gint sockfd;
   gint size = 0;
+  gint lastlen = 0;
+  gchar *preq = NULL;
+  gint rem = 0;
   struct ifreq *ifr;
   struct ifconf ifc;
   struct sockaddr_in *sa;
@@ -315,7 +321,7 @@ nice_interfaces_get_local_ips (gboolean include_loopback)
 
   /* Loop and get each interface the system has, one by one... */
   do {
-    size += sizeof (struct ifreq);
+    size += sizeof (struct ifreq) * DEFAULT_NUMBER_INTERFACES;
     /* realloc buffer size until no overflow occurs  */
     if (NULL == (ifc.ifc_req = realloc (ifc.ifc_req, size))) {
       nice_debug ("Error : Out of memory while allocation interface"
@@ -331,14 +337,40 @@ nice_interfaces_get_local_ips (gboolean include_loopback)
       free (ifc.ifc_req);
       return NULL;
     }
-  } while  (size <= ifc.ifc_len);
+      
+    if((lastlen == ifc.ifc_len) && (ifc.ifc_len > 0) ){
+      break;
+    }
+      
+    lastlen = ifc.ifc_len;
+      
+  } while (size < MAX_IFCONF_SIZE);
 
 
+  preq = (gchar *)ifc.ifc_req;
+  rem = ifc.ifc_len;
   /* Loop throught the interface list and get the IP address of each IF */
-  for (ifr = ifc.ifc_req;
-       (gchar *) ifr < (gchar *) ifc.ifc_req + ifc.ifc_len;
-       ++ifr) {
-
+  while (rem > 0) {
+    gint length = 0;
+    ifr = (struct ifreq*) preq;
+#ifdef HAVE_SOCKADDR_SA_LEN
+    length = sizeof(struct sockaddr);
+      
+    if (ifr->ifr_addr.sa_len > length) {
+      length = ifr->ifr_addr.sa_len;
+    }
+      
+    length += sizeof(ifr->ifr_name);
+#else
+    length = sizeof(struct ifreq);
+#endif
+      
+    rem -= length;
+    preq += length;
+      
+    if (AF_INET != ifr->ifr_addr.sa_family) {
+      continue;
+    }
     if (ioctl (sockfd, SIOCGIFFLAGS, ifr)) {
       nice_debug ("Error : Unable to get IP information for interface %s."
           " Skipping...", ifr->ifr_name);
