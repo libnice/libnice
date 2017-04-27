@@ -192,6 +192,12 @@ socket_close (NiceSocket *sock)
   g_hash_table_unref (priv->connections);
 
   g_slice_free (TcpPassivePriv, sock->priv);
+
+  if (sock->fileno) {
+    g_socket_close (sock->fileno, NULL);
+    g_object_unref (sock->fileno);
+    sock->fileno = NULL;
+  }
 }
 
 static gint socket_recv_messages (NiceSocket *sock,
