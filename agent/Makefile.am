@@ -13,6 +13,7 @@ AM_CFLAGS = \
 	$(LIBNICE_CFLAGS) \
 	$(GLIB_CFLAGS) \
 	$(GUPNP_CFLAGS) \
+	-Wno-error=unused-function \
 	-I $(top_srcdir) \
 	-I $(top_srcdir)/random \
 	-I $(top_srcdir)/socket \
