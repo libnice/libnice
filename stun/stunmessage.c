@@ -120,6 +120,7 @@ stun_message_find (const StunMessage *msg, StunAttribute type,
         /* Only fingerprint may come after M-I */
         if (type == STUN_ATTRIBUTE_FINGERPRINT)
           break;
+        return NULL;
 
       case STUN_ATTRIBUTE_FINGERPRINT:
         /* Nothing may come after FPR */
