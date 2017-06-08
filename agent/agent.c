@@ -5690,7 +5690,7 @@ _generate_candidate_sdp (NiceAgent *agent,
   g_string_append_printf (sdp, " typ %s", _cand_type_to_sdp (candidate->type));
   if (nice_address_is_valid (&candidate->base_addr) &&
       !nice_address_equal (&candidate->addr, &candidate->base_addr)) {
-    port = nice_address_get_port (&candidate->addr);
+    port = nice_address_get_port (&candidate->base_addr);
     nice_address_to_string (&candidate->base_addr, ip4);
     g_string_append_printf (sdp, " raddr %s rport %d", ip4,
         port == 0 ? 9 : port);
