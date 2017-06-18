@@ -3905,7 +3905,7 @@ agent_recv_message_unlocked (
 
       nice_address_to_string (message->from, str);
       nice_debug_verbose ("Agent %p : %d:%d DROPPING packet from unknown source"
-          " %s:%d sock-type: %d\n", agent, stream->id, component->id, str,
+          " %s:%d sock-type: %d", agent, stream->id, component->id, str,
           nice_address_get_port (message->from), nicesock->type);
     }
 

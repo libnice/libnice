@@ -1461,7 +1461,7 @@ nice_component_add_valid_candidate (NiceComponent *component,
     char str[INET6_ADDRSTRLEN];
     nice_address_to_string (&candidate->addr, str);
     nice_debug ("Agent %p :  %d:%d Adding valid source"
-        " candidate: %s:%d trans: %d\n", component->agent,
+        " candidate: %s:%d trans: %d", component->agent,
         candidate->stream_id, candidate->component_id, str,
         nice_address_get_port (&candidate->addr), candidate->transport);
   }
