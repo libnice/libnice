@@ -140,13 +140,13 @@ run_test(NiceNominationMode l_nomination_mode,
 
   lagent = nice_agent_new_full (NULL,
     NICE_COMPATIBILITY_RFC5245,
-    FALSE, /* reliable */
-    l_nomination_mode);
+    l_nomination_mode == NICE_NOMINATION_MODE_REGULAR ?
+    NICE_AGENT_OPTION_REGULAR_NOMINATION : 0);
 
   ragent = nice_agent_new_full (NULL,
     NICE_COMPATIBILITY_RFC5245,
-    FALSE, /* reliable */
-    r_nomination_mode);
+    r_nomination_mode == NICE_NOMINATION_MODE_REGULAR ?
+    NICE_AGENT_OPTION_REGULAR_NOMINATION : 0);
 
   g_object_set (G_OBJECT (lagent), "ice-tcp", FALSE, NULL);
   g_object_set (G_OBJECT (ragent), "ice-tcp", FALSE, NULL);

@@ -399,6 +399,25 @@ typedef enum
 } NiceNominationMode;
 
 /**
+ * NiceAgentOption:
+ * @NICE_AGENT_OPTION_REGULAR_NOMINATION: Enables regular nomination, default
+ *  is aggrssive mode (see #NiceNominationMode).
+ * @NICE_AGENT_OPTION_RELIABLE: Enables reliable mode, possibly using PseudoTCP, *  see nice_agent_new_reliable().
+ * @NICE_AGENT_OPTION_LITE_MODE: Enable lite mode
+ *
+ * These are options that can be passed to nice_agent_new_full(). They set
+ * various properties on the agent. Not including them sets the property to
+ * the other value.
+ *
+ * Since: UNRELEASED
+ */
+typedef enum {
+  NICE_AGENT_OPTION_REGULAR_NOMINATION = 1 << 0,
+  NICE_AGENT_OPTION_RELIABLE = 1 << 1,
+  NICE_AGENT_OPTION_LITE_MODE = 1 << 2,
+} NiceAgentOption;
+
+/**
  * NiceAgentRecvFunc:
  * @agent: The #NiceAgent Object
  * @stream_id: The id of the stream
@@ -452,13 +471,12 @@ nice_agent_new_reliable (GMainContext *ctx, NiceCompatibility compat);
  * nice_agent_new_full:
  * @ctx: The Glib Mainloop Context to use for timers
  * @compat: The compatibility mode of the agent
- * @reliable: The reliability mode of the agent
- * @nomination: The nomination mode of the agent
+ * @flags: Flags to set the properties
  *
  * Create a new #NiceAgent with parameters that must be be defined at
  * construction time.
  * The returned object must be freed with g_object_unref()
- * <para> See also: #NiceNominationMode </para>
+ * <para> See also: #NiceNominationMode and #NiceAgentOption</para>
  *
  * Since: UNRELEASED
  *
@@ -467,8 +485,7 @@ nice_agent_new_reliable (GMainContext *ctx, NiceCompatibility compat);
 NiceAgent *
 nice_agent_new_full (GMainContext *ctx,
   NiceCompatibility compat,
-  gboolean reliable,
-  NiceNominationMode nomination);
+  NiceAgentOption flags);
 
 /**
  * nice_agent_add_local_address:

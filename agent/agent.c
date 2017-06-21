@@ -1168,14 +1168,15 @@ nice_agent_new_reliable (GMainContext *ctx, NiceCompatibility compat)
 NICEAPI_EXPORT NiceAgent *
 nice_agent_new_full (GMainContext *ctx,
   NiceCompatibility compat,
-  gboolean reliable,
-  NiceNominationMode nomination)
+  NiceAgentOption flags)
 {
   NiceAgent *agent = g_object_new (NICE_TYPE_AGENT,
       "compatibility", compat,
       "main-context", ctx,
-      "reliable", reliable,
-      "nomination-mode", nomination,
+      "reliable", (flags & NICE_AGENT_OPTION_RELIABLE) ? TRUE : FALSE,
+      "nomination-mode", (flags & NICE_AGENT_OPTION_REGULAR_NOMINATION) ?
+      NICE_NOMINATION_MODE_REGULAR : NICE_NOMINATION_MODE_AGGRESSIVE,
+      "full-mode", (flags & NICE_AGENT_OPTION_LITE_MODE) ? FALSE : TRUE,
       NULL);
 
   return agent;
