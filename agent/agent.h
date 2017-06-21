@@ -390,7 +390,7 @@ typedef enum
  * faster, than the regular mode, potentially causing the nominated
  * pair to change until the connection check completes.
  *
- * Since: UNRELEASED
+ * Since: 0.1.15
  */
 typedef enum
 {
@@ -409,7 +409,7 @@ typedef enum
  * various properties on the agent. Not including them sets the property to
  * the other value.
  *
- * Since: UNRELEASED
+ * Since: 0.1.15
  */
 typedef enum {
   NICE_AGENT_OPTION_REGULAR_NOMINATION = 1 << 0,
@@ -478,7 +478,7 @@ nice_agent_new_reliable (GMainContext *ctx, NiceCompatibility compat);
  * The returned object must be freed with g_object_unref()
  * <para> See also: #NiceNominationMode and #NiceAgentOption</para>
  *
- * Since: UNRELEASED
+ * Since: 0.1.15
  *
  * Returns: The new agent GObject
  */

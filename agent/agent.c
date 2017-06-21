@@ -448,7 +448,7 @@ nice_agent_class_init (NiceAgentClass *klass)
    * the selection of valid pairs to be used upstream.
    * <para> See also: #NiceNominationMode </para>
    *
-   * Since: UNRELEASED
+   * Since: 0.1.15
    */
   g_object_class_install_property (gobject_class, PROP_NOMINATION_MODE,
       g_param_spec_enum (
@@ -744,7 +744,7 @@ nice_agent_class_init (NiceAgentClass *klass)
    * to the READY state, and on the time needed to complete the GATHERING
    * state.
    *
-   * Since: UNRELEASED
+   * Since: 0.1.15
    */
 
    g_object_class_install_property (gobject_class, PROP_STUN_MAX_RETRANSMISSIONS,
@@ -769,7 +769,7 @@ nice_agent_class_init (NiceAgentClass *klass)
    * divided by two instead (RFC 5389 indicates that a customisable
    * multiplier 'Rm' to 'RTO' should be used).
    *
-   * Since: UNRELEASED
+   * Since: 0.1.15
    */
 
    g_object_class_install_property (gobject_class, PROP_STUN_INITIAL_TIMEOUT,
@@ -788,7 +788,7 @@ nice_agent_class_init (NiceAgentClass *klass)
    * The initial timeout of the STUN binding requests used
    * for a reliable timer.
    *
-   * Since: UNRELEASED
+   * Since: 0.1.15
    */
 
    g_object_class_install_property (gobject_class, PROP_STUN_RELIABLE_TIMEOUT,
