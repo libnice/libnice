@@ -154,7 +154,6 @@ AS_IF([test "$enable_compile_warnings" = "yes" -o \
 ])
 AS_IF([test "$enable_compile_warnings" = "maximum" -o \
             "$enable_compile_warnings" = "error"],[
-    NICE_ADD_FLAG([-Wswitch-enum])
     NICE_ADD_FLAG([-Wswitch-default])
     NICE_ADD_FLAG([-Waggregate-return])
 ])
