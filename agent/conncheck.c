@@ -86,6 +86,17 @@ static int priv_timer_expired (GTimeVal *timer, GTimeVal *now)
     now->tv_sec >= timer->tv_sec;
 }
 
+static unsigned int priv_timer_remainder (GTimeVal *timer, GTimeVal *now)
+{
+  unsigned int delay;
+  if (now->tv_sec > timer->tv_sec ||
+      (now->tv_sec == timer->tv_sec && now->tv_usec > timer->tv_usec))
+    return 0;
+  delay = (timer->tv_sec - now->tv_sec) * 1000;
+  delay += ((signed long)(timer->tv_usec - now->tv_usec)) / 1000;
+  return delay;
+}
+
 static gchar
 priv_state_to_gchar (NiceCheckState state)
 {
@@ -180,9 +191,12 @@ priv_print_conn_check_lists (NiceAgent *agent, const gchar *where, const gchar *
 {
   GSList *i, *k;
   guint j;
+  GTimeVal now;
 
   if (!nice_debug_is_verbose ())
     return;
+
+  g_get_current_time (&now);
 
 #define PRIORITY_LEN 32
 
@@ -209,7 +223,8 @@ priv_print_conn_check_lists (NiceAgent *agent, const gchar *where, const gchar *
               priv_candidate_type_to_string (pair->local->type),
               priv_candidate_type_to_string (pair->remote->type),
               timer->retransmissions, timer->max_retransmissions,
-              timer->delay - stun_timer_remainder (timer), timer->delay,
+              timer->delay - priv_timer_remainder (&pair->next_tick, &now),
+              timer->delay,
               local_addr, nice_address_get_port (&pair->local->addr),
               remote_addr, nice_address_get_port (&pair->remote->addr),
               priv_state_to_gchar (pair->state),
@@ -445,8 +460,6 @@ priv_find_first_frozen_check_list (NiceAgent *agent)
  */
 static gboolean priv_conn_check_initiate (NiceAgent *agent, CandidateCheckPair *pair)
 {
-  g_get_current_time (&pair->next_tick);
-  g_time_val_add (&pair->next_tick, agent->timer_ta * 1000);
   pair->state = NICE_CHECK_IN_PROGRESS;
   nice_debug ("Agent %p : pair %p state IN_PROGRESS", agent, pair);
   conn_check_send (agent, pair);
@@ -651,12 +664,15 @@ priv_conn_recheck_on_timeout (NiceAgent *agent, CandidateCheckPair *p)
  *
  * @return will return FALSE when no more pending timers.
  */
-static gboolean priv_conn_check_tick_stream (NiceStream *stream, NiceAgent *agent, GTimeVal *now)
+static gboolean priv_conn_check_tick_stream (NiceStream *stream, NiceAgent *agent)
 {
   gboolean keep_timer_going = FALSE;
   GSList *i;
   CandidateCheckPair *pair;
   unsigned int timeout;
+  GTimeVal now;
+
+  g_get_current_time (&now);
 
   /* step: process ongoing STUN transactions */
   for (i = stream->conncheck_list; i ; i = i->next) {
@@ -678,7 +694,7 @@ static gboolean priv_conn_check_tick_stream (NiceStream *stream, NiceAgent *agen
       continue;
     }
 
-    if (!priv_timer_expired (&p->next_tick, now))
+    if (!priv_timer_expired (&p->next_tick, &now))
       continue;
 
     switch (stun_timer_refresh (&p->timer)) {
@@ -712,8 +728,6 @@ timer_timeout:
         priv_update_check_list_state_for_ready (agent, stream, component);
         break;
       case STUN_USAGE_TIMER_RETURN_RETRANSMIT:
-        timeout = stun_timer_remainder (&p->timer);
-
         /* case: retransmission stopped, due to the nomination of
          * a pair with a higher priority than this in-progress pair,
          * ICE spec, sect 8.1.2 "Updating States", item 2.2
@@ -730,9 +744,13 @@ timer_timeout:
           break;
 
         /* case: not ready, so schedule a new timeout */
+        timeout = stun_timer_remainder (&p->timer);
+
         nice_debug ("Agent %p :STUN transaction retransmitted on pair %p "
-            "(timeout %dms, delay=%dms, retrans=%d).",
-            agent, p, timeout, p->timer.delay, p->timer.retransmissions);
+            "(timer=%d/%d %d/%dms).",
+            agent, p,
+            p->timer.retransmissions, p->timer.max_retransmissions,
+            p->timer.delay - timeout, p->timer.delay);
 
         agent_socket_send (p->sockptr, &p->remote->addr,
             stun_message_length (&p->stun_message),
@@ -740,7 +758,7 @@ timer_timeout:
 
 
         /* note: convert from milli to microseconds for g_time_val_add() */
-        p->next_tick = *now;
+        p->next_tick = now;
         g_time_val_add (&p->next_tick, timeout * 1000);
 
         return TRUE;
@@ -748,7 +766,7 @@ timer_timeout:
         timeout = stun_timer_remainder (&p->timer);
 
         /* note: convert from milli to microseconds for g_time_val_add() */
-        p->next_tick = *now;
+        p->next_tick = now;
         g_time_val_add (&p->next_tick, timeout * 1000);
 
         keep_timer_going = TRUE;
@@ -1001,9 +1019,6 @@ static gboolean priv_conn_check_tick_unlocked (NiceAgent *agent)
   CandidateCheckPair *pair = NULL;
   gboolean keep_timer_going = FALSE;
   GSList *i, *j;
-  GTimeVal now;
-
-  g_get_current_time (&now);
 
   /* the conncheck really starts when we have built
    * a connection check list for each stream
@@ -1047,7 +1062,7 @@ static gboolean priv_conn_check_tick_unlocked (NiceAgent *agent)
    */
   for (i = agent->streams; i ; i = i->next) {
     NiceStream *stream = i->data;
-    if (priv_conn_check_tick_stream (stream, agent, &now))
+    if (priv_conn_check_tick_stream (stream, agent))
       keep_timer_going = TRUE;
     if (priv_conn_check_tick_stream_nominate (stream, agent))
       keep_timer_going = TRUE;
@@ -2731,12 +2746,14 @@ int conn_check_send (NiceAgent *agent, CandidateCheckPair *pair)
     return -1;
   }
 
-  if (nice_socket_is_reliable(pair->sockptr))
-    stun_timer_start_reliable(&pair->timer, agent->stun_reliable_timeout);
-  else {
+  if (nice_socket_is_reliable(pair->sockptr)) {
+    timeout = agent->stun_reliable_timeout;
+    stun_timer_start_reliable(&pair->timer, timeout);
+  } else {
     StunTimer *timer = &pair->timer;
 
-    if (pair->recheck_on_timeout)
+    if (pair->recheck_on_timeout) {
+      GTimeVal now;
       /* The pair recheck on timeout can easily cause repetitive rechecks in
        * a ping-pong effect, if both peers with the same behaviour try to
        * check the same pair almost simultaneously, and if the network rtt
@@ -2751,16 +2768,23 @@ int conn_check_send (NiceAgent *agent, CandidateCheckPair *pair)
        * After enough retransmissions, the timeout delay becomes
        * longer than the rtt, and the stun reply can be handled.
        */
+
+      g_get_current_time (&now);
+      timeout = priv_timer_remainder (&pair->next_tick, &now);
       nice_debug("Agent %p : reusing timer of pair %p: %d/%d %d/%dms",
           agent, pair,
           timer->retransmissions, timer->max_retransmissions,
-          timer->delay - stun_timer_remainder (timer), timer->delay);
-    else
-      stun_timer_start (timer,
-          priv_compute_conncheck_timer (agent, stream),
-          agent->stun_max_retransmissions);
+          timer->delay - timeout,
+          timer->delay);
+    } else {
+      timeout = priv_compute_conncheck_timer (agent, stream);
+      stun_timer_start (timer, timeout, agent->stun_max_retransmissions);
+    }
     pair->recheck_on_timeout = FALSE;
   }
+
+  g_get_current_time (&pair->next_tick);
+  g_time_val_add (&pair->next_tick, timeout * 1000);
 
   /* TCP-ACTIVE candidate must create a new socket before sending
    * by connecting to the peer. The new socket is stored in the candidate
@@ -2795,11 +2819,6 @@ int conn_check_send (NiceAgent *agent, CandidateCheckPair *pair)
   if (agent->compatibility == NICE_COMPATIBILITY_OC2007R2)
     ms_ice2_legacy_conncheck_send (&pair->stun_message, pair->sockptr,
         &pair->remote->addr);
-
-  timeout = stun_timer_remainder (&pair->timer);
-  /* note: convert from milli to microseconds for g_time_val_add() */
-  g_get_current_time (&pair->next_tick);
-  g_time_val_add (&pair->next_tick, timeout * 1000);
 
   return 0;
 }
