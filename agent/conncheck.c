@@ -108,6 +108,54 @@ priv_state_to_gchar (NiceCheckState state)
 }
 
 static const gchar *
+priv_state_to_string (NiceCheckState state)
+{
+  switch (state) {
+    case NICE_CHECK_WAITING:
+      return "waiting";
+    case NICE_CHECK_IN_PROGRESS:
+      return "in progress";
+    case NICE_CHECK_SUCCEEDED:
+      return "succeeded";
+    case NICE_CHECK_FAILED:
+      return "failed";
+    case NICE_CHECK_FROZEN:
+      return "frozen";
+    case NICE_CHECK_DISCOVERED:
+      return "discovered";
+    default:
+      g_assert_not_reached ();
+  }
+}
+
+static const gchar *
+priv_ice_return_to_string (StunUsageIceReturn ice_return)
+{
+  switch (ice_return) {
+    case STUN_USAGE_ICE_RETURN_SUCCESS:
+      return "success";
+    case STUN_USAGE_ICE_RETURN_ERROR:
+      return "error";
+    case STUN_USAGE_ICE_RETURN_INVALID:
+      return "invalid";
+    case STUN_USAGE_ICE_RETURN_ROLE_CONFLICT:
+      return "role conflict";
+    case STUN_USAGE_ICE_RETURN_INVALID_REQUEST:
+      return "invalid request";
+    case STUN_USAGE_ICE_RETURN_INVALID_METHOD:
+      return "invalid method";
+    case STUN_USAGE_ICE_RETURN_MEMORY_ERROR:
+      return "memory error";
+    case STUN_USAGE_ICE_RETURN_INVALID_ADDRESS:
+      return "invalid address";
+    case STUN_USAGE_ICE_RETURN_NO_MAPPED_ADDRESS:
+      return "no mapped address";
+    default:
+      g_assert_not_reached ();
+  }
+}
+
+static const gchar *
 priv_candidate_type_to_string (NiceCandidateType type)
 {
   switch (type) {
@@ -2614,7 +2662,7 @@ int conn_check_send (NiceAgent *agent, CandidateCheckPair *pair)
     nice_address_to_string (&pair->remote->addr, tmpbuf2);
     nice_debug ("Agent %p : STUN-CC REQ [%s]:%u --> [%s]:%u, socket=%u, "
         "pair=%s (c-id:%u), tie=%llu, username='%.*s' (%" G_GSIZE_FORMAT "), "
-        "password='%.*s' (%" G_GSIZE_FORMAT "), prio=%u, cont=%d.", agent,
+        "password='%.*s' (%" G_GSIZE_FORMAT "), prio=%u, %s.", agent,
 	     tmpbuf1, nice_address_get_port (&pair->local->addr),
 	     tmpbuf2, nice_address_get_port (&pair->remote->addr),
              pair->sockptr->fileno ? g_socket_get_fd(pair->sockptr->fileno) : -1,
@@ -2622,7 +2670,8 @@ int conn_check_send (NiceAgent *agent, CandidateCheckPair *pair)
 	     (unsigned long long)agent->tie_breaker,
         (int) uname_len, uname, uname_len,
         (int) password_len, password, password_len,
-        pair->prflx_priority, controlling);
+        pair->prflx_priority,
+        controlling ? "controlling" : "controlled");
   }
 
   if (NICE_AGENT_IS_COMPATIBLE_WITH_RFC5245_OR_OC2007R2 (agent)) {
@@ -2867,8 +2916,8 @@ static gboolean priv_schedule_triggered_check (NiceAgent *agent, NiceStream *str
           p = p->succeeded_pair;
         }
 
-	nice_debug ("Agent %p : Found a matching pair %p (%s) (state=%c) ...",
-            agent, p, p->foundation, priv_state_to_gchar (p->state));
+	nice_debug ("Agent %p : Found a matching pair %p (%s) (%s) ...",
+            agent, p, p->foundation, priv_state_to_string (p->state));
 	
         switch (p->state) {
 	  case NICE_CHECK_WAITING:
@@ -3283,8 +3332,11 @@ static gboolean priv_map_reply_to_conn_check_request (NiceAgent *agent, NiceStre
     res = stun_usage_ice_conncheck_process (resp,
         &sockaddr.storage, &socklen,
         agent_to_ice_compatibility (agent));
-    nice_debug ("Agent %p : stun_bind_process/conncheck for %p res %d "
-        "(controlling=%d).", agent, p, (int)res, agent->controlling_mode);
+    nice_debug ("Agent %p : stun_bind_process/conncheck for %p: "
+        "%s,res=%s.",
+        agent, p,
+        agent->controlling_mode ? "controlling" : "controlled",
+        priv_ice_return_to_string (res));
 
     if (res == STUN_USAGE_ICE_RETURN_SUCCESS ||
         res == STUN_USAGE_ICE_RETURN_NO_MAPPED_ADDRESS) {
@@ -3370,7 +3422,7 @@ static gboolean priv_map_reply_to_conn_check_request (NiceAgent *agent, NiceStre
             case NICE_NOMINATION_MODE_REGULAR:
               if (p->use_candidate_on_next_check) {
                 nice_debug ("Agent %p : marking pair %p (%s) as nominated "
-                    "(regular nomination, control=1, "
+                    "(regular nomination, controlling, "
                     "use_cand_on_next_check=1).",
                     agent, ok_pair, ok_pair->foundation);
                 ok_pair->nominated = TRUE;
@@ -3379,7 +3431,7 @@ static gboolean priv_map_reply_to_conn_check_request (NiceAgent *agent, NiceStre
             case NICE_NOMINATION_MODE_AGGRESSIVE:
               if (!p->nominated) {
                 nice_debug ("Agent %p : marking pair %p (%s) as nominated "
-                    "(aggressive nomination, control=1).",
+                    "(aggressive nomination, controlling).",
                     agent, ok_pair, ok_pair->foundation);
                 ok_pair->nominated = TRUE;
               }
@@ -3391,7 +3443,7 @@ static gboolean priv_map_reply_to_conn_check_request (NiceAgent *agent, NiceStre
         } else {
           if (p->mark_nominated_on_response_arrival) {
             nice_debug ("Agent %p : marking pair %p (%s) as nominated "
-                "(%s nomination, control=0, mark_on_response=1).",
+                "(%s nomination, controlled, mark_on_response=1).",
                 agent, ok_pair, ok_pair->foundation,
                 agent->nomination_mode == NICE_NOMINATION_MODE_AGGRESSIVE ?
                   "aggressive" : "regular");
