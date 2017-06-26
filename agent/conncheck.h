@@ -71,6 +71,15 @@ typedef enum
 } NiceCheckState;
 
 typedef struct _CandidateCheckPair CandidateCheckPair;
+typedef struct _StunTransaction StunTransaction;
+
+struct _StunTransaction
+{
+  GTimeVal next_tick;       /* next tick timestamp */
+  StunTimer timer;
+  uint8_t buffer[STUN_MAX_MESSAGE_SIZE_IPV6];
+  StunMessage message;
+};
 
 struct _CandidateCheckPair
 {
@@ -86,16 +95,12 @@ struct _CandidateCheckPair
   gboolean valid;
   gboolean use_candidate_on_next_check;
   gboolean mark_nominated_on_response_arrival;
-  gboolean recheck_on_timeout;
-  gboolean retransmit_on_timeout;
-  struct _CandidateCheckPair *discovered_pair;
-  struct _CandidateCheckPair *succeeded_pair;
+  gboolean retransmit;  /* if the first stun request must be retransmitted */
+  CandidateCheckPair *discovered_pair;
+  CandidateCheckPair *succeeded_pair;
   guint64 priority;
   guint32 prflx_priority;
-  GTimeVal next_tick;       /* next tick timestamp */
-  StunTimer timer;
-  uint8_t stun_buffer[STUN_MAX_MESSAGE_SIZE_IPV6];
-  StunMessage stun_message;
+  GSList *stun_transactions; /* a list of ongoing stun requests */
 };
 
 int conn_check_add_for_candidate (NiceAgent *agent, guint stream_id, NiceComponent *component, NiceCandidate *remote);
