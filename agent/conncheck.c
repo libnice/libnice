@@ -2893,11 +2893,12 @@ static gboolean priv_schedule_triggered_check (NiceAgent *agent, NiceStream *str
 {
   GSList *i;
   NiceCandidate *local = NULL;
+  CandidateCheckPair *p;
 
   g_assert (remote_cand != NULL);
 
   for (i = stream->conncheck_list; i ; i = i->next) {
-      CandidateCheckPair *p = i->data;
+      p = i->data;
       if (p->component_id == component->id &&
 	  p->remote == remote_cand &&
           ((p->local->transport == NICE_CANDIDATE_TRANSPORT_TCP_PASSIVE &&
@@ -2986,8 +2987,9 @@ static gboolean priv_schedule_triggered_check (NiceAgent *agent, NiceStream *str
 
   if (i) {
     nice_debug ("Agent %p : Adding a triggered check to conn.check list (local=%p).", agent, local);
-    priv_add_new_check_pair (agent, stream->id, component,
+    p = priv_add_new_check_pair (agent, stream->id, component,
         local, remote_cand, NICE_CHECK_WAITING);
+    priv_add_pair_to_triggered_check_queue (agent, p);
     return TRUE;
   }
   else {
