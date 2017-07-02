@@ -2114,11 +2114,11 @@ static void priv_mark_pair_nominated (NiceAgent *agent, NiceStream *stream, Nice
       }
 
       if (pair->valid) {
-        priv_update_selected_pair (agent, component, pair);
         /* Do not step down to CONNECTED if we're already at state READY*/
         if (component->state == NICE_COMPONENT_STATE_FAILED)
           agent_signal_component_state_change (agent,
               stream->id, component->id, NICE_COMPONENT_STATE_CONNECTING);
+        priv_update_selected_pair (agent, component, pair);
         if (component->state == NICE_COMPONENT_STATE_CONNECTING)
           /* step: notify the client of a new component state (must be done
            *       before the possible check list state update step */
