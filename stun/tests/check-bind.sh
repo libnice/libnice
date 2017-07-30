@@ -1,7 +1,18 @@
 #! /bin/sh
 
-STUNC=../tools/stunbdc
-STUND=../tools/stund
+if test -n "${BUILT_WITH_MESON}"; then
+  STUNC=$1
+  STUND=$2
+else
+  STUNC=../tools/stunbdc
+  STUND=../tools/stund
+fi
+
+cleanup() {
+  rm -f stund?.pid stund?.fail stunc?.log
+}
+
+trap cleanup EXIT
 
 set -xe
 
@@ -23,7 +34,7 @@ fi
 echo "Using local UDP port number $PORT ..."
 
 # Start the STUN test daemon if needed
-rm -f stund?.pid stund?.fail stunc?.log
+cleanup()
 
 for v in 4 6; do
 	(($SHELL -c "echo \$\$ > stund$v.pid ; exec $STUND -$v $PORT") || \
@@ -44,5 +55,3 @@ grep -e "^Mapped address: 127.0.0.1" stunc4.log || exit 4
 
 if test -f stund6.fail; then exit 77; fi
 grep -e "^Mapped address: ::1" stunc6.log || exit 6
-
-rm -f stund?.fail stund?.pid stunc?.log

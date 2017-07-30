@@ -185,3 +185,6 @@ ar-lib
 
 # Code coverage
 lcov/
+
+# Meson builddir
+_build/

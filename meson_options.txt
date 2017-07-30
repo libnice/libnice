@@ -1,0 +1,16 @@
+option('gupnp', type: 'feature', value: 'auto',
+  description: 'Enable or disable GUPnP IGD support')
+option('gstreamer', type: 'feature', value: 'auto',
+  description: 'Enable or disable build of GStreamer plugins')
+option('ignored-network-interface-prefix', type: 'string', value: '',
+  description: 'Ignore network interfaces whose name starts with this string in the ICE connection check algorithm. For example, "virbr" to ignore virtual bridge interfaces added by virtd, which do not help in finding connectivity.')
+
+# Common feature options
+option('examples', type : 'feature', value : 'auto', yield : true,
+  description: 'Build examples')
+option('tests', type : 'feature', value : 'auto', yield : true,
+  description: 'Enable or disable unit tests')
+option('gtk_doc', type : 'feature', value : 'disabled', yield : true,
+  description: 'Generate API documentation with gtk-doc')
+option('introspection', type : 'feature', value : 'auto', yield : true,
+  description : 'Generate gobject-introspection bindings')
