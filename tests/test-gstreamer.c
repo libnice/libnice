@@ -34,7 +34,7 @@
  */
 
 #include <gst/check/gstcheck.h>
-#include <nice/agent.h>
+#include "agent.h"
 
 #define RTP_HEADER_SIZE 12
 #define RTP_PAYLOAD_SIZE 1024
