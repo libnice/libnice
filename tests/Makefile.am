@@ -46,6 +46,7 @@ check_PROGRAMS = \
 	test-socket-is-based-on \
 	test-priority \
 	test-fullmode \
+        test-different-number-streams \
 	test-restart \
 	test-fallback \
 	test-thread \
@@ -113,6 +114,8 @@ test_priority_LDADD = $(COMMON_LDADD)
 test_mainloop_LDADD = $(COMMON_LDADD)
 
 test_fullmode_LDADD = $(COMMON_LDADD)
+
+test_different_number_streams_LDADD = $(COMMON_LDADD)
 
 test_restart_LDADD = $(COMMON_LDADD)
 

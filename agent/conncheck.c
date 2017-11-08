@@ -402,23 +402,6 @@ priv_conn_check_find_next_frozen (GSList *conn_check_list)
 }
 
 /*
- * Returns the number of check lists of the agent
- */
-static guint
-priv_number_of_check_lists (NiceAgent *agent)
-{
-  guint n = 0;
-  GSList *i;
-
-  for (i = agent->streams; i ; i = i->next) {
-    NiceStream *stream = i->data;
-    if (stream->conncheck_list != NULL)
-      n++;
-  }
-  return n;
-}
-
-/*
  * Returns the number of active check lists of the agent
  */
 static guint
@@ -1059,12 +1042,6 @@ static gboolean priv_conn_check_tick_unlocked (NiceAgent *agent)
   CandidateCheckPair *pair = NULL;
   gboolean keep_timer_going = FALSE;
   GSList *i, *j;
-
-  /* the conncheck really starts when we have built
-   * a connection check list for each stream
-   */
-  if (priv_number_of_check_lists (agent) < g_slist_length (agent->streams))
-    return TRUE;
 
   /* configure the initial state of the check lists of the agent
    * as described in ICE spec, 5.7.4
