@@ -301,6 +301,11 @@ static int run_restart_test (NiceAgent *lagent, NiceAgent *ragent, NiceAddress *
   nice_agent_set_remote_candidates (lagent, ls_id, NICE_COMPONENT_TYPE_RTCP, cands);
   cdes.addr = laddr_rtcp;
   nice_agent_set_remote_candidates (ragent, rs_id, NICE_COMPONENT_TYPE_RTCP, cands);
+  /* This role switch request will be effective after restart. We test
+   * here that the role cannot be externally modified after conncheck
+   * has started. */
+  g_object_set (G_OBJECT (ragent), "controlling-mode", TRUE, NULL);
+  g_assert (ragent->controlling_mode == FALSE);
 
   g_debug ("test-restart: Set properties, next running mainloop until connectivity checks succeed...");
 
@@ -329,10 +334,18 @@ static int run_restart_test (NiceAgent *lagent, NiceAgent *ragent, NiceAddress *
   global_ragent_read = 0;
   g_assert (nice_agent_send (lagent, ls_id, 1, 16, "1234567812345678") == 16);
 
+  /* Both agent have a distinct role at the end of the conncheck */
+  g_assert (lagent->controlling_mode == TRUE);
+  g_assert (ragent->controlling_mode == FALSE);
   /* step: restart agents, exchange updated credentials */
   tie_breaker = ragent->tie_breaker;
   nice_agent_restart (ragent);
   g_assert (tie_breaker != ragent->tie_breaker);
+  /* This role switch of ragent should be done now, and both agents
+   * have now the same role, which should generate a role conflict
+   * resolution situation */
+  g_assert (lagent->controlling_mode == TRUE);
+  g_assert (ragent->controlling_mode == TRUE);
   nice_agent_restart (lagent);
   {
       gchar *ufrag = NULL, *password = NULL;
@@ -375,6 +388,8 @@ static int run_restart_test (NiceAgent *lagent, NiceAgent *ragent, NiceAddress *
   /* note: verify binding requests were resent after restart */
   g_assert (global_lagent_ibr_received == TRUE);
   g_assert (global_ragent_ibr_received == TRUE);
+  /* note: verify that a role switch occured for one of the agents */
+  g_assert (ragent->controlling_mode != lagent->controlling_mode);
 
   g_debug ("test-restart: Ran mainloop, removing streams...");
 

@@ -405,6 +405,13 @@ nice_agent_class_init (NiceAgentClass *klass)
 	1, /* not a construct property, ignored */
         G_PARAM_READWRITE));
 
+  /**
+   * NiceAgent:controlling-mode:
+   *
+   * Whether the agent has the controlling role. This property should
+   * be modified before gathering candidates, any modification occuring
+   * later will be hold until ICE is restarted.
+   */
   g_object_class_install_property (gobject_class, PROP_CONTROLLING_MODE,
       g_param_spec_boolean (
         "controlling-mode",
@@ -1107,6 +1114,47 @@ static void priv_generate_tie_breaker (NiceAgent *agent)
 }
 
 static void
+priv_update_controlling_mode (NiceAgent *agent, gboolean value)
+{
+  gboolean update_controlling_mode;
+  GSList *i, *j;
+
+  agent->saved_controlling_mode = value;
+  /* It is safe to update the agent controlling mode when all
+   * components are still in state disconnected. When we leave
+   * this state, the role must stay under the control of the
+   * conncheck algorithm exclusively, until the conncheck is
+   * eventually restarted. See RFC5245, sect 5.2. Determining Role
+   */
+  if (agent->controlling_mode != agent->saved_controlling_mode) {
+    update_controlling_mode = TRUE;
+    for (i = agent->streams;
+         i && update_controlling_mode; i = i->next) {
+      NiceStream *stream = i->data;
+      for (j = stream->components;
+           j && update_controlling_mode; j = j->next) {
+        NiceComponent *component = j->data;
+        if (component->state > NICE_COMPONENT_STATE_DISCONNECTED)
+          update_controlling_mode = FALSE;
+      }
+    }
+    if (update_controlling_mode) {
+      agent->controlling_mode = agent->saved_controlling_mode;
+      nice_debug ("Agent %p : Property set, changing role to \"%s\".",
+        agent, agent->controlling_mode ? "controlling" : "controlled");
+    } else {
+      nice_debug ("Agent %p : Property set, role switch requested "
+        "but conncheck already started.", agent);
+      nice_debug ("Agent %p : Property set, staying with role \"%s\" "
+        "until restart.", agent,
+        agent->controlling_mode ? "controlling" : "controlled");
+    }
+  } else
+    nice_debug ("Agent %p : Property set, role is already \"%s\".", agent,
+      agent->controlling_mode ? "controlling" : "controlled");
+}
+
+static void
 nice_agent_init (NiceAgent *agent)
 {
   agent->next_candidate_id = 1;
@@ -1115,6 +1163,7 @@ nice_agent_init (NiceAgent *agent)
   /* set defaults; not construct params, so set here */
   agent->stun_server_port = DEFAULT_STUN_PORT;
   agent->controlling_mode = TRUE;
+  agent->saved_controlling_mode = TRUE;
   agent->max_conn_checks = NICE_AGENT_MAX_CONNECTIVITY_CHECKS_DEFAULT;
   agent->nomination_mode = NICE_NOMINATION_MODE_AGGRESSIVE;
 
@@ -1213,7 +1262,7 @@ nice_agent_get_property (
       break;
 
     case PROP_CONTROLLING_MODE:
-      g_value_set_boolean (value, agent->controlling_mode);
+      g_value_set_boolean (value, agent->saved_controlling_mode);
       break;
 
     case PROP_FULL_MODE:
@@ -1422,7 +1471,7 @@ nice_agent_set_property (
       break;
 
     case PROP_CONTROLLING_MODE:
-      agent->controlling_mode = g_value_get_boolean (value);
+      priv_update_controlling_mode (agent, g_value_get_boolean (value));
       break;
 
     case PROP_FULL_MODE:
@@ -4929,6 +4978,11 @@ nice_agent_restart (
 
   /* step: regenerate tie-breaker value */
   priv_generate_tie_breaker (agent);
+
+  /* step: reset controlling mode from the property value */
+  agent->controlling_mode = agent->saved_controlling_mode;
+  nice_debug ("Agent %p : ICE restart, reset role to \"%s\".",
+      agent, agent->controlling_mode ? "controlling" : "controlled");
 
   for (i = agent->streams; i; i = i->next) {
     NiceStream *stream = i->data;

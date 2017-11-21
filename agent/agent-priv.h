@@ -146,7 +146,7 @@ struct _NiceAgent
   NiceProxyType proxy_type;       /* property: Proxy type */
   gchar *proxy_username;          /* property: Proxy username */
   gchar *proxy_password;          /* property: Proxy password */
-  gboolean controlling_mode;      /* property: controlling-mode */
+  gboolean saved_controlling_mode;/* property: controlling-mode */
   guint timer_ta;                 /* property: timer Ta */
   guint max_conn_checks;          /* property: max connectivity checks */
   gboolean force_relay;           /* property: force relay */
@@ -190,6 +190,8 @@ struct _NiceAgent
   gboolean use_ice_tcp;
 
   guint conncheck_timer_grace_period; /* ongoing delay before timer stop */
+  gboolean controlling_mode;          /* controlling mode used by the
+                                         conncheck */
   /* XXX: add pointer to internal data struct for ABI-safe extensions */
 };
 
