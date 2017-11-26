@@ -269,19 +269,13 @@ static gpointer stun_thread_func (const gpointer user_data)
   return NULL;
 }
 
-static void set_credentials (NiceAgent *lagent, guint lstream,
+static void swap_credentials (NiceAgent *lagent, guint lstream,
     NiceAgent *ragent, guint rstream)
 {
   gchar *ufrag = NULL, *password = NULL;
 
   nice_agent_get_local_credentials (lagent, lstream, &ufrag, &password);
   nice_agent_set_remote_credentials (ragent, rstream, ufrag, password);
-
-  g_free (ufrag);
-  g_free (password);
-
-  nice_agent_get_local_credentials (ragent, rstream, &ufrag, &password);
-  nice_agent_set_remote_credentials (lagent, lstream, ufrag, password);
 
   g_free (ufrag);
   g_free (password);
@@ -500,12 +494,10 @@ static void standard_test(NiceAgent *lagent, NiceAgent *ragent)
   g_cancellable_reset (global_cancellable);
   g_assert (ragent_candidate_gathering_done);
 
-  set_credentials (lagent, global_ls_id, ragent, global_rs_id);
 
   g_debug ("Setting local candidates of ragent as remote candidates of lagent");
-  swap_candidates (ragent, global_rs_id,
-                   lagent, global_ls_id,
-                   TRUE);
+  swap_candidates (ragent, global_rs_id, lagent, global_ls_id, TRUE);
+  swap_credentials (ragent, global_rs_id, lagent, global_ls_id);
 
   while (!data_received)
     g_main_context_iteration (NULL, TRUE);
@@ -514,9 +506,9 @@ static void standard_test(NiceAgent *lagent, NiceAgent *ragent)
             data_received);
 
   g_debug ("Setting local candidates of lagent as remote candidates of ragent");
-  swap_candidates (lagent, global_ls_id,
-                   ragent, global_rs_id,
-                   FALSE);
+  swap_candidates (lagent, global_ls_id, ragent, global_rs_id, FALSE);
+  swap_credentials (lagent, global_ls_id, ragent, global_rs_id);
+
   while (!lagent_candidate_gathering_done)
     g_main_context_iteration (NULL, TRUE);
   g_cancellable_reset (global_cancellable);
@@ -557,22 +549,21 @@ static void bad_credentials_test(NiceAgent *lagent, NiceAgent *ragent)
   g_cancellable_reset (global_cancellable);
   g_assert (ragent_candidate_gathering_done);
 
-  swap_candidates (ragent, global_rs_id,
-                   lagent, global_ls_id,
-                   FALSE);
+  g_debug ("Setting local candidates of ragent as remote candidates of lagent");
+  swap_candidates (ragent, global_rs_id, lagent, global_ls_id, FALSE);
+
   while (global_lagent_state != NICE_COMPONENT_STATE_FAILED)
     g_main_context_iteration (NULL, TRUE);
   g_cancellable_reset (global_cancellable);
 
   // Set the correct credentials and swap candidates
-  set_credentials (lagent, global_ls_id, ragent, global_rs_id);
-  swap_candidates (ragent, global_rs_id,
-                   lagent, global_ls_id,
-                   FALSE);
+  g_debug ("Setting local candidates of ragent as remote candidates of lagent");
+  swap_candidates (ragent, global_rs_id, lagent, global_ls_id, FALSE);
+  swap_credentials (lagent, global_ls_id, ragent, global_rs_id);
 
-  swap_candidates (lagent, global_ls_id,
-                   ragent, global_rs_id,
-                   FALSE);
+  g_debug ("Setting local candidates of lagent as remote candidates of ragent");
+  swap_candidates (lagent, global_ls_id, ragent, global_rs_id, FALSE);
+  swap_credentials (ragent, global_rs_id, lagent, global_ls_id);
 
   while (!data_received)
     g_main_context_iteration (NULL, TRUE);
@@ -628,15 +619,14 @@ static void bad_candidate_test(NiceAgent *lagent,NiceAgent *ragent)
 
   g_assert (global_lagent_state == NICE_COMPONENT_STATE_FAILED &&
             !data_received);
-  set_credentials (lagent, global_ls_id, ragent, global_rs_id);
 
-  swap_candidates (ragent, global_rs_id,
-                   lagent, global_ls_id,
-                   FALSE);
+  g_debug ("Setting local candidates of ragent as remote candidates of lagent");
+  swap_candidates (ragent, global_rs_id, lagent, global_ls_id, FALSE);
+  swap_credentials (ragent, global_rs_id, lagent, global_ls_id);
 
-  swap_candidates (lagent, global_ls_id,
-                   ragent, global_rs_id,
-                   FALSE);
+  g_debug ("Setting local candidates of lagent as remote candidates of ragent");
+  swap_candidates (lagent, global_ls_id, ragent, global_rs_id, FALSE);
+  swap_credentials (lagent, global_ls_id, ragent, global_rs_id);
 
   while (!data_received)
     g_main_context_iteration (NULL, TRUE);
@@ -655,7 +645,8 @@ static void new_candidate_test(NiceAgent *lagent, NiceAgent *ragent)
   g_debug ("test-dribblemode:%s", G_STRFUNC);
 
   init_test (lagent, ragent, TRUE);
-  set_credentials (lagent, global_ls_id, ragent, global_rs_id);
+  swap_credentials (lagent, global_ls_id, ragent, global_rs_id);
+  swap_credentials (ragent, global_rs_id, lagent, global_ls_id);
 
   nice_agent_gather_candidates (lagent, global_ls_id);
   while (!got_stun_packet)
