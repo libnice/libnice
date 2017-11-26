@@ -123,21 +123,28 @@ priv_state_to_string (NiceCheckState state)
 {
   switch (state) {
     case NICE_CHECK_WAITING:
-      return "waiting";
+      return "WAITING";
     case NICE_CHECK_IN_PROGRESS:
-      return "in progress";
+      return "IN_PROGRESS";
     case NICE_CHECK_SUCCEEDED:
-      return "succeeded";
+      return "SUCCEEDED";
     case NICE_CHECK_FAILED:
-      return "failed";
+      return "FAILED";
     case NICE_CHECK_FROZEN:
-      return "frozen";
+      return "FROZEN";
     case NICE_CHECK_DISCOVERED:
-      return "discovered";
+      return "DISCOVERED";
     default:
       g_assert_not_reached ();
   }
 }
+
+#define SET_PAIR_STATE( a, p, s ) G_STMT_START{\
+  g_assert (p); \
+  p->state = s; \
+  nice_debug ("Agent %p : pair %p state %s (%s)", \
+      a, p, priv_state_to_string (s), G_STRFUNC); \
+}G_STMT_END
 
 static const gchar *
 priv_ice_return_to_string (StunUsageIceReturn ice_return)
@@ -251,8 +258,7 @@ priv_add_pair_to_triggered_check_queue (NiceAgent *agent, CandidateCheckPair *pa
 {
   g_assert (pair);
 
-  pair->state = NICE_CHECK_IN_PROGRESS;
-  nice_debug ("Agent %p : pair %p state IN_PROGRESS", agent, pair);
+  SET_PAIR_STATE (agent, pair, NICE_CHECK_IN_PROGRESS);
   if (agent->triggered_check_queue == NULL ||
       g_slist_find (agent->triggered_check_queue, pair) == NULL)
     agent->triggered_check_queue = g_slist_append (agent->triggered_check_queue, pair);
@@ -440,11 +446,9 @@ priv_find_first_frozen_check_list (NiceAgent *agent)
  */
 static gboolean priv_conn_check_initiate (NiceAgent *agent, CandidateCheckPair *pair)
 {
-  pair->state = NICE_CHECK_IN_PROGRESS;
-  nice_debug ("Agent %p : pair %p state IN_PROGRESS", agent, pair);
+  SET_PAIR_STATE (agent, pair, NICE_CHECK_IN_PROGRESS);
   if (conn_check_send (agent, pair)) {
-    pair->state = NICE_CHECK_FAILED;
-    nice_debug ("Agent %p : pair %p state FAILED", agent, pair);
+    SET_PAIR_STATE (agent, pair, NICE_CHECK_FAILED);
     return FALSE;
   }
   return TRUE;
@@ -495,8 +499,7 @@ static gboolean priv_conn_check_unfreeze_next (NiceAgent *agent, NiceStream *str
     if (pair) {
       nice_debug ("Agent %p : Pair %p with s/c-id %u/%u (%s) unfrozen.",
           agent, pair, pair->stream_id, pair->component_id, pair->foundation);
-      pair->state = NICE_CHECK_WAITING;
-      nice_debug ("Agent %p : pair %p state WAITING", agent, pair);
+      SET_PAIR_STATE (agent, pair, NICE_CHECK_WAITING);
       result = TRUE;
     }
   }
@@ -535,8 +538,7 @@ static void priv_conn_check_unfreeze_related (NiceAgent *agent, NiceStream *stre
           strncmp (p->foundation, ok_check->foundation,
               NICE_CANDIDATE_PAIR_MAX_FOUNDATION) == 0) {
 	nice_debug ("Agent %p : Unfreezing check %p (after successful check %p).", agent, p, ok_check);
-	p->state = NICE_CHECK_WAITING;
-        nice_debug ("Agent %p : pair %p state WAITING", agent, p);
+	SET_PAIR_STATE (agent, p, NICE_CHECK_WAITING);
       }
     }
   }
@@ -559,8 +561,7 @@ static void priv_conn_check_unfreeze_related (NiceAgent *agent, NiceStream *stre
           if (p->state == NICE_CHECK_FROZEN &&
               priv_foundation_matches_a_valid_pair (p->foundation, stream)) {
 	    nice_debug ("Agent %p : Unfreezing check %p from stream %u (after successful check %p).", agent, p, s->id, ok_check);
-	    p->state = NICE_CHECK_WAITING;
-            nice_debug ("Agent %p : pair %p state WAITING", agent, p);
+	    SET_PAIR_STATE (agent, p, NICE_CHECK_WAITING);
           }
         }
       } else if (priv_is_checklist_frozen (s)) {
@@ -576,8 +577,7 @@ static void priv_conn_check_unfreeze_related (NiceAgent *agent, NiceStream *stre
           if (priv_foundation_matches_a_valid_pair (p->foundation, stream)) {
             match_found = TRUE;
             nice_debug ("Agent %p : Unfreezing check %p from stream %u (after successful check %p).", agent, p, s->id, ok_check);
-            p->state = NICE_CHECK_WAITING;
-            nice_debug ("Agent %p : pair %p state WAITING", agent, p);
+            SET_PAIR_STATE (agent, p, NICE_CHECK_WAITING);
           }
         }
 
@@ -675,8 +675,7 @@ candidate_check_pair_fail (NiceStream *stream, NiceAgent *agent, CandidateCheckP
   NiceComponent *component;
 
   component = nice_stream_find_component_by_id (stream, p->component_id);
-  p->state = NICE_CHECK_FAILED;
-  nice_debug ("Agent %p : pair %p state FAILED", agent, p);
+  SET_PAIR_STATE (agent, p, NICE_CHECK_FAILED);
   priv_free_all_stun_transactions (p, component);
 }
 
@@ -841,8 +840,7 @@ timer_return_timeout:
   if (pair) {
     priv_print_conn_check_lists (agent, G_STRFUNC,
         ", got a pair in Frozen state");
-    pair->state = NICE_CHECK_WAITING;
-    nice_debug ("Agent %p : pair %p state WAITING", agent, pair);
+    SET_PAIR_STATE (agent, pair, NICE_CHECK_WAITING);
     priv_conn_check_initiate (agent, pair);
     return TRUE;
   }
@@ -1075,8 +1073,7 @@ static gboolean priv_conn_check_tick_unlocked (NiceAgent *agent)
     priv_print_conn_check_lists (agent, G_STRFUNC,
         ", got a pair from triggered check list");
     if (conn_check_send (agent, pair)) {
-      pair->state = NICE_CHECK_FAILED;
-      nice_debug ("Agent %p : pair %p state FAILED", agent, pair);
+      SET_PAIR_STATE (agent, pair, NICE_CHECK_FAILED);
       return FALSE;
     }
     return TRUE;
@@ -2067,8 +2064,8 @@ static CandidateCheckPair *priv_add_new_check_pair (NiceAgent *agent,
   g_snprintf (pair->foundation, NICE_CANDIDATE_PAIR_MAX_FOUNDATION, "%s:%s", local->foundation, remote->foundation);
 
   pair->priority = agent_candidate_pair_priority (agent, local, remote);
-  pair->state = initial_state;
-  nice_debug ("Agent %p : creating new pair %p state %d", agent, pair, initial_state);
+  nice_debug ("Agent %p : creating a new pair", agent);
+  SET_PAIR_STATE (agent, pair, initial_state);
   {
       gchar tmpbuf1[INET6_ADDRSTRLEN];
       gchar tmpbuf2[INET6_ADDRSTRLEN];
@@ -2976,10 +2973,10 @@ static CandidateCheckPair *priv_add_peer_reflexive_pair (NiceAgent *agent, guint
   pair->local = local_cand;
   pair->remote = parent_pair->remote;
   pair->sockptr = local_cand->sockptr;
-  pair->state = NICE_CHECK_DISCOVERED;
   parent_pair->discovered_pair = pair;
   pair->succeeded_pair = parent_pair;
-  nice_debug ("Agent %p : new pair %p state DISCOVERED", agent, pair);
+  nice_debug ("Agent %p : creating a new pair", agent);
+  SET_PAIR_STATE (agent, pair, NICE_CHECK_DISCOVERED);
   {
       gchar tmpbuf1[INET6_ADDRSTRLEN];
       gchar tmpbuf2[INET6_ADDRSTRLEN];
@@ -3099,10 +3096,9 @@ static CandidateCheckPair *priv_process_response_check_for_reflexive(NiceAgent *
      */
     if (new_pair == p)
       p->valid = TRUE;
-    p->state = NICE_CHECK_SUCCEEDED;
+    SET_PAIR_STATE (agent, p, NICE_CHECK_SUCCEEDED);
     priv_remove_pair_from_triggered_check_queue (agent, p);
     priv_free_all_stun_transactions (p, component);
-    nice_debug ("Agent %p : conncheck %p SUCCEEDED.", agent, p);
     nice_component_add_valid_candidate (component, remote_candidate);
   }
   else {
@@ -3135,11 +3131,9 @@ static CandidateCheckPair *priv_process_response_check_for_reflexive(NiceAgent *
     /* step: The agent sets the state of the pair that *generated* the check to
      * Succeeded, RFC 5245, 7.1.3.2.3, "Updating Pair States"
      */
-    p->state = NICE_CHECK_SUCCEEDED;
+    SET_PAIR_STATE (agent, p, NICE_CHECK_SUCCEEDED);
     priv_remove_pair_from_triggered_check_queue (agent, p);
     priv_free_all_stun_transactions (p, component);
-    nice_debug ("Agent %p : conncheck %p SUCCEEDED, %p DISCOVERED.",
-        agent, p, new_pair);
   }
 
   if (new_pair && new_pair->valid)
@@ -3226,10 +3220,9 @@ static gboolean priv_map_reply_to_conn_check_request (NiceAgent *agent, NiceStre
 	 *       "Discovering Peer Reflexive Candidates" ICE ID-19) */
 
         if (res == STUN_USAGE_ICE_RETURN_NO_MAPPED_ADDRESS) {
-          p->state = NICE_CHECK_SUCCEEDED;
+          nice_debug ("Agent %p : Mapped address not found", agent);
+          SET_PAIR_STATE (agent, p, NICE_CHECK_SUCCEEDED);
           p->valid = TRUE;
-          nice_debug ("Agent %p : Mapped address not found."
-              " conncheck %p SUCCEEDED.", agent, p);
           nice_component_add_valid_candidate (component, p->remote);
         } else
           ok_pair = priv_process_response_check_for_reflexive (agent,
