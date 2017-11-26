@@ -442,7 +442,11 @@ static gboolean priv_conn_check_initiate (NiceAgent *agent, CandidateCheckPair *
 {
   pair->state = NICE_CHECK_IN_PROGRESS;
   nice_debug ("Agent %p : pair %p state IN_PROGRESS", agent, pair);
-  conn_check_send (agent, pair);
+  if (conn_check_send (agent, pair)) {
+    pair->state = NICE_CHECK_FAILED;
+    nice_debug ("Agent %p : pair %p state FAILED", agent, pair);
+    return FALSE;
+  }
   return TRUE;
 }
 
@@ -1070,7 +1074,11 @@ static gboolean priv_conn_check_tick_unlocked (NiceAgent *agent)
   if (pair) {
     priv_print_conn_check_lists (agent, G_STRFUNC,
         ", got a pair from triggered check list");
-    conn_check_send (agent, pair);
+    if (conn_check_send (agent, pair)) {
+      pair->state = NICE_CHECK_FAILED;
+      nice_debug ("Agent %p : pair %p state FAILED", agent, pair);
+      return FALSE;
+    }
     return TRUE;
   }
 
