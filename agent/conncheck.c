@@ -1691,34 +1691,6 @@ gint conn_check_compare (const CandidateCheckPair *a, const CandidateCheckPair *
 }
 
 /*
- * Preprocesses a new connectivity check by going through list 
- * of a any stored early incoming connectivity checks from 
- * the remote peer. If a matching incoming check has been already
- * received, update the state of the new outgoing check 'pair'.
- * 
- * @param agent context pointer
- * @param stream which stream (of the agent)
- * @param component pointer to component object to which 'pair'has been added
- * @param pair newly added connectivity check
- */
-static void priv_preprocess_conn_check_pending_data (NiceAgent *agent, NiceStream *stream, NiceComponent *component, CandidateCheckPair *pair)
-{
-  GSList *i;
-  for (i = component->incoming_checks; i; i = i->next) {
-    IncomingCheck *icheck = i->data;
-    if (nice_address_equal (&icheck->from, &pair->remote->addr) &&
-	icheck->local_socket == pair->sockptr) {
-      nice_debug ("Agent %p : Updating check %p with stored early-icheck %p, %p/%u/%u (agent/stream/component).", agent, pair, icheck, agent, stream->id, component->id);
-      priv_schedule_triggered_check (agent, stream, component,
-          icheck->local_socket, pair->remote);
-      if (icheck->use_candidate)
-	priv_mark_pair_nominated (agent, stream, component, pair->local, pair->remote);
-    }
-  }
-}
-
-
-/*
  * Handle any processing steps for connectivity checks after
  * remote credentials have been set. This function handles
  * the special case where answerer has sent us connectivity
@@ -1728,126 +1700,39 @@ static void priv_preprocess_conn_check_pending_data (NiceAgent *agent, NiceStrea
  */
 void conn_check_remote_credentials_set(NiceAgent *agent, NiceStream *stream)
 {
-  GSList *j, *k, *l, *m, *n, *o;
+  GSList *j, *k, *l, *m;
 
-  for (j = stream->conncheck_list; j ; j = j->next) {
-    CandidateCheckPair *pair = j->data;
-    NiceComponent *component =
-        nice_stream_find_component_by_id (stream, pair->component_id);
-    gboolean match = FALSE;
-
-    /* performn delayed processing of spec steps section 7.2.1.4,
-       and section 7.2.1.5 */
-    priv_preprocess_conn_check_pending_data (agent, stream, component, pair);
+  for (j = stream->components; j ; j = j->next) {
+    NiceComponent *component = j->data;
 
     for (k = component->incoming_checks; k; k = k->next) {
       IncomingCheck *icheck = k->data;
       /* sect 7.2.1.3., "Learning Peer Reflexive Candidates", has to
        * be handled separately */
       for (l = component->remote_candidates; l; l = l->next) {
-        NiceCandidate *cand = l->data;
-        if (nice_address_equal (&icheck->from, &cand->addr)) {
-          match = TRUE;
-          break;
-        }
-      }
-      if (match != TRUE) {
-        /* note: we have gotten an incoming connectivity check from
-         *       an address that is not a known remote candidate */
-
-        NiceCandidate *local_candidate = NULL;
-        NiceCandidate *remote_candidate = NULL;
-
-        if (agent->compatibility == NICE_COMPATIBILITY_GOOGLE ||
-            agent->compatibility == NICE_COMPATIBILITY_MSN ||
-            agent->compatibility == NICE_COMPATIBILITY_OC2007) {
-          /* We need to find which local candidate was used */
-          uint8_t uname[NICE_STREAM_MAX_UNAME];
-          guint uname_len;
-
-          nice_debug ("Agent %p: We have a peer-reflexive candidate in a "
-              "stored pending check", agent);
-
-          for (m = component->remote_candidates;
-               m != NULL && remote_candidate == NULL; m = m->next) {
-            for (n = component->local_candidates; n; n = n->next) {
-              NiceCandidate *rcand = m->data;
-              NiceCandidate *lcand = n->data;
-
-              uname_len = priv_create_username (agent, stream,
-                  component->id,  rcand, lcand,
-                  uname, sizeof (uname), TRUE);
-
-              stun_debug ("pending check, comparing usernames of len %d and %d, equal=%d",
-                  icheck->username_len, uname_len,
-                  icheck->username && uname_len == icheck->username_len &&
-                  memcmp (uname, icheck->username, icheck->username_len) == 0);
-              stun_debug_bytes ("  first username:  ",
-                  icheck->username,
-                  icheck->username? icheck->username_len : 0);
-              stun_debug_bytes ("  second username: ", uname, uname_len);
-
-              if (icheck->username &&
-                  uname_len == icheck->username_len &&
-                  memcmp (uname, icheck->username, icheck->username_len) == 0) {
-                local_candidate = lcand;
-                remote_candidate = rcand;
-                break;
-              }
-            }
-          }
-        } else {
-          for (l = component->local_candidates; l; l = l->next) {
-            NiceCandidate *cand = l->data;
+        NiceCandidate *rcand = l->data;
+        NiceCandidate *lcand = NULL;
+        if (nice_address_equal (&rcand->addr, &icheck->from)) {
+          for (m = component->local_candidates; m; m = m->next) {
+            NiceCandidate *cand = m->data;
             if (nice_address_equal (&cand->addr, &icheck->local_socket->addr)) {
-              local_candidate = cand;
+              lcand = cand;
               break;
             }
           }
-        }
-
-        if (agent->compatibility == NICE_COMPATIBILITY_GOOGLE &&
-            local_candidate == NULL) {
-          /* if we couldn't match the username, then the matching remote
-           * candidate hasn't been received yet.. we must wait */
-          nice_debug ("Agent %p : Username check failed. pending check has "
-              "to wait to be processed", agent);
-        } else {
-          NiceCandidate *candidate;
-
-          nice_debug ("Agent %p : Discovered peer reflexive from early i-check",
-              agent);
-          candidate =
-              discovery_learn_remote_peer_reflexive_candidate (agent,
-                  stream,
-                  component,
-                  icheck->priority,
-                  &icheck->from,
-                  icheck->local_socket,
-                  local_candidate, remote_candidate);
-          if (candidate) {
-            if (local_candidate &&
-                local_candidate->transport == NICE_CANDIDATE_TRANSPORT_TCP_PASSIVE)
-              priv_conn_check_add_for_candidate_pair_matched (agent,
-                  stream->id, component, local_candidate, candidate, NICE_CHECK_DISCOVERED);
-            else
-              conn_check_add_for_candidate (agent, stream->id, component, candidate);
-
-            priv_schedule_triggered_check (agent, stream, component,
-                icheck->local_socket, candidate);
-            if (icheck->use_candidate)
-              priv_mark_pair_nominated (agent, stream, component, local_candidate, candidate);
-          }
+          g_assert (lcand != NULL);
+          priv_schedule_triggered_check (agent, stream, component,
+              icheck->local_socket, rcand);
+          if (icheck->use_candidate)
+            priv_mark_pair_nominated (agent, stream, component,
+                lcand, rcand);
+          break;
         }
       }
     }
-  }
-
-  /* Once we process the pending checks, we should free them to avoid
-   * reprocessing them again if a dribble-mode set_remote_candidates
-   * is called */
-  for (o = stream->components; o; o = o->next) {
-    NiceComponent *component = o->data;
+    /* Once we process the pending checks, we should free them to avoid
+     * reprocessing them again if a dribble-mode set_remote_candidates
+     * is called */
     g_slist_free_full (component->incoming_checks,
         (GDestroyNotify) incoming_check_free);
     component->incoming_checks = NULL;
@@ -2964,8 +2849,8 @@ static gboolean priv_schedule_triggered_check (NiceAgent *agent, NiceStream *str
 
   if (i) {
     nice_debug ("Agent %p : Adding a triggered check to conn.check list (local=%p).", agent, local);
-    p = priv_add_new_check_pair (agent, stream->id, component,
-        local, remote_cand, NICE_CHECK_WAITING);
+    p = priv_conn_check_add_for_candidate_pair_matched (agent, stream->id,
+        component, local, remote_cand, NICE_CHECK_WAITING);
     priv_add_pair_to_triggered_check_queue (agent, p);
     return TRUE;
   }
@@ -3018,7 +2903,12 @@ static void priv_reply_to_conn_check (NiceAgent *agent, NiceStream *stream,
     ms_ice2_legacy_conncheck_send(msg, sockptr, toaddr);
   }
 
-  if (rcand) {
+  /* We react to this stun request when we have the remote credentials.
+   * When credentials are not yet known, this request is stored
+   * in incoming_checks for later processing when returning from this
+   * function.
+   */
+  if (rcand && stream->remote_ufrag[0]) {
     priv_schedule_triggered_check (agent, stream, component, sockptr, rcand);
     if (use_candidate)
       priv_mark_pair_nominated (agent, stream, component, lcand, rcand);
@@ -3114,7 +3004,7 @@ static CandidateCheckPair *priv_add_peer_reflexive_pair (NiceAgent *agent, guint
  * Recalculates priorities of all candidate pairs. This
  * is required after a conflict in ICE roles.
  */
-static void priv_recalculate_pair_priorities (NiceAgent *agent)
+void recalculate_pair_priorities (NiceAgent *agent)
 {
   GSList *i, *j;
 
@@ -3143,7 +3033,7 @@ static void priv_check_for_role_conflict (NiceAgent *agent, gboolean control)
     agent->controlling_mode = control;
     /* the pair priorities depend on the roles, so recalculation
      * is needed */
-    priv_recalculate_pair_priorities (agent);
+    recalculate_pair_priorities (agent);
   }
   else 
     nice_debug ("Agent %p : Role conflict, staying with role \"%s\".",

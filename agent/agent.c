@@ -3300,6 +3300,28 @@ nice_agent_add_local_address (NiceAgent *agent, NiceAddress *addr)
   return TRUE;
 }
 
+/* Recompute foundations of all candidate pairs from a given stream
+ * having a specific remote candidate
+ */
+static void priv_update_pair_foundations (NiceAgent *agent,
+    guint stream_id, NiceCandidate *remote)
+{
+  NiceStream *stream = agent_find_stream (agent, stream_id);
+  if (stream) {
+    GSList *i;
+    for (i = stream->conncheck_list; i; i = i->next) {
+      CandidateCheckPair *pair = i->data;
+      if (pair->remote == remote) {
+        g_snprintf (pair->foundation,
+            NICE_CANDIDATE_PAIR_MAX_FOUNDATION, "%s:%s",
+            pair->local->foundation, pair->remote->foundation);
+        nice_debug ("Agent %p : Updating pair %p foundation to '%s'",
+            agent, pair, pair->foundation);
+      }
+    }
+  }
+}
+
 static gboolean priv_add_remote_candidate (
   NiceAgent *agent,
   guint stream_id,
@@ -3331,8 +3353,7 @@ static gboolean priv_add_remote_candidate (
 
   /* If it was a discovered remote peer reflexive candidate, then it should
    * be updated according to RFC 5245 section 7.2.1.3 */
-  if (candidate && candidate->type == NICE_CANDIDATE_TYPE_PEER_REFLEXIVE &&
-      candidate->priority == priority) {
+  if (candidate && candidate->type == NICE_CANDIDATE_TYPE_PEER_REFLEXIVE) {
     nice_debug ("Agent %p : Updating existing peer-rfx remote candidate to %s",
         agent, _cand_type_to_sdp (type));
     candidate->type = type;
@@ -3375,6 +3396,13 @@ static gboolean priv_add_remote_candidate (
       g_free (candidate->password);
       candidate->password = g_strdup (password);
     }
+
+    /* since the type of the existing candidate may have changed,
+     * the pairs priority and foundation related to this candidate need
+     * to be recomputed.
+     */
+    recalculate_pair_priorities (agent);
+    priv_update_pair_foundations (agent, stream_id, candidate);
   }
   else {
     /* case 2: add a new candidate */
@@ -3429,12 +3457,14 @@ static gboolean priv_add_remote_candidate (
     if (foundation)
       g_strlcpy (candidate->foundation, foundation,
           NICE_CANDIDATE_MAX_FOUNDATION);
-  }
 
-  if (conn_check_add_for_candidate (agent, stream_id, component, candidate) < 0) {
-    goto errors;
+    /* We only create a pair when a candidate is new, and not when
+     * updating an existing one.
+     */
+    if (conn_check_add_for_candidate (agent, stream_id,
+        component, candidate) < 0)
+      goto errors;
   }
-
   return TRUE;
 
 errors:
