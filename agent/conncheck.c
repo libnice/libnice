@@ -1459,7 +1459,9 @@ static gboolean priv_conn_keepalive_tick_unlocked (NiceAgent *agent)
           for (k = component->local_candidates; k; k = k->next) {
             NiceCandidate *candidate = (NiceCandidate *) k->data;
             if (candidate->type == NICE_CANDIDATE_TYPE_HOST &&
-                candidate->transport == NICE_CANDIDATE_TRANSPORT_UDP) {
+                candidate->transport == NICE_CANDIDATE_TRANSPORT_UDP &&
+                nice_address_ip_version (&candidate->addr) ==
+                nice_address_ip_version (&stun_server)) {
               /* send the conncheck */
               nice_debug ("Agent %p : resending STUN on %s to keep the "
                   "candidate alive.", agent, candidate->foundation);

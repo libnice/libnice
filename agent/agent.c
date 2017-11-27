@@ -3062,11 +3062,13 @@ nice_agent_gather_candidates (
           if (nice_address_set_from_string (&stun_server, agent->stun_server_ip)) {
             nice_address_set_port (&stun_server, agent->stun_server_port);
 
-            priv_add_new_candidate_discovery_stun (agent,
-                host_candidate->sockptr,
-                stun_server,
-                stream,
-                cid);
+            if (nice_address_ip_version (&host_candidate->addr) ==
+                nice_address_ip_version (&stun_server))
+              priv_add_new_candidate_discovery_stun (agent,
+                  host_candidate->sockptr,
+                  stun_server,
+                  stream,
+                  cid);
           }
         }
 
