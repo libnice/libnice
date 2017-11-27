@@ -300,6 +300,17 @@ StunUsageTurnReturn stun_usage_turn_process (StunMessage *msg,
       stun_debug (" STUN error message received (code: %d)", code);
 
       /* ALTERNATE-SERVER mechanism */
+      if (compatibility == STUN_USAGE_TURN_COMPATIBILITY_OC2007 &&
+          alternate_server && alternate_server_len &&
+          stun_message_find_addr (msg, STUN_ATTRIBUTE_MS_ALTERNATE_SERVER,
+              alternate_server,
+              alternate_server_len) == STUN_MESSAGE_RETURN_SUCCESS) {
+        stun_debug ("Found alternate server");
+        /* The ALTERNATE_SERVER will always be returned by the MS turn server.
+         * We need to check if the ALTERNATE_SERVER is the same as the current
+         * server to decide whether we need to switch servers or not.
+         */
+      }
       if ((code / 100) == 3) {
         if (alternate_server && alternate_server_len) {
           if (stun_message_find_addr (msg, STUN_ATTRIBUTE_ALTERNATE_SERVER,

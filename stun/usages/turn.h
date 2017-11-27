@@ -256,6 +256,10 @@ size_t stun_usage_turn_create_permission (StunAgent *agent, StunMessage *msg,
  * Allocate request, in case the currently used TURN server is requesting the use
  * of an alternate server. This argument will only be filled if the return value
  * of the function is #STUN_USAGE_TURN_RETURN_ALTERNATE_SERVER
+ * In the case of @STUN_USAGE_TURN_COMPATIBILITY_OC2007 compatibility, the
+ * @alternate_server could be filled at any time, and should only be considered
+ * if the request was sent to a different server than the address returned
+ * in the @alternate_server field
  * @alternate_server_len: The length of @alternate_server
  * @bandwidth: A pointer to fill with the bandwidth the TURN server allocated us
  * @lifetime: A pointer to fill with the lifetime of the allocation

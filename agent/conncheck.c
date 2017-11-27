@@ -3764,6 +3764,20 @@ static gboolean priv_map_reply_to_relay_request (NiceAgent *agent, StunMessage *
           recv_realm = (uint8_t *) stun_message_find (resp,
               STUN_ATTRIBUTE_REALM, &recv_realm_len);
 
+          if ((agent->compatibility == NICE_COMPATIBILITY_OC2007  ||
+              agent->compatibility == NICE_COMPATIBILITY_OC2007R2) &&
+              alternatelen != sizeof(alternate)) {
+            NiceAddress alternate_addr;
+
+            nice_address_set_from_sockaddr (&alternate_addr, &alternate.addr);
+
+            if (!nice_address_equal (&alternate_addr, &d->server)) {
+              nice_address_set_from_sockaddr (&d->server, &alternate.addr);
+              nice_address_set_from_sockaddr (&d->turn->server, &alternate.addr);
+
+              d->pending = FALSE;
+            }
+          }
           /* check for unauthorized error response */
           if ((agent->compatibility == NICE_COMPATIBILITY_RFC5245 ||
                agent->compatibility == NICE_COMPATIBILITY_OC2007  ||
