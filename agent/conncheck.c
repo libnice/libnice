@@ -3507,6 +3507,7 @@ static gboolean priv_map_reply_to_discovery_request (NiceAgent *agent, StunMessa
           d->server = niceaddr;
 
           d->pending = FALSE;
+          agent->discovery_unsched_items++;
         } else if (res == STUN_USAGE_BIND_RETURN_SUCCESS) {
           /* case: successful binding discovery, create a new local candidate */
 
@@ -3648,6 +3649,7 @@ static gboolean priv_map_reply_to_relay_request (NiceAgent *agent, StunMessage *
           nice_address_set_from_sockaddr (&d->turn->server, &alternate.addr);
 
           d->pending = FALSE;
+          agent->discovery_unsched_items++;
         } else if (res == STUN_USAGE_TURN_RETURN_RELAY_SUCCESS ||
                    res == STUN_USAGE_TURN_RETURN_MAPPED_SUCCESS) {
           /* case: successful allocate, create a new local candidate */
@@ -3776,6 +3778,7 @@ static gboolean priv_map_reply_to_relay_request (NiceAgent *agent, StunMessage *
               nice_address_set_from_sockaddr (&d->turn->server, &alternate.addr);
 
               d->pending = FALSE;
+              agent->discovery_unsched_items++;
             }
           }
           /* check for unauthorized error response */
@@ -3798,6 +3801,7 @@ static gboolean priv_map_reply_to_relay_request (NiceAgent *agent, StunMessage *
               d->stun_resp_msg.buffer = d->stun_resp_buffer;
               d->stun_resp_msg.buffer_len = sizeof(d->stun_resp_buffer);
               d->pending = FALSE;
+              agent->discovery_unsched_items++;
             } else {
               /* case: a real unauthorized error */
               d->stun_message.buffer = NULL;
