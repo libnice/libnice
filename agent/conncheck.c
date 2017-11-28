@@ -3592,6 +3592,41 @@ priv_add_new_turn_refresh (CandidateDiscovery *cdisco, NiceCandidate *relay_cand
   return cand;
 }
 
+static void priv_handle_turn_alternate_server (NiceAgent *agent,
+    CandidateDiscovery *disco, NiceAddress server, NiceAddress alternate)
+{
+  /* We need to cancel and reset all candidate discovery turn for the same
+     stream and type if there is an alternate server. Otherwise, we might end up
+     with two relay components on different servers, creating candidates with
+     unique foundations that only contain one component.
+  */
+  GSList *i;
+
+  for (i = agent->discovery_list; i; i = i->next) {
+    CandidateDiscovery *d = i->data;
+
+    if (!d->done &&
+        d->type == disco->type &&
+        d->stream == disco->stream &&
+        d->turn->type == disco->turn->type &&
+        nice_address_equal (&d->server, &server)) {
+      gchar ip[INET6_ADDRSTRLEN];
+      // Cancel the pending request to avoid a race condition with another
+      // component responding with another altenrate-server
+      d->stun_message.buffer = NULL;
+      d->stun_message.buffer_len = 0;
+
+      nice_address_to_string (&server, ip);
+      nice_debug ("Agent %p : Cancelling and setting alternate server %s for "
+          "CandidateDiscovery %p", agent, ip, d);
+      d->server = alternate;
+      d->turn->server = alternate;
+      d->pending = FALSE;
+      agent->discovery_unsched_items++;
+    }
+  }
+}
+
 /*
  * Tries to match STUN reply in 'buf' to an existing STUN discovery
  * transaction. If found, a reply is sent.
@@ -3644,12 +3679,11 @@ static gboolean priv_map_reply_to_relay_request (NiceAgent *agent, StunMessage *
             agent, d, (int)res);
 
         if (res == STUN_USAGE_TURN_RETURN_ALTERNATE_SERVER) {
-          /* handle alternate server */
-          nice_address_set_from_sockaddr (&d->server, &alternate.addr);
-          nice_address_set_from_sockaddr (&d->turn->server, &alternate.addr);
+          NiceAddress addr;
 
-          d->pending = FALSE;
-          agent->discovery_unsched_items++;
+          /* handle alternate server */
+          nice_address_set_from_sockaddr (&addr, &alternate.addr);
+          priv_handle_turn_alternate_server (agent, d, d->server, addr);
         } else if (res == STUN_USAGE_TURN_RETURN_RELAY_SUCCESS ||
                    res == STUN_USAGE_TURN_RETURN_MAPPED_SUCCESS) {
           /* case: successful allocate, create a new local candidate */
@@ -3769,16 +3803,12 @@ static gboolean priv_map_reply_to_relay_request (NiceAgent *agent, StunMessage *
           if ((agent->compatibility == NICE_COMPATIBILITY_OC2007  ||
               agent->compatibility == NICE_COMPATIBILITY_OC2007R2) &&
               alternatelen != sizeof(alternate)) {
-            NiceAddress alternate_addr;
+            NiceAddress addr;
 
-            nice_address_set_from_sockaddr (&alternate_addr, &alternate.addr);
+            nice_address_set_from_sockaddr (&addr, &alternate.addr);
 
-            if (!nice_address_equal (&alternate_addr, &d->server)) {
-              nice_address_set_from_sockaddr (&d->server, &alternate.addr);
-              nice_address_set_from_sockaddr (&d->turn->server, &alternate.addr);
-
-              d->pending = FALSE;
-              agent->discovery_unsched_items++;
+            if (!nice_address_equal (&addr, &d->server)) {
+              priv_handle_turn_alternate_server (agent, d, d->server, addr);
             }
           }
           /* check for unauthorized error response */
