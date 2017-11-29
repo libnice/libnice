@@ -1832,6 +1832,9 @@ static void priv_update_check_list_failed_components (NiceAgent *agent, NiceStre
    *       must be fetched before entering the loop*/
   guint c, components = stream->n_components;
 
+  if (stream->conncheck_list == NULL)
+    return;
+
   for (i = agent->discovery_list; i; i = i->next) {
     CandidateDiscovery *d = i->data;
 
@@ -1846,8 +1849,8 @@ static void priv_update_check_list_failed_components (NiceAgent *agent, NiceStre
 
   /* note: iterate the conncheck list for each component separately */
   for (c = 0; c < components; c++) {
-    NiceComponent *comp = NULL;
-    if (!agent_find_component (agent, stream->id, c+1, NULL, &comp))
+    NiceComponent *component = NULL;
+    if (!agent_find_component (agent, stream->id, c+1, NULL, &component))
       continue;
 
     nominated = 0;
@@ -1873,7 +1876,7 @@ static void priv_update_check_list_failed_components (NiceAgent *agent, NiceStre
      * Set the component to FAILED only if it actually had remote candidates
      * that failed.. */
     if (completed && nominated == 0 &&
-        comp != NULL && comp->remote_candidates != NULL)
+        component != NULL && component->remote_candidates != NULL)
       agent_signal_component_state_change (agent,
 					   stream->id,
 					   (c + 1), /* component-id */
