@@ -688,7 +688,8 @@ discovery_discover_tcp_server_reflexive_candidates (
 
     caddr = c->addr;
     nice_address_set_port (&caddr, 0);
-    if (c->transport != NICE_CANDIDATE_TRANSPORT_UDP &&
+    if (agent->force_relay == FALSE &&
+        c->transport != NICE_CANDIDATE_TRANSPORT_UDP &&
         c->type == NICE_CANDIDATE_TYPE_HOST &&
         nice_address_equal (&base_addr, &caddr)) {
       nice_address_set_port (address, nice_address_get_port (&c->addr));
