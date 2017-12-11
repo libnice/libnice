@@ -3388,15 +3388,22 @@ static gboolean priv_add_remote_candidate (
      * this is essential to overcome a race condition where we might receive
      * a valid binding request from a valid candidate that wasn't yet added to
      * our list of candidates.. this 'update' will make the peer-rflx a
-     * server-rflx/host candidate again and restore that user/pass it needed
-     * to have in the first place */
+     * server-rflx/host candidate again */
     if (username) {
-      g_free (candidate->username);
-      candidate->username = g_strdup (username);
+      if (candidate->username == NULL)
+        candidate->username = g_strdup (username);
+      else if (g_strcmp0 (username, candidate->username))
+        nice_debug ("Agent %p : Candidate username '%s' is not allowed "
+            "to change to '%s' now (ICE restart only).", agent,
+            candidate->username, username);
     }
     if (password) {
-      g_free (candidate->password);
-      candidate->password = g_strdup (password);
+      if (candidate->password == NULL)
+        candidate->password = g_strdup (password);
+      else if (g_strcmp0 (password, candidate->password))
+        nice_debug ("Agent %p : candidate password '%s' is not allowed "
+            "to change to '%s' now (ICE restart only).", agent,
+            candidate->password, password);
     }
 
     /* since the type of the existing candidate may have changed,
