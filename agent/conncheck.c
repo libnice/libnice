@@ -3421,7 +3421,7 @@ static gboolean priv_map_reply_to_conn_check_request (NiceAgent *agent, NiceStre
 	   states" and 8.1.2 "Updating States", ID-19) */
 	priv_update_check_list_state_for_ready (agent, stream, component);
       } else if (res == STUN_USAGE_ICE_RETURN_ROLE_CONFLICT) {
-        guint64 tie;
+        uint64_t tie;
         gboolean controlled_mode;
 
 	/* case: role conflict error, need to restart with new role */
