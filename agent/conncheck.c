@@ -3587,9 +3587,13 @@ static gboolean priv_map_reply_to_relay_request (NiceAgent *agent, StunMessage *
           NiceAddress niceaddr;
           NiceCandidate *relay_cand;
 
+          nice_address_set_from_sockaddr (&niceaddr, &relayaddr.addr);
+
           if (res == STUN_USAGE_TURN_RETURN_MAPPED_SUCCESS) {
+            NiceAddress mappedniceaddr;
+
             /* We also received our mapped address */
-            nice_address_set_from_sockaddr (&niceaddr, &sockaddr.addr);
+            nice_address_set_from_sockaddr (&mappedniceaddr, &sockaddr.addr);
 
             /* TCP or TLS TURNS means the server-reflexive address was
              * on a TCP connection, which cannot be used for server-reflexive
@@ -3601,21 +3605,28 @@ static gboolean priv_map_reply_to_relay_request (NiceAgent *agent, StunMessage *
                   d->agent,
                   d->stream->id,
                   d->component->id,
-                  &niceaddr,
+                  &mappedniceaddr,
                   NICE_CANDIDATE_TRANSPORT_UDP,
                   d->nicesock,
                   FALSE);
             }
-            if (d->agent->use_ice_tcp)
-              discovery_discover_tcp_server_reflexive_candidates (
-                  d->agent,
-                  d->stream->id,
-                  d->component->id,
-                  &niceaddr,
-                  d->nicesock);
+            if (d->agent->use_ice_tcp) {
+              if ((agent->compatibility == NICE_COMPATIBILITY_OC2007 ||
+                   agent->compatibility == NICE_COMPATIBILITY_OC2007R2) &&
+                  !nice_address_equal_no_port (&niceaddr, &d->turn->server)) {
+                  nice_debug("TURN port got allocated on an alternate server, "
+                             "ignoring bogus srflx address");
+              } else {
+                discovery_discover_tcp_server_reflexive_candidates (
+                    d->agent,
+                    d->stream->id,
+                    d->component->id,
+                    &mappedniceaddr,
+                    d->nicesock);
+              }
+            }
           }
 
-          nice_address_set_from_sockaddr (&niceaddr, &relayaddr.addr);
           if (nice_socket_is_reliable (d->nicesock)) {
             relay_cand = discovery_add_relay_candidate (
                 d->agent,
