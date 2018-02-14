@@ -88,9 +88,10 @@ AH_VERBATIM([_FORTIFY_SOURCE],
 #endif])
 AC_DEFINE([NICEAPI_EXPORT], [ ], [Public library function implementation])
 AC_CHECK_HEADERS([arpa/inet.h net/in.h netdb.h])
-AC_CHECK_HEADERS([ifaddrs.h], \
-		      [AC_DEFINE(HAVE_GETIFADDRS, [1], \
-		       [Whether getifaddrs() is available on the system])])
+AC_CHECK_HEADERS([ifaddrs.h],
+		[AC_CHECK_FUNCS([getifaddrs],
+			[AC_DEFINE(HAVE_GETIFADDRS, [1],
+				[Whether getifaddrs() is available on the system])])])
 AC_CHECK_TYPES([size_t, ssize_t])
 
 # Also put matching version in LIBNICE_CFLAGS
