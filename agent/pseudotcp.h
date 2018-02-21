@@ -78,6 +78,14 @@
 #ifndef ECONNRESET
 #  define ECONNRESET WSAECONNRESET
 #endif
+
+#ifndef EMSGSIZE
+#  define EMSGSIZE WSAEMSGSIZE
+#endif
+
+#ifndef ETIMEDOUT
+#  define ETIMEDOUT WSAETIMEDOUT
+#endif
 #endif
 #endif
 
