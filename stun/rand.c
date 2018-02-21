@@ -45,7 +45,7 @@
 #include <windows.h>
 #include <wincrypt.h>
 
-void nice_RAND_bytes (uint8_t *dst, int len)
+void nice_RAND_nonce (uint8_t *dst, int len)
 {
   HCRYPTPROV hCryptProv;
   LPCSTR container = "Libnice key container";
