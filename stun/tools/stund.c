@@ -100,6 +100,8 @@ int listen_socket (int fam, int type, int proto, unsigned int port)
     struct sockaddr_in6 in6;
     struct sockaddr_storage storage;
   } addr;
+  int len;
+
   if (fd == -1)
   {
     perror ("Error opening IP port");
@@ -118,6 +120,7 @@ int listen_socket (int fam, int type, int proto, unsigned int port)
   {
     case AF_INET:
       addr.in.sin_port = htons (port);
+      len =  sizeof (struct sockaddr_in);
       break;
 
     case AF_INET6:
@@ -125,13 +128,14 @@ int listen_socket (int fam, int type, int proto, unsigned int port)
       setsockopt (fd, SOL_IPV6, IPV6_V6ONLY, &yes, sizeof (yes));
 #endif
       addr.in6.sin6_port = htons (port);
+      len =  sizeof (struct sockaddr_in6);
       break;
 
     default:
       assert (0);  /* should never be reached */
   }
 
-  if (bind (fd, &addr.addr, sizeof (struct sockaddr)))
+  if (bind (fd, &addr.addr, len))
   {
     perror ("Error opening IP port");
     goto error;
