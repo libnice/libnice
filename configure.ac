@@ -136,6 +136,7 @@ AS_IF([test "x$enable_compile_warnings" != "xno" -a \
     NICE_ADD_FLAG([-Wcast-align])
     NICE_ADD_FLAG([-Wformat-nonliteral])
     NICE_ADD_FLAG([-Wformat-security])
+    NICE_ADD_FLAG([-Wno-cast-function-type])
 ])
 AS_IF([test "$enable_compile_warnings" = "yes" -o \
             "$enable_compile_warnings" = "maximum" -o \
