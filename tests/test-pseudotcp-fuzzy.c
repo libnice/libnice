@@ -129,7 +129,7 @@ write_to_sock (PseudoTcpSocket *sock)
       total += wlen;
       total_read += wlen;
       if (wlen < (gint) len) {
-        g_debug ("seeking  %ld from %lu", wlen - len, ftell (in));
+        g_debug ("seeking  %" G_GSIZE_FORMAT " from %lu", wlen - len, ftell (in));
         fseek (in, wlen - len, SEEK_CUR);
         g_assert (!feof (in));
         g_debug ("Socket queue full after %d bytes written", total);
@@ -355,7 +355,7 @@ static void adjust_clock (PseudoTcpSocket *sock)
 
   if (pseudo_tcp_socket_get_next_clock (sock, &timeout)) {
     timeout -= g_get_monotonic_time () / 1000;
-    g_debug ("Socket %p: Adjusting clock to %ld ms", sock, timeout);
+    g_debug ("Socket %p: Adjusting clock to %" G_GUINT64_FORMAT " ms", sock, timeout);
     if (sock == left) {
       if (left_clock != 0)
          g_source_remove (left_clock);

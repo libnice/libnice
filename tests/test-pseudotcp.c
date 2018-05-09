@@ -81,7 +81,8 @@ static void write_to_sock (PseudoTcpSocket *sock)
       total += wlen;
       total_read += wlen;
       if (wlen < (gint) len) {
-        g_debug ("seeking  %ld from %lu", wlen - len, ftell (in));
+        g_debug ("seeking  %" G_GSIZE_FORMAT " from %lu", wlen - len,
+            ftell (in));
         fseek (in, wlen - len, SEEK_CUR);
         g_assert (!feof (in));
         g_debug ("Socket queue full after %d bytes written", total);
