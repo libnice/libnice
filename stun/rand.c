@@ -68,6 +68,17 @@ void nice_RAND_nonce (uint8_t *dst, int len)
 }
 #else
 
+#ifdef HAVE_OPENSSL
+
+#include <openssl/rand.h>
+
+void nice_RAND_nonce (uint8_t *dst, int len)
+{
+  RAND_bytes (dst, len);
+}
+
+#else
+
 #include <sys/types.h>
 #include <gnutls/gnutls.h>
 #include <gnutls/crypto.h>
@@ -76,5 +87,7 @@ void nice_RAND_nonce (uint8_t *dst, int len)
 {
   gnutls_rnd (GNUTLS_RND_NONCE, dst, len);
 }
+
+#endif /* HAVE_OPENSSL */
 
 #endif /* _WIN32 */
