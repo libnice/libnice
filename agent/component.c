@@ -115,7 +115,7 @@ socket_source_attach (SocketSource *socket_source, GMainContext *context)
   /* Create a source. */
   source = g_socket_create_source (socket_source->socket->fileno,
       G_IO_IN, NULL);
-  g_source_set_callback (source, (GSourceFunc) component_io_cb,
+  g_source_set_callback (source, (GSourceFunc) G_CALLBACK (component_io_cb),
       socket_source, NULL);
 
   /* Add the source. */
@@ -1300,7 +1300,7 @@ component_source_dispatch (GSource *source, GSourceFunc callback,
     gpointer user_data)
 {
   ComponentSource *component_source = (ComponentSource *) source;
-  GPollableSourceFunc func = (GPollableSourceFunc) callback;
+  GPollableSourceFunc func = (GPollableSourceFunc) G_CALLBACK (callback);
 
   return func (component_source->pollable_stream, user_data);
 }
@@ -1349,7 +1349,7 @@ static GSourceFuncs component_source_funcs = {
   NULL,  /* check */
   component_source_dispatch,
   component_source_finalize,
-  (GSourceFunc) component_source_closure_callback,
+  (GSourceFunc) G_CALLBACK (component_source_closure_callback),
 };
 
 /**

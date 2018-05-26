@@ -75,7 +75,7 @@ void nice_socket_queue_send (GQueue *send_queue, const NiceAddress *to,
 void nice_socket_queue_send_with_callback (GQueue *send_queue,
     const NiceOutputMessage *message, gsize message_offset, gsize message_len,
     gboolean head, GSocket *gsock, GSource **io_source, GMainContext *context,
-    GSourceFunc cb, gpointer user_data);
+    GSocketSourceFunc cb, gpointer user_data);
 
 /**
  * nice_socket_flush_send_queue:

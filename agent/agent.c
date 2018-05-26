@@ -2933,8 +2933,7 @@ nice_agent_gather_candidates (
       }
     }
 
-    g_list_foreach (addresses, (GFunc) g_free, NULL);
-    g_list_free (addresses);
+    g_list_free_full (addresses, (GDestroyNotify) g_free);
   } else {
     for (i = agent->local_addresses; i; i = i->next) {
       NiceAddress *addr = i->data;
@@ -4449,7 +4448,8 @@ nice_agent_recv_messages_blocking_or_nonblocking (NiceAgent *agent,
   if (cancellable != NULL) {
     cancellable_source = g_cancellable_source_new (cancellable);
     g_source_set_callback (cancellable_source,
-        (GSourceFunc) nice_agent_recv_cancelled_cb, &child_error, NULL);
+        (GSourceFunc) G_CALLBACK (nice_agent_recv_cancelled_cb), &child_error,
+        NULL);
     g_source_attach (cancellable_source, context);
   }
 

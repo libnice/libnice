@@ -274,9 +274,7 @@ socket_close (NiceSocket *sock)
   }
   g_list_free (priv->channels);
 
-  g_list_foreach (priv->pending_bindings, (GFunc) nice_address_free,
-      NULL);
-  g_list_free (priv->pending_bindings);
+  g_list_free_full (priv->pending_bindings, (GDestroyNotify) nice_address_free);
 
   if (priv->tick_source_channel_bind != NULL) {
     g_source_destroy (priv->tick_source_channel_bind);
@@ -305,8 +303,7 @@ socket_close (NiceSocket *sock)
   g_queue_free (priv->send_requests);
 
   priv_clear_permissions (priv);
-  g_list_foreach (priv->sent_permissions, (GFunc) nice_address_free, NULL);
-  g_list_free (priv->sent_permissions);
+  g_list_free_full (priv->sent_permissions, (GDestroyNotify) nice_address_free);
   g_hash_table_destroy (priv->send_data_queues);
 
   if (priv->permission_timeout_source) {
@@ -320,8 +317,7 @@ socket_close (NiceSocket *sock)
 
   g_free (priv->current_binding);
   g_free (priv->current_binding_msg);
-  g_list_foreach (priv->pending_permissions, (GFunc) g_free, NULL);
-  g_list_free(priv->pending_permissions);
+  g_list_free_full (priv->pending_permissions, g_free);
   g_free (priv->username);
   g_free (priv->password);
   g_free (priv->cached_realm);
@@ -546,8 +542,7 @@ priv_remove_sent_permission_for_peer (UdpTurnPriv *priv, const NiceAddress *peer
 static void
 priv_clear_permissions (UdpTurnPriv *priv)
 {
-  g_list_foreach (priv->permissions, (GFunc) nice_address_free, NULL);
-  g_list_free (priv->permissions);
+  g_list_free_full (priv->permissions, (GDestroyNotify) nice_address_free);
   priv->permissions = NULL;
 }
 

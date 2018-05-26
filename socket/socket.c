@@ -340,7 +340,7 @@ nice_socket_queue_send (GQueue *send_queue, const NiceAddress *to,
 void nice_socket_queue_send_with_callback (GQueue *send_queue,
     const NiceOutputMessage *message, gsize message_offset, gsize message_len,
     gboolean head, GSocket *gsock, GSource **io_source, GMainContext *context,
-    GSourceFunc cb, gpointer user_data)
+    GSocketSourceFunc cb, gpointer user_data)
 {
   NiceSocketQueuedSend *tbs;
   guint j;
@@ -360,7 +360,7 @@ void nice_socket_queue_send_with_callback (GQueue *send_queue,
 
   if (io_source && gsock && context && cb && *io_source == NULL) {
     *io_source = g_socket_create_source(gsock, G_IO_OUT, NULL);
-    g_source_set_callback (*io_source, (GSourceFunc) cb, user_data, NULL);
+    g_source_set_callback (*io_source, (GSourceFunc) G_CALLBACK (cb), user_data, NULL);
     g_source_attach (*io_source, context);
   }
 
@@ -450,6 +450,5 @@ gboolean nice_socket_flush_send_queue_to_socket (GSocket *gsock,
 void
 nice_socket_free_send_queue (GQueue *send_queue)
 {
-  g_queue_foreach (send_queue, (GFunc) nice_socket_free_queued_send, NULL);
-  g_queue_clear (send_queue);
+  g_queue_free_full (send_queue, (GDestroyNotify) nice_socket_free_queued_send);
 }

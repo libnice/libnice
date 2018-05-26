@@ -312,7 +312,7 @@ socket_send_message (NiceSocket *sock,
         /* Queue the message and send it later. */
         nice_socket_queue_send_with_callback (&priv->send_queue,
             message, 0, message_len, FALSE, sock->fileno, &priv->io_source,
-            priv->context, (GSourceFunc) socket_send_more, sock);
+            priv->context, socket_send_more, sock);
         ret = message_len;
       }
 
@@ -321,7 +321,7 @@ socket_send_message (NiceSocket *sock,
       /* Partial send. */
       nice_socket_queue_send_with_callback (&priv->send_queue,
           message, ret, message_len, TRUE, sock->fileno, &priv->io_source,
-          priv->context, (GSourceFunc) socket_send_more, sock);
+          priv->context, socket_send_more, sock);
       ret = message_len;
     }
   } else {
@@ -330,7 +330,7 @@ socket_send_message (NiceSocket *sock,
       /* Queue the message and send it later. */
       nice_socket_queue_send_with_callback (&priv->send_queue,
           message, 0, message_len, FALSE, sock->fileno, &priv->io_source,
-          priv->context, (GSourceFunc) socket_send_more, sock);
+          priv->context, socket_send_more, sock);
       ret = message_len;
     } else {
       /* non reliable send, so we shouldn't queue the message */

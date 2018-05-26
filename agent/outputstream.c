@@ -418,7 +418,7 @@ nice_output_stream_write (GOutputStream *stream, const void *buffer, gsize count
   writeable_id = g_signal_connect_data (G_OBJECT (agent),
       "reliable-transport-writable",
       (GCallback) reliable_transport_writeable_cb, write_data_ref (write_data),
-      (GClosureNotify) write_data_unref, 0);
+      (GClosureNotify) G_CALLBACK (write_data_unref), 0);
 
 
   do {
