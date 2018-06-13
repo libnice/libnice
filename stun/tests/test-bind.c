@@ -50,7 +50,6 @@
 #include <ws2tcpip.h>
 
 #define MSG_DONTWAIT 0
-#define MSG_NOSIGNAL 0
 
 #define alarm(...)
 #define close closesocket
@@ -65,6 +64,9 @@
 #undef NDEBUG /* ensure assertions are built-in */
 #include <assert.h>
 
+#ifndef MSG_NOSIGNAL
+#define MSG_NOSIGNAL 0
+#endif
 
 static int listen_dgram (void)
 {
