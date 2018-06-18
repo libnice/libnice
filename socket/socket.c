@@ -450,5 +450,6 @@ gboolean nice_socket_flush_send_queue_to_socket (GSocket *gsock,
 void
 nice_socket_free_send_queue (GQueue *send_queue)
 {
-  g_queue_free_full (send_queue, (GDestroyNotify) nice_socket_free_queued_send);
+  g_list_free_full (send_queue->head, (GDestroyNotify) nice_socket_free_queued_send);
+  g_queue_init (send_queue);
 }

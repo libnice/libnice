@@ -429,7 +429,8 @@ gst_nice_src_change_state (GstElement * element, GstStateChange transition)
       nice_agent_attach_recv (src->agent, src->stream_id, src->component_id,
           src->mainctx, NULL, NULL);
       GST_OBJECT_LOCK (src);
-      g_queue_free_full (src->outbufs, (GDestroyNotify) gst_buffer_unref);
+      g_list_free_full (src->outbufs->head, (GDestroyNotify) gst_buffer_unref);
+      g_queue_init (src->outbufs);
       GST_OBJECT_UNLOCK (src);
       break;
     case GST_STATE_CHANGE_READY_TO_PAUSED:
