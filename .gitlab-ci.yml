@@ -1,0 +1,26 @@
+image: centos:latest
+
+stages:
+ - build
+
+before_script:
+ - yum install -y git autoconf automake gtk-doc libtool gnutls-devel gupnp-igd-devel gstreamer1-devel gobject-introspection-devel
+
+build-and-test:
+ stage: build
+ script:
+  - export BUILD_ID="libnice-$CI_JOB_NAME_$CI_COMMIT_SHA-$CI_JOB_ID"
+  - export PREFIX="$(pwd)/prefix-$BUILD_ID"
+  - export MAKEFLAGS="-j4"
+  - mkdir "$PREFIX"
+  - ./autogen.sh --prefix="$PREFIX" --enable-compile-warnings=error --enable-gtk-doc --enable-introspection
+  - make
+  - make check
+  - make install
+  - make distcheck
+ artifacts:
+  when: on_failure
+  paths:
+   - */test-suite.log
+   - */*/test-suite.log
+   - config.log
