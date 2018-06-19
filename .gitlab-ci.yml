@@ -1,0 +1,42 @@
+image: registry.freedesktop.org/libnice/libnice/build-tools:centos-7
+stages:
+ - build
+
+build-and-test:
+ stage: build
+ except:
+  - schedules
+ before_script:
+  - yum install -y net-tools
+ script:
+  - ifconfig
+  - export BUILD_ID="libnice-$CI_JOB_NAME_$CI_COMMIT_SHA-$CI_JOB_ID"
+  - export PREFIX="$(pwd)/prefix-$BUILD_ID"
+  - export MAKEFLAGS="-j4"
+  - mkdir "$PREFIX"
+  - ./autogen.sh --prefix="$PREFIX" --enable-compile-warnings=error --enable-gtk-doc --enable-introspection
+  - make
+  #- make check
+  - make install
+  #- make distcheck
+ artifacts:
+  when: on_failure
+  paths:
+   - nice/test-suite.log
+   - random/test-suite.log
+   - tests/test-suite.log
+   - stun/tests/test-suite.log
+   - config.log
+
+submit-to-coverity:
+ image: registry.freedesktop.org/libnice/libnice/build-tools/coverity:2017.07
+ stage: build
+ only:
+  - schedules
+ script:
+  - ./autogen.sh --prefix="$PREFIX" --disable-gtk-doc --disable-introspection
+  - make clean
+  - export PATH="$PATH:/root/cov-analysis-linux64-2017.07/bin"
+  - cov-build --dir cov-int make -j4
+  - tar czvf libnice.tgz cov-int
+  - curl --form token=$COVERITY_TOKEN --form email=olivier.crete@ocrete.ca --form file=@libnice.tgz --form version="${CI_COMMIT_REF_NAME}-${CI_COMMIT_SHA}" --form description="CI weekly run" https://scan.coverity.com/builds?project=libnice
