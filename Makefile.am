@@ -31,7 +31,7 @@ EXTRA_DIST = \
 	common.mk \
 	scripts/lcov.mk \
 	scripts/lcov.sh \
-	scripts/valgrind.sh \
+	scripts/valgrind-test-driver \
 	win32 \
 	win32/vs9/libnice.def \
 	m4/introspection.m4
