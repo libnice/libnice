@@ -332,7 +332,6 @@ socket_recv_messages (NiceSocket *sock,
     NiceInputMessage *recv_messages, guint n_recv_messages)
 {
   UdpTurnPriv *priv = (UdpTurnPriv *) sock->priv;
-  gint n_messages;
   guint i;
   gboolean error = FALSE;
   guint n_valid_messages;
@@ -342,27 +341,23 @@ socket_recv_messages (NiceSocket *sock,
 
   nice_debug_verbose ("received message on TURN socket");
 
-  n_messages = nice_socket_recv_messages (priv->base_socket,
-      recv_messages, n_recv_messages);
-
-  if (n_messages < 0)
-    return n_messages;
-
-  /* Process all the messages. Those which fail parsing are re-used for the next
-   * message.
-   *
-   * FIXME: This needs a fast path which avoids allocations or memcpy()s.
+  /* FIXME: This needs a fast path which avoids allocations or memcpy()s.
    * Implementing such a path means rewriting the TURN parser (and hence the
    * STUN message code) to operate on vectors of buffers, rather than a
    * monolithic buffer. */
-  for (i = 0; i < (guint) n_messages; i += n_valid_messages) {
+  for (i = 0; i < n_recv_messages; i += n_valid_messages) {
     NiceInputMessage *message = &recv_messages[i];
+    gint n_messages;
     NiceSocket *dummy;
     NiceAddress from;
     guint8 *buffer;
     gsize buffer_length;
     gint parsed_buffer_length;
     gboolean allocated_buffer = FALSE;
+
+    n_messages = nice_socket_recv_messages (priv->base_socket, message, 1);
+    if (n_messages <= 0)
+      return n_messages;
 
     n_valid_messages = 1;
 
