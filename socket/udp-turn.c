@@ -103,6 +103,13 @@ typedef struct {
   uint16_t cached_realm_len;
   guint8 *cached_nonce;
   uint16_t cached_nonce_len;
+
+  union {
+    guint8 u8[2 * 65536];
+    guint16 u16[2 * 32768];
+  } fragment_buffer;
+  gsize fragment_buffer_len;
+  NiceAddress from;
 } UdpTurnPriv;
 
 
@@ -347,6 +354,7 @@ socket_recv_messages (NiceSocket *sock,
    * monolithic buffer. */
   for (i = 0; i < n_recv_messages; i += n_valid_messages) {
     NiceInputMessage *message = &recv_messages[i];
+    NiceInputMessage local_message = { NULL, 0, NULL, 0};
     gint n_messages;
     NiceSocket *dummy;
     NiceAddress from;
@@ -355,11 +363,42 @@ socket_recv_messages (NiceSocket *sock,
     gint parsed_buffer_length;
     gboolean allocated_buffer = FALSE;
 
+    if (priv->fragment_buffer_len > 0) {
+      guint16 msg_len = ntohs (priv->fragment_buffer.u16[0]) + sizeof (guint16);
+      if (msg_len <= priv->fragment_buffer_len) {
+        /* We have a full message in the buffer. Copy it into the user-provided
+         * NiceInputMessage. */
+        memcpy_buffer_to_input_message (message, priv->fragment_buffer.u8,
+            msg_len);
+        *message->from = priv->from;
+        n_valid_messages = 1;
+
+        /* Shrink the fragment buffer contents. */
+        priv->fragment_buffer_len -= msg_len;
+        memmove (priv->fragment_buffer.u8, priv->fragment_buffer.u8 + msg_len,
+            priv->fragment_buffer_len);
+
+        continue;
+      }
+
+      /* We're holding an incomplete message and should read more data into the
+       * fragment buffer. */
+      if (!local_message.buffers) {
+        local_message.buffers = g_alloca (sizeof (GInputVector));
+      }
+      local_message.buffers->buffer = priv->fragment_buffer.u8 + priv->fragment_buffer_len;
+      local_message.buffers->size = 65536;
+      local_message.n_buffers = 1;
+      local_message.length = 0;
+      local_message.from = &priv->from;
+      message = &local_message;
+    }
+
     n_messages = nice_socket_recv_messages (priv->base_socket, message, 1);
     if (n_messages <= 0)
       return n_messages;
 
-    n_valid_messages = 1;
+    n_valid_messages = (priv->fragment_buffer_len > 0) ? 0 : 1;
 
     if (message->length == 0)
       continue;
@@ -393,6 +432,28 @@ socket_recv_messages (NiceSocket *sock,
       n_valid_messages = 0;
     } else {
       *message->from = from;
+    }
+
+    if (nice_socket_is_reliable (sock) && parsed_buffer_length > 0) {
+      /* There might be multiple RFC4571-framed messages (or fragments thereof)
+       * within a single TCP-TURN message. Make sure each user-provided
+       * NiceInputMessage contains exactly one RFC4571 frame. We should keep any
+       * data that doesn't fit into the user buffers for the next time when
+       * socket_recv_messages() gets called with this socket. */
+      if (priv->fragment_buffer_len > 0) {
+        priv->fragment_buffer_len += message->length;
+      } else {
+        guint16 msg_len = ntohs (*(guint16 *)buffer) + sizeof (guint16);
+        if (msg_len != parsed_buffer_length) {
+          /* There are multiple fragments in this message. Store the excess data
+           * for the next iteration. */
+          priv->fragment_buffer_len = parsed_buffer_length - msg_len;
+
+          memcpy (priv->fragment_buffer.u8, buffer + msg_len,
+              priv->fragment_buffer_len);
+          message->length -= priv->fragment_buffer_len;
+        }
+      }
     }
 
     /* Split up the monolithic buffer again into the caller-provided buffers. */
