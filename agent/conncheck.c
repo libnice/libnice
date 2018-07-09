@@ -1340,8 +1340,9 @@ static gboolean priv_conn_keepalive_tick_unlocked (NiceAgent *agent)
       if (component->selected_pair.local != NULL) {
 	CandidatePair *p = &component->selected_pair;
 
-        /* Disable keepalive checks on TCP candidates */
-        if (p->local->transport != NICE_CANDIDATE_TRANSPORT_UDP)
+        /* Disable keepalive checks on TCP candidates unless explicitly enabled */
+        if (p->local->transport != NICE_CANDIDATE_TRANSPORT_UDP &&
+            !agent->keepalive_conncheck)
           continue;
 
         if (agent->compatibility == NICE_COMPATIBILITY_GOOGLE ||
