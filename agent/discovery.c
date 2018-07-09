@@ -394,6 +394,7 @@ static void priv_assign_foundation (NiceAgent *agent, NiceCandidate *candidate)
 	if (candidate->type == n->type &&
             candidate->transport == n->transport &&
 	    nice_address_equal_no_port (&candidate->base_addr, &n->base_addr) &&
+	    nice_address_equal_no_port (&candidate->addr, &n->addr) &&
             (candidate->type != NICE_CANDIDATE_TYPE_RELAYED ||
                 priv_compare_turn_servers (candidate->turn, n->turn)) &&
             !(agent->compatibility == NICE_COMPATIBILITY_GOOGLE &&
