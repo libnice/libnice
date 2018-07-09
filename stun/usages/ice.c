@@ -100,7 +100,8 @@ stun_usage_ice_conncheck_create (StunAgent *agent, StunMessage *msg,
       return 0;
   }
 
-  if (compatibility == STUN_USAGE_ICE_COMPATIBILITY_MSICE2) {
+  if (compatibility == STUN_USAGE_ICE_COMPATIBILITY_MSICE2 &&
+      candidate_identifier) {
     size_t identifier_len = strlen(candidate_identifier);
     size_t attribute_len = identifier_len;
     int modulo4 = identifier_len % 4;
