@@ -3889,7 +3889,7 @@ agent_recv_message_unlocked (
     nice_address_to_string (message->from, tmpbuf);
     nice_debug_verbose ("%s: Agent %p : Packet received on local socket %p "
         "(fd %d) from [%s]:%u (%" G_GSSIZE_FORMAT " octets).", G_STRFUNC, agent,
-        nicesock, g_socket_get_fd (nicesock->fileno), tmpbuf,
+        nicesock, nicesock->fileno ? g_socket_get_fd (nicesock->fileno) : -1, tmpbuf,
         nice_address_get_port (message->from), message->length);
   }
 
