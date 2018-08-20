@@ -72,7 +72,8 @@ static size_t priv_create_username (NiceAgent *agent, NiceStream *stream,
     uint8_t *dest, guint dest_len, gboolean inbound);
 static size_t priv_get_password (NiceAgent *agent, NiceStream *stream,
     NiceCandidate *remote, uint8_t **password);
-static void conn_check_free_item (gpointer data);
+static void candidate_check_pair_free (NiceAgent *agent,
+    CandidateCheckPair *pair);
 static CandidateCheckPair *priv_conn_check_add_for_candidate_pair_matched (
     NiceAgent *agent, guint stream_id, NiceComponent *component,
     NiceCandidate *local, NiceCandidate *remote, NiceCheckState initial_state);
@@ -1040,7 +1041,8 @@ conn_check_stop (NiceAgent *agent)
  *
  * @return will return FALSE when no more pending timers.
  */
-static gboolean priv_conn_check_tick_unlocked (NiceAgent *agent)
+static gboolean priv_conn_check_tick_agent_locked (NiceAgent *agent,
+    gpointer user_data)
 {
   CandidateCheckPair *pair = NULL;
   gboolean keep_timer_going = FALSE;
@@ -1150,41 +1152,10 @@ static gboolean priv_conn_check_tick_unlocked (NiceAgent *agent)
   return TRUE;
 }
 
-static gboolean priv_conn_check_tick (gpointer pointer)
-{
-  gboolean ret;
-  NiceAgent *agent = pointer;
-
-  agent_lock();
-  if (g_source_is_destroyed (g_main_current_source ())) {
-    nice_debug ("Source was destroyed. "
-        "Avoided race condition in priv_conn_check_tick");
-    agent_unlock ();
-    return FALSE;
-  }
-
-  ret = priv_conn_check_tick_unlocked (agent);
-  agent_unlock_and_emit (agent);
-
-  return ret;
-}
-
-static gboolean priv_conn_keepalive_retransmissions_tick (gpointer pointer)
+static gboolean priv_conn_keepalive_retransmissions_tick_agent_locked (
+    NiceAgent *agent, gpointer pointer)
 {
   CandidatePair *pair = (CandidatePair *) pointer;
-
-  agent_lock();
-
-  /* A race condition might happen where the mutex above waits for the lock
-   * and in the meantime another thread destroys the source.
-   * In that case, we don't need to run our retransmission tick since it should
-   * have been cancelled */
-  if (g_source_is_destroyed (g_main_current_source ())) {
-    nice_debug ("Source was destroyed. "
-        "Avoided race condition in priv_conn_keepalive_retransmissions_tick");
-    agent_unlock ();
-    return FALSE;
-  }
 
   g_source_destroy (pair->keepalive.tick_source);
   g_source_unref (pair->keepalive.tick_source);
@@ -1197,12 +1168,11 @@ static gboolean priv_conn_keepalive_retransmissions_tick (gpointer pointer)
         StunTransactionId id;
         NiceComponent *component;
 
-        if (!agent_find_component (pair->keepalive.agent,
+        if (!agent_find_component (agent,
                 pair->keepalive.stream_id, pair->keepalive.component_id,
                 NULL, &component)) {
           nice_debug ("Could not find stream or component in"
               " priv_conn_keepalive_retransmissions_tick");
-          agent_unlock ();
           return FALSE;
         }
 
@@ -1213,11 +1183,11 @@ static gboolean priv_conn_keepalive_retransmissions_tick (gpointer pointer)
         if (pair->keepalive.agent->media_after_tick) {
           nice_debug ("Agent %p : Keepalive conncheck timed out!! "
               "but media was received. Suspecting keepalive lost because of "
-              "network bottleneck", pair->keepalive.agent);
+              "network bottleneck", agent);
         } else {
           nice_debug ("Agent %p : Keepalive conncheck timed out!! "
-              "peer probably lost connection", pair->keepalive.agent);
-          agent_signal_component_state_change (pair->keepalive.agent,
+              "peer probably lost connection", agent);
+          agent_signal_component_state_change (agent,
               pair->keepalive.stream_id, pair->keepalive.component_id,
               NICE_COMPONENT_STATE_FAILED);
         }
@@ -1230,25 +1200,23 @@ static gboolean priv_conn_keepalive_retransmissions_tick (gpointer pointer)
           (gchar *)pair->keepalive.stun_buffer);
 
       nice_debug ("Agent %p : Retransmitting keepalive conncheck",
-          pair->keepalive.agent);
-      agent_timeout_add_with_context (pair->keepalive.agent,
+          agent);
+      agent_timeout_add_with_context (agent,
           &pair->keepalive.tick_source,
           "Pair keepalive", stun_timer_remainder (&pair->keepalive.timer),
-          priv_conn_keepalive_retransmissions_tick, pair);
+          priv_conn_keepalive_retransmissions_tick_agent_locked, pair);
       break;
     case STUN_USAGE_TIMER_RETURN_SUCCESS:
-      agent_timeout_add_with_context (pair->keepalive.agent,
+      agent_timeout_add_with_context (agent,
           &pair->keepalive.tick_source,
           "Pair keepalive", stun_timer_remainder (&pair->keepalive.timer),
-          priv_conn_keepalive_retransmissions_tick, pair);
+          priv_conn_keepalive_retransmissions_tick_agent_locked, pair);
       break;
     default:
       g_assert_not_reached();
       break;
   }
 
-
-  agent_unlock_and_emit (pair->keepalive.agent);
   return FALSE;
 }
 
@@ -1406,7 +1374,7 @@ static gboolean priv_conn_keepalive_tick_unlocked (NiceAgent *agent)
               agent_timeout_add_with_context (p->keepalive.agent,
                   &p->keepalive.tick_source, "Pair keepalive",
                   stun_timer_remainder (&p->keepalive.timer),
-                  priv_conn_keepalive_retransmissions_tick, p);
+                  priv_conn_keepalive_retransmissions_tick_agent_locked, p);
             } else {
               ++errors;
             }
@@ -1486,18 +1454,10 @@ static gboolean priv_conn_keepalive_tick_unlocked (NiceAgent *agent)
   return ret;
 }
 
-static gboolean priv_conn_keepalive_tick (gpointer pointer)
+static gboolean priv_conn_keepalive_tick_agent_locked (NiceAgent *agent,
+    gpointer pointer)
 {
-  NiceAgent *agent = pointer;
   gboolean ret;
-
-  agent_lock();
-  if (g_source_is_destroyed (g_main_current_source ())) {
-    nice_debug ("Source was destroyed. "
-        "Avoided race condition in priv_conn_keepalive_tick");
-    agent_unlock ();
-    return FALSE;
-  }
 
   ret = priv_conn_keepalive_tick_unlocked (agent);
   if (ret == FALSE) {
@@ -1507,35 +1467,19 @@ static gboolean priv_conn_keepalive_tick (gpointer pointer)
       agent->keepalive_timer_source = NULL;
     }
   }
-  agent_unlock_and_emit (agent);
+
   return ret;
 }
 
 
-static gboolean priv_turn_allocate_refresh_retransmissions_tick (gpointer pointer)
+static gboolean priv_turn_allocate_refresh_retransmissions_tick_agent_locked (
+    NiceAgent *agent, gpointer pointer)
 {
   CandidateRefresh *cand = (CandidateRefresh *) pointer;
-  NiceAgent *agent = NULL;
-
-  agent_lock();
-
-  /* A race condition might happen where the mutex above waits for the lock
-   * and in the meantime another thread destroys the source.
-   * In that case, we don't need to run our retransmission tick since it should
-   * have been cancelled */
-  if (g_source_is_destroyed (g_main_current_source ())) {
-    nice_debug ("Source was destroyed. "
-        "Avoided race condition in priv_turn_allocate_refresh_retransmissions_tick");
-    agent_unlock ();
-    return FALSE;
-  }
-
 
   g_source_destroy (cand->tick_source);
   g_source_unref (cand->tick_source);
   cand->tick_source = NULL;
-
-  agent = g_object_ref (cand->agent);
 
   switch (stun_timer_refresh (&cand->timer)) {
     case STUN_USAGE_TIMER_RETURN_TIMEOUT:
@@ -1556,27 +1500,23 @@ static gboolean priv_turn_allocate_refresh_retransmissions_tick (gpointer pointe
 
       agent_timeout_add_with_context (agent, &cand->tick_source,
           "Candidate TURN refresh", stun_timer_remainder (&cand->timer),
-          priv_turn_allocate_refresh_retransmissions_tick, cand);
+          priv_turn_allocate_refresh_retransmissions_tick_agent_locked, cand);
       break;
     case STUN_USAGE_TIMER_RETURN_SUCCESS:
       agent_timeout_add_with_context (agent, &cand->tick_source,
           "Candidate TURN refresh", stun_timer_remainder (&cand->timer),
-          priv_turn_allocate_refresh_retransmissions_tick, cand);
+          priv_turn_allocate_refresh_retransmissions_tick_agent_locked, cand);
       break;
     default:
       /* Nothing to do. */
       break;
   }
 
-
-  agent_unlock_and_emit (agent);
-
-  g_object_unref (agent);
-
-  return FALSE;
+  return G_SOURCE_REMOVE;
 }
 
-static void priv_turn_allocate_refresh_tick_unlocked (CandidateRefresh *cand)
+static void priv_turn_allocate_refresh_tick_unlocked (NiceAgent *agent,
+    CandidateRefresh *cand)
 {
   uint8_t *username;
   gsize username_len;
@@ -1584,7 +1524,7 @@ static void priv_turn_allocate_refresh_tick_unlocked (CandidateRefresh *cand)
   gsize password_len;
   size_t buffer_len = 0;
   StunUsageTurnCompatibility turn_compat =
-      agent_to_turn_compatibility (cand->agent);
+      agent_to_turn_compatibility (agent);
 
   username = (uint8_t *)cand->candidate->turn->username;
   username_len = (size_t) strlen (cand->candidate->turn->username);
@@ -1610,7 +1550,7 @@ static void priv_turn_allocate_refresh_tick_unlocked (CandidateRefresh *cand)
     g_free (password);
   }
 
-  nice_debug ("Agent %p : Sending allocate Refresh %zd", cand->agent,
+  nice_debug ("Agent %p : Sending allocate Refresh %zd", agent,
       buffer_len);
 
   if (cand->tick_source != NULL) {
@@ -1621,16 +1561,16 @@ static void priv_turn_allocate_refresh_tick_unlocked (CandidateRefresh *cand)
 
   if (buffer_len > 0) {
     stun_timer_start (&cand->timer,
-        cand->agent->stun_initial_timeout,
-        cand->agent->stun_max_retransmissions);
+        agent->stun_initial_timeout,
+        agent->stun_max_retransmissions);
 
     /* send the refresh */
     agent_socket_send (cand->nicesock, &cand->server,
         buffer_len, (gchar *)cand->stun_buffer);
 
-    agent_timeout_add_with_context (cand->agent, &cand->tick_source,
+    agent_timeout_add_with_context (agent, &cand->tick_source,
         "Candidate TURN refresh", stun_timer_remainder (&cand->timer),
-        priv_turn_allocate_refresh_retransmissions_tick, cand);
+        priv_turn_allocate_refresh_retransmissions_tick_agent_locked, cand);
   }
 
 }
@@ -1643,22 +1583,14 @@ static void priv_turn_allocate_refresh_tick_unlocked (CandidateRefresh *cand)
  *
  * @return will return FALSE when no more pending timers.
  */
-static gboolean priv_turn_allocate_refresh_tick (gpointer pointer)
+static gboolean priv_turn_allocate_refresh_tick_agent_locked (NiceAgent *agent,
+    gpointer pointer)
 {
   CandidateRefresh *cand = (CandidateRefresh *) pointer;
 
-  agent_lock();
-  if (g_source_is_destroyed (g_main_current_source ())) {
-    nice_debug ("Source was destroyed. "
-        "Avoided race condition in priv_turn_allocate_refresh_tick");
-    agent_unlock ();
-    return FALSE;
-  }
+  priv_turn_allocate_refresh_tick_unlocked (agent, cand);
 
-  priv_turn_allocate_refresh_tick_unlocked (cand);
-  agent_unlock_and_emit (cand->agent);
-
-  return FALSE;
+  return G_SOURCE_REMOVE;
 }
 
 
@@ -1674,14 +1606,14 @@ void conn_check_schedule_next (NiceAgent *agent)
   if (agent->conncheck_timer_source == NULL) {
     agent_timeout_add_with_context (agent, &agent->conncheck_timer_source,
         "Connectivity check schedule", agent->timer_ta,
-        priv_conn_check_tick, agent);
+        priv_conn_check_tick_agent_locked, NULL);
   }
 
   /* step: also start the keepalive timer */
   if (agent->keepalive_timer_source == NULL) {
     agent_timeout_add_with_context (agent, &agent->keepalive_timer_source,
         "Connectivity keepalive timeout", NICE_AGENT_TIMER_TR_DEFAULT,
-        priv_conn_keepalive_tick, agent);
+        priv_conn_keepalive_tick_agent_locked, NULL);
   }
 }
 
@@ -1753,7 +1685,8 @@ void conn_check_remote_credentials_set(NiceAgent *agent, NiceStream *stream)
  * in ICE spec section 5.7.3 (ID-19). See also 
  * conn_check_add_for_candidate().
  */
-static GSList *priv_limit_conn_check_list_size (GSList *conncheck_list, guint upper_limit)
+static GSList *priv_limit_conn_check_list_size (NiceAgent *agent,
+    GSList *conncheck_list, guint upper_limit)
 {
   guint valid = 0;
   guint cancelled = 0;
@@ -1765,7 +1698,7 @@ static GSList *priv_limit_conn_check_list_size (GSList *conncheck_list, guint up
 
     valid++;
     if (valid > upper_limit) {
-        conn_check_free_item (pair);
+        candidate_check_pair_free (agent, pair);
         conncheck_list = g_slist_delete_link (conncheck_list, item);
         cancelled++;
     }
@@ -1859,7 +1792,6 @@ static void priv_update_check_list_failed_components (NiceAgent *agent, NiceStre
     for (i = stream->conncheck_list; i; i = i->next) {
       CandidateCheckPair *p = i->data;
 
-      g_assert (p->agent == agent);
       g_assert (p->stream_id == stream->id);
 
       if (p->component_id == (c + 1)) {
@@ -2055,7 +1987,6 @@ static CandidateCheckPair *priv_add_new_check_pair (NiceAgent *agent,
   stream = agent_find_stream (agent, stream_id);
   pair = g_slice_new0 (CandidateCheckPair);
 
-  pair->agent = agent;
   pair->stream_id = stream_id;
   pair->component_id = component->id;;
   pair->local = local;
@@ -2095,7 +2026,7 @@ static CandidateCheckPair *priv_add_new_check_pair (NiceAgent *agent,
   /* implement the hard upper limit for number of
      checks (see sect 5.7.3 ICE ID-19): */
   if (agent->compatibility == NICE_COMPATIBILITY_RFC5245) {
-    stream->conncheck_list = priv_limit_conn_check_list_size (
+    stream->conncheck_list = priv_limit_conn_check_list_size (agent,
         stream->conncheck_list, agent->max_conn_checks);
   }
 
@@ -2271,12 +2202,10 @@ int conn_check_add_for_local_candidate (NiceAgent *agent, guint stream_id, NiceC
  * Frees the CandidateCheckPair structure pointer to 
  * by 'user data'. Compatible with GDestroyNotify.
  */
-static void conn_check_free_item (gpointer data)
+static void candidate_check_pair_free (NiceAgent *agent,
+    CandidateCheckPair *pair)
 {
-  CandidateCheckPair *pair = data;
-
-  if (pair->agent)
-    priv_remove_pair_from_triggered_check_queue (pair->agent, pair);
+  priv_remove_pair_from_triggered_check_queue (agent, pair);
   priv_free_all_stun_transactions (pair, NULL);
   g_slice_free (CandidateCheckPair, pair);
 }
@@ -2291,9 +2220,13 @@ void conn_check_free (NiceAgent *agent)
     NiceStream *stream = i->data;
 
     if (stream->conncheck_list) {
+      GSList *item;
+
       nice_debug ("Agent %p, freeing conncheck_list of stream %p", agent,
           stream);
-      g_slist_free_full (stream->conncheck_list, conn_check_free_item);
+      for (item = stream->conncheck_list; item; item = item->next)
+        candidate_check_pair_free (agent, item->data);
+      g_slist_free (stream->conncheck_list);
       stream->conncheck_list = NULL;
     }
   }
@@ -2313,9 +2246,13 @@ void conn_check_prune_stream (NiceAgent *agent, NiceStream *stream)
   gboolean keep_going = FALSE;
 
   if (stream->conncheck_list) {
+    GSList *item;
+
     nice_debug ("Agent %p, freeing conncheck_list of stream %p", agent, stream);
 
-    g_slist_free_full (stream->conncheck_list, conn_check_free_item);
+    for (item = stream->conncheck_list; item; item = item->next)
+      candidate_check_pair_free (agent, item->data);
+    g_slist_free (stream->conncheck_list);
     stream->conncheck_list = NULL;
   }
 
@@ -2725,7 +2662,7 @@ static guint priv_prune_pending_checks (NiceAgent *agent, NiceStream *stream, gu
     if (p->component_id == component_id) {
       if (p->state == NICE_CHECK_FROZEN || p->state == NICE_CHECK_WAITING) {
         nice_debug ("Agent %p : pair %p removed.", agent, p);
-	conn_check_free_item (p);
+        candidate_check_pair_free (agent, p);
         stream->conncheck_list = g_slist_delete_link(stream->conncheck_list, i);
       }
 
@@ -2972,7 +2909,6 @@ static CandidateCheckPair *priv_add_peer_reflexive_pair (NiceAgent *agent, guint
   CandidateCheckPair *pair = g_slice_new0 (CandidateCheckPair);
   NiceStream *stream = agent_find_stream (agent, stream_id);
 
-  pair->agent = agent;
   pair->stream_id = stream_id;
   pair->component_id = component->id;;
   pair->local = local_cand;
@@ -3480,9 +3416,10 @@ priv_add_new_turn_refresh (CandidateDiscovery *cdisco, NiceCandidate *relay_cand
 
   /* step: also start the refresh timer */
   /* refresh should be sent 1 minute before it expires */
-  agent_timeout_add_with_context (agent, &cand->timer_source,
+  agent_timeout_add_seconds_with_context (agent, &cand->timer_source,
       "Candidate TURN refresh",
-      (lifetime - 60) * 1000, priv_turn_allocate_refresh_tick, cand);
+      lifetime - 60, priv_turn_allocate_refresh_tick_agent_locked,
+      cand);
 
   nice_debug ("timer source is : %p", cand->timer_source);
 
@@ -3791,9 +3728,10 @@ static gboolean priv_map_reply_to_relay_refresh (NiceAgent *agent, StunMessage *
             agent, cand, (int)res);
         if (res == STUN_USAGE_TURN_RETURN_RELAY_SUCCESS) {
           /* refresh should be sent 1 minute before it expires */
-          agent_timeout_add_with_context (cand->agent, &cand->timer_source,
-              "Candidate TURN refresh", (lifetime - 60) * 1000,
-              priv_turn_allocate_refresh_tick, cand);
+          agent_timeout_add_seconds_with_context (cand->agent,
+              &cand->timer_source,
+              "Candidate TURN refresh", lifetime - 60,
+              priv_turn_allocate_refresh_tick_agent_locked, cand);
 
           g_source_destroy (cand->tick_source);
           g_source_unref (cand->tick_source);
@@ -3827,7 +3765,7 @@ static gboolean priv_map_reply_to_relay_refresh (NiceAgent *agent, StunMessage *
                   stun_message_length (resp));
               cand->stun_resp_msg.buffer = cand->stun_resp_buffer;
               cand->stun_resp_msg.buffer_len = sizeof(cand->stun_resp_buffer);
-              priv_turn_allocate_refresh_tick_unlocked (cand);
+              priv_turn_allocate_refresh_tick_unlocked (agent, cand);
             } else {
               /* case: a real unauthorized error */
               refresh_cancel (cand);
@@ -4352,7 +4290,7 @@ conn_check_prune_socket (NiceAgent *agent, NiceStream *stream, NiceComponent *co
       nice_debug ("Agent %p : Retransmissions failed, giving up on pair %p",
           agent, p);
       candidate_check_pair_fail (stream, agent, p);
-      conn_check_free_item (p);
+      candidate_check_pair_free (agent, p);
       stream->conncheck_list = g_slist_delete_link (stream->conncheck_list, l);
     }
 

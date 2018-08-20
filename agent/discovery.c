@@ -998,10 +998,9 @@ NiceCandidate *discovery_learn_remote_peer_reflexive_candidate (
  *
  * @return will return FALSE when no more pending timers.
  */
-static gboolean priv_discovery_tick_unlocked (gpointer pointer)
+static gboolean priv_discovery_tick_unlocked (NiceAgent *agent)
 {
   CandidateDiscovery *cand;
-  NiceAgent *agent = pointer;
   GSList *i;
   int not_done = 0; /* note: track whether to continue timer */
   size_t buffer_len = 0;
@@ -1183,20 +1182,12 @@ static gboolean priv_discovery_tick_unlocked (gpointer pointer)
   return TRUE;
 }
 
-static gboolean priv_discovery_tick (gpointer pointer)
+static gboolean priv_discovery_tick_agent_locked (NiceAgent *agent,
+    gpointer pointer)
 {
-  NiceAgent *agent = pointer;
   gboolean ret;
 
-  agent_lock();
-  if (g_source_is_destroyed (g_main_current_source ())) {
-    nice_debug ("Source was destroyed. "
-        "Avoided race condition in priv_discovery_tick");
-    agent_unlock ();
-    return FALSE;
-  }
-
-  ret = priv_discovery_tick_unlocked (pointer);
+  ret = priv_discovery_tick_unlocked (agent);
   if (ret == FALSE) {
     if (agent->discovery_timer_source != NULL) {
       g_source_destroy (agent->discovery_timer_source);
@@ -1204,7 +1195,6 @@ static gboolean priv_discovery_tick (gpointer pointer)
       agent->discovery_timer_source = NULL;
     }
   }
-  agent_unlock_and_emit (agent);
 
   return ret;
 }
@@ -1227,7 +1217,7 @@ void discovery_schedule (NiceAgent *agent)
       if (res == TRUE) {
         agent_timeout_add_with_context (agent, &agent->discovery_timer_source,
             "Candidate discovery tick", agent->timer_ta,
-            priv_discovery_tick, agent);
+            priv_discovery_tick_agent_locked, NULL);
       }
     }
   }

@@ -71,6 +71,7 @@ typedef struct {
 } ChannelBinding;
 
 typedef struct {
+  GMutex mutex;
   GMainContext *ctx;
   StunAgent agent;
   GList *channels;
@@ -144,7 +145,7 @@ static gboolean priv_send_channel_bind (UdpTurnPriv *priv,
     const NiceAddress *peer);
 static gboolean priv_add_channel_binding (UdpTurnPriv *priv,
     const NiceAddress *peer);
-static gboolean priv_forget_send_request (gpointer pointer);
+static gboolean priv_forget_send_request_agent_locked (gpointer pointer);
 static void priv_clear_permissions (UdpTurnPriv *priv);
 
 static guint
@@ -209,6 +210,7 @@ nice_udp_turn_socket_new (GMainContext *ctx, NiceAddress *addr,
         STUN_AGENT_USAGE_NO_ALIGNED_ATTRIBUTES);
   }
 
+  g_mutex_init (&priv->mutex);
   priv->channels = NULL;
   priv->current_binding = NULL;
   priv->base_socket = base_socket;
@@ -420,18 +422,16 @@ socket_recv_messages (NiceSocket *sock,
   return i;
 }
 
+/* interval is given in milliseconds */
 static GSource *
 priv_timeout_add_with_context (UdpTurnPriv *priv, guint interval,
-    gboolean seconds, GSourceFunc function, gpointer data)
+    GSourceFunc function, gpointer data)
 {
-  GSource *source;
+  GSource *source = NULL;
 
   g_return_val_if_fail (function != NULL, NULL);
 
-  if (seconds)
-    source = g_timeout_source_new_seconds (interval);
-  else
-    source = g_timeout_source_new (interval);
+  source = g_timeout_source_new (interval);
 
   g_source_set_callback (source, function, data, NULL);
   g_source_attach (source, priv->ctx);
@@ -825,7 +825,7 @@ socket_send_message (NiceSocket *sock, const NiceAddress *to,
       req->priv = priv;
       stun_message_id (&msg, req->id);
       req->source = priv_timeout_add_with_context (priv,
-          STUN_END_TIMEOUT, FALSE, priv_forget_send_request, req);
+          STUN_END_TIMEOUT, priv_forget_send_request_agent_locked, req);
       g_queue_push_tail (priv->send_requests, req);
     }
   }
@@ -962,18 +962,9 @@ socket_is_based_on (NiceSocket *sock, NiceSocket *other)
 }
 
 static gboolean
-priv_forget_send_request (gpointer pointer)
+priv_forget_send_request_agent_locked (gpointer pointer)
 {
   SendRequest *req = pointer;
-
-  agent_lock ();
-
-  if (g_source_is_destroyed (g_main_current_source ())) {
-    nice_debug ("Source was destroyed. "
-        "Avoided race condition in turn.c:priv_forget_send_request");
-    agent_unlock ();
-    return FALSE;
-  }
 
   stun_agent_forget_transaction (&req->priv->agent, req->id);
 
@@ -982,8 +973,6 @@ priv_forget_send_request (gpointer pointer)
   g_source_destroy (req->source);
   g_source_unref (req->source);
   req->source = NULL;
-
-  agent_unlock ();
 
   g_slice_free (SendRequest, req);
 
@@ -997,11 +986,11 @@ priv_permission_timeout (gpointer data)
 
   nice_debug ("Permission is about to timeout, schedule renewal");
 
-  agent_lock ();
+  g_mutex_lock (&priv->mutex);
   /* remove all permissions for this agent (the permission for the peer
      we are sending to will be renewed) */
   priv_clear_permissions (priv);
-  agent_unlock ();
+  g_mutex_unlock (&priv->mutex);
 
   return TRUE;
 }
@@ -1014,16 +1003,6 @@ priv_binding_expired_timeout (gpointer data)
   GSource *source = NULL;
 
   nice_debug ("Permission expired, refresh failed");
-
-  agent_lock ();
-
-  source = g_main_current_source ();
-  if (g_source_is_destroyed (source)) {
-    nice_debug ("Source was destroyed. "
-        "Avoided race condition in turn.c:priv_binding_expired_timeout");
-    agent_unlock ();
-    return FALSE;
-  }
 
   /* find current binding and destroy it */
   for (i = priv->channels ; i; i = i->next) {
@@ -1061,8 +1040,6 @@ priv_binding_expired_timeout (gpointer data)
     }
   }
 
-  agent_unlock ();
-
   return FALSE;
 }
 
@@ -1074,16 +1051,6 @@ priv_binding_timeout (gpointer data)
   GSource *source = NULL;
 
   nice_debug ("Permission is about to timeout, sending binding renewal");
-
-  agent_lock ();
-
-  source = g_main_current_source ();
-  if (g_source_is_destroyed (source)) {
-    nice_debug ("Source was destroyed. "
-        "Avoided race condition in turn.c:priv_binding_timeout");
-    agent_unlock ();
-    return FALSE;
-  }
 
   /* find current binding and mark it for renewal */
   for (i = priv->channels ; i; i = i->next) {
@@ -1099,7 +1066,7 @@ priv_binding_timeout (gpointer data)
 
       /* Install timer to expire the permission */
       b->timeout_source = priv_timeout_add_with_context (priv,
-          STUN_EXPIRE_TIMEOUT, TRUE, priv_binding_expired_timeout, priv);
+          STUN_EXPIRE_TIMEOUT * 1000, priv_binding_expired_timeout, priv);
 
       /* Send renewal */
       if (!priv->current_binding_msg)
@@ -1107,8 +1074,6 @@ priv_binding_timeout (gpointer data)
       break;
     }
   }
-
-  agent_unlock ();
 
   return FALSE;
 }
@@ -1372,8 +1337,8 @@ nice_udp_turn_socket_parse_recv (NiceSocket *sock, NiceSocket **from_sock,
                 }
                 /* Install timer to schedule refresh of the permission */
                 binding->timeout_source =
-                    priv_timeout_add_with_context (priv, STUN_BINDING_TIMEOUT,
-                        TRUE, priv_binding_timeout, priv);
+                    priv_timeout_add_with_context (priv,
+                    STUN_BINDING_TIMEOUT * 1000, priv_binding_timeout, priv);
               }
               priv_process_pending_bindings (priv);
             }
@@ -1463,8 +1428,9 @@ nice_udp_turn_socket_parse_recv (NiceSocket *sock, NiceSocket **from_sock,
             if (stun_message_get_class (&msg) == STUN_RESPONSE &&
                 !priv->permission_timeout_source) {
               priv->permission_timeout_source =
-                  priv_timeout_add_with_context (priv, STUN_PERMISSION_TIMEOUT,
-                      TRUE, priv_permission_timeout, priv);
+                  priv_timeout_add_with_context (priv,
+                      STUN_PERMISSION_TIMEOUT * 1000, priv_permission_timeout,
+                      priv);
             }
 
             /* send enqued data */
@@ -1721,14 +1687,6 @@ priv_retransmissions_tick (gpointer pointer)
 {
   UdpTurnPriv *priv = pointer;
 
-  agent_lock ();
-  if (g_source_is_destroyed (g_main_current_source ())) {
-    nice_debug ("Source was destroyed. "
-        "Avoided race condition in turn.c:priv_retransmissions_tick");
-    agent_unlock ();
-    return FALSE;
-  }
-
   if (priv_retransmissions_tick_unlocked (priv) == FALSE) {
     if (priv->tick_source_channel_bind != NULL) {
       g_source_destroy (priv->tick_source_channel_bind);
@@ -1736,7 +1694,6 @@ priv_retransmissions_tick (gpointer pointer)
       priv->tick_source_channel_bind = NULL;
     }
   }
-  agent_unlock ();
 
   return FALSE;
 }
@@ -1746,20 +1703,10 @@ priv_retransmissions_create_permission_tick (gpointer pointer)
 {
   UdpTurnPriv *priv = pointer;
 
-  agent_lock ();
-  if (g_source_is_destroyed (g_main_current_source ())) {
-    nice_debug ("Source was destroyed. Avoided race condition in "
-                "turn.c:priv_retransmissions_create_permission_tick");
-    agent_unlock ();
-    return FALSE;
-  }
-
   /* This will call priv_retransmissions_create_permission_tick_unlocked() for
    * every pending permission with an expired timer and will create a new timer
    * if there are pending permissions that require it */
   priv_schedule_tick (priv);
-
-  agent_unlock ();
 
   return FALSE;
 }
@@ -1781,7 +1728,7 @@ priv_schedule_tick (UdpTurnPriv *priv)
     guint timeout = stun_timer_remainder (&priv->current_binding_msg->timer);
     if (timeout > 0) {
       priv->tick_source_channel_bind =
-          priv_timeout_add_with_context (priv, timeout, FALSE,
+          priv_timeout_add_with_context (priv, timeout,
               priv_retransmissions_tick, priv);
     } else {
       priv_retransmissions_tick_unlocked (priv);
@@ -1819,8 +1766,7 @@ priv_schedule_tick (UdpTurnPriv *priv)
   /* We create one timer for the minimal timeout we need */
   if (min_timeout != G_MAXUINT) {
     priv->tick_source_create_permission =
-        priv_timeout_add_with_context (priv, FALSE,
-            min_timeout,
+        priv_timeout_add_with_context (priv, min_timeout,
             priv_retransmissions_create_permission_tick,
             priv);
   }

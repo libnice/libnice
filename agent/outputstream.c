@@ -485,7 +485,7 @@ nice_output_stream_close (GOutputStream *stream, GCancellable *cancellable,
   if (agent == NULL)
     return TRUE;
 
-  agent_lock ();
+  agent_lock (agent);
 
   /* Shut down the write side of the pseudo-TCP stream. */
   if (agent_find_component (agent, priv->stream_id, priv->component_id,
@@ -494,7 +494,7 @@ nice_output_stream_close (GOutputStream *stream, GCancellable *cancellable,
     pseudo_tcp_socket_shutdown (component->tcp, PSEUDO_TCP_SHUTDOWN_WR);
   }
 
-  agent_unlock ();
+  agent_unlock (agent);
 
   g_object_unref (agent);
 
@@ -519,7 +519,7 @@ nice_output_stream_is_writable (GPollableOutputStream *stream)
   if (agent == NULL)
     return FALSE;
 
-  agent_lock ();
+  agent_lock (agent);
 
   if (!agent_find_component (agent, priv->stream_id, priv->component_id,
           &_stream, &component)) {
@@ -540,7 +540,7 @@ nice_output_stream_is_writable (GPollableOutputStream *stream)
   }
 
 done:
-  agent_unlock ();
+  agent_unlock (agent);
 
   g_object_unref (agent);
 
@@ -618,7 +618,7 @@ nice_output_stream_create_source (GPollableOutputStream *stream,
   if (agent == NULL)
     return component_source;
 
-  agent_lock ();
+  agent_lock (agent);
 
   /* Grab the socket for this component. */
   if (!agent_find_component (agent, priv->stream_id, priv->component_id,
@@ -638,7 +638,7 @@ nice_output_stream_create_source (GPollableOutputStream *stream,
   }
 
 done:
-  agent_unlock ();
+  agent_unlock (agent);
 
   g_object_unref (agent);
 

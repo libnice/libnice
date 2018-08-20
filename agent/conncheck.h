@@ -83,7 +83,6 @@ struct _StunTransaction
 
 struct _CandidateCheckPair
 {
-  NiceAgent *agent;         /* back pointer to owner */
   guint stream_id;
   guint component_id;
   NiceCandidate *local;
