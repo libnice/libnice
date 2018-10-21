@@ -190,22 +190,48 @@ NICE_PACKAGES_PRIVATE="gthread-2.0"
 
 PKG_CHECK_MODULES(GLIB, [$NICE_PACKAGES_PUBLIC $NICE_PACKAGES_PRIVATE])
 
-GNUTLS_PACKAGES_PRIVATE="gnutls >= 2.12.0"
-PKG_CHECK_MODULES(GNUTLS, [$GNUTLS_PACKAGES_PRIVATE],
+AC_ARG_WITH(crypto-library,
+	AS_HELP_STRING([--with-crypto-library=\{gnutls,openssl,auto\}],[select Crypto library (gnutls or openssl)]),
+	[with_crypto_library=${withval}],
+	[with_crypto_library=auto])
+
+
+AS_IF([test "$with_crypto_library" != "openssl"],
 	[
-	AC_DEFINE([HAVE_GNUTLS], [1], [Use GnuTLS])
-	NICE_PACKAGES_PRIVATE="$NICE_PACKAGES_PRIVATE $GNUTLS_PACKAGES_PRIVATE"
-	],
-	[
+	GNUTLS_PACKAGES_PRIVATE="gnutls >= 2.12.0"
+	PKG_CHECK_MODULES(GNUTLS, [$GNUTLS_PACKAGES_PRIVATE],
+		[
+		AC_DEFINE([HAVE_GNUTLS], [1], [Use GnuTLS])
+		GNUTLS_FOUND=yes
+		NICE_PACKAGES_PRIVATE="$NICE_PACKAGES_PRIVATE $GNUTLS_PACKAGES_PRIVATE"
+		],
+		[
+		AS_IF([test "$with_crypto_library" == "gnutls"],
+			[
+			AC_MSG_ERROR([Neither GnuTLS is not available])
+			]
+		)
+		]
+	)
+	]
+)
+
+AS_IF([test "x${GNUTLS_FOUND}" != "xyes"],
+        [
 	AX_CHECK_OPENSSL(
 		[
 		AC_DEFINE([HAVE_OPENSSL], [1], [Use OpenSSL])
 		NICE_PACKAGES_PRIVATE="$NICE_PACKAGES_PRIVATE libcrypto"
+		AC_MSG_NOTICE([OpenSSL selected])
 		],
 		[
 		AC_MSG_ERROR([Neither GnuTLS or OpenSSL is available])
 		]
-	)]
+	)
+	],
+	[
+		AC_MSG_NOTICE([GnuTLS selected])
+	]
 )
 
 AC_SUBST([NICE_PACKAGES_PUBLIC])
