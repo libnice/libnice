@@ -310,6 +310,8 @@ nice_tcp_passive_socket_accept (NiceSocket *sock)
   if (new_socket) {
     NiceAddress *key = nice_address_dup (&remote_addr);
 
+    nice_tcp_bsd_socket_set_passive_parent (new_socket, sock);
+
     nice_socket_set_writable_callback (new_socket, _child_writable_cb, sock);
     g_hash_table_insert (priv->connections, key, new_socket);
   }
@@ -328,4 +330,11 @@ static guint nice_address_hash (const NiceAddress * key)
   g_free (str);
 
   return hash;
+}
+
+void nice_tcp_passive_socket_remove_connection (NiceSocket *sock, const NiceAddress *to)
+{
+  TcpPassivePriv *priv = sock->priv;
+
+  g_hash_table_remove (priv->connections, to);
 }
