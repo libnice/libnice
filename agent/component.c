@@ -1506,7 +1506,8 @@ nice_component_verify_remote_candidate (NiceComponent *component,
   for (item = component->valid_candidates; item; item = item->next) {
     NiceCandidate *cand = item->data;
 
-    if (((nicesock->type == NICE_SOCKET_TYPE_TCP_BSD &&
+    if ((((nicesock->type == NICE_SOCKET_TYPE_TCP_BSD ||
+                    nicesock->type == NICE_SOCKET_TYPE_UDP_TURN) &&
                 (cand->transport == NICE_CANDIDATE_TRANSPORT_TCP_ACTIVE ||
                     cand->transport == NICE_CANDIDATE_TRANSPORT_TCP_PASSIVE ||
                     cand->transport == NICE_CANDIDATE_TRANSPORT_TCP_SO)) ||
