@@ -111,8 +111,6 @@ test_socket_is_based_on_LDADD = $(COMMON_LDADD)
 
 test_priority_LDADD = $(COMMON_LDADD)
 
-test_mainloop_LDADD = $(COMMON_LDADD)
-
 test_fullmode_LDADD = $(COMMON_LDADD)
 
 test_different_number_streams_LDADD = $(COMMON_LDADD)
