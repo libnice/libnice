@@ -105,6 +105,9 @@ typedef struct {
   uint16_t cached_realm_len;
   guint8 *cached_nonce;
   uint16_t cached_nonce_len;
+
+  GByteArray *fragment_buffer;
+  NiceAddress from;
 } UdpTurnPriv;
 
 
@@ -325,6 +328,11 @@ socket_close (NiceSocket *sock)
   g_free (priv->password);
   g_free (priv->cached_realm);
   g_free (priv->cached_nonce);
+
+  if (priv->fragment_buffer) {
+    g_byte_array_free(priv->fragment_buffer, TRUE);
+  }
+
   g_free (priv);
 
   sock->priv = NULL;
@@ -338,6 +346,7 @@ socket_recv_messages (NiceSocket *sock,
 {
   UdpTurnPriv *priv = (UdpTurnPriv *) sock->priv;
   gint n_messages;
+  gint n_output_messages = 0;
   guint i;
   gboolean error = FALSE;
 
@@ -345,6 +354,44 @@ socket_recv_messages (NiceSocket *sock,
   g_assert (sock->priv != NULL);
 
   nice_debug_verbose ("received message on TURN socket");
+
+  if (priv->fragment_buffer) {
+    /* Fill as many recv_messages as possible with RFC4571-framed data we
+     * already hold in our buffer before reading more from the base socket. */
+    guint8 *f_buffer = priv->fragment_buffer->data;
+    guint f_buffer_len = priv->fragment_buffer->len;
+
+    for (i = 0; i < n_recv_messages && f_buffer_len >= sizeof (guint16); ++i) {
+      guint16 msg_len = ntohs (*(guint16 *)f_buffer) + sizeof (guint16);
+
+      if (msg_len > f_buffer_len) {
+        /* The next message in the buffer isn't complete yet. Wait for more
+         * data from the base socket. */
+        break;
+      }
+
+      /* We have a full message in the buffer. Copy it into the user-provided
+       * NiceInputMessage. */
+      memcpy_buffer_to_input_message (&recv_messages[i], f_buffer, msg_len);
+      *recv_messages[i].from = priv->from;
+
+      f_buffer += msg_len;
+      f_buffer_len -= msg_len;
+      ++n_output_messages;
+    }
+
+    /* Adjust recv_messages with the number of messages we've just filled. */
+    recv_messages += n_output_messages;
+    n_recv_messages -= n_output_messages;
+
+    /* Shrink the fragment buffer, deallocate it if empty. */
+    g_byte_array_remove_range (priv->fragment_buffer, 0,
+                               priv->fragment_buffer->len - f_buffer_len);
+    if (priv->fragment_buffer->len == 0) {
+      g_byte_array_free (priv->fragment_buffer, TRUE);
+      priv->fragment_buffer = NULL;
+    }
+  }
 
   n_messages = nice_socket_recv_messages (priv->base_socket,
       recv_messages, n_recv_messages);
@@ -400,6 +447,43 @@ socket_recv_messages (NiceSocket *sock,
     /* parsed_buffer_length == 0 means this is a TURN control message which
      * needs ignoring. */
 
+    if (nice_socket_is_reliable (sock) && parsed_buffer_length > 0) {
+      /* Determine the portion of the current NiceInputMessage we can already
+       * return. */
+      guint16 msg_len = 0;
+      if (!priv->fragment_buffer) {
+        msg_len = ntohs (*(guint16 *)buffer) + sizeof (guint16);
+        if (msg_len > parsed_buffer_length) {
+          /* The RFC4571 frame is larger than the current TURN message, need to
+           * buffer it and wait for more data. */
+          msg_len = 0;
+        }
+      }
+
+      if (msg_len != parsed_buffer_length && !priv->fragment_buffer) {
+        /* Start of message fragmenting detected. Allocate fragment buffer
+         * large enough for the recv_message's we haven't parsed yet. */
+        gint j;
+        guint buffer_len = 0;
+
+        for (j = i; j < n_messages; ++j) {
+          buffer_len += recv_messages[j].length;
+        }
+        priv->fragment_buffer = g_byte_array_sized_new (buffer_len);
+      }
+
+      if (priv->fragment_buffer) {
+        /* The messages are fragmented. Store the excess data (after msg_len
+         * bytes) into fragment buffer for reassembly. */
+        g_byte_array_append (priv->fragment_buffer, buffer + msg_len,
+            parsed_buffer_length - msg_len);
+
+        parsed_buffer_length = msg_len;
+        message->length = msg_len;
+        priv->from = from;
+      }
+    }
+
     /* Split up the monolithic buffer again into the caller-provided buffers. */
     if (parsed_buffer_length > 0 && allocated_buffer) {
       memcpy_buffer_to_input_message (message, buffer,
@@ -411,13 +495,15 @@ socket_recv_messages (NiceSocket *sock,
 
     if (error)
       break;
+
+    ++n_output_messages;
   }
 
   /* Was there an error processing the first message? */
   if (error && i == 0)
     return -1;
 
-  return i;
+  return n_output_messages;
 }
 
 /* interval is given in milliseconds */

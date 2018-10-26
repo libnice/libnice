@@ -44,6 +44,7 @@ check_PROGRAMS = \
 	test-io-stream-pollable \
 	test-send-recv \
 	test-socket-is-based-on \
+	test-udp-turn-fragmentation \
 	test-priority \
 	test-fullmode \
         test-different-number-streams \
@@ -108,6 +109,8 @@ test_send_recv_SOURCES = test-send-recv.c test-io-stream-common.c
 test_send_recv_LDADD = $(COMMON_LDADD)
 
 test_socket_is_based_on_LDADD = $(COMMON_LDADD)
+
+test_udp_turn_fragmentation_LDADD = $(COMMON_LDADD)
 
 test_priority_LDADD = $(COMMON_LDADD)
 
