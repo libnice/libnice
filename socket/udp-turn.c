@@ -340,7 +340,6 @@ socket_recv_messages (NiceSocket *sock,
   gint n_messages;
   guint i;
   gboolean error = FALSE;
-  guint n_valid_messages;
 
   /* Make sure socket has not been freed: */
   g_assert (sock->priv != NULL);
@@ -360,7 +359,7 @@ socket_recv_messages (NiceSocket *sock,
    * Implementing such a path means rewriting the TURN parser (and hence the
    * STUN message code) to operate on vectors of buffers, rather than a
    * monolithic buffer. */
-  for (i = 0; i < (guint) n_messages; i += n_valid_messages) {
+  for (i = 0; i < (guint) n_messages; ++i) {
     NiceInputMessage *message = &recv_messages[i];
     NiceSocket *dummy;
     NiceAddress from;
@@ -368,8 +367,6 @@ socket_recv_messages (NiceSocket *sock,
     gsize buffer_length;
     gint parsed_buffer_length;
     gboolean allocated_buffer = FALSE;
-
-    n_valid_messages = 1;
 
     if (message->length == 0)
       continue;
@@ -397,13 +394,11 @@ socket_recv_messages (NiceSocket *sock,
 
     if (parsed_buffer_length < 0) {
       error = TRUE;
-    } else if (parsed_buffer_length == 0) {
-      /* A TURN control message which needs ignoring. Re-use this
-       * NiceInputMessage in the next loop iteration. */
-      n_valid_messages = 0;
-    } else {
+    } else if (parsed_buffer_length > 0) {
       *message->from = from;
     }
+    /* parsed_buffer_length == 0 means this is a TURN control message which
+     * needs ignoring. */
 
     /* Split up the monolithic buffer again into the caller-provided buffers. */
     if (parsed_buffer_length > 0 && allocated_buffer) {
