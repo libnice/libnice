@@ -145,7 +145,7 @@ static gboolean priv_send_channel_bind (UdpTurnPriv *priv,
     const NiceAddress *peer);
 static gboolean priv_add_channel_binding (UdpTurnPriv *priv,
     const NiceAddress *peer);
-static gboolean priv_forget_send_request_agent_locked (gpointer pointer);
+static gboolean priv_forget_send_request_timeout (gpointer pointer);
 static void priv_clear_permissions (UdpTurnPriv *priv);
 
 static void
@@ -842,7 +842,7 @@ socket_send_message (NiceSocket *sock, const NiceAddress *to,
       req->priv = priv;
       stun_message_id (&msg, req->id);
       req->source = priv_timeout_add_with_context (priv,
-          STUN_END_TIMEOUT, priv_forget_send_request_agent_locked, req);
+          STUN_END_TIMEOUT, priv_forget_send_request_timeout, req);
       g_queue_push_tail (priv->send_requests, req);
     }
   }
@@ -979,7 +979,7 @@ socket_is_based_on (NiceSocket *sock, NiceSocket *other)
 }
 
 static gboolean
-priv_forget_send_request_agent_locked (gpointer pointer)
+priv_forget_send_request_timeout (gpointer pointer)
 {
   SendRequest *req = pointer;
 
