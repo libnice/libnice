@@ -164,9 +164,13 @@ nice_component_new (guint id, NiceAgent *agent, NiceStream *stream)
 }
 
 void
-nice_component_remove_socket (NiceComponent *cmp, NiceSocket *nsocket)
+nice_component_remove_socket (NiceAgent *agent, NiceComponent *cmp,
+    NiceSocket *nsocket)
 {
   GSList *i;
+  NiceStream *stream;
+
+  stream = agent_find_stream (agent, cmp->stream_id);
 
   for (i = cmp->local_candidates; i;) {
     NiceCandidate *candidate = i->data;
@@ -179,14 +183,14 @@ nice_component_remove_socket (NiceComponent *cmp, NiceSocket *nsocket)
 
     if (candidate == cmp->selected_pair.local) {
       nice_component_clear_selected_pair (cmp);
-      agent_signal_component_state_change (cmp->agent, cmp->stream->id,
+      agent_signal_component_state_change (cmp->agent, cmp->stream_id,
           cmp->id, NICE_COMPONENT_STATE_FAILED);
     }
 
     refresh_prune_candidate (cmp->agent, candidate);
-    if (candidate->sockptr != nsocket) {
+    if (candidate->sockptr != nsocket && stream) {
       discovery_prune_socket (cmp->agent, candidate->sockptr);
-      conn_check_prune_socket (cmp->agent, cmp->stream, cmp,
+      conn_check_prune_socket (cmp->agent, stream, cmp,
           candidate->sockptr);
       nice_component_detach_socket (cmp, candidate->sockptr);
     }
@@ -198,14 +202,18 @@ nice_component_remove_socket (NiceComponent *cmp, NiceSocket *nsocket)
   }
 
   discovery_prune_socket (cmp->agent, nsocket);
-  conn_check_prune_socket (cmp->agent, cmp->stream, cmp, nsocket);
+  if (stream)
+    conn_check_prune_socket (cmp->agent, stream, cmp, nsocket);
   nice_component_detach_socket (cmp, nsocket);
 }
 
 void
-nice_component_clean_turn_servers (NiceComponent *cmp)
+nice_component_clean_turn_servers (NiceAgent *agent, NiceComponent *cmp)
 {
   GSList *i;
+  NiceStream *stream;
+
+  stream = agent_find_stream (agent, cmp->stream_id);
 
   g_list_free_full (cmp->turn_servers, (GDestroyNotify) turn_server_unref);
   cmp->turn_servers = NULL;
@@ -232,8 +240,9 @@ nice_component_clean_turn_servers (NiceComponent *cmp)
       if (cmp->turn_candidate) {
         refresh_prune_candidate (cmp->agent, cmp->turn_candidate);
         discovery_prune_socket (cmp->agent, cmp->turn_candidate->sockptr);
-        conn_check_prune_socket (cmp->agent, cmp->stream, cmp,
-            cmp->turn_candidate->sockptr);
+        if (stream)
+          conn_check_prune_socket (cmp->agent, stream, cmp,
+              cmp->turn_candidate->sockptr);
         nice_component_detach_socket (cmp, cmp->turn_candidate->sockptr);
 	nice_candidate_free (cmp->turn_candidate);
       }
@@ -245,8 +254,9 @@ nice_component_clean_turn_servers (NiceComponent *cmp)
     } else {
       refresh_prune_candidate (cmp->agent, candidate);
       discovery_prune_socket (cmp->agent, candidate->sockptr);
-      conn_check_prune_socket (cmp->agent, cmp->stream, cmp,
-          candidate->sockptr);
+      if (stream)
+        conn_check_prune_socket (cmp->agent, stream, cmp,
+            candidate->sockptr);
       nice_component_detach_socket (cmp, candidate->sockptr);
       agent_remove_local_candidate (cmp->agent, candidate);
       nice_candidate_free (candidate);
@@ -313,7 +323,7 @@ nice_component_close (NiceComponent *cmp)
       (GDestroyNotify) incoming_check_free);
   cmp->incoming_checks = NULL;
 
-  nice_component_clean_turn_servers (cmp);
+  nice_component_clean_turn_servers (cmp->agent, cmp);
 
   if (cmp->tcp_clock) {
     g_source_destroy (cmp->tcp_clock);
@@ -418,8 +428,13 @@ nice_component_restart (NiceComponent *cmp)
 void
 nice_component_update_selected_pair (NiceComponent *component, const CandidatePair *pair)
 {
+  NiceStream *stream;
+
   g_assert (component);
   g_assert (pair);
+
+  stream = agent_find_stream (component->agent, component->stream_id);
+
   nice_debug ("setting SELECTED PAIR for component %u: %s:%s (prio:%"
       G_GUINT64_FORMAT ").", component->id, pair->local->foundation,
       pair->remote->foundation, pair->priority);
@@ -429,8 +444,9 @@ nice_component_update_selected_pair (NiceComponent *component, const CandidatePa
     refresh_prune_candidate (component->agent, component->turn_candidate);
     discovery_prune_socket (component->agent,
         component->turn_candidate->sockptr);
-    conn_check_prune_socket (component->agent, component->stream, component,
-        component->turn_candidate->sockptr);
+    if (stream)
+      conn_check_prune_socket (component->agent, stream, component,
+          component->turn_candidate->sockptr);
     nice_component_detach_socket (component, component->turn_candidate->sockptr);
     nice_candidate_free (component->turn_candidate);
     component->turn_candidate = NULL;
@@ -575,7 +591,7 @@ nice_component_attach_socket (NiceComponent *component, NiceSocket *nicesock)
 
   /* Create and attach a source */
   nice_debug ("Component %p (agent %p): Attach source (stream %u).",
-      component, component->agent, component->stream->id);
+      component, component->agent, component->stream_id);
   socket_source_attach (socket_source, component->ctx);
 }
 
@@ -797,7 +813,7 @@ emit_io_callback_cb (gpointer user_data)
 
   g_object_ref (agent);
 
-  stream_id = component->stream->id;
+  stream_id = component->stream_id;
   component_id = component->id;
 
   g_mutex_lock (&component->io_mutex);
@@ -869,7 +885,7 @@ nice_component_emit_io_callback (NiceComponent *component,
   g_assert (buf_len > 0);
 
   agent = component->agent;
-  stream_id = component->stream->id;
+  stream_id = component->stream_id;
   component_id = component->id;
 
   g_mutex_lock (&component->io_mutex);
@@ -1029,7 +1045,6 @@ nice_component_init (NiceComponent *component)
   component->restart_candidate = NULL;
   component->tcp = NULL;
   component->agent = NULL;
-  component->stream = NULL;
 
   g_mutex_init (&component->io_mutex);
   g_queue_init (&component->pending_io_messages);
@@ -1084,9 +1099,12 @@ nice_component_get_property (GObject *obj,
       break;
 
     case PROP_STREAM:
-      g_value_set_object (value, component->stream);
-      break;
-
+      {
+        NiceStream *stream = agent_find_stream (component->agent,
+            component->stream_id);
+        g_value_set_object (value, stream);
+        break;
+      }
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (obj, property_id, pspec);
     }
@@ -1111,7 +1129,10 @@ nice_component_set_property (GObject *obj,
       break;
 
     case PROP_STREAM:
-      component->stream = g_value_get_object (value);
+      {
+        NiceStream *stream = g_value_get_object (value);
+        component->stream_id = stream->id;
+      }
       break;
 
     default:

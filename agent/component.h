@@ -69,7 +69,6 @@ typedef struct _IncomingCheck IncomingCheck;
 
 struct _CandidatePairKeepalive
 {
-  NiceAgent *agent;
   GSource *tick_source;
   guint stream_id;
   guint component_id;
@@ -202,8 +201,7 @@ struct _NiceComponent {
 
   NiceAgent *agent;  /* unowned, immutable: can be accessed without holding the
                       * agent lock */
-  NiceStream *stream;  /* unowned, immutable: can be accessed without holding
-                        * the agent lock */
+  guint stream_id;
 
   StunAgent stun_agent; /* This stun agent is used to validate all stun requests */
 
@@ -263,7 +261,8 @@ void
 nice_component_attach_socket (NiceComponent *component, NiceSocket *nsocket);
 
 void
-nice_component_remove_socket (NiceComponent *component, NiceSocket *nsocket);
+nice_component_remove_socket (NiceAgent *agent, NiceComponent *component,
+    NiceSocket *nsocket);
 void
 nice_component_detach_all_sockets (NiceComponent *component);
 
@@ -290,7 +289,7 @@ nice_component_emit_io_callback (NiceComponent *component,
 gboolean
 nice_component_has_io_callback (NiceComponent *component);
 void
-nice_component_clean_turn_servers (NiceComponent *component);
+nice_component_clean_turn_servers (NiceAgent *agent, NiceComponent *component);
 
 
 TurnServer *

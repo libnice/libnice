@@ -58,12 +58,14 @@ nice_stream_finalize (GObject *obj);
  * @brief ICE stream functionality
  */
 NiceStream *
-nice_stream_new (guint n_components, NiceAgent *agent)
+nice_stream_new (guint stream_id, guint n_components, NiceAgent *agent)
 {
   NiceStream *stream = NULL;
   guint n;
 
   stream = g_object_new (NICE_TYPE_STREAM, NULL);
+
+  stream->id = stream_id;
 
   /* Create the components. */
   for (n = 0; n < n_components; n++) {

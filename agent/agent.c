@@ -1582,7 +1582,7 @@ static void
   g_cancellable_cancel (component->tcp_writable_cancellable);
 
   agent_queue_signal (agent, signals[SIGNAL_RELIABLE_TRANSPORT_WRITABLE],
-      component->stream->id, component->id);
+      component->stream_id, component->id);
 }
 
 static void
@@ -1600,8 +1600,7 @@ pseudo_tcp_socket_create (NiceAgent *agent, NiceStream *stream, NiceComponent *c
       agent, component->id);
 }
 
-static void priv_pseudo_tcp_error (NiceAgent *agent, NiceStream *stream,
-    NiceComponent *component)
+static void priv_pseudo_tcp_error (NiceAgent *agent, NiceComponent *component)
 {
   if (component->tcp_writable_cancellable) {
     g_cancellable_cancel (component->tcp_writable_cancellable);
@@ -1609,7 +1608,7 @@ static void priv_pseudo_tcp_error (NiceAgent *agent, NiceStream *stream,
   }
 
   if (component->tcp) {
-    agent_signal_component_state_change (agent, stream->id,
+    agent_signal_component_state_change (agent, component->stream_id,
         component->id, NICE_COMPONENT_STATE_FAILED);
     nice_component_detach_all_sockets (component);
     pseudo_tcp_socket_close (component->tcp, TRUE);
@@ -1627,10 +1626,9 @@ pseudo_tcp_socket_opened (PseudoTcpSocket *sock, gpointer user_data)
 {
   NiceComponent *component = user_data;
   NiceAgent *agent = component->agent;
-  NiceStream *stream = component->stream;
 
   nice_debug ("Agent %p: s%d:%d pseudo Tcp socket Opened", agent,
-      stream->id, component->id);
+      component->stream_id, component->id);
 
   agent_signal_socket_writable (agent, component);
 }
@@ -1787,15 +1785,21 @@ pseudo_tcp_socket_readable (PseudoTcpSocket *sock, gpointer user_data)
 {
   NiceComponent *component = user_data;
   NiceAgent *agent = component->agent;
-  NiceStream *stream = component->stream;
   gboolean has_io_callback;
-  guint stream_id = stream->id;
+  NiceStream *stream = NULL;
+  guint stream_id = component->stream_id;
   guint component_id = component->id;
 
   g_object_ref (agent);
 
+  if (!agent_find_component (agent, stream_id, component_id,
+          &stream, &component)) {
+    g_object_unref (agent);
+    goto out;
+  }
+
   nice_debug_verbose ("Agent %p: s%d:%d pseudo Tcp socket readable", agent,
-      stream->id, component->id);
+      stream_id, component->id);
 
   component->tcp_readable = TRUE;
 
@@ -1826,7 +1830,7 @@ pseudo_tcp_socket_readable (PseudoTcpSocket *sock, gpointer user_data)
         /* Handle errors. */
         if (pseudo_tcp_socket_get_error (sock) != EWOULDBLOCK) {
           nice_debug ("%s: calling priv_pseudo_tcp_error()", G_STRFUNC);
-          priv_pseudo_tcp_error (agent, stream, component);
+          priv_pseudo_tcp_error (agent, component);
         }
 
         if (component->recv_buf_error != NULL) {
@@ -1889,7 +1893,7 @@ pseudo_tcp_socket_readable (PseudoTcpSocket *sock, gpointer user_data)
       component->tcp_readable = FALSE;
     } else if (n_valid_messages < 0) {
       nice_debug ("%s: calling priv_pseudo_tcp_error()", G_STRFUNC);
-      priv_pseudo_tcp_error (agent, stream, component);
+      priv_pseudo_tcp_error (agent, component);
     } else if (n_valid_messages == 0) {
       /* Reached EOS. */
       component->tcp_readable = FALSE;
@@ -1912,10 +1916,9 @@ pseudo_tcp_socket_writable (PseudoTcpSocket *sock, gpointer user_data)
 {
   NiceComponent *component = user_data;
   NiceAgent *agent = component->agent;
-  NiceStream *stream = component->stream;
 
   nice_debug_verbose ("Agent %p: s%d:%d pseudo Tcp socket writable", agent,
-      stream->id, component->id);
+      component->stream_id, component->id);
 
   agent_signal_socket_writable (agent, component);
 }
@@ -1926,11 +1929,11 @@ pseudo_tcp_socket_closed (PseudoTcpSocket *sock, guint32 err,
 {
   NiceComponent *component = user_data;
   NiceAgent *agent = component->agent;
-  NiceStream *stream = component->stream;
 
   nice_debug ("Agent %p: s%d:%d pseudo Tcp socket closed. "
-      "Calling priv_pseudo_tcp_error().",  agent, stream->id, component->id);
-  priv_pseudo_tcp_error (agent, stream, component);
+      "Calling priv_pseudo_tcp_error().",  agent, component->stream_id,
+      component->id);
+  priv_pseudo_tcp_error (agent, component);
 }
 
 
@@ -1953,7 +1956,7 @@ pseudo_tcp_socket_write_packet (PseudoTcpSocket *psocket,
 
       nice_debug_verbose (
           "Agent %p : s%d:%d: sending %d bytes on socket %p (FD %d) to [%s]:%d",
-          component->agent, component->stream->id, component->id, len,
+          component->agent, component->stream_id, component->id, len,
           sock->fileno, g_socket_get_fd (sock->fileno), tmpbuf,
           nice_address_get_port (addr));
     }
@@ -1983,7 +1986,9 @@ notify_pseudo_tcp_socket_clock_agent_locked (NiceAgent *agent,
   NiceComponent *component = user_data;
   NiceStream *stream;
 
-  stream = component->stream;
+  stream = agent_find_stream (agent, component->stream_id);
+  if (!stream)
+    return G_SOURCE_REMOVE;
 
   pseudo_tcp_socket_notify_clock (component->tcp);
   adjust_tcp_clock (agent, stream, component);
@@ -2018,7 +2023,7 @@ adjust_tcp_clock (NiceAgent *agent, NiceStream *stream, NiceComponent *component
       nice_debug ("Agent %p: component %d pseudo-TCP socket should be "
           "destroyed. Calling priv_pseudo_tcp_error().",
           agent, component->id);
-      priv_pseudo_tcp_error (agent, stream, component);
+      priv_pseudo_tcp_error (agent, component);
     }
   }
 }
@@ -2028,7 +2033,6 @@ _tcp_sock_is_writable (NiceSocket *sock, gpointer user_data)
 {
   NiceComponent *component = user_data;
   NiceAgent *agent = component->agent;
-  NiceStream *stream = component->stream;
 
   agent_lock (agent);
 
@@ -2041,7 +2045,7 @@ _tcp_sock_is_writable (NiceSocket *sock, gpointer user_data)
   }
 
   nice_debug ("Agent %p: s%d:%d Tcp socket writable", agent,
-      stream->id, component->id);
+      component->stream_id, component->id);
   agent_signal_socket_writable (agent, component);
 
   agent_unlock_and_emit (agent);
@@ -2413,9 +2417,8 @@ priv_add_new_candidate_discovery_stun (NiceAgent *agent,
   cdisco->type = NICE_CANDIDATE_TYPE_SERVER_REFLEXIVE;
   cdisco->nicesock = nicesock;
   cdisco->server = server;
-  cdisco->stream = stream;
-  cdisco->component = nice_stream_find_component_by_id (stream, component_id);
-  cdisco->agent = agent;
+  cdisco->stream_id = stream->id;
+  cdisco->component_id = component_id;
   stun_agent_init (&cdisco->stun_agent, STUN_ALL_KNOWN_ATTRIBUTES,
       STUN_COMPATIBILITY_RFC3489,
       (agent->compatibility == NICE_COMPATIBILITY_OC2007 ||
@@ -2556,9 +2559,8 @@ priv_add_new_candidate_discovery_turn (NiceAgent *agent,
   cdisco->turn = turn_server_ref (turn);
   cdisco->server = turn->server;
 
-  cdisco->stream = stream;
-  cdisco->component = nice_stream_find_component_by_id (stream, component_id);
-  cdisco->agent = agent;
+  cdisco->stream_id = stream->id;
+  cdisco->component_id = component_id;
 
   if (agent->compatibility == NICE_COMPATIBILITY_GOOGLE) {
     stun_agent_init (&cdisco->stun_agent, STUN_ALL_KNOWN_ATTRIBUTES,
@@ -2603,10 +2605,9 @@ nice_agent_add_stream (
   g_return_val_if_fail (n_components >= 1, 0);
 
   agent_lock (agent);
-  stream = nice_stream_new (n_components, agent);
+  stream = nice_stream_new (agent->next_stream_id++, n_components, agent);
 
   agent->streams = g_slist_append (agent->streams, stream);
-  stream->id = agent->next_stream_id++;
   nice_debug ("Agent %p : allocating stream id %u (%p)", agent, stream->id, stream);
   if (agent->reliable) {
     nice_debug ("Agent %p : reliable stream", agent);
@@ -4722,7 +4723,7 @@ nice_agent_send_messages_nonblocking_internal (
         if (n_sent < 0 && !g_error_matches (child_error, G_IO_ERROR,
                 G_IO_ERROR_WOULD_BLOCK)) {
           /* Signal errors */
-          priv_pseudo_tcp_error (agent, stream, component);
+          priv_pseudo_tcp_error (agent, component);
         }
       } else {
         g_set_error (&child_error, G_IO_ERROR, G_IO_ERROR_FAILED,
@@ -5133,9 +5134,17 @@ component_io_cb (GSocket *gsocket, GIOCondition condition, gpointer user_data)
 
   component = socket_source->component;
   agent = component->agent;
-  stream = component->stream;
 
   agent_lock (agent);
+
+  stream = agent_find_stream (agent, component->stream_id);
+
+  if (stream == NULL) {
+    nice_debug ("%s: stream %d destroyed", G_STRFUNC, component->stream_id);
+
+    agent_unlock (agent);
+    return G_SOURCE_REMOVE;
+  }
 
   if (g_source_is_destroyed (g_main_current_source ())) {
     /* Silently return FALSE. */
@@ -5160,7 +5169,7 @@ component_io_cb (GSocket *gsocket, GIOCondition condition, gpointer user_data)
           stream->id, component->id, NICE_COMPONENT_STATE_FAILED);
     }
 
-    nice_component_remove_socket (component, socket_source->socket);
+    nice_component_remove_socket (agent, component, socket_source->socket);
     agent_unlock (agent);
     g_object_unref (agent);
     return G_SOURCE_REMOVE;
@@ -5326,7 +5335,7 @@ component_io_cb (GSocket *gsocket, GIOCondition condition, gpointer user_data)
 done:
 
   if (remove_source)
-    nice_component_remove_socket (component, socket_source->socket);
+    nice_component_remove_socket (agent, component, socket_source->socket);
 
   /* If we’re in the middle of a read, don’t emit any signals, or we could cause
    * re-entrancy by (e.g.) emitting component-state-changed and having the
@@ -6476,7 +6485,7 @@ nice_agent_forget_relays (NiceAgent *agent, guint stream_id, guint component_id)
     goto done;
   }
 
-  nice_component_clean_turn_servers (component);
+  nice_component_clean_turn_servers (agent, component);
 
  done:
   agent_unlock_and_emit (agent);

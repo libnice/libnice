@@ -1180,7 +1180,7 @@ static gboolean priv_conn_keepalive_retransmissions_tick_agent_locked (
         stun_agent_forget_transaction (&component->stun_agent, id);
         pair->keepalive.stun_message.buffer = NULL;
 
-        if (pair->keepalive.agent->media_after_tick) {
+        if (agent->media_after_tick) {
           nice_debug ("Agent %p : Keepalive conncheck timed out!! "
               "but media was received. Suspecting keepalive lost because of "
               "network bottleneck", agent);
@@ -1369,9 +1369,8 @@ static gboolean priv_conn_keepalive_tick_unlocked (NiceAgent *agent)
 
               p->keepalive.stream_id = stream->id;
               p->keepalive.component_id = component->id;
-              p->keepalive.agent = agent;
 
-              agent_timeout_add_with_context (p->keepalive.agent,
+              agent_timeout_add_with_context (agent,
                   &p->keepalive.tick_source, "Pair keepalive",
                   stun_timer_remainder (&p->keepalive.timer),
                   priv_conn_keepalive_retransmissions_tick_agent_locked, p);
@@ -1490,7 +1489,7 @@ static gboolean priv_turn_allocate_refresh_retransmissions_tick_agent_locked (
         stun_message_id (&cand->stun_message, id);
         stun_agent_forget_transaction (&cand->stun_agent, id);
 
-        refresh_cancel (cand);
+        refresh_cancel (agent, cand);
         break;
       }
     case STUN_USAGE_TIMER_RETURN_RETRANSMIT:
@@ -1775,7 +1774,7 @@ static void priv_update_check_list_failed_components (NiceAgent *agent, NiceStre
     /* There is still discovery ogoing for this stream,
      * so don't fail any of it's candidates.
      */
-    if (d->stream == stream && !d->done)
+    if (d->stream_id == stream->id && !d->done)
       return;
   }
   if (agent->discovery_list != NULL)
@@ -1939,7 +1938,8 @@ static void priv_mark_pair_nominated (NiceAgent *agent, NiceStream *stream, Nice
 }
 
 guint32
-ensure_unique_priority (NiceComponent *component, guint32 priority)
+ensure_unique_priority (NiceStream *stream, NiceComponent *component,
+    guint32 priority)
 {
   GSList *item;
 
@@ -1956,7 +1956,7 @@ ensure_unique_priority (NiceComponent *component, guint32 priority)
     }
   }
 
-  for (item = component->stream->conncheck_list; item; item = item->next) {
+  for (item = stream->conncheck_list; item; item = item->next) {
     CandidateCheckPair *p = item->data;
 
     if (p->component_id == component->id &&
@@ -2013,7 +2013,7 @@ static CandidateCheckPair *priv_add_new_check_pair (NiceAgent *agent,
           tmpbuf1, nice_address_get_port (&pair->local->addr),
           tmpbuf2, nice_address_get_port (&pair->remote->addr));
   }
-  pair->prflx_priority = ensure_unique_priority (component,
+  pair->prflx_priority = ensure_unique_priority (stream, component,
       peer_reflexive_candidate_priority (agent, local));
 
   stream->conncheck_list = g_slist_insert_sorted (stream->conncheck_list, pair,
@@ -2936,7 +2936,7 @@ static CandidateCheckPair *priv_add_peer_reflexive_pair (NiceAgent *agent, guint
     pair->priority = nice_candidate_pair_priority (pair->remote->priority,
         pair->local->priority);
   pair->nominated = FALSE;
-  pair->prflx_priority = ensure_unique_priority (component,
+  pair->prflx_priority = ensure_unique_priority (stream, component,
       peer_reflexive_candidate_priority (agent, local_cand));
   nice_debug ("Agent %p : added a new peer-discovered pair with "
       "foundation '%s'.",  agent, pair->foundation);
@@ -3349,18 +3349,18 @@ static gboolean priv_map_reply_to_discovery_request (NiceAgent *agent, StunMessa
 
             nice_address_set_from_sockaddr (&niceaddr, &sockaddr.addr);
             discovery_add_server_reflexive_candidate (
-                d->agent,
-                d->stream->id,
-                d->component->id,
+                agent,
+                d->stream_id,
+                d->component_id,
                 &niceaddr,
                 NICE_CANDIDATE_TRANSPORT_UDP,
                 d->nicesock,
                 FALSE);
-            if (d->agent->use_ice_tcp)
+            if (agent->use_ice_tcp)
               discovery_discover_tcp_server_reflexive_candidates (
-                  d->agent,
-                  d->stream->id,
-                  d->component->id,
+                  agent,
+                  d->stream_id,
+                  d->component_id,
                   &niceaddr,
                   d->nicesock);
           }
@@ -3384,11 +3384,10 @@ static gboolean priv_map_reply_to_discovery_request (NiceAgent *agent, StunMessa
 
 
 static CandidateRefresh *
-priv_add_new_turn_refresh (CandidateDiscovery *cdisco, NiceCandidate *relay_cand,
-    guint lifetime)
+priv_add_new_turn_refresh (NiceAgent *agent, CandidateDiscovery *cdisco,
+    NiceCandidate *relay_cand, guint lifetime)
 {
   CandidateRefresh *cand;
-  NiceAgent *agent = cdisco->agent;
 
   cand = g_slice_new0 (CandidateRefresh);
   agent->refresh_list = g_slist_append (agent->refresh_list, cand);
@@ -3396,9 +3395,8 @@ priv_add_new_turn_refresh (CandidateDiscovery *cdisco, NiceCandidate *relay_cand
   cand->candidate = relay_cand;
   cand->nicesock = cdisco->nicesock;
   cand->server = cdisco->server;
-  cand->stream = cdisco->stream;
-  cand->component = cdisco->component;
-  cand->agent = cdisco->agent;
+  cand->stream_id = cdisco->stream_id;
+  cand->component_id = cdisco->component_id;
   memcpy (&cand->stun_agent, &cdisco->stun_agent, sizeof(StunAgent));
 
   /* Use previous stun response for authentication credentials */
@@ -3412,7 +3410,7 @@ priv_add_new_turn_refresh (CandidateDiscovery *cdisco, NiceCandidate *relay_cand
   }
 
   nice_debug ("Agent %p : Adding new refresh candidate %p with timeout %d",
-      agent, cand, (lifetime - 60) * 1000);
+      agent, cand, lifetime - 60);
 
   /* step: also start the refresh timer */
   /* refresh should be sent 1 minute before it expires */
@@ -3441,7 +3439,7 @@ static void priv_handle_turn_alternate_server (NiceAgent *agent,
 
     if (!d->done &&
         d->type == disco->type &&
-        d->stream == disco->stream &&
+        d->stream_id == disco->stream_id &&
         d->turn->type == disco->turn->type &&
         nice_address_equal (&d->server, &server)) {
       gchar ip[INET6_ADDRSTRLEN];
@@ -3539,15 +3537,15 @@ static gboolean priv_map_reply_to_relay_request (NiceAgent *agent, StunMessage *
             if (d->turn->type == NICE_RELAY_TYPE_TURN_UDP &&
                 !agent->force_relay) {
               discovery_add_server_reflexive_candidate (
-                  d->agent,
-                  d->stream->id,
-                  d->component->id,
+                  agent,
+                  d->stream_id,
+                  d->component_id,
                   &mappedniceaddr,
                   NICE_CANDIDATE_TRANSPORT_UDP,
                   d->nicesock,
                   FALSE);
             }
-            if (d->agent->use_ice_tcp) {
+            if (agent->use_ice_tcp) {
               if ((agent->compatibility == NICE_COMPATIBILITY_OC2007 ||
                    agent->compatibility == NICE_COMPATIBILITY_OC2007R2) &&
                   !nice_address_equal_no_port (&niceaddr, &d->turn->server)) {
@@ -3555,9 +3553,9 @@ static gboolean priv_map_reply_to_relay_request (NiceAgent *agent, StunMessage *
                              "ignoring bogus srflx address");
               } else {
                 discovery_discover_tcp_server_reflexive_candidates (
-                    d->agent,
-                    d->stream->id,
-                    d->component->id,
+                    agent,
+                    d->stream_id,
+                    d->component_id,
                     &mappedniceaddr,
                     d->nicesock);
               }
@@ -3566,9 +3564,9 @@ static gboolean priv_map_reply_to_relay_request (NiceAgent *agent, StunMessage *
 
           if (nice_socket_is_reliable (d->nicesock)) {
             relay_cand = discovery_add_relay_candidate (
-                d->agent,
-                d->stream->id,
-                d->component->id,
+                agent,
+                d->stream_id,
+                d->component_id,
                 &niceaddr,
                 NICE_CANDIDATE_TRANSPORT_TCP_ACTIVE,
                 d->nicesock,
@@ -3582,23 +3580,23 @@ static gboolean priv_map_reply_to_relay_request (NiceAgent *agent, StunMessage *
                 nice_udp_turn_socket_set_ms_connection_id(relay_cand->sockptr,
                     resp);
               } else {
-                priv_add_new_turn_refresh (d, relay_cand, lifetime);
+                priv_add_new_turn_refresh (agent, d, relay_cand, lifetime);
               }
             }
 
             relay_cand = discovery_add_relay_candidate (
-                d->agent,
-                d->stream->id,
-                d->component->id,
+                agent,
+                d->stream_id,
+                d->component_id,
                 &niceaddr,
                 NICE_CANDIDATE_TRANSPORT_TCP_PASSIVE,
                 d->nicesock,
                 d->turn);
           } else {
             relay_cand = discovery_add_relay_candidate (
-                d->agent,
-                d->stream->id,
-                d->component->id,
+                agent,
+                d->stream_id,
+                d->component_id,
                 &niceaddr,
                 NICE_CANDIDATE_TRANSPORT_UDP,
                 d->nicesock,
@@ -3622,7 +3620,7 @@ static gboolean priv_map_reply_to_relay_request (NiceAgent *agent, StunMessage *
               nice_udp_turn_socket_set_ms_connection_id(relay_cand->sockptr,
                   resp);
             } else {
-              priv_add_new_turn_refresh (d, relay_cand, lifetime);
+              priv_add_new_turn_refresh (agent, d, relay_cand, lifetime);
             }
 
             /* In case a new candidate has been added */
@@ -3723,12 +3721,12 @@ static gboolean priv_map_reply_to_relay_refresh (NiceAgent *agent, StunMessage *
 
       if (memcmp (refresh_id, response_id, sizeof(StunTransactionId)) == 0) {
         res = stun_usage_turn_refresh_process (resp,
-            &lifetime, agent_to_turn_compatibility (cand->agent));
+            &lifetime, agent_to_turn_compatibility (agent));
         nice_debug ("Agent %p : stun_turn_refresh_process for %p res %d.",
             agent, cand, (int)res);
         if (res == STUN_USAGE_TURN_RETURN_RELAY_SUCCESS) {
           /* refresh should be sent 1 minute before it expires */
-          agent_timeout_add_seconds_with_context (cand->agent,
+          agent_timeout_add_seconds_with_context (agent,
               &cand->timer_source,
               "Candidate TURN refresh", lifetime - 60,
               priv_turn_allocate_refresh_tick_agent_locked, cand);
@@ -3749,7 +3747,7 @@ static gboolean priv_map_reply_to_relay_refresh (NiceAgent *agent, StunMessage *
               STUN_ATTRIBUTE_REALM, &recv_realm_len);
 
           /* check for unauthorized error response */
-          if (cand->agent->compatibility == NICE_COMPATIBILITY_RFC5245 &&
+          if (agent->compatibility == NICE_COMPATIBILITY_RFC5245 &&
               stun_message_get_class (resp) == STUN_ERROR &&
               stun_message_find_error (resp, &code) ==
               STUN_MESSAGE_RETURN_SUCCESS &&
@@ -3768,11 +3766,11 @@ static gboolean priv_map_reply_to_relay_refresh (NiceAgent *agent, StunMessage *
               priv_turn_allocate_refresh_tick_unlocked (agent, cand);
             } else {
               /* case: a real unauthorized error */
-              refresh_cancel (cand);
+              refresh_cancel (agent, cand);
             }
           } else {
             /* case: STUN error, the check STUN context was freed */
-              refresh_cancel (cand);
+            refresh_cancel (agent, cand);
           }
           trans_found = TRUE;
         }
@@ -3958,7 +3956,7 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, NiceStream *stream,
       valid == STUN_VALIDATION_UNMATCHED_RESPONSE) {
     for (i = agent->discovery_list; i; i = i->next) {
       CandidateDiscovery *d = i->data;
-      if (d->stream == stream && d->component == component &&
+      if (d->stream_id == stream->id && d->component_id == component->id &&
           d->nicesock == nicesock) {
         valid = stun_agent_validate (&d->stun_agent, &req,
             (uint8_t *) buf, len, conncheck_stun_validater, &validater_data);
@@ -3977,11 +3975,11 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, NiceStream *stream,
     for (i = agent->refresh_list; i; i = i->next) {
       CandidateRefresh *r = i->data;
 
-      nice_debug_verbose ("Comparing %p to %p, %p to %p and %p and %p to %p",
-          r->stream, stream, r->component, component, r->nicesock,
+      nice_debug_verbose ("Comparing r.sid=%u to sid=%u, r.cid=%u to cid=%u and %p and %p to %p",
+          r->stream_id, stream->id, r->component_id, component->id, r->nicesock,
           r->candidate->sockptr, nicesock);
 
-      if (r->stream == stream && r->component == component &&
+      if (r->stream_id == stream->id && r->component_id == component->id &&
           (r->nicesock == nicesock || r->candidate->sockptr == nicesock)) {
         valid = stun_agent_validate (&r->stun_agent, &req,
             (uint8_t *) buf, len, conncheck_stun_validater, &validater_data);

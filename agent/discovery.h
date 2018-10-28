@@ -46,15 +46,14 @@
 
 typedef struct
 {
-  NiceAgent *agent;         /* back pointer to owner */
   NiceCandidateType type;   /* candidate type STUN or TURN */
   NiceSocket *nicesock;  /* XXX: should be taken from local cand: existing socket to use */
   NiceAddress server;       /* STUN/TURN server address */
   GTimeVal next_tick;       /* next tick timestamp */
   gboolean pending;         /* is discovery in progress? */
   gboolean done;            /* is discovery complete? */
-  NiceStream *stream;
-  NiceComponent *component;
+  guint stream_id;
+  guint component_id;
   TurnServer *turn;
   StunAgent stun_agent;
   StunTimer timer;
@@ -66,12 +65,11 @@ typedef struct
 
 typedef struct
 {
-  NiceAgent *agent;         /* back pointer to owner */
   NiceSocket *nicesock;     /* existing socket to use */
   NiceAddress server;       /* STUN/TURN server address */
   NiceCandidate *candidate; /* candidate to refresh */
-  NiceStream *stream;
-  NiceComponent *component;
+  guint stream_id;
+  guint component_id;
   StunAgent stun_agent;
   GSource *timer_source;
   GSource *tick_source;
@@ -86,7 +84,7 @@ void refresh_free (NiceAgent *agent);
 void refresh_prune_stream (NiceAgent *agent, guint stream_id);
 void refresh_prune_candidate (NiceAgent *agent, NiceCandidate *candidate);
 void refresh_prune_socket (NiceAgent *agent, NiceSocket *sock);
-void refresh_cancel (CandidateRefresh *refresh);
+void refresh_cancel (NiceAgent *agent, CandidateRefresh *refresh);
 
 
 void discovery_free (NiceAgent *agent);
