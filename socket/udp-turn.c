@@ -439,6 +439,23 @@ priv_timeout_add_with_context (UdpTurnPriv *priv, guint interval,
   return source;
 }
 
+/* interval is given in seconds */
+static GSource *
+priv_timeout_add_seconds_with_context (UdpTurnPriv *priv, guint interval,
+    GSourceFunc function, gpointer data)
+{
+  GSource *source = NULL;
+
+  g_return_val_if_fail (function != NULL, NULL);
+
+  source = g_timeout_source_new_seconds (interval);
+
+  g_source_set_callback (source, function, data, NULL);
+  g_source_attach (source, priv->ctx);
+
+  return source;
+}
+
 static StunMessageReturn
 stun_message_append_ms_connection_id(StunMessage *msg,
     uint8_t *ms_connection_id, uint32_t ms_sequence_num)
@@ -1065,8 +1082,8 @@ priv_binding_timeout (gpointer data)
       }
 
       /* Install timer to expire the permission */
-      b->timeout_source = priv_timeout_add_with_context (priv,
-          STUN_EXPIRE_TIMEOUT * 1000, priv_binding_expired_timeout, priv);
+      b->timeout_source = priv_timeout_add_seconds_with_context (priv,
+          STUN_EXPIRE_TIMEOUT, priv_binding_expired_timeout, priv);
 
       /* Send renewal */
       if (!priv->current_binding_msg)
@@ -1337,8 +1354,8 @@ nice_udp_turn_socket_parse_recv (NiceSocket *sock, NiceSocket **from_sock,
                 }
                 /* Install timer to schedule refresh of the permission */
                 binding->timeout_source =
-                    priv_timeout_add_with_context (priv,
-                    STUN_BINDING_TIMEOUT * 1000, priv_binding_timeout, priv);
+                    priv_timeout_add_seconds_with_context (priv,
+                    STUN_BINDING_TIMEOUT, priv_binding_timeout, priv);
               }
               priv_process_pending_bindings (priv);
             }
@@ -1428,8 +1445,8 @@ nice_udp_turn_socket_parse_recv (NiceSocket *sock, NiceSocket **from_sock,
             if (stun_message_get_class (&msg) == STUN_RESPONSE &&
                 !priv->permission_timeout_source) {
               priv->permission_timeout_source =
-                  priv_timeout_add_with_context (priv,
-                      STUN_PERMISSION_TIMEOUT * 1000, priv_permission_timeout,
+                  priv_timeout_add_seconds_with_context (priv,
+                      STUN_PERMISSION_TIMEOUT, priv_permission_timeout,
                       priv);
             }
 
