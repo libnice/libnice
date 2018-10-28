@@ -183,27 +183,27 @@ nice_component_remove_socket (NiceAgent *agent, NiceComponent *cmp,
 
     if (candidate == cmp->selected_pair.local) {
       nice_component_clear_selected_pair (cmp);
-      agent_signal_component_state_change (cmp->agent, cmp->stream_id,
+      agent_signal_component_state_change (agent, cmp->stream_id,
           cmp->id, NICE_COMPONENT_STATE_FAILED);
     }
 
-    refresh_prune_candidate (cmp->agent, candidate);
+    refresh_prune_candidate (agent, candidate);
     if (candidate->sockptr != nsocket && stream) {
-      discovery_prune_socket (cmp->agent, candidate->sockptr);
-      conn_check_prune_socket (cmp->agent, stream, cmp,
+      discovery_prune_socket (agent, candidate->sockptr);
+      conn_check_prune_socket (agent, stream, cmp,
           candidate->sockptr);
       nice_component_detach_socket (cmp, candidate->sockptr);
     }
-    agent_remove_local_candidate (cmp->agent, candidate);
+    agent_remove_local_candidate (agent, candidate);
     nice_candidate_free (candidate);
 
     cmp->local_candidates = g_slist_delete_link (cmp->local_candidates, i);
     i = next;
   }
 
-  discovery_prune_socket (cmp->agent, nsocket);
+  discovery_prune_socket (agent, nsocket);
   if (stream)
-    conn_check_prune_socket (cmp->agent, stream, cmp, nsocket);
+    conn_check_prune_socket (agent, stream, cmp, nsocket);
   nice_component_detach_socket (cmp, nsocket);
 }
 
@@ -238,10 +238,10 @@ nice_component_clean_turn_servers (NiceAgent *agent, NiceComponent *cmp)
      */
     if (candidate == cmp->selected_pair.local) {
       if (cmp->turn_candidate) {
-        refresh_prune_candidate (cmp->agent, cmp->turn_candidate);
-        discovery_prune_socket (cmp->agent, cmp->turn_candidate->sockptr);
+        refresh_prune_candidate (agent, cmp->turn_candidate);
+        discovery_prune_socket (agent, cmp->turn_candidate->sockptr);
         if (stream)
-          conn_check_prune_socket (cmp->agent, stream, cmp,
+          conn_check_prune_socket (agent, stream, cmp,
               cmp->turn_candidate->sockptr);
         nice_component_detach_socket (cmp, cmp->turn_candidate->sockptr);
 	nice_candidate_free (cmp->turn_candidate);
@@ -252,13 +252,13 @@ nice_component_clean_turn_servers (NiceAgent *agent, NiceComponent *cmp)
       cmp->selected_pair.priority = 0;
       cmp->turn_candidate = candidate;
     } else {
-      refresh_prune_candidate (cmp->agent, candidate);
-      discovery_prune_socket (cmp->agent, candidate->sockptr);
+      refresh_prune_candidate (agent, candidate);
+      discovery_prune_socket (agent, candidate->sockptr);
       if (stream)
-        conn_check_prune_socket (cmp->agent, stream, cmp,
+        conn_check_prune_socket (agent, stream, cmp,
             candidate->sockptr);
       nice_component_detach_socket (cmp, candidate->sockptr);
-      agent_remove_local_candidate (cmp->agent, candidate);
+      agent_remove_local_candidate (agent, candidate);
       nice_candidate_free (candidate);
     }
     cmp->local_candidates = g_slist_delete_link (cmp->local_candidates, i);
@@ -281,7 +281,7 @@ nice_component_clear_selected_pair (NiceComponent *component)
 /* Must be called with the agent lock held as it touches internal Component
  * state. */
 void
-nice_component_close (NiceComponent *cmp)
+nice_component_close (NiceAgent *agent, NiceComponent *cmp)
 {
   IOCallbackData *data;
   GOutputVector *vec;
@@ -309,7 +309,7 @@ nice_component_close (NiceComponent *cmp)
         cmp->turn_candidate = NULL;
 
   while (cmp->local_candidates) {
-    agent_remove_local_candidate (cmp->agent, cmp->local_candidates->data);
+    agent_remove_local_candidate (agent, cmp->local_candidates->data);
     nice_candidate_free (cmp->local_candidates->data);
     cmp->local_candidates = g_slist_delete_link (cmp->local_candidates,
         cmp->local_candidates);
@@ -323,7 +323,7 @@ nice_component_close (NiceComponent *cmp)
       (GDestroyNotify) incoming_check_free);
   cmp->incoming_checks = NULL;
 
-  nice_component_clean_turn_servers (cmp->agent, cmp);
+  nice_component_clean_turn_servers (agent, cmp);
 
   if (cmp->tcp_clock) {
     g_source_destroy (cmp->tcp_clock);
@@ -426,14 +426,14 @@ nice_component_restart (NiceComponent *cmp)
  * emit the "selected-pair-changed" signal.
  */ 
 void
-nice_component_update_selected_pair (NiceComponent *component, const CandidatePair *pair)
+nice_component_update_selected_pair (NiceAgent *agent, NiceComponent *component, const CandidatePair *pair)
 {
   NiceStream *stream;
 
   g_assert (component);
   g_assert (pair);
 
-  stream = agent_find_stream (component->agent, component->stream_id);
+  stream = agent_find_stream (agent, component->stream_id);
 
   nice_debug ("setting SELECTED PAIR for component %u: %s:%s (prio:%"
       G_GUINT64_FORMAT ").", component->id, pair->local->foundation,
@@ -441,11 +441,11 @@ nice_component_update_selected_pair (NiceComponent *component, const CandidatePa
 
   if (component->selected_pair.local &&
       component->selected_pair.local == component->turn_candidate) {
-    refresh_prune_candidate (component->agent, component->turn_candidate);
-    discovery_prune_socket (component->agent,
+    refresh_prune_candidate (agent, component->turn_candidate);
+    discovery_prune_socket (agent,
         component->turn_candidate->sockptr);
     if (stream)
-      conn_check_prune_socket (component->agent, stream, component,
+      conn_check_prune_socket (agent, stream, component,
           component->turn_candidate->sockptr);
     nice_component_detach_socket (component, component->turn_candidate->sockptr);
     nice_candidate_free (component->turn_candidate);
@@ -459,7 +459,7 @@ nice_component_update_selected_pair (NiceComponent *component, const CandidatePa
   component->selected_pair.priority = pair->priority;
   component->selected_pair.prflx_priority = pair->prflx_priority;
 
-  nice_component_add_valid_candidate (component, pair->remote);
+  nice_component_add_valid_candidate (agent, component, pair->remote);
 }
 
 /*
@@ -590,8 +590,8 @@ nice_component_attach_socket (NiceComponent *component, NiceSocket *nicesock)
   }
 
   /* Create and attach a source */
-  nice_debug ("Component %p (agent %p): Attach source (stream %u).",
-      component, component->agent, component->stream_id);
+  nice_debug ("Component %p: Attach source (stream %u).",
+      component, component->stream_id);
   socket_source_attach (socket_source, component->ctx);
 }
 
@@ -809,9 +809,11 @@ emit_io_callback_cb (gpointer user_data)
   guint stream_id, component_id;
   NiceAgent *agent;
 
-  agent = component->agent;
-
-  g_object_ref (agent);
+  agent = g_weak_ref_get (&component->agent_ref);
+  if (agent == NULL) {
+    nice_debug ("Agent for component %p is gone", component);
+    return FALSE;
+  }
 
   stream_id = component->stream_id;
   component_id = component->id;
@@ -872,10 +874,9 @@ emit_io_callback_cb (gpointer user_data)
 
 /* This must be called with the agent lock *held*. */
 void
-nice_component_emit_io_callback (NiceComponent *component,
+nice_component_emit_io_callback (NiceAgent *agent, NiceComponent *component,
     const guint8 *buf, gsize buf_len)
 {
-  NiceAgent *agent;
   guint stream_id, component_id;
   NiceAgentRecvFunc io_callback;
   gpointer io_user_data;
@@ -884,7 +885,6 @@ nice_component_emit_io_callback (NiceComponent *component,
   g_assert (buf != NULL);
   g_assert (buf_len > 0);
 
-  agent = component->agent;
   stream_id = component->stream_id;
   component_id = component->id;
 
@@ -1044,7 +1044,7 @@ nice_component_init (NiceComponent *component)
   component->state = NICE_COMPONENT_STATE_DISCONNECTED;
   component->restart_candidate = NULL;
   component->tcp = NULL;
-  component->agent = NULL;
+  g_weak_ref_init (&component->agent_ref, NULL);
 
   g_mutex_init (&component->io_mutex);
   g_queue_init (&component->pending_io_messages);
@@ -1071,11 +1071,15 @@ static void
 nice_component_constructed (GObject *obj)
 {
   NiceComponent *component;
+  NiceAgent *agent;
 
   component = NICE_COMPONENT (obj);
 
-  g_assert (component->agent != NULL);
-  nice_agent_init_stun_agent (component->agent, &component->stun_agent);
+  agent = g_weak_ref_get (&component->agent_ref);
+  g_assert (agent != NULL);
+  nice_agent_init_stun_agent (agent, &component->stun_agent);
+
+  g_object_unref (agent);
 
   G_OBJECT_CLASS (nice_component_parent_class)->constructed (obj);
 }
@@ -1095,14 +1099,25 @@ nice_component_get_property (GObject *obj,
       break;
 
     case PROP_AGENT:
-      g_value_set_object (value, component->agent);
-      break;
+      {
+        NiceAgent *agent;
 
+        agent = g_weak_ref_get (&component->agent_ref);
+        if (agent)
+          g_value_take_object (value, agent);
+        break;
+      }
     case PROP_STREAM:
       {
-        NiceStream *stream = agent_find_stream (component->agent,
-            component->stream_id);
-        g_value_set_object (value, stream);
+        NiceAgent *agent;
+        NiceStream *stream = NULL;
+
+        agent = g_weak_ref_get (&component->agent_ref);
+        if (agent) {
+          stream = agent_find_stream (agent, component->stream_id);
+          g_value_set_object (value, stream);
+          g_object_unref (agent);
+        }
         break;
       }
     default:
@@ -1125,7 +1140,7 @@ nice_component_set_property (GObject *obj,
       break;
 
     case PROP_AGENT:
-      component->agent = g_value_get_object (value);
+      g_weak_ref_set (&component->agent_ref, g_value_get_object (value));
       break;
 
     case PROP_STREAM:
@@ -1173,6 +1188,8 @@ nice_component_finalize (GObject *obj)
   }
 
   g_main_context_unref (cmp->own_ctx);
+
+  g_weak_ref_clear (&cmp->agent_ref);
 
   g_atomic_int_inc (&n_components_destroyed);
   nice_debug ("Destroyed NiceComponent (%u created, %u destroyed)",
@@ -1473,7 +1490,7 @@ turn_server_unref (TurnServer *turn)
 }
 
 void
-nice_component_add_valid_candidate (NiceComponent *component,
+nice_component_add_valid_candidate (NiceAgent *agent, NiceComponent *component,
     const NiceCandidate *candidate)
 {
   guint count = 0;
@@ -1494,7 +1511,7 @@ nice_component_add_valid_candidate (NiceComponent *component,
     char str[INET6_ADDRSTRLEN];
     nice_address_to_string (&candidate->addr, str);
     nice_debug ("Agent %p :  %d:%d Adding valid source"
-        " candidate: %s:%d trans: %d", component->agent,
+        " candidate: %s:%d trans: %d", agent,
         candidate->stream_id, candidate->component_id, str,
         nice_address_get_port (&candidate->addr), candidate->transport);
   }

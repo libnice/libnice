@@ -1625,12 +1625,18 @@ static void
 pseudo_tcp_socket_opened (PseudoTcpSocket *sock, gpointer user_data)
 {
   NiceComponent *component = user_data;
-  NiceAgent *agent = component->agent;
+  NiceAgent *agent;
+
+  agent = g_weak_ref_get (&component->agent_ref);
+  if (agent == NULL)
+    return;
 
   nice_debug ("Agent %p: s%d:%d pseudo Tcp socket Opened", agent,
       component->stream_id, component->id);
 
   agent_signal_socket_writable (agent, component);
+
+  g_object_unref (agent);
 }
 
 /* Will attempt to queue all @n_messages into the pseudo-TCP transmission
@@ -1784,17 +1790,18 @@ static void
 pseudo_tcp_socket_readable (PseudoTcpSocket *sock, gpointer user_data)
 {
   NiceComponent *component = user_data;
-  NiceAgent *agent = component->agent;
+  NiceAgent *agent;
   gboolean has_io_callback;
   NiceStream *stream = NULL;
   guint stream_id = component->stream_id;
   guint component_id = component->id;
 
-  g_object_ref (agent);
+  agent = g_weak_ref_get (&component->agent_ref);
+  if (agent == NULL)
+    return;
 
   if (!agent_find_component (agent, stream_id, component_id,
           &stream, &component)) {
-    g_object_unref (agent);
     goto out;
   }
 
@@ -1850,7 +1857,7 @@ pseudo_tcp_socket_readable (PseudoTcpSocket *sock, gpointer user_data)
         break;
       }
 
-      nice_component_emit_io_callback (component, buf, len);
+      nice_component_emit_io_callback (agent, component, buf, len);
 
       if (!agent_find_component (agent, stream_id, component_id,
               &stream, &component)) {
@@ -1915,12 +1922,18 @@ static void
 pseudo_tcp_socket_writable (PseudoTcpSocket *sock, gpointer user_data)
 {
   NiceComponent *component = user_data;
-  NiceAgent *agent = component->agent;
+  NiceAgent *agent;
+
+  agent = g_weak_ref_get (&component->agent_ref);
+  if (agent == NULL)
+    return;
 
   nice_debug_verbose ("Agent %p: s%d:%d pseudo Tcp socket writable", agent,
       component->stream_id, component->id);
 
   agent_signal_socket_writable (agent, component);
+
+  g_object_unref (agent);
 }
 
 static void
@@ -1928,12 +1941,18 @@ pseudo_tcp_socket_closed (PseudoTcpSocket *sock, guint32 err,
     gpointer user_data)
 {
   NiceComponent *component = user_data;
-  NiceAgent *agent = component->agent;
+  NiceAgent *agent;
+
+  agent = g_weak_ref_get (&component->agent_ref);
+  if (agent == NULL)
+    return;
 
   nice_debug ("Agent %p: s%d:%d pseudo Tcp socket closed. "
       "Calling priv_pseudo_tcp_error().",  agent, component->stream_id,
       component->id);
   priv_pseudo_tcp_error (agent, component);
+
+  g_object_unref (agent);
 }
 
 
@@ -1942,6 +1961,11 @@ pseudo_tcp_socket_write_packet (PseudoTcpSocket *psocket,
     const gchar *buffer, guint32 len, gpointer user_data)
 {
   NiceComponent *component = user_data;
+  NiceAgent *agent;
+
+  agent = g_weak_ref_get (&component->agent_ref);
+  if (agent == NULL)
+    return WR_FAIL;
 
   if (component->selected_pair.local != NULL) {
     NiceSocket *sock;
@@ -1956,7 +1980,7 @@ pseudo_tcp_socket_write_packet (PseudoTcpSocket *psocket,
 
       nice_debug_verbose (
           "Agent %p : s%d:%d: sending %d bytes on socket %p (FD %d) to [%s]:%d",
-          component->agent, component->stream_id, component->id, len,
+          agent, component->stream_id, component->id, len,
           sock->fileno, g_socket_get_fd (sock->fileno), tmpbuf,
           nice_address_get_port (addr));
     }
@@ -1968,12 +1992,15 @@ pseudo_tcp_socket_write_packet (PseudoTcpSocket *psocket,
      * its transmission rate and, hopefully, the usage of system resources
      * which caused the EWOULDBLOCK in the first place. */
     if (nice_socket_send (sock, addr, len, buffer) >= 0) {
+      g_object_unref (agent);
       return WR_SUCCESS;
     }
   } else {
     nice_debug ("%s: WARNING: Failed to send pseudo-TCP packet from agent %p "
-        "as no pair has been selected yet.", G_STRFUNC, component->agent);
+        "as no pair has been selected yet.", G_STRFUNC, agent);
   }
+
+  g_object_unref (agent);
 
   return WR_FAIL;
 }
@@ -2032,7 +2059,11 @@ void
 _tcp_sock_is_writable (NiceSocket *sock, gpointer user_data)
 {
   NiceComponent *component = user_data;
-  NiceAgent *agent = component->agent;
+  NiceAgent *agent;
+
+  agent = g_weak_ref_get (&component->agent_ref);
+  if (agent == NULL)
+    return;
 
   agent_lock (agent);
 
@@ -2049,6 +2080,8 @@ _tcp_sock_is_writable (NiceSocket *sock, gpointer user_data)
   agent_signal_socket_writable (agent, component);
 
   agent_unlock_and_emit (agent);
+
+  g_object_unref (agent);
 }
 
 static const gchar *
@@ -3216,7 +3249,7 @@ nice_agent_remove_stream (
 
   /* Remove the stream and signal its removal. */
   agent->streams = g_slist_remove (agent->streams, stream);
-  nice_stream_close (stream);
+  nice_stream_close (agent, stream);
 
   if (!agent->streams)
     priv_remove_keepalive_timer (agent);
@@ -5073,7 +5106,7 @@ nice_agent_dispose (GObject *object)
     {
       NiceStream *s = i->data;
 
-      nice_stream_close (s);
+      nice_stream_close (agent, s);
       g_object_unref (s);
     }
 
@@ -5133,7 +5166,10 @@ component_io_cb (GSocket *gsocket, GIOCondition condition, gpointer user_data)
   gboolean remove_source = FALSE;
 
   component = socket_source->component;
-  agent = component->agent;
+
+  agent = g_weak_ref_get (&component->agent_ref);
+  if (agent == NULL)
+    return G_SOURCE_REMOVE;
 
   agent_lock (agent);
 
@@ -5143,6 +5179,7 @@ component_io_cb (GSocket *gsocket, GIOCondition condition, gpointer user_data)
     nice_debug ("%s: stream %d destroyed", G_STRFUNC, component->stream_id);
 
     agent_unlock (agent);
+    g_object_unref (agent);
     return G_SOURCE_REMOVE;
   }
 
@@ -5151,10 +5188,9 @@ component_io_cb (GSocket *gsocket, GIOCondition condition, gpointer user_data)
     nice_debug ("%s: source %p destroyed", G_STRFUNC, g_main_current_source ());
 
     agent_unlock (agent);
+    g_object_unref (agent);
     return G_SOURCE_REMOVE;
   }
-
-  g_object_ref (agent);
 
   /* Remove disconnected sockets when we get a HUP */
   if (condition & G_IO_HUP) {
@@ -5279,7 +5315,8 @@ component_io_cb (GSocket *gsocket, GIOCondition condition, gpointer user_data)
             " bytes", G_STRFUNC, agent, local_message.length);
 
         if (local_message.length > 0) {
-          nice_component_emit_io_callback (component, local_buf, local_message.length);
+          nice_component_emit_io_callback (agent, component, local_buf,
+              local_message.length);
         }
       }
 
@@ -5466,7 +5503,7 @@ nice_agent_set_selected_pair (
       NICE_COMPONENT_STATE_READY);
 
   /* step: set the selected pair */
-  nice_component_update_selected_pair (component, &pair);
+  nice_component_update_selected_pair (agent, component, &pair);
   agent_signal_new_selected_pair (agent, stream_id, component_id,
       pair.local, pair.remote);
 

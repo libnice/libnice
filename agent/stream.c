@@ -81,13 +81,13 @@ nice_stream_new (guint stream_id, guint n_components, NiceAgent *agent)
 }
 
 void
-nice_stream_close (NiceStream *stream)
+nice_stream_close (NiceAgent *agent, NiceStream *stream)
 {
   GSList *i;
 
   for (i = stream->components; i; i = i->next) {
     NiceComponent *component = i->data;
-    nice_component_close (component);
+    nice_component_close (agent, component);
   }
 }
 

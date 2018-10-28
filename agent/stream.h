@@ -101,7 +101,7 @@ NiceStream *
 nice_stream_new (guint stream_id, guint n_components, NiceAgent *agent);
 
 void
-nice_stream_close (NiceStream *stream);
+nice_stream_close (NiceAgent *agent, NiceStream *stream);
 
 NiceComponent *
 nice_stream_find_component_by_id (NiceStream *stream, guint id);
