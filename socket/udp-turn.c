@@ -148,6 +148,17 @@ static gboolean priv_add_channel_binding (UdpTurnPriv *priv,
 static gboolean priv_forget_send_request_agent_locked (gpointer pointer);
 static void priv_clear_permissions (UdpTurnPriv *priv);
 
+static void
+send_request_free (SendRequest *r)
+{
+    g_source_destroy (r->source);
+    g_source_unref (r->source);
+
+    stun_agent_forget_transaction (&r->priv->agent, r->id);
+
+    g_slice_free (SendRequest, r);
+}
+
 static guint
 priv_nice_address_hash (gconstpointer data)
 {
@@ -291,18 +302,7 @@ socket_close (NiceSocket *sock)
   }
 
 
-  for (i = g_queue_peek_head_link (priv->send_requests); i; i = i->next) {
-    SendRequest *r = i->data;
-    g_source_destroy (r->source);
-    g_source_unref (r->source);
-    r->source = NULL;
-
-    stun_agent_forget_transaction (&priv->agent, r->id);
-
-    g_slice_free (SendRequest, r);
-
-  }
-  g_queue_free (priv->send_requests);
+  g_queue_free_full (priv->send_requests, (GDestroyNotify) send_request_free);
 
   priv_clear_permissions (priv);
   g_list_free_full (priv->sent_permissions, (GDestroyNotify) nice_address_free);
@@ -983,17 +983,10 @@ priv_forget_send_request_agent_locked (gpointer pointer)
 {
   SendRequest *req = pointer;
 
-  stun_agent_forget_transaction (&req->priv->agent, req->id);
-
+  send_request_free (req);
   g_queue_remove (req->priv->send_requests, req);
 
-  g_source_destroy (req->source);
-  g_source_unref (req->source);
-  req->source = NULL;
-
-  g_slice_free (SendRequest, req);
-
-  return FALSE;
+  return G_SOURCE_REMOVE;
 }
 
 static gboolean
@@ -1216,13 +1209,8 @@ nice_udp_turn_socket_parse_recv (NiceSocket *sock, NiceSocket **from_sock,
           }
 
           if (req) {
-            g_source_destroy (req->source);
-            g_source_unref (req->source);
-            req->source = NULL;
-
             g_queue_remove (priv->send_requests, req);
-
-            g_slice_free (SendRequest, req);
+            send_request_free (req);
           }
 
           if (priv->compatibility == NICE_TURN_SOCKET_COMPATIBILITY_GOOGLE) {
