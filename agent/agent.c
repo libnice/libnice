@@ -3757,7 +3757,7 @@ agent_recv_message_unlocked (
         local_bufs[i + 1].size = message->buffers[i].size;
       }
       sockret = nice_socket_recv_messages (nicesock, &local_message, 1);
-      if (sockret == 1) {
+      if (sockret == 1 && local_message.length >= sizeof (guint16)) {
         message->length = ntohs (rfc4571_frame);
       }
     } else {
@@ -3818,7 +3818,7 @@ agent_recv_message_unlocked (
             NiceInputMessage local_message = { &local_buf, 1, message->from, 0};
 
             sockret = nice_socket_recv_messages (nicesock, &local_message, 1);
-            if (sockret == 1) {
+            if (sockret == 1 && local_message.length >= sizeof (guint16)) {
               agent->rfc4571_expecting_length = ntohs (rfc4571_frame);
               available = g_socket_get_available_bytes (nicesock->fileno);
             }
