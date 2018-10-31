@@ -1227,7 +1227,7 @@ nice_udp_turn_socket_parse_recv (NiceSocket *sock, NiceSocket **from_sock,
     const guint16 *u16;
   } recv_buf;
 
-  g_mutex_unlock (&mutex);
+  g_mutex_lock (&mutex);
 
   /* In the case of a reliable UDP-TURN-OVER-TCP (which means MS-TURN)
    * we must use RFC4571 framing */
