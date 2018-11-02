@@ -14,6 +14,7 @@ nice_tests = [
   'test-io-stream-pollable',
   'test-send-recv',
   'test-socket-is-based-on',
+  'test-udp-turn-fragmentation',
   'test-priority',
   'test-fullmode',
   'test-different-number-streams',
