@@ -165,9 +165,37 @@ foreach w : warnings
 endforeach
 
 # Dependencies
-gnutls_dep = dependency('gnutls', version: gnutls_req)
 glib_dep = dependency('gio-2.0', version: glib_req)
 gthread_dep = dependency('gthread-2.0')
+
+# Cryto library
+opt_cryptolib = get_option('crypto-library')
+message('Crypto library: ' + opt_cryptolib)
+if opt_cryptolib != 'openssl'
+  crypto_dep = dependency('gnutls', version: gnutls_req, required: false)
+  cdata.set('HAVE_GNUTLS', crypto_dep.found())
+  if not crypto_dep.found()
+    if opt_cryptolib != 'auto'
+      error('GnuTLS requested as crypto library, but not found')
+    endif
+    crypto_dep = dependency('openssl', required: false)
+    cdata.set('HAVE_OPENSSL', crypto_dep.found())
+  endif
+else
+  crypto_dep = dependency('openssl', required: false)
+  cdata.set('HAVE_OPENSSL', crypto_dep.found())
+  if not crypto_dep.found()
+    if opt_cryptolib != 'auto'
+      error('OpenSSL requested as crypto library, but not found')
+    endif
+    crypto_dep = dependency('gnutls', version: gnutls_req, required: false)
+    cdata.set('HAVE_GNUTLS', crypto_dep.found())
+  endif
+endif
+
+if not crypto_dep.found()
+  error('Either GnuTLS or OpenSSL is required as crypto library, but neither was found')
+endif
 
 # GStreamer
 gst_dep = dependency('gstreamer-base-1.0', version: gst_req,
@@ -184,7 +212,7 @@ libm = cc.find_library('m', required: false)
 
 nice_incs = include_directories('.', 'agent', 'random', 'socket', 'stun')
 
-nice_deps = [glib_dep, gthread_dep, gnutls_dep, gupnp_igd_dep] + syslibs
+nice_deps = [glib_dep, gthread_dep, crypto_dep, gupnp_igd_dep] + syslibs
 
 ignored_iface_prefix = get_option('ignored-network-interface-prefix')
 if ignored_iface_prefix != ''
