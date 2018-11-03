@@ -163,8 +163,10 @@ foreach w : warnings
 endforeach
 
 # Dependencies
-glib_dep = dependency('gio-2.0', version: glib_req)
-gthread_dep = dependency('gthread-2.0')
+glib_dep = dependency('gio-2.0', version: glib_req,
+  fallback: ['glib', 'libgio_dep'])
+gthread_dep = dependency('gthread-2.0',
+  fallback: ['glib', 'libgthread_dep'])
 
 # Cryto library
 opt_cryptolib = get_option('crypto-library')
