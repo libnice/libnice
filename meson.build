@@ -229,8 +229,14 @@ if gst_dep.found()
   subdir('gst')
 endif
 
-if not get_option('gtk_doc').disabled()
-  subdir('docs/reference/libnice')
+if build_machine.system() == 'windows'
+  message('Disabling gtk-doc while building on Windows')
+else
+  if find_program('gtkdoc-scan', required: get_option('gtk_doc')).found()
+    subdir('docs/reference/libnice')
+  else
+    message('Not building documentation as gtk-doc was not found')
+  endif
 endif
 
 if not get_option('tests').disabled()
