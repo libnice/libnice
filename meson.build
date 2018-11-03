@@ -60,8 +60,6 @@ if not cc.has_function('clock_gettime')
   librt = cc.find_library('rt', required: false)
   if cc.has_function('clock_gettime', dependencies: librt)
     syslibs += [librt]
-  else
-    error('Could not find right library for clock_gettime()')
   endif
 endif
 
