@@ -3913,6 +3913,62 @@ static bool conncheck_stun_validater (StunAgent *agent,
   return FALSE;
 }
 
+/*
+ * handle RENOMINATION stun attribute
+ * @return TRUE if nomination changed. FALSE otherwise
+ */
+static gboolean conn_check_handle_renomination (NiceAgent *agent, NiceStream *stream,
+    NiceComponent *component, StunMessage *req,
+    NiceCandidate *remote_candidate, NiceCandidate *local_candidate)
+{
+  GSList *lst;
+  if (!agent->controlling_mode && NICE_AGENT_IS_COMPATIBLE_WITH_RFC5245_OR_OC2007R2 (agent) &&
+      agent->support_renomination && remote_candidate && local_candidate)
+  {
+    uint32_t nom_value = 0;
+    uint16_t nom_len = 0;
+    const void *value = stun_message_find (req, STUN_ATTRIBUTE_NOMINATION, &nom_len);
+    if (nom_len == 0) {
+      return FALSE;
+    }
+    if (nom_len == 4) {
+      memcpy (&nom_value, value, 4);
+      nom_value = ntohl (nom_value);
+    } else {
+      nice_debug ("Agent %p : received NOMINATION attr with incorrect octet length %u, expected 4 bytes",
+          agent, nom_len);
+      return FALSE;
+    }
+
+    if (nice_debug_is_enabled ()) {
+      gchar remote_str[INET6_ADDRSTRLEN];
+      nice_address_to_string(&remote_candidate->addr, remote_str);
+      nice_debug ("Agent %p : received NOMINATION attr for remote candidate [%s]:%u, value is %u",
+          agent, remote_str, nice_address_get_port (&remote_candidate->addr), nom_value);
+    }
+
+    /*
+     * If another pair is SELECTED, change this pair's priority to be greater than
+     * selected pair's priority so this pair gets SELECTED!
+     */
+    if (component->selected_pair.priority &&
+        component->selected_pair.remote && component->selected_pair.remote != remote_candidate &&
+        component->selected_pair.local && component->selected_pair.local != local_candidate) {
+      for (lst = stream->conncheck_list; lst; lst = lst->next) {
+        CandidateCheckPair *pair = lst->data;
+        if (pair->local == local_candidate && pair->remote == remote_candidate) {
+          if (pair->valid) {
+            pair->priority = component->selected_pair.priority + 1;
+          }
+          break;
+        }
+      }
+    }
+    priv_mark_pair_nominated (agent, stream, component, local_candidate, remote_candidate);
+    return TRUE;
+  }
+  return FALSE;
+}
 
 /*
  * Processing an incoming STUN message.
@@ -4277,6 +4333,9 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, NiceStream *stream,
         nice_debug ("Agent %p : Unable to match to an existing transaction, "
             "probably a keepalive.", agent);
   }
+
+  /* RENOMINATION attribute support */
+  conn_check_handle_renomination(agent, stream, component, &req, local_candidate, remote_candidate);
 
   return TRUE;
 }

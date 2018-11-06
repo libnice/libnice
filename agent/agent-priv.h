@@ -156,6 +156,7 @@ struct _NiceAgent
   guint stun_initial_timeout;     /* property: stun initial timeout, RTO */
   guint stun_reliable_timeout;    /* property: stun reliable timeout */
   NiceNominationMode nomination_mode; /* property: Nomination mode */
+  gboolean support_renomination;  /* property: support RENOMINATION STUN attribute */
 
   GSList *local_addresses;        /* list of NiceAddresses for local
 				     interfaces */

@@ -119,6 +119,7 @@ enum
   PROP_STUN_RELIABLE_TIMEOUT,
   PROP_NOMINATION_MODE,
   PROP_ICE_TRICKLE,
+  PROP_SUPPORT_RENOMINATION,
 };
 
 
@@ -464,6 +465,24 @@ nice_agent_class_init (NiceAgentClass *klass)
          "the selection of valid pairs to be used upstream",
          NICE_TYPE_NOMINATION_MODE, NICE_NOMINATION_MODE_AGGRESSIVE,
          G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY));
+
+  /**
+   * NiceAgent:support-renomination:
+   *
+   * Support RENOMINATION STUN attribute proposed here:
+   * https://tools.ietf.org/html/draft-thatcher-ice-renomination-00 As
+   * soon as RENOMINATION attribute is received from remote
+   * candidate's address, corresponding candidates pair gets
+   * selected. This is specific to Google Chrome/libWebRTC.
+   */
+  g_object_class_install_property (gobject_class, PROP_SUPPORT_RENOMINATION,
+      g_param_spec_boolean (
+         "support-renomination",
+         "Support RENOMINATION STUN attribute",
+         "As soon as RENOMINATION attribute is received from remote candidate's address, "
+         "corresponding candidates pair gets selected.",
+         FALSE,
+         G_PARAM_READWRITE));
 
   /**
    * NiceAgent:proxy-ip:
@@ -1183,6 +1202,7 @@ nice_agent_init (NiceAgent *agent)
   agent->saved_controlling_mode = TRUE;
   agent->max_conn_checks = NICE_AGENT_MAX_CONNECTIVITY_CHECKS_DEFAULT;
   agent->nomination_mode = NICE_NOMINATION_MODE_AGGRESSIVE;
+  agent->support_renomination = FALSE;
 
   agent->discovery_list = NULL;
   agent->discovery_unsched_items = 0;
@@ -1246,6 +1266,7 @@ nice_agent_new_full (GMainContext *ctx,
       NICE_NOMINATION_MODE_REGULAR : NICE_NOMINATION_MODE_AGGRESSIVE,
       "full-mode", (flags & NICE_AGENT_OPTION_LITE_MODE) ? FALSE : TRUE,
       "ice-trickle", (flags & NICE_AGENT_OPTION_ICE_TRICKLE) ? TRUE : FALSE,
+      "support-renomination", (flags & NICE_AGENT_OPTION_SUPPORT_RENOMINATION) ? TRUE : FALSE,
       NULL);
 
   return agent;
@@ -1300,6 +1321,10 @@ nice_agent_get_property (
 
     case PROP_NOMINATION_MODE:
       g_value_set_enum (value, agent->nomination_mode);
+      break;
+
+    case PROP_SUPPORT_RENOMINATION:
+      g_value_set_boolean (value, agent->support_renomination);
       break;
 
     case PROP_PROXY_IP:
@@ -1512,6 +1537,10 @@ nice_agent_set_property (
 
     case PROP_NOMINATION_MODE:
       agent->nomination_mode = g_value_get_enum (value);
+      break;
+
+    case PROP_SUPPORT_RENOMINATION:
+      agent->support_renomination = g_value_get_boolean (value);
       break;
 
     case PROP_PROXY_IP:

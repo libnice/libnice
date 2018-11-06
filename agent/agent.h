@@ -405,6 +405,8 @@ typedef enum
  * @NICE_AGENT_OPTION_RELIABLE: Enables reliable mode, possibly using PseudoTCP, *  see nice_agent_new_reliable().
  * @NICE_AGENT_OPTION_LITE_MODE: Enable lite mode
  * @NICE_AGENT_OPTION_ICE_TRICKLE: Enable ICE trickle mode
+ * @NICE_AGENT_OPTION_SUPPORT_RENOMINATION: Enable renomination triggered by NOMINATION STUN attribute
+ * proposed here: https://tools.ietf.org/html/draft-thatcher-ice-renomination-00
  *
  * These are options that can be passed to nice_agent_new_full(). They set
  * various properties on the agent. Not including them sets the property to
@@ -417,6 +419,7 @@ typedef enum {
   NICE_AGENT_OPTION_RELIABLE = 1 << 1,
   NICE_AGENT_OPTION_LITE_MODE = 1 << 2,
   NICE_AGENT_OPTION_ICE_TRICKLE = 1 << 3,
+  NICE_AGENT_OPTION_SUPPORT_RENOMINATION = 1 << 4,
 } NiceAgentOption;
 
 /**
