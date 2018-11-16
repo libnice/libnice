@@ -71,6 +71,9 @@ static void socket_set_writable_callback (NiceSocket *sock,
 
 struct UdpBsdSocketPrivate
 {
+  GMutex mutex;
+
+  /* protected by mutex */
   NiceAddress niceaddr;
   GSocketAddress *gaddr;
 };
@@ -157,6 +160,8 @@ nice_udp_bsd_socket_new (NiceAddress *addr)
   sock->set_writable_callback = socket_set_writable_callback;
   sock->close = socket_close;
 
+  g_mutex_init (&priv->mutex);
+
   return sock;
 }
 
@@ -165,8 +170,8 @@ socket_close (NiceSocket *sock)
 {
   struct UdpBsdSocketPrivate *priv = sock->priv;
 
-  if (priv->gaddr)
-    g_object_unref (priv->gaddr);
+  g_clear_object (&priv->gaddr);
+  g_mutex_clear (&priv->mutex);
   g_slice_free (struct UdpBsdSocketPrivate, sock->priv);
   sock->priv = NULL;
 
@@ -247,33 +252,42 @@ socket_send_message (NiceSocket *sock, const NiceAddress *to,
   struct UdpBsdSocketPrivate *priv = sock->priv;
   GError *child_error = NULL;
   gssize len;
+  GSocketAddress *gaddr = NULL;
 
   /* Make sure socket has not been freed: */
   g_assert (sock->priv != NULL);
 
+  g_mutex_lock (&priv->mutex);
   if (!nice_address_is_valid (&priv->niceaddr) ||
       !nice_address_equal (&priv->niceaddr, to)) {
     union {
       struct sockaddr_storage storage;
       struct sockaddr addr;
     } sa;
-    GSocketAddress *gaddr;
 
-    if (priv->gaddr)
-      g_object_unref (priv->gaddr);
+    g_clear_object (&priv->gaddr);
 
     nice_address_copy_to_sockaddr (to, &sa.addr);
     gaddr = g_socket_address_new_from_native (&sa.addr, sizeof(sa));
-    priv->gaddr = gaddr;
+    if (gaddr)
+      priv->gaddr = g_object_ref (gaddr);
 
-    if (gaddr == NULL)
+    if (gaddr == NULL) {
+      g_mutex_unlock (&priv->mutex);
       return -1;
+    }
 
     priv->niceaddr = *to;
+  } else {
+    if (priv->gaddr)
+      gaddr = g_object_ref (priv->gaddr);
   }
+  g_mutex_unlock (&priv->mutex);
 
-  len = g_socket_send_message (sock->fileno, priv->gaddr, message->buffers,
+  len = g_socket_send_message (sock->fileno, gaddr, message->buffers,
       message->n_buffers, NULL, 0, G_SOCKET_MSG_NONE, NULL, &child_error);
+
+  g_clear_object (&gaddr);
 
   if (len < 0) {
     if (g_error_matches (child_error, G_IO_ERROR, G_IO_ERROR_WOULD_BLOCK)) {
