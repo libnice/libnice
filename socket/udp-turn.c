@@ -1224,15 +1224,14 @@ priv_binding_timeout (gpointer data)
   return G_SOURCE_REMOVE;
 }
 
-void
-nice_udp_turn_socket_cache_realm_nonce (NiceSocket *sock, StunMessage *msg)
+static void
+nice_udp_turn_socket_cache_realm_nonce_locked (NiceSocket *sock,
+    StunMessage *msg)
 {
   UdpTurnPriv *priv = sock->priv;
   gconstpointer tmp;
 
   g_assert (sock->type == NICE_SOCKET_TYPE_UDP_TURN);
-
-  g_mutex_lock (&mutex);
 
   g_free (priv->cached_realm);
   priv->cached_realm = NULL;
@@ -1250,6 +1249,14 @@ nice_udp_turn_socket_cache_realm_nonce (NiceSocket *sock, StunMessage *msg)
   if (tmp && priv->cached_nonce_len < 764)
     priv->cached_nonce = g_memdup (tmp, priv->cached_nonce_len);
 
+}
+
+void
+nice_udp_turn_socket_cache_realm_nonce (NiceSocket *sock,
+    StunMessage *msg)
+{
+  g_mutex_lock (&mutex);
+  nice_udp_turn_socket_cache_realm_nonce_locked (sock, msg);
   g_mutex_unlock (&mutex);
 }
 
@@ -1454,7 +1461,7 @@ nice_udp_turn_socket_parse_recv (NiceSocket *sock, NiceSocket **from_sock,
 
                 g_free (priv->current_binding_msg);
                 priv->current_binding_msg = NULL;
-                nice_udp_turn_socket_cache_realm_nonce (sock, &msg);
+                nice_udp_turn_socket_cache_realm_nonce_locked (sock, &msg);
                 if (binding)
                   priv_send_channel_bind (priv, binding->channel,
                       &binding->peer);
@@ -1558,7 +1565,7 @@ nice_udp_turn_socket_parse_recv (NiceSocket *sock, NiceSocket **from_sock,
                 g_free (current_create_permission_msg);
                 current_create_permission_msg = NULL;
 
-                nice_udp_turn_socket_cache_realm_nonce (sock, &msg);
+                nice_udp_turn_socket_cache_realm_nonce_locked (sock, &msg);
                 /* resend CreatePermission */
                 priv_send_create_permission (priv, &to);
                 goto done;
