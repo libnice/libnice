@@ -1673,16 +1673,13 @@ void conn_check_remote_credentials_set(NiceAgent *agent, NiceStream *stream)
           if (icheck->use_candidate)
             priv_mark_pair_nominated (agent, stream, component,
                 lcand, rcand);
+
+          g_queue_delete_link (&component->incoming_checks, k);
           break;
         }
       }
       k = k_next;
     }
-    /* Once we process the pending checks, we should free them to avoid
-     * reprocessing them again if a dribble-mode set_remote_candidates
-     * is called */
-    while ((c = g_queue_pop_head (&component->incoming_checks)))
-      incoming_check_free (c);
   }
 }
 
