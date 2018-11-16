@@ -1640,26 +1640,33 @@ gint conn_check_compare (const CandidateCheckPair *a, const CandidateCheckPair *
  */
 void conn_check_remote_credentials_set(NiceAgent *agent, NiceStream *stream)
 {
-  GSList *j, *k, *l, *m;
+  GSList *j, *l, *m;
+  GList *k;
+  IncomingCheck *c;
 
   for (j = stream->components; j ; j = j->next) {
     NiceComponent *component = j->data;
 
-    for (k = component->incoming_checks; k; k = k->next) {
+    for (k = component->incoming_checks.head; k;) {
       IncomingCheck *icheck = k->data;
+      GList *k_next = k->next;
+
       /* sect 7.2.1.3., "Learning Peer Reflexive Candidates", has to
        * be handled separately */
       for (l = component->remote_candidates; l; l = l->next) {
         NiceCandidate *rcand = l->data;
         NiceCandidate *lcand = NULL;
+
         if (nice_address_equal (&rcand->addr, &icheck->from)) {
           for (m = component->local_candidates; m; m = m->next) {
             NiceCandidate *cand = m->data;
+
             if (nice_address_equal (&cand->addr, &icheck->local_socket->addr)) {
               lcand = cand;
               break;
             }
           }
+
           g_assert (lcand != NULL);
           priv_schedule_triggered_check (agent, stream, component,
               icheck->local_socket, rcand);
@@ -1669,13 +1676,13 @@ void conn_check_remote_credentials_set(NiceAgent *agent, NiceStream *stream)
           break;
         }
       }
+      k = k_next;
     }
     /* Once we process the pending checks, we should free them to avoid
      * reprocessing them again if a dribble-mode set_remote_candidates
      * is called */
-    g_slist_free_full (component->incoming_checks,
-        (GDestroyNotify) incoming_check_free);
-    component->incoming_checks = NULL;
+    while ((c = g_queue_pop_head (&component->incoming_checks)))
+      incoming_check_free (c);
   }
 }
 
@@ -2877,15 +2884,14 @@ static int priv_store_pending_check (NiceAgent *agent, NiceComponent *component,
   IncomingCheck *icheck;
   nice_debug ("Agent %p : Storing pending check.", agent);
 
-  if (component->incoming_checks &&
-      g_slist_length (component->incoming_checks) >= 
+  if (g_queue_get_length (&component->incoming_checks) >=
       NICE_AGENT_MAX_REMOTE_CANDIDATES) {
     nice_debug ("Agent %p : WARN: unable to store information for early incoming check.", agent);
     return -1;
   }
 
   icheck = g_slice_new0 (IncomingCheck);
-  component->incoming_checks = g_slist_append (component->incoming_checks, icheck);
+  g_queue_push_tail (&component->incoming_checks, icheck);
   icheck->from = *from;
   icheck->local_socket = sockptr;
   icheck->priority = priority;

@@ -285,6 +285,7 @@ nice_component_close (NiceAgent *agent, NiceComponent *cmp)
 {
   IOCallbackData *data;
   GOutputVector *vec;
+  IncomingCheck *c;
 
   /* Start closing the pseudo-TCP socket first. FIXME: There is a very big and
    * reliably triggerable race here. pseudo_tcp_socket_close() does not block
@@ -319,9 +320,9 @@ nice_component_close (NiceAgent *agent, NiceComponent *cmp)
       (GDestroyNotify) nice_candidate_free);
   cmp->remote_candidates = NULL;
   nice_component_free_socket_sources (cmp);
-  g_slist_free_full (cmp->incoming_checks,
-      (GDestroyNotify) incoming_check_free);
-  cmp->incoming_checks = NULL;
+
+  while ((c = g_queue_pop_head (&cmp->incoming_checks)))
+    incoming_check_free (c);
 
   nice_component_clean_turn_servers (agent, cmp);
 
@@ -393,6 +394,7 @@ void
 nice_component_restart (NiceComponent *cmp)
 {
   GSList *i;
+  IncomingCheck *c;
 
   for (i = cmp->remote_candidates; i; i = i->next) {
     NiceCandidate *candidate = i->data;
@@ -411,9 +413,8 @@ nice_component_restart (NiceComponent *cmp)
   g_slist_free (cmp->remote_candidates),
     cmp->remote_candidates = NULL;
 
-  g_slist_free_full (cmp->incoming_checks,
-      (GDestroyNotify) incoming_check_free);
-  cmp->incoming_checks = NULL;
+  while ((c = g_queue_pop_head (&cmp->incoming_checks)))
+    incoming_check_free (c);
 
   /* Reset the priority to 0 to make sure we get a new pair */
   cmp->selected_pair.priority = 0;
@@ -625,19 +626,19 @@ nice_component_reattach_all_sockets (NiceComponent *component)
 static void
 nice_component_detach_socket (NiceComponent *component, NiceSocket *nicesock)
 {
-  GSList *l;
+  GList *l;
+  GSList *s;
   SocketSource *socket_source;
 
   nice_debug ("Detach socket %p.", nicesock);
 
   /* Remove the socket from various lists. */
-  for (l = component->incoming_checks; l != NULL;) {
+  for (l = component->incoming_checks.head; l != NULL;) {
     IncomingCheck *icheck = l->data;
-    GSList *next = l->next;
+    GList *next = l->next;
 
     if (icheck->local_socket == nicesock) {
-      component->incoming_checks =
-          g_slist_delete_link (component->incoming_checks, l);
+      g_queue_delete_link (&component->incoming_checks, l);
       incoming_check_free (icheck);
     }
 
@@ -645,14 +646,14 @@ nice_component_detach_socket (NiceComponent *component, NiceSocket *nicesock)
   }
 
   /* Find the SocketSource for the socket. */
-  l = g_slist_find_custom (component->socket_sources, nicesock,
+  s = g_slist_find_custom (component->socket_sources, nicesock,
           _find_socket_source);
-  if (l == NULL)
+  if (s == NULL)
     return;
 
   /* Detach the source. */
-  socket_source = l->data;
-  component->socket_sources = g_slist_delete_link (component->socket_sources, l);
+  socket_source = s->data;
+  component->socket_sources = g_slist_delete_link (component->socket_sources, s);
   component->socket_sources_age++;
 
   socket_source_detach (socket_source);
@@ -1065,6 +1066,7 @@ nice_component_init (NiceComponent *component)
   nice_component_set_io_callback (component, NULL, NULL, NULL, 0, NULL);
 
   g_queue_init (&component->queued_tcp_packets);
+  g_queue_init (&component->incoming_checks);
 }
 
 static void
@@ -1167,7 +1169,7 @@ nice_component_finalize (GObject *obj)
   /* Component should have been closed already. */
   g_warn_if_fail (cmp->local_candidates == NULL);
   g_warn_if_fail (cmp->remote_candidates == NULL);
-  g_warn_if_fail (cmp->incoming_checks == NULL);
+  g_warn_if_fail (g_queue_get_length (&cmp->incoming_checks) == 0);
 
   g_list_free_full (cmp->valid_candidates,
       (GDestroyNotify) nice_candidate_free);

@@ -161,7 +161,7 @@ struct _NiceComponent {
   GList *valid_candidates;     /* list of owned remote NiceCandidates that are part of valid pairs */
   GSList *socket_sources;      /* list of SocketSource objs; must only grow monotonically */
   guint socket_sources_age;    /* incremented when socket_sources changes */
-  GSList *incoming_checks;     /* list of IncomingCheck objs */
+  GQueue incoming_checks;     /* list of IncomingCheck objs */
   GList *turn_servers;             /* List of TurnServer objs */
   CandidatePair selected_pair; /* independent from checklists, 
 				    see ICE 11.1. "Sending Media" (ID-19) */
