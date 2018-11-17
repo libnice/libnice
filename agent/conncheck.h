@@ -111,6 +111,7 @@ int conn_check_send (NiceAgent *agent, CandidateCheckPair *pair);
 void conn_check_prune_stream (NiceAgent *agent, NiceStream *stream);
 gboolean conn_check_handle_inbound_stun (NiceAgent *agent, NiceStream *stream, NiceComponent *component, NiceSocket *udp_socket, const NiceAddress *from, gchar *buf, guint len);
 gint conn_check_compare (const CandidateCheckPair *a, const CandidateCheckPair *b);
+void conn_check_remote_candidates_set(NiceAgent *agent, NiceStream *stream, NiceComponent *component);
 void conn_check_remote_credentials_set(NiceAgent *agent, NiceStream *stream);
 NiceCandidateTransport conn_check_match_transport (NiceCandidateTransport transport);
 void

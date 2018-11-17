@@ -1630,56 +1630,64 @@ gint conn_check_compare (const CandidateCheckPair *a, const CandidateCheckPair *
   return 0;
 }
 
+void
+conn_check_remote_candidates_set(NiceAgent *agent, NiceStream *stream,
+    NiceComponent *component)
+{
+  GSList *l, *m;
+  GList *k;
+
+  for (k = component->incoming_checks.head; k;) {
+    IncomingCheck *icheck = k->data;
+    GList *k_next = k->next;
+
+    /* sect 7.2.1.3., "Learning Peer Reflexive Candidates", has to
+     * be handled separately */
+    for (l = component->remote_candidates; l; l = l->next) {
+      NiceCandidate *rcand = l->data;
+      NiceCandidate *lcand = NULL;
+
+      if (nice_address_equal (&rcand->addr, &icheck->from)) {
+        for (m = component->local_candidates; m; m = m->next) {
+          NiceCandidate *cand = m->data;
+
+          if (nice_address_equal (&cand->addr, &icheck->local_socket->addr)) {
+            lcand = cand;
+            break;
+          }
+        }
+
+        g_assert (lcand != NULL);
+        priv_schedule_triggered_check (agent, stream, component,
+            icheck->local_socket, rcand);
+        if (icheck->use_candidate)
+          priv_mark_pair_nominated (agent, stream, component,
+              lcand, rcand);
+
+        g_queue_delete_link (&component->incoming_checks, k);
+        break;
+      }
+    }
+    k = k_next;
+  }
+}
+
 /*
  * Handle any processing steps for connectivity checks after
  * remote credentials have been set. This function handles
  * the special case where answerer has sent us connectivity
  * checks before the answer (containing credentials information),
- * reaches us. The special case is documented in sect 7.2 
- * if ICE spec (ID-19).
+ * reaches us. The special case is documented in RFC 5245 sect 7.2.
+ * ).
  */
 void conn_check_remote_credentials_set(NiceAgent *agent, NiceStream *stream)
 {
-  GSList *j, *l, *m;
-  GList *k;
-  IncomingCheck *c;
+  GSList *j;
 
   for (j = stream->components; j ; j = j->next) {
     NiceComponent *component = j->data;
 
-    for (k = component->incoming_checks.head; k;) {
-      IncomingCheck *icheck = k->data;
-      GList *k_next = k->next;
-
-      /* sect 7.2.1.3., "Learning Peer Reflexive Candidates", has to
-       * be handled separately */
-      for (l = component->remote_candidates; l; l = l->next) {
-        NiceCandidate *rcand = l->data;
-        NiceCandidate *lcand = NULL;
-
-        if (nice_address_equal (&rcand->addr, &icheck->from)) {
-          for (m = component->local_candidates; m; m = m->next) {
-            NiceCandidate *cand = m->data;
-
-            if (nice_address_equal (&cand->addr, &icheck->local_socket->addr)) {
-              lcand = cand;
-              break;
-            }
-          }
-
-          g_assert (lcand != NULL);
-          priv_schedule_triggered_check (agent, stream, component,
-              icheck->local_socket, rcand);
-          if (icheck->use_candidate)
-            priv_mark_pair_nominated (agent, stream, component,
-                lcand, rcand);
-
-          g_queue_delete_link (&component->incoming_checks, k);
-          break;
-        }
-      }
-      k = k_next;
-    }
+    conn_check_remote_candidates_set(agent, stream, component);
   }
 }
 

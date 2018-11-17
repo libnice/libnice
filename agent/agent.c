@@ -3616,6 +3616,7 @@ _set_remote_candidates_locked (NiceAgent *agent, NiceStream *stream,
   }
 
   if (added > 0) {
+    conn_check_remote_candidates_set(agent, stream, component);
     conn_check_schedule_next (agent);
   }
 
