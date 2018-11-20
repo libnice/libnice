@@ -59,8 +59,9 @@
  * (See: https://phabricator.freedesktop.org/D230). */
 #define TCP_NODELAY 1
 
+static GMutex mutex;
+
 typedef struct {
-  GMutex mutex;
   NiceAddress remote_addr;
   GQueue send_queue;
   GMainContext *context;
@@ -102,7 +103,6 @@ nice_tcp_bsd_socket_new_from_gsock (GMainContext *ctx, GSocket *gsock,
 
   if (ctx == NULL)
     ctx = g_main_context_default ();
-  g_mutex_init (&priv->mutex);
   priv->context = g_main_context_ref (ctx);
   priv->remote_addr = *remote_addr;
   priv->error = FALSE;
@@ -214,6 +214,8 @@ socket_close (NiceSocket *sock)
 {
   TcpPriv *priv = sock->priv;
 
+  g_mutex_lock (&mutex);
+
   if (sock->fileno) {
     g_socket_close (sock->fileno, NULL);
     g_object_unref (sock->fileno);
@@ -229,7 +231,7 @@ socket_close (NiceSocket *sock)
   if (priv->context)
     g_main_context_unref (priv->context);
 
-  g_mutex_clear (&priv->mutex);
+  g_mutex_unlock (&mutex);
 
   g_slice_free(TcpPriv, sock->priv);
 }
@@ -428,12 +430,12 @@ socket_send_more (
   NiceSocket *sock = (NiceSocket *) data;
   TcpPriv *priv = sock->priv;
 
-  g_mutex_lock (&priv->mutex);
+  g_mutex_lock (&mutex);
 
   if (g_source_is_destroyed (g_main_current_source ())) {
     nice_debug ("Source was destroyed. "
         "Avoided race condition in tcp-bsd.c:socket_send_more");
-    g_mutex_unlock (&priv->mutex);
+    g_mutex_unlock (&mutex);
     return FALSE;
   }
 
@@ -445,7 +447,7 @@ socket_send_more (
     g_source_unref (priv->io_source);
     priv->io_source = NULL;
 
-    g_mutex_unlock (&priv->mutex);
+    g_mutex_unlock (&mutex);
 
     if (priv->writable_cb)
       priv->writable_cb (sock, priv->writable_data);
@@ -453,6 +455,6 @@ socket_send_more (
     return FALSE;
   }
 
-  g_mutex_unlock (&priv->mutex);
+  g_mutex_unlock (&mutex);
   return TRUE;
 }
