@@ -2,7 +2,7 @@ image: registry.freedesktop.org/libnice/libnice/build-tools:centos-7
 stages:
  - build
 
-build-and-test:
+build autotools:
  stage: build
  except:
   - schedules
