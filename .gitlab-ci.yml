@@ -28,6 +28,28 @@ build-and-test:
    - stun/tests/test-suite.log
    - config.log
 
+build meson:
+  image: 'fedora'
+  stage: build
+  variables:
+    PREFIX: "${CI_PROJECT_DIR}/libnice-prefix"
+    DEPENDENCIES: >
+      meson
+      net-tools
+      gnutls-devel
+      gupnp-igd-devel
+      glib2-devel
+      gobject-introspection-devel
+      gstreamer1-devel
+      gstreamer1-plugins-base-devel
+      redhat-rpm-config
+  before_script:
+    - dnf install -y ${DEPENDENCIES}
+    - mkdir -p "${CI_PROJECT_DIR}"
+  script:
+    - meson build/
+    - ninja -C build/
+
 submit-to-coverity:
  image: registry.freedesktop.org/libnice/libnice/build-tools/coverity:2017.07
  stage: build
