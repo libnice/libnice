@@ -219,6 +219,8 @@ if ignored_iface_prefix != ''
   cdata.set_quoted('IGNORED_IFACE_PREFIX', ignored_iface_prefix)
 endif
 
+gir = find_program('g-ir-scanner', required : get_option('introspection'))
+
 subdir('agent')
 subdir('stun')
 subdir('socket')
