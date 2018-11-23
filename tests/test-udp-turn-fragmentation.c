@@ -35,7 +35,7 @@
 #include "agent-priv.h"
 #include "socket.h"
 
-static GRand *rand;
+static GRand *randg;
 
 static GSList *
 generate_test_messages(void)
@@ -45,7 +45,7 @@ generate_test_messages(void)
 
   for (i = 0; i != 100; ++i) {
     GInputVector *msg_data = g_new (GInputVector, 1);
-    gsize msg_size = g_rand_int_range (rand, 0, G_MAXUINT16);
+    gsize msg_size = g_rand_int_range (randg, 0, G_MAXUINT16);
     gsize j;
 
     msg_data->size = msg_size + sizeof (guint16);
@@ -53,7 +53,7 @@ generate_test_messages(void)
     *(guint16 *)(msg_data->buffer) = htons (msg_size);
 
     for (j = 2; j != msg_data->size; ++j) {
-      ((guint8 *)msg_data->buffer)[j] = g_rand_int(rand);
+      ((guint8 *)msg_data->buffer)[j] = g_rand_int(randg);
     }
 
     result = g_slist_append(result, msg_data);
@@ -76,7 +76,7 @@ test_socket_recv_messages (NiceSocket *sock, NiceInputMessage *recv_messages,
   guint i;
 
   for (i = 0; priv->current_msg && i != n_recv_messages; ++i) {
-    gsize msg_size = g_rand_int_range (rand, 0, G_MAXUINT16) + sizeof (guint16);
+    gsize msg_size = g_rand_int_range (randg, 0, G_MAXUINT16) + sizeof (guint16);
     gsize j;
 
     j = sizeof (guint16);
@@ -132,6 +132,8 @@ test_socket_new (GSList *msg_data)
   return sock;
 }
 
+#define N_RECV_MESSAGES 7
+
 static void
 tcp_turn_fragmentation (void)
 {
@@ -143,17 +145,16 @@ tcp_turn_fragmentation (void)
   NiceAddress addr;
   NiceSocket *turnsock;
 
-  guint n_recv_messages = 7;
-  NiceInputMessage recv_messages[n_recv_messages];
-  GInputVector recv_vectors[n_recv_messages];
-  NiceAddress recv_addr[n_recv_messages];
-  guint8 recv_buffers[n_recv_messages][G_MAXUINT16 + sizeof (guint16)];
+  NiceInputMessage recv_messages[N_RECV_MESSAGES];
+  GInputVector recv_vectors[N_RECV_MESSAGES];
+  NiceAddress recv_addr[N_RECV_MESSAGES];
+  guint8 recv_buffers[N_RECV_MESSAGES][G_MAXUINT16 + sizeof (guint16)];
 
   gint n_messages;
   guint i;
   GSList *li;
 
-  for (i = 0; i != n_recv_messages; ++i) {
+  for (i = 0; i != N_RECV_MESSAGES; ++i) {
     recv_messages[i].buffers = &recv_vectors[i];
     recv_messages[i].from = &recv_addr[i];
     recv_messages[i].n_buffers = 1;
@@ -171,7 +172,7 @@ tcp_turn_fragmentation (void)
   li = test_messages;
   while (li) {
     n_messages = nice_socket_recv_messages (turnsock, recv_messages,
-        n_recv_messages);
+        N_RECV_MESSAGES);
 
     for (i = 0; i != (guint)n_messages; ++i) {
       NiceInputMessage *message = &recv_messages[i];
@@ -202,7 +203,7 @@ main (int argc, char *argv[])
 {
   GMainLoop *mainloop;
 
-  rand = g_rand_new();
+  randg = g_rand_new();
   g_test_init (&argc, &argv, NULL);
 
   mainloop = g_main_loop_new (NULL, TRUE);
@@ -211,7 +212,7 @@ main (int argc, char *argv[])
 
   g_test_run ();
 
-  g_rand_free(rand);
+  g_rand_free(randg);
 
   g_main_loop_unref (mainloop);
 

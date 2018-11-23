@@ -53,6 +53,7 @@
 /* FIXME: This should be defined in gio/gnetworking.h, which we should include;
  * but we cannot do that without refactoring.
  * (See: https://phabricator.freedesktop.org/D230). */
+#undef TCP_NODELAY
 #define TCP_NODELAY 1
 
 typedef struct {

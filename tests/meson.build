@@ -1,6 +1,5 @@
 nice_tests = [
   'test-pseudotcp',
-  'test-pseudotcp-fin',
   'test-pseudotcp-fuzzy',
   'test-bsd',
   'test',
@@ -22,7 +21,6 @@ nice_tests = [
   'test-fallback',
   'test-thread',
   'test-dribble',
-  'test-new-dribble',
   'test-tcp',
   'test-icetcp',
   'test-credentials',
@@ -30,6 +28,13 @@ nice_tests = [
   'test-drop-invalid',
   'test-nomination',
 ]
+
+if cc.has_header('arpa/inet.h')
+  nice_tests += [
+    'test-pseudotcp-fin',
+    'test-new-dribble',
+  ]
+endif
 
 tenv = environment()
 tenv.set('BUILT_WITH_MESON', '1')

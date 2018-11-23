@@ -43,9 +43,9 @@
 #include "win32_common.h"
 #else
 #include <stdint.h>
-#include <stdbool.h>
 #endif
 
+#include <stdbool.h>
 #include <stdlib.h>
 
 typedef struct {

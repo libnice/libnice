@@ -43,19 +43,20 @@
 
 #include "random-glib.h"
 
+#define TEST_RNGSIZE 256
+
 int
 main (void)
 {
   NiceRNG *rng;
-  const int rngsize = 256;
-  gchar buf[rngsize];
+  gchar buf[TEST_RNGSIZE];
 
-  buf[rngsize - 1] = '\0';
+  buf[TEST_RNGSIZE - 1] = '\0';
 
   nice_rng_set_new_func (nice_rng_glib_new_predictable);
   rng = nice_rng_new ();
 
-  nice_rng_generate_bytes_print (rng, rngsize - 1, buf);
+  nice_rng_generate_bytes_print (rng, TEST_RNGSIZE - 1, buf);
   /* g_debug ("%s", buf); */
   g_assert (0 == strcmp (buf, "sv1AD7DnJTVykXGYYM6BmnXuYRlZNIJUzQzF+PvASjYxzdTTOngBJ5/gfK0Xj+Ly3ciAAk1Fmo0RPEpq6f4BBnp5jm3LuSbAOj1M5qULEGEv/0DMk0oOPUj6XPN1VwxFpjAfFeAxykiwdDiqNwnVJ/AKyr6/X7C5i+je7DSujURybOp6BkKWroLCzQg2AmTuqz48oNeY9CDeirNwoITfIaC40Ds9OgEDtL8WN5tL4QYdVuZQ85219Thogk775GV"));
 

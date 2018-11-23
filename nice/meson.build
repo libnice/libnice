@@ -21,6 +21,7 @@ endif
 
 libnice = library('nice',
   link_whole: [libagent, libsocket, libstun, librandom],
+  dependencies: nice_deps,
   version : libversion,
   soversion : soversion,
   vs_module_defs: libnice_def,
@@ -62,5 +63,6 @@ pkg.generate(libnice,
   subdirs: 'nice',
   description: 'ICE library',
   requires: glib_dep,
-  requires_private: [gthread_dep, gupnp_igd_dep, crypto_dep, syslibs],
+  requires_private: [gthread_dep, gupnp_igd_dep, crypto_dep],
+  libraries_private: syslibs,
   variables: ['upnp_enabled=@0@'.format(upnp_enabled_string)])

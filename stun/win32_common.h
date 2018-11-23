@@ -69,15 +69,7 @@ typedef unsigned   uint32_t;
 typedef long long  int64_t;
 typedef unsigned long long   uint64_t;
 
-/* size_t and ssize_t are not defined on Windows */
-#ifndef size_t
-# if defined(_WIN64)
-typedef unsigned __int64 size_t;
-# else
-typedef unsigned long size_t;
-# endif
-#endif  /* !size_t */
-
+/* ssize_t is not defined on Windows */
 #ifndef ssize_t
 # if defined(_WIN64)
 typedef signed __int64 ssize_t;
@@ -85,5 +77,9 @@ typedef signed __int64 ssize_t;
 typedef signed long ssize_t;
 # endif
 #endif  /* !ssize_t */
+
+/* Windows v10.0.16232 SDK defines MSG_ERRQUEUE, but doesn't support it with
+ * recvmsg, and also uses a different msghdr struct */
+#undef MSG_ERRQUEUE
 
 #endif /* _WIN32_COMMON_H */
