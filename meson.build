@@ -237,7 +237,7 @@ else
   if find_program('gtkdoc-scan', required: get_option('gtk_doc')).found()
     subdir('docs/reference/libnice')
   else
-    message('Not building documentation as gtk-doc was not found')
+    message('Not building documentation as gtk-doc was not found or disabled')
   endif
 endif
 
