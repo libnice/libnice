@@ -51,8 +51,9 @@
 #include "stun/stunagent.h"
 #include "stun/usages/bind.h"
 
+#ifdef HAVE_UNISTD_H
 #include <unistd.h>
-#include <getopt.h>
+#endif
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -126,65 +127,58 @@ static int run (int family, const char *hostname, const char *service)
 
 int main (int argc, char *argv[])
 {
-  static const struct option opts[] =
-  {
-    { "ipv4",    no_argument, NULL, '4' },
-    { "ipv6",    no_argument, NULL, '6' },
-    { "help",    no_argument, NULL, 'h' },
-    { "numeric", no_argument, NULL, 'n' },
-    { "version", no_argument, NULL, 'V' },
-    { NULL,      0,           NULL, 0   }
-  };
   const char *server = NULL, *port = NULL;
   int family = AF_UNSPEC;
+  int i;
 
-  for (;;)
+  for (i = 1; i < argc; ++i)
   {
-    int val = getopt_long (argc, argv, "46hnV", opts, NULL);
-    if (val == EOF)
+    const char *arg = argv[i];
+
+    if (arg[0] != '-')
       break;
 
-    switch (val)
+    if (strcmp (arg, "--ipv4") == 0 || strcmp (arg, "-4") == 0)
     {
-      case '4':
-        family = AF_INET;
-        break;
-
-      case '6':
-        family = AF_INET6;
-        break;
-
-      case 'h':
-        printf ("Usage: %s [-4|-6] <server> [port number]\n"
-                "Performs STUN Binding Discovery\n"
-                "\n"
-                "  -4, --ipv4    Force IP version 4\n"
-                "  -6, --ipv6    Force IP version 6\n"
-                "  -n, --numeric Server in numeric form\n"
-            "\n", argv[0]);
-        return 0;
-
-      case 'n':
-        ai_flags |= AI_NUMERICHOST;
-        break;
-
-      case 'V':
-        printf ("stunbcd: STUN Binding Discovery client (%s v%s)\n",
-                PACKAGE, VERSION);
-        return 0;
-
-      default:
-        return 2;
+      family = AF_INET;
+    }
+    else if (strcmp (arg, "--ipv6") == 0 || strcmp (arg, "-6") == 0)
+    {
+      family = AF_INET6;
+    }
+    else if (strcmp (arg, "--help") == 0 || strcmp (arg, "-h") == 0)
+    {
+      printf ("Usage: %s [-4|-6] <server> [port number]\n"
+              "Performs STUN Binding Discovery\n"
+              "\n"
+              "  -4, --ipv4    Force IP version 4\n"
+              "  -6, --ipv6    Force IP version 6\n"
+              "  -n, --numeric Server in numeric form\n"
+              "\n", argv[0]);
+      return 0;
+    }
+    else if (strcmp (arg, "--numeric") == 0 || strcmp (arg, "-n") == 0)
+    {
+      ai_flags |= AI_NUMERICHOST;
+    }
+    else if (strcmp (arg, "--version") == 0 || strcmp (arg, "-V") == 0)
+    {
+      printf ("stunbcd: STUN Binding Discovery client (%s v%s)\n",
+              PACKAGE, VERSION);
+      return 0;
+    } else {
+      fprintf (stderr, "Unexpected command line argument '%s'", arg);
+      return 2;
     }
   }
 
-  if (optind < argc)
-    server = argv[optind++];
-  if (optind < argc)
-    port = argv[optind++];
-  if (optind < argc)
+  if (i < argc)
+    server = argv[i++];
+  if (i < argc)
+    port = argv[i++];
+  if (i < argc)
   {
-    fprintf (stderr, "%s: extra parameter `%s'\n", argv[0], argv[optind]);
+    fprintf (stderr, "%s: extra parameter `%s'\n", argv[0], argv[i]);
     return 2;
   }
 

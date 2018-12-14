@@ -60,9 +60,15 @@
 #include <netdb.h>
 #include <netinet/in.h>
 
-#include <unistd.h>
+#ifdef HAVE_UNISTD_H
+# include <unistd.h>
+#else
+# define close(fd) _close(fd)
+#endif
+
 #include <errno.h>
 #include <limits.h>
+#include <stdio.h>
 
 #ifndef SOL_IP
 # define SOL_IP IPPROTO_IP
@@ -280,28 +286,30 @@ int main (int argc, char *argv[])
 {
   int family = AF_INET;
   unsigned port = IPPORT_STUN;
+  int i;
 
-  for (;;)
+  for (i = 1; i < argc; ++i)
   {
-    int c = getopt (argc, argv, "46");
-    if (c == EOF)
-      break;
+    const char *arg = argv[i];
 
-    switch (c)
+    if (strcmp (arg, "-4") == 0)
     {
-      default:
-      case '4':
-        family = AF_INET;
-        break;
-
-      case '6':
-        family = AF_INET6;
-        break;
+      family = AF_INET;
+    }
+    else if (strcmp (arg, "-6") == 0)
+    {
+      family = AF_INET6;
+    }
+    else if (arg[0] < '0' || arg[0] > '9')
+    {
+      fprintf (stderr, "Unexpected command line argument '%s'", arg);
+    }
+    else
+    {
+      port = atoi (arg);
+      break;
     }
   }
-
-  if (optind < argc)
-    port = atoi (argv[optind++]);
 
   signal (SIGINT, exit_handler);
   signal (SIGTERM, exit_handler);

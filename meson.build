@@ -81,7 +81,7 @@ cdata.set('NICEAPI_EXPORT', true,
   description: 'Public library function implementation')
 
 # headers
-foreach h : ['arpa/inet.h', 'net/in.h', 'netdb.h', 'ifaddrs.h']
+foreach h : ['arpa/inet.h', 'net/in.h', 'netdb.h', 'ifaddrs.h', 'unistd.h']
   if cc.has_header(h)
     define = 'HAVE_' + h.underscorify().to_upper()
     cdata.set(define, 1)
