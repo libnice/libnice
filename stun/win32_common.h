@@ -58,25 +58,14 @@
 #define _WIN32_COMMON_H
 
 #include <sys/types.h>
+#include <stdint.h>
+#include <stdbool.h>
 
-/* 7.18.1.1  Exact-width integer types */
-typedef signed char int8_t;
-typedef unsigned char   uint8_t;
-typedef short  int16_t;
-typedef unsigned short  uint16_t;
-typedef int  int32_t;
-typedef unsigned   uint32_t;
-typedef long long  int64_t;
-typedef unsigned long long   uint64_t;
-
-/* ssize_t is not defined on Windows */
-#ifndef ssize_t
-# if defined(_WIN64)
-typedef signed __int64 ssize_t;
-# else
-typedef signed long ssize_t;
-# endif
-#endif  /* !ssize_t */
+/* On MSVC, ssize_t is SSIZE_T */
+#ifdef _MSC_VER
+#include <BaseTsd.h>
+#define ssize_t SSIZE_T
+#endif
 
 /* Windows v10.0.16232 SDK defines MSG_ERRQUEUE, but doesn't support it with
  * recvmsg, and also uses a different msghdr struct */
