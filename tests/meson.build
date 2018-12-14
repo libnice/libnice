@@ -1,6 +1,6 @@
 nice_tests = [
   'test-pseudotcp',
-  'test-pseudotcp-fuzzy',
+  # 'test-pseudotcp-fuzzy', FIXME: this test is not reliable, times out sometimes
   'test-bsd',
   'test',
   'test-address',
@@ -82,7 +82,8 @@ if find_program('sh', required : false).found()
 
   test('test-fullmode-with-stun', files('check-test-fullmode-with-stun.sh'),
     args: [stund_exe, test_fullmode],
-    env: tenv)
+    env: tenv,
+    is_parallel: false)
 endif
 
 debugenv = environment()
