@@ -1487,15 +1487,6 @@ nice_agent_generate_local_candidate_sdp (
  * Parse an SDP string and extracts candidates and credentials from it and sets
  * them on the agent.
  *
- <note>
-   <para>
-    This function will return an error if a stream has not been assigned a name
-    with nice_agent_set_stream_name() as it becomes troublesome to assign the
-    streams from the agent to the streams in the SDP.
-   </para>
- </note>
- *
- *
  * <para>See also: nice_agent_set_stream_name() </para>
  * <para>See also: nice_agent_generate_local_sdp() </para>
  * <para>See also: nice_agent_parse_remote_stream_sdp() </para>

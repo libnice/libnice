@@ -6211,7 +6211,7 @@ nice_agent_parse_remote_sdp (NiceAgent *agent, const gchar *sdp)
 {
   NiceStream *current_stream = NULL;
   gchar **sdp_lines = NULL;
-  GSList *l, *stream_item = NULL;
+  GSList *stream_item = NULL;
   gint i;
   gint ret = 0;
 
@@ -6219,15 +6219,6 @@ nice_agent_parse_remote_sdp (NiceAgent *agent, const gchar *sdp)
   g_return_val_if_fail (sdp != NULL, -1);
 
   agent_lock (agent);
-
-  for (l = agent->streams; l; l = l->next) {
-    NiceStream *stream = l->data;
-
-    if (stream->name == NULL) {
-      ret = -1;
-      goto done;
-    }
-  }
 
   sdp_lines = g_strsplit (sdp, "\n", 0);
   for (i = 0; sdp_lines && sdp_lines[i]; i++) {
