@@ -163,8 +163,18 @@ foreach w : warnings
 endforeach
 
 # Dependencies
-glib_dep = dependency('gio-2.0', version: glib_req,
+gio_dep = dependency('gio-2.0', version: glib_req,
   fallback: ['glib', 'libgio_dep'])
+gio_deps = [gio_dep]
+if gio_dep.type_name() == 'internal'
+  # A workaround for libgio_dep not having its dependencies correctly declared.
+  # Should be fixed in GLib 2.60.
+  gio_deps += [
+    dependency('', fallback: ['glib', 'libglib_dep']),
+    dependency('', fallback: ['glib', 'libgmodule_dep']),
+    dependency('', fallback: ['glib', 'libgobject_dep'])
+  ]
+endif
 gthread_dep = dependency('gthread-2.0',
   fallback: ['glib', 'libgthread_dep'])
 
@@ -212,7 +222,7 @@ libm = cc.find_library('m', required: false)
 
 nice_incs = include_directories('.', 'agent', 'random', 'socket', 'stun')
 
-nice_deps = [glib_dep, gthread_dep, crypto_dep, gupnp_igd_dep] + syslibs
+nice_deps = gio_deps + [gthread_dep, crypto_dep, gupnp_igd_dep] + syslibs
 
 ignored_iface_prefix = get_option('ignored-network-interface-prefix')
 if ignored_iface_prefix != ''
