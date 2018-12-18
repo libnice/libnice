@@ -367,8 +367,8 @@ expect_socket_state (PseudoTcpSocket *socket, PseudoTcpState expected_state)
 static void
 expect_sockets_connected (Data *data)
 {
-  expect_socket_state (data->left, TCP_ESTABLISHED);
-  expect_socket_state (data->right, TCP_ESTABLISHED);
+  expect_socket_state (data->left, PSEUDO_TCP_ESTABLISHED);
+  expect_socket_state (data->right, PSEUDO_TCP_ESTABLISHED);
 }
 
 static void
@@ -376,8 +376,8 @@ expect_sockets_closed (Data *data)
 {
   guint8 buf[100];
 
-  expect_socket_state (data->left, TCP_CLOSED);
-  expect_socket_state (data->right, TCP_CLOSED);
+  expect_socket_state (data->left, PSEUDO_TCP_CLOSED);
+  expect_socket_state (data->right, PSEUDO_TCP_CLOSED);
 
   g_assert_cmpint (pseudo_tcp_socket_send (data->left, "foo", 3), ==, -1);
   g_assert_cmpint (pseudo_tcp_socket_get_error (data->left), ==, EPIPE);
@@ -784,46 +784,46 @@ pseudotcp_close_normal_recovery_data (void)
   g_assert_cmpint (pseudo_tcp_socket_get_available_bytes (data.right), ==, 0);
   close_socket (data.left);
 
-  expect_socket_state (data.left, TCP_FIN_WAIT_1);
+  expect_socket_state (data.left, PSEUDO_TCP_FIN_WAIT_1);
   expect_fin (data.left, data.left_sent, 10, 7);
   forward_segment_ltr (&data);
 
-  expect_socket_state (data.right, TCP_ESTABLISHED);
+  expect_socket_state (data.right, PSEUDO_TCP_ESTABLISHED);
   expect_ack (data.right, data.right_sent, 7, 7);
   forward_segment_rtl (&data);
 
-  expect_socket_state (data.left, TCP_FIN_WAIT_1);
+  expect_socket_state (data.left, PSEUDO_TCP_FIN_WAIT_1);
 
   assert_empty_queues(&data);
 
   /* Close the RHS. */
   close_socket (data.right);
 
-  expect_socket_state (data.right, TCP_FIN_WAIT_1);
+  expect_socket_state (data.right, PSEUDO_TCP_FIN_WAIT_1);
 
   expect_fin (data.right, data.right_sent, 7, 7);
   forward_segment_rtl (&data);
 
-  expect_socket_state (data.left, TCP_CLOSING);
+  expect_socket_state (data.left, PSEUDO_TCP_CLOSING);
 
   expect_ack (data.left, data.left_sent, 11, 8);
   forward_segment_ltr (&data);
 
-  expect_socket_state (data.right, TCP_FIN_WAIT_2);
+  expect_socket_state (data.right, PSEUDO_TCP_FIN_WAIT_2);
 
   expect_data (data.right, data.right_sent, 8, 7, 0);
   forward_segment_rtl (&data);
-  expect_socket_state (data.left, TCP_CLOSING);
+  expect_socket_state (data.left, PSEUDO_TCP_CLOSING);
 
   expect_data (data.left, data.left_sent, 7, 8, 3);
   forward_segment_ltr (&data);
-  expect_socket_state (data.right, TCP_TIME_WAIT);
+  expect_socket_state (data.right, PSEUDO_TCP_TIME_WAIT);
 
   increment_time_both (&data, 100);  /* Delayed ACK */
 
   expect_ack (data.right, data.right_sent, 8, 11);
   forward_segment_rtl (&data);
-  expect_socket_state (data.left, TCP_TIME_WAIT);
+  expect_socket_state (data.left, PSEUDO_TCP_TIME_WAIT);
 
   increment_time_both (&data, 10);  /* TIME-WAIT */
 
@@ -1171,8 +1171,8 @@ pseudotcp_close_recv_queued (void)
   expect_fin (data.left, data.left_sent, 10, 7);
   forward_segment_ltr (&data);
 
-  expect_socket_state (data.left, TCP_FIN_WAIT_1);
-  expect_socket_state (data.right, TCP_CLOSE_WAIT);
+  expect_socket_state (data.left, PSEUDO_TCP_FIN_WAIT_1);
+  expect_socket_state (data.right, PSEUDO_TCP_CLOSE_WAIT);
 
   g_assert_cmpint (pseudo_tcp_socket_get_available_bytes (data.left), ==, 0);
   g_assert_cmpint (pseudo_tcp_socket_get_available_send_space (data.left), ==,
@@ -1181,7 +1181,7 @@ pseudotcp_close_recv_queued (void)
   expect_ack (data.right, data.right_sent, 7, 11);
   forward_segment_rtl (&data);
 
-  expect_socket_state (data.left, TCP_FIN_WAIT_2);
+  expect_socket_state (data.left, PSEUDO_TCP_FIN_WAIT_2);
 
 
   g_assert_cmpint (pseudo_tcp_socket_get_available_bytes (data.right), ==, 3);

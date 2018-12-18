@@ -141,24 +141,24 @@ typedef enum {
 
 /**
  * PseudoTcpState:
- * @TCP_LISTEN: The socket's initial state. The socket isn't connected and is
+ * @PSEUDO_TCP_LISTEN: The socket's initial state. The socket isn't connected and is
  * listening for an incoming connection
- * @TCP_SYN_SENT: The socket has sent a connection request (SYN) packet and is
+ * @PSEUDO_TCP_SYN_SENT: The socket has sent a connection request (SYN) packet and is
  * waiting for an answer
- * @TCP_SYN_RECEIVED: The socket has received a connection request (SYN) packet.
- * @TCP_ESTABLISHED: The socket is connected
- * @TCP_CLOSED: The socket has been closed
- * @TCP_FIN_WAIT_1: The socket has been closed locally but not remotely
+ * @PSEUDO_TCP_SYN_RECEIVED: The socket has received a connection request (SYN) packet.
+ * @PSEUDO_TCP_ESTABLISHED: The socket is connected
+ * @PSEUDO_TCP_CLOSED: The socket has been closed
+ * @PSEUDO_TCP_FIN_WAIT_1: The socket has been closed locally but not remotely
  * (Since: 0.1.8)
- * @TCP_FIN_WAIT_2: The socket has been closed locally but not remotely
+ * @PSEUDO_TCP_FIN_WAIT_2: The socket has been closed locally but not remotely
  * (Since: 0.1.8)
- * @TCP_CLOSING: The socket has been closed locally and remotely
+ * @PSEUDO_TCP_CLOSING: The socket has been closed locally and remotely
  * (Since: 0.1.8)
- * @TCP_TIME_WAIT: The socket has been closed locally and remotely
+ * @PSEUDO_TCP_TIME_WAIT: The socket has been closed locally and remotely
  * (Since: 0.1.8)
- * @TCP_CLOSE_WAIT: The socket has been closed remotely but not locally
+ * @PSEUDO_TCP_CLOSE_WAIT: The socket has been closed remotely but not locally
  * (Since: 0.1.8)
- * @TCP_LAST_ACK: The socket has been closed locally and remotely
+ * @PSEUDO_TCP_LAST_ACK: The socket has been closed locally and remotely
  * (Since: 0.1.8)
  *
  * An enum representing the state of the #PseudoTcpSocket. These states
@@ -168,17 +168,17 @@ typedef enum {
  * Since: 0.0.11
  */
 typedef enum {
-  TCP_LISTEN,
-  TCP_SYN_SENT,
-  TCP_SYN_RECEIVED,
-  TCP_ESTABLISHED,
-  TCP_CLOSED,
-  TCP_FIN_WAIT_1,
-  TCP_FIN_WAIT_2,
-  TCP_CLOSING,
-  TCP_TIME_WAIT,
-  TCP_CLOSE_WAIT,
-  TCP_LAST_ACK,
+  PSEUDO_TCP_LISTEN,
+  PSEUDO_TCP_SYN_SENT,
+  PSEUDO_TCP_SYN_RECEIVED,
+  PSEUDO_TCP_ESTABLISHED,
+  PSEUDO_TCP_CLOSED,
+  PSEUDO_TCP_FIN_WAIT_1,
+  PSEUDO_TCP_FIN_WAIT_2,
+  PSEUDO_TCP_CLOSING,
+  PSEUDO_TCP_TIME_WAIT,
+  PSEUDO_TCP_CLOSE_WAIT,
+  PSEUDO_TCP_LAST_ACK,
 } PseudoTcpState;
 
 /**

@@ -32,9 +32,6 @@
 # include "config.h"
 #endif
 
-// With _GNU_SOURCE, enumeration in netinet/tcp.h and PseudoTcpState clash
-#undef _GNU_SOURCE
-#define _POSIX_SOURCE 1
 #include <gio/gnetworking.h>
 
 #include "agent-priv.h"
