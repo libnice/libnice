@@ -62,7 +62,5 @@ pkg.generate(libnice,
   filebase: 'nice',
   subdirs: 'nice',
   description: 'ICE library',
-  requires: gio_dep,
-  requires_private: [gthread_dep, gupnp_igd_dep, crypto_dep],
-  libraries_private: syslibs,
+  libraries: gio_dep,
   variables: ['upnp_enabled=@0@'.format(upnp_enabled_string)])
