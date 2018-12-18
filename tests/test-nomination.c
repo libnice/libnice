@@ -3,6 +3,7 @@
 #include <string.h>
 
 #include <gio/gio.h>
+#include <gio/gnetworking.h>
 #include <agent.h>
 
 static NiceComponentState global_lagent_state[2] = { NICE_COMPONENT_STATE_LAST, NICE_COMPONENT_STATE_LAST };
@@ -249,6 +250,8 @@ int
 main (int argc, char **argv)
 {
   int ret;
+
+  g_networking_init ();
 
   g_test_init (&argc, &argv, NULL);
 

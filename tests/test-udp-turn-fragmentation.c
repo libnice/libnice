@@ -32,6 +32,11 @@
 # include "config.h"
 #endif
 
+// With _GNU_SOURCE, enumeration in netinet/tcp.h and PseudoTcpState clash
+#undef _GNU_SOURCE
+#define _POSIX_SOURCE 1
+#include <gio/gnetworking.h>
+
 #include "agent-priv.h"
 #include "socket.h"
 
@@ -202,6 +207,8 @@ int
 main (int argc, char *argv[])
 {
   GMainLoop *mainloop;
+
+  g_networking_init ();
 
   randg = g_rand_new();
   g_test_init (&argc, &argv, NULL);

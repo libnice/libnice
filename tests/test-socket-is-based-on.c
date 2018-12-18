@@ -33,6 +33,7 @@
 #endif
 
 #include <locale.h>
+#include <gio/gnetworking.h>
 
 #include "socket.h"
 
@@ -83,6 +84,8 @@ main (int argc, char *argv[])
   GMainLoop *mainloop = NULL;
 
   NiceAddress addr;
+
+  g_networking_init ();
 
   setlocale (LC_ALL, "");
   g_test_init (&argc, &argv, NULL);

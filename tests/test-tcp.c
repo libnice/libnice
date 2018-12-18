@@ -38,6 +38,7 @@
 
 #include <string.h>
 #include <stdio.h>
+#include <gio/gnetworking.h>
 
 #include "socket.h"
 
@@ -87,6 +88,8 @@ main (void)
 {
   NiceAddress active_bind_addr, passive_bind_addr;
   GSource *srv_listen_source, *srv_input_source, *cli_input_source;
+
+  g_networking_init ();
 
   mainloop = g_main_loop_new (NULL, FALSE);
 
