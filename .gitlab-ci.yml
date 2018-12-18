@@ -48,6 +48,9 @@ build meson:
   script:
     - meson --werror build/
     - ninja -C build/
+  artifacts:
+    paths:
+      - build/meson-logs/
 
 submit-to-coverity:
  image: registry.freedesktop.org/libnice/libnice/build-tools/coverity:2017.07
