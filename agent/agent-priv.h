@@ -277,6 +277,9 @@ compact_output_message (const NiceOutputMessage *message, gsize *buffer_length);
 gsize
 output_message_get_size (const NiceOutputMessage *message);
 
+gsize
+input_message_get_size (const NiceInputMessage *message);
+
 gssize agent_socket_send (NiceSocket *sock, const NiceAddress *addr, gsize len,
     const gchar *buf);
 

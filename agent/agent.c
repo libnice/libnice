@@ -4206,7 +4206,7 @@ output_message_get_size (const NiceOutputMessage *message)
   return message_len;
 }
 
-static gsize
+gsize
 input_message_get_size (const NiceInputMessage *message)
 {
   guint i;
