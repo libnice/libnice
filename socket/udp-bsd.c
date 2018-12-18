@@ -206,19 +206,21 @@ socket_recv_messages (NiceSocket *sock,
         recv_message->buffers, recv_message->n_buffers, NULL, NULL,
         &flags, NULL, &gerr);
 
-    recv_message->length = MAX (recvd, 0);
-
     if (recvd < 0) {
       /* Handle ECONNRESET here as if it were EWOULDBLOCK; see
        * https://phabricator.freedesktop.org/T121 */
       if (g_error_matches (gerr, G_IO_ERROR, G_IO_ERROR_WOULD_BLOCK) ||
           g_error_matches (gerr, G_IO_ERROR, G_IO_ERROR_CONNECTION_CLOSED))
         recvd = 0;
+      else if (g_error_matches (gerr, G_IO_ERROR, G_IO_ERROR_MESSAGE_TOO_LARGE))
+        recvd = input_message_get_size (recv_message);
       else
         error = TRUE;
 
       g_error_free (gerr);
     }
+
+    recv_message->length = MAX (recvd, 0);
 
     if (recvd > 0 && recv_message->from != NULL && gaddr != NULL) {
       union {

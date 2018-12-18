@@ -18,7 +18,7 @@ endif
 soversion = 10
 libversion = '10.6.2'
 
-glib_req = '>= 2.44'
+glib_req = '>= 2.48'
 gnutls_req = '>= 2.12.0'
 gupnp_igd_req = '>= 0.2.4'
 gst_req = '>= 1.0.0'
