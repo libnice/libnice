@@ -5102,16 +5102,14 @@ nice_agent_dispose (GObject *object)
   g_slist_free (agent->local_addresses);
   agent->local_addresses = NULL;
 
-  for (i = agent->streams; i; i = i->next)
-    {
-      NiceStream *s = i->data;
+  while (agent->streams) {
+    NiceStream *s = agent->streams->data;
 
-      nice_stream_close (agent, s);
-      g_object_unref (s);
-    }
+    nice_stream_close (agent, s);
+    g_object_unref (s);
 
-  g_slist_free (agent->streams);
-  agent->streams = NULL;
+    agent->streams = g_slist_delete_link(agent->streams, agent->streams);
+  }
 
   while ((sig = g_queue_pop_head (&agent->pending_signals))) {
     free_queued_signal (sig);
