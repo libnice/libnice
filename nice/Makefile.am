@@ -55,7 +55,9 @@ check_DATA = libnice.symbols
 
 TESTS = $(check_SCRIPTS)
 
-EXTRA_DIST = $(check_SCRIPTS) libnice.sym libnice.ver
+EXTRA_DIST = $(check_SCRIPTS) \
+	libnice.sym libnice.ver \
+	meson.build gen-map.py gen-def.py
 
 pkginclude_HEADERS = nice.h
 

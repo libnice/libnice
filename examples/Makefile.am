@@ -31,3 +31,5 @@ threaded_example_LDADD = $(top_builddir)/agent/libagent.la \
 sdp_example_SOURCES = sdp-example.c
 sdp_example_LDADD = $(top_builddir)/agent/libagent.la \
 	 $(GLIB_LIBS) $(GUPNP_LIBS)
+
+EXTRA_DIST = meson.build

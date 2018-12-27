@@ -34,7 +34,9 @@ EXTRA_DIST = \
 	scripts/valgrind-test-driver \
 	win32 \
 	win32/vs9/libnice.def \
-	m4/introspection.m4
+	m4/introspection.m4 \
+	meson.build \
+	meson_options.txt
 
 MAINTAINERCLEANFILES = ar-lib
 

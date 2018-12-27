@@ -27,3 +27,5 @@ if WINDOWS
   AM_CFLAGS += -DWINVER=0x0501 # _WIN32_WINNT_WINXP
   stunbdc_LDADD += -lws2_32
 endif
+
+EXTRA_DIST = meson.build

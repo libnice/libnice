@@ -54,3 +54,5 @@ libgstnice010_la_LIBADD = $(COMMON_LIBADD) $(GST010_LIBS)
 
 libgstnice010_la_LDFLAGS = -module -avoid-version -no-undefined
 endif
+
+EXTRA_DIST = meson.build

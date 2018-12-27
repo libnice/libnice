@@ -145,4 +145,6 @@ all-local:
 	chmod a+x $(srcdir)/check-test-fullmode-with-stun.sh
 	chmod a+x $(srcdir)/test-pseudotcp-random.sh
 
-EXTRA_DIST = libnice.supp
+EXTRA_DIST = \
+	libnice.supp \
+	meson.build

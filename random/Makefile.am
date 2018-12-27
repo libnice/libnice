@@ -24,3 +24,4 @@ test_LDADD = libnice-random.la $(GLIB_LIBS)
 
 TESTS = $(check_PROGRAMS)
 
+EXTRA_DIST = meson.build

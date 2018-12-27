@@ -41,7 +41,7 @@ libstun_la_SOURCES = constants.h \
 
 libstun_la_LIBADD = $(LIBRT) $(GNUTLS_LIBS) $(OPENSSL_LIBS)
 
-EXTRA_DIST = win32_common.h
+EXTRA_DIST = win32_common.h meson.build
 
 libstun_la_includedir=$(includedir)/stun
 libstun_la_include_HEADERS = stunagent.h stunmessage.h win32_common.h debug.h constants.h

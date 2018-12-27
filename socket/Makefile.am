@@ -42,4 +42,4 @@ libsocket_la_SOURCES = \
 	udp-turn-over-tcp.h \
 	udp-turn-over-tcp.c
 
-
+EXTRA_DIST = meson.build

@@ -26,3 +26,5 @@ dist_check_SCRIPTS = check-bind.sh
 
 TESTS = $(check_PROGRAMS)
 #$(dist_check_SCRIPTS)
+
+EXTRA_DIST = meson.build
