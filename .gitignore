@@ -68,6 +68,8 @@ agent/test-restart
 agent/test-thread
 agent/Nice-*.gir
 agent/Nice-*.typelib
+agent/agent-enum-types.c
+agent/agent-enum-types.h
 
 
 # stun/ stuff
@@ -155,6 +157,13 @@ tests/test-tcp
 tests/test-thread
 tests/test-new-dribble
 tests/test-nomination
+tests/test-credentials
+tests/test-different-number-streams
+tests/test-drop-invalid
+tests/test-gstreamer
+tests/test-socket-is-based-on
+tests/test-turn
+tests/test-udp-turn-fragmentation
 
 # examples/ stuff
 examples/simple-example
