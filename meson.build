@@ -16,7 +16,7 @@ endif
 
 # maintain compatibility with the previous libtool versioning
 soversion = 10
-libversion = '10.6.2'
+libversion = '10.7.0'
 
 glib_req = '>= 2.48'
 gnutls_req = '>= 2.12.0'
