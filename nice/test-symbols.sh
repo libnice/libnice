@@ -3,7 +3,7 @@
 set -e
 
 if test -z "$srcdir"; then
-	srcdir=.
+	srcdir=$(dirname $0)
 fi
 
 check_symbols=$srcdir/../scripts/check-symbols.sh
