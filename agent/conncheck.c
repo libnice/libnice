@@ -3852,7 +3852,7 @@ static bool conncheck_stun_validater (StunAgent *agent,
     ufrag = NULL;
     if (cand->username)
       ufrag = cand->username;
-    else if (data->stream)
+    else
       ufrag = data->stream->local_ufrag;
     ufrag_len = ufrag? strlen (ufrag) : 0;
 
@@ -3873,7 +3873,7 @@ static bool conncheck_stun_validater (StunAgent *agent,
 
       if (cand->password)
         pass = cand->password;
-      else if(data->stream->local_password[0])
+      else if (data->stream && data->stream->local_password[0])
         pass = data->stream->local_password;
 
       if (pass) {

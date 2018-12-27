@@ -251,7 +251,7 @@ int main (void)
   if (stun_message_append_xor_addr (&msg, 0xffff, &addr.storage,
           sizeof (addr)) != STUN_MESSAGE_RETURN_NOT_ENOUGH_SPACE)
     fatal ("Address overflow test failed");
-  len = sizeof (msg);
+
   if (stun_agent_finish_message (&agent, &msg, NULL, 0) != 0)
     fatal ("Fingerprint overflow test failed");
   if (stun_agent_finish_message (&agent, &msg, pwd, strlen ((char *) pwd)) != 0)

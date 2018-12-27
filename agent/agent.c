@@ -5849,6 +5849,8 @@ nice_agent_set_software (NiceAgent *agent, const gchar *software)
   if (software)
     agent->software_attribute = g_strdup_printf ("%s/%s",
         software, PACKAGE_STRING);
+  else
+    agent->software_attribute = NULL;
 
   nice_agent_reset_all_stun_agents (agent, TRUE);
 

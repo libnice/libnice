@@ -105,7 +105,6 @@ create_buffer_list (void)
   GstBufferList *list;
   GstBuffer *rtp_buffer;
   GstBuffer *data_buffer;
-  gint total_size = 0;
 
   list = gst_buffer_list_new ();
 
@@ -122,8 +121,6 @@ create_buffer_list (void)
   /* Create a new group to hold the rtp header and the payload */
   gst_buffer_list_add (list, gst_buffer_append (rtp_buffer, data_buffer));
 
-  total_size += gst_buffer_get_size (rtp_buffer);
-
   /***  Second group, i.e. second packet. ***/
 
   /* Create the RTP header buffer */
@@ -136,8 +133,6 @@ create_buffer_list (void)
 
   /* Create a new group to hold the rtp header and the payload */
   gst_buffer_list_add (list, gst_buffer_append (rtp_buffer, data_buffer));
-
-  total_size += gst_buffer_get_size (rtp_buffer);
 
   /* Calculate the size of the data */
   data_size = 2 * RTP_HEADER_SIZE + 2 * RTP_PAYLOAD_SIZE;
