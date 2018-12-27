@@ -1,5 +1,5 @@
 project('libnice', 'c',
-  version: '0.1.14.1',
+  version: '0.1.15',
   meson_version : '>= 0.49.0',
   default_options : ['warning_level=1', 'buildtype=debugoptimized'])
 
@@ -16,7 +16,7 @@ endif
 
 # maintain compatibility with the previous libtool versioning
 soversion = 10
-libversion = '10.7.0'
+libversion = '10.8.0'
 
 glib_req = '>= 2.48'
 gnutls_req = '>= 2.12.0'

@@ -1,3 +1,15 @@
+libnice 0.1.15 (2018-12-27)
+===========================
+Add support for Regular Nomination
+Removal of the global lock over all agents
+Add method to compare candidate targets
+Added optional Meson build system, future releases will remove autotools
+Renamed all members of PseudoTcpState enum (compile-time API change)
+Now drops all packets from addresses that have not been validated by an ICE check
+Multiple improvements to ICE interoperability
+Improved RFC compliance
+Improved OC2007 compatibility mode alternate-server support
+
 libnice 0.1.14 (2017-04-03)
 ===========================
 Improved RFC compliance
