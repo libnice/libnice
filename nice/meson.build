@@ -52,7 +52,8 @@ endif
 libnice_dep = declare_dependency(link_with : libnice,
   include_directories : [agent_include, nice_include],
   # Everything that uses libnice needs this built to compile
-  sources : nice_gen_sources)
+  sources : nice_gen_sources,
+  dependencies: nice_deps)
 
 # pkg-config file
 pkg = import('pkgconfig')
