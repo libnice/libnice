@@ -188,7 +188,8 @@ if opt_cryptolib != 'openssl'
     if opt_cryptolib != 'auto'
       error('GnuTLS requested as crypto library, but not found')
     endif
-    crypto_dep = dependency('openssl', required: false)
+    crypto_dep = dependency('openssl', required: false, 
+      fallback: ['openssl', 'openssl_dep'])
     cdata.set('HAVE_OPENSSL', crypto_dep.found())
   endif
 else
