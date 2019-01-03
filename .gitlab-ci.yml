@@ -17,17 +17,30 @@ build autotools:
   - mkdir "$PREFIX"
   - ./autogen.sh --prefix="$PREFIX" --enable-compile-warnings=error --enable-gtk-doc --enable-introspection
   - make
-  #- make check
   - make install
-  #- make distcheck
  artifacts:
-  when: on_failure
-  paths:
-   - nice/test-suite.log
-   - random/test-suite.log
-   - tests/test-suite.log
-   - stun/tests/test-suite.log
-   - config.log
+   untracked: true
+
+test autotools:
+  stage: test
+  except:
+    - schedules
+  dependencies:
+    - build autotools
+  before_script:
+   - yum install -y net-tools
+  script:
+    - ifconfig
+    - make check
+  artifacts:
+    when: always
+    paths:
+      - libnice-0.1.15.1.tar.gz
+      - config.log
+      - nice/test-suite.log
+      - random/test-suite.log
+      - tests/test-suite.log
+      - stun/tests/test-suite.log
 
 build meson:
   image: 'fedora'
