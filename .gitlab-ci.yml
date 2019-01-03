@@ -35,12 +35,26 @@ test autotools:
   artifacts:
     when: always
     paths:
-      - libnice-0.1.15.1.tar.gz
       - config.log
       - nice/test-suite.log
       - random/test-suite.log
       - tests/test-suite.log
       - stun/tests/test-suite.log
+
+distcheck autotools:
+  stage: test
+  except:
+    - schedules
+  dependencies:
+    - build autotools
+  before_script:
+   - yum install -y net-tools
+  script:
+    - ifconfig
+    - make distcheck
+  artifacts:
+    paths:
+      - libnice-*.tar.gz
 
 build meson:
   image: 'fedora'
