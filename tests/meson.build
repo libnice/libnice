@@ -67,7 +67,9 @@ if gst_dep.found()
       dependencies: [nice_deps, gst_check, libm],
       link_with: libnice,
       install: false)
-    test('test-gstreamer', exe, env: tenv)
+    gst_env = tenv
+    gst_env.append('GST_PLUGIN_PATH_1_0', join_paths(meson.current_build_dir(), '..', 'gst'))
+    test('test-gstreamer', exe, env: gst_env)
   endif
 endif
 
