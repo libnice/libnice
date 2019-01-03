@@ -1,6 +1,7 @@
 image: registry.freedesktop.org/libnice/libnice/build-tools:centos-7
 stages:
  - build
+ - test
 
 build autotools:
  stage: build
@@ -35,7 +36,6 @@ build meson:
     PREFIX: "${CI_PROJECT_DIR}/libnice-prefix"
     DEPENDENCIES: >
       meson
-      net-tools
       gnutls-devel
       gupnp-igd-devel
       glib2-devel
@@ -51,6 +51,36 @@ build meson:
     - meson --werror build/
     - ninja -C build/
   artifacts:
+    paths:
+      - build/
+
+test meson:
+  image: 'fedora'
+  stage: test
+  allow_failure: true
+  dependencies:
+    - build meson
+  except:
+    - schedules
+  variables:
+   PREFIX: "${CI_PROJECT_DIR}/libnice-prefix"
+   DEPENDENCIES: >
+     meson
+     net-tools
+     gnutls-devel
+     gupnp-igd-devel
+     glib2-devel
+     gobject-introspection-devel
+     gstreamer1-devel
+     redhat-rpm-config
+  before_script:
+    - dnf install -y ${DEPENDENCIES}
+    - mkdir -p "${CI_PROJECT_DIR}"
+  script:
+    - ifconfig
+    - meson test -C build --print-errorlogs
+  artifacts:
+    when: on_failure
     paths:
       - build/meson-logs/
 
