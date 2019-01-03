@@ -42,6 +42,8 @@ build meson:
       gobject-introspection-devel
       gstreamer1-devel
       redhat-rpm-config
+  except:
+    - schedules
   before_script:
     - dnf install -y ${DEPENDENCIES}
     - mkdir -p "${CI_PROJECT_DIR}"
