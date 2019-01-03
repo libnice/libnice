@@ -362,7 +362,7 @@ socket_recv_messages (NiceSocket *sock,
     guint f_buffer_len = priv->fragment_buffer->len;
 
     for (i = 0; i < n_recv_messages && f_buffer_len >= sizeof (guint16); ++i) {
-      guint16 msg_len = ntohs (*(guint16 *)f_buffer) + sizeof (guint16);
+      guint16 msg_len = ((f_buffer[0] << 8) | f_buffer[1]) + sizeof (guint16);
 
       if (msg_len > f_buffer_len) {
         /* The next message in the buffer isn't complete yet. Wait for more
@@ -452,7 +452,7 @@ socket_recv_messages (NiceSocket *sock,
        * return. */
       guint16 msg_len = 0;
       if (!priv->fragment_buffer) {
-        msg_len = ntohs (*(guint16 *)buffer) + sizeof (guint16);
+        msg_len = ((buffer[0] << 8) | buffer[1]) + sizeof (guint16);
         if (msg_len > parsed_buffer_length) {
           /* The RFC4571 frame is larger than the current TURN message, need to
            * buffer it and wait for more data. */
