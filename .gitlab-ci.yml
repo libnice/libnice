@@ -81,6 +81,7 @@ test meson:
     - schedules
   script:
     - ifconfig
+    - unset GITLAB_USER_NAME
     - source scl_source enable rh-python36 && true
     - meson test -C build/ --print-errorlogs
   artifacts:
