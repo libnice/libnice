@@ -69,13 +69,14 @@ build meson:
       gobject-introspection-devel
       gstreamer1-devel
       redhat-rpm-config
+      gtk-doc
   except:
     - schedules
   before_script:
     - dnf install -y ${DEPENDENCIES}
     - mkdir -p "${CI_PROJECT_DIR}"
   script:
-    - meson --werror build/
+    - meson --werror -Dgtk_doc=enabled --prefix=$PREFIX build/
     - ninja -C build/
   artifacts:
     paths:
@@ -100,6 +101,7 @@ test meson:
      gobject-introspection-devel
      gstreamer1-devel
      redhat-rpm-config
+      gtk-doc
   before_script:
     - dnf install -y ${DEPENDENCIES}
     - mkdir -p "${CI_PROJECT_DIR}"
@@ -110,6 +112,36 @@ test meson:
     when: on_failure
     paths:
       - build/meson-logs/
+
+doc-and-install meson:
+  stage: test
+  image: fedora
+  dependencies:
+    - build meson
+  except:
+    - schedules
+  variables:
+    PREFIX: "${CI_PROJECT_DIR}/libnice-prefix"
+    DEPENDENCIES: >
+     meson
+     net-tools
+     gnutls-devel
+     gupnp-igd-devel
+     glib2-devel
+     gobject-introspection-devel
+     gstreamer1-devel
+     redhat-rpm-config
+     gtk-doc
+  before_script:
+    - dnf install -y ${DEPENDENCIES}
+    - mkdir -p "${CI_PROJECT_DIR}"
+  script:
+    - ninja -C build libnice-doc
+    - ninja -C build/ install
+    - ls -lR ${PREFIX}
+  artifacts:
+    paths:
+      - build/docs/reference/libnice/html/
 
 submit-to-coverity:
  image: registry.freedesktop.org/libnice/libnice/build-tools/coverity:2017.07
