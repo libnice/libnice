@@ -62,8 +62,10 @@ build meson:
   before_script:
     - mkdir -p "${CI_PROJECT_DIR}"
   script:
-    - scl enable rh-python36 "meson --werror -Dgtk_doc=enabled --prefix=$PREFIX build/"
-    - scl enable rh-python36 "ninja-build -C build/"
+    ## && true to make gitlab-ci happy
+    - source scl_source enable rh-python36 && true
+    - meson --werror -Dgtk_doc=enabled --prefix=$PREFIX build/
+    - ninja-build -C build/
   artifacts:
     paths:
       - build/
@@ -78,8 +80,9 @@ test meson:
     - schedules
   script:
     - ifconfig
+    - source scl_source enable rh-python36 && true
     - unset GITLAB_USER_NAME
-    - scl enable rh-python36 "meson test -C build/ --print-errorlogs"
+    - meson test -C build/ --print-errorlogs
   artifacts:
     when: on_failure
     paths:
@@ -96,8 +99,9 @@ doc-and-install meson:
   variables:
     PREFIX: "${CI_PROJECT_DIR}/libnice-prefix"
   script:
-    - scl enable rh-python36 "ninja-build -C build/ libnice-doc"
-    - scl enable rh-python36 "ninja-build -C build/ install"
+    - source scl_source enable rh-python36 && true
+    - ninja-build -C build/ libnice-doc
+    - ninja-build -C build/ install
     - ls -lR ${PREFIX}
   artifacts:
     paths:
