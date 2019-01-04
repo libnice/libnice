@@ -2,6 +2,10 @@ stages:
  - build
  - test
 
+# Workaround for https://github.com/mesonbuild/meson/issues/4718
+variables:
+  LANG: en_US.utf8
+
 build autotools:
  stage: build
  image: registry.freedesktop.org/ocrete/libnice/centos7/autotools-build
