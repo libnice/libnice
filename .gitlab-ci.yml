@@ -78,6 +78,7 @@ test meson:
     - schedules
   script:
     - ifconfig
+    - unset GITLAB_USER_NAME
     - scl enable rh-python36 "meson test -C build/ --print-errorlogs"
   artifacts:
     when: on_failure
