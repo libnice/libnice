@@ -76,7 +76,7 @@ build meson:
     - dnf install -y ${DEPENDENCIES}
     - mkdir -p "${CI_PROJECT_DIR}"
   script:
-    - meson --werror -Dgtk_doc=enabled --prefix=$PREFIX build/
+    - meson --werror --warnlevel 2 -Dgtk_doc=enabled --prefix=$PREFIX build/
     - ninja -C build/
   artifacts:
     paths:
