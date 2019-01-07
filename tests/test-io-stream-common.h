@@ -44,6 +44,10 @@
 #include <unistd.h>
 #endif
 
+#if !GLIB_CHECK_VERSION(2, 58, 0)
+#define G_SOURCE_FUNC(f) ((GSourceFunc) (void (*)(void)) (f))
+#endif
+
 /* Make the message sufficiently large to not hit Nagle’s algorithm in the
  * pseudo-TCP implementation, and hence run really slowly. */
 #define MESSAGE_SIZE 1284 /* bytes */

@@ -954,7 +954,7 @@ read_thread_gsource_cb (GInputStream *input_stream,
       g_pollable_input_stream_create_source (
           G_POLLABLE_INPUT_STREAM (input_stream), NULL);
 
-  g_source_set_callback (stream_source, (GSourceFunc) read_stream_cb,
+  g_source_set_callback (stream_source, G_SOURCE_FUNC (read_stream_cb),
       &gsource_data, NULL);
   g_source_attach (stream_source, main_context);
 
@@ -1031,7 +1031,7 @@ write_thread_gsource_cb (GOutputStream *output_stream,
       g_pollable_output_stream_create_source (
           G_POLLABLE_OUTPUT_STREAM (output_stream), NULL);
 
-  g_source_set_callback (stream_source, (GSourceFunc) write_stream_cb,
+  g_source_set_callback (stream_source, G_SOURCE_FUNC (write_stream_cb),
       &gsource_data, NULL);
   g_source_attach (stream_source, main_context);
 

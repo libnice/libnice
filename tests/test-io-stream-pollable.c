@@ -107,7 +107,7 @@ read_thread_cb (GInputStream *input_stream, TestIOStreamThreadData *data)
       g_pollable_input_stream_create_source (
           G_POLLABLE_INPUT_STREAM (input_stream), NULL);
 
-  g_source_set_callback (stream_source, (GSourceFunc) read_stream_cb,
+  g_source_set_callback (stream_source, G_SOURCE_FUNC (read_stream_cb),
       data, NULL);
   g_source_attach (stream_source, main_context);
   g_source_unref (stream_source);

@@ -42,6 +42,8 @@
 
 #include "iostream.h"
 
+#include "test-io-stream-common.h"
+
 static void
 test_invalid_stream (NiceAddress *addr)
 {
@@ -254,7 +256,7 @@ check_pollable_source_cancellation (GSource *pollable_source,
   main_loop = g_main_loop_new (main_context, FALSE);
 
   /* Set up the pollable source. */
-  g_source_set_callback (pollable_source, (GSourceFunc) source_cancelled_cb,
+  g_source_set_callback (pollable_source, G_SOURCE_FUNC (source_cancelled_cb),
       main_loop, NULL);
   g_source_attach (pollable_source, main_context);
 

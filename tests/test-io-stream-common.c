@@ -554,7 +554,7 @@ void
 stop_main_loop (GMainLoop *loop)
 {
   GSource *src = g_idle_source_new ();
-  g_source_set_callback (src, (GSourceFunc) g_main_loop_quit,
+  g_source_set_callback (src, G_SOURCE_FUNC (g_main_loop_quit),
       g_main_loop_ref (loop), (GDestroyNotify) g_main_loop_unref);
   g_source_attach (src, g_main_loop_get_context (loop));
   g_source_unref (src);
