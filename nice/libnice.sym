@@ -44,6 +44,7 @@ nice_agent_option_get_type
 nice_agent_parse_remote_candidate_sdp
 nice_agent_parse_remote_sdp
 nice_agent_parse_remote_stream_sdp
+nice_agent_peer_candidate_gathering_done
 nice_agent_remove_stream
 nice_agent_restart
 nice_agent_restart_stream

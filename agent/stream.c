@@ -77,6 +77,8 @@ nice_stream_new (guint stream_id, guint n_components, NiceAgent *agent)
 
   stream->n_components = n_components;
 
+  stream->peer_gathering_done = !agent->use_ice_trickle;
+
   return stream;
 }
 

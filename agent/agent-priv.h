@@ -190,6 +190,7 @@ struct _NiceAgent
   guint16 rfc4571_expecting_length;
   gboolean use_ice_udp;
   gboolean use_ice_tcp;
+  gboolean use_ice_trickle;
 
   guint conncheck_timer_grace_period; /* ongoing delay before timer stop */
   gboolean controlling_mode;          /* controlling mode used by the

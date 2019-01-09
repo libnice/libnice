@@ -404,6 +404,7 @@ typedef enum
  *  is aggrssive mode (see #NiceNominationMode).
  * @NICE_AGENT_OPTION_RELIABLE: Enables reliable mode, possibly using PseudoTCP, *  see nice_agent_new_reliable().
  * @NICE_AGENT_OPTION_LITE_MODE: Enable lite mode
+ * @NICE_AGENT_OPTION_ICE_TRICKLE: Enable ICE trickle mode
  *
  * These are options that can be passed to nice_agent_new_full(). They set
  * various properties on the agent. Not including them sets the property to
@@ -415,6 +416,7 @@ typedef enum {
   NICE_AGENT_OPTION_REGULAR_NOMINATION = 1 << 0,
   NICE_AGENT_OPTION_RELIABLE = 1 << 1,
   NICE_AGENT_OPTION_LITE_MODE = 1 << 2,
+  NICE_AGENT_OPTION_ICE_TRICKLE = 1 << 3,
 } NiceAgentOption;
 
 /**
@@ -1630,6 +1632,29 @@ NiceComponentState
 nice_agent_get_component_state (NiceAgent *agent,
     guint stream_id,
     guint component_id);
+
+/**
+ * nice_agent_peer_candidate_gathering_done:
+ * @agent: The #NiceAgent Object
+ * @stream_id: The ID of the stream
+ *
+ * Notifies the agent that the remote peer has concluded candidate gathering and
+ * thus no more remote candidates are expected to arrive for @stream_id.
+ *
+ * This will allow the stream components without a successful connectivity check
+ * to stop waiting for more candidates to come and finally transit into
+ * %NICE_COMPONENT_STATE_FAILED.
+ *
+ * Calling the function has an effect only when #NiceAgent:trickle-ice is %TRUE.
+ *
+ * Returns: %FALSE if the stream could not be found, %TRUE otherwise
+ *
+ * Since: 0.1.16
+ */
+gboolean
+nice_agent_peer_candidate_gathering_done (
+    NiceAgent *agent,
+    guint stream_id);
 
 G_END_DECLS
 

@@ -118,6 +118,7 @@ enum
   PROP_STUN_INITIAL_TIMEOUT,
   PROP_STUN_RELIABLE_TIMEOUT,
   PROP_NOMINATION_MODE,
+  PROP_ICE_TRICKLE,
 };
 
 
@@ -806,6 +807,24 @@ nice_agent_class_init (NiceAgentClass *klass)
         STUN_TIMER_DEFAULT_RELIABLE_TIMEOUT,
         G_PARAM_READWRITE | G_PARAM_CONSTRUCT));
 
+   /**
+    * NiceAgent:ice-trickle
+    *
+    * Whether to perform Trickle ICE as per draft-ietf-ice-trickle-ice-21.
+    * When %TRUE, the agent will postpone changing a component state to
+    * %NICE_COMPONENT_STATE_FAILED until nice_agent_peer_candidate_gathering_done()
+    * has been called with the ID of the component's stream.
+    *
+    * Since: 0.1.16
+    */
+   g_object_class_install_property (gobject_class, PROP_ICE_TRICKLE,
+      g_param_spec_boolean (
+        "ice-trickle",
+        "Trickle ICE",
+        "Whether to perform Trickle ICE as per draft-ietf-ice-trickle-ice-21.",
+        FALSE,
+        G_PARAM_READWRITE));
+
   /* install signals */
 
   /**
@@ -1226,6 +1245,7 @@ nice_agent_new_full (GMainContext *ctx,
       "nomination-mode", (flags & NICE_AGENT_OPTION_REGULAR_NOMINATION) ?
       NICE_NOMINATION_MODE_REGULAR : NICE_NOMINATION_MODE_AGGRESSIVE,
       "full-mode", (flags & NICE_AGENT_OPTION_LITE_MODE) ? FALSE : TRUE,
+      "ice-trickle", (flags & NICE_AGENT_OPTION_ICE_TRICKLE) ? TRUE : FALSE,
       NULL);
 
   return agent;
@@ -1362,6 +1382,10 @@ nice_agent_get_property (
 
     case PROP_STUN_RELIABLE_TIMEOUT:
       g_value_set_uint (value, agent->stun_reliable_timeout);
+      break;
+
+    case PROP_ICE_TRICKLE:
+      g_value_set_boolean (value, agent->use_ice_trickle);
       break;
 
     default:
@@ -1565,6 +1589,10 @@ nice_agent_set_property (
 
     case PROP_STUN_RELIABLE_TIMEOUT:
       agent->stun_reliable_timeout = g_value_get_uint (value);
+      break;
+
+    case PROP_ICE_TRICKLE:
+      agent->use_ice_trickle = g_value_get_boolean (value);
       break;
 
     default:
@@ -6575,3 +6603,23 @@ nice_agent_get_component_state (NiceAgent *agent,
 
   return state;
 }
+
+gboolean
+nice_agent_peer_candidate_gathering_done (NiceAgent *agent, guint stream_id)
+{
+  NiceStream *stream;
+  gboolean result = FALSE;
+
+  agent_lock (agent);
+
+  stream = agent_find_stream (agent, stream_id);
+  if (stream) {
+    stream->peer_gathering_done = TRUE;
+    result = TRUE;
+  }
+
+  agent_unlock (agent);
+
+  return result;
+}
+

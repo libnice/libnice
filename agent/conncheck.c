@@ -1106,6 +1106,9 @@ static gboolean priv_conn_check_tick_agent_locked (NiceAgent *agent,
             agent, stream->id);
         keep_timer_going = priv_conn_check_unfreeze_next (agent, stream);
       }
+      if (!keep_timer_going && !stream->peer_gathering_done) {
+        keep_timer_going = TRUE;
+      }
     }
   }
 

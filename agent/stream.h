@@ -87,6 +87,7 @@ struct _NiceStream {
   gchar remote_password[NICE_STREAM_MAX_PWD];
   gboolean gathering;
   gboolean gathering_started;
+  gboolean peer_gathering_done;
   gint tos;
   guint tick_counter;
 };
