@@ -4128,7 +4128,7 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, NiceStream *stream,
   }
 
   if (valid != STUN_VALIDATION_SUCCESS) {
-    nice_debug ("Agent %p : STUN message is unsuccessfull %d, ignoring", agent, valid);
+    nice_debug ("Agent %p : STUN message is unsuccessful %d, ignoring", agent, valid);
     return FALSE;
   }
 

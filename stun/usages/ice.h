@@ -168,7 +168,7 @@ stun_usage_ice_conncheck_create (StunAgent *agent, StunMessage *msg,
  * @compatibility: The compatibility mode to use for processing the conncheck
  * response
  *
- * Process an ICE connectivity check STUN message and retreive the
+ * Process an ICE connectivity check STUN message and retrieve the
  * mapped address from the message
  * <para> See also stun_usage_ice_conncheck_priority() and
  * stun_usage_ice_conncheck_use_candidate() </para>
