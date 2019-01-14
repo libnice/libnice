@@ -272,6 +272,17 @@ int main (void)
   g_object_set (G_OBJECT (lagent), "controlling-mode", TRUE, NULL);
   g_object_set (G_OBJECT (ragent), "controlling-mode", FALSE, NULL);
 
+  /* An application using more than one NiceAgent instance may crash due to
+   * a race in gUPnP.
+   *
+   * UPnP can be re-enabled here and in other libnice tests once gUPnP
+   * 1.1.2 / 1.0.4 is released.
+   *
+   * See https://gitlab.gnome.org/GNOME/gupnp/commit/0123e574595e0a547ce26422633df72d63d3d0e0
+   */
+  g_object_set (G_OBJECT (lagent), "upnp", FALSE, NULL);
+  g_object_set (G_OBJECT (ragent), "upnp", FALSE, NULL);
+
   /* step: add one stream, with RTP+RTCP components, to each agent */
   ls_id = nice_agent_add_stream (lagent, 1);
 

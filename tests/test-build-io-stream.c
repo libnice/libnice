@@ -49,6 +49,7 @@ test_invalid_stream (NiceAddress *addr)
   GIOStream *io_stream;
 
   agent = nice_agent_new_reliable (NULL, NICE_COMPATIBILITY_RFC5245);
+  g_object_set (G_OBJECT (agent), "upnp", FALSE, NULL);
   nice_agent_add_local_address (agent, addr);
 
   /* Try building an I/O stream for an invalid stream. All its operations should
@@ -69,6 +70,7 @@ test_io_stream_properties (NiceAddress *addr)
   GOutputStream *output_stream;
 
   agent = nice_agent_new_reliable (NULL, NICE_COMPATIBILITY_RFC5245);
+  g_object_set (G_OBJECT (agent), "upnp", FALSE, NULL);
   nice_agent_add_local_address (agent, addr);
 
   stream_id = nice_agent_add_stream (agent, 1);
@@ -125,6 +127,7 @@ test_pollable_properties (NiceAddress *addr)
   GSource *stream_source;
 
   agent = nice_agent_new_reliable (NULL, NICE_COMPATIBILITY_RFC5245);
+  g_object_set (G_OBJECT (agent), "upnp", FALSE, NULL);
   nice_agent_add_local_address (agent, addr);
 
   /* Add a stream. */
@@ -295,6 +298,7 @@ test_pollable_cancellation (NiceAddress *addr)
   GCancellable *cancellable;
 
   agent = nice_agent_new_reliable (NULL, NICE_COMPATIBILITY_RFC5245);
+  g_object_set (G_OBJECT (agent), "upnp", FALSE, NULL);
   nice_agent_add_local_address (agent, addr);
 
   /* Add a stream. */
@@ -373,6 +377,7 @@ test_zero_length_reads_writes (NiceAddress *addr)
   guint8 buf[1];  /* should never be accessed */
 
   agent = nice_agent_new_reliable (NULL, NICE_COMPATIBILITY_RFC5245);
+  g_object_set (G_OBJECT (agent), "upnp", FALSE, NULL);
   nice_agent_add_local_address (agent, addr);
 
   /* Add a stream. */

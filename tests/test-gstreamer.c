@@ -227,6 +227,9 @@ GST_START_TEST (buffer_list_test)
   sink_agent = nice_agent_new (NULL, NICE_COMPATIBILITY_RFC5245);
   src_agent = nice_agent_new (NULL, NICE_COMPATIBILITY_RFC5245);
 
+  g_object_set (G_OBJECT (sink_agent), "upnp", FALSE, NULL);
+  g_object_set (G_OBJECT (src_agent), "upnp", FALSE, NULL);
+
   nice_agent_add_local_address (sink_agent, addr);
   nice_agent_add_local_address (src_agent, addr);
 

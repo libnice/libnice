@@ -430,6 +430,8 @@ int main (void)
   g_object_set (G_OBJECT (lagent), "ice-tcp", FALSE,  NULL);
   g_object_set (G_OBJECT (ragent), "ice-tcp", FALSE,  NULL);
 
+  g_object_set (G_OBJECT (lagent), "upnp", FALSE, NULL);
+  g_object_set (G_OBJECT (ragent), "upnp", FALSE, NULL);
 
   /* step: add a timer to catch state changes triggered by signals */
   timer_id = g_timeout_add (30000, timer_cb, NULL);

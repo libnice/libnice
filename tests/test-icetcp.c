@@ -418,6 +418,8 @@ int main (void)
 
   g_object_set (G_OBJECT (lagent), "ice-udp", FALSE,  NULL);
   g_object_set (G_OBJECT (ragent), "ice-udp", FALSE,  NULL);
+  g_object_set (G_OBJECT (lagent), "upnp", FALSE, NULL);
+  g_object_set (G_OBJECT (ragent), "upnp", FALSE, NULL);
   nice_agent_set_software (lagent, "Test-icetcp, Left Agent");
   nice_agent_set_software (ragent, "Test-icetcp, Right Agent");
 
