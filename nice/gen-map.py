@@ -12,16 +12,13 @@ except:
 
 f = open(os.path.join(sym_file), 'r')
 
-print('''libnice {
+print('''{
 global:''')
 
 for line in f:
     print('\t' + line.strip() + ';')
 
-print('''};
-
-HIDDEN {
-local:
+print('''local:
 	*;
 };''')
 
