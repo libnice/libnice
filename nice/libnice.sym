@@ -38,6 +38,7 @@ nice_agent_get_selected_socket
 nice_agent_get_stream_name
 nice_agent_get_type
 nice_agent_new
+nice_agent_new_full
 nice_agent_new_reliable
 nice_agent_option_get_type
 nice_agent_parse_remote_candidate_sdp
