@@ -40,6 +40,7 @@ test autotools:
       - random/test-suite.log
       - tests/test-suite.log
       - stun/tests/test-suite.log
+      - docs/reference/libnice/test-suite.log
 
 distcheck autotools:
   stage: test
