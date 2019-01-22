@@ -1451,13 +1451,14 @@ nice_udp_turn_socket_parse_recv (NiceSocket *sock, NiceSocket **from_sock,
               /* check for unauthorized error response */
               if (stun_message_find_error (&msg, &code) ==
                   STUN_MESSAGE_RETURN_SUCCESS &&
-                  (code == 438 || (code == 401 &&
-                      !(recv_realm != NULL &&
-                          recv_realm_len > 0 &&
-                          recv_realm_len == sent_realm_len &&
-                          sent_realm != NULL &&
-                          memcmp (sent_realm, recv_realm,
-                              sent_realm_len) == 0)))) {
+                  (code == STUN_ERROR_STALE_NONCE ||
+                      (code == STUN_ERROR_UNAUTHORIZED &&
+                          !(recv_realm != NULL &&
+                              recv_realm_len > 0 &&
+                              recv_realm_len == sent_realm_len &&
+                              sent_realm != NULL &&
+                              memcmp (sent_realm, recv_realm,
+                                  sent_realm_len) == 0)))) {
 
                 g_free (priv->current_binding_msg);
                 priv->current_binding_msg = NULL;
@@ -1552,13 +1553,14 @@ nice_udp_turn_socket_parse_recv (NiceSocket *sock, NiceSocket **from_sock,
               /* check for unauthorized error response */
               if (stun_message_find_error (&msg, &code) ==
                   STUN_MESSAGE_RETURN_SUCCESS &&
-                  (code == 438 || (code == 401 &&
-                      !(recv_realm != NULL &&
-                          recv_realm_len > 0 &&
-                          recv_realm_len == sent_realm_len &&
-                          sent_realm != NULL &&
-                          memcmp (sent_realm, recv_realm,
-                              sent_realm_len) == 0)))) {
+                  (code == STUN_ERROR_STALE_NONCE ||
+                      (code == STUN_ERROR_UNAUTHORIZED &&
+                          !(recv_realm != NULL &&
+                              recv_realm_len > 0 &&
+                              recv_realm_len == sent_realm_len &&
+                              sent_realm != NULL &&
+                              memcmp (sent_realm, recv_realm,
+                                  sent_realm_len) == 0)))) {
 
                 priv->pending_permissions = g_list_delete_link (
                     priv->pending_permissions, i);

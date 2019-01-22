@@ -3674,8 +3674,8 @@ static gboolean priv_map_reply_to_relay_request (NiceAgent *agent, StunMessage *
               STUN_MESSAGE_RETURN_SUCCESS &&
               recv_realm != NULL && recv_realm_len > 0) {
 
-            if (code == 438 ||
-                (code == 401 &&
+            if (code == STUN_ERROR_STALE_NONCE ||
+                (code == STUN_ERROR_UNAUTHORIZED &&
                     !(recv_realm_len == sent_realm_len &&
                         sent_realm != NULL &&
                         memcmp (sent_realm, recv_realm, sent_realm_len) == 0))) {
@@ -3764,8 +3764,8 @@ static gboolean priv_map_reply_to_relay_refresh (NiceAgent *agent, StunMessage *
               STUN_MESSAGE_RETURN_SUCCESS &&
               recv_realm != NULL && recv_realm_len > 0) {
 
-            if (code == 438 ||
-                (code == 401 &&
+            if (code == STUN_ERROR_STALE_NONCE ||
+                (code == STUN_ERROR_UNAUTHORIZED &&
                     !(recv_realm_len == sent_realm_len &&
                         sent_realm != NULL &&
                         memcmp (sent_realm, recv_realm, sent_realm_len) == 0))) {
