@@ -3393,6 +3393,14 @@ static gboolean priv_map_reply_to_discovery_request (NiceAgent *agent, StunMessa
   return trans_found;
 }
 
+static guint
+priv_calc_turn_timeout (guint lifetime)
+{
+  if (lifetime > 120)
+    return lifetime - 60;
+  else
+    return lifetime / 2;
+}
 
 static CandidateRefresh *
 priv_add_new_turn_refresh (NiceAgent *agent, CandidateDiscovery *cdisco,
@@ -3421,14 +3429,13 @@ priv_add_new_turn_refresh (NiceAgent *agent, CandidateDiscovery *cdisco,
   }
 
   nice_debug ("Agent %p : Adding new refresh candidate %p with timeout %d",
-      agent, cand, lifetime - 60);
-
+      agent, cand, priv_calc_turn_timeout (lifetime));
   /* step: also start the refresh timer */
   /* refresh should be sent 1 minute before it expires */
   agent_timeout_add_seconds_with_context (agent, &cand->timer_source,
       "Candidate TURN refresh",
-      lifetime - 60, priv_turn_allocate_refresh_tick_agent_locked,
-      cand);
+      priv_calc_turn_timeout (lifetime),
+      priv_turn_allocate_refresh_tick_agent_locked, cand);
 
   nice_debug ("timer source is : %p", cand->timer_source);
 
@@ -3733,13 +3740,13 @@ static gboolean priv_map_reply_to_relay_refresh (NiceAgent *agent, StunMessage *
       if (memcmp (refresh_id, response_id, sizeof(StunTransactionId)) == 0) {
         res = stun_usage_turn_refresh_process (resp,
             &lifetime, agent_to_turn_compatibility (agent));
-        nice_debug ("Agent %p : stun_turn_refresh_process for %p res %d.",
-            agent, cand, (int)res);
+        nice_debug ("Agent %p : stun_turn_refresh_process for %p res %d with lifetime %u.",
+            agent, cand, (int)res, lifetime);
         if (res == STUN_USAGE_TURN_RETURN_RELAY_SUCCESS) {
           /* refresh should be sent 1 minute before it expires */
           agent_timeout_add_seconds_with_context (agent,
               &cand->timer_source,
-              "Candidate TURN refresh", lifetime - 60,
+              "Candidate TURN refresh", priv_calc_turn_timeout (lifetime),
               priv_turn_allocate_refresh_tick_agent_locked, cand);
 
           g_source_destroy (cand->tick_source);
