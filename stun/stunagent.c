@@ -222,7 +222,8 @@ StunValidationStatus stun_agent_validate (StunAgent *agent, StunMessage *msg,
           STUN_MESSAGE_RETURN_SUCCESS &&
        (error_code == STUN_ERROR_BAD_REQUEST ||
            error_code == STUN_ERROR_UNAUTHORIZED ||
-           error_code == STUN_ERROR_STALE_NONCE)) ||
+           error_code == STUN_ERROR_STALE_NONCE ||
+           error_code == STUN_ERROR_TRY_ALTERNATE)) ||
       (stun_message_get_class (msg) == STUN_INDICATION &&
           (agent->usage_flags & STUN_AGENT_USAGE_LONG_TERM_CREDENTIALS ||
               agent->usage_flags & STUN_AGENT_USAGE_NO_INDICATION_AUTH));
