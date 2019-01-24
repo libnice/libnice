@@ -1,8 +1,8 @@
 # build with
-# docker build -t registry.freedesktop.org/ocrete/libnice/centos7/meson-build:$(date --rfc-3339=date) .
-# docker tag registry.freedesktop.org/ocrete/libnice/centos7/meson-build:$(date --rfc-3339=date) registry.freedesktop.org/ocrete/libnice/centos7/meson-build:latest
-# docker push registry.freedesktop.org/ocrete/libnice/centos7/meson-build:latest
-# docker push registry.freedesktop.org/ocrete/libnice/centos7/meson-build:$(date --rfc-3339=date)
+# docker build -t registry.freedesktop.org/libnice/libnice/centos7/meson-build:$(date --rfc-3339=date) .
+# docker tag registry.freedesktop.org/libnice/libnice/centos7/meson-build:$(date --rfc-3339=date) registry.freedesktop.org/libnice/libnice/centos7/meson-build:latest
+# docker push registry.freedesktop.org/libnice/libnice/centos7/meson-build:latest
+# docker push registry.freedesktop.org/libnice/libnice/centos7/meson-build:$(date --rfc-3339=date)
 
 FROM centos:centos7
 

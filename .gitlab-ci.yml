@@ -4,7 +4,7 @@ stages:
 
 build autotools:
  stage: build
- image: registry.freedesktop.org/ocrete/libnice/centos7/autotools-build
+ image: registry.freedesktop.org/libnice/libnice/centos7/autotools-build
  except:
   - schedules
  script:
@@ -21,7 +21,7 @@ build autotools:
 
 test autotools:
   stage: test
-  image: registry.freedesktop.org/ocrete/libnice/centos7/autotools-build
+  image: registry.freedesktop.org/libnice/libnice/centos7/autotools-build
   except:
     - schedules
   dependencies:
@@ -41,7 +41,7 @@ test autotools:
 
 distcheck autotools:
   stage: test
-  image: registry.freedesktop.org/ocrete/libnice/centos7/autotools-build
+  image: registry.freedesktop.org/libnice/libnice/centos7/autotools-build
   except:
     - schedules
   dependencies:
@@ -55,7 +55,7 @@ distcheck autotools:
 
 build meson:
   stage: build
-  image: registry.freedesktop.org/ocrete/libnice/centos7/meson-build
+  image: registry.freedesktop.org/libnice/libnice/centos7/meson-build
   variables:
     PREFIX: "${CI_PROJECT_DIR}/libnice-prefix"
   except:
@@ -73,7 +73,7 @@ build meson:
 
 test meson:
   stage: test
-  image: registry.freedesktop.org/ocrete/libnice/centos7/meson-build
+  image: registry.freedesktop.org/libnice/libnice/centos7/meson-build
   allow_failure: true
   dependencies:
     - build meson
@@ -90,7 +90,7 @@ test meson:
 
 doc-and-install meson:
   stage: test
-  image: registry.freedesktop.org/ocrete/libnice/centos7/meson-build
+  image: registry.freedesktop.org/libnice/libnice/centos7/meson-build
   dependencies:
     - build meson
   except:
@@ -108,7 +108,7 @@ doc-and-install meson:
 
 submit-to-coverity:
  stage: test
- image: registry.freedesktop.org/ocrete/libnice/centos7/autotools-build
+ image: registry.freedesktop.org/libnice/libnice/centos7/autotools-build
  variables:
    COVERITY_PROJECT: libnice
  only:
