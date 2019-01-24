@@ -2,10 +2,6 @@ stages:
  - build
  - test
 
-# Workaround for https://github.com/mesonbuild/meson/issues/4718
-variables:
-  LANG: en_US.utf8
-
 build autotools:
  stage: build
  image: registry.freedesktop.org/ocrete/libnice/centos7/autotools-build
@@ -85,7 +81,6 @@ test meson:
     - schedules
   script:
     - ifconfig
-    - unset GITLAB_USER_NAME
     - source scl_source enable rh-python36 && true
     - meson test -C build/ --print-errorlogs
   artifacts:
