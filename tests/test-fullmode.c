@@ -335,10 +335,33 @@ static void set_credentials (NiceAgent *lagent, guint lstream,
   g_free (password);
 }
 
+static guint16
+get_port (NiceAgent *agent, guint stream_id, guint component_id)
+{
+  GSList *cands = nice_agent_get_local_candidates (agent, stream_id,
+      component_id);
+  GSList *item;
+  guint16 port = 0;
+
+  g_assert (cands != NULL);
+
+  for (item = cands; item; item = item->next) {
+    NiceCandidate *cand = item->data;
+    port = nice_address_get_port (&cand->addr);
+    break;
+  }
+  g_assert (port != 0);
+
+  g_slist_free_full (cands, (GDestroyNotify) nice_candidate_free);
+
+  return port;
+}
+
 static int run_full_test (NiceAgent *lagent, NiceAgent *ragent, NiceAddress *baseaddr, guint ready, guint failed)
 {
   guint ls_id, rs_id;
   gint ret;
+  guint16 port;
 
   /* XXX: dear compiler, this is for you */
   (void)baseaddr;
@@ -377,15 +400,21 @@ static int run_full_test (NiceAgent *lagent, NiceAgent *ragent, NiceAddress *bas
 
 
   /* Gather candidates and test nice_agent_set_port_range */
-  nice_agent_set_port_range (lagent, ls_id, 1, 10000, 10000);
-  nice_agent_set_port_range (lagent, ls_id, 2, 10001, 10001);
-  nice_agent_set_port_range (ragent, rs_id, 1, 12345, 12345);
-  nice_agent_set_port_range (ragent, rs_id, 2, 10000, 10001);
-  g_assert (nice_agent_gather_candidates (lagent, ls_id) == TRUE);
+  for (port = 10000; port < 60000; port++) {
+    nice_agent_set_port_range (lagent, ls_id, 1, port, port);
+    if (nice_agent_gather_candidates (lagent, ls_id))
+      break;
+  }
+
+  g_assert (port == get_port (lagent, ls_id, 1));
+
+  nice_agent_set_port_range (ragent, rs_id, 2, port, port);
+
   g_assert (nice_agent_gather_candidates (ragent, rs_id) == FALSE);
   g_assert (nice_agent_get_local_candidates (ragent, rs_id, 1) == NULL);
   g_assert (nice_agent_get_local_candidates (ragent, rs_id, 2) == NULL);
-  nice_agent_set_port_range (ragent, rs_id, 2, 10000, 10002);
+  nice_agent_set_port_range (ragent, rs_id, 2, 0, 0);
+  g_assert (nice_agent_gather_candidates (lagent, ls_id) == TRUE);
   g_assert (nice_agent_gather_candidates (ragent, rs_id) == TRUE);
 
 #if USE_LOOPBACK
@@ -397,7 +426,6 @@ static int run_full_test (NiceAgent *lagent, NiceAgent *ragent, NiceAddress *bas
     g_assert (g_slist_length (cands) == 1);
     cand = cands->data;
     g_assert (cand->type == NICE_CANDIDATE_TYPE_HOST);
-    g_assert (nice_address_get_port (&cand->addr) == 10000);
     for (i = cands; i; i = i->next)
       nice_candidate_free ((NiceCandidate *) i->data);
     g_slist_free (cands);
@@ -406,7 +434,6 @@ static int run_full_test (NiceAgent *lagent, NiceAgent *ragent, NiceAddress *bas
     g_assert (g_slist_length (cands) == 1);
     cand = cands->data;
     g_assert (cand->type == NICE_CANDIDATE_TYPE_HOST);
-    g_assert (nice_address_get_port (&cand->addr) == 10001);
     for (i = cands; i; i = i->next)
       nice_candidate_free ((NiceCandidate *) i->data);
     g_slist_free (cands);
@@ -415,7 +442,6 @@ static int run_full_test (NiceAgent *lagent, NiceAgent *ragent, NiceAddress *bas
     g_assert (g_slist_length (cands) == 1);
     cand = cands->data;
     g_assert (cand->type == NICE_CANDIDATE_TYPE_HOST);
-    g_assert (nice_address_get_port (&cand->addr) == 12345);
     for (i = cands; i; i = i->next)
       nice_candidate_free ((NiceCandidate *) i->data);
     g_slist_free (cands);
@@ -424,7 +450,6 @@ static int run_full_test (NiceAgent *lagent, NiceAgent *ragent, NiceAddress *bas
     g_assert (g_slist_length (cands) == 1);
     cand = cands->data;
     g_assert (cand->type == NICE_CANDIDATE_TYPE_HOST);
-    g_assert (nice_address_get_port (&cand->addr) == 10002);
     for (i = cands; i; i = i->next)
       nice_candidate_free ((NiceCandidate *) i->data);
     g_slist_free (cands);
