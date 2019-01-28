@@ -5387,9 +5387,10 @@ done:
   return !remove_source;
 
 out:
+  agent_unlock_and_emit (agent);
+
   g_object_unref (agent);
 
-  agent_unlock_and_emit (agent);
   return G_SOURCE_REMOVE;
 }
 
