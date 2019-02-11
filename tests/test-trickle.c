@@ -272,6 +272,9 @@ int main (void)
   g_object_set (G_OBJECT (lagent), "controlling-mode", TRUE, NULL);
   g_object_set (G_OBJECT (ragent), "controlling-mode", FALSE, NULL);
 
+  g_object_set (G_OBJECT (lagent), "ice-trickle", TRUE, NULL);
+  g_object_set (G_OBJECT (ragent), "ice-trickle", TRUE, NULL);
+
   /* An application using more than one NiceAgent instance may crash due to
    * a race in gUPnP.
    *
@@ -335,6 +338,9 @@ int main (void)
   for (i = cands; i; i = i->next)
     nice_candidate_free ((NiceCandidate *) i->data);
   g_slist_free (cands);
+
+  nice_agent_peer_candidate_gathering_done (lagent, ls_id);
+  nice_agent_peer_candidate_gathering_done (ragent, rs_id);
 
   g_debug ("test-trickle: Set properties, next running mainloop until connectivity checks succeed...");
 
