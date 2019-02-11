@@ -130,6 +130,12 @@ int main (int argc, char *argv[])
   const char *server = NULL, *port = NULL;
   int family = AF_UNSPEC;
   int i;
+  int result;
+
+#ifdef _WIN32
+  WSADATA w;
+  WSAStartup (0x0202, &w);
+#endif
 
   for (i = 1; i < argc; ++i)
   {
@@ -182,5 +188,11 @@ int main (int argc, char *argv[])
     return 2;
   }
 
-  return run (family, server, port) ? 1 : 0;
+  result = run (family, server, port) ? 1 : 0;
+
+#ifdef _WIN32
+  WSACleanup();
+#endif
+
+  return result;
 }
