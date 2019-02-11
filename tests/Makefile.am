@@ -51,8 +51,8 @@ check_PROGRAMS = \
 	test-restart \
 	test-fallback \
 	test-thread \
-	test-dribble \
-	test-new-dribble \
+	test-trickle \
+	test-new-trickle \
 	test-tcp \
 	test-icetcp \
 	test-credentials \
@@ -122,9 +122,9 @@ test_restart_LDADD = $(COMMON_LDADD)
 
 test_fallback_LDADD = $(COMMON_LDADD)
 
-test_dribble_LDADD = $(COMMON_LDADD)
+test_trickle_LDADD = $(COMMON_LDADD)
 
-test_new_dribble_LDADD = $(COMMON_LDADD)
+test_new_trickle_LDADD = $(COMMON_LDADD)
 
 test_tcp_LDADD = $(COMMON_LDADD)
 

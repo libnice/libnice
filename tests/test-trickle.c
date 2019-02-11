@@ -1,7 +1,7 @@
 /*
  * This file is part of the Nice GLib ICE library.
  *
- * Unit test for ICE in dribble mode (adding remote candidates while the
+ * Unit test for ICE in trickle mode (adding remote candidates while the
  * machine is running).
  *
  * (C) 2007 Nokia Corporation. All rights reserved.
@@ -70,7 +70,7 @@ static void priv_print_global_status (void)
 
 static gboolean timer_cb (gpointer pointer)
 {
-  g_debug ("test-dribble:%s: %p", G_STRFUNC, pointer);
+  g_debug ("test-trickle:%s: %p", G_STRFUNC, pointer);
 
   /* signal status via a global variable */
 
@@ -82,7 +82,7 @@ static gboolean timer_cb (gpointer pointer)
 
 static gboolean quit_loop_cb (gpointer pointer)
 {
-  g_debug ("test-dribble:%s: %p", G_STRFUNC, pointer);
+  g_debug ("test-trickle:%s: %p", G_STRFUNC, pointer);
 
   g_main_loop_quit (global_mainloop);
   return FALSE;
@@ -90,7 +90,7 @@ static gboolean quit_loop_cb (gpointer pointer)
 
 static void cb_nice_recv (NiceAgent *agent, guint stream_id, guint component_id, guint len, gchar *buf, gpointer user_data)
 {
-  g_debug ("test-dribble:%s: %p", G_STRFUNC, user_data);
+  g_debug ("test-trickle:%s: %p", G_STRFUNC, user_data);
 
   /* XXX: dear compiler, these are for you: */
   (void)agent; (void)stream_id; (void)component_id; (void)buf;
@@ -111,7 +111,7 @@ static void cb_nice_recv (NiceAgent *agent, guint stream_id, guint component_id,
 
 static void cb_candidate_gathering_done(NiceAgent *agent, guint stream_id, gpointer data)
 {
-  g_debug ("test-dribble:%s: %p", G_STRFUNC, data);
+  g_debug ("test-trickle:%s: %p", G_STRFUNC, data);
 
   if (GPOINTER_TO_UINT (data) == 1)
     global_lagent_gathering_done = TRUE;
@@ -129,7 +129,7 @@ static void cb_candidate_gathering_done(NiceAgent *agent, guint stream_id, gpoin
 static void cb_component_state_changed (NiceAgent *agent, guint stream_id, guint component_id, guint state, gpointer data)
 {
   gboolean ready_to_connected = FALSE;
-  g_debug ("test-dribble:%s: %p", G_STRFUNC, data);
+  g_debug ("test-trickle:%s: %p", G_STRFUNC, data);
 
   if (GPOINTER_TO_UINT (data) == 1) {
     if (global_lagent_state == NICE_COMPONENT_STATE_READY &&
@@ -150,8 +150,8 @@ static void cb_component_state_changed (NiceAgent *agent, guint stream_id, guint
   if (state == NICE_COMPONENT_STATE_FAILED)
     global_components_failed++;
 
-  g_debug ("test-dribble: checks READY/EXIT-AT %u/%u.", global_components_ready, global_components_ready_exit);
-  g_debug ("test-dribble: checks FAILED/EXIT-AT %u/%u.", global_components_failed, global_components_failed_exit);
+  g_debug ("test-trickle: checks READY/EXIT-AT %u/%u.", global_components_ready, global_components_ready_exit);
+  g_debug ("test-trickle: checks FAILED/EXIT-AT %u/%u.", global_components_failed, global_components_failed_exit);
 
   /* signal status via a global variable */
   if (global_components_ready == global_components_ready_exit &&
@@ -167,7 +167,7 @@ static void cb_component_state_changed (NiceAgent *agent, guint stream_id, guint
 static void cb_new_selected_pair(NiceAgent *agent, guint stream_id, guint component_id, 
 				 gchar *lfoundation, gchar* rfoundation, gpointer data)
 {
-  g_debug ("test-dribble:%s: %p", G_STRFUNC, data);
+  g_debug ("test-trickle:%s: %p", G_STRFUNC, data);
 
   if (GPOINTER_TO_UINT (data) == 1)
     ++global_lagent_cands;
@@ -181,7 +181,7 @@ static void cb_new_selected_pair(NiceAgent *agent, guint stream_id, guint compon
 static void cb_new_candidate(NiceAgent *agent, guint stream_id, guint component_id, 
 			     gchar *foundation, gpointer data)
 {
-  g_debug ("test-dribble:%s: %p", G_STRFUNC, data);
+  g_debug ("test-trickle:%s: %p", G_STRFUNC, data);
 
   /* XXX: dear compiler, these are for you: */
   (void)agent; (void)stream_id; (void)data; (void)component_id; (void)foundation;
@@ -189,7 +189,7 @@ static void cb_new_candidate(NiceAgent *agent, guint stream_id, guint component_
 
 static void cb_initial_binding_request_received(NiceAgent *agent, guint stream_id, gpointer data)
 {
-  g_debug ("test-dribble:%s: %p", G_STRFUNC, data);
+  g_debug ("test-trickle:%s: %p", G_STRFUNC, data);
 
   if (GPOINTER_TO_UINT (data) == 1)
     global_lagent_ibr_received = TRUE;
@@ -255,7 +255,7 @@ int main (void)
       GUINT_TO_POINTER (2));
 
   /* step: run test */
-  g_debug ("test-dribble: running test");
+  g_debug ("test-trickle: running test");
 
   /* step: initialize variables modified by the callbacks */
   global_components_ready = 0;
@@ -306,7 +306,7 @@ int main (void)
    *       (see timer_cb() above) */
   if (global_lagent_gathering_done != TRUE ||
       global_ragent_gathering_done != TRUE) {
-    g_debug ("test-dribble: Added streams, running mainloop until 'candidate-gathering-done'...");
+    g_debug ("test-trickle: Added streams, running mainloop until 'candidate-gathering-done'...");
     g_main_loop_run (global_mainloop);
     g_assert (global_lagent_gathering_done == TRUE);
     g_assert (global_ragent_gathering_done == TRUE);
@@ -336,7 +336,7 @@ int main (void)
     nice_candidate_free ((NiceCandidate *) i->data);
   g_slist_free (cands);
 
-  g_debug ("test-dribble: Set properties, next running mainloop until connectivity checks succeed...");
+  g_debug ("test-trickle: Set properties, next running mainloop until connectivity checks succeed...");
 
   /* step: run the mainloop until connectivity checks succeed
    *       (see timer_cb() above) */
@@ -352,7 +352,7 @@ int main (void)
   g_assert (global_lagent_cands == 1);
   g_assert (global_ragent_cands == 1);
 
-  g_debug ("test-dribble: agents are ready.. now adding new buggy candidate");
+  g_debug ("test-trickle: agents are ready.. now adding new buggy candidate");
 
   g_timeout_add (500, quit_loop_cb, NULL);
   g_main_loop_run (global_mainloop);
@@ -371,7 +371,7 @@ int main (void)
   g_assert (global_lagent_state == NICE_COMPONENT_STATE_READY);
 
   /*
-  g_debug ("test-dribble: buggy candidate worked, testing lower priority cand");
+  g_debug ("test-trickle: buggy candidate worked, testing lower priority cand");
 
   cands = nice_agent_get_local_candidates (ragent, rs_id, NICE_COMPONENT_TYPE_RTP);
   nice_address_set_port(&((NiceCandidate *) cands->data)->addr, 80);
@@ -389,7 +389,7 @@ int main (void)
   g_main_loop_run (global_mainloop);
   g_assert (global_ragent_read == 16);
 
-  g_debug ("test-dribble: Ran mainloop, removing streams...");
+  g_debug ("test-trickle: Ran mainloop, removing streams...");
 
   /* step: clean up resources and exit */
 

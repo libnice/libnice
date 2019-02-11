@@ -1,7 +1,7 @@
 /*
  * This file is part of the Nice GLib ICE library.
  *
- * Unit test for ICE in dribble mode (adding remote candidates while gathering
+ * Unit test for ICE in trickle mode (adding remote candidates while gathering
  * local candidates).
  *
  * (C) 2012 Collabora Ltd.
@@ -283,7 +283,7 @@ static void swap_credentials (NiceAgent *lagent, guint lstream,
 
 static void cb_candidate_gathering_done(NiceAgent *agent, guint stream_id, gpointer data)
 {
-  g_debug ("test-dribblemode:%s: %p", G_STRFUNC, data);
+  g_debug ("test-tricklemode:%s: %p", G_STRFUNC, data);
 
   if (GPOINTER_TO_UINT(data) == 1) {
     g_debug ("lagent finished gathering candidates");
@@ -299,14 +299,14 @@ static void cb_nice_recv (NiceAgent *agent, guint stream_id, guint component_id,
 {
   gint ret;
 
-  g_debug ("test-dribblemode:%s: %p", G_STRFUNC, user_data);
+  g_debug ("test-tricklemode:%s: %p", G_STRFUNC, user_data);
 
   ret = strncmp ("0000", buf, 4);
   if (ret == 0) {
     ret = strncmp ("00001234567812345678", buf, 16);
     g_assert (ret == 0);
 
-    g_debug ("test-dribblemode:%s: ragent recieved %d bytes : quit mainloop",
+    g_debug ("test-tricklemode:%s: ragent recieved %d bytes : quit mainloop",
              G_STRFUNC, len);
     data_received = TRUE;
     g_cancellable_cancel (global_cancellable);
@@ -317,7 +317,7 @@ static void cb_component_state_changed (NiceAgent *agent, guint stream_id, guint
 {
   gint ret;
 
-  g_debug ("test-dribblemode:%s: %p", G_STRFUNC, data);
+  g_debug ("test-tricklemode:%s: %p", G_STRFUNC, data);
 
   if(GPOINTER_TO_UINT(data) == 1) {
     global_lagent_state = state;
@@ -349,7 +349,7 @@ static void swap_candidates(NiceAgent *local, guint local_id, NiceAgent *remote,
 {
   GSList *cands = NULL;
 
-  g_debug ("test-dribblemode:%s", G_STRFUNC);
+  g_debug ("test-tricklemode:%s", G_STRFUNC);
   cands = nice_agent_get_local_candidates(local, local_id,
                                           NICE_COMPONENT_TYPE_RTP);
   g_assert(nice_agent_set_remote_candidates(remote, remote_id,
@@ -376,7 +376,7 @@ static void cb_agent_new_candidate(NiceAgent *agent, guint stream_id, guint comp
   gpointer tmp;
   guint id;
 
-  g_debug ("test-dribblemode:%s: %p", G_STRFUNC, user_data);
+  g_debug ("test-tricklemode:%s: %p", G_STRFUNC, user_data);
 
   tmp = g_object_get_data (G_OBJECT (other), "id");
   id = GPOINTER_TO_UINT (tmp);
@@ -477,7 +477,7 @@ static void cleanup(NiceAgent *lagent,  NiceAgent *ragent)
 
 static void standard_test(NiceAgent *lagent, NiceAgent *ragent)
 {
-  g_debug ("test-dribblemode:%s", G_STRFUNC);
+  g_debug ("test-tricklemode:%s", G_STRFUNC);
 
   got_stun_packet = FALSE;
   init_test (lagent, ragent, FALSE);
@@ -527,7 +527,7 @@ static void standard_test(NiceAgent *lagent, NiceAgent *ragent)
 
 static void bad_credentials_test(NiceAgent *lagent, NiceAgent *ragent)
 {
-  g_debug ("test-dribblemode:%s", G_STRFUNC);
+  g_debug ("test-tricklemode:%s", G_STRFUNC);
 
   init_test (lagent, ragent, FALSE);
 
@@ -587,7 +587,7 @@ static void bad_candidate_test(NiceAgent *lagent,NiceAgent *ragent)
 {
   NiceCandidate *cand =  NULL;
 
-  g_debug ("test-dribblemode:%s", G_STRFUNC);
+  g_debug ("test-tricklemode:%s", G_STRFUNC);
 
   init_test (lagent, ragent, FALSE);
 
@@ -642,7 +642,7 @@ static void bad_candidate_test(NiceAgent *lagent,NiceAgent *ragent)
 
 static void new_candidate_test(NiceAgent *lagent, NiceAgent *ragent)
 {
-  g_debug ("test-dribblemode:%s", G_STRFUNC);
+  g_debug ("test-tricklemode:%s", G_STRFUNC);
 
   init_test (lagent, ragent, TRUE);
   swap_credentials (lagent, global_ls_id, ragent, global_rs_id);

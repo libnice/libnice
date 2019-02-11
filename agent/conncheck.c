@@ -2785,7 +2785,7 @@ static gboolean priv_schedule_triggered_check (NiceAgent *agent, NiceStream *str
             nice_debug ("Agent %p : nothing to do for pair %p.", agent, p);
             /* note: this is a bit unsure corner-case -- let's do the
                same state update as for processing responses to our own checks */
-            /* note: this update is required by the dribble test, to
+            /* note: this update is required by the trickle test, to
              * ensure the transition ready -> connected -> ready, because
              * an incoming stun request generates a discovered peer reflexive,
              * that causes the ready -> connected transition.

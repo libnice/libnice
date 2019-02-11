@@ -20,7 +20,7 @@ nice_tests = [
   'test-restart',
   'test-fallback',
   'test-thread',
-  'test-dribble',
+  'test-trickle',
   'test-tcp',
   'test-icetcp',
   'test-credentials',
@@ -32,7 +32,7 @@ nice_tests = [
 if cc.has_header('arpa/inet.h')
   nice_tests += [
     'test-pseudotcp-fin',
-    'test-new-dribble',
+    'test-new-trickle',
   ]
 endif
 
