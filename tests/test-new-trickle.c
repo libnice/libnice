@@ -772,7 +772,9 @@ int main(void)
   // Do this to make sure the STUN thread exits
   exit_stun_thread = TRUE;
   drop_stun_packets = TRUE;
+  send_stun = FALSE;
   send_dummy_data ();
+  g_cond_signal (stun_signal_ptr);
 
   g_object_add_weak_pointer (G_OBJECT (lagent), (gpointer *) &lagent);
   g_object_add_weak_pointer (G_OBJECT (ragent), (gpointer *) &ragent);
