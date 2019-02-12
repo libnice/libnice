@@ -681,8 +681,7 @@ static void new_candidate_test(NiceAgent *lagent, NiceAgent *ragent)
   g_mutex_unlock (stun_mutex_ptr);
 
   // Wait for lagent to finish gathering candidates
-  while (!lagent_candidate_gathering_done ||
-      !lagent_candidate_gathering_done)
+  while (!lagent_candidate_gathering_done)
     g_main_context_iteration (NULL, TRUE);
   g_cancellable_reset (global_cancellable);
   g_assert (nice_agent_peer_candidate_gathering_done (ragent, global_rs_id));
