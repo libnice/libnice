@@ -75,7 +75,8 @@ void stun_sha1 (const uint8_t *msg, size_t len, size_t msg_len, uint8_t *sha,
   assert (ret == 1);
 #endif
 
-#if OPENSSL_VERSION_NUMBER < 0x10100000L
+#if (OPENSSL_VERSION_NUMBER < 0x10100000L) || \
+    (defined(LIBRESSL_VERSION_NUMBER) && LIBRESSL_VERSION_NUMBER < 0x2070000fL)
   HMAC_CTX stackctx;
   HMAC_CTX *ctx = &stackctx;
   HMAC_CTX_init (ctx);
@@ -101,7 +102,8 @@ void stun_sha1 (const uint8_t *msg, size_t len, size_t msg_len, uint8_t *sha,
 
   TRY (HMAC_Final (ctx, sha, NULL));
 
-#if OPENSSL_VERSION_NUMBER < 0x10100000L
+#if (OPENSSL_VERSION_NUMBER < 0x10100000L) || \
+    (defined(LIBRESSL_VERSION_NUMBER) && LIBRESSL_VERSION_NUMBER < 0x2070000fL)
   HMAC_CTX_cleanup (ctx);
 #else
   HMAC_CTX_free (ctx);
@@ -172,7 +174,8 @@ void stun_hash_creds (const uint8_t *realm, size_t realm_len,
 #ifdef HAVE_OPENSSL
   EVP_MD_CTX *ctx;
 
-#if OPENSSL_VERSION_NUMBER < 0x10100000L
+#if (OPENSSL_VERSION_NUMBER < 0x10100000L) || \
+    (defined(LIBRESSL_VERSION_NUMBER) && LIBRESSL_VERSION_NUMBER < 0x2070000fL)
   ctx = EVP_MD_CTX_create ();
 #else
   ctx = EVP_MD_CTX_new ();
@@ -186,7 +189,8 @@ void stun_hash_creds (const uint8_t *realm, size_t realm_len,
   EVP_DigestUpdate (ctx, password_trimmed, password_len);
   EVP_DigestFinal_ex (ctx, md5, NULL);
 
-#if OPENSSL_VERSION_NUMBER < 0x10100000L
+#if (OPENSSL_VERSION_NUMBER < 0x10100000L) || \
+    (defined(LIBRESSL_VERSION_NUMBER) && LIBRESSL_VERSION_NUMBER < 0x2070000fL)
   EVP_MD_CTX_destroy (ctx);
 #else
   EVP_MD_CTX_free (ctx);
