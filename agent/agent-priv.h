@@ -328,4 +328,12 @@ void nice_debug (const char *fmt, ...) G_GNUC_PRINTF (1, 2);
 void nice_debug_verbose (const char *fmt, ...) G_GNUC_PRINTF (1, 2);
 #endif
 
+#if !GLIB_CHECK_VERSION(2, 59, 0)
+#if __GNUC__ > 6
+#define G_GNUC_FALLTHROUGH __attribute__((fallthrough))
+#else
+#define G_GNUC_FALLTHROUGH
+#endif /* __GNUC__ */
+#endif
+
 #endif /*_NICE_AGENT_PRIV_H */
