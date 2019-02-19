@@ -208,6 +208,21 @@ nice_component_remove_socket (NiceAgent *agent, NiceComponent *cmp,
   nice_component_detach_socket (cmp, nsocket);
 }
 
+static gboolean
+on_candidate_refreshes_pruned (NiceAgent *agent, NiceCandidate *candidate)
+{
+  NiceComponent *component;
+
+  if (agent_find_component (agent, candidate->stream_id,
+      candidate->component_id, NULL, &component)) {
+    nice_component_detach_socket (component, candidate->sockptr);
+  }
+
+  nice_candidate_free (candidate);
+
+  return G_SOURCE_REMOVE;
+}
+
 void
 nice_component_clean_turn_servers (NiceAgent *agent, NiceComponent *cmp)
 {
@@ -258,13 +273,13 @@ nice_component_clean_turn_servers (NiceAgent *agent, NiceComponent *cmp)
   for (i = relay_candidates; i; i = i->next) {
     NiceCandidate * candidate = i->data;
 
-    refresh_prune_candidate (agent, candidate);
     discovery_prune_socket (agent, candidate->sockptr);
     if (stream) {
       conn_check_prune_socket (agent, stream, cmp, candidate->sockptr);
     }
-    nice_component_detach_socket (cmp, candidate->sockptr);
-    nice_candidate_free (candidate);
+
+    refresh_prune_candidate_async (agent, candidate,
+        (NiceTimeoutLockedCallback) on_candidate_refreshes_pruned);
   }
 }
 
@@ -444,14 +459,13 @@ nice_component_update_selected_pair (NiceAgent *agent, NiceComponent *component,
 
   if (component->selected_pair.local &&
       component->selected_pair.local == component->turn_candidate) {
-    refresh_prune_candidate (agent, component->turn_candidate);
     discovery_prune_socket (agent,
         component->turn_candidate->sockptr);
     if (stream)
       conn_check_prune_socket (agent, stream, component,
           component->turn_candidate->sockptr);
-    nice_component_detach_socket (component, component->turn_candidate->sockptr);
-    nice_candidate_free (component->turn_candidate);
+    refresh_prune_candidate_async (agent, component->turn_candidate,
+        (NiceTimeoutLockedCallback) on_candidate_refreshes_pruned);
     component->turn_candidate = NULL;
   }
 

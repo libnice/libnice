@@ -78,12 +78,20 @@ typedef struct
   StunMessage stun_message;
   uint8_t stun_resp_buffer[STUN_MAX_MESSAGE_SIZE];
   StunMessage stun_resp_msg;
+
+  gboolean disposing;
+  GDestroyNotify destroy_cb;
+  gpointer destroy_cb_data;
 } CandidateRefresh;
 
-void refresh_free (NiceAgent *agent);
-void refresh_prune_stream (NiceAgent *agent, guint stream_id);
+void refresh_free (NiceAgent *agent, CandidateRefresh *refresh);
+void refresh_prune_agent_async (NiceAgent *agent,
+  NiceTimeoutLockedCallback function);
+void refresh_prune_stream_async (NiceAgent *agent, NiceStream *stream,
+  NiceTimeoutLockedCallback function);
 void refresh_prune_candidate (NiceAgent *agent, NiceCandidate *candidate);
-void refresh_cancel (NiceAgent *agent, CandidateRefresh *refresh);
+void refresh_prune_candidate_async (NiceAgent *agent, NiceCandidate *candidate,
+  NiceTimeoutLockedCallback function);
 
 
 void discovery_free (NiceAgent *agent);

@@ -151,12 +151,74 @@ void discovery_prune_socket (NiceAgent *agent, NiceSocket *sock)
   }
 }
 
+/*
+ * Frees a CandidateRefresh and calls destroy callback if it has been set.
+ */
+void refresh_free (NiceAgent *agent, CandidateRefresh *cand)
+{
+  nice_debug ("Freeing candidate refresh %p", cand);
+
+  agent->refresh_list = g_slist_remove (agent->refresh_list, cand);
+
+  if (cand->timer_source != NULL) {
+    g_source_destroy (cand->timer_source);
+    g_clear_pointer (&cand->timer_source, g_source_unref);
+  }
+
+  if (cand->tick_source) {
+    g_source_destroy (cand->tick_source);
+    g_clear_pointer (&cand->tick_source, g_source_unref);
+  }
+
+  if (cand->destroy_cb) {
+    cand->destroy_cb (cand->destroy_cb_data);
+  }
+
+  g_slice_free (CandidateRefresh, cand);
+}
+
+static gboolean on_refresh_remove_timeout (NiceAgent *agent,
+    CandidateRefresh *cand)
+{
+  switch (stun_timer_refresh (&cand->timer)) {
+    case STUN_USAGE_TIMER_RETURN_TIMEOUT:
+      {
+        StunTransactionId id;
+
+        nice_debug ("TURN deallocate for refresh %p timed out", cand);
+
+        stun_message_id (&cand->stun_message, id);
+        stun_agent_forget_transaction (&cand->stun_agent, id);
+
+        refresh_free (agent, cand);
+        break;
+      }
+    case STUN_USAGE_TIMER_RETURN_RETRANSMIT:
+      nice_debug ("Retransmitting TURN deallocate for refresh %p", cand);
+
+      agent_socket_send (cand->nicesock, &cand->server,
+          stun_message_length (&cand->stun_message), (gchar *)cand->stun_buffer);
+
+      G_GNUC_FALLTHROUGH;
+    case STUN_USAGE_TIMER_RETURN_SUCCESS:
+      agent_timeout_add_with_context (agent, &cand->tick_source,
+          "TURN deallocate retransmission", stun_timer_remainder (&cand->timer),
+          (NiceTimeoutLockedCallback) on_refresh_remove_timeout, cand);
+      break;
+    default:
+      break;
+  }
+
+  return G_SOURCE_REMOVE;
+}
 
 /*
- * Frees the CandidateDiscovery structure pointed to
- * by 'user data'. Compatible with g_slist_free_full().
+ * Closes the port associated with the candidate refresh on the TURN server by
+ * sending a refresh request that has zero lifetime. After a response is
+ * received or the request times out, 'cand' gets freed and 'cb' is called.
  */
-static void refresh_free_item (NiceAgent *agent, CandidateRefresh *cand)
+static gboolean refresh_remove_async (NiceAgent *agent, CandidateRefresh *cand,
+    GDestroyNotify cb, gpointer cb_data)
 {
   uint8_t *username;
   gsize username_len;
@@ -165,17 +227,18 @@ static void refresh_free_item (NiceAgent *agent, CandidateRefresh *cand)
   size_t buffer_len = 0;
   StunUsageTurnCompatibility turn_compat = agent_to_turn_compatibility (agent);
 
-  agent->refresh_list = g_slist_remove (agent->refresh_list, cand);
+  if (cand->disposing) {
+    return FALSE;
+  }
+
+  nice_debug ("Sending request to remove TURN allocation for refresh %p", cand);
+
+  cand->disposing = TRUE;
 
   if (cand->timer_source != NULL) {
     g_source_destroy (cand->timer_source);
     g_source_unref (cand->timer_source);
     cand->timer_source = NULL;
-  }
-  if (cand->tick_source != NULL) {
-    g_source_destroy (cand->tick_source);
-    g_source_unref (cand->tick_source);
-    cand->tick_source = NULL;
   }
 
   username = (uint8_t *)cand->candidate->turn->username;
@@ -197,21 +260,15 @@ static void refresh_free_item (NiceAgent *agent, CandidateRefresh *cand)
       agent_to_turn_compatibility (agent));
 
   if (buffer_len > 0) {
-    StunTransactionId id;
+    agent_socket_send (cand->nicesock, &cand->server, buffer_len,
+        (gchar *)cand->stun_buffer);
 
-    /* forget the transaction since we don't care about the result and
-     * we don't implement retransmissions/timeout */
-    stun_message_id (&cand->stun_message, id);
-    stun_agent_forget_transaction (&cand->stun_agent, id);
+    stun_timer_start (&cand->timer, agent->stun_initial_timeout,
+        agent->stun_max_retransmissions);
 
-    /* send the refresh twice since we won't do retransmissions */
-    agent_socket_send (cand->nicesock, &cand->server,
-        buffer_len, (gchar *)cand->stun_buffer);
-    if (!nice_socket_is_reliable (cand->nicesock)) {
-      agent_socket_send (cand->nicesock, &cand->server,
-          buffer_len, (gchar *)cand->stun_buffer);
-    }
-
+    agent_timeout_add_with_context (agent, &cand->tick_source,
+        "TURN deallocate retransmission", stun_timer_remainder (&cand->timer),
+        (NiceTimeoutLockedCallback) on_refresh_remove_timeout, cand);
   }
 
   if (turn_compat == STUN_USAGE_TURN_COMPATIBILITY_MSN ||
@@ -220,44 +277,92 @@ static void refresh_free_item (NiceAgent *agent, CandidateRefresh *cand)
     g_free (password);
   }
 
-  g_slice_free (CandidateRefresh, cand);
+  cand->destroy_cb = cb;
+  cand->destroy_cb_data = cb_data;
+
+  return TRUE;
+}
+
+typedef struct {
+  NiceAgent *agent;
+  gpointer user_data;
+  guint items_to_free;
+  NiceTimeoutLockedCallback cb;
+} RefreshPruneAsyncData;
+
+static void on_refresh_removed (RefreshPruneAsyncData *data)
+{
+  if (data->items_to_free == 0 || --(data->items_to_free) == 0) {
+    GSource *timeout_source = NULL;
+    agent_timeout_add_with_context (data->agent, &timeout_source,
+        "Async refresh prune", 0, data->cb, data->user_data);
+
+    g_free (data);
+  }
+}
+
+static void refresh_prune_async (NiceAgent *agent, GSList *refreshes,
+  NiceTimeoutLockedCallback function, gpointer user_data)
+{
+  RefreshPruneAsyncData *data = g_new0 (RefreshPruneAsyncData, 1);
+  GSList *it;
+
+  data->agent = agent;
+  data->user_data = user_data;
+  data->cb = function;
+
+  for (it = refreshes; it; it = it->next) {
+    if (refresh_remove_async (agent, it->data,
+        (GDestroyNotify) on_refresh_removed, data)) {
+      ++data->items_to_free;
+    }
+  }
+
+  if (data->items_to_free == 0) {
+    /* Stream doesn't have any refreshes to remove. Invoke our callback once to
+     * schedule client's callback function. */
+    on_refresh_removed (data);
+  }
+}
+
+void refresh_prune_agent_async (NiceAgent *agent,
+    NiceTimeoutLockedCallback function)
+{
+  refresh_prune_async (agent, agent->refresh_list, function, NULL);
 }
 
 /*
- * Frees all discovery related resources for the agent.
+ * Removes the candidate refreshes related to 'stream' and asynchronously
+ * closes the associated port allocations on TURN server. Invokes 'function'
+ * when the process finishes.
  */
-void refresh_free (NiceAgent *agent)
+void refresh_prune_stream_async (NiceAgent *agent, NiceStream *stream,
+    NiceTimeoutLockedCallback function)
 {
-  while (agent->refresh_list)
-    refresh_free_item (agent, agent->refresh_list->data);
-}
-
-/*
- * Prunes the list of discovery processes for items related
- * to stream 'stream_id'.
- *
- * @return TRUE on success, FALSE on a fatal error
- */
-void refresh_prune_stream (NiceAgent *agent, guint stream_id)
-{
+  GSList *refreshes = NULL;
   GSList *i;
 
-  for (i = agent->refresh_list; i ;) {
+  for (i = agent->refresh_list; i ; i = i->next) {
     CandidateRefresh *cand = i->data;
-    GSList *next = i->next;
 
     /* Don't free the candidate refresh to the currently selected local candidate
      * unless the whole pair is being destroyed.
      */
-    if (cand->stream_id == stream_id) {
-      refresh_free_item (agent, cand);
+    if (cand->stream_id == stream->id) {
+      refreshes = g_slist_append (refreshes, cand);
     }
-
-    i = next;
   }
 
+  refresh_prune_async (agent, refreshes, function, stream);
+  g_slist_free (refreshes);
 }
 
+/*
+ * Removes the candidate refreshes related to 'candidate'. The function does not
+ * close any associated port allocations on TURN server. Its purpose is in
+ * situations when an error is detected in socket communication that prevents
+ * sending more requests to the server.
+ */
 void refresh_prune_candidate (NiceAgent *agent, NiceCandidate *candidate)
 {
   GSList *i;
@@ -267,18 +372,35 @@ void refresh_prune_candidate (NiceAgent *agent, NiceCandidate *candidate)
     CandidateRefresh *refresh = i->data;
 
     if (refresh->candidate == candidate) {
-      refresh_free_item (agent, refresh);
+      refresh_free(agent, refresh);
     }
 
     i = next;
   }
 }
 
-void refresh_cancel (NiceAgent *agent, CandidateRefresh *refresh)
+/*
+ * Removes the candidate refreshes related to 'candidate' and asynchronously
+ * closes the associated port allocations on TURN server. Invokes 'function'
+ * when the process finishes.
+ */
+void refresh_prune_candidate_async (NiceAgent *agent, NiceCandidate *candidate,
+    NiceTimeoutLockedCallback function)
 {
-  refresh_free_item (agent, refresh);
-}
+  GSList *refreshes = NULL;
+  GSList *i;
 
+  for (i = agent->refresh_list; i; i = i->next) {
+    CandidateRefresh *refresh = i->data;
+
+    if (refresh->candidate == candidate) {
+      refreshes = g_slist_append (refreshes, refresh);
+    }
+  }
+
+  refresh_prune_async (agent, refreshes, function, candidate);
+  g_slist_free (refreshes);
+}
 
 /*
  * Adds a new local candidate. Implements the candidate pruning

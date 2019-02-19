@@ -1492,7 +1492,7 @@ static gboolean priv_turn_allocate_refresh_retransmissions_tick_agent_locked (
         stun_message_id (&cand->stun_message, id);
         stun_agent_forget_transaction (&cand->stun_agent, id);
 
-        refresh_cancel (agent, cand);
+        refresh_free (agent, cand);
         break;
       }
     case STUN_USAGE_TIMER_RETURN_RETRANSMIT:
@@ -3737,7 +3737,7 @@ static gboolean priv_map_reply_to_relay_refresh (NiceAgent *agent, StunMessage *
   for (i = agent->refresh_list; i && trans_found != TRUE; i = i->next) {
     CandidateRefresh *cand = i->data;
 
-    if (cand->stun_message.buffer) {
+    if (!cand->disposing && cand->stun_message.buffer) {
       stun_message_id (&cand->stun_message, refresh_id);
 
       if (memcmp (refresh_id, response_id, sizeof(StunTransactionId)) == 0) {
@@ -3787,11 +3787,11 @@ static gboolean priv_map_reply_to_relay_refresh (NiceAgent *agent, StunMessage *
               priv_turn_allocate_refresh_tick_unlocked (agent, cand);
             } else {
               /* case: a real unauthorized error */
-              refresh_cancel (agent, cand);
+              refresh_free (agent, cand);
             }
           } else {
             /* case: STUN error, the check STUN context was freed */
-            refresh_cancel (agent, cand);
+            refresh_free (agent, cand);
           }
           trans_found = TRUE;
         }
@@ -3802,6 +3802,42 @@ static gboolean priv_map_reply_to_relay_refresh (NiceAgent *agent, StunMessage *
   return trans_found;
 }
 
+static gboolean priv_map_reply_to_relay_remove (NiceAgent *agent,
+    StunMessage *resp)
+{
+  StunTransactionId response_id;
+  GSList *i;
+
+  stun_message_id (resp, response_id);
+
+  for (i = agent->refresh_list; i; i = i->next) {
+    CandidateRefresh *cand = i->data;
+    StunTransactionId request_id;
+    StunUsageTurnReturn res;
+    uint32_t lifetime;
+
+    if (!cand->disposing || !cand->stun_message.buffer) {
+      continue;
+    }
+
+    stun_message_id (&cand->stun_message, request_id);
+
+    if (memcmp (request_id, response_id, sizeof(StunTransactionId)) == 0) {
+      res = stun_usage_turn_refresh_process (resp, &lifetime,
+          agent_to_turn_compatibility (agent));
+
+      nice_debug ("Agent %p : priv_map_reply_to_relay_remove for %p res %d "
+          "with lifetime %u.", agent, cand, res, lifetime);
+
+      if (res != STUN_USAGE_TURN_RETURN_INVALID) {
+        refresh_free (agent, cand);
+        return TRUE;
+      }
+    }
+  }
+
+  return FALSE;
+}
 
 static gboolean priv_map_reply_to_keepalive_conncheck (NiceAgent *agent,
     NiceComponent *component, StunMessage *resp)
@@ -4323,6 +4359,9 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, NiceStream *stream,
       /* step: let's try to match the response to an existing turn refresh */
       if (trans_found != TRUE)
         trans_found = priv_map_reply_to_relay_refresh (agent, &req);
+
+      if (trans_found != TRUE)
+        trans_found = priv_map_reply_to_relay_remove (agent, &req);
 
       /* step: let's try to match the response to an existing keepalive conncheck */
       if (trans_found != TRUE)

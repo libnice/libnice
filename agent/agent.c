@@ -3278,6 +3278,25 @@ static void priv_remove_keepalive_timer (NiceAgent *agent)
   }
 }
 
+static gboolean
+on_stream_refreshes_pruned (NiceAgent *agent, NiceStream *stream)
+{
+  // This is called from a timeout cb with agent lock held
+
+  nice_stream_close (agent, stream);
+
+  agent_unlock (agent);
+
+  /* Actually free the stream. This should be done with the lock released, as
+   * it could end up disposing of a NiceIOStream, which tries to take the
+   * agent lock itself. */
+  g_object_unref (stream);
+
+  agent_lock (agent);
+
+  return G_SOURCE_REMOVE;
+}
+
 NICEAPI_EXPORT void
 nice_agent_remove_stream (
   NiceAgent *agent,
@@ -3303,11 +3322,11 @@ nice_agent_remove_stream (
   /* note: remove items with matching stream_ids from both lists */
   conn_check_prune_stream (agent, stream);
   discovery_prune_stream (agent, stream_id);
-  refresh_prune_stream (agent, stream_id);
+  refresh_prune_stream_async (agent, stream,
+      (NiceTimeoutLockedCallback) on_stream_refreshes_pruned);
 
   /* Remove the stream and signal its removal. */
   agent->streams = g_slist_remove (agent->streams, stream);
-  nice_stream_close (agent, stream);
 
   if (!agent->streams)
     priv_remove_keepalive_timer (agent);
@@ -3316,13 +3335,6 @@ nice_agent_remove_stream (
       g_memdup (stream_ids, sizeof(stream_ids)));
 
   agent_unlock_and_emit (agent);
-
-  /* Actually free the stream. This should be done with the lock released, as
-   * it could end up disposing of a NiceIOStream, which tries to take the
-   * agent lock itself. */
-  g_object_unref (stream);
-
-  return;
 }
 
 NICEAPI_EXPORT void
@@ -5143,8 +5155,6 @@ nice_agent_dispose (GObject *object)
   /* step: free resources for the binding discovery timers */
   discovery_free (agent);
   g_assert (agent->discovery_list == NULL);
-  refresh_free (agent);
-  g_assert (agent->refresh_list == NULL);
 
   /* step: free resources for the connectivity check timers */
   conn_check_free (agent);
