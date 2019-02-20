@@ -274,22 +274,6 @@ void refresh_prune_candidate (NiceAgent *agent, NiceCandidate *candidate)
   }
 }
 
-void refresh_prune_socket (NiceAgent *agent, NiceSocket *sock)
-{
-  GSList *i;
-
-  for (i = agent->refresh_list; i;) {
-    GSList *next = i->next;
-    CandidateRefresh *refresh = i->data;
-
-    if (refresh->nicesock == sock) {
-      refresh_free_item (agent, refresh);
-    }
-
-    i = next;
-  }
-}
-
 void refresh_cancel (NiceAgent *agent, CandidateRefresh *refresh)
 {
   refresh_free_item (agent, refresh);
