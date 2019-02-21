@@ -212,6 +212,7 @@ void
 nice_component_clean_turn_servers (NiceAgent *agent, NiceComponent *cmp)
 {
   GSList *i;
+  GSList *relay_candidates = NULL;
   NiceStream *stream;
 
   stream = agent_find_stream (agent, cmp->stream_id);
@@ -239,13 +240,7 @@ nice_component_clean_turn_servers (NiceAgent *agent, NiceComponent *cmp)
      */
     if (candidate == cmp->selected_pair.local) {
       if (cmp->turn_candidate) {
-        refresh_prune_candidate (agent, cmp->turn_candidate);
-        discovery_prune_socket (agent, cmp->turn_candidate->sockptr);
-        if (stream)
-          conn_check_prune_socket (agent, stream, cmp,
-              cmp->turn_candidate->sockptr);
-        nice_component_detach_socket (cmp, cmp->turn_candidate->sockptr);
-	nice_candidate_free (cmp->turn_candidate);
+        relay_candidates = g_slist_append(relay_candidates, cmp->turn_candidate);
       }
       /* Bring the priority down to 0, so that it will be replaced
        * on the new run.
@@ -253,17 +248,23 @@ nice_component_clean_turn_servers (NiceAgent *agent, NiceComponent *cmp)
       cmp->selected_pair.priority = 0;
       cmp->turn_candidate = candidate;
     } else {
-      refresh_prune_candidate (agent, candidate);
-      discovery_prune_socket (agent, candidate->sockptr);
-      if (stream)
-        conn_check_prune_socket (agent, stream, cmp,
-            candidate->sockptr);
-      nice_component_detach_socket (cmp, candidate->sockptr);
       agent_remove_local_candidate (agent, candidate);
-      nice_candidate_free (candidate);
+      relay_candidates = g_slist_append(relay_candidates, candidate);
     }
     cmp->local_candidates = g_slist_delete_link (cmp->local_candidates, i);
     i = next;
+  }
+
+  for (i = relay_candidates; i; i = i->next) {
+    NiceCandidate * candidate = i->data;
+
+    refresh_prune_candidate (agent, candidate);
+    discovery_prune_socket (agent, candidate->sockptr);
+    if (stream) {
+      conn_check_prune_socket (agent, stream, cmp, candidate->sockptr);
+    }
+    nice_component_detach_socket (cmp, candidate->sockptr);
+    nice_candidate_free (candidate);
   }
 }
 
