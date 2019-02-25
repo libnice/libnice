@@ -136,6 +136,7 @@ enum
   SIGNAL_NEW_SELECTED_PAIR_FULL,
   SIGNAL_NEW_CANDIDATE_FULL,
   SIGNAL_NEW_REMOTE_CANDIDATE_FULL,
+  SIGNAL_CLOSED,
 
   N_SIGNALS,
 };
@@ -1139,6 +1140,28 @@ nice_agent_class_init (NiceAgentClass *klass)
           1,
           NICE_TYPE_CANDIDATE,
           G_TYPE_INVALID);
+
+  /**
+   * NiceAgent::closed
+   * @agent: The #NiceAgent object
+   *
+   * This signal is fired when the agent finishes freeing resources it
+   * previously allocated on remote servers (e.g. relay ports) and is ready
+   * to be disposed.
+   *
+   * Since: 0.1.16
+   */
+  signals[SIGNAL_CLOSED] =
+      g_signal_new (
+          "closed",
+          G_OBJECT_CLASS_TYPE (klass),
+          G_SIGNAL_RUN_LAST,
+          0,
+          NULL,
+          NULL,
+          NULL,
+          G_TYPE_NONE,
+          0);
 
   /* Init debug options depending on env variables */
   nice_debug_init ();
