@@ -1659,6 +1659,21 @@ nice_agent_peer_candidate_gathering_done (
     NiceAgent *agent,
     guint stream_id);
 
+/**
+ * nice_agent_close_async:
+ * @agent: The #NiceAgent object
+ *
+ * Asynchronously closes resources the agent has allocated on remote servers.
+ * The agent will emit "closed" signal when the operation finishes.
+ *
+ * Calling this function before freeing the agent makes sure the allocated relay
+ * ports aren't left behind on TURN server but properly removed.
+ *
+ * Since: 0.1.16
+ */
+void
+nice_agent_close_async (NiceAgent *agent);
+
 G_END_DECLS
 
 #endif /* __LIBNICE_AGENT_H__ */

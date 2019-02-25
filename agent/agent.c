@@ -6685,3 +6685,22 @@ nice_agent_peer_candidate_gathering_done (NiceAgent *agent, guint stream_id)
   return result;
 }
 
+static gboolean
+on_agent_refreshes_pruned (NiceAgent *agent, gpointer user_data)
+{
+  // This is called from a timeout cb with agent lock held
+
+  agent_queue_signal (agent, signals[SIGNAL_CLOSED]);
+
+  return G_SOURCE_REMOVE;
+}
+
+void
+nice_agent_close_async (NiceAgent *agent)
+{
+  agent_lock (agent);
+
+  refresh_prune_agent_async (agent, on_agent_refreshes_pruned);
+
+  agent_unlock (agent);
+}

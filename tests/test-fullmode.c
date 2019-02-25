@@ -130,6 +130,8 @@ static gboolean global_lagent_gathering_done = FALSE;
 static gboolean global_ragent_gathering_done = FALSE;
 static gboolean global_lagent_ibr_received = FALSE;
 static gboolean global_ragent_ibr_received = FALSE;
+static gboolean global_lagent_closed = FALSE;
+static gboolean global_ragent_closed = FALSE;
 static int global_lagent_cands = 0;
 static int global_ragent_cands = 0;
 static gint global_ragent_read = 0;
@@ -294,6 +296,13 @@ static void cb_initial_binding_request_received(NiceAgent *agent, guint stream_i
 
   /* XXX: dear compiler, these are for you: */
   (void)agent; (void)stream_id; (void)data;
+}
+
+static void cb_closed (NiceAgent *agent, gpointer data)
+{
+  g_debug ("test-fullmode:%s: %p", G_STRFUNC, agent);
+
+  *((gboolean *)data) = TRUE;
 }
 
 static void set_candidates (NiceAgent *from, guint from_stream,
@@ -924,6 +933,10 @@ int main (void)
   g_signal_connect (G_OBJECT (ragent), "initial-binding-request-received",
       G_CALLBACK (cb_initial_binding_request_received),
       GUINT_TO_POINTER (2));
+  g_signal_connect (G_OBJECT (lagent), "closed",
+      G_CALLBACK (cb_closed), &global_lagent_closed);
+  g_signal_connect (G_OBJECT (ragent), "closed",
+      G_CALLBACK (cb_closed), &global_ragent_closed);
 
   stun_server = getenv ("NICE_STUN_SERVER");
   stun_server_port = getenv ("NICE_STUN_SERVER_PORT");
@@ -1098,6 +1111,13 @@ int main (void)
   g_assert (global_lagent_state[1] == NICE_COMPONENT_STATE_READY);
   g_assert (global_ragent_state[0] == NICE_COMPONENT_STATE_READY);
   g_assert (global_ragent_state[1] == NICE_COMPONENT_STATE_READY);
+
+  nice_agent_close_async (lagent);
+  nice_agent_close_async (ragent);
+
+  while (!global_lagent_closed || !global_ragent_closed) {
+    g_main_context_iteration (NULL, TRUE);
+  }
 
   g_object_unref (lagent);
   g_object_unref (ragent);

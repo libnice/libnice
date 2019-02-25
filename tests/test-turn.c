@@ -10,6 +10,8 @@ static NiceComponentState global_ragent_state[2] = { NICE_COMPONENT_STATE_LAST, 
 static guint global_components_ready = 0;
 static gboolean global_lagent_gathering_done = FALSE;
 static gboolean global_ragent_gathering_done = FALSE;
+static gboolean global_lagent_closed = FALSE;
+static gboolean global_ragent_closed = FALSE;
 static int global_lagent_cands = 0;
 static int global_ragent_cands = 0;
 
@@ -101,6 +103,13 @@ static void cb_new_selected_pair(NiceAgent *agent, guint stream_id,
     ++global_ragent_cands;
 }
 
+static void cb_closed (NiceAgent *agent, gpointer data)
+{
+  g_debug ("test-turn:%s: %p", G_STRFUNC, agent);
+
+  *((gboolean *)data) = TRUE;
+}
+
 static void set_candidates (NiceAgent *from, guint from_stream,
     NiceAgent *to, guint to_stream, guint component, gboolean remove_non_relay,
     gboolean force_relay)
@@ -164,6 +173,8 @@ run_test(guint turn_port, gboolean is_ipv6,
   global_components_ready = 0;
   global_lagent_gathering_done = FALSE;
   global_ragent_gathering_done = FALSE;
+  global_lagent_closed = FALSE;
+  global_ragent_closed = FALSE;
   global_lagent_cands = global_ragent_cands = 0;
 
   lagent = nice_agent_new (NULL, NICE_COMPATIBILITY_RFC5245);
@@ -199,6 +210,10 @@ run_test(guint turn_port, gboolean is_ipv6,
       G_CALLBACK (cb_new_selected_pair), GUINT_TO_POINTER(1));
   g_signal_connect (G_OBJECT (ragent), "new-selected-pair",
       G_CALLBACK (cb_new_selected_pair), GUINT_TO_POINTER (2));
+  g_signal_connect (G_OBJECT (lagent), "closed",
+      G_CALLBACK (cb_closed), &global_lagent_closed);
+  g_signal_connect (G_OBJECT (ragent), "closed",
+      G_CALLBACK (cb_closed), &global_ragent_closed);
 
   g_object_set (G_OBJECT (lagent), "controlling-mode", TRUE, NULL);
   g_object_set (G_OBJECT (ragent), "controlling-mode", FALSE, NULL);
@@ -246,6 +261,13 @@ run_test(guint turn_port, gboolean is_ipv6,
 
   nice_agent_remove_stream (lagent, ls_id);
   nice_agent_remove_stream (ragent, rs_id);
+
+  nice_agent_close_async (lagent);
+  nice_agent_close_async (ragent);
+
+  while (!global_lagent_closed || !global_ragent_closed) {
+    g_main_context_iteration (NULL, TRUE);
+  }
 
   g_source_remove (timer_id);
 
