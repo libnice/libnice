@@ -506,7 +506,11 @@ check_for_termination (TestIOStreamThreadData *data, gsize *recv_count,
   gpointer tmp;
 
   /* Wait for transmission to complete. */
-  while (*send_count < expected_recv_count);
+  while (*send_count < expected_recv_count) {
+    if (data->callbacks->wait_transmission_cb) {
+      data->callbacks->wait_transmission_cb (data->agent);
+    }
+  }
 
   /* Send a close message. */
   tmp = g_object_get_data (G_OBJECT (data->agent), "stream-id");

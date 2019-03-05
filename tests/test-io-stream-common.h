@@ -65,6 +65,7 @@ typedef struct {
   void (*new_selected_pair) (NiceAgent *agent, guint stream_id,
       guint component_id, gchar *lfoundation, gchar *rfoundation,
       TestIOStreamThreadData *data);
+  void (*wait_transmission_cb) (NiceAgent *agent);
 } TestIOStreamCallbacks;
 
 struct _TestIOStreamThreadData {

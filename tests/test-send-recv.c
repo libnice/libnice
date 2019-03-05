@@ -806,6 +806,24 @@ read_thread_agent_nonblocking_cb (GInputStream *input_stream,
 }
 
 static void
+wait_transmission_cb (NiceAgent *agent)
+{
+  guint stream_id;
+  gpointer tmp;
+  guint8 buffer[1024];
+  GInputVector v = { &buffer, sizeof (buffer) };
+  NiceInputMessage message = { &v, 1, NULL, 0};
+
+  tmp = g_object_get_data (G_OBJECT (agent), "stream-id");
+  stream_id = GPOINTER_TO_UINT (tmp);
+
+  /* While waiting for write thread to finish sending, keep also receiving so
+   * that any STUN messages from the peer still get processed. */
+  nice_agent_recv_messages_nonblocking (agent, stream_id, 1, &message, 1, NULL,
+      NULL);
+}
+
+static void
 write_thread_agent_nonblocking_cb (GOutputStream *output_stream,
     TestIOStreamThreadData *data)
 {
@@ -1105,12 +1123,12 @@ test (gboolean reliable, StreamApi stream_api, gsize n_bytes, guint n_messages,
   /* Indexed by StreamApi. */
   const TestIOStreamCallbacks callbacks[] = {
     { read_thread_agent_cb,
-      write_thread_agent_cb, NULL, NULL, },  /* STREAM_AGENT */
+      write_thread_agent_cb, NULL, NULL, wait_transmission_cb },  /* STREAM_AGENT */
     { read_thread_agent_nonblocking_cb, write_thread_agent_nonblocking_cb,
-      NULL, NULL, },  /* STREAM_AGENT_NONBLOCKING */
-    { read_thread_gio_cb, write_thread_gio_cb, NULL, NULL, },  /* STREAM_GIO */
+      NULL, NULL, wait_transmission_cb },  /* STREAM_AGENT_NONBLOCKING */
+    { read_thread_gio_cb, write_thread_gio_cb, NULL, NULL, NULL},  /* STREAM_GIO */
     { read_thread_gsource_cb, write_thread_gsource_cb,
-      NULL, NULL },  /* STREAM_GSOURCE */
+      NULL, NULL, NULL },  /* STREAM_GSOURCE */
   };
 
   test_data_init (&l_data, reliable, stream_api, n_bytes, n_messages,
