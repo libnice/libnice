@@ -188,10 +188,14 @@ nice_component_remove_socket (NiceAgent *agent, NiceComponent *cmp,
     }
 
     refresh_prune_candidate (agent, candidate);
-    if (candidate->sockptr != nsocket && stream) {
-      discovery_prune_socket (agent, candidate->sockptr);
+    discovery_prune_socket (agent, candidate->sockptr);
+    if (stream) {
       conn_check_prune_socket (agent, stream, cmp,
           candidate->sockptr);
+    }
+
+    /* Keep nsocket alive since it's used in the loop. */
+    if (candidate->sockptr != nsocket) {
       nice_component_detach_socket (cmp, candidate->sockptr);
     }
     agent_remove_local_candidate (agent, candidate);
@@ -201,9 +205,6 @@ nice_component_remove_socket (NiceAgent *agent, NiceComponent *cmp,
     i = next;
   }
 
-  discovery_prune_socket (agent, nsocket);
-  if (stream)
-    conn_check_prune_socket (agent, stream, cmp, nsocket);
   nice_component_detach_socket (cmp, nsocket);
 }
 
