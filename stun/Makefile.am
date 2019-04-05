@@ -15,7 +15,7 @@ AM_CFLAGS = \
 	-DG_LOG_DOMAIN=\"libnice-stun\" \
 	$(LIBNICE_CFLAGS) \
 	$(GNUTLS_CFLAGS) \
-	$(OPENSSL_CFLAGS) \
+	$(OPENSSL_INCLUDES) \
 	$(NULL)
 AM_CPPFLAGS = -I$(top_srcdir)
 
