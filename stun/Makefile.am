@@ -39,7 +39,7 @@ libstun_la_SOURCES = constants.h \
 	usages/turn.c usages/turn.h \
 	usages/timer.c usages/timer.h
 
-libstun_la_LIBADD = $(LIBRT) $(GNUTLS_LIBS) $(OPENSSL_LIBS)
+libstun_la_LIBADD = $(LIBRT) $(GNUTLS_LIBS) $(OPENSSL_LIBS) $(OPENSSL_LDFLAGS)
 
 EXTRA_DIST = win32_common.h meson.build
 
