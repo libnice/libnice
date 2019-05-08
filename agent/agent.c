@@ -136,7 +136,6 @@ enum
   SIGNAL_NEW_SELECTED_PAIR_FULL,
   SIGNAL_NEW_CANDIDATE_FULL,
   SIGNAL_NEW_REMOTE_CANDIDATE_FULL,
-  SIGNAL_CLOSED,
 
   N_SIGNALS,
 };
@@ -1140,28 +1139,6 @@ nice_agent_class_init (NiceAgentClass *klass)
           1,
           NICE_TYPE_CANDIDATE,
           G_TYPE_INVALID);
-
-  /**
-   * NiceAgent::closed
-   * @agent: The #NiceAgent object
-   *
-   * This signal is fired when the agent finishes freeing resources it
-   * previously allocated on remote servers (e.g. relay ports) and is ready
-   * to be disposed.
-   *
-   * Since: 0.1.16
-   */
-  signals[SIGNAL_CLOSED] =
-      g_signal_new (
-          "closed",
-          G_OBJECT_CLASS_TYPE (klass),
-          G_SIGNAL_RUN_LAST,
-          0,
-          NULL,
-          NULL,
-          NULL,
-          G_TYPE_NONE,
-          0);
 
   /* Init debug options depending on env variables */
   nice_debug_init ();
@@ -6688,19 +6665,32 @@ nice_agent_peer_candidate_gathering_done (NiceAgent *agent, guint stream_id)
 static gboolean
 on_agent_refreshes_pruned (NiceAgent *agent, gpointer user_data)
 {
-  // This is called from a timeout cb with agent lock held
+  GTask *task = user_data;
 
-  agent_queue_signal (agent, signals[SIGNAL_CLOSED]);
+  /* This is called from a timeout cb with agent lock held */
+
+  agent_unlock (agent);
+
+  g_task_return_boolean (task, TRUE);
+  g_object_unref (task);
+
+  agent_lock (agent);
 
   return G_SOURCE_REMOVE;
 }
 
 void
-nice_agent_close_async (NiceAgent *agent)
+nice_agent_close_async (NiceAgent *agent, GAsyncReadyCallback callback,
+    gpointer callback_data)
 {
+  GTask *task;
+
+  task = g_task_new (agent, NULL, callback, callback_data);
+  g_task_set_source_tag (task, nice_agent_close_async);
+
   agent_lock (agent);
 
-  refresh_prune_agent_async (agent, on_agent_refreshes_pruned);
+  refresh_prune_agent_async (agent, on_agent_refreshes_pruned, task);
 
   agent_unlock (agent);
 }

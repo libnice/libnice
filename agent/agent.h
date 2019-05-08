@@ -1662,9 +1662,15 @@ nice_agent_peer_candidate_gathering_done (
 /**
  * nice_agent_close_async:
  * @agent: The #NiceAgent object
+ * @callback: (nullable): A callback that will be called when the closing is
+ *  complete
+ * @callback_data: (nullable): A pointer that will be passed to the callback
  *
  * Asynchronously closes resources the agent has allocated on remote servers.
- * The agent will emit "closed" signal when the operation finishes.
+ *
+ * The agent will call the callback in the current #GMainContext in
+ * which this function is called. The #GAsyncResult in the callback
+ * can be ignored as this operation never fails.
  *
  * Calling this function before freeing the agent makes sure the allocated relay
  * ports aren't left behind on TURN server but properly removed.
@@ -1672,7 +1678,8 @@ nice_agent_peer_candidate_gathering_done (
  * Since: 0.1.16
  */
 void
-nice_agent_close_async (NiceAgent *agent);
+nice_agent_close_async (NiceAgent *agent, GAsyncReadyCallback callback,
+    gpointer callback_data);
 
 G_END_DECLS
 

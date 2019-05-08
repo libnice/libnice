@@ -86,7 +86,7 @@ typedef struct
 
 void refresh_free (NiceAgent *agent, CandidateRefresh *refresh);
 void refresh_prune_agent_async (NiceAgent *agent,
-  NiceTimeoutLockedCallback function);
+  NiceTimeoutLockedCallback function, gpointer user_data);
 void refresh_prune_stream_async (NiceAgent *agent, NiceStream *stream,
   NiceTimeoutLockedCallback function);
 void refresh_prune_candidate (NiceAgent *agent, NiceCandidate *candidate);

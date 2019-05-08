@@ -326,9 +326,9 @@ static void refresh_prune_async (NiceAgent *agent, GSList *refreshes,
 }
 
 void refresh_prune_agent_async (NiceAgent *agent,
-    NiceTimeoutLockedCallback function)
+    NiceTimeoutLockedCallback function, gpointer user_data)
 {
-  refresh_prune_async (agent, agent->refresh_list, function, NULL);
+  refresh_prune_async (agent, agent->refresh_list, function, user_data);
 }
 
 /*

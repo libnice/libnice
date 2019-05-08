@@ -130,8 +130,6 @@ static gboolean global_lagent_gathering_done = FALSE;
 static gboolean global_ragent_gathering_done = FALSE;
 static gboolean global_lagent_ibr_received = FALSE;
 static gboolean global_ragent_ibr_received = FALSE;
-static gboolean global_lagent_closed = FALSE;
-static gboolean global_ragent_closed = FALSE;
 static int global_lagent_cands = 0;
 static int global_ragent_cands = 0;
 static gint global_ragent_read = 0;
@@ -298,8 +296,10 @@ static void cb_initial_binding_request_received(NiceAgent *agent, guint stream_i
   (void)agent; (void)stream_id; (void)data;
 }
 
-static void cb_closed (NiceAgent *agent, gpointer data)
+static void cb_closed (GObject *src, GAsyncResult *result, gpointer data)
 {
+  NiceAgent *agent = NICE_AGENT (src);
+
   g_debug ("test-fullmode:%s: %p", G_STRFUNC, agent);
 
   *((gboolean *)data) = TRUE;
@@ -862,6 +862,8 @@ int main (void)
   int result;
   guint timer_id;
   const char *stun_server = NULL, *stun_server_port = NULL;
+  gboolean lagent_closed = FALSE;
+  gboolean ragent_closed = FALSE;
 
 #ifdef G_OS_WIN32
   WSADATA w;
@@ -933,10 +935,6 @@ int main (void)
   g_signal_connect (G_OBJECT (ragent), "initial-binding-request-received",
       G_CALLBACK (cb_initial_binding_request_received),
       GUINT_TO_POINTER (2));
-  g_signal_connect (G_OBJECT (lagent), "closed",
-      G_CALLBACK (cb_closed), &global_lagent_closed);
-  g_signal_connect (G_OBJECT (ragent), "closed",
-      G_CALLBACK (cb_closed), &global_ragent_closed);
 
   stun_server = getenv ("NICE_STUN_SERVER");
   stun_server_port = getenv ("NICE_STUN_SERVER_PORT");
@@ -1112,15 +1110,15 @@ int main (void)
   g_assert (global_ragent_state[0] == NICE_COMPONENT_STATE_READY);
   g_assert (global_ragent_state[1] == NICE_COMPONENT_STATE_READY);
 
-  nice_agent_close_async (lagent);
-  nice_agent_close_async (ragent);
+  nice_agent_close_async (lagent, cb_closed, &lagent_closed);
+  nice_agent_close_async (ragent, cb_closed, &ragent_closed);
+  g_object_unref (lagent);
+  g_object_unref (ragent);
 
-  while (!global_lagent_closed || !global_ragent_closed) {
+  while (!ragent_closed || !ragent_closed) {
     g_main_context_iteration (NULL, TRUE);
   }
 
-  g_object_unref (lagent);
-  g_object_unref (ragent);
 
   g_main_loop_unref (global_mainloop);
   global_mainloop = NULL;
