@@ -67,5 +67,5 @@ GST_PLUGIN_DEFINE (
     PLUGIN_NAME,
     "Interactive UDP connectivity establishment",
     plugin_init, VERSION, "LGPL", PACKAGE_NAME,
-    "http://telepathy.freedesktop.org/wiki/");
+    "https://nice.freedesktop.org/");
 
