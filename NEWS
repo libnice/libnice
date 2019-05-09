@@ -1,3 +1,11 @@
+libnice 0.1.16 (2019-05-09)
+===========================
+Add API to make it easier to implement ICE trickle
+Add async closing of agent, to cleanly close TURN allocations
+Add Google non-standard NOMINATION STUN attribute
+Fix tests on Windows
+Fix some racy tests
+
 libnice 0.1.15 (2018-12-27)
 ===========================
 Add support for Regular Nomination
