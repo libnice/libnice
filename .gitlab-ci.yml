@@ -231,14 +231,17 @@ submit-to-coverity:
   - curl --form token=$COVERITY_TOKEN --form email=olivier.crete@ocrete.ca --form file=@libnice.tgz --form version="${CI_COMMIT_REF_NAME}-${CI_COMMIT_SHA}" --form description="CI weekly run" https://scan.coverity.com/builds?project=libnice
 
 
-pages:
+documentation:
   stage: deploy
-  needs:
+  dependencies:
     - doc-and-install meson
   only:
-    - tags
+    - latest-release
   artifacts:
     paths:
       - public
+    expire_in: 1 year
+  trigger: libnice/libnice-website
   script:
-    - mv build/docs/reference/libnice/html/ public/
+    - mkdir public/
+    - mv build/docs/reference/libnice/html/ public/libnice/
