@@ -1,6 +1,7 @@
 stages:
  - build
  - test
+ - deploy
 
 build autotools:
  stage: build
@@ -125,3 +126,16 @@ submit-to-coverity:
   - cov-build --dir cov-int make -j4
   - tar czvf libnice.tgz cov-int
   - curl --form token=$COVERITY_TOKEN --form email=olivier.crete@ocrete.ca --form file=@libnice.tgz --form version="${CI_COMMIT_REF_NAME}-${CI_COMMIT_SHA}" --form description="CI weekly run" https://scan.coverity.com/builds?project=libnice
+
+
+pages:
+  stage: deploy
+  dependencies:
+    - doc-and-install meson
+  only:
+    - tags
+  artifacts:
+    paths:
+      - public
+  script:
+    - mv build/docs/reference/libnice/html/ public/
