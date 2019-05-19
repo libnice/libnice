@@ -3285,6 +3285,8 @@ on_stream_refreshes_pruned (NiceAgent *agent, NiceStream *stream)
 
   nice_stream_close (agent, stream);
 
+  g_object_unref (agent);
+
   agent_unlock (agent);
 
   /* Actually free the stream. This should be done with the lock released, as
@@ -3318,6 +3320,8 @@ nice_agent_remove_stream (
     agent_unlock_and_emit (agent);
     return;
   }
+
+  g_object_ref (agent);
 
   /* note: remove items with matching stream_ids from both lists */
   conn_check_prune_stream (agent, stream);
