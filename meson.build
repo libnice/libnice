@@ -29,6 +29,12 @@ cc = meson.get_compiler('c')
 
 syslibs = []
 
+if cc.get_id() == 'msvc'
+  add_project_arguments(
+      cc.get_supported_arguments(['/utf-8']), # set the input encoding to utf-8
+      language : 'c')
+endif
+
 if host_machine.system() == 'windows'
   syslibs += [cc.find_library('iphlpapi')]
   syslibs += [cc.find_library('ws2_32')]
