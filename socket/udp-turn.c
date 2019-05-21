@@ -1199,6 +1199,7 @@ priv_binding_timeout (gpointer data)
   /* find current binding and mark it for renewal */
   for (i = priv->channels ; i; i = i->next) {
     ChannelBinding *b = i->data;
+    source = g_main_current_source ();
     if (b->timeout_source == source) {
       b->renew = TRUE;
 
