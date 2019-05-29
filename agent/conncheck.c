@@ -3033,11 +3033,13 @@ static CandidateCheckPair *priv_process_response_check_for_reflexive(NiceAgent *
        * of a TCP-ACTIVE local candidate, so we find it even if an incoming
        * check matched an existing pair because it could be the original
        * ACTIVE-PASSIVE candidate pair which was retriggered */
-      for (i = stream->conncheck_list; i; i = i->next) {
-        CandidateCheckPair *pair = i->data;
-        if (pair->local == cand && remote_candidate == pair->remote) {
-          new_pair = pair;
-          break;
+      if (local_cand->transport != NICE_CANDIDATE_TRANSPORT_UDP) {
+        for (i = stream->conncheck_list; i; i = i->next) {
+          CandidateCheckPair *pair = i->data;
+          if (pair->local == cand && remote_candidate == pair->remote) {
+            new_pair = pair;
+            break;
+          }
         }
       }
       break;
