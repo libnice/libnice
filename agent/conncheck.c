@@ -3321,10 +3321,16 @@ static CandidateCheckPair *priv_process_response_check_for_reflexive(NiceAgent *
     if (nice_address_equal (&mapped, &cand->addr)) {
       local_cand = cand;
 
-      /* We always need to select the peer-reflexive Candidate Pair in the case
-       * of a TCP-ACTIVE local candidate, so we find it even if an incoming
-       * check matched an existing pair because it could be the original
-       * ACTIVE-PASSIVE candidate pair which was retriggered */
+      /* The mapped address allows to look for a previously discovered
+       * peer reflexive local candidate, and its related pair. This
+       * new_pair will be marked 'Valid', while the pair 'p' of the
+       * initial stun request will be marked 'Succeeded'
+       *
+       * In the case of a tcp-act/tcp-pass pair 'p', where the local
+       * candidate is of type tcp-act, and its port number is zero, a
+       * conncheck on this pair *always* leads to the creation of a
+       * discovered peer-reflexive tcp-act local candidate.
+       */
       for (i = stream->conncheck_list; i; i = i->next) {
         CandidateCheckPair *pair = i->data;
         if (pair->local == cand && remote_candidate == pair->remote) {
