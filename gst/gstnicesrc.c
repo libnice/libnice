@@ -331,6 +331,12 @@ gst_nice_src_dispose (GObject *object)
   }
   src->outbufs = NULL;
 
+  if (src->idle_source) {
+    g_source_destroy (src->idle_source);
+    g_source_unref(src->idle_source);
+  }
+  src->idle_source = NULL;
+
   G_OBJECT_CLASS (gst_nice_src_parent_class)->dispose (object);
 }
 
