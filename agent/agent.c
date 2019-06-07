@@ -3589,6 +3589,8 @@ nice_agent_set_remote_credentials (
   g_return_val_if_fail (NICE_IS_AGENT (agent), FALSE);
   g_return_val_if_fail (stream_id >= 1, FALSE);
 
+  nice_debug ("Agent %p: set_remote_credentials %d", agent, stream_id);
+
   agent_lock (agent);
 
   stream = agent_find_stream (agent, stream_id);
