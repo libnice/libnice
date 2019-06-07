@@ -3389,19 +3389,32 @@ nice_agent_add_local_address (NiceAgent *agent, NiceAddress *addr)
  * having a specific remote candidate
  */
 static void priv_update_pair_foundations (NiceAgent *agent,
-    guint stream_id, NiceCandidate *remote)
+    guint stream_id, guint component_id, NiceCandidate *remote)
 {
+  NiceComponent *component;
   NiceStream *stream = agent_find_stream (agent, stream_id);
-  if (stream) {
+
+  if (stream &&
+      agent_find_component (agent, stream_id, component_id, NULL, &component)) {
     GSList *i;
     for (i = stream->conncheck_list; i; i = i->next) {
       CandidateCheckPair *pair = i->data;
-      if (pair->remote == remote) {
+      if (pair->remote == remote &&
+          (strncmp (pair->remote->foundation, remote->foundation,
+          NICE_CANDIDATE_MAX_FOUNDATION))) {
         g_snprintf (pair->foundation,
             NICE_CANDIDATE_PAIR_MAX_FOUNDATION, "%s:%s",
             pair->local->foundation, pair->remote->foundation);
         nice_debug ("Agent %p : Updating pair %p foundation to '%s'",
             agent, pair, pair->foundation);
+        if (component->selected_pair.local == pair->local &&
+            component->selected_pair.remote == pair->remote) {
+          nice_debug ("Agent %p : updating SELECTED PAIR for component "
+            "%u: %s:%s (prio:%" G_GUINT64_FORMAT ").", agent, component->id,
+            pair->local->foundation, pair->remote->foundation, pair->priority);
+          agent_signal_new_selected_pair (agent, pair->stream_id, component->id,
+            pair->local, pair->remote);
+        }
       }
     }
   }
@@ -3494,7 +3507,7 @@ static gboolean priv_add_remote_candidate (
      * to be recomputed.
      */
     recalculate_pair_priorities (agent);
-    priv_update_pair_foundations (agent, stream_id, candidate);
+    priv_update_pair_foundations (agent, stream_id, component_id, candidate);
   }
   else {
     /* case 2: add a new candidate */
