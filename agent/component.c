@@ -1482,6 +1482,10 @@ turn_server_new (const gchar *server_ip, guint server_port,
   }
   turn->username = g_strdup (username);
   turn->password = g_strdup (password);
+  turn->decoded_username =
+      g_base64_decode ((gchar *)username, &turn->decoded_username_len);
+  turn->decoded_password =
+      g_base64_decode ((gchar *)password, &turn->decoded_password_len);
   turn->type = type;
 
   return turn;
@@ -1503,6 +1507,8 @@ turn_server_unref (TurnServer *turn)
   if (turn->ref_count == 0) {
     g_free (turn->username);
     g_free (turn->password);
+    g_free (turn->decoded_username);
+    g_free (turn->decoded_password);
     g_slice_free (TurnServer, turn);
   }
 }

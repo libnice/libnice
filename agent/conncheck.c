@@ -1551,8 +1551,10 @@ static void priv_turn_allocate_refresh_tick_unlocked (NiceAgent *agent,
 
   if (turn_compat == STUN_USAGE_TURN_COMPATIBILITY_MSN ||
       turn_compat == STUN_USAGE_TURN_COMPATIBILITY_OC2007) {
-    username = g_base64_decode ((gchar *)username, &username_len);
-    password = g_base64_decode ((gchar *)password, &password_len);
+    username = cand->candidate->turn->decoded_username;
+    password = cand->candidate->turn->decoded_password;
+    username_len = cand->candidate->turn->decoded_username_len;
+    password_len = cand->candidate->turn->decoded_password_len;
   }
 
   buffer_len = stun_usage_turn_create_refresh (&cand->stun_agent,
@@ -1561,12 +1563,6 @@ static void priv_turn_allocate_refresh_tick_unlocked (NiceAgent *agent,
       username, username_len,
       password, password_len,
       turn_compat);
-
-  if (turn_compat == STUN_USAGE_TURN_COMPATIBILITY_MSN ||
-      turn_compat == STUN_USAGE_TURN_COMPATIBILITY_OC2007) {
-    g_free (username);
-    g_free (password);
-  }
 
   nice_debug ("Agent %p : Sending allocate Refresh %zd", agent,
       buffer_len);

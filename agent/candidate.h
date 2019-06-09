@@ -141,6 +141,10 @@ typedef struct _TurnServer TurnServer;
  * @server: The #NiceAddress of the TURN server
  * @username: The TURN username
  * @password: The TURN password
+ * @decoded_username: The base64 decoded TURN username
+ * @decoded_password: The base64 decoded TURN password
+ * @decoded_username_len: The length of @decoded_username
+ * @decoded_password_len: The length of @decoded_password
  * @type: The #NiceRelayType of the server
  *
  * A structure to store the TURN relay settings
@@ -152,6 +156,10 @@ struct _TurnServer
   NiceAddress server;
   gchar *username;
   gchar *password;
+  uint8_t *decoded_username;
+  uint8_t *decoded_password;
+  gsize decoded_username_len;
+  gsize decoded_password_len;
   NiceRelayType type;
 };
 

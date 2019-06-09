@@ -248,8 +248,10 @@ static gboolean refresh_remove_async (NiceAgent *agent, CandidateRefresh *cand,
 
   if (turn_compat == STUN_USAGE_TURN_COMPATIBILITY_MSN ||
       turn_compat == STUN_USAGE_TURN_COMPATIBILITY_OC2007) {
-    username = g_base64_decode ((gchar *)username, &username_len);
-    password = g_base64_decode ((gchar *)password, &password_len);
+    username = cand->candidate->turn->decoded_username;
+    password = cand->candidate->turn->decoded_password;
+    username_len = cand->candidate->turn->decoded_username_len;
+    password_len = cand->candidate->turn->decoded_password_len;
   }
 
   buffer_len = stun_usage_turn_create_refresh (&cand->stun_agent,
@@ -269,12 +271,6 @@ static gboolean refresh_remove_async (NiceAgent *agent, CandidateRefresh *cand,
     agent_timeout_add_with_context (agent, &cand->tick_source,
         "TURN deallocate retransmission", stun_timer_remainder (&cand->timer),
         (NiceTimeoutLockedCallback) on_refresh_remove_timeout, cand);
-  }
-
-  if (turn_compat == STUN_USAGE_TURN_COMPATIBILITY_MSN ||
-      turn_compat == STUN_USAGE_TURN_COMPATIBILITY_OC2007) {
-    g_free (username);
-    g_free (password);
   }
 
   cand->destroy_cb = cb;
@@ -1155,8 +1151,10 @@ static gboolean priv_discovery_tick_unlocked (NiceAgent *agent)
 
           if (turn_compat == STUN_USAGE_TURN_COMPATIBILITY_MSN ||
               turn_compat == STUN_USAGE_TURN_COMPATIBILITY_OC2007) {
-            username = g_base64_decode ((gchar *)username, &username_len);
-            password = g_base64_decode ((gchar *)password, &password_len);
+            username = cand->turn->decoded_username;
+            password = cand->turn->decoded_password;
+            username_len = cand->turn->decoded_username_len;
+            password_len = cand->turn->decoded_password_len;
           }
 
           buffer_len = stun_usage_turn_create (&cand->stun_agent,
@@ -1167,12 +1165,6 @@ static gboolean priv_discovery_tick_unlocked (NiceAgent *agent)
               username, username_len,
               password, password_len,
               turn_compat);
-
-          if (turn_compat == STUN_USAGE_TURN_COMPATIBILITY_MSN ||
-              turn_compat == STUN_USAGE_TURN_COMPATIBILITY_OC2007) {
-            g_free (username);
-            g_free (password);
-          }
         }
 
 	if (buffer_len > 0) {
