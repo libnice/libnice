@@ -1727,8 +1727,14 @@ conn_check_remote_candidates_set(NiceAgent *agent, NiceStream *stream,
       if (nice_address_equal (&rcand->addr, &icheck->from)) {
         for (m = component->local_candidates; m; m = m->next) {
           NiceCandidate *cand = m->data;
+          NiceAddress *addr;
 
-          if (nice_address_equal (&cand->addr, &icheck->local_socket->addr)) {
+          if (cand->type == NICE_CANDIDATE_TYPE_RELAYED)
+            addr = &cand->addr;
+          else
+            addr = &cand->base_addr;
+
+          if (nice_address_equal (addr, &icheck->local_socket->addr)) {
             lcand = cand;
             break;
           }
