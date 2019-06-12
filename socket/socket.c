@@ -358,12 +358,6 @@ void nice_socket_queue_send_with_callback (GQueue *send_queue,
   else
     g_queue_push_tail (send_queue, tbs);
 
-  if (io_source && gsock && context && cb && *io_source == NULL) {
-    *io_source = g_socket_create_source(gsock, G_IO_OUT, NULL);
-    g_source_set_callback (*io_source, (GSourceFunc) G_CALLBACK (cb), user_data, NULL);
-    g_source_attach (*io_source, context);
-  }
-
   /* Move the data into the buffer. */
   for (j = 0;
        (message->n_buffers >= 0 && j < (guint) message->n_buffers) ||
@@ -385,6 +379,12 @@ void nice_socket_queue_send_with_callback (GQueue *send_queue,
       message_offset -= len;
     else
       message_offset = 0;
+  }
+
+  if (io_source && gsock && context && cb && *io_source == NULL) {
+    *io_source = g_socket_create_source(gsock, G_IO_OUT, NULL);
+    g_source_set_callback (*io_source, (GSourceFunc) G_CALLBACK (cb), user_data, NULL);
+    g_source_attach (*io_source, context);
   }
 }
 
