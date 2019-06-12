@@ -207,6 +207,59 @@ priv_candidate_transport_to_string (NiceCandidateTransport type) {
   }
 }
 
+static const gchar *
+priv_socket_type_to_string (NiceSocketType type) {
+  switch(type) {
+    case NICE_SOCKET_TYPE_UDP_BSD:
+      return "udp";
+    case NICE_SOCKET_TYPE_TCP_BSD:
+      return "tcp";
+    case NICE_SOCKET_TYPE_PSEUDOSSL:
+      return "ssl";
+    case NICE_SOCKET_TYPE_HTTP:
+      return "http";
+    case NICE_SOCKET_TYPE_SOCKS5:
+      return "socks";
+    case NICE_SOCKET_TYPE_UDP_TURN:
+      return "udp-turn";
+    case NICE_SOCKET_TYPE_UDP_TURN_OVER_TCP:
+      return "tcp-turn";
+    case NICE_SOCKET_TYPE_TCP_ACTIVE:
+      return "tcp-act";
+    case NICE_SOCKET_TYPE_TCP_PASSIVE:
+      return "tcp-pass";
+    case NICE_SOCKET_TYPE_TCP_SO:
+      return "tcp-so";
+    default:
+      g_assert_not_reached ();
+  }
+}
+
+/*
+ * Dump the component list of incoming checks
+ */
+static void
+print_component_incoming_checks (NiceAgent *agent, NiceStream *stream,
+  NiceComponent *component)
+{
+  GList *i;
+
+  for (i = component->incoming_checks.head; i; i = i->next) {
+    IncomingCheck *icheck = i->data;
+    gchar tmpbuf1[INET6_ADDRSTRLEN] = {0};
+    gchar tmpbuf2[INET6_ADDRSTRLEN] = {0};
+
+    nice_address_to_string (&icheck->local_socket->addr, tmpbuf1);
+    nice_address_to_string (&icheck->from, tmpbuf2);
+    nice_debug ("Agent %p : *** sc=%d/%d : icheck %p : "
+      "sock %s [%s]:%u > [%s]:%u",
+      agent, stream->id, component->id, icheck,
+      priv_socket_type_to_string (icheck->local_socket->type),
+      tmpbuf1, nice_address_get_port (&icheck->local_socket->addr),
+      tmpbuf2, nice_address_get_port (&icheck->from));
+  }
+}
+
 /*
  * Dump the conncheck lists of the agent
  */
@@ -229,6 +282,7 @@ priv_print_conn_check_lists (NiceAgent *agent, const gchar *where, const gchar *
   for (i = agent->streams; i ; i = i->next) {
     NiceStream *stream = i->data;
     for (j = 1; j <= stream->n_components; j++) {
+      NiceComponent *component;
       for (k = stream->conncheck_list; k ; k = k->next) {
         CandidateCheckPair *pair = k->data;
         if (pair->component_id == j) {
@@ -239,12 +293,16 @@ priv_print_conn_check_lists (NiceAgent *agent, const gchar *where, const gchar *
           nice_address_to_string (&pair->remote->addr, remote_addr);
 
           nice_debug ("Agent %p : *** sc=%d/%d : pair %p : "
-              "f=%s t=%s:%s [%s]:%u > [%s]:%u state=%c%s%s%s",
+              "f=%s t=%s:%s sock=%s "
+              "%s:[%s]:%u > %s:[%s]:%u state=%c%s%s%s",
               agent, pair->stream_id, pair->component_id, pair,
               pair->foundation,
               priv_candidate_type_to_string (pair->local->type),
               priv_candidate_type_to_string (pair->remote->type),
+              priv_socket_type_to_string (pair->sockptr->type),
+              priv_candidate_transport_to_string (pair->local->transport),
               local_addr, nice_address_get_port (&pair->local->addr),
+              priv_candidate_transport_to_string (pair->remote->transport),
               remote_addr, nice_address_get_port (&pair->remote->addr),
               priv_state_to_gchar (pair->state),
               pair->valid ? "V" : "",
@@ -253,7 +311,7 @@ priv_print_conn_check_lists (NiceAgent *agent, const gchar *where, const gchar *
 
           for (l = pair->stun_transactions, m = 0; l; l = l->next, m++) {
             StunTransaction *stun = l->data;
-            nice_debug ("Agent %p : *** sc=%d/%d : pair %p : "
+            nice_debug ("Agent %p : *** sc=%d/%d : pair %p :   "
                 "stun#=%d timer=%d/%d %d/%dms buf=%p %s",
                 agent, pair->stream_id, pair->component_id, pair, m,
                 stun->timer.retransmissions, stun->timer.max_retransmissions,
@@ -264,6 +322,8 @@ priv_print_conn_check_lists (NiceAgent *agent, const gchar *where, const gchar *
           }
         }
       }
+      if (agent_find_component (agent, stream->id, j, NULL, &component))
+        print_component_incoming_checks (agent, stream, component);
     }
   }
 }
@@ -1652,6 +1712,8 @@ conn_check_remote_candidates_set(NiceAgent *agent, NiceStream *stream,
   GSList *l, *m;
   GList *k;
 
+  nice_debug ("Agent %p : conn_check_remote_candidates_set %u %u",
+    agent, stream->id, component->id);
   for (k = component->incoming_checks.head; k;) {
     IncomingCheck *icheck = k->data;
     GList *k_next = k->next;
