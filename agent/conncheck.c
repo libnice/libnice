@@ -4468,7 +4468,14 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, NiceStream *stream,
   }
   for (i = component->local_candidates; i; i = i->next) {
     NiceCandidate *cand = i->data;
-    if (nice_address_equal (&nicesock->addr, &cand->addr)) {
+    NiceAddress *addr;
+
+    if (cand->type == NICE_CANDIDATE_TYPE_RELAYED)
+      addr = &cand->addr;
+    else
+      addr = &cand->base_addr;
+
+    if (nice_address_equal (&nicesock->addr, addr)) {
       local_candidate = cand;
       break;
     }
