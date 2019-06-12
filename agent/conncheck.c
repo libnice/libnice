@@ -2163,7 +2163,7 @@ int conn_check_add_for_candidate (NiceAgent *agent, guint stream_id, NiceCompone
   /* note: according to 7.2.1.3, "Learning Peer Reflexive Candidates",
    * the agent does not pair this candidate with any local candidates.
    */
-  if (agent->compatibility == NICE_COMPATIBILITY_RFC5245 &&
+  if (NICE_AGENT_IS_COMPATIBLE_WITH_RFC5245_OR_OC2007R2 (agent) &&
       remote->type == NICE_CANDIDATE_TYPE_PEER_REFLEXIVE)
   {
     return added;
@@ -2209,7 +2209,7 @@ int conn_check_add_for_local_candidate (NiceAgent *agent, guint stream_id, NiceC
    * with other remote candidates
    */
 
-  if (agent->compatibility == NICE_COMPATIBILITY_RFC5245 &&
+  if (NICE_AGENT_IS_COMPATIBLE_WITH_RFC5245_OR_OC2007R2 (agent) &&
       local->type == NICE_CANDIDATE_TYPE_PEER_REFLEXIVE)
   {
     return added;
