@@ -293,6 +293,7 @@ static void on_refresh_removed (RefreshPruneAsyncData *data)
     agent_timeout_add_with_context (data->agent, &timeout_source,
         "Async refresh prune", 0, data->cb, data->user_data);
 
+    g_source_unref (timeout_source);
     g_free (data);
   }
 }
