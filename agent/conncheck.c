@@ -1747,6 +1747,9 @@ conn_check_remote_candidates_set(NiceAgent *agent, NiceStream *stream,
           priv_mark_pair_nominated (agent, stream, component,
               lcand, rcand);
 
+        if (icheck->username)
+          g_free (icheck->username);
+        g_slice_free (IncomingCheck, icheck);
         g_queue_delete_link (&component->incoming_checks, k);
         break;
       }
