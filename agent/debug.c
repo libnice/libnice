@@ -167,7 +167,7 @@ void nice_debug (const char *fmt, ...)
 void nice_debug_verbose (const char *fmt, ...)
 {
   va_list ap;
-  if (debug_verbose_enabled) {
+  if (debug_enabled && debug_verbose_enabled) {
     va_start (ap, fmt);
     g_logv (G_LOG_DOMAIN, G_LOG_LEVEL_DEBUG, fmt, ap);
     va_end (ap);
