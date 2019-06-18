@@ -205,6 +205,33 @@ nice_component_remove_socket (NiceAgent *agent, NiceComponent *cmp,
     i = next;
   }
 
+  /* The nsocket to be removed may also come from a
+   * peer-reflexive remote candidate
+   */
+  for (i = cmp->remote_candidates; i;) {
+    NiceCandidate *candidate = i->data;
+    GSList *next = i->next;
+
+    if (candidate->sockptr != nsocket) {
+      i = next;
+      continue;
+    }
+
+    if (candidate == cmp->selected_pair.remote) {
+      nice_component_clear_selected_pair (cmp);
+      agent_signal_component_state_change (agent, cmp->stream_id,
+          cmp->id, NICE_COMPONENT_STATE_FAILED);
+    }
+
+    if (stream)
+      conn_check_prune_socket (agent, stream, cmp, candidate->sockptr);
+
+    nice_candidate_free (candidate);
+
+    cmp->remote_candidates = g_slist_delete_link (cmp->remote_candidates, i);
+    i = next;
+  }
+
   nice_component_detach_socket (cmp, nsocket);
 }
 
