@@ -3455,6 +3455,10 @@ static gboolean priv_add_remote_candidate (
     nice_debug ("Agent %p : Updating existing peer-rfx remote candidate to %s",
         agent, _cand_type_to_sdp (type));
     candidate->type = type;
+    /* The updated candidate is no more peer reflexive, so its
+     * sockptr can be cleared
+     */
+    candidate->sockptr = NULL;
     /* If it got there, the next one will also be ran, so the foundation
      * will be set.
      */
