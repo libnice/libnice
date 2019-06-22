@@ -3864,6 +3864,9 @@ agent_recv_message_unlocked (
         new_socket = nice_tcp_passive_socket_accept (nicesock);
         if (new_socket) {
           _priv_set_socket_tos (agent, new_socket, stream->tos);
+          nice_debug ("Agent %p: add to tcp-pass socket %p a new "
+              "tcp accept socket %p in s/c %d/%d",
+              agent, nicesock, new_socket, stream->id, component->id);
           nice_component_attach_socket (component, new_socket);
         }
         sockret = 0;

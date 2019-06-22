@@ -1714,6 +1714,15 @@ conn_check_remote_candidates_set(NiceAgent *agent, NiceStream *stream,
 
   nice_debug ("Agent %p : conn_check_remote_candidates_set %u %u",
     agent, stream->id, component->id);
+
+  if (stream->remote_ufrag[0] == 0)
+    return;
+
+
+  if (component->incoming_checks.head)
+    nice_debug ("Agent %p : both remote candidates and credentials set, "
+      "we can process incoming checks", agent);
+
   for (k = component->incoming_checks.head; k;) {
     IncomingCheck *icheck = k->data;
     GList *k_next = k->next;
@@ -1741,6 +1750,14 @@ conn_check_remote_candidates_set(NiceAgent *agent, NiceStream *stream,
         }
 
         g_assert (lcand != NULL);
+        if (lcand->transport == NICE_CANDIDATE_TRANSPORT_TCP_PASSIVE) {
+          CandidateCheckPair *pair;
+          pair = priv_conn_check_add_for_candidate_pair_matched (agent,
+              stream->id, component, lcand, rcand, NICE_CHECK_SUCCEEDED);
+          if (pair)
+            pair->valid = TRUE;
+        }
+
         priv_schedule_triggered_check (agent, stream, component,
             icheck->local_socket, rcand);
         if (icheck->use_candidate)
@@ -2705,6 +2722,9 @@ int conn_check_send (NiceAgent *agent, CandidateCheckPair *pair)
       new_socket = nice_tcp_active_socket_connect (pair->sockptr,
           &pair->remote->addr);
       if (new_socket) {
+        nice_debug ("Agent %p: add to tcp-act socket %p a new "
+            "tcp connect socket %p on pair %p in s/c %d/%d",
+            agent, pair->sockptr, new_socket, pair, stream->id, component->id);
         pair->sockptr = new_socket;
         _priv_set_socket_tos (agent, pair->sockptr, stream2->tos);
 
