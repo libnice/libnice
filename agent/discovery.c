@@ -897,6 +897,7 @@ discovery_add_peer_reflexive_candidate (
   NiceAgent *agent,
   guint stream_id,
   guint component_id,
+  guint32 priority,
   NiceAddress *address,
   NiceSocket *base_socket,
   NiceCandidate *local,
@@ -927,22 +928,13 @@ discovery_add_peer_reflexive_candidate (
   candidate->addr = *address;
   candidate->sockptr = base_socket;
   candidate->base_addr = base_socket->addr;
-
-  if (agent->compatibility == NICE_COMPATIBILITY_GOOGLE) {
-    candidate->priority = nice_candidate_jingle_priority (candidate);
-  } else if (agent->compatibility == NICE_COMPATIBILITY_MSN ||
-             agent->compatibility == NICE_COMPATIBILITY_OC2007)  {
-    candidate->priority = nice_candidate_msn_priority (candidate);
-  } else if (agent->compatibility == NICE_COMPATIBILITY_OC2007R2) {
-    candidate->priority =  nice_candidate_ms_ice_priority (candidate,
-        agent->reliable, FALSE);
-  } else {
-    candidate->priority = nice_candidate_ice_priority (candidate,
-        agent->reliable, FALSE);
-  }
-
-  candidate->priority = ensure_unique_priority (stream, component,
-      candidate->priority);
+  /* We don't ensure priority uniqueness in this case, since the
+   * discovered candidate receives the same priority than its
+   * parent pair, by design, RFC 5245, sect 7.1.3.2.1.
+   * Discovering Peer Reflexive Candidates (the priority from the
+   * STUN Request)
+   */
+  candidate->priority = priority;
   priv_assign_foundation (agent, candidate);
 
   if ((agent->compatibility == NICE_COMPATIBILITY_MSN ||

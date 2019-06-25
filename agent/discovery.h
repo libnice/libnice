@@ -148,6 +148,7 @@ discovery_add_peer_reflexive_candidate (
   NiceAgent *agent,
   guint stream_id,
   guint component_id,
+  guint32 priority,
   NiceAddress *address,
   NiceSocket *base_socket,
   NiceCandidate *local,

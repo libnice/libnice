@@ -2071,17 +2071,47 @@ ensure_unique_priority (NiceStream *stream, NiceComponent *component,
     }
   }
 
+  return priority;
+}
+
+static guint32
+ensure_unique_prflx_priority (NiceStream *stream, NiceComponent *component,
+    guint32 local_priority, guint32 prflx_priority)
+{
+  GSList *item;
+
+  /* First, ensure we provide the same value for pairs having
+   * the same local candidate, ie the same local candidate priority
+   * for the sake of coherency with the stun server behaviour that
+   * stores a unique priority value per remote candidate, from the
+   * first stun request it receives (it depends on the kind of NAT
+   * typically, but for NAT that preserves the binding this is required).
+   */
   for (item = stream->conncheck_list; item; item = item->next) {
     CandidateCheckPair *p = item->data;
 
     if (p->component_id == component->id &&
-        p->prflx_priority == priority) {
-      priority--;
+        p->local->priority == local_priority) {
+      return p->prflx_priority;
+    }
+  }
+
+ /* Second, ensure uniqueness across all other prflx_priority values */
+ again:
+  if (prflx_priority == 0)
+    prflx_priority--;
+
+  for (item = stream->conncheck_list; item; item = item->next) {
+    CandidateCheckPair *p = item->data;
+
+    if (p->component_id == component->id &&
+        p->prflx_priority == prflx_priority) {
+      prflx_priority--;
       goto again;
     }
   }
 
-  return priority;
+  return prflx_priority;
 }
 
 
@@ -2128,8 +2158,8 @@ static CandidateCheckPair *priv_add_new_check_pair (NiceAgent *agent,
           tmpbuf1, nice_address_get_port (&pair->local->addr),
           tmpbuf2, nice_address_get_port (&pair->remote->addr));
   }
-  pair->prflx_priority = ensure_unique_priority (stream, component,
-      peer_reflexive_candidate_priority (agent, local));
+  pair->prflx_priority = ensure_unique_prflx_priority (stream, component,
+      local->priority, peer_reflexive_candidate_priority (agent, local));
 
   stream->conncheck_list = g_slist_insert_sorted (stream->conncheck_list, pair,
       (GCompareFunc)conn_check_compare);
@@ -3049,6 +3079,7 @@ static CandidateCheckPair *priv_add_peer_reflexive_pair (NiceAgent *agent, guint
   }
   g_snprintf (pair->foundation, NICE_CANDIDATE_PAIR_MAX_FOUNDATION, "%s:%s",
       local_cand->foundation, parent_pair->remote->foundation);
+
   if (agent->controlling_mode == TRUE)
     pair->priority = nice_candidate_pair_priority (pair->local->priority,
         pair->remote->priority);
@@ -3056,7 +3087,8 @@ static CandidateCheckPair *priv_add_peer_reflexive_pair (NiceAgent *agent, guint
     pair->priority = nice_candidate_pair_priority (pair->remote->priority,
         pair->local->priority);
   pair->nominated = parent_pair->nominated;
-  pair->prflx_priority = ensure_unique_priority (stream, component,
+  pair->prflx_priority = ensure_unique_prflx_priority (stream, component,
+      local_cand->priority,
       peer_reflexive_candidate_priority (agent, local_cand));
   nice_debug ("Agent %p : added a new peer-discovered pair %p with "
       "foundation '%s' and transport %s:%s to stream %u component %u",
@@ -3172,10 +3204,14 @@ static CandidateCheckPair *priv_process_response_check_for_reflexive(NiceAgent *
       if (!agent->force_relay) {
         /* step: find a new local candidate, see RFC 5245 7.1.3.2.1.
          * "Discovering Peer Reflexive Candidates"
+         *
+         * The priority equal to the value of the PRIORITY attribute
+         * in the Binding request is taken from the "parent" pair p
          */
         local_cand = discovery_add_peer_reflexive_candidate (agent,
                                                              stream->id,
                                                              component->id,
+                                                             p->prflx_priority,
                                                             &mapped,
                                                              sockptr,
                                                              local_candidate,
