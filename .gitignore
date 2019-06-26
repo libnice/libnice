@@ -136,7 +136,6 @@ tests/test-add-remove-stream
 tests/test-address
 tests/test-bsd
 tests/test-build-io-stream
-tests/test-dribble
 tests/test-fallback
 tests/test-fullmode
 tests/test-icetcp
@@ -147,6 +146,7 @@ tests/test-io-stream-thread
 tests/test-io-stream-pollable
 tests/test-send-recv
 tests/test-mainloop
+tests/test-new-trickle
 tests/test-priority
 tests/test-pseudotcp
 tests/test-pseudotcp-fin
@@ -155,7 +155,7 @@ tests/test-pseudotcp-fin
 tests/test-restart
 tests/test-tcp
 tests/test-thread
-tests/test-new-dribble
+tests/test-trickle
 tests/test-nomination
 tests/test-credentials
 tests/test-different-number-streams
