@@ -309,7 +309,7 @@ nice_interfaces_get_local_ips (gboolean include_loopback)
   struct ifreq *ifr;
   struct ifconf ifc;
   struct sockaddr_in *sa;
-  gchar *loopback = NULL;
+  GList *loopbacks = NULL;
 
   if ((sockfd = socket (AF_INET, SOCK_DGRAM, IPPROTO_IP)) < 0) {
     nice_debug ("Error : Cannot open socket to retrieve interface list");
@@ -355,7 +355,7 @@ nice_interfaces_get_local_ips (gboolean include_loopback)
     nice_debug ("IP Address: %s", inet_ntoa (sa->sin_addr));
     if ((ifr->ifr_flags & IFF_LOOPBACK) == IFF_LOOPBACK){
       if (include_loopback)
-        loopback = g_strdup (inet_ntoa (sa->sin_addr));
+        loopbacks = add_ip_to_list (loopbacks, g_strdup (inet_ntoa (sa->sin_addr)), TRUE);
       else
         nice_debug ("Ignoring loopback interface");
     } else {
@@ -370,8 +370,8 @@ nice_interfaces_get_local_ips (gboolean include_loopback)
   close (sockfd);
   free (ifc.ifc_req);
 
-  if (loopback)
-    ips = add_ip_to_list (ips, loopback, TRUE);
+  if (loopbacks)
+    ips = g_list_concat (ips, loopbacks);
 
   return ips;
 }
