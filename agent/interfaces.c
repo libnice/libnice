@@ -358,6 +358,11 @@ nice_interfaces_get_local_ips (gboolean include_loopback)
         loopbacks = add_ip_to_list (loopbacks, g_strdup (inet_ntoa (sa->sin_addr)), TRUE);
       else
         nice_debug ("Ignoring loopback interface");
+#ifdef IGNORED_IFACE_PREFIX
+    } else if (g_str_has_prefix (ifr->ifr_name, IGNORED_IFACE_PREFIX)) {
+      nice_debug ("Ignoring interface %s as it matches prefix %s",
+          ifr->ifr_name, IGNORED_IFACE_PREFIX);
+#endif
     } else {
       if (nice_interfaces_is_private_ip ((struct sockaddr *) sa)) {
         ips = add_ip_to_list (ips, g_strdup (inet_ntoa (sa->sin_addr)), TRUE);
