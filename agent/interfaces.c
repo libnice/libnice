@@ -266,6 +266,10 @@ nice_interfaces_get_local_ips (gboolean include_loopback)
     if ((ifa->ifa_flags & IFF_UP) == 0)
       continue;
 
+    /* no ip address from interface that isn't running */
+    if ((ifa->ifa_flags & IFF_RUNNING) == 0)
+      continue;
+
     if (ifa->ifa_addr == NULL)
       continue;
 
@@ -360,6 +364,15 @@ nice_interfaces_get_local_ips (gboolean include_loopback)
           " Skipping...", ifr->ifr_name);
       continue;  /* failed to get flags, skip it */
     }
+
+    /* no ip address from interface that is down */
+    if ((ifr->ifr_flags & IFF_UP) == 0)
+      continue;
+
+    /* no ip address from interface that isn't running */
+    if ((ifr->ifr_flags & IFF_RUNNING) == 0)
+      continue;
+
     sa = (struct sockaddr_in *) &ifr->ifr_addr;
     nice_debug ("Interface:  %s", ifr->ifr_name);
     nice_debug ("IP Address: %s", inet_ntoa (sa->sin_addr));
