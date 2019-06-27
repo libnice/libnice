@@ -403,7 +403,7 @@ AC_ARG_WITH([ignored-network-interface-prefix],
      check algorithm. For example, interfaces "virbr" in the case of the virtual bridge
      handled by libvirtd, do not help in finding connectivity.])],
     [interface_prefix="$withval"])
-AS_IF([test -n "$interface_prefix"],
+AS_IF([test -n "$interface_prefix" && test "x$interface_prefix" != "xno"],
   [[interface_prefix_list=`echo $interface_prefix | sed 's/,/","/g'`]
    AC_DEFINE_UNQUOTED([IGNORED_IFACE_PREFIX],["$interface_prefix_list"],
     [Ignore this network interface prefix from the connection check])
