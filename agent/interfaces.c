@@ -73,6 +73,13 @@
 
 #endif /* G_OS_UNIX */
 
+#ifdef IGNORED_IFACE_PREFIX
+static const gchar *ignored_iface_prefix_list[] = {
+  IGNORED_IFACE_PREFIX,
+  NULL
+};
+#endif
+
 #if (defined(G_OS_UNIX) && defined(HAVE_GETIFADDRS)) || defined(G_OS_WIN32)
 /* Works on both UNIX and Windows. Magic! */
 static gchar *
@@ -253,7 +260,10 @@ nice_interfaces_get_local_ips (gboolean include_loopback)
   GList *ips = NULL;
   struct ifaddrs *ifa, *results;
   GList *loopbacks = NULL;
-
+#ifdef IGNORED_IFACE_PREFIX
+  const gchar **prefix;
+  gboolean ignored = FALSE;
+#endif
 
   if (getifaddrs (&results) < 0)
       return NULL;
@@ -290,18 +300,28 @@ nice_interfaces_get_local_ips (gboolean include_loopback)
         nice_debug ("Ignoring loopback interface");
         g_free (addr_string);
       }
-#ifdef IGNORED_IFACE_PREFIX
-    } else if (g_str_has_prefix (ifa->ifa_name, IGNORED_IFACE_PREFIX)) {
-      nice_debug ("Ignoring interface %s as it matches prefix %s",
-          ifa->ifa_name, IGNORED_IFACE_PREFIX);
-      g_free (addr_string);
-#endif
-    } else {
-      if (nice_interfaces_is_private_ip (ifa->ifa_addr))
-        ips = add_ip_to_list (ips, addr_string, TRUE);
-      else
-        ips = add_ip_to_list (ips, addr_string, FALSE);
+      continue;
     }
+
+#ifdef IGNORED_IFACE_PREFIX
+    for (prefix = ignored_iface_prefix_list; *prefix; prefix++) {
+      if (g_str_has_prefix (ifa->ifa_name, *prefix)) {
+        nice_debug ("Ignoring interface %s as it matches prefix %s",
+            ifa->ifa_name, *prefix);
+        g_free (addr_string);
+        ignored = true;
+        break;
+      }
+    }
+
+    if (ignored)
+      continue;
+#endif
+
+    if (nice_interfaces_is_private_ip (ifa->ifa_addr))
+      ips = add_ip_to_list (ips, addr_string, TRUE);
+    else
+      ips = add_ip_to_list (ips, addr_string, FALSE);
   }
 
   freeifaddrs (results);
@@ -324,6 +344,10 @@ nice_interfaces_get_local_ips (gboolean include_loopback)
   struct ifconf ifc;
   struct sockaddr_in *sa;
   GList *loopbacks = NULL;
+#ifdef IGNORED_IFACE_PREFIX
+  const gchar **prefix;
+  gboolean ignored = FALSE;
+#endif
 
   if ((sockfd = socket (AF_INET, SOCK_DGRAM, IPPROTO_IP)) < 0) {
     nice_debug ("Error : Cannot open socket to retrieve interface list");
@@ -381,17 +405,27 @@ nice_interfaces_get_local_ips (gboolean include_loopback)
         loopbacks = add_ip_to_list (loopbacks, g_strdup (inet_ntoa (sa->sin_addr)), TRUE);
       else
         nice_debug ("Ignoring loopback interface");
+      continue;
+    }
+
 #ifdef IGNORED_IFACE_PREFIX
-    } else if (g_str_has_prefix (ifr->ifr_name, IGNORED_IFACE_PREFIX)) {
-      nice_debug ("Ignoring interface %s as it matches prefix %s",
-          ifr->ifr_name, IGNORED_IFACE_PREFIX);
-#endif
-    } else {
-      if (nice_interfaces_is_private_ip ((struct sockaddr *) sa)) {
-        ips = add_ip_to_list (ips, g_strdup (inet_ntoa (sa->sin_addr)), TRUE);
-      } else {
-        ips = add_ip_to_list (ips, g_strdup (inet_ntoa (sa->sin_addr)), FALSE);
+    for (prefix = ignored_iface_prefix_list; *prefix; prefix++) {
+      if (g_str_has_prefix (ifr->ifr_name, *prefix)) {
+        nice_debug ("Ignoring interface %s as it matches prefix %s",
+            ifr->ifr_name, *prefix);
+        ignored = true;
+        break;
       }
+    }
+
+    if (ignored)
+      continue;
+#endif
+
+    if (nice_interfaces_is_private_ip ((struct sockaddr *) sa)) {
+      ips = add_ip_to_list (ips, g_strdup (inet_ntoa (sa->sin_addr)), TRUE);
+    } else {
+      ips = add_ip_to_list (ips, g_strdup (inet_ntoa (sa->sin_addr)), FALSE);
     }
   }
 
