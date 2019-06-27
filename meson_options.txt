@@ -2,8 +2,8 @@ option('gupnp', type: 'feature', value: 'auto',
   description: 'Enable or disable GUPnP IGD support')
 option('gstreamer', type: 'feature', value: 'auto',
   description: 'Enable or disable build of GStreamer plugins')
-option('ignored-network-interface-prefix', type: 'string', value: '',
-  description: 'Ignore network interfaces whose name starts with this string in the ICE connection check algorithm. For example, "virbr" to ignore virtual bridge interfaces added by virtd, which do not help in finding connectivity.')
+option('ignored-network-interface-prefix', type: 'array', value: [],
+  description: 'Ignore network interfaces whose name starts with a string from this list in the ICE connection check algorithm. For example, "virbr" to ignore virtual bridge interfaces added by virtd, which do not help in finding connectivity.')
 option('crypto-library', type: 'combo', choices : ['auto', 'gnutls', 'openssl'], value : 'auto')
 
 # Common feature options

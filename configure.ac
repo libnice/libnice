@@ -395,16 +395,17 @@ AM_CONDITIONAL([ENABLE_GTK_DOC], false)
 # GObject introspection
 GOBJECT_INTROSPECTION_CHECK([1.30.0])
 
-dnl Ignore a specific network interface name prefix from the connection check
-AC_MSG_CHECKING([whether to ignore a specific network interface name prefix])
+dnl Ignore specific network interface name prefixes from the connection check
+AC_MSG_CHECKING([whether to ignore specific network interface name prefixes])
 AC_ARG_WITH([ignored-network-interface-prefix],
-  [AS_HELP_STRING([--with-ignored-network-interface-prefix=string],
-    [Ignore network interfaces whose name starts with "string" from the ICE connection
+  [AS_HELP_STRING([--with-ignored-network-interface-prefix=string@<:@,string...@:>@],
+    [Ignore network interfaces whose name starts with a string from this list in the ICE connection
      check algorithm. For example, interfaces "virbr" in the case of the virtual bridge
      handled by libvirtd, do not help in finding connectivity.])],
     [interface_prefix="$withval"])
 AS_IF([test -n "$interface_prefix"],
-  [AC_DEFINE_UNQUOTED([IGNORED_IFACE_PREFIX],["$interface_prefix"],
+  [[interface_prefix_list=`echo $interface_prefix | sed 's/,/","/g'`]
+   AC_DEFINE_UNQUOTED([IGNORED_IFACE_PREFIX],["$interface_prefix_list"],
     [Ignore this network interface prefix from the connection check])
    AC_MSG_RESULT([yes, $interface_prefix])],
   [AC_MSG_RESULT([no])])

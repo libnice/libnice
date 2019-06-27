@@ -232,8 +232,12 @@ nice_incs = include_directories('.', 'agent', 'random', 'socket', 'stun')
 nice_deps = gio_deps + [gthread_dep, crypto_dep, gupnp_igd_dep] + syslibs
 
 ignored_iface_prefix = get_option('ignored-network-interface-prefix')
-if ignored_iface_prefix != ''
-  cdata.set_quoted('IGNORED_IFACE_PREFIX', ignored_iface_prefix)
+if ignored_iface_prefix != []
+  ignored_iface_prefix_quoted = []
+  foreach i : ignored_iface_prefix
+    ignored_iface_prefix_quoted += '"' + i + '"'
+  endforeach
+  cdata.set('IGNORED_IFACE_PREFIX', ','.join(ignored_iface_prefix_quoted))
 endif
 
 gir = find_program('g-ir-scanner', required : get_option('introspection'))
