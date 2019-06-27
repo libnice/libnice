@@ -191,6 +191,22 @@ priv_candidate_type_to_string (NiceCandidateType type)
   }
 }
 
+static const gchar *
+priv_candidate_transport_to_string (NiceCandidateTransport type) {
+  switch(type) {
+    case NICE_CANDIDATE_TRANSPORT_UDP:
+      return "udp";
+    case NICE_CANDIDATE_TRANSPORT_TCP_ACTIVE:
+      return "tcp-act";
+    case NICE_CANDIDATE_TRANSPORT_TCP_PASSIVE:
+      return "tcp-pass";
+    case NICE_CANDIDATE_TRANSPORT_TCP_SO:
+      return "tcp-so";
+    default:
+      g_assert_not_reached ();
+  }
+}
+
 /*
  * Dump the conncheck lists of the agent
  */
@@ -2034,9 +2050,12 @@ static CandidateCheckPair *priv_add_new_check_pair (NiceAgent *agent,
   stream->conncheck_list = g_slist_insert_sorted (stream->conncheck_list, pair,
       (GCompareFunc)conn_check_compare);
 
-  nice_debug ("Agent %p : added a new pair %p with foundation '%s' to "
-      "stream %u component %u.", agent, pair, pair->foundation, stream_id,
-      component->id);
+  nice_debug ("Agent %p : added a new pair %p with foundation '%s' and "
+      "transport %s:%s to stream %u component %u",
+      agent, pair, pair->foundation,
+      priv_candidate_transport_to_string (pair->local->transport),
+      priv_candidate_transport_to_string (pair->remote->transport),
+      stream_id, component->id);
 
   /* implement the hard upper limit for number of
      checks (see sect 5.7.3 ICE ID-19): */
@@ -2952,8 +2971,12 @@ static CandidateCheckPair *priv_add_peer_reflexive_pair (NiceAgent *agent, guint
   pair->nominated = parent_pair->nominated;
   pair->prflx_priority = ensure_unique_priority (stream, component,
       peer_reflexive_candidate_priority (agent, local_cand));
-  nice_debug ("Agent %p : added a new peer-discovered pair with "
-      "foundation '%s'.",  agent, pair->foundation);
+  nice_debug ("Agent %p : added a new peer-discovered pair %p with "
+      "foundation '%s' and transport %s:%s to stream %u component %u",
+      agent, pair, pair->foundation,
+      priv_candidate_transport_to_string (pair->local->transport),
+      priv_candidate_transport_to_string (pair->remote->transport),
+      stream_id, component->id);
 
   stream->conncheck_list = g_slist_insert_sorted (stream->conncheck_list, pair,
       (GCompareFunc)conn_check_compare);
@@ -3072,8 +3095,9 @@ static CandidateCheckPair *priv_process_response_check_for_reflexive(NiceAgent *
                                                              sockptr,
                                                              local_candidate,
                                                              remote_candidate);
-        nice_debug ("Agent %p : added a new peer-reflexive local candidate %p",
-            agent, local_cand);
+        nice_debug ("Agent %p : added a new peer-reflexive local candidate %p "
+            "with transport %s", agent, local_cand,
+            priv_candidate_transport_to_string (local_cand->transport));
       }
     }
 
