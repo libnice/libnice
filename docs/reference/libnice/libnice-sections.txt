@@ -54,6 +54,7 @@ nice_agent_parse_remote_stream_sdp
 nice_agent_parse_remote_candidate_sdp
 nice_agent_get_io_stream
 nice_agent_get_selected_socket
+nice_agent_get_sockets
 nice_agent_get_component_state
 nice_agent_close_async
 nice_component_state_to_string

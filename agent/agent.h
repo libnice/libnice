@@ -1681,6 +1681,29 @@ void
 nice_agent_close_async (NiceAgent *agent, GAsyncReadyCallback callback,
     gpointer callback_data);
 
+/**
+ * nice_agent_get_sockets:
+ * @agent: The #NiceAgent Object
+ * @stream_id: The ID of the stream
+ * @component_id: The ID of the component
+ *
+ * Each component can have multiple sockets, this is an API to retrieve them all
+ * to be able to set properties. Most of the sockets for a component are created when
+ * calling nice_agent_gather_candidates(), so this API should be called right after to
+ * able to set properties on the sockets before they are used.
+ *
+ * These sockets can be a mix of UDP & TCP sockets depending on the compatibility mode
+ * and options that have been set.
+ *
+ * Returns: (element-type GSocket) (transfer full): An array
+ * containing all of the sockets for this component. Free with
+ * g_ptr_array_unref() when done.
+ *
+ * Since: 0.1.17
+ */
+GPtrArray *
+nice_agent_get_sockets (NiceAgent *agent, guint stream_id, guint component_id);
+
 G_END_DECLS
 
 #endif /* __LIBNICE_AGENT_H__ */

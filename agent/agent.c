@@ -6694,3 +6694,18 @@ nice_agent_close_async (NiceAgent *agent, GAsyncReadyCallback callback,
 
   agent_unlock (agent);
 }
+
+
+NICEAPI_EXPORT GPtrArray *
+nice_agent_get_sockets (NiceAgent *agent, guint stream_id, guint component_id)
+{
+  GPtrArray *array = NULL;
+  NiceComponent *component;
+
+  agent_lock (agent);
+  if (agent_find_component (agent, stream_id, component_id, NULL, &component))
+    array = nice_component_get_sockets (component);
+  agent_unlock (agent);
+
+  return array;
+}

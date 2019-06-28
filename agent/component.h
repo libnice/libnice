@@ -309,6 +309,8 @@ gboolean
 nice_component_verify_remote_candidate (NiceComponent *component,
     const NiceAddress *address, NiceSocket *nicesock);
 
+GPtrArray *
+nice_component_get_sockets (NiceComponent *component);
 
 G_END_DECLS
 

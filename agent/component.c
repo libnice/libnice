@@ -1587,3 +1587,22 @@ nice_component_verify_remote_candidate (NiceComponent *component,
 
   return FALSE;
 }
+
+/* Must be called with agent lock held */
+/* Returns a transfer full GPtrArray of GSocket */
+GPtrArray *
+nice_component_get_sockets (NiceComponent *component)
+{
+  GPtrArray *array = g_ptr_array_new_with_free_func ((GDestroyNotify) g_object_unref);
+  GSList *item;
+
+  for (item = component->local_candidates; item; item = item->next) {
+    NiceCandidate *cand = item->data;
+    NiceSocket *nicesock = cand->sockptr;
+
+    if (nicesock->fileno && !g_ptr_array_find (array, nicesock->fileno, NULL))
+      g_ptr_array_add (array, g_object_ref (nicesock->fileno));
+  }
+
+  return array;
+}

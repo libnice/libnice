@@ -16,7 +16,7 @@ See the file COPYING.
 Requirements
 ------------
 
- glib >= 2.44
+ glib >= 2.54
  pkg-config
  gnutls >= 2.12.0 or OpenSSL
  gupnp-igd >= 0.1.2 (optional)

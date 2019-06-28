@@ -36,6 +36,7 @@ nice_agent_get_local_credentials
 nice_agent_get_remote_candidates
 nice_agent_get_selected_pair
 nice_agent_get_selected_socket
+nice_agent_get_sockets
 nice_agent_get_stream_name
 nice_agent_get_type
 nice_agent_new
