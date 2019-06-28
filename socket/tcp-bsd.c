@@ -436,7 +436,7 @@ socket_send_more (
   gpointer data)
 {
   NiceSocket *sock = (NiceSocket *) data;
-  TcpPriv *priv = sock->priv;
+  TcpPriv *priv;
 
   g_mutex_lock (&mutex);
 
@@ -446,6 +446,8 @@ socket_send_more (
     g_mutex_unlock (&mutex);
     return FALSE;
   }
+
+  priv = sock->priv;
 
   /* connection hangs up or queue was emptied */
   if (condition & G_IO_HUP ||
