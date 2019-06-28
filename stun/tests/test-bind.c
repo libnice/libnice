@@ -157,6 +157,7 @@ static void big_srv_addr (void)
 }
 
 
+#ifdef HAVE_POLL
 /** Timeout test */
 static void timeout (void)
 {
@@ -178,6 +179,7 @@ static void timeout (void)
 
   close (servfd);
 }
+#endif
 
 /** Malformed responses test */
 static void bad_responses (void)
