@@ -1105,7 +1105,7 @@ conn_check_stop (NiceAgent *agent)
   g_source_destroy (agent->conncheck_timer_source);
   g_source_unref (agent->conncheck_timer_source);
   agent->conncheck_timer_source = NULL;
-  agent->conncheck_timer_grace_period = 0;
+  agent->conncheck_ongoing_idle_delay = 0;
 }
 
 
@@ -1192,18 +1192,18 @@ static gboolean priv_conn_check_tick_agent_locked (NiceAgent *agent,
    * failed. Components marked connected, and then ready follow another
    * code path, and are not concerned by this grace period.
    */
-  if (!keep_timer_going && agent->conncheck_timer_grace_period == 0)
+  if (!keep_timer_going && agent->conncheck_ongoing_idle_delay == 0)
     nice_debug ("Agent %p : waiting %d msecs before checking "
-        "for failed components.", agent, NICE_AGENT_MAX_TIMER_GRACE_PERIOD);
+        "for failed components.", agent, agent->idle_timeout);
 
   if (keep_timer_going)
-    agent->conncheck_timer_grace_period = 0;
+    agent->conncheck_ongoing_idle_delay = 0;
   else
-    agent->conncheck_timer_grace_period += agent->timer_ta;
+    agent->conncheck_ongoing_idle_delay += agent->timer_ta;
 
   /* step: stop timer if no work left */
   if (!keep_timer_going &&
-      agent->conncheck_timer_grace_period >= NICE_AGENT_MAX_TIMER_GRACE_PERIOD) {
+      agent->conncheck_ongoing_idle_delay >= agent->idle_timeout) {
     nice_debug ("Agent %p : checking for failed components now.", agent);
     for (i = agent->streams; i; i = i->next) {
       NiceStream *stream = i->data;

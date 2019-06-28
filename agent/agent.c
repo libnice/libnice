@@ -81,8 +81,10 @@
 
 #define DEFAULT_STUN_PORT  3478
 #define DEFAULT_UPNP_TIMEOUT 200  /* milliseconds */
+#define DEFAULT_IDLE_TIMEOUT 5000 /* milliseconds */
 
 #define MAX_TCP_MTU 1400 /* Use 1400 because of VPNs and we assume IEE 802.3 */
+
 
 static void
 nice_debug_input_message_composition (const NiceInputMessage *messages,
@@ -120,6 +122,7 @@ enum
   PROP_NOMINATION_MODE,
   PROP_ICE_TRICKLE,
   PROP_SUPPORT_RENOMINATION,
+  PROP_IDLE_TIMEOUT,
 };
 
 
@@ -483,6 +486,51 @@ nice_agent_class_init (NiceAgentClass *klass)
          "corresponding candidates pair gets selected.",
          FALSE,
          G_PARAM_READWRITE));
+
+  /**
+   * NiceAgent:idle-timeout
+   *
+   * A final timeout in msec, launched when the agent becomes idle,
+   * before stopping its activity.
+   *
+   * This timer will delay the decision to set a component as failed.
+   * This delay is added to reduce the chance to see the agent receiving
+   * new stun activity just after the conncheck list has been declared
+   * failed (some valid pairs, no nominated pair, and no in-progress
+   * pairs), reactiviting conncheck activity, and causing a (valid)
+   * state transitions like that: connecting -> failed -> connecting ->
+   * connected -> ready.  Such transitions are not buggy per-se, but may
+   * break the test-suite, that counts precisely the number of time each
+   * state has been set, and doesnt expect these transcient failed
+   * states.
+   *
+   * This timer is also useful when the agent is in controlled mode and
+   * the other controlling peer takes some time to elect its nominated
+   * pair (this may be the case for SfB peers).
+   *
+   * This timer is *NOT* part if the RFC5245, as this situation is not
+   * covered in sect 8.1.2 "Updating States", but deals with a real
+   * use-case, where a controlled agent can not wait forever for the
+   * other peer to make a nomination decision.
+   *
+   * Also note that the value of this timeout will not delay the
+   * emission of 'connected' and 'ready' agent signals, and will not
+   * slow down the behaviour of the agent when the peer agent works
+   * in a timely manner.
+   *
+   * Since: 0.1.17
+   */
+
+  g_object_class_install_property (gobject_class, PROP_IDLE_TIMEOUT,
+      g_param_spec_uint (
+         "idle-timeout",
+         "Timeout before stopping the agent when being idle",
+         "A final timeout in msecs, launched when the agent becomes idle, "
+         "with no in-progress pairs to wait for, before stopping its activity, "
+         "and declaring a component as failed in needed.",
+         50, 60000,
+	 DEFAULT_IDLE_TIMEOUT,
+         G_PARAM_READWRITE | G_PARAM_CONSTRUCT));
 
   /**
    * NiceAgent:proxy-ip:
@@ -1203,6 +1251,7 @@ nice_agent_init (NiceAgent *agent)
   agent->max_conn_checks = NICE_AGENT_MAX_CONNECTIVITY_CHECKS_DEFAULT;
   agent->nomination_mode = NICE_NOMINATION_MODE_AGGRESSIVE;
   agent->support_renomination = FALSE;
+  agent->idle_timeout = DEFAULT_IDLE_TIMEOUT;
 
   agent->discovery_list = NULL;
   agent->discovery_unsched_items = 0;
@@ -1325,6 +1374,10 @@ nice_agent_get_property (
 
     case PROP_SUPPORT_RENOMINATION:
       g_value_set_boolean (value, agent->support_renomination);
+      break;
+
+    case PROP_IDLE_TIMEOUT:
+      g_value_set_uint (value, agent->idle_timeout);
       break;
 
     case PROP_PROXY_IP:
@@ -1541,6 +1594,10 @@ nice_agent_set_property (
 
     case PROP_SUPPORT_RENOMINATION:
       agent->support_renomination = g_value_get_boolean (value);
+      break;
+
+    case PROP_IDLE_TIMEOUT:
+      agent->idle_timeout = g_value_get_uint (value);
       break;
 
     case PROP_PROXY_IP:
