@@ -2186,6 +2186,7 @@ _tcp_sock_is_writable (NiceSocket *sock, gpointer user_data)
   if (component->selected_pair.local == NULL ||
       !nice_socket_is_based_on (component->selected_pair.local->sockptr, sock)) {
     agent_unlock (agent);
+    g_object_unref (agent);
     return;
   }
 
