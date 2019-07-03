@@ -2637,12 +2637,9 @@ priv_add_new_candidate_discovery_turn (NiceAgent *agent,
 
     /* TURN-TCP is currently unsupport unless it's OC2007 compatibliity */
     /* TODO: Add support for TURN-TCP */
-    if (((agent->compatibility == NICE_COMPATIBILITY_OC2007 ||
-            agent->compatibility == NICE_COMPATIBILITY_OC2007R2) &&
-            reliable_tcp == FALSE) ||
-        (!(agent->compatibility == NICE_COMPATIBILITY_OC2007 ||
-            agent->compatibility == NICE_COMPATIBILITY_OC2007R2) &&
-            reliable_tcp == TRUE)) {
+    if ((agent->compatibility != NICE_COMPATIBILITY_OC2007 &&
+            agent->compatibility != NICE_COMPATIBILITY_OC2007R2) ||
+            reliable_tcp == FALSE) {
       g_slice_free (CandidateDiscovery, cdisco);
       return;
     }
