@@ -333,7 +333,7 @@ parse_candidate(char *scand, guint stream_id)
   cand->component_id = 1;
   cand->stream_id = stream_id;
   cand->transport = NICE_CANDIDATE_TRANSPORT_UDP;
-  strncpy(cand->foundation, tokens[0], NICE_CANDIDATE_MAX_FOUNDATION);
+  strncpy(cand->foundation, tokens[0], NICE_CANDIDATE_MAX_FOUNDATION - 1);
   cand->foundation[NICE_CANDIDATE_MAX_FOUNDATION - 1] = 0;
   cand->priority = atoi (tokens[1]);
 
