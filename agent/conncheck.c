@@ -192,8 +192,9 @@ priv_candidate_type_to_string (NiceCandidateType type)
 }
 
 static const gchar *
-priv_candidate_transport_to_string (NiceCandidateTransport type) {
-  switch(type) {
+priv_candidate_transport_to_string (NiceCandidateTransport transport)
+{
+  switch (transport) {
     case NICE_CANDIDATE_TRANSPORT_UDP:
       return "udp";
     case NICE_CANDIDATE_TRANSPORT_TCP_ACTIVE:
@@ -208,8 +209,9 @@ priv_candidate_transport_to_string (NiceCandidateTransport type) {
 }
 
 static const gchar *
-priv_socket_type_to_string (NiceSocketType type) {
-  switch(type) {
+priv_socket_type_to_string (NiceSocketType type)
+{
+  switch (type) {
     case NICE_SOCKET_TYPE_UDP_BSD:
       return "udp";
     case NICE_SOCKET_TYPE_TCP_BSD:
@@ -928,40 +930,65 @@ static gboolean
 priv_conn_check_tick_stream_nominate (NiceStream *stream, NiceAgent *agent)
 {
   gboolean keep_timer_going = FALSE;
+  /* s_xxx counters are stream-wide */
   guint s_inprogress = 0;
   guint s_succeeded = 0;
   guint s_discovered = 0;
   guint s_nominated = 0;
+  guint s_selected_for_nomination = 0;
   guint s_waiting_for_nomination = 0;
   guint s_valid = 0;
-  guint frozen = 0;
-  guint waiting = 0;
-  GSList *i, *k;
+  guint s_frozen = 0;
+  guint s_waiting = 0;
+  CandidateCheckPair *other_stream_pair = NULL;
+  GSList *i, *j;
 
+  /* Search for a nominated pair (or selected to be nominated pair)
+   * from another stream.
+   */
+  for (i = agent->streams; i ; i = i->next) {
+    NiceStream *s = i->data;
+    if (s->id == stream->id)
+      continue;
+    for (j = s->conncheck_list; j ; j = j->next) {
+      CandidateCheckPair *p = j->data;
+      if (p->nominated || p->use_candidate_on_next_check) {
+        other_stream_pair = p;
+        break;
+      }
+    }
+    if (other_stream_pair)
+      break;
+  }
+
+
+  /* we compute some stream-wide counter values */
   for (i = stream->conncheck_list; i ; i = i->next) {
     CandidateCheckPair *p = i->data;
     if (p->state == NICE_CHECK_FROZEN)
-      ++frozen;
+      s_frozen++;
     else if (p->state == NICE_CHECK_IN_PROGRESS)
-      ++s_inprogress;
+      s_inprogress++;
     else if (p->state == NICE_CHECK_WAITING)
-      ++waiting;
+      s_waiting++;
     else if (p->state == NICE_CHECK_SUCCEEDED)
-      ++s_succeeded;
+      s_succeeded++;
     else if (p->state == NICE_CHECK_DISCOVERED)
-      ++s_discovered;
+      s_discovered++;
     if (p->valid)
-      ++s_valid;
+      s_valid++;
+    if (p->use_candidate_on_next_check)
+      s_selected_for_nomination++;
 
     if ((p->state == NICE_CHECK_SUCCEEDED || p->state == NICE_CHECK_DISCOVERED)
         && p->nominated)
-      ++s_nominated;
+      s_nominated++;
     else if ((p->state == NICE_CHECK_SUCCEEDED ||
             p->state == NICE_CHECK_DISCOVERED) && !p->nominated)
-      ++s_waiting_for_nomination;
+      s_waiting_for_nomination++;
   }
 
-    /* note: keep the timer going as long as there is work to be done */
+  /* note: keep the timer going as long as there is work to be done */
   if (s_inprogress)
     keep_timer_going = TRUE;
   
@@ -982,25 +1009,28 @@ priv_conn_check_tick_stream_nominate (NiceStream *stream, NiceAgent *agent)
          * and limiting the time spent waiting for in-progress connections
          * checks until they finally fail.
          */
-        GSList *component_item;
-
-        for (component_item = stream->components; component_item;
-             component_item = component_item->next) {
-          NiceComponent *component = component_item->data;
+        for (i = stream->components; i; i = i->next) {
+          NiceComponent *component = i->data;
+          CandidateCheckPair *other_component_pair = NULL;
+          CandidateCheckPair *this_component_pair = NULL;
           gboolean already_done = FALSE;
-          gboolean stopping_criterion = FALSE;
+          gboolean use_other_component = FALSE;
+          gboolean use_other_stream = FALSE;
+          const gchar *stopping_criterion = NULL;
+          /* p_xxx counters are component-wide */
           guint p_valid = 0;
           guint p_frozen = 0;
           guint p_waiting = 0;
           guint p_inprogress = 0;
           guint p_host_host_valid = 0;
 
-          /* verify that the choice of the pair to be nominated
-           * has not already been done
-           */
-          for (k = stream->conncheck_list; k ; k = k->next) {
-            CandidateCheckPair *p = k->data;
+          /* we compute some component-wide counter values */
+          for (j = stream->conncheck_list; j ; j = j->next) {
+            CandidateCheckPair *p = j->data;
             if (p->component_id == component->id) {
+              /* verify that the choice of the pair to be nominated
+               * has not already been done
+               */
               if (p->use_candidate_on_next_check)
                 already_done = TRUE;
               if (p->state == NICE_CHECK_FROZEN)
@@ -1021,20 +1051,35 @@ priv_conn_check_tick_stream_nominate (NiceStream *stream, NiceAgent *agent)
           if (already_done)
             continue;
 
-          stopping_criterion =
-              (p_host_host_valid > 0 ||
-               p_valid >= NICE_MIN_NUMBER_OF_VALID_PAIRS ||
-               (p_waiting == 0 && p_inprogress == 0 && p_frozen == 0));
-
-          if (!stopping_criterion)
-            continue;
-
-          /* when the stopping criterion is satisfied, we choose
-           * a pair to be nominated in the list of valid pairs,
-           * and add it to the triggered checks list
+          /* Search for a nominated pair (or selected to be nominated pair)
+           * from another component of this stream.
            */
-          for (k = stream->conncheck_list; k ; k = k->next) {
-            CandidateCheckPair *p = k->data;
+          for (j = stream->conncheck_list; j ; j = j->next) {
+            CandidateCheckPair *p = j->data;
+            if (p->component_id == component->id)
+              continue;
+            if (p->nominated || p->use_candidate_on_next_check) {
+              other_component_pair = p;
+              break;
+            }
+          }
+
+          /* We choose a pair to be nominated in the list of valid
+           * pairs.
+           *
+           * this pair will be the one with the highest priority,
+           * when we don't have other nominated pairs in other
+           * components and in other streams
+           *
+           * this pair will be a pair compatible with another nominated
+           * pair from another component if we found one.
+           *
+           * else this pair will be a pair compatible with another
+           * nominated pair from another stream if we found one.
+           *
+           */
+          for (j = stream->conncheck_list; j ; j = j->next) {
+            CandidateCheckPair *p = j->data;
             /* note: highest priority item selected (list always sorted) */
             if (p->component_id == component->id &&
                 !p->nominated &&
@@ -1050,25 +1095,129 @@ priv_conn_check_tick_stream_nominate (NiceStream *stream, NiceAgent *agent)
                 p = p->succeeded_pair;
               }
               g_assert (p->state == NICE_CHECK_SUCCEEDED);
-              nice_debug ("Agent %p : restarting check of pair %p with "
-                  "USE-CANDIDATE attrib (regular nomination)", agent, p);
-              p->use_candidate_on_next_check = TRUE;
-              priv_add_pair_to_triggered_check_queue (agent, p);
-              keep_timer_going = TRUE;
-              break; /* move to the next component */
+
+              if (this_component_pair == NULL)
+                /* highest priority pair */
+                this_component_pair = p;
+
+              if (other_component_pair == NULL &&
+                  other_stream_pair == NULL) {
+                /* use the highest priority pair */
+                break;
+              }
+
+              if (other_component_pair &&
+                  p->local->transport ==
+                    other_component_pair->local->transport &&
+                  nice_address_equal_no_port (&p->local->addr,
+                    &other_component_pair->local->addr) &&
+                  nice_address_equal_no_port (&p->remote->addr,
+                    &other_component_pair->remote->addr)) {
+                /* else continue the research with lower priority
+                 * pairs, compatible with a nominated pair of
+                 * another component
+                 */
+                this_component_pair = p;
+                use_other_component = TRUE;
+                break;
+              }
+
+              if (other_component_pair == NULL &&
+                  p->local->transport ==
+                    other_stream_pair->local->transport &&
+                  nice_address_equal_no_port (&p->local->addr,
+                    &other_stream_pair->local->addr) &&
+                  nice_address_equal_no_port (&p->remote->addr,
+                    &other_stream_pair->remote->addr)) {
+                /* else continue the research with lower priority
+                 * pairs, compatible with a nominated pair of
+                 * another stream
+                 */
+                this_component_pair = p;
+                use_other_stream = TRUE;
+                break;
+              }
             }
           }
+
+          /* No valid pair for this component */
+          if (this_component_pair == NULL)
+            continue;
+
+          /* The stopping criterion tries to select a set of pairs of
+           * the same kind (transport/type) for all components of the
+           * stream, and for all streams, when possible (see last
+           * paragraph).
+           *
+           * When no stream has nominated a pair yet, we apply the
+           * following criterion :
+           *   - stop if we have a valid host-host pair
+           *   - or stop if we have at least "some* (2 in the current
+           *     implementation) valid pairs, and select the best one
+           *   - or stop if the conncheck cannot evolve more
+           *
+           * Else when the stream has a nominated pair in another
+           * component we apply the stopping criterion :
+           *   - stop if we have a valid pair of the same kind than the
+           *     other nominated pair.
+           *   - or stop if the conncheck cannot evolve more
+           *
+           * Else when another stream has a nominated pair we apply the
+           * following criterion
+           *   - stop if we have a valid pair of the same kind than the
+           *     other nominated pair.
+           *   - or stop if the conncheck cannot evolve more
+           *
+           * When no further evolution of the conncheck is possible, we
+           * prefer to select the best valid pair we have, *even* if it
+           * is not compatible with the transport of another stream of
+           * component. We think it's still a better choice than marking
+           * this component 'failed'.
+           */
+          if (other_stream_pair == NULL &&
+              other_component_pair == NULL &&
+              p_host_host_valid > 0)
+            stopping_criterion = "valid host:host pair";
+          else if (other_stream_pair == NULL &&
+              other_component_pair == NULL &&
+              p_valid >= NICE_MIN_NUMBER_OF_VALID_PAIRS)
+            stopping_criterion = "*some* valid pairs";
+          else if (use_other_component)
+            stopping_criterion = "pair compatible with another component";
+          else if (use_other_stream)
+            stopping_criterion = "pair compatible with another stream";
+          else if (p_waiting == 0 && p_inprogress == 0 && p_frozen == 0)
+            stopping_criterion = "no more pairs to check";
+
+          if (stopping_criterion == NULL)
+            continue;
+
+          nice_debug ("Agent %p : stopping criterion: %s",
+              agent, stopping_criterion);
+
+          /* when the stopping criterion is reached, we add the
+           * selected pair for this component to the triggered checks
+           * list
+           */
+          nice_debug ("Agent %p : restarting check of %s:%s pair %p with "
+              "USE-CANDIDATE attrib (regular nomination) for "
+              "stream %d component %d", agent,
+              priv_candidate_transport_to_string
+                  (this_component_pair->local->transport),
+              priv_candidate_transport_to_string
+                  (this_component_pair->remote->transport),
+              this_component_pair, stream->id, component->id);
+          this_component_pair->use_candidate_on_next_check = TRUE;
+          priv_add_pair_to_triggered_check_queue (agent, this_component_pair);
+          keep_timer_going = TRUE;
         }
       }
     } else if (agent->controlling_mode) {
-      GSList *component_item;
+      for (i = stream->components; i; i = i->next) {
+        NiceComponent *component = i->data;
 
-      for (component_item = stream->components; component_item;
-           component_item = component_item->next) {
-        NiceComponent *component = component_item->data;
-
-	for (k = stream->conncheck_list; k ; k = k->next) {
-	  CandidateCheckPair *p = k->data;
+	for (j = stream->conncheck_list; j ; j = j->next) {
+	  CandidateCheckPair *p = j->data;
 	  /* note: highest priority item selected (list always sorted) */
 	  if (p->component_id == component->id &&
               (p->state == NICE_CHECK_SUCCEEDED ||
@@ -1086,11 +1235,12 @@ priv_conn_check_tick_stream_nominate (NiceStream *stream, NiceAgent *agent)
     }
   }
   if (stream->tick_counter++ % 50 == 0)
-    nice_debug ("Agent %p : stream %u: timer tick #%u: %u frozen, %u in-progress, "
-        "%u waiting, %u succeeded, %u discovered, %u nominated, "
-        "%u waiting-for-nom, %u valid.", agent, stream->id,
-        stream->tick_counter, frozen, s_inprogress, waiting, s_succeeded,
-        s_discovered, s_nominated, s_waiting_for_nomination, s_valid);
+    nice_debug ("Agent %p : stream %u: timer tick #%u: %u frozen, "
+        "%u in-progress, %u waiting, %u succeeded, %u discovered, "
+        "%u nominated, %u waiting-for-nom, %u valid",
+        agent, stream->id, stream->tick_counter,
+        s_frozen, s_inprogress, s_waiting, s_succeeded, s_discovered,
+        s_nominated, s_waiting_for_nomination, s_valid);
 
   return keep_timer_going;
 
