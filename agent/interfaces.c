@@ -304,6 +304,7 @@ nice_interfaces_get_local_ips (gboolean include_loopback)
     }
 
 #ifdef IGNORED_IFACE_PREFIX
+    ignored = FALSE;
     for (prefix = ignored_iface_prefix_list; *prefix; prefix++) {
       if (g_str_has_prefix (ifa->ifa_name, *prefix)) {
         nice_debug ("Ignoring interface %s as it matches prefix %s",
