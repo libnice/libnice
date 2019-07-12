@@ -1855,6 +1855,35 @@ gint conn_check_compare (const CandidateCheckPair *a, const CandidateCheckPair *
   return 0;
 }
 
+static gboolean
+priv_match_remote_candidate_transport_and_socket_type (NiceAgent *agent,
+    NiceCandidate *candidate, NiceSocket *socket)
+{
+  gboolean ret = TRUE;
+  g_assert (socket);
+  g_assert (candidate);
+
+  /* Detect some obvious incompatibilites.
+   *
+   * In rare situations, tcp and udp candidate may have the same
+   * couple (address, port), they must be identified by their
+   * matching transport.
+   */
+  if (socket->type == NICE_SOCKET_TYPE_UDP_BSD &&
+      candidate->transport == NICE_CANDIDATE_TRANSPORT_TCP_ACTIVE)
+    ret = FALSE;
+  if (socket->type == NICE_SOCKET_TYPE_TCP_BSD &&
+      candidate->transport == NICE_CANDIDATE_TRANSPORT_UDP)
+    ret = FALSE;
+
+  nice_debug_verbose ("Agent %p : socket/candidate compat: %s and %s: %s",
+      agent, priv_socket_type_to_string (socket->type),
+      priv_candidate_transport_to_string (candidate->transport),
+      ret ? "yes" : "no");
+
+  return ret;
+}
+
 void
 conn_check_remote_candidates_set(NiceAgent *agent, NiceStream *stream,
     NiceComponent *component)
@@ -1883,7 +1912,9 @@ conn_check_remote_candidates_set(NiceAgent *agent, NiceStream *stream,
       NiceCandidate *rcand = l->data;
       NiceCandidate *lcand = NULL;
 
-      if (nice_address_equal (&rcand->addr, &icheck->from)) {
+      if (nice_address_equal (&rcand->addr, &icheck->from) &&
+          priv_match_remote_candidate_transport_and_socket_type
+            (agent, rcand, icheck->local_socket)) {
         for (m = component->local_candidates; m; m = m->next) {
           NiceCandidate *cand = m->data;
           NiceAddress *addr;
@@ -4461,7 +4492,9 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, NiceStream *stream,
 
   for (i = component->remote_candidates; i; i = i->next) {
     NiceCandidate *cand = i->data;
-    if (nice_address_equal (from, &cand->addr)) {
+    if (nice_address_equal (from, &cand->addr) &&
+        priv_match_remote_candidate_transport_and_socket_type
+          (agent, cand, nicesock)) {
       remote_candidate = cand;
       break;
     }
