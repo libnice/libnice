@@ -61,8 +61,7 @@ static const GDebugKey keys[] = {
   { (gchar *)"nice",  NICE_DEBUG_NICE },
   { (gchar *)"pseudotcp",  NICE_DEBUG_PSEUDOTCP },
   { (gchar *)"pseudotcp-verbose",  NICE_DEBUG_PSEUDOTCP_VERBOSE },
-  { (gchar *)"nice-verbose",  NICE_DEBUG_NICE_VERBOSE },
-  { NULL, 0},
+  { (gchar *)"nice-verbose",  NICE_DEBUG_NICE_VERBOSE }
 };
 
 static const GDebugKey gkeys[] = {
@@ -70,8 +69,7 @@ static const GDebugKey gkeys[] = {
   { (gchar *)"libnice",  NICE_DEBUG_NICE },
   { (gchar *)"libnice-pseudotcp",  NICE_DEBUG_PSEUDOTCP },
   { (gchar *)"libnice-pseudotcp-verbose",  NICE_DEBUG_PSEUDOTCP_VERBOSE },
-  { (gchar *)"libnice-verbose",  NICE_DEBUG_NICE_VERBOSE },
-  { NULL, 0},
+  { (gchar *)"libnice-verbose",  NICE_DEBUG_NICE_VERBOSE }
 };
 
 static void
@@ -97,9 +95,9 @@ void nice_debug_init (void)
     gflags_string = g_getenv ("G_MESSAGES_DEBUG");
 
     if (flags_string)
-      flags = g_parse_debug_string (flags_string, keys,  4);
+      flags = g_parse_debug_string (flags_string, keys, G_N_ELEMENTS (keys));
     if (gflags_string)
-      flags |= g_parse_debug_string (gflags_string, gkeys,  4);
+      flags |= g_parse_debug_string (gflags_string, gkeys, G_N_ELEMENTS (gkeys));
     if (gflags_string && strstr (gflags_string, "libnice-pseudotcp-verbose"))
       flags |= NICE_DEBUG_PSEUDOTCP_VERBOSE;
     if (gflags_string && strstr (gflags_string, "libnice-verbose")) {
