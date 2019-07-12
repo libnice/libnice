@@ -156,8 +156,8 @@ struct _TurnServer
   NiceAddress server;
   gchar *username;
   gchar *password;
-  uint8_t *decoded_username;
-  uint8_t *decoded_password;
+  guint8 *decoded_username;
+  guint8 *decoded_password;
   gsize decoded_username_len;
   gsize decoded_password_len;
   NiceRelayType type;
