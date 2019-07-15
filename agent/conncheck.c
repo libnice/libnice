@@ -951,7 +951,8 @@ priv_conn_check_tick_stream_nominate (NiceStream *stream, NiceAgent *agent)
       continue;
     for (j = s->conncheck_list; j ; j = j->next) {
       CandidateCheckPair *p = j->data;
-      if (p->nominated || p->use_candidate_on_next_check) {
+      if (p->nominated || (p->use_candidate_on_next_check &&
+          p->state != NICE_CHECK_FAILED)) {
         other_stream_pair = p;
         break;
       }
@@ -1058,7 +1059,8 @@ priv_conn_check_tick_stream_nominate (NiceStream *stream, NiceAgent *agent)
             CandidateCheckPair *p = j->data;
             if (p->component_id == component->id)
               continue;
-            if (p->nominated || p->use_candidate_on_next_check) {
+            if (p->nominated || (p->use_candidate_on_next_check &&
+                p->state != NICE_CHECK_FAILED)) {
               other_component_pair = p;
               break;
             }
