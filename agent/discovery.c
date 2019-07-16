@@ -1160,7 +1160,10 @@ static gboolean priv_discovery_tick_unlocked (NiceAgent *agent)
               turn_compat);
         }
 
-	if (buffer_len > 0) {
+        if (buffer_len > 0 &&
+            agent_socket_send (cand->nicesock, &cand->server, buffer_len,
+                (gchar *)cand->stun_buffer) >= 0) {
+          /* case: success, start waiting for the result */
           if (nice_socket_is_reliable (cand->nicesock)) {
             stun_timer_start_reliable (&cand->timer, agent->stun_reliable_timeout);
           } else {
@@ -1169,20 +1172,16 @@ static gboolean priv_discovery_tick_unlocked (NiceAgent *agent)
                 agent->stun_max_retransmissions);
           }
 
-          /* send the conncheck */
-          agent_socket_send (cand->nicesock, &cand->server,
-              buffer_len, (gchar *)cand->stun_buffer);
-
-	  /* case: success, start waiting for the result */
-	  g_get_current_time (&cand->next_tick);
-
-	} else {
-	  /* case: error in starting discovery, start the next discovery */
-	  cand->done = TRUE;
-	  cand->stun_message.buffer = NULL;
-	  cand->stun_message.buffer_len = 0;
-	  continue;
-	}
+          g_get_current_time (&cand->next_tick);
+        } else {
+          /* case: error in starting discovery, start the next discovery */
+          nice_debug ("Agent %p : Error starting discovery, skipping the item.",
+              agent);
+          cand->done = TRUE;
+          cand->stun_message.buffer = NULL;
+          cand->stun_message.buffer_len = 0;
+          continue;
+        }
       }
       else
 	/* allocate relayed candidates */
