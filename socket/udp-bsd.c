@@ -289,18 +289,38 @@ socket_send_message (NiceSocket *sock, const NiceAddress *to,
   len = g_socket_send_message (sock->fileno, gaddr, message->buffers,
       message->n_buffers, NULL, 0, G_SOCKET_MSG_NONE, NULL, &child_error);
 
-  g_clear_object (&gaddr);
-
   if (len < 0) {
     if (g_error_matches (child_error, G_IO_ERROR, G_IO_ERROR_WOULD_BLOCK)) {
       len = 0;
-    } else {
-      nice_debug_verbose ("%s: udp-bsd socket %p: error: %s", G_STRFUNC, sock,
+    } else if (nice_debug_is_verbose()) {
+      struct sockaddr sa;
+      GSocketAddress *gsocket;
+      NiceAddress local_addr;
+      NiceAddress remote_addr;
+      char remote_addr_str[INET6_ADDRSTRLEN];
+      char local_addr_str[INET6_ADDRSTRLEN];
+
+      g_socket_address_to_native (gaddr, &sa, sizeof (sa), NULL);
+      nice_address_set_from_sockaddr (&remote_addr, &sa);
+      nice_address_to_string (&remote_addr, remote_addr_str);
+
+      gsocket = g_socket_get_local_address (sock->fileno, NULL);
+      g_socket_address_to_native (gsocket, &sa, sizeof (sa), NULL);
+      nice_address_set_from_sockaddr (&local_addr, &sa);
+      nice_address_to_string (&local_addr, local_addr_str);
+      g_object_unref (gsocket);
+
+      nice_debug_verbose ("%s: udp-bsd socket %p %s:%u -> %s:%u: error: %s",
+          G_STRFUNC, sock,
+          local_addr_str, nice_address_get_port (&local_addr),
+          remote_addr_str, nice_address_get_port (&remote_addr),
           child_error->message);
     }
 
     g_error_free (child_error);
   }
+
+  g_clear_object (&gaddr);
 
   return len;
 }
