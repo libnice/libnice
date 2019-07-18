@@ -79,6 +79,39 @@ build meson:
     paths:
       - build/
 
+build msys2:
+  image: 'registry.freedesktop.org/gstreamer/gst-ci/amd64/windows:v6'
+  stage: 'build'
+  tags:
+    - 'docker'
+    - 'windows'
+    - '1607'
+  variables:
+    MESON_ARGS: >
+      --prefix=${CI_PROJECT_DIR}/libnice-prefix
+    # Make sure any failure in PowerShell scripts is fatal
+    ErrorActionPreference: 'Stop'
+    WarningPreference: 'Stop'
+  before_script:
+    - pip3 install -U meson
+  script:
+    # For some reason, options are separated by newline instead of space, so we
+    # have to replace them first.
+    - $env:MESON_ARGS = $env:MESON_ARGS.replace("`n"," ")
+
+    - $env:PATH += ";C:\msys64\usr\bin;C:\msys64\mingw64/bin;C:\msys64\mingw32/bin"
+    # Build and run the tests.
+    # This is part of the same job due to a bug in the gitlab-runner
+    # that prevents us from exporting artifacts with docker-windows
+    # executors. It has since been fixed in gitlab 12.1, but
+    # we are blocked from upgrading currently.
+    #
+    # Gitlab Runner issue: https://gitlab.com/gitlab-org/gitlab-runner/issues/4291
+    # Blocked upgrade issue: https://gitlab.freedesktop.org/gstreamer/gst-ci/issues/6#note_192780
+    - C:\msys64\usr\bin\bash -c "meson build $env:MESON_ARGS &&
+        ninja -C build &&
+        meson test -C build --print-errorlogs --suite libnice"
+
 test meson:
   stage: test
   image: registry.freedesktop.org/libnice/libnice/centos7/meson-build
