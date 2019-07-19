@@ -2236,12 +2236,13 @@ void agent_gathering_done (NiceAgent *agent)
     for (j = stream->components; j; j = j->next) {
       NiceComponent *component = j->data;
 
-      for (k = component->local_candidates; k; k = k->next) {
+      for (k = component->local_candidates; k;) {
         NiceCandidate *local_candidate = k->data;
+        GSList *next = k->next;
 
         if (agent->force_relay &&
             local_candidate->type != NICE_CANDIDATE_TYPE_RELAYED)
-          continue;
+          goto next_cand;
 
 	if (nice_debug_is_enabled ()) {
 	  gchar tmpbuf[INET6_ADDRSTRLEN];
@@ -2253,6 +2254,36 @@ void agent_gathering_done (NiceAgent *agent)
               local_candidate->stream_id, local_candidate->component_id,
               local_candidate->username, local_candidate->password);
 	}
+
+        /* In addition to not contribute to the creation of a pair in the
+         * conncheck list, according to RFC 5245, sect.  5.7.3 "Pruning the
+         * Pairs", it can be guessed from SfB behavior, that server
+         * reflexive pairs are expected to be also removed from the
+         * candidates list, when pairs are formed, so they have no way to
+         * become part of a selected pair with such type.
+         *
+         * It can be observed that, each time a valid pair is discovered and
+         * nominated with a local candidate of type srv-rflx, is makes SfB
+         * fails with a 500 Internal Error.
+         *
+         * On the contrary, when a local srv-rflx candidate is gathered,
+         * normally announced in the sdp, but removed from the candidate
+         * list, in that case, when the *same* candidate is discovered again
+         * later during the conncheck, with peer-rflx type this time, then
+         * it just works.
+         */
+
+        if (agent->compatibility == NICE_COMPATIBILITY_OC2007R2 &&
+            local_candidate->type == NICE_CANDIDATE_TYPE_SERVER_REFLEXIVE) {
+          nice_debug ("Agent %p: removing this previous srv-rflx candidate "
+              "for OC2007R2 compatibility", agent);
+          component->local_candidates =
+              g_slist_remove (component->local_candidates, local_candidate);
+          agent_remove_local_candidate (agent, local_candidate);
+          nice_candidate_free (local_candidate);
+          goto next_cand;
+        }
+
         for (l = component->remote_candidates; l; l = l->next) {
           NiceCandidate *remote_candidate = l->data;
 
@@ -2267,6 +2298,8 @@ void agent_gathering_done (NiceAgent *agent)
                 local_candidate, remote_candidate);
           }
         }
+next_cand:
+        k = next;
       }
     }
   }
