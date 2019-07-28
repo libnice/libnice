@@ -293,20 +293,23 @@ socket_send_message (NiceSocket *sock, const NiceAddress *to,
     if (g_error_matches (child_error, G_IO_ERROR, G_IO_ERROR_WOULD_BLOCK)) {
       len = 0;
     } else if (nice_debug_is_verbose()) {
-      struct sockaddr sa;
+      union {
+        struct sockaddr_storage ss;
+        struct sockaddr sa;
+      } sa;
       GSocketAddress *gsocket;
       NiceAddress local_addr;
       NiceAddress remote_addr;
       char remote_addr_str[INET6_ADDRSTRLEN];
       char local_addr_str[INET6_ADDRSTRLEN];
 
-      g_socket_address_to_native (gaddr, &sa, sizeof (sa), NULL);
-      nice_address_set_from_sockaddr (&remote_addr, &sa);
+      g_socket_address_to_native (gaddr, &sa.sa, sizeof (sa), NULL);
+      nice_address_set_from_sockaddr (&remote_addr, &sa.sa);
       nice_address_to_string (&remote_addr, remote_addr_str);
 
       gsocket = g_socket_get_local_address (sock->fileno, NULL);
-      g_socket_address_to_native (gsocket, &sa, sizeof (sa), NULL);
-      nice_address_set_from_sockaddr (&local_addr, &sa);
+      g_socket_address_to_native (gsocket, &sa.sa, sizeof (sa), NULL);
+      nice_address_set_from_sockaddr (&local_addr, &sa.sa);
       nice_address_to_string (&local_addr, local_addr_str);
       g_object_unref (gsocket);
 
