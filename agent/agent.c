@@ -3487,21 +3487,24 @@ static void priv_update_pair_foundations (NiceAgent *agent,
     GSList *i;
     for (i = stream->conncheck_list; i; i = i->next) {
       CandidateCheckPair *pair = i->data;
-      if (pair->remote == remote &&
-          (strncmp (pair->remote->foundation, remote->foundation,
-          NICE_CANDIDATE_MAX_FOUNDATION))) {
-        g_snprintf (pair->foundation,
-            NICE_CANDIDATE_PAIR_MAX_FOUNDATION, "%s:%s",
+      if (pair->remote == remote) {
+        gchar foundation[NICE_CANDIDATE_PAIR_MAX_FOUNDATION];
+        g_snprintf (foundation, NICE_CANDIDATE_PAIR_MAX_FOUNDATION, "%s:%s",
             pair->local->foundation, pair->remote->foundation);
-        nice_debug ("Agent %p : Updating pair %p foundation to '%s'",
-            agent, pair, pair->foundation);
-        if (component->selected_pair.local == pair->local &&
-            component->selected_pair.remote == pair->remote) {
-          nice_debug ("Agent %p : updating SELECTED PAIR for component "
-            "%u: %s:%s (prio:%" G_GUINT64_FORMAT ").", agent, component->id,
-            pair->local->foundation, pair->remote->foundation, pair->priority);
-          agent_signal_new_selected_pair (agent, pair->stream_id, component->id,
-            pair->local, pair->remote);
+        if (strncmp (pair->foundation, foundation,
+            NICE_CANDIDATE_PAIR_MAX_FOUNDATION)) {
+          g_strlcpy (pair->foundation, foundation,
+              NICE_CANDIDATE_PAIR_MAX_FOUNDATION);
+          nice_debug ("Agent %p : Updating pair %p foundation to '%s'",
+              agent, pair, pair->foundation);
+          if (component->selected_pair.local == pair->local &&
+              component->selected_pair.remote == pair->remote) {
+            nice_debug ("Agent %p : updating SELECTED PAIR for component "
+              "%u: %s (prio:%" G_GUINT64_FORMAT ").", agent,
+              component->id, foundation, pair->priority);
+            agent_signal_new_selected_pair (agent, pair->stream_id,
+              component->id, pair->local, pair->remote);
+          }
         }
       }
     }
