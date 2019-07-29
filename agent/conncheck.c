@@ -1897,9 +1897,8 @@ conn_check_remote_candidates_set(NiceAgent *agent, NiceStream *stream,
   if (stream->remote_ufrag[0] == 0)
     return;
 
-
   if (component->incoming_checks.head)
-    nice_debug ("Agent %p : both remote candidates and credentials set, "
+    nice_debug ("Agent %p : credentials have been set, "
       "we can process incoming checks", agent);
 
   for (k = component->incoming_checks.head; k;) {
