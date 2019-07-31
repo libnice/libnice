@@ -533,3 +533,20 @@
 	...
 	fun:g_object_new_valist
 }
+
+
+# GStreamer leaks, we know
+{
+	gst-check-init
+	Memcheck:Leak
+	...
+	fun:gst_check_init
+}
+
+
+{
+	g-quark-init
+	Memcheck:Leak
+	...
+	fun:g_quark_init
+}
