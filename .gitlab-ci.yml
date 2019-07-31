@@ -40,6 +40,13 @@ test autotools:
       - stun/tests/test-suite.log
       - docs/reference/libnice/test-suite.log
 
+test autotools valgrind:
+  extends: test autotools
+  allow_failure: true
+  script:
+    - ifconfig
+    - make check-valgrind
+
 distcheck autotools:
   stage: test
   image: registry.freedesktop.org/libnice/libnice/centos7/autotools-build
