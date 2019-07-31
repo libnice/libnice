@@ -73,7 +73,7 @@ int main (void)
   guint ls_id, rs_id_1, rs_id_2;
   gchar *lufrag = NULL, *lpassword = NULL;
   gchar *rufrag1 = NULL, *rpassword1 = NULL, *rufrag2 = NULL, *rpassword2 = NULL;
-  NiceAddress *addr;
+  NiceAddress addr;
 
 
 #ifdef G_OS_WIN32
@@ -83,8 +83,8 @@ int main (void)
 #endif
 
   /* Initialize nice agents */
-  addr = nice_address_new ();
-  nice_address_set_from_string (addr, "127.0.0.1");
+  nice_address_init (&addr);
+  nice_address_set_from_string (&addr, "127.0.0.1");
 
   global_mainloop = g_main_loop_new (NULL, FALSE);
 
@@ -93,7 +93,7 @@ int main (void)
       NICE_COMPATIBILITY_GOOGLE);
   g_debug ("lagent: %p", lagent);
 
-  nice_agent_add_local_address (lagent, addr);
+  nice_agent_add_local_address (lagent, &addr);
   nice_agent_set_software (lagent, "test-different-number-streams, Left Agent");
   g_object_set (G_OBJECT (lagent), "ice-tcp", FALSE,  NULL);
   g_object_set (G_OBJECT (lagent), "controlling-mode", TRUE, NULL);
@@ -107,7 +107,7 @@ int main (void)
       NICE_COMPATIBILITY_GOOGLE);
   g_debug ("ragent: %p", ragent);
 
-  nice_agent_add_local_address (ragent, addr);
+  nice_agent_add_local_address (ragent, &addr);
   nice_agent_set_software (ragent, "test-different-number-streams, Right Agent");
   g_object_set (G_OBJECT (ragent), "ice-tcp", FALSE,  NULL);
   g_object_set (G_OBJECT (ragent), "controlling-mode", FALSE, NULL);
