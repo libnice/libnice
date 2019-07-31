@@ -270,4 +270,14 @@ if not get_option('examples').disabled()
   subdir('examples')
 endif
 
+add_test_setup('valgrind',
+	       exe_wrapper: ['valgrind',
+			     '--leak-check=full',
+			     '--show-reachable=no',
+			     '--error-exitcode=1',
+			     '--suppressions='+meson.current_source_dir()+'/tests/libnice.supp',
+			     '--num-callers=10'],
+	       timeout_multiplier: 10
+	      )
+
 configure_file(output : 'config.h', configuration : cdata)
