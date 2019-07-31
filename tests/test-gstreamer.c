@@ -77,6 +77,8 @@ sink_chain_list_function (GstPad * pad, GstObject * parent,
     g_main_loop_quit (loop);
   }
 
+  gst_buffer_list_unref (list);
+
   return GST_FLOW_OK;
 }
 
@@ -92,6 +94,8 @@ sink_chain_function (GstPad * pad, GstObject * parent, GstBuffer * buffer)
     GST_DEBUG ("We received expected data size");
     g_main_loop_quit (loop);
   }
+
+  gst_buffer_unref (buffer);
 
   return GST_FLOW_OK;
 }
