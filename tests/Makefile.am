@@ -8,9 +8,6 @@
 
 include $(top_srcdir)/common.mk
 
-TESTS_ENVIRONMENT=\
-	GST_PLUGIN_PATH=${GST_PLUGIN_PATH}:$(top_builddir)/gst
-
 AM_CFLAGS = \
 	$(LIBNICE_CFLAGS) \
 	$(GLIB_CFLAGS) \
@@ -24,7 +21,8 @@ AM_CPPFLAGS = -DG_LOG_DOMAIN=\"libnice-tests\"
 
 AM_TESTS_ENVIRONMENT = \
 	G_MESSAGES_DEBUG=all \
-	NICE_DEBUG=all
+	NICE_DEBUG=all \
+	GST_PLUGIN_PATH=${GST_PLUGIN_PATH}:$(top_builddir)/gst
 
 COMMON_LDADD = $(top_builddir)/agent/libagent.la $(top_builddir)/socket/libsocket.la $(GLIB_LIBS) $(GUPNP_LIBS)
 
