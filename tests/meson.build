@@ -54,6 +54,18 @@ foreach tname : nice_tests
     install: false)
   set_variable(tname.underscorify(), exe)
   test(tname, exe, env: tenv)
+
+  if tname == 'test-fullmode'
+    wrapper_exe = executable ('nice-test-fullmode-with-stun',
+			      'test-fullmode-with-stun.c',
+			      dependencies: gio_deps,
+			      install: false)
+    test('test-fullmode-with-stun', wrapper_exe,
+	 args: [stund_exe, test_fullmode],
+	 env: tenv,
+	 is_parallel: false,
+	 depends: exe)
+  endif
 endforeach
 
 if gst_dep.found()
@@ -81,11 +93,6 @@ if find_program('sh', required : false).found()
       args: test_pseudotcp,
       env: tenv)
   endif
-
-  test('test-fullmode-with-stun', files('check-test-fullmode-with-stun.sh'),
-    args: [stund_exe, test_fullmode],
-    env: tenv,
-    is_parallel: false)
 endif
 
 debugenv = environment()
