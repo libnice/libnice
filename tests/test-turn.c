@@ -222,6 +222,10 @@ run_test(guint turn_port, gboolean is_ipv6,
   nice_agent_set_relay_info(ragent, rs_id, 1,
       localhost, turn_port, TURN_USER, TURN_PASS, turn_type);
 
+  g_assert (global_lagent_gathering_done == FALSE);
+  g_assert (global_ragent_gathering_done == FALSE);
+  g_debug ("test-turn: Added streams, running context until 'candidate-gathering-done'...");
+
   /* Gather candidates and test nice_agent_set_port_range */
   g_assert (nice_agent_gather_candidates (lagent, ls_id) == TRUE);
   g_assert (nice_agent_gather_candidates (ragent, rs_id) == TRUE);
@@ -231,9 +235,6 @@ run_test(guint turn_port, gboolean is_ipv6,
   nice_agent_attach_recv (ragent, rs_id, NICE_COMPONENT_TYPE_RTP,
       g_main_context_default (), cb_nice_recv, GUINT_TO_POINTER (2));
 
-  g_assert (global_lagent_gathering_done == FALSE);
-  g_assert (global_ragent_gathering_done == FALSE);
-  g_debug ("test-turn: Added streams, running context until 'candidate-gathering-done'...");
   while (!global_lagent_gathering_done)
     g_main_context_iteration (NULL, TRUE);
   g_assert (global_lagent_gathering_done == TRUE);
