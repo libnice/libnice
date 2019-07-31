@@ -113,13 +113,13 @@ test_socket_is_reliable (NiceSocket *sock) {
 
 static void
 test_socket_close (NiceSocket *sock) {
-  g_free(sock->priv);
+  g_free (sock->priv);
 }
 
 static NiceSocket *
 test_socket_new (GSList *msg_data)
 {
-  NiceSocket *sock = g_new0 (NiceSocket, 1);
+  NiceSocket *sock = g_slice_new0 (NiceSocket);
   TestSocketPriv *priv = g_new0 (TestSocketPriv, 1);
   priv->msg_data = msg_data;
   priv->current_msg = msg_data;
@@ -146,6 +146,7 @@ tcp_turn_fragmentation (void)
   GSList *test_messages = generate_test_messages ();
   NiceAddress addr;
   NiceSocket *turnsock;
+  NiceSocket *testsock;
 
   NiceInputMessage recv_messages[N_RECV_MESSAGES];
   GInputVector recv_vectors[N_RECV_MESSAGES];
@@ -167,8 +168,10 @@ tcp_turn_fragmentation (void)
 
   nice_address_set_from_string (&addr, "127.0.0.1");
 
+  testsock = test_socket_new (test_messages);
+
   turnsock = nice_udp_turn_socket_new (NULL, &addr,
-      test_socket_new (test_messages), &addr, "", "",
+      testsock, &addr, "", "",
       NICE_TURN_SOCKET_COMPATIBILITY_OC2007);
 
   li = test_messages;
@@ -197,7 +200,8 @@ tcp_turn_fragmentation (void)
   }
   g_slist_free (test_messages);
 
-  nice_socket_free(turnsock);
+  nice_socket_free (turnsock);
+  nice_socket_free (testsock);
 }
 
 int
