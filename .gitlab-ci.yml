@@ -89,6 +89,25 @@ test meson:
     paths:
       - build/meson-logs/
 
+
+test valgrind meson:
+  stage: test
+  image: registry.freedesktop.org/libnice/libnice/centos7/meson-build
+  allow_failure: true
+  dependencies:
+    - build meson
+  except:
+    - schedules
+  script:
+    - ifconfig
+    - source scl_source enable rh-python36 && true
+    - meson test -C build/ --setup valgrind --print-errorlogs
+  artifacts:
+    when: on_failure
+    paths:
+      - build/meson-logs/
+
+
 doc-and-install meson:
   stage: test
   image: registry.freedesktop.org/libnice/libnice/centos7/meson-build
