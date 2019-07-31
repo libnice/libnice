@@ -53,8 +53,6 @@ on_server_connection_available (gpointer user_data)
 {
   server = nice_tcp_passive_socket_accept (passive_sock);
   g_assert (server);
-  nice_socket_free (passive_sock);
-  passive_sock = NULL;
 
   g_main_loop_quit (mainloop);
 
@@ -151,6 +149,7 @@ main (void)
 
   nice_socket_free (client);
   nice_socket_free (server);
+  nice_socket_free (passive_sock);
 
   g_source_unref (srv_listen_source);
   g_source_unref (srv_input_source);
