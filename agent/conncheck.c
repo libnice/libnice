@@ -4584,6 +4584,14 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, NiceStream *stream,
     return TRUE;
   }
 
+  /* This is most likely caused by a second response to a request which
+   * already has received a valid reply.
+   */
+  if (valid == STUN_VALIDATION_UNMATCHED_RESPONSE) {
+    nice_debug ("Agent %p : Valid STUN response for which we don't have a request, ignoring", agent);
+    return TRUE;
+  }
+
   if (valid != STUN_VALIDATION_SUCCESS) {
     nice_debug ("Agent %p : STUN message is unsuccessful %d, ignoring", agent, valid);
     return FALSE;

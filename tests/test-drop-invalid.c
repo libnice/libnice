@@ -96,7 +96,7 @@ static void cb_nice_recv (NiceAgent *agent, guint stream_id, guint component_id,
    * Assert on any unreleated packet received. This would include anything
    * send before the negotiation is over.
    */
-  g_assert (len == 16);
+  g_assert_cmpuint (len, ==, 16);
   g_assert (strncmp ("1234567812345678", buf, 16) == 0);
 
   if (component_id == 2)
