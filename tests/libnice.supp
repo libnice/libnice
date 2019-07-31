@@ -550,3 +550,54 @@
 	...
 	fun:g_quark_init
 }
+
+# For Glib in RHEL 7
+{
+	g_type_register_fundamental-rhel7
+	Memcheck:Leak
+	...
+	fun:g_type_register_fundamental
+}
+{
+	dl-init-rhel7
+	Memcheck:Leak
+	...
+	fun:_dl_init
+}
+{
+	g-type-class-ref-rhel7
+	Memcheck:Leak
+	...
+	fun:g_type_class_ref
+}
+{
+	invalid-free-in-rhel7
+	Memcheck:Free
+	fun:free
+	fun:__libc_freeres
+}
+{
+	g-thread-pool-push-rhel7
+	Memcheck:Leak
+	...
+	fun:g_thread_pool_push
+}
+{
+	exit-shell-rhel7
+	Memcheck:Leak
+	...
+	fun:exit_shell
+}
+{
+	g-bus-rhel7
+	Memcheck:Leak
+	...
+	fun:g_bus_get_sync
+}
+{
+	pthread-create-rhel7
+	Memcheck:Leak
+	fun:calloc
+	fun:_dl_allocate_tls
+	fun:pthread_create@@GLIBC_2.2.5
+}
