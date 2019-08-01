@@ -44,8 +44,6 @@
 #define _XPG4_2 1
 #endif
 
-#ifndef _WIN32
-
 #include <assert.h>
 #include <stdio.h>
 #include <stdint.h>
@@ -55,10 +53,13 @@
 
 #include <sys/types.h>
 
-
+#ifdef _WIN32
+#include <WinSock2.h>
+#else
 #include <sys/socket.h>
 #include <netdb.h>
 #include <netinet/in.h>
+#endif
 
 #ifdef HAVE_UNISTD_H
 # include <unistd.h>
@@ -127,7 +128,7 @@ int listen_socket (int fam, int type, int proto, unsigned int port)
 
     case AF_INET6:
 #ifdef IPV6_V6ONLY
-      setsockopt (fd, SOL_IPV6, IPV6_V6ONLY, &yes, sizeof (yes));
+      setsockopt (fd, SOL_IPV6, IPV6_V6ONLY, (const char *) &yes, sizeof (yes));
 #endif
       addr.in6.sin6_port = htons (port);
       break;
@@ -148,13 +149,13 @@ int listen_socket (int fam, int type, int proto, unsigned int port)
     {
       case AF_INET:
 #ifdef IP_RECVERR
-        setsockopt (fd, SOL_IP, IP_RECVERR, &yes, sizeof (yes));
+        setsockopt (fd, SOL_IP, IP_RECVERR, (const char*) &yes, sizeof (yes));
 #endif
         break;
 
       case AF_INET6:
 #ifdef IPV6_RECVERR
-        setsockopt (fd, SOL_IPV6, IPV6_RECVERR, &yes, sizeof (yes));
+        setsockopt (fd, SOL_IPV6, IPV6_RECVERR, (const char*) &yes, sizeof (yes));
 #endif
         break;
 
@@ -288,6 +289,18 @@ int main (int argc, char *argv[])
   unsigned port = IPPORT_STUN;
   int i;
 
+
+#ifdef _WIN32
+  WSADATA wsadata;
+
+  if (WSAStartup(MAKEWORD(2, 0), &wsadata) != 0) {
+	  fprintf(stderr, "Could not start Winsock2");
+	  return 1;
+  }
+
+#endif
+
+
   for (i = 1; i < argc; ++i)
   {
     const char *arg = argv[i];
@@ -316,8 +329,3 @@ int main (int argc, char *argv[])
   return run (family, IPPROTO_UDP, port) ? EXIT_FAILURE : EXIT_SUCCESS;
 }
 
-#else
-int main (int argc, char **argv) {
-  return 0;
-}
-#endif
