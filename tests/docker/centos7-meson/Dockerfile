@@ -6,6 +6,7 @@
 
 # alternatively
 
+# export BUILDAH_FORMAT=docker
 # buildah bud -t registry.freedesktop.org/libnice/libnice/centos7/meson-build:$(date --rfc-3339=date) .
 # buildah tag registry.freedesktop.org/libnice/libnice/centos7/meson-build:$(date --rfc-3339=date) registry.freedesktop.org/libnice/libnice/centos7/meson-build:latest
 # buildah push registry.freedesktop.org/libnice/libnice/centos7/meson-build:latest
