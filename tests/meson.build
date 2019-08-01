@@ -85,14 +85,12 @@ if gst_dep.found()
   endif
 endif
 
-if find_program('sh', required : false).found()
-  dd = find_program('dd', required : false)
-  diff = find_program('diff', required : false)
-  if dd.found() and diff.found()
-    test('test-pseudotcp-random', find_program('test-pseudotcp-random.sh'),
-      args: test_pseudotcp,
-      env: tenv)
-  endif
+if find_program('sh', required : false).found() and \
+   find_program('dd', required : false).found() and \
+   find_program('diff', required : false).found()
+  test('test-pseudotcp-random', find_program('test-pseudotcp-random.sh'),
+       args: test_pseudotcp,
+       env: tenv)
 endif
 
 debugenv = environment()
