@@ -28,7 +28,7 @@ main (int argc, char ** argv)
    stund_proc = g_subprocess_new (G_SUBPROCESS_FLAGS_NONE, &gerr,
                                   stund, NICE_STUN_SERVER_PORT, NULL);
 
-   sleep(1);
+   g_usleep(G_USEC_PER_SEC);
 
    launcher = g_subprocess_launcher_new (G_SUBPROCESS_FLAGS_NONE);
 
