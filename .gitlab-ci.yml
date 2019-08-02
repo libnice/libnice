@@ -112,6 +112,43 @@ build msys2:
         ninja -C build &&
         meson test -C build --print-errorlogs --suite libnice"
 
+.build msvc:
+  extends: build msys2
+  script:
+    # For some reason, options are separated by newline instead of space, so we
+    # have to replace them first.
+    - $env:MESON_ARGS = $env:MESON_ARGS.replace("`n"," ")
+
+    # Build and run the tests.
+    # This is part of the same job due to a bug in the gitlab-runner
+    # that prevents us from exporting artifacts with docker-windows
+    # executors. It has since been fixed in gitlab 12.1, but
+    # we are blocked from upgrading currently.
+    #
+    # Gitlab Runner issue: https://gitlab.com/gitlab-org/gitlab-runner/issues/4291
+    # Blocked upgrade issue: https://gitlab.freedesktop.org/gstreamer/gst-ci/issues/6#note_192780
+    - New-Item -Path subprojects -Name openssl.wrap -Value "[wrap-git]`r`ndirectory=openssl`r`nurl=https://gitlab.freedesktop.org/libnice/openssl-binaries-for-ci.git`r`nrevision=1.1.1c`r`n"
+    - cmd.exe /C "C:\BuildTools\Common7\Tools\VsDevCmd.bat -host_arch=amd64 -arch=$env:ARCH &&
+        meson subprojects download &&
+        meson wrap promote subprojects\glib\subprojects\libffi.wrap &&
+        meson wrap promote subprojects\glib\subprojects\zlib.wrap &&
+        meson wrap promote subprojects\glib\subprojects\proxy-libintl.wrap &&
+        meson subprojects download"
+    - cmd.exe /C "C:\BuildTools\Common7\Tools\VsDevCmd.bat -host_arch=amd64 -arch=$env:ARCH &&
+        meson build $env:MESON_ARGS &&
+        ninja -C build &&
+        meson test -C build --print-errorlogs --suite libnice"
+
+build msvc amd64:
+  extends: .build msvc
+  variables:
+    ARCH: 'amd64'
+
+build msvc x86:
+  extends: .build msvc
+  variables:
+    ARCH: 'x86'
+        
 test meson:
   stage: test
   image: registry.freedesktop.org/libnice/libnice/centos7/meson-build
