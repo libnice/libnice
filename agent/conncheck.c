@@ -1217,8 +1217,10 @@ priv_conn_check_tick_stream_nominate (NiceStream *stream, NiceAgent *agent)
           nice_debug ("Agent %p : restarting check of %s:%s pair %p with "
               "USE-CANDIDATE attrib (regular nomination) for "
               "stream %d component %d", agent,
-              priv_candidate_transport_to_string (lcand1->transport),
-              priv_candidate_transport_to_string (rcand1->transport),
+              priv_candidate_transport_to_string (
+                  this_component_pair->local->transport),
+              priv_candidate_transport_to_string (
+                  this_component_pair->remote->transport),
               this_component_pair, stream->id, component->id);
           this_component_pair->use_candidate_on_next_check = TRUE;
           priv_add_pair_to_triggered_check_queue (agent, this_component_pair);
