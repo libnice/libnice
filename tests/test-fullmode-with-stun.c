@@ -6,7 +6,6 @@ main (int argc, char ** argv)
    int retval = 0;
    char *stund;
    char *test_fullmode;
-   GSubprocessLauncher *launcher;
    GSubprocess *stund_proc, *test_subprocess;
    const gchar NICE_STUN_SERVER[] = "127.0.0.1";
    const gchar NICE_STUN_SERVER_PORT[] = "3800";
@@ -30,23 +29,19 @@ main (int argc, char ** argv)
 
    g_usleep(G_USEC_PER_SEC);
 
-   launcher = g_subprocess_launcher_new (G_SUBPROCESS_FLAGS_NONE);
+   g_setenv("NICE_STUN_SERVER", NICE_STUN_SERVER, TRUE);
+   g_setenv("NICE_STUN_SERVER_PORT", NICE_STUN_SERVER_PORT, TRUE);
 
-   g_subprocess_launcher_setenv (launcher, "NICE_STUN_SERVER", NICE_STUN_SERVER,
-                                 TRUE);
-   g_subprocess_launcher_setenv (launcher, "NICE_STUN_SERVER_PORT",
-                                 NICE_STUN_SERVER_PORT, TRUE);
    g_print ("Running test fullmode as %s\n", test_fullmode);
-   test_subprocess = g_subprocess_launcher_spawn (launcher, &gerr,
-                                                  test_fullmode, NULL);
+   test_subprocess = g_subprocess_new (G_SUBPROCESS_FLAGS_NONE, &gerr,
+                                       test_fullmode, NULL);
    g_assert_no_error (gerr);
    g_subprocess_wait (test_subprocess, NULL, &gerr);
    g_assert_no_error (gerr);
    retval = g_subprocess_get_exit_status (test_subprocess);
    g_print ("Test process returned %d\n", retval);
    g_object_unref (test_subprocess);
-   g_object_unref (launcher);
-
+ 
    g_subprocess_force_exit (stund_proc);
    g_subprocess_wait (stund_proc, NULL, &gerr);
    g_assert_no_error (gerr);
