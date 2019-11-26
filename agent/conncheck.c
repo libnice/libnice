@@ -2366,6 +2366,18 @@ static CandidateCheckPair *priv_add_new_check_pair (NiceAgent *agent,
       priv_candidate_transport_to_string (pair->remote->transport),
       stream_id, component->id);
 
+  /* If this is the first pair added into the check list and the first stream's
+   * components already have valid pairs, unfreeze the pair as it would happen
+   * in priv_conn_check_unfreeze_related() were the list not empty. */
+  if (stream != agent->streams->data &&
+      g_slist_length (stream->conncheck_list) == 1 &&
+      priv_all_components_have_valid_pair (agent->streams->data)) {
+    nice_debug ("Agent %p : %p is the first pair in this stream's check list "
+        "and the first stream already has valid pairs. Unfreezing immediately.",
+        agent, pair);
+    priv_conn_check_unfreeze_next (agent, stream);
+  }
+
   /* implement the hard upper limit for number of
      checks (see sect 5.7.3 ICE ID-19): */
   if (agent->compatibility == NICE_COMPATIBILITY_RFC5245) {
