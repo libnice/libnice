@@ -80,12 +80,12 @@ build meson:
       - build/
 
 build msys2:
-  image: 'registry.freedesktop.org/gstreamer/gst-ci/amd64/windows:v6'
+  image: 'registry.freedesktop.org/gstreamer/gst-ci/amd64/windows:v8'
   stage: 'build'
   tags:
     - 'docker'
     - 'windows'
-    - '1607'
+    - '1809'
   variables:
     MESON_ARGS: >
       --prefix=${CI_PROJECT_DIR}/libnice-prefix
