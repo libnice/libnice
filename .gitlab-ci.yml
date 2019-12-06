@@ -25,7 +25,7 @@ test autotools:
   image: registry.freedesktop.org/libnice/libnice/centos7/autotools-build
   except:
     - schedules
-  dependencies:
+  needs:
     - build autotools
   script:
     - ifconfig
@@ -52,7 +52,7 @@ distcheck autotools:
   image: registry.freedesktop.org/libnice/libnice/centos7/autotools-build
   except:
     - schedules
-  dependencies:
+  needs:
     - build autotools
   script:
     - ifconfig
@@ -169,7 +169,7 @@ test meson:
   stage: test
   image: registry.freedesktop.org/libnice/libnice/centos7/meson-build
   allow_failure: true
-  dependencies:
+  needs:
     - build meson
   except:
     - schedules
@@ -194,7 +194,7 @@ test valgrind meson:
 doc-and-install meson:
   stage: test
   image: registry.freedesktop.org/libnice/libnice/centos7/meson-build
-  dependencies:
+  needs:
     - build meson
   except:
     - schedules
@@ -232,7 +232,7 @@ submit-to-coverity:
 
 pages:
   stage: deploy
-  dependencies:
+  needs:
     - doc-and-install meson
   only:
     - tags
