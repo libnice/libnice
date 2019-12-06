@@ -95,11 +95,27 @@ build msys2:
   before_script:
     - pip3 install -U meson
   script:
+    # Make sure powershell exists on errors
+    # https://docs.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_preference_variables?view=powershell-6
+    - $ErrorActionPreference = "Stop"
+
+    # For some reason docker build hangs if this is included in the image, needs more troubleshooting
+    - $env:PATH += ';C:\msys64\usr\bin;C:\msys64\mingw64\bin;C:\msys64\mingw32\bin'
+    - C:\msys64\usr\bin\bash -c "pacman-key --init && pacman-key --populate msys2 && pacman-key --refresh-keys || true"
+    - C:\msys64\usr\bin\bash -c "pacman -Syuu --noconfirm"
+    - C:\msys64\usr\bin\bash -c "pacman -Sy --noconfirm --needed mingw-w64-x86_64-toolchain ninja"
+
     # For some reason, options are separated by newline instead of space, so we
     # have to replace them first.
     - $env:MESON_ARGS = $env:MESON_ARGS.replace("`n"," ")
 
     - $env:PATH += ";C:\msys64\usr\bin;C:\msys64\mingw64/bin;C:\msys64\mingw32/bin"
+
+    # For some reason, options are separated by newline instead of space, so we
+    # have to replace them first.
+    - $env:CI_PROJECT_DIR = $env:CI_PROJECT_DIR.replace('\','/')
+    - $env:MESON_ARGS = $env:MESON_ARGS.replace('\','/')
+
     # Build and run the tests.
     # This is part of the same job due to a bug in the gitlab-runner
     # that prevents us from exporting artifacts with docker-windows
