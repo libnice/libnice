@@ -75,7 +75,7 @@ typedef struct _StunTransaction StunTransaction;
 
 struct _StunTransaction
 {
-  GTimeVal next_tick;       /* next tick timestamp */
+  gint64 next_tick;       /* next tick timestamp */
   StunTimer timer;
   uint8_t buffer[STUN_MAX_MESSAGE_SIZE_IPV6];
   StunMessage message;

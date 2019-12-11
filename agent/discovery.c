@@ -61,13 +61,6 @@
 #include "stun/usages/turn.h"
 #include "socket.h"
 
-static inline int priv_timer_expired (GTimeVal *timer, GTimeVal *now)
-{
-  return (now->tv_sec == timer->tv_sec) ?
-    now->tv_usec >= timer->tv_usec :
-    now->tv_sec >= timer->tv_sec;
-}
-
 /*
  * Frees the CandidateDiscovery structure pointed to
  * by 'user data'. Compatible with g_slist_free_full().
@@ -1172,7 +1165,7 @@ static gboolean priv_discovery_tick_unlocked (NiceAgent *agent)
                 agent->stun_max_retransmissions);
           }
 
-          g_get_current_time (&cand->next_tick);
+          cand->next_tick = g_get_monotonic_time ();
         } else {
           /* case: error in starting discovery, start the next discovery */
           nice_debug ("Agent %p : Error starting discovery, skipping the item.",
@@ -1191,15 +1184,13 @@ static gboolean priv_discovery_tick_unlocked (NiceAgent *agent)
     }
 
     if (cand->done != TRUE) {
-      GTimeVal now;
-
-      g_get_current_time (&now);
+      gint64 now = g_get_monotonic_time ();
 
       if (cand->stun_message.buffer == NULL) {
 	nice_debug ("Agent %p : STUN discovery was cancelled, marking discovery done.", agent);
 	cand->done = TRUE;
       }
-      else if (priv_timer_expired (&cand->next_tick, &now)) {
+      else if (now >= cand->next_tick) {
         switch (stun_timer_refresh (&cand->timer)) {
           case STUN_USAGE_TIMER_RETURN_TIMEOUT:
             {
@@ -1230,8 +1221,7 @@ static gboolean priv_discovery_tick_unlocked (NiceAgent *agent)
                   (gchar *)cand->stun_buffer);
 
               /* note: convert from milli to microseconds for g_time_val_add() */
-              cand->next_tick = now;
-              g_time_val_add (&cand->next_tick, timeout * 1000);
+              cand->next_tick = now + (timeout * 1000);
 
               ++not_done; /* note: retry later */
               break;
@@ -1240,8 +1230,7 @@ static gboolean priv_discovery_tick_unlocked (NiceAgent *agent)
             {
               unsigned int timeout = stun_timer_remainder (&cand->timer);
 
-              cand->next_tick = now;
-              g_time_val_add (&cand->next_tick, timeout * 1000);
+              cand->next_tick = now + (timeout * 1000);
 
               ++not_done; /* note: retry later */
               break;

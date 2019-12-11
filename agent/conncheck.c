@@ -80,22 +80,12 @@ static CandidateCheckPair *priv_conn_check_add_for_candidate_pair_matched (
 static gboolean priv_update_selected_pair (NiceAgent *agent,
     NiceComponent *component, CandidateCheckPair *pair);
 
-static int priv_timer_expired (GTimeVal *timer, GTimeVal *now)
+static gint64 priv_timer_remainder (gint64 timer, gint64 now)
 {
-  return (now->tv_sec == timer->tv_sec) ?
-    now->tv_usec >= timer->tv_usec :
-    now->tv_sec >= timer->tv_sec;
-}
-
-static unsigned int priv_timer_remainder (GTimeVal *timer, GTimeVal *now)
-{
-  unsigned int delay;
-  if (now->tv_sec > timer->tv_sec ||
-      (now->tv_sec == timer->tv_sec && now->tv_usec > timer->tv_usec))
+  if (now >= timer)
     return 0;
-  delay = (timer->tv_sec - now->tv_sec) * 1000;
-  delay += ((signed long)(timer->tv_usec - now->tv_usec)) / 1000;
-  return delay;
+
+  return timer - now;
 }
 
 static gchar
@@ -270,12 +260,12 @@ priv_print_conn_check_lists (NiceAgent *agent, const gchar *where, const gchar *
 {
   GSList *i, *k, *l;
   guint j, m;
-  GTimeVal now;
+  gint64 now;
 
   if (!nice_debug_is_verbose ())
     return;
 
-  g_get_current_time (&now);
+  now = g_get_monotonic_time ();
 
 #define PRIORITY_LEN 32
 
@@ -314,10 +304,10 @@ priv_print_conn_check_lists (NiceAgent *agent, const gchar *where, const gchar *
           for (l = pair->stun_transactions, m = 0; l; l = l->next, m++) {
             StunTransaction *stun = l->data;
             nice_debug ("Agent %p : *** sc=%d/%d : pair %p :   "
-                "stun#=%d timer=%d/%d %d/%dms buf=%p %s",
+                "stun#=%d timer=%d/%d %" G_GINT64_FORMAT "/%dms buf=%p %s",
                 agent, pair->stream_id, pair->component_id, pair, m,
                 stun->timer.retransmissions, stun->timer.max_retransmissions,
-                stun->timer.delay - priv_timer_remainder (&stun->next_tick, &now),
+                stun->timer.delay - priv_timer_remainder (stun->next_tick, now),
                 stun->timer.delay,
                 stun->message.buffer,
                 (m == 0 && pair->retransmit) ? "(R)" : "");
@@ -772,9 +762,9 @@ static gboolean priv_conn_check_tick_stream (NiceStream *stream, NiceAgent *agen
   GSList *i, *j;
   CandidateCheckPair *pair;
   unsigned int timeout;
-  GTimeVal now;
+  gint64 now;
 
-  g_get_current_time (&now);
+  now = g_get_monotonic_time ();
 
   /* step: process ongoing STUN transactions */
   for (i = stream->conncheck_list; i ; i = i->next) {
@@ -802,15 +792,14 @@ static gboolean priv_conn_check_tick_stream (NiceStream *stream, NiceAgent *agen
       StunTransaction *s = j->data;
       GSList *next = j->next;
 
-      if (priv_timer_expired (&s->next_tick, &now))
+      if (now >= s->next_tick)
         switch (stun_timer_refresh (&s->timer)) {
           case STUN_USAGE_TIMER_RETURN_TIMEOUT:
             priv_remove_stun_transaction (p, s, component);
             break;
           case STUN_USAGE_TIMER_RETURN_RETRANSMIT:
             timeout = stun_timer_remainder (&s->timer);
-            s->next_tick = now;
-            g_time_val_add (&s->next_tick, timeout * 1000);
+            s->next_tick = now + timeout * 1000;
             break;
           default:
             break;
@@ -823,7 +812,7 @@ static gboolean priv_conn_check_tick_stream (NiceStream *stream, NiceAgent *agen
 
     /* process the first stun transaction of the list */
     stun = p->stun_transactions->data;
-    if (!priv_timer_expired (&stun->next_tick, &now))
+    if (now < stun->next_tick)
       continue;
 
     switch (stun_timer_refresh (&stun->timer)) {
@@ -871,16 +860,14 @@ timer_return_timeout:
             (gchar *)stun->buffer);
 
         /* note: convert from milli to microseconds for g_time_val_add() */
-        stun->next_tick = now;
-        g_time_val_add (&stun->next_tick, timeout * 1000);
+        stun->next_tick = now + timeout * 1000;
 
         return TRUE;
       case STUN_USAGE_TIMER_RETURN_SUCCESS:
         timeout = stun_timer_remainder (&stun->timer);
 
         /* note: convert from milli to microseconds for g_time_val_add() */
-        stun->next_tick = now;
-        g_time_val_add (&stun->next_tick, timeout * 1000);
+        stun->next_tick = now + timeout * 1000;
 
         keep_timer_going = TRUE;
         break;
@@ -2941,8 +2928,7 @@ int conn_check_send (NiceAgent *agent, CandidateCheckPair *pair)
     stun_timer_start (&stun->timer, timeout, agent->stun_max_retransmissions);
   }
 
-  g_get_current_time (&stun->next_tick);
-  g_time_val_add (&stun->next_tick, timeout * 1000);
+  stun->next_tick = g_get_monotonic_time () + timeout * 1000;
 
   /* TCP-ACTIVE candidate must create a new socket before sending
    * by connecting to the peer. The new socket is stored in the candidate
