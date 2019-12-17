@@ -28,7 +28,7 @@ gnome.gtkdoc('libnice',
              main_xml: 'libnice-docs.xml',
              namespace: 'nice',
              mode: 'none',
-             src_dir: ['agent', 'stun'],
+             src_dir: nice_incs,
              dependencies: libnice_dep,
              scan_args: [
                '--rebuild-types',
