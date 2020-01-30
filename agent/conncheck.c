@@ -286,7 +286,7 @@ priv_print_conn_check_lists (NiceAgent *agent, const gchar *where, const gchar *
 
           nice_debug ("Agent %p : *** sc=%d/%d : pair %p : "
               "f=%s t=%s:%s sock=%s "
-              "%s:[%s]:%u > %s:[%s]:%u state=%c%s%s%s",
+              "%s:[%s]:%u > %s:[%s]:%u state=%c%s%s%s%s",
               agent, pair->stream_id, pair->component_id, pair,
               pair->foundation,
               priv_candidate_type_to_string (pair->local->type),
@@ -299,6 +299,7 @@ priv_print_conn_check_lists (NiceAgent *agent, const gchar *where, const gchar *
               priv_state_to_gchar (pair->state),
               pair->valid ? "V" : "",
               pair->nominated ? "N" : "",
+              pair->use_candidate_on_next_check ? "C" : "",
               g_slist_find (agent->triggered_check_queue, pair) ? "T" : "");
 
           for (l = pair->stun_transactions, m = 0; l; l = l->next, m++) {
