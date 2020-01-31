@@ -3,7 +3,7 @@ stages:
  - test
  - deploy
 
-build meson:
+build:
   stage: build
   image: registry.freedesktop.org/libnice/libnice/centos7/meson-build
   variables:
@@ -116,11 +116,11 @@ build msvc x86:
   variables:
     ARCH: 'x86'
         
-test meson:
+test:
   stage: test
   image: registry.freedesktop.org/libnice/libnice/centos7/meson-build
   needs:
-    - build meson
+    - build
   except:
     - schedules
   script:
@@ -133,8 +133,8 @@ test meson:
       - build/meson-logs/
 
 
-test valgrind meson:
-  extends: test meson
+test valgrind:
+  extends: test
   script:
     - ifconfig
     - source scl_source enable rh-python36 && true
@@ -142,11 +142,11 @@ test valgrind meson:
     - meson test -C build/ --setup valgrind --print-errorlogs
 
 
-doc-and-install meson:
+doc-and-install:
   stage: test
   image: registry.freedesktop.org/libnice/libnice/centos7/meson-build
   needs:
-    - build meson
+    - build
   except:
     - schedules
   variables:
@@ -186,7 +186,7 @@ submit-to-coverity:
 pages:
   stage: deploy
   dependencies:
-    - doc-and-install meson
+    - doc-and-install
   only:
     - latest-release
   artifacts:
