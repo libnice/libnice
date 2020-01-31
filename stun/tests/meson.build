@@ -13,6 +13,5 @@ endforeach
 if false and find_program('sh', required : false).found()
   test('test-check-bind', find_program('check-bind.sh'),
     timeout: 600,
-    env: 'BUILT_WITH_MESON=1',
     args: [stunbdc_exe, stund_exe])
 endif

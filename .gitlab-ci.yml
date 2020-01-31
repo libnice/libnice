@@ -3,63 +3,6 @@ stages:
  - test
  - deploy
 
-build autotools:
- stage: build
- image: registry.freedesktop.org/libnice/libnice/centos7/autotools-build
- except:
-  - schedules
- script:
-  - ifconfig
-  - export BUILD_ID="libnice-$CI_JOB_NAME_$CI_COMMIT_SHA-$CI_JOB_ID"
-  - export PREFIX="$(pwd)/prefix-$BUILD_ID"
-  - export MAKEFLAGS="-j4"
-  - mkdir "$PREFIX"
-  - ./autogen.sh --prefix="$PREFIX" --enable-compile-warnings=error --enable-gtk-doc --enable-introspection
-  - make
-  - make install
- artifacts:
-   untracked: true
-
-test autotools:
-  stage: test
-  image: registry.freedesktop.org/libnice/libnice/centos7/autotools-build
-  except:
-    - schedules
-  needs:
-    - build autotools
-  script:
-    - ifconfig
-    - make check
-  artifacts:
-    when: always
-    paths:
-      - config.log
-      - nice/test-suite.log
-      - random/test-suite.log
-      - tests/test-suite.log
-      - stun/tests/test-suite.log
-      - docs/reference/libnice/test-suite.log
-
-test autotools valgrind:
-  extends: test autotools
-  script:
-    - ifconfig
-    - make check-valgrind
-
-distcheck autotools:
-  stage: test
-  image: registry.freedesktop.org/libnice/libnice/centos7/autotools-build
-  except:
-    - schedules
-  needs:
-    - build autotools
-  script:
-    - ifconfig
-    - make distcheck
-  artifacts:
-    paths:
-      - libnice-*.tar.gz
-
 build meson:
   stage: build
   image: registry.freedesktop.org/libnice/libnice/centos7/meson-build
@@ -240,8 +183,7 @@ submit-to-coverity:
   - tar czvf libnice.tgz cov-int
   - curl --form token=$COVERITY_TOKEN --form email=olivier.crete@ocrete.ca --form file=@libnice.tgz --form version="${CI_COMMIT_REF_NAME}-${CI_COMMIT_SHA}" --form description="CI weekly run" https://scan.coverity.com/builds?project=libnice
 
-
-documentation:
+pages:
   stage: deploy
   dependencies:
     - doc-and-install meson

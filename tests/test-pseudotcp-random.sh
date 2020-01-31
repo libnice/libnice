@@ -2,11 +2,7 @@
 
 set -e
 
-if test -n "${BUILT_WITH_MESON}"; then
-  TEST_PSEUDOTCP=$1
-else
-  TEST_PSEUDOTCP=./test-pseudotcp
-fi
+TEST_PSEUDOTCP="$1"
 
 cleanup() {
   rm -rf rand rand-copy

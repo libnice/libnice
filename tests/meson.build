@@ -37,9 +37,6 @@ if cc.has_header('arpa/inet.h')
   ]
 endif
 
-tenv = environment()
-tenv.set('BUILT_WITH_MESON', '1')
-
 foreach tname : nice_tests
   if tname.startswith('test-io-stream') or tname.startswith('test-send-recv')
     extra_src = ['test-io-stream-common.c']
@@ -54,7 +51,7 @@ foreach tname : nice_tests
     link_with: [libagent, libstun, libsocket, librandom],
     install: false)
   set_variable(tname.underscorify(), exe)
-  test(tname, exe, env: tenv)
+  test(tname, exe)
 
   if tname == 'test-fullmode'
     wrapper_exe = executable ('nice-test-fullmode-with-stun',
@@ -63,7 +60,6 @@ foreach tname : nice_tests
 			      install: false)
     test('test-fullmode-with-stun', wrapper_exe,
 	 args: [stund_exe, test_fullmode],
-	 env: tenv,
 	 is_parallel: false,
 	 depends: exe)
   endif
@@ -80,7 +76,7 @@ if gst_dep.found()
       dependencies: [nice_deps, gst_check, libm],
       link_with: libnice,
       install: false)
-    gst_env = tenv
+    gst_env = environment()
     gst_env.append('GST_PLUGIN_PATH_1_0', join_paths(meson.current_build_dir(), '..', 'gst'))
     test('test-gstreamer', exe, env: gst_env)
   endif
@@ -88,8 +84,7 @@ endif
 
 if find_program('sh', required : false).found() and find_program('dd', required : false).found() and find_program('diff', required : false).found()
   test('test-pseudotcp-random', find_program('test-pseudotcp-random.sh'),
-       args: test_pseudotcp,
-       env: tenv)
+       args: test_pseudotcp)
 endif
 
 debugenv = environment()

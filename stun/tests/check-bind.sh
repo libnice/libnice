@@ -1,12 +1,7 @@
 #! /bin/sh
 
-if test -n "${BUILT_WITH_MESON}"; then
-  STUNC=$1
-  STUND=$2
-else
-  STUNC=../tools/stunbdc
-  STUND=../tools/stund
-fi
+STUNC=../tools/stunbdc
+STUND=../tools/stund
 
 cleanup() {
   rm -f stund?.pid stund?.fail stunc?.log

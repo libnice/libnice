@@ -20,14 +20,23 @@ Requirements
  pkg-config
  gnutls >= 2.12.0 or OpenSSL
  gupnp-igd >= 0.1.2 (optional)
- gstreamer-0.10 >= 0.10.0 (optional)
+ gstreamer-0.10 (optional)
  gstreamer-1.0 (optional)
 
 Build instructions
 ------------------
 
-To build, you need Python 3 and Meson. Then need to do:
-  meson build && ninja -C build && sudo ninja -C build install
+libnice uses the Meson Build System: https://mesonbuild.com
+
+To build on Linux and Mac, you only need to type the usual commands :
+
+  meson builddir
+  ninja -C builddir
+  ninja -C builddir test (or "meson test -C builddir" for more control)
+  sudo ninja -C builddir install
+
+See https://mesonbuild.com/Quick-guide.html#compiling-a-meson-project
+for more details and how to install the Meson build system.
 
 Structure
 ---------
