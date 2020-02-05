@@ -85,7 +85,7 @@ static gint64 priv_timer_remainder (gint64 timer, gint64 now)
   if (now >= timer)
     return 0;
 
-  return timer - now;
+  return (timer - now) / 1000;
 }
 
 static gchar
