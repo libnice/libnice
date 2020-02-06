@@ -1158,7 +1158,7 @@ guint32 option_transmit_seed = 0;
 guint32 option_receive_seed = 0;
 gsize option_n_bytes = 10000;
 guint option_n_messages = 50;
-guint option_timeout = 15;  /* seconds */
+guint option_timeout = 150;  /* seconds */
 gboolean option_long_mode = FALSE;
 
 static GOptionEntry entries[] = {
