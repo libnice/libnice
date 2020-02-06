@@ -42,7 +42,6 @@ test autotools:
 
 test autotools valgrind:
   extends: test autotools
-  allow_failure: true
   script:
     - ifconfig
     - make check-valgrind
@@ -168,7 +167,6 @@ build msvc x86:
 test meson:
   stage: test
   image: registry.freedesktop.org/libnice/libnice/centos7/meson-build
-  allow_failure: true
   needs:
     - build meson
   except:
