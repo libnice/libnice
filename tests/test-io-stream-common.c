@@ -538,6 +538,7 @@ check_for_termination (TestIOStreamThreadData *data, gsize *recv_count,
   /* Remove the stream and run away. */
   nice_agent_remove_stream (data->agent, stream_id);
   g_object_set_data (G_OBJECT (data->agent), "stream-id", GUINT_TO_POINTER (0));
+  g_clear_object (&data->io_stream);
 
   data->done = TRUE;
   if (data->other->done)
