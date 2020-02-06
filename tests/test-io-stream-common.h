@@ -89,6 +89,8 @@ struct _TestIOStreamThreadData {
   /*< private >*/
   const TestIOStreamCallbacks *callbacks;
 
+  gboolean done;
+
   /* Condition signalling for the stream being open/writeable. */
   gboolean stream_open;
   gboolean stream_ready;
