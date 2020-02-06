@@ -176,7 +176,7 @@ test meson:
   script:
     - ifconfig
     - source scl_source enable rh-python36 && true
-    - meson test -C build/ --print-errorlogs
+    - meson test -C build/ --setup debug
   artifacts:
     when: on_failure
     paths:
