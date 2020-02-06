@@ -1000,34 +1000,36 @@ write_stream_cb (GObject *pollable_stream, gpointer _user_data)
   guint8 *buf = NULL;
   gsize buf_len = 0;
   gssize len;
+  for (;;) {
 
-  /* Initialise a receive buffer. */
-  generate_buffer_to_transmit (data, test_data->transmitted_bytes, &buf,
-      &buf_len);
+    /* Initialise a receive buffer. */
+    generate_buffer_to_transmit (data, test_data->transmitted_bytes, &buf,
+        &buf_len);
 
-  /* Try to transmit some data. */
-  len = g_pollable_output_stream_write_nonblocking (
-      G_POLLABLE_OUTPUT_STREAM (pollable_stream), buf, buf_len, NULL, &error);
+    /* Try to transmit some data. */
+    len = g_pollable_output_stream_write_nonblocking (
+        G_POLLABLE_OUTPUT_STREAM (pollable_stream), buf, buf_len, NULL, &error);
 
-  if (len == -1) {
-    g_assert_error (error, G_IO_ERROR, G_IO_ERROR_WOULD_BLOCK);
-    g_free (buf);
-    return G_SOURCE_CONTINUE;
+    if (len == -1) {
+      g_assert_error (error, G_IO_ERROR, G_IO_ERROR_WOULD_BLOCK);
+      g_free (buf);
+      return G_SOURCE_CONTINUE;
+    }
+
+    g_assert_no_error (error);
+
+    /* Update the test’s buffer generation state machine. */
+    notify_transmitted_buffer (data, test_data->transmitted_bytes, &buf, buf_len,
+        len);
+
+    /* Termination time? */
+    if (test_data->transmitted_bytes == test_data->n_bytes) {
+      g_main_loop_quit (gsource_data->main_loop);
+      break;
+    }
   }
 
-  g_assert_no_error (error);
-
-  /* Update the test’s buffer generation state machine. */
-  notify_transmitted_buffer (data, test_data->transmitted_bytes, &buf, buf_len,
-      len);
-
-  /* Termination time? */
-  if (test_data->transmitted_bytes == test_data->n_bytes) {
-    g_main_loop_quit (gsource_data->main_loop);
-    return G_SOURCE_REMOVE;
-  }
-
-  return G_SOURCE_CONTINUE;
+  return G_SOURCE_REMOVE;
 }
 
 static void
