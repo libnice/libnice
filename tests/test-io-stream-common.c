@@ -70,6 +70,7 @@ static gboolean timer_cb (gpointer pointer)
 
   /* note: should not be reached, abort */
   g_debug ("ERROR: test has got stuck, aborting...");
+  abort();
   exit (-1);
 }
 
