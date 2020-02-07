@@ -3479,14 +3479,16 @@ nice_agent_add_local_address (NiceAgent *agent, NiceAddress *addr)
 static void priv_update_pair_foundations (NiceAgent *agent,
     guint stream_id, guint component_id, NiceCandidate *remote)
 {
+  NiceStream *stream;
   NiceComponent *component;
-  NiceStream *stream = agent_find_stream (agent, stream_id);
 
-  if (stream &&
-      agent_find_component (agent, stream_id, component_id, NULL, &component)) {
+  if (agent_find_component (agent, stream_id, component_id, &stream,
+      &component)) {
     GSList *i;
+
     for (i = stream->conncheck_list; i; i = i->next) {
       CandidateCheckPair *pair = i->data;
+
       if (pair->remote == remote) {
         gchar foundation[NICE_CANDIDATE_PAIR_MAX_FOUNDATION];
         g_snprintf (foundation, NICE_CANDIDATE_PAIR_MAX_FOUNDATION, "%s:%s",
@@ -3507,6 +3509,49 @@ static void priv_update_pair_foundations (NiceAgent *agent,
           }
         }
       }
+    }
+  }
+}
+
+/* Updated the component selected pair by the current highest
+ * priority nominated pair.
+ */
+static void priv_update_selected_pair (NiceAgent *agent,
+    guint stream_id, guint component_id)
+{
+  NiceStream *stream;
+  NiceComponent *component;
+  CandidatePair cpair = { 0, };
+  CandidateCheckPair *pair;
+  gboolean found = FALSE;
+
+  if (agent_find_component (agent, stream_id, component_id, &stream,
+      &component)) {
+    GSList *i;
+
+    for (i = stream->conncheck_list; i; i = i->next) {
+      pair = i->data;
+      if (pair->component_id == component_id && pair->nominated) {
+        found = TRUE;
+        break;
+      }
+    }
+
+    if (found &&
+        (component->selected_pair.local != pair->local ||
+        component->selected_pair.remote != pair->remote)) {
+      cpair.local = pair->local;
+      cpair.remote = pair->remote;
+      cpair.priority = pair->priority;
+      cpair.prflx_priority = pair->prflx_priority;
+      nice_debug ("Agent %p : Updating selected pair with higher "
+        "priority nominated pair %p.", agent, pair);
+      nice_debug ("Agent %p : changing SELECTED PAIR for component %u: %s:%s "
+        "(prio:%" G_GUINT64_FORMAT ").", agent, component->id,
+        pair->local->foundation, pair->remote->foundation, pair->priority);
+      nice_component_update_selected_pair (agent, component, &cpair);
+      agent_signal_new_selected_pair (agent, pair->stream_id,
+          component->id, pair->local, pair->remote);
     }
   }
 }
@@ -3599,9 +3644,13 @@ static gboolean priv_add_remote_candidate (
 
     /* since the type of the existing candidate may have changed,
      * the pairs priority and foundation related to this candidate need
-     * to be recomputed.
+     * to be recomputed...
      */
     recalculate_pair_priorities (agent);
+    /* ... and maybe we now have another nominated pair with a higher
+     * priority as the result of this priorities update.
+     */
+    priv_update_selected_pair (agent, stream_id, component_id);
     priv_update_pair_foundations (agent, stream_id, component_id, candidate);
   }
   else {
