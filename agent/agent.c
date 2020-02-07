@@ -1225,17 +1225,17 @@ priv_update_controlling_mode (NiceAgent *agent, gboolean value)
     if (update_controlling_mode) {
       agent->controlling_mode = agent->saved_controlling_mode;
       nice_debug ("Agent %p : Property set, changing role to \"%s\".",
-        agent, agent->controlling_mode ? "controlling" : "controlled");
+          agent, agent->controlling_mode ? "controlling" : "controlled");
     } else {
       nice_debug ("Agent %p : Property set, role switch requested "
-        "but conncheck already started.", agent);
+          "but conncheck already started.", agent);
       nice_debug ("Agent %p : Property set, staying with role \"%s\" "
-        "until restart.", agent,
-        agent->controlling_mode ? "controlling" : "controlled");
+          "until restart.", agent,
+          agent->controlling_mode ? "controlling" : "controlled");
     }
   } else
     nice_debug ("Agent %p : Property set, role is already \"%s\".", agent,
-      agent->controlling_mode ? "controlling" : "controlled");
+        agent->controlling_mode ? "controlling" : "controlled");
 }
 
 static void
@@ -3169,7 +3169,7 @@ nice_agent_gather_candidates (
 
         if (res == HOST_CANDIDATE_REDUNDANT) {
           nice_debug ("Agent %p: Ignoring local candidate, it's redundant",
-                      agent);
+              agent);
           continue;
         } else if (res == HOST_CANDIDATE_FAILED) {
           nice_debug ("Agent %p: Could ot retrieive component %d/%d", agent,
@@ -3502,8 +3502,8 @@ static void priv_update_pair_foundations (NiceAgent *agent,
           if (component->selected_pair.local == pair->local &&
               component->selected_pair.remote == pair->remote) {
             nice_debug ("Agent %p : updating SELECTED PAIR for component "
-              "%u: %s (prio:%" G_GUINT64_FORMAT ").", agent,
-              component->id, foundation, pair->priority);
+                "%u: %s (prio:%" G_GUINT64_FORMAT ").", agent,
+                component->id, foundation, pair->priority);
             agent_signal_new_selected_pair (agent, pair->stream_id,
               component->id, pair->local, pair->remote);
           }
@@ -3545,10 +3545,10 @@ static void priv_update_selected_pair (NiceAgent *agent,
       cpair.priority = pair->priority;
       cpair.prflx_priority = pair->prflx_priority;
       nice_debug ("Agent %p : Updating selected pair with higher "
-        "priority nominated pair %p.", agent, pair);
+          "priority nominated pair %p.", agent, pair);
       nice_debug ("Agent %p : changing SELECTED PAIR for component %u: %s:%s "
-        "(prio:%" G_GUINT64_FORMAT ").", agent, component->id,
-        pair->local->foundation, pair->remote->foundation, pair->priority);
+          "(prio:%" G_GUINT64_FORMAT ").", agent, component->id,
+          pair->local->foundation, pair->remote->foundation, pair->priority);
       nice_component_update_selected_pair (agent, component, &cpair);
       agent_signal_new_selected_pair (agent, pair->stream_id,
           component->id, pair->local, pair->remote);
@@ -3690,7 +3690,7 @@ static gboolean priv_add_remote_candidate (
       if (agent->nomination_mode == NICE_NOMINATION_MODE_AGGRESSIVE &&
           transport != NICE_CANDIDATE_TRANSPORT_UDP) {
         nice_debug ("Agent %p : we have TCP candidates, switching back "
-          "to regular nomination mode", agent);
+            "to regular nomination mode", agent);
         agent->nomination_mode = NICE_NOMINATION_MODE_REGULAR;
       }
     }
