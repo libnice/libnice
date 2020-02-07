@@ -2446,12 +2446,14 @@ gboolean conn_check_add_for_candidate_pair (NiceAgent *agent,
   g_assert (local != NULL);
   g_assert (remote != NULL);
 
-  /* note: do not create pairs where the local candidate is
-   *       a srv-reflexive (ICE 5.7.3. "Pruning the pairs" ID-9) */
+  /* note: do not create pairs where the local candidate is a srv-reflexive
+   * or peer-reflexive (ICE 6.1.2.4. "Pruning the pairs" RFC 8445)
+   */
   if ((agent->compatibility == NICE_COMPATIBILITY_RFC5245 ||
       agent->compatibility == NICE_COMPATIBILITY_WLM2009 ||
       agent->compatibility == NICE_COMPATIBILITY_OC2007R2) &&
-      local->type == NICE_CANDIDATE_TYPE_SERVER_REFLEXIVE) {
+      (local->type == NICE_CANDIDATE_TYPE_SERVER_REFLEXIVE ||
+      local->type == NICE_CANDIDATE_TYPE_PEER_REFLEXIVE)) {
     return FALSE;
   }
 
