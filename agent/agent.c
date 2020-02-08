@@ -3504,6 +3504,11 @@ static void priv_update_pair_foundations (NiceAgent *agent,
             nice_debug ("Agent %p : updating SELECTED PAIR for component "
                 "%u: %s (prio:%" G_GUINT64_FORMAT ").", agent,
                 component->id, foundation, pair->priority);
+            /* the foundation update of the selected pair also implies
+             * an update of its priority. prflx_priority doesn't change
+             * because only the remote candidate foundation is modified.
+             */
+            component->selected_pair.priority = pair->priority;
             agent_signal_new_selected_pair (agent, pair->stream_id,
               component->id, pair->local, pair->remote);
           }
