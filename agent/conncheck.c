@@ -2047,6 +2047,7 @@ static gboolean priv_update_selected_pair (NiceAgent *agent, NiceComponent *comp
     cpair.local = pair->local;
     cpair.remote = pair->remote;
     cpair.priority = pair->priority;
+    cpair.prflx_priority = pair->prflx_priority;
     /* cpair.keepalive is not used by nice_component_update_selected_pair() */
 
     nice_component_update_selected_pair (agent, component, &cpair);
