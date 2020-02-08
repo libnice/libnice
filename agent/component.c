@@ -474,15 +474,17 @@ void
 nice_component_update_selected_pair (NiceAgent *agent, NiceComponent *component, const CandidatePair *pair)
 {
   NiceStream *stream;
+  gchar priority[NICE_CANDIDATE_PAIR_PRIORITY_MAX_SIZE];
 
   g_assert (component);
   g_assert (pair);
 
   stream = agent_find_stream (agent, component->stream_id);
 
-  nice_debug ("setting SELECTED PAIR for component %u: %s:%s (prio:%"
-      G_GUINT64_FORMAT ").", component->id, pair->local->foundation,
-      pair->remote->foundation, pair->priority);
+  nice_candidate_pair_priority_to_string (pair->priority, priority);
+  nice_debug ("setting SELECTED PAIR for component %u: %s:%s (prio:%s).",
+      component->id, pair->local->foundation,
+      pair->remote->foundation, priority);
 
   if (component->selected_pair.local &&
       component->selected_pair.local == component->turn_candidate) {

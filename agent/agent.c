@@ -3502,6 +3502,8 @@ static void priv_update_pair_foundations (NiceAgent *agent,
               agent, pair, pair->foundation);
           if (component->selected_pair.local == pair->local &&
               component->selected_pair.remote == pair->remote) {
+            gchar priority[NICE_CANDIDATE_PAIR_PRIORITY_MAX_SIZE];
+
             /* the foundation update of the selected pair also implies
              * an update of its priority. prflx_priority doesn't change
              * because only the remote candidate foundation is modified.
@@ -3510,9 +3512,10 @@ static void priv_update_pair_foundations (NiceAgent *agent,
                 "its priority.", agent, pair);
             component->selected_pair.priority = pair->priority;
 
+            nice_candidate_pair_priority_to_string (pair->priority, priority);
             nice_debug ("Agent %p : updating SELECTED PAIR for component "
-                "%u: %s (prio:%" G_GUINT64_FORMAT ").", agent,
-                component->id, foundation, pair->priority);
+                "%u: %s (prio:%s).", agent,
+                component->id, foundation, priority);
             agent_signal_new_selected_pair (agent, pair->stream_id,
               component->id, pair->local, pair->remote);
           }
@@ -3595,7 +3598,7 @@ static gboolean priv_add_remote_candidate (
       gchar tmpbuf[INET6_ADDRSTRLEN];
       nice_address_to_string (addr, tmpbuf);
       nice_debug ("Agent %p : Updating existing remote candidate with addr [%s]:%u"
-          " for s%d/c%d. U/P '%s'/'%s' prio: %u", agent, tmpbuf,
+          " for s%d/c%d. U/P '%s'/'%s' prio: %08x", agent, tmpbuf,
           nice_address_get_port (addr), stream_id, component_id,
           username, password, priority);
     }
@@ -3681,7 +3684,7 @@ static gboolean priv_add_remote_candidate (
       if (addr)
         nice_address_to_string (addr, tmpbuf);
       nice_debug ("Agent %p : Adding %s remote candidate with addr [%s]:%u"
-          " for s%d/c%d. U/P '%s'/'%s' prio: %u", agent,
+          " for s%d/c%d. U/P '%s'/'%s' prio: %08x", agent,
           _transport_to_string (transport), tmpbuf,
           addr? nice_address_get_port (addr) : 0, stream_id, component_id,
           username, password, priority);

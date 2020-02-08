@@ -295,6 +295,11 @@ nice_candidate_ms_ice_priority (const NiceCandidate *candidate,
 guint64
 nice_candidate_pair_priority (guint32 o_prio, guint32 a_prio);
 
+#define NICE_CANDIDATE_PAIR_PRIORITY_MAX_SIZE 32
+
+void
+nice_candidate_pair_priority_to_string (guint64 prio, gchar *string);
+
 /*
  * nice_debug_init:
  *

@@ -278,13 +278,15 @@ priv_print_conn_check_lists (NiceAgent *agent, const gchar *where, const gchar *
         if (pair->component_id == j) {
           gchar local_addr[INET6_ADDRSTRLEN];
           gchar remote_addr[INET6_ADDRSTRLEN];
+          gchar priority[NICE_CANDIDATE_PAIR_PRIORITY_MAX_SIZE];
 
           nice_address_to_string (&pair->local->addr, local_addr);
           nice_address_to_string (&pair->remote->addr, remote_addr);
+          nice_candidate_pair_priority_to_string (pair->priority, priority);
 
           nice_debug ("Agent %p : *** sc=%d/%d : pair %p : "
               "f=%s t=%s:%s sock=%s "
-              "%s:[%s]:%u > %s:[%s]:%u state=%c%s%s%s%s",
+              "%s:[%s]:%u > %s:[%s]:%u prio=%s/%08x state=%c%s%s%s%s",
               agent, pair->stream_id, pair->component_id, pair,
               pair->foundation,
               priv_candidate_type_to_string (pair->local->type),
@@ -294,6 +296,7 @@ priv_print_conn_check_lists (NiceAgent *agent, const gchar *where, const gchar *
               local_addr, nice_address_get_port (&pair->local->addr),
               priv_candidate_transport_to_string (pair->remote->transport),
               remote_addr, nice_address_get_port (&pair->remote->addr),
+              priority, pair->prflx_priority,
               priv_state_to_gchar (pair->state),
               pair->valid ? "V" : "",
               pair->nominated ? "N" : "",
@@ -1566,8 +1569,8 @@ static gboolean priv_conn_keepalive_tick_unlocked (NiceAgent *agent)
             nice_address_to_string (&p->remote->addr, tmpbuf);
             nice_debug ("Agent %p : Keepalive STUN-CC REQ to '%s:%u', "
                 "(c-id:%u), username='%.*s' (%" G_GSIZE_FORMAT "), "
-                "password='%.*s' (%" G_GSIZE_FORMAT "), priority=%u.", agent,
-                tmpbuf, nice_address_get_port (&p->remote->addr),
+                "password='%.*s' (%" G_GSIZE_FORMAT "), priority=%08x.",
+                agent, tmpbuf, nice_address_get_port (&p->remote->addr),
                 component->id, (int) uname_len, uname, uname_len,
                 (int) password_len, password, password_len,
                 p->prflx_priority);
@@ -2054,9 +2057,11 @@ conn_check_update_selected_pair (NiceAgent *agent, NiceComponent *component,
   /* pair is expected to have the nominated flag */
   g_assert (pair->nominated);
   if (pair->priority > component->selected_pair.priority) {
+    gchar priority[NICE_CANDIDATE_PAIR_PRIORITY_MAX_SIZE];
+    nice_candidate_pair_priority_to_string (pair->priority, priority);
     nice_debug ("Agent %p : changing SELECTED PAIR for component %u: %s:%s "
-        "(prio:%" G_GUINT64_FORMAT ").", agent, component->id,
-        pair->local->foundation, pair->remote->foundation, pair->priority);
+        "(prio:%s).", agent, component->id,
+        pair->local->foundation, pair->remote->foundation, priority);
 
     cpair.local = pair->local;
     cpair.remote = pair->remote;
@@ -2885,7 +2890,7 @@ int conn_check_send (NiceAgent *agent, CandidateCheckPair *pair)
     nice_address_to_string (&pair->remote->addr, tmpbuf2);
     nice_debug ("Agent %p : STUN-CC REQ [%s]:%u --> [%s]:%u, socket=%u, "
         "pair=%p (c-id:%u), tie=%llu, username='%.*s' (%" G_GSIZE_FORMAT "), "
-        "password='%.*s' (%" G_GSIZE_FORMAT "), prio=%u, %s.", agent,
+        "password='%.*s' (%" G_GSIZE_FORMAT "), prio=%08x, %s.", agent,
 	     tmpbuf1, nice_address_get_port (&pair->local->addr),
 	     tmpbuf2, nice_address_get_port (&pair->remote->addr),
              pair->sockptr->fileno ? g_socket_get_fd(pair->sockptr->fileno) : -1,
@@ -3013,6 +3018,8 @@ static guint priv_prune_pending_checks (NiceAgent *agent, NiceStream *stream, gu
   GSList *i;
   guint64 highest_nominated_priority = 0;
   guint in_progress = 0;
+  gchar prio1[NICE_CANDIDATE_PAIR_PRIORITY_MAX_SIZE];
+  gchar prio2[NICE_CANDIDATE_PAIR_PRIORITY_MAX_SIZE];
 
   nice_debug ("Agent %p: Finding highest priority for component %d",
       agent, component_id);
@@ -3027,8 +3034,9 @@ static guint priv_prune_pending_checks (NiceAgent *agent, NiceStream *stream, gu
     }
   }
 
+  nice_candidate_pair_priority_to_string (highest_nominated_priority, prio1);
   nice_debug ("Agent %p: Pruning pending checks. Highest nominated priority "
-      "is %" G_GUINT64_FORMAT, agent, highest_nominated_priority);
+      "is %s.", agent, prio1);
 
   /* step: cancel all FROZEN and WAITING pairs for the component */
   i = stream->conncheck_list;
@@ -3052,10 +3060,10 @@ static guint priv_prune_pending_checks (NiceAgent *agent, NiceStream *stream, gu
         } else {
           /* We must keep the higher priority pairs running because if a udp
            * packet was lost, we might end up using a bad candidate */
-          nice_debug ("Agent %p : pair %p kept IN_PROGRESS because priority %"
-              G_GUINT64_FORMAT " is higher than currently nominated pair %"
-              G_GUINT64_FORMAT, agent,
-              p, p->priority, highest_nominated_priority);
+          nice_candidate_pair_priority_to_string (p->priority, prio2);
+          nice_debug ("Agent %p : pair %p kept IN_PROGRESS because priority "
+              "%s is higher than currently nominated pair %s.",
+              agent, p, prio2, prio1);
           in_progress++;
         }
       }
