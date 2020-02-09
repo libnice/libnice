@@ -3304,9 +3304,13 @@ static CandidateCheckPair *priv_add_peer_reflexive_pair (NiceAgent *agent, guint
     pair->priority = nice_candidate_pair_priority (pair->remote->priority,
         pair->local->priority);
   pair->nominated = parent_pair->nominated;
-  pair->prflx_priority = ensure_unique_prflx_priority (stream, component,
-      local_cand->priority,
-      peer_reflexive_candidate_priority (agent, local_cand));
+  /* the peer-reflexive priority used in stun request is copied from
+   * the parent succeeded pair. This value is not required for discovered
+   * pair, that won't emit stun requests themselves, but may be used when
+   * such pair becomes the selected pair, and when keepalive stun are emitted,
+   * using the sockptr and prflx_priority values from the succeeded pair.
+   */
+  pair->prflx_priority = parent_pair->prflx_priority;
   nice_debug ("Agent %p : added a new peer-discovered pair %p with "
       "foundation '%s' and transport %s:%s to stream %u component %u",
       agent, pair, pair->foundation,
