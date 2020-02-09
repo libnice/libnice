@@ -1624,8 +1624,14 @@ static gboolean priv_conn_keepalive_tick_unlocked (NiceAgent *agent)
                   p->local->sockptr, &p->remote->addr);
             }
 
-            nice_debug ("Agent %p : stun_bind_keepalive for pair %p res %d.",
-                agent, p, (int) buf_len);
+            if (nice_debug_is_enabled ()) {
+              gchar tmpbuf[INET6_ADDRSTRLEN];
+              nice_address_to_string (&p->remote->addr, tmpbuf);
+              nice_debug ("Agent %p : stun_bind_keepalive to %s:%u "
+                "in s%d/c%d.", agent,
+                tmpbuf, nice_address_get_port (&p->remote->addr),
+                stream->id, component->id);
+            }
           } else {
             ++errors;
           }
@@ -1640,7 +1646,7 @@ static gboolean priv_conn_keepalive_tick_unlocked (NiceAgent *agent)
     NiceStream *stream = i->data;
     for (j = stream->components; j; j = j->next) {
       NiceComponent *component = j->data;
-      if (component->state < NICE_COMPONENT_STATE_READY &&
+      if (component->state < NICE_COMPONENT_STATE_CONNECTED &&
           agent->stun_server_ip) {
         NiceAddress stun_server;
         if (nice_address_set_from_string (&stun_server, agent->stun_server_ip)) {
@@ -1663,8 +1669,14 @@ static gboolean priv_conn_keepalive_tick_unlocked (NiceAgent *agent)
                 nice_address_ip_version (&candidate->addr) ==
                 nice_address_ip_version (&stun_server)) {
               /* send the conncheck */
-              nice_debug ("Agent %p : resending STUN on %s to keep the "
-                  "candidate alive.", agent, candidate->foundation);
+              if (nice_debug_is_enabled ()) {
+                gchar tmpbuf[INET6_ADDRSTRLEN];
+                nice_address_to_string (&candidate->addr, tmpbuf);
+                nice_debug ("Agent %p : resending STUN to keep the local "
+                    "candidate %s:%u alive in s%d/c%d.", agent,
+                    tmpbuf, nice_address_get_port (&candidate->addr),
+                    stream->id, component->id);
+              }
               agent_socket_send (candidate->sockptr, &stun_server,
                   buffer_len, (gchar *)stun_buffer);
             }
