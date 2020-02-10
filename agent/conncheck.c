@@ -1978,35 +1978,54 @@ void conn_check_remote_credentials_set(NiceAgent *agent, NiceStream *stream)
 }
 
 /*
- * Enforces the upper limit for connectivity checks as described
- * in ICE spec section 5.7.3 (ID-19). See also 
+ * Enforces the upper limit for connectivity checks by dropping
+ * lower-priority pairs as described RFC 8445 section 6.1.2.5. See also
  * conn_check_add_for_candidate().
+ * Returns TRUE if the pair in argument is one of the deleted pairs.
  */
-static GSList *priv_limit_conn_check_list_size (NiceAgent *agent,
-    GSList *conncheck_list, guint upper_limit)
+static gboolean priv_limit_conn_check_list_size (NiceAgent *agent,
+    NiceStream *stream, CandidateCheckPair *pair)
 {
   guint valid = 0;
   guint cancelled = 0;
-  GSList *item = conncheck_list;
+  gboolean deleted = FALSE;
+  GSList *item = stream->conncheck_list;
 
   while (item) {
-    CandidateCheckPair *pair = item->data;
+    CandidateCheckPair *p = item->data;
     GSList *next = item->next;
 
     valid++;
-    if (valid > upper_limit) {
-        candidate_check_pair_free (agent, pair);
-        conncheck_list = g_slist_delete_link (conncheck_list, item);
-        cancelled++;
+    /* We remove lower-priority pairs, but only the ones that can be
+     * safely discarded without breaking an ongoing conncheck process.
+     * This only includes pairs that are in the frozen state (those
+     * initially added when remote candidates are received) or in failed
+     * state. Pairs in any other state play a role in the conncheck, and
+     * there removal may lead to a failing conncheck that would succeed
+     * otherwise.
+     *
+     * We also remove failed pairs from the list unconditionally.
+     */
+    if ((valid > agent->max_conn_checks && p->state == NICE_CHECK_FROZEN) ||
+        p->state == NICE_CHECK_FAILED) {
+      if (p == pair)
+        deleted = TRUE;
+      nice_debug ("Agent %p : pair %p removed.", agent, p);
+      candidate_check_pair_free (agent, p);
+      stream->conncheck_list = g_slist_delete_link (stream->conncheck_list,
+          item);
+      cancelled++;
     }
     item = next;
   }
 
   if (cancelled > 0)
-    nice_debug ("Agent : Pruned %d candidates. Conncheck list has %d elements"
-        " left. Maximum connchecks allowed : %d", cancelled, valid,
-        upper_limit);
-  return conncheck_list;
+    nice_debug ("Agent %p : Pruned %d pairs. "
+        "Conncheck list has %d elements left. "
+        "Maximum connchecks allowed : %d", agent, cancelled,
+        valid - cancelled, agent->max_conn_checks);
+
+  return deleted;
 }
 
 /*
@@ -2369,8 +2388,8 @@ static CandidateCheckPair *priv_add_new_check_pair (NiceAgent *agent,
   /* implement the hard upper limit for number of
      checks (see sect 5.7.3 ICE ID-19): */
   if (agent->compatibility == NICE_COMPATIBILITY_RFC5245) {
-    stream->conncheck_list = priv_limit_conn_check_list_size (agent,
-        stream->conncheck_list, agent->max_conn_checks);
+    if (priv_limit_conn_check_list_size (agent, stream, pair))
+      return NULL;
   }
 
   return pair;
@@ -3143,7 +3162,8 @@ static gboolean priv_schedule_triggered_check (NiceAgent *agent, NiceStream *str
     nice_debug ("Agent %p : Adding a triggered check to conn.check list (local=%p).", agent, local);
     p = priv_conn_check_add_for_candidate_pair_matched (agent, stream->id,
         component, local, remote_cand, NICE_CHECK_WAITING);
-    priv_add_pair_to_triggered_check_queue (agent, p);
+    if (p)
+      priv_add_pair_to_triggered_check_queue (agent, p);
     return TRUE;
   }
   else {
