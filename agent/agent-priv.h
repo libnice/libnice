@@ -274,7 +274,6 @@ input_message_get_size (const NiceInputMessage *message);
 gssize agent_socket_send (NiceSocket *sock, const NiceAddress *addr, gsize len,
     const gchar *buf);
 
-
 guint32
 nice_candidate_jingle_priority (NiceCandidate *candidate);
 

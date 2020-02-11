@@ -3474,7 +3474,8 @@ nice_agent_add_local_address (NiceAgent *agent, NiceAddress *addr)
 }
 
 /* Recompute foundations of all candidate pairs from a given stream
- * having a specific remote candidate
+ * having a specific remote candidate, and eventually update the
+ * priority of the selected pair as well.
  */
 static void priv_update_pair_foundations (NiceAgent *agent,
     guint stream_id, guint component_id, NiceCandidate *remote)
@@ -3501,14 +3502,17 @@ static void priv_update_pair_foundations (NiceAgent *agent,
               agent, pair, pair->foundation);
           if (component->selected_pair.local == pair->local &&
               component->selected_pair.remote == pair->remote) {
-            nice_debug ("Agent %p : updating SELECTED PAIR for component "
-                "%u: %s (prio:%" G_GUINT64_FORMAT ").", agent,
-                component->id, foundation, pair->priority);
             /* the foundation update of the selected pair also implies
              * an update of its priority. prflx_priority doesn't change
              * because only the remote candidate foundation is modified.
              */
+            nice_debug ("Agent %p : pair %p is the selected pair, updating "
+                "its priority.", agent, pair);
             component->selected_pair.priority = pair->priority;
+
+            nice_debug ("Agent %p : updating SELECTED PAIR for component "
+                "%u: %s (prio:%" G_GUINT64_FORMAT ").", agent,
+                component->id, foundation, pair->priority);
             agent_signal_new_selected_pair (agent, pair->stream_id,
               component->id, pair->local, pair->remote);
           }
@@ -3518,47 +3522,27 @@ static void priv_update_pair_foundations (NiceAgent *agent,
   }
 }
 
-/* Updated the component selected pair by the current highest
- * priority nominated pair.
+/* Returns the nominated pair with the highest priority.
  */
-static void priv_update_selected_pair (NiceAgent *agent,
-    guint stream_id, guint component_id)
+static CandidateCheckPair *priv_get_highest_priority_nominated_pair (
+    NiceAgent *agent, guint stream_id, guint component_id)
 {
   NiceStream *stream;
   NiceComponent *component;
-  CandidatePair cpair = { 0, };
   CandidateCheckPair *pair;
-  gboolean found = FALSE;
+  GSList *i;
 
   if (agent_find_component (agent, stream_id, component_id, &stream,
       &component)) {
-    GSList *i;
 
     for (i = stream->conncheck_list; i; i = i->next) {
       pair = i->data;
       if (pair->component_id == component_id && pair->nominated) {
-        found = TRUE;
-        break;
+        return pair;
       }
     }
-
-    if (found &&
-        (component->selected_pair.local != pair->local ||
-        component->selected_pair.remote != pair->remote)) {
-      cpair.local = pair->local;
-      cpair.remote = pair->remote;
-      cpair.priority = pair->priority;
-      cpair.prflx_priority = pair->prflx_priority;
-      nice_debug ("Agent %p : Updating selected pair with higher "
-          "priority nominated pair %p.", agent, pair);
-      nice_debug ("Agent %p : changing SELECTED PAIR for component %u: %s:%s "
-          "(prio:%" G_GUINT64_FORMAT ").", agent, component->id,
-          pair->local->foundation, pair->remote->foundation, pair->priority);
-      nice_component_update_selected_pair (agent, component, &cpair);
-      agent_signal_new_selected_pair (agent, pair->stream_id,
-          component->id, pair->local, pair->remote);
-    }
   }
+  return NULL;
 }
 
 static gboolean priv_add_remote_candidate (
@@ -3576,6 +3560,7 @@ static gboolean priv_add_remote_candidate (
 {
   NiceComponent *component;
   NiceCandidate *candidate;
+  CandidateCheckPair *pair;
 
   if (transport == NICE_CANDIDATE_TRANSPORT_UDP &&
       !agent->use_ice_udp)
@@ -3652,11 +3637,26 @@ static gboolean priv_add_remote_candidate (
      * to be recomputed...
      */
     recalculate_pair_priorities (agent);
+    priv_update_pair_foundations (agent, stream_id, component_id, candidate);
     /* ... and maybe we now have another nominated pair with a higher
      * priority as the result of this priorities update.
      */
-    priv_update_selected_pair (agent, stream_id, component_id);
-    priv_update_pair_foundations (agent, stream_id, component_id, candidate);
+    pair = priv_get_highest_priority_nominated_pair (agent,
+        stream_id, component_id);
+    if (pair &&
+        (pair->local != component->selected_pair.local ||
+         pair->remote != component->selected_pair.remote)) {
+      /* If we have (at least) one pair with the nominated flag set, it
+       * implies that this pair (or another) is set as the selected pair
+       * for this component. In other words, this is really an *update*
+       * of the selected pair.
+       */
+      g_assert (component->selected_pair.local != NULL);
+      g_assert (component->selected_pair.remote != NULL);
+      nice_debug ("Agent %p : Updating selected pair with higher "
+          "priority nominated pair %p.", agent, pair);
+      conn_check_update_selected_pair (agent, component, pair);
+    }
   }
   else {
     /* case 2: add a new candidate */

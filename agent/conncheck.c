@@ -77,8 +77,6 @@ static void candidate_check_pair_free (NiceAgent *agent,
 static CandidateCheckPair *priv_conn_check_add_for_candidate_pair_matched (
     NiceAgent *agent, guint stream_id, NiceComponent *component,
     NiceCandidate *local, NiceCandidate *remote, NiceCheckState initial_state);
-static gboolean priv_update_selected_pair (NiceAgent *agent,
-    NiceComponent *component, CandidateCheckPair *pair);
 
 static gint64 priv_timer_remainder (gint64 timer, gint64 now)
 {
@@ -1228,7 +1226,7 @@ priv_conn_check_tick_stream_nominate (NiceStream *stream, NiceAgent *agent)
 	    nice_debug ("Agent %p : restarting check of pair %p as the "
                 "nominated pair.", agent, p);
 	    p->nominated = TRUE;
-            priv_update_selected_pair (agent, component, p);
+            conn_check_update_selected_pair (agent, component, p);
             priv_add_pair_to_triggered_check_queue (agent, p);
             keep_timer_going = TRUE;
 	    break; /* move to the next component */
@@ -2041,16 +2039,20 @@ static gboolean priv_limit_conn_check_list_size (NiceAgent *agent,
 }
 
 /*
- * Changes the selected pair for the component if 'pair' is nominated
- * and has higher priority than the currently selected pair. See
- * ICE sect 11.1.1. "Procedures for Full Implementations" (ID-19).
+ * Changes the selected pair for the component if 'pair'
+ * has higher priority than the currently selected pair. See
+ * RFC 8445 sect 8.1.1. "Nominating Pairs"
  */
-static gboolean priv_update_selected_pair (NiceAgent *agent, NiceComponent *component, CandidateCheckPair *pair)
+void
+conn_check_update_selected_pair (NiceAgent *agent, NiceComponent *component,
+    CandidateCheckPair *pair)
 {
   CandidatePair cpair = { 0, };
 
   g_assert (component);
   g_assert (pair);
+  /* pair is expected to have the nominated flag */
+  g_assert (pair->nominated);
   if (pair->priority > component->selected_pair.priority) {
     nice_debug ("Agent %p : changing SELECTED PAIR for component %u: %s:%s "
         "(prio:%" G_GUINT64_FORMAT ").", agent, component->id,
@@ -2060,7 +2062,6 @@ static gboolean priv_update_selected_pair (NiceAgent *agent, NiceComponent *comp
     cpair.remote = pair->remote;
     cpair.priority = pair->priority;
     cpair.prflx_priority = pair->prflx_priority;
-    /* cpair.keepalive is not used by nice_component_update_selected_pair() */
 
     nice_component_update_selected_pair (agent, component, &cpair);
 
@@ -2068,10 +2069,7 @@ static gboolean priv_update_selected_pair (NiceAgent *agent, NiceComponent *comp
 
     agent_signal_new_selected_pair (agent, pair->stream_id, component->id,
         pair->local, pair->remote);
-
   }
-
-  return TRUE;
 }
 
 /*
@@ -2253,7 +2251,7 @@ static void priv_mark_pair_nominated (NiceAgent *agent, NiceStream *stream, Nice
         if (component->state == NICE_COMPONENT_STATE_FAILED)
           agent_signal_component_state_change (agent,
               stream->id, component->id, NICE_COMPONENT_STATE_CONNECTING);
-        priv_update_selected_pair (agent, component, pair);
+        conn_check_update_selected_pair (agent, component, pair);
         if (component->state == NICE_COMPONENT_STATE_CONNECTING)
           /* step: notify the client of a new component state (must be done
            *       before the possible check list state update step */
@@ -3638,7 +3636,7 @@ static gboolean priv_map_reply_to_conn_check_request (NiceAgent *agent, NiceStre
 	}
 
 	if (ok_pair->nominated == TRUE) {
-	  priv_update_selected_pair (agent, component, ok_pair);
+          conn_check_update_selected_pair (agent, component, ok_pair);
 	  priv_print_conn_check_lists (agent, G_STRFUNC,
 	      ", got a nominated pair");
 
