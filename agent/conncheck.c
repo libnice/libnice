@@ -1482,6 +1482,26 @@ static guint32 peer_reflexive_candidate_priority (NiceAgent *agent,
   return priority;
 }
 
+/* Returns the priority of a local candidate of type peer-reflexive that
+ * would be learned as a consequence of a check from this local
+ * candidate. See RFC 5245, section 7.1.2.1. "PRIORITY and USE-CANDIDATE".
+ * RFC 5245 is more explanatory than RFC 8445 on this detail.
+ *
+ * Apply to local candidates of type host only, because candidates of type
+ * relay are supposed to have a public IP address, that wont generate
+ * a peer-reflexive address. Server-reflexive candidates are not
+ * concerned too, because no STUN request is sent with a local candidate
+ * of this type.
+ */
+static guint32 stun_request_prflx_priority (NiceAgent *agent,
+    NiceCandidate *local_candidate)
+{
+  if (local_candidate->type == NICE_CANDIDATE_TYPE_HOST)
+    return peer_reflexive_candidate_priority (agent, local_candidate);
+  else
+    return local_candidate->priority;
+}
+
 static void ms_ice2_legacy_conncheck_send(StunMessage *msg, NiceSocket *sock,
     const NiceAddress *remote_addr)
 {
@@ -2407,69 +2427,6 @@ static void priv_mark_pair_nominated (NiceAgent *agent, NiceStream *stream, Nice
   }
 }
 
-guint32
-ensure_unique_priority (NiceStream *stream, NiceComponent *component,
-    guint32 priority)
-{
-  GSList *item;
-
- again:
-  if (priority == 0)
-    priority--;
-
-  for (item = component->local_candidates; item; item = item->next) {
-    NiceCandidate *cand = item->data;
-
-    if (cand->priority == priority) {
-      priority--;
-      goto again;
-    }
-  }
-
-  return priority;
-}
-
-static guint32
-ensure_unique_prflx_priority (NiceStream *stream, NiceComponent *component,
-    guint32 local_priority, guint32 prflx_priority)
-{
-  GSList *item;
-
-  /* First, ensure we provide the same value for pairs having
-   * the same local candidate, ie the same local candidate priority
-   * for the sake of coherency with the stun server behaviour that
-   * stores a unique priority value per remote candidate, from the
-   * first stun request it receives (it depends on the kind of NAT
-   * typically, but for NAT that preserves the binding this is required).
-   */
-  for (item = stream->conncheck_list; item; item = item->next) {
-    CandidateCheckPair *p = item->data;
-
-    if (p->component_id == component->id &&
-        p->local->priority == local_priority) {
-      return p->prflx_priority;
-    }
-  }
-
- /* Second, ensure uniqueness across all other prflx_priority values */
- again:
-  if (prflx_priority == 0)
-    prflx_priority--;
-
-  for (item = stream->conncheck_list; item; item = item->next) {
-    CandidateCheckPair *p = item->data;
-
-    if (p->component_id == component->id &&
-        p->prflx_priority == prflx_priority) {
-      prflx_priority--;
-      goto again;
-    }
-  }
-
-  return prflx_priority;
-}
-
-
 /*
  * Creates a new connectivity check pair and adds it to
  * the agent's list of checks.
@@ -2513,8 +2470,7 @@ static CandidateCheckPair *priv_add_new_check_pair (NiceAgent *agent,
           tmpbuf1, nice_address_get_port (&pair->local->addr),
           tmpbuf2, nice_address_get_port (&pair->remote->addr));
   }
-  pair->prflx_priority = ensure_unique_prflx_priority (stream, component,
-      local->priority, peer_reflexive_candidate_priority (agent, local));
+  pair->prflx_priority = stun_request_prflx_priority (agent, local);
 
   stream->conncheck_list = g_slist_insert_sorted (stream->conncheck_list, pair,
       (GCompareFunc)conn_check_compare);

@@ -645,8 +645,6 @@ HostCandidateResult discovery_add_local_host_candidate (
         agent->reliable, FALSE);
   }
 
-  candidate->priority = ensure_unique_priority (stream, component,
-      candidate->priority);
   priv_generate_candidate_credentials (agent, candidate);
   priv_assign_foundation (agent, candidate);
 
@@ -737,8 +735,6 @@ discovery_add_server_reflexive_candidate (
         agent->reliable, nat_assisted);
   }
 
-  candidate->priority = ensure_unique_priority (stream, component,
-      candidate->priority);
   priv_generate_candidate_credentials (agent, candidate);
   priv_assign_foundation (agent, candidate);
 
@@ -856,8 +852,6 @@ discovery_add_relay_candidate (
         agent->reliable, FALSE);
   }
 
-  candidate->priority = ensure_unique_priority (stream, component,
-      candidate->priority);
   priv_generate_candidate_credentials (agent, candidate);
 
   /* Google uses the turn username as the candidate username */
