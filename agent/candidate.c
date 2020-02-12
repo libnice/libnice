@@ -215,7 +215,7 @@ nice_candidate_ice_local_preference (const NiceCandidate *candidate)
         break;
       case NICE_CANDIDATE_TRANSPORT_UDP:
       default:
-        return 1;
+        direction_preference = 1;
         break;
     }
 
