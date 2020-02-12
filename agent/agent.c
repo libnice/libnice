@@ -3505,7 +3505,7 @@ static void priv_update_pair_foundations (NiceAgent *agent,
             gchar priority[NICE_CANDIDATE_PAIR_PRIORITY_MAX_SIZE];
 
             /* the foundation update of the selected pair also implies
-             * an update of its priority. prflx_priority doesn't change
+             * an update of its priority. stun_priority doesn't change
              * because only the remote candidate foundation is modified.
              */
             nice_debug ("Agent %p : pair %p is the selected pair, updating "

@@ -83,7 +83,7 @@ struct _CandidatePair
   NiceCandidate *local;
   NiceCandidate *remote;
   guint64 priority;           /* candidate pair priority */
-  guint32 prflx_priority;
+  guint32 stun_priority;
   CandidatePairKeepalive keepalive;
 };
 

@@ -503,7 +503,7 @@ nice_component_update_selected_pair (NiceAgent *agent, NiceComponent *component,
   component->selected_pair.local = pair->local;
   component->selected_pair.remote = pair->remote;
   component->selected_pair.priority = pair->priority;
-  component->selected_pair.prflx_priority = pair->prflx_priority;
+  component->selected_pair.stun_priority = pair->stun_priority;
 
   nice_component_add_valid_candidate (agent, component, pair->remote);
 }

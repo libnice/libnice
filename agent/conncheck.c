@@ -298,7 +298,7 @@ priv_print_conn_check_lists (NiceAgent *agent, const gchar *where, const gchar *
               local_addr, nice_address_get_port (&pair->local->addr),
               priv_candidate_transport_to_string (pair->remote->transport),
               remote_addr, nice_address_get_port (&pair->remote->addr),
-              priority, pair->prflx_priority,
+              priority, pair->stun_priority,
               priv_state_to_gchar (pair->state),
               pair->valid ? "V" : "",
               pair->nominated ? "N" : "",
@@ -1493,7 +1493,7 @@ static guint32 peer_reflexive_candidate_priority (NiceAgent *agent,
  * concerned too, because no STUN request is sent with a local candidate
  * of this type.
  */
-static guint32 stun_request_prflx_priority (NiceAgent *agent,
+static guint32 stun_request_priority (NiceAgent *agent,
     NiceCandidate *local_candidate)
 {
   if (local_candidate->type == NICE_CANDIDATE_TYPE_HOST)
@@ -1610,7 +1610,7 @@ static gboolean priv_conn_keepalive_tick_unlocked (NiceAgent *agent)
                 agent, tmpbuf, nice_address_get_port (&p->remote->addr),
                 component->id, (int) uname_len, uname, uname_len,
                 (int) password_len, password, password_len,
-                p->prflx_priority);
+                p->stun_priority);
           }
           if (uname_len > 0) {
             buf_len = stun_usage_ice_conncheck_create (&component->stun_agent,
@@ -1618,7 +1618,7 @@ static gboolean priv_conn_keepalive_tick_unlocked (NiceAgent *agent)
                 sizeof(p->keepalive.stun_buffer),
                 uname, uname_len, password, password_len,
                 agent->controlling_mode, agent->controlling_mode,
-                p->prflx_priority,
+                p->stun_priority,
                 agent->tie_breaker,
                 NULL,
                 agent_to_ice_compatibility (agent));
@@ -2223,7 +2223,7 @@ conn_check_update_selected_pair (NiceAgent *agent, NiceComponent *component,
     cpair.local = pair->local;
     cpair.remote = pair->remote;
     cpair.priority = pair->priority;
-    cpair.prflx_priority = pair->prflx_priority;
+    cpair.stun_priority = pair->stun_priority;
 
     nice_component_update_selected_pair (agent, component, &cpair);
 
@@ -2470,7 +2470,7 @@ static CandidateCheckPair *priv_add_new_check_pair (NiceAgent *agent,
           tmpbuf1, nice_address_get_port (&pair->local->addr),
           tmpbuf2, nice_address_get_port (&pair->remote->addr));
   }
-  pair->prflx_priority = stun_request_prflx_priority (agent, local);
+  pair->stun_priority = stun_request_priority (agent, local);
 
   stream->conncheck_list = g_slist_insert_sorted (stream->conncheck_list, pair,
       (GCompareFunc)conn_check_compare);
@@ -2991,7 +2991,7 @@ int conn_check_send (NiceAgent *agent, CandidateCheckPair *pair)
 	     (unsigned long long)agent->tie_breaker,
         (int) uname_len, uname, uname_len,
         (int) password_len, password, password_len,
-        pair->prflx_priority,
+        pair->stun_priority,
         controlling ? "controlling" : "controlled");
   }
 
@@ -3032,7 +3032,7 @@ int conn_check_send (NiceAgent *agent, CandidateCheckPair *pair)
   buffer_len = stun_usage_ice_conncheck_create (&component->stun_agent,
       &stun->message, stun->buffer, sizeof(stun->buffer),
       uname, uname_len, password, password_len,
-      cand_use, controlling, pair->prflx_priority,
+      cand_use, controlling, pair->stun_priority,
       agent->tie_breaker,
       pair->local->foundation,
       agent_to_ice_compatibility (agent));
@@ -3419,9 +3419,9 @@ static CandidateCheckPair *priv_add_peer_reflexive_pair (NiceAgent *agent, guint
    * the parent succeeded pair. This value is not required for discovered
    * pair, that won't emit stun requests themselves, but may be used when
    * such pair becomes the selected pair, and when keepalive stun are emitted,
-   * using the sockptr and prflx_priority values from the succeeded pair.
+   * using the sockptr and stun_priority values from the succeeded pair.
    */
-  pair->prflx_priority = parent_pair->prflx_priority;
+  pair->stun_priority = parent_pair->stun_priority;
   nice_debug ("Agent %p : added a new peer-discovered pair %p with "
       "foundation '%s' and transport %s:%s to stream %u component %u",
       agent, pair, pair->foundation,
@@ -3551,7 +3551,7 @@ static CandidateCheckPair *priv_process_response_check_for_reflexive(NiceAgent *
         local_cand = discovery_add_peer_reflexive_candidate (agent,
                                                              stream->id,
                                                              component->id,
-                                                             p->prflx_priority,
+                                                             p->stun_priority,
                                                             &mapped,
                                                              sockptr,
                                                              local_candidate,

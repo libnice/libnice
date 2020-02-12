@@ -98,7 +98,7 @@ struct _CandidateCheckPair
   CandidateCheckPair *discovered_pair;
   CandidateCheckPair *succeeded_pair;
   guint64 priority;
-  guint32 prflx_priority;
+  guint32 stun_priority;
   GSList *stun_transactions; /* a list of ongoing stun requests */
 };
 
