@@ -40,25 +40,36 @@
 
 #include "agent.h"
 #include "agent-priv.h"
+#include "interfaces.h"
 
 
 int
 main (void)
 {
   NiceCandidate *candidate;
+  GList *ips, *i;
+  guint16 ip_local_preference = 0;
 
   candidate = nice_candidate_new (NICE_CANDIDATE_TYPE_HOST);
   nice_address_set_from_string (&candidate->addr, "127.0.0.1");
   nice_address_set_from_string (&candidate->base_addr, "127.0.0.1");
+
+  ips = nice_interfaces_get_local_ips (TRUE);
+  for (i = ips; i; i = i->next) {
+    if (g_strcmp0 (i->data, "127.0.0.1") == 0)
+      break;
+    ip_local_preference++;
+  }
+  g_list_free_full (ips, g_free);
 
   /* test 1 */
   g_assert_cmpuint (nice_candidate_jingle_priority (candidate), ==, 1000);
   /* Host UDP */
   candidate->transport = NICE_CANDIDATE_TRANSPORT_UDP;
   candidate->component_id = 1;
-  g_assert_cmpuint (nice_candidate_ice_priority (candidate, FALSE, FALSE), ==, 0x780001FF);
+  g_assert_cmpuint (nice_candidate_ice_priority (candidate, FALSE, FALSE) , ==, 0x782000FF + 0x100 * ip_local_preference );
   /* Host UDP reliable */
-  g_assert_cmpuint (nice_candidate_ice_priority (candidate, TRUE, FALSE), ==, 0x3C0001FF);
+  g_assert_cmpuint (nice_candidate_ice_priority (candidate, TRUE, FALSE) , ==, 0x3C2000FF + 0x100 * ip_local_preference );
   /* Host tcp-active unreliable */
   candidate->transport = NICE_CANDIDATE_TRANSPORT_TCP_ACTIVE;
   g_assert_cmpuint (nice_candidate_ice_priority (candidate, FALSE, FALSE) & 0xFFE000FF, ==, 0x3C8000FF);
