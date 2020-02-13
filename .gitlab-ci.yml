@@ -215,6 +215,7 @@ submit-to-coverity:
    PREFIX: "${CI_PROJECT_DIR}/libnice-prefix"
  only:
   - schedules
+  - web
  dependencies: []
  before_script:
   - mkdir -p "${CI_PROJECT_DIR}"
