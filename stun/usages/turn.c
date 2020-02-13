@@ -96,7 +96,9 @@ size_t stun_usage_turn_create (StunAgent *agent, StunMessage *msg,
   }
 
   if (compatibility == STUN_USAGE_TURN_COMPATIBILITY_OC2007) {
-    stun_message_append32(msg, STUN_ATTRIBUTE_MS_VERSION, 1);
+    if (stun_message_append32(msg, STUN_ATTRIBUTE_MS_VERSION, 1) !=
+            STUN_MESSAGE_RETURN_SUCCESS)
+          return 0;
   }
 
   if (lifetime >= 0) {
