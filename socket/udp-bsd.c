@@ -136,7 +136,7 @@ nice_udp_bsd_socket_new (NiceAddress *addr)
 
   gaddr = g_socket_get_local_address (gsock, NULL);
   if (gaddr == NULL ||
-      !g_socket_address_to_native (gaddr, &name.addr, sizeof(name), NULL)) {
+      !g_socket_address_to_native (gaddr, &name, sizeof(name), NULL)) {
     g_slice_free (NiceSocket, sock);
     g_socket_close (gsock, NULL);
     g_object_unref (gsock);
@@ -228,7 +228,7 @@ socket_recv_messages (NiceSocket *sock,
         struct sockaddr addr;
       } sa;
 
-      g_socket_address_to_native (gaddr, &sa.addr, sizeof (sa), NULL);
+      g_socket_address_to_native (gaddr, &sa, sizeof (sa), NULL);
       nice_address_set_from_sockaddr (recv_message->from, &sa.addr);
     }
 
@@ -303,12 +303,12 @@ socket_send_message (NiceSocket *sock, const NiceAddress *to,
       char remote_addr_str[INET6_ADDRSTRLEN];
       char local_addr_str[INET6_ADDRSTRLEN];
 
-      g_socket_address_to_native (gaddr, &sa.sa, sizeof (sa), NULL);
+      g_socket_address_to_native (gaddr, &sa, sizeof (sa), NULL);
       nice_address_set_from_sockaddr (&remote_addr, &sa.sa);
       nice_address_to_string (&remote_addr, remote_addr_str);
 
       gsocket = g_socket_get_local_address (sock->fileno, NULL);
-      g_socket_address_to_native (gsocket, &sa.sa, sizeof (sa), NULL);
+      g_socket_address_to_native (gsocket, &sa, sizeof (sa), NULL);
       nice_address_set_from_sockaddr (&local_addr, &sa.sa);
       nice_address_to_string (&local_addr, local_addr_str);
       g_object_unref (gsocket);
