@@ -1879,7 +1879,7 @@ priv_match_remote_candidate_transport_and_socket_type (NiceAgent *agent,
   g_assert (socket);
   g_assert (candidate);
 
-  /* Detect some obvious incompatibilites.
+  /* Detect some obvious incompatibilities.
    *
    * In rare situations, tcp and udp candidate may have the same
    * couple (address, port), they must be identified by their
