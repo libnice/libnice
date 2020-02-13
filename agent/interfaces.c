@@ -216,19 +216,19 @@ nice_interfaces_is_private_ip (const struct sockaddr *_sa)
 
   if (sa.addr->sa_family == AF_INET) {
     /* 10.x.x.x/8 */
-    if (sa.in->sin_addr.s_addr >> 24 == 0x0A)
+    if (g_ntohl (sa.in->sin_addr.s_addr) >> 24 == 0x0A)
       return TRUE;
 
     /* 172.16.0.0 - 172.31.255.255 = 172.16.0.0/10 */
-    if (sa.in->sin_addr.s_addr >> 20 == 0xAC1)
+    if (g_ntohl (sa.in->sin_addr.s_addr) >> 20 == 0xAC1)
       return TRUE;
 
     /* 192.168.x.x/16 */
-    if (sa.in->sin_addr.s_addr >> 16 == 0xC0A8)
+    if (g_ntohl (sa.in->sin_addr.s_addr) >> 16 == 0xC0A8)
       return TRUE;
 
     /* 169.254.x.x/16  (for APIPA) */
-    if (sa.in->sin_addr.s_addr >> 16 == 0xA9FE)
+    if (g_ntohl (sa.in->sin_addr.s_addr) >> 16 == 0xA9FE)
       return TRUE;
   } else if (sa.addr->sa_family == AF_INET6) {
     /* fc00::/7 Unique local address (ULA) */
