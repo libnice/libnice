@@ -4775,7 +4775,7 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, NiceStream *stream,
   }
 
   /* RENOMINATION attribute support */
-  conn_check_handle_renomination(agent, stream, component, &req, local_candidate, remote_candidate);
+  conn_check_handle_renomination(agent, stream, component, &req, remote_candidate, local_candidate);
 
   return TRUE;
 }
