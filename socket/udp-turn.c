@@ -889,16 +889,22 @@ socket_send_message (NiceSocket *sock, const NiceAddress *to,
       if (priv->compatibility == NICE_TURN_SOCKET_COMPATIBILITY_GOOGLE &&
           priv->current_binding &&
           nice_address_equal (&priv->current_binding->peer, to)) {
-        stun_message_append32 (&msg, STUN_ATTRIBUTE_OPTIONS, 1);
+        if (stun_message_append32 (&msg, STUN_ATTRIBUTE_OPTIONS, 1) !=
+            STUN_MESSAGE_RETURN_SUCCESS)
+          goto error;
       }
     }
 
     if (priv->compatibility == NICE_TURN_SOCKET_COMPATIBILITY_OC2007) {
-      stun_message_append32(&msg, STUN_ATTRIBUTE_MS_VERSION, 1);
+      if(stun_message_append32(&msg, STUN_ATTRIBUTE_MS_VERSION, 1) !=
+            STUN_MESSAGE_RETURN_SUCCESS)
+          goto error;
 
       if (priv->ms_connection_id_valid)
-        stun_message_append_ms_connection_id(&msg, priv->ms_connection_id,
-            ++priv->ms_sequence_num);
+        if (stun_message_append_ms_connection_id(&msg, priv->ms_connection_id,
+            ++priv->ms_sequence_num) !=
+            STUN_MESSAGE_RETURN_SUCCESS)
+          goto error;
 
       stun_message_ensure_ms_realm(&msg, priv->ms_realm);
     }
