@@ -103,6 +103,8 @@ finish_check (StunAgent *agent, StunMessage *msg)
   size_t len;
   uint16_t plen;
   StunMessage msg2 = {0};
+  StunMessageReturn val;
+
   msg2.agent = msg->agent;
   msg2.buffer = buf;
   msg2.buffer_len = sizeof(buf);
@@ -117,7 +119,8 @@ finish_check (StunAgent *agent, StunMessage *msg)
   if (stun_message_find (&msg2, STUN_ATTRIBUTE_MESSAGE_INTEGRITY, &plen) != NULL)
     fatal ("Missing HMAC test failed");
 
-  stun_message_append_string (&msg2, STUN_ATTRIBUTE_USERNAME, (char *) usr);
+  val = stun_message_append_string (&msg2, STUN_ATTRIBUTE_USERNAME, (char *) usr);
+  assert (val == STUN_MESSAGE_RETURN_SUCCESS);
 
   len = stun_agent_finish_message (agent, &msg2, pwd, strlen ((char *) pwd));
 
