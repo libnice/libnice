@@ -171,9 +171,12 @@ nice_candidate_ip_local_preference (const NiceCandidate *candidate)
   ips = nice_interfaces_get_local_ips (TRUE);
 
   for (iter = ips; iter; iter = g_list_next (iter)) {
-    if (g_strcmp0 (ip_string, iter->data) == 0) {
+    /* Strip the IPv6 link-local scope string */
+    gchar **tokens = g_strsplit (iter->data, "%", 2);
+    gboolean match = (g_strcmp0 (ip_string, tokens[0]) == 0);
+    g_strfreev (tokens);
+    if (match)
       break;
-    }
     ++preference;
   }
 
