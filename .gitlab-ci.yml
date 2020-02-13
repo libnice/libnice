@@ -241,7 +241,8 @@ documentation:
     paths:
       - public
     expire_in: 1 year
-  trigger: libnice/libnice-website
+#  Needs gitlab 12.8, we're on 12.7 now
+#  trigger: libnice/libnice-
   script:
     - mkdir public/
     - mv build/docs/reference/libnice/html/ public/libnice/
