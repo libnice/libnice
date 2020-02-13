@@ -3560,6 +3560,15 @@ static gboolean priv_map_reply_to_conn_check_request (NiceAgent *agent, NiceStre
 	  return TRUE;
 	}
 
+        if (remote_candidate == NULL) {
+          candidate_check_pair_fail (stream, agent, p);
+          if (nice_debug_is_enabled ()) {
+            nice_debug ("Agent %p : pair %p FAILED "
+                "(got a matching pair without a known remote candidate).", agent, p);
+          }
+          return TRUE;
+        }
+
 	/* note: CONNECTED but not yet READY, see docs */
 
 	/* step: handle the possible case of a peer-reflexive
