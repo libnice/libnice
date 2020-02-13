@@ -81,6 +81,23 @@ G_BEGIN_DECLS
  */
 #define NICE_CANDIDATE_MAX_FOUNDATION                (32+1)
 
+/**
+ * NICE_CANDIDATE_MAX_TURN_SERVERS
+ *
+ * The maximum number of turns servers.
+ */
+#define NICE_CANDIDATE_MAX_TURN_SERVERS              7
+
+/**
+ * NICE_CANDIDATE_MAX_LOCAL_ADDRESSES
+ *
+ * The maximum number of local addresses. The constraint is that the
+ * maximum number of local addresses and number of turn servers must
+ * fit on 9 bits, to ensure candidate priority uniqueness. See also
+ * @NICE_CANDIDATE_MAX_TURN_SERVERS. We choose 6 bits for the number of
+ * local addresses, and 3 bits for the number of turn servers.
+ */
+#define NICE_CANDIDATE_MAX_LOCAL_ADDRESSES           63
 
 /**
  * NiceCandidateType:
@@ -146,6 +163,7 @@ typedef struct _TurnServer TurnServer;
  * @decoded_username_len: The length of @decoded_username
  * @decoded_password_len: The length of @decoded_password
  * @type: The #NiceRelayType of the server
+ * @preference: A unique identifier used to compute priority
  *
  * A structure to store the TURN relay settings
  */
@@ -161,6 +179,7 @@ struct _TurnServer
   gsize decoded_username_len;
   gsize decoded_password_len;
   NiceRelayType type;
+  guint preference;
 };
 
 /**

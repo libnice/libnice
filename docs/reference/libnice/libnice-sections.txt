@@ -91,6 +91,8 @@ NiceCandidateTransport
 TurnServer
 NiceRelayType
 NICE_CANDIDATE_MAX_FOUNDATION
+NICE_CANDIDATE_MAX_TURN_SERVERS
+NICE_CANDIDATE_MAX_LOCAL_ADDRESSES
 nice_candidate_new
 nice_candidate_free
 nice_candidate_copy

@@ -2820,6 +2820,7 @@ nice_agent_set_relay_info(NiceAgent *agent,
   NiceStream *stream = NULL;
   gboolean ret = TRUE;
   TurnServer *turn;
+  guint length;
 
   g_return_val_if_fail (NICE_IS_AGENT (agent), FALSE);
   g_return_val_if_fail (stream_id >= 1, FALSE);
@@ -2838,6 +2839,14 @@ nice_agent_set_relay_info(NiceAgent *agent,
     goto done;
   }
 
+  length = g_list_length (component->turn_servers);
+  if (length == NICE_CANDIDATE_MAX_TURN_SERVERS) {
+    nice_debug ("Agent %p : cannot have more than %d turn servers.",
+        agent, length);
+    ret = FALSE;
+    goto done;
+  }
+
   turn = turn_server_new (server_ip, server_port, username, password, type);
 
   if (!turn) {
@@ -2850,6 +2859,11 @@ nice_agent_set_relay_info(NiceAgent *agent,
       stream_id, component_id, username,
       nice_debug_is_verbose() ? password : "****");
 
+  /* The turn server preference (used to setup its priority in the
+   * conncheck) is simply its position in the list. The preference must
+   * be unique for each one.
+   */
+  turn->preference = length;
   component->turn_servers = g_list_append (component->turn_servers, turn);
 
  if (stream->gathering_started) {
@@ -3034,6 +3048,7 @@ nice_agent_gather_candidates (
   NiceStream *stream;
   GSList *local_addresses = NULL;
   gboolean ret = TRUE;
+  guint length;
 
   g_return_val_if_fail (NICE_IS_AGENT (agent), FALSE);
   g_return_val_if_fail (stream_id >= 1, FALSE);
@@ -3101,6 +3116,12 @@ nice_agent_gather_candidates (
     }
   }
 
+  length = g_slist_length (local_addresses);
+  if (length > NICE_CANDIDATE_MAX_LOCAL_ADDRESSES) {
+    nice_debug ("Agent %p : cannot have more than %d local addresses.",
+        agent, length);
+  }
+
   for (cid = 1; cid <= stream->n_components; cid++) {
     NiceComponent *component = nice_stream_find_component_by_id (stream, cid);
     gboolean found_local_address = FALSE;
@@ -3116,7 +3137,10 @@ nice_agent_gather_candidates (
       continue;
 
     /* generate a local host candidate for each local address */
-    for (i = local_addresses; i; i = i->next) {
+    length = 0;
+    for (i = local_addresses;
+        i && length <= NICE_CANDIDATE_MAX_LOCAL_ADDRESSES;
+        i = i->next, length++) {
       NiceAddress *addr = i->data;
       NiceCandidate *host_candidate;
 

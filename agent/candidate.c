@@ -137,18 +137,29 @@ nice_candidate_ice_priority_full (
       (0x100 - component_id));
 }
 
-static guint32
+static guint16
 nice_candidate_ice_local_preference_full (guint direction_preference,
-    guint other_preference)
+    guint turn_preference, guint other_preference)
 {
-  return (0x2000 * direction_preference +
-      other_preference);
+  /*
+   * bits  0- 5: other_preference (ip local preference)
+   *       6- 8: turn_preference
+   *       9-12: <unused>
+   *      13-15: direction_preference
+   */
+  g_assert (other_preference <= NICE_CANDIDATE_MAX_LOCAL_ADDRESSES);
+  g_assert (turn_preference <= NICE_CANDIDATE_MAX_TURN_SERVERS);
+  g_assert (direction_preference < 8);
+
+  return (direction_preference << 13) +
+      (turn_preference << 6) +
+      other_preference;
 }
 
-static guint8
+static guint
 nice_candidate_ip_local_preference (const NiceCandidate *candidate)
 {
-  guint8 preference = 0;
+  guint preference = 0;
   gchar ip_string[INET6_ADDRSTRLEN];
   GList/*<owned gchar*>*/ *ips = NULL;
   GList/*<unowned gchar*>*/ *iter;
@@ -188,7 +199,8 @@ nice_candidate_ip_local_preference (const NiceCandidate *candidate)
 static guint16
 nice_candidate_ice_local_preference (const NiceCandidate *candidate)
 {
-  guint direction_preference;
+  guint direction_preference = 0;
+  guint turn_preference = 0;
 
   switch (candidate->transport)
     {
@@ -219,24 +231,45 @@ nice_candidate_ice_local_preference (const NiceCandidate *candidate)
         break;
     }
 
+  /* Relay candidates are assigned a unique local preference at
+   * creation time.
+   */
+  if (candidate->type == NICE_CANDIDATE_TYPE_RELAYED) {
+    g_assert (candidate->turn);
+    turn_preference = candidate->turn->preference;
+  }
+
   return nice_candidate_ice_local_preference_full (direction_preference,
-      nice_candidate_ip_local_preference (candidate));
+      turn_preference, nice_candidate_ip_local_preference (candidate));
 }
 
-static guint32
+static guint16
 nice_candidate_ms_ice_local_preference_full (guint transport_preference,
-    guint direction_preference, guint other_preference)
+    guint direction_preference, guint turn_preference, guint other_preference)
 {
-  return 0x1000 * transport_preference +
-      0x200 * direction_preference +
-      0x1 * other_preference;
+  /*
+   * bits 0- 5: other_preference (ip local preference)
+   *      6- 8: turn_preference
+   *      9-11: direction_preference
+   *     12-15: transport_preference
+   */
+  g_assert (other_preference <= NICE_CANDIDATE_MAX_LOCAL_ADDRESSES);
+  g_assert (turn_preference <= NICE_CANDIDATE_MAX_TURN_SERVERS);
+  g_assert (direction_preference < 8);
+  g_assert (transport_preference < 16);
+
+  return (transport_preference << 12) +
+      (direction_preference << 9) +
+      (turn_preference << 6) +
+      other_preference;
 }
 
 static guint32
 nice_candidate_ms_ice_local_preference (const NiceCandidate *candidate)
 {
-  guint8 transport_preference = 0;
-  guint8 direction_preference = 0;
+  guint transport_preference = 0;
+  guint direction_preference = 0;
+  guint turn_preference = 0;
 
   switch (candidate->transport)
     {
@@ -255,8 +288,17 @@ nice_candidate_ms_ice_local_preference (const NiceCandidate *candidate)
       break;
     }
 
+  /* Relay candidates are assigned a unique local preference at
+   * creation time.
+   */
+  if (candidate->type == NICE_CANDIDATE_TYPE_RELAYED) {
+    g_assert (candidate->turn);
+    turn_preference = candidate->turn->preference;
+  }
+
   return nice_candidate_ms_ice_local_preference_full(transport_preference,
-      direction_preference, nice_candidate_ip_local_preference (candidate));
+      direction_preference, turn_preference,
+      nice_candidate_ip_local_preference (candidate));
 }
 
 static guint8

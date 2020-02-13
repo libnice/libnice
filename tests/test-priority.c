@@ -41,6 +41,7 @@
 #include "agent.h"
 #include "agent-priv.h"
 #include "interfaces.h"
+#include "candidate.h"
 
 
 int
@@ -61,6 +62,9 @@ main (void)
     ip_local_preference++;
   }
   g_list_free_full (ips, g_free);
+
+  /* test 0 */
+  g_assert (ip_local_preference <= NICE_CANDIDATE_MAX_LOCAL_ADDRESSES);
 
   /* test 1 */
   g_assert_cmpuint (nice_candidate_jingle_priority (candidate), ==, 1000);
