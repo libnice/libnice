@@ -3454,7 +3454,9 @@ static CandidateCheckPair *priv_process_response_check_for_reflexive(NiceAgent *
 
   for (j = component->local_candidates; j; j = j->next) {
     NiceCandidate *cand = j->data;
-    if (nice_address_equal (&mapped, &cand->addr)) {
+    if (nice_address_equal (&mapped, &cand->addr) &&
+      conn_check_match_transport (remote_candidate->transport) ==
+      cand->transport) {
       local_cand = cand;
 
       /* The mapped address allows to look for a previously discovered
