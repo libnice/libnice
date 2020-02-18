@@ -1087,6 +1087,7 @@ static gboolean priv_discovery_tick_unlocked (NiceAgent *agent)
   CandidateDiscovery *cand;
   GSList *i;
   int not_done = 0; /* note: track whether to continue timer */
+  int need_pacing = 0;
   size_t buffer_len = 0;
 
   {
@@ -1166,6 +1167,7 @@ static gboolean priv_discovery_tick_unlocked (NiceAgent *agent)
           }
 
           cand->next_tick = g_get_monotonic_time ();
+          ++need_pacing;
         } else {
           /* case: error in starting discovery, start the next discovery */
           nice_debug ("Agent %p : Error starting discovery, skipping the item.",
@@ -1182,6 +1184,9 @@ static gboolean priv_discovery_tick_unlocked (NiceAgent *agent)
 
       ++not_done; /* note: new discovery scheduled */
     }
+
+    if (need_pacing)
+      break;
 
     if (cand->done != TRUE) {
       gint64 now = g_get_monotonic_time ();
@@ -1224,6 +1229,7 @@ static gboolean priv_discovery_tick_unlocked (NiceAgent *agent)
               cand->next_tick = now + (timeout * 1000);
 
               ++not_done; /* note: retry later */
+              ++need_pacing;
               break;
             }
           case STUN_USAGE_TIMER_RETURN_SUCCESS:
@@ -1244,6 +1250,9 @@ static gboolean priv_discovery_tick_unlocked (NiceAgent *agent)
 	++not_done; /* note: discovery not expired yet */
       }
     }
+
+    if (need_pacing)
+      break;
   }
 
   if (not_done == 0) {
