@@ -180,6 +180,7 @@ struct _TurnServer
  * @turn: The #TurnServer settings if the candidate is
  * of type %NICE_CANDIDATE_TYPE_RELAYED
  * @sockptr: The underlying socket
+ * @keepalive_next_tick: The timestamp for the next keepalive
  *
  * A structure to represent an ICE candidate
  <note>
@@ -205,6 +206,7 @@ struct _NiceCandidate
   gchar *password;        /* pointer to a nul-terminated password string */
   TurnServer *turn;
   gpointer sockptr;
+  guint64 keepalive_next_tick; /* next tick timestamp */
 };
 
 /**

@@ -77,6 +77,8 @@ static void candidate_check_pair_free (NiceAgent *agent,
 static CandidateCheckPair *priv_conn_check_add_for_candidate_pair_matched (
     NiceAgent *agent, guint stream_id, NiceComponent *component,
     NiceCandidate *local, NiceCandidate *remote, NiceCheckState initial_state);
+static gboolean priv_conn_keepalive_tick_agent_locked (NiceAgent *agent,
+    gpointer pointer);
 
 static gint64 priv_timer_remainder (gint64 timer, gint64 now)
 {
@@ -1528,11 +1530,19 @@ static gboolean priv_conn_keepalive_tick_unlocked (NiceAgent *agent)
 {
   GSList *i, *j, *k;
   int errors = 0;
-  gboolean ret = FALSE;
   size_t buf_len = 0;
+  guint64 now;
+  guint64 min_next_tick;
+  guint64 next_timer_tick;
+
+  now = g_get_monotonic_time ();
+  min_next_tick = now + 1000 * NICE_AGENT_TIMER_TR_DEFAULT;
 
   /* case 1: session established and media flowing
-   *         (ref ICE sect 10 "Keepalives" ID-19)  */
+   *         (ref ICE sect 11 "Keepalives" RFC-8445)
+   * TODO: keepalives should be send only when no packet has been sent
+   * on that pair in the last Tr seconds, and not unconditionally.
+   */
   for (i = agent->streams; i; i = i->next) {
 
     NiceStream *stream = i->data;
@@ -1545,6 +1555,13 @@ static gboolean priv_conn_keepalive_tick_unlocked (NiceAgent *agent)
         if (p->local->transport != NICE_CANDIDATE_TRANSPORT_UDP &&
             !agent->keepalive_conncheck)
           continue;
+
+        if (p->keepalive.next_tick) {
+          if (p->keepalive.next_tick < min_next_tick)
+            min_next_tick = p->keepalive.next_tick;
+          if (now < p->keepalive.next_tick)
+            continue;
+        }
 
         if (agent->compatibility == NICE_COMPATIBILITY_GOOGLE ||
             agent->keepalive_conncheck) {
@@ -1602,11 +1619,15 @@ static gboolean priv_conn_keepalive_tick_unlocked (NiceAgent *agent)
 
               p->keepalive.stream_id = stream->id;
               p->keepalive.component_id = component->id;
+              p->keepalive.next_tick = now + 1000 * NICE_AGENT_TIMER_TR_DEFAULT;
 
               agent_timeout_add_with_context (agent,
                   &p->keepalive.tick_source, "Pair keepalive",
                   stun_timer_remainder (&p->keepalive.timer),
                   priv_conn_keepalive_retransmissions_tick_agent_locked, p);
+
+              next_timer_tick = now + agent->timer_ta * 1000;
+              goto done;
             } else {
               ++errors;
             }
@@ -1620,6 +1641,8 @@ static gboolean priv_conn_keepalive_tick_unlocked (NiceAgent *agent)
             agent_socket_send (p->local->sockptr, &p->remote->addr, buf_len,
                 (gchar *)p->keepalive.stun_buffer);
 
+            p->keepalive.next_tick = now + 1000 * NICE_AGENT_TIMER_TR_DEFAULT;
+
             if (agent->compatibility == NICE_COMPATIBILITY_OC2007R2) {
               ms_ice2_legacy_conncheck_send (&p->keepalive.stun_message,
                   p->local->sockptr, &p->remote->addr);
@@ -1627,12 +1650,15 @@ static gboolean priv_conn_keepalive_tick_unlocked (NiceAgent *agent)
 
             if (nice_debug_is_enabled ()) {
               gchar tmpbuf[INET6_ADDRSTRLEN];
-              nice_address_to_string (&p->remote->addr, tmpbuf);
-              nice_debug ("Agent %p : stun_bind_keepalive to %s:%u "
-                "in s%d/c%d.", agent,
-                tmpbuf, nice_address_get_port (&p->remote->addr),
-                stream->id, component->id);
+              nice_address_to_string (&p->local->base_addr, tmpbuf);
+              nice_debug ("Agent %p : resending STUN to keep the "
+                  "selected base address %s:%u alive in s%d/c%d.", agent,
+                  tmpbuf, nice_address_get_port (&p->local->base_addr),
+                  stream->id, component->id);
             }
+
+            next_timer_tick = now + agent->timer_ta * 1000;
+            goto done;
           } else {
             ++errors;
           }
@@ -1642,7 +1668,8 @@ static gboolean priv_conn_keepalive_tick_unlocked (NiceAgent *agent)
   }
 
   /* case 2: connectivity establishment ongoing
-   *         (ref ICE sect 4.1.1.4 "Keeping Candidates Alive" ID-19)  */
+   *         (ref ICE sect 5.1.1.4 "Keeping Candidates Alive" RFC-8445)
+   */
   for (i = agent->streams; i; i = i->next) {
     NiceStream *stream = i->data;
     for (j = stream->components; j; j = j->next) {
@@ -1669,6 +1696,14 @@ static gboolean priv_conn_keepalive_tick_unlocked (NiceAgent *agent)
                 candidate->transport == NICE_CANDIDATE_TRANSPORT_UDP &&
                 nice_address_ip_version (&candidate->addr) ==
                 nice_address_ip_version (&stun_server)) {
+
+              if (candidate->keepalive_next_tick) {
+                if (candidate->keepalive_next_tick < min_next_tick)
+                  min_next_tick = candidate->keepalive_next_tick;
+                if (now < candidate->keepalive_next_tick)
+                continue;
+              }
+
               /* send the conncheck */
               if (nice_debug_is_enabled ()) {
                 gchar tmpbuf[INET6_ADDRSTRLEN];
@@ -1680,6 +1715,10 @@ static gboolean priv_conn_keepalive_tick_unlocked (NiceAgent *agent)
               }
               agent_socket_send (candidate->sockptr, &stun_server,
                   buffer_len, (gchar *)stun_buffer);
+              candidate->keepalive_next_tick = now +
+                  1000 * NICE_AGENT_TIMER_TR_DEFAULT;
+              next_timer_tick = now + agent->timer_ta * 1000;
+              goto done;
             }
           }
         }
@@ -1687,15 +1726,23 @@ static gboolean priv_conn_keepalive_tick_unlocked (NiceAgent *agent)
     }
   }
 
+  next_timer_tick = min_next_tick;
+
+  done:
   if (errors) {
     nice_debug ("Agent %p : %s: stopping keepalive timer", agent, G_STRFUNC);
-    goto done;
+    return FALSE;
   }
 
-  ret = TRUE;
-
- done:
-  return ret;
+  if (agent->keepalive_timer_source) {
+    g_source_destroy (agent->keepalive_timer_source);
+    g_source_unref (agent->keepalive_timer_source);
+    agent->keepalive_timer_source = NULL;
+  }
+  agent_timeout_add_with_context (agent, &agent->keepalive_timer_source,
+      "Connectivity keepalive timeout", (next_timer_tick - now)/ 1000,
+      priv_conn_keepalive_tick_agent_locked, NULL);
+  return TRUE;
 }
 
 static gboolean priv_conn_keepalive_tick_agent_locked (NiceAgent *agent,
@@ -1852,7 +1899,7 @@ void conn_check_schedule_next (NiceAgent *agent)
   /* step: also start the keepalive timer */
   if (agent->keepalive_timer_source == NULL) {
     agent_timeout_add_with_context (agent, &agent->keepalive_timer_source,
-        "Connectivity keepalive timeout", NICE_AGENT_TIMER_TR_DEFAULT,
+        "Connectivity keepalive timeout", agent->timer_ta,
         priv_conn_keepalive_tick_agent_locked, NULL);
   }
 }

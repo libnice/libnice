@@ -69,6 +69,7 @@ typedef struct _IncomingCheck IncomingCheck;
 
 struct _CandidatePairKeepalive
 {
+  guint64 next_tick;    /* next tick timestamp */
   GSource *tick_source;
   guint stream_id;
   guint component_id;
