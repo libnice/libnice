@@ -210,23 +210,17 @@ static gboolean on_refresh_remove_timeout (NiceAgent *agent,
  * sending a refresh request that has zero lifetime. After a response is
  * received or the request times out, 'cand' gets freed and 'cb' is called.
  */
-static gboolean refresh_remove_async (NiceAgent *agent, CandidateRefresh *cand,
-    GDestroyNotify cb, gpointer cb_data)
+static gboolean refresh_remove_async (NiceAgent *agent, gpointer pointer)
 {
   uint8_t *username;
   gsize username_len;
   uint8_t *password;
   gsize password_len;
   size_t buffer_len = 0;
+  CandidateRefresh *cand = (CandidateRefresh *) pointer;
   StunUsageTurnCompatibility turn_compat = agent_to_turn_compatibility (agent);
 
-  if (cand->disposing) {
-    return FALSE;
-  }
-
   nice_debug ("Sending request to remove TURN allocation for refresh %p", cand);
-
-  cand->disposing = TRUE;
 
   if (cand->timer_source != NULL) {
     g_source_destroy (cand->timer_source);
@@ -265,11 +259,7 @@ static gboolean refresh_remove_async (NiceAgent *agent, CandidateRefresh *cand,
         "TURN deallocate retransmission", stun_timer_remainder (&cand->timer),
         (NiceTimeoutLockedCallback) on_refresh_remove_timeout, cand);
   }
-
-  cand->destroy_cb = cb;
-  cand->destroy_cb_data = cb_data;
-
-  return TRUE;
+  return G_SOURCE_REMOVE;
 }
 
 typedef struct {
@@ -296,16 +286,30 @@ static void refresh_prune_async (NiceAgent *agent, GSList *refreshes,
 {
   RefreshPruneAsyncData *data = g_new0 (RefreshPruneAsyncData, 1);
   GSList *it;
+  guint timeout = 0;
 
   data->agent = agent;
   data->user_data = user_data;
   data->cb = function;
 
   for (it = refreshes; it; it = it->next) {
-    if (refresh_remove_async (agent, it->data,
-        (GDestroyNotify) on_refresh_removed, data)) {
-      ++data->items_to_free;
-    }
+    CandidateRefresh *cand = it->data;
+    GSource *timeout_source = NULL;
+
+    if (cand->disposing)
+      continue;
+
+    timeout += agent->timer_ta;
+    cand->disposing = TRUE;
+    cand->destroy_cb = (GDestroyNotify) on_refresh_removed;
+    cand->destroy_cb_data = data;
+
+    agent_timeout_add_with_context( agent, &timeout_source,
+        "TURN refresh remove async", timeout,
+        refresh_remove_async, cand);
+
+    g_source_unref (timeout_source);
+    ++data->items_to_free;
   }
 
   if (data->items_to_free == 0) {
