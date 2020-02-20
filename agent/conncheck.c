@@ -1923,6 +1923,7 @@ priv_match_remote_candidate_transport_and_socket_type (NiceAgent *agent,
     NiceCandidate *candidate, NiceSocket *socket)
 {
   gboolean ret = TRUE;
+  gboolean reliable = nice_socket_is_reliable (socket);
   g_assert (socket);
   g_assert (candidate);
 
@@ -1932,15 +1933,14 @@ priv_match_remote_candidate_transport_and_socket_type (NiceAgent *agent,
    * couple (address, port), they must be identified by their
    * matching transport.
    */
-  if (socket->type == NICE_SOCKET_TYPE_UDP_BSD &&
-      candidate->transport == NICE_CANDIDATE_TRANSPORT_TCP_ACTIVE)
+  if (!reliable && candidate->transport == NICE_CANDIDATE_TRANSPORT_TCP_ACTIVE)
     ret = FALSE;
-  if (socket->type == NICE_SOCKET_TYPE_TCP_BSD &&
-      candidate->transport == NICE_CANDIDATE_TRANSPORT_UDP)
+  if (reliable && candidate->transport == NICE_CANDIDATE_TRANSPORT_UDP)
     ret = FALSE;
 
-  nice_debug_verbose ("Agent %p : socket/candidate compat: %s and %s: %s",
+  nice_debug_verbose ("Agent %p : socket/candidate compat: %s (%s) and %s: %s",
       agent, priv_socket_type_to_string (socket->type),
+      reliable ? "reliable" : "not reliable",
       priv_candidate_transport_to_string (candidate->transport),
       ret ? "yes" : "no");
 
