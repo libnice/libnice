@@ -1984,10 +1984,6 @@ local_candidate_and_socket_compatible (NiceAgent *agent,
      */
     ret = (lcand->sockptr == socket);
 
-  nice_debug_verbose ("Agent %p : socket %p and local cand %p %s.",
-      agent, socket, lcand,
-      ret ? "compatible" : "not compatible");
-
   return ret;
 }
 
@@ -2018,10 +2014,6 @@ remote_candidate_and_socket_compatible (NiceAgent *agent,
    */
   if (lcand && ret)
     ret = (conn_check_match_transport (lcand->transport) == rcand->transport);
-
-  nice_debug_verbose ("Agent %p : socket %p and remote cand %p %s.",
-      agent, socket, rcand,
-      ret ? "compatible" : "not compatible");
 
   return ret;
 }
