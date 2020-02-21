@@ -52,6 +52,9 @@ nice_tcp_bsd_socket_new_from_gsock (GMainContext *ctx, GSocket *gsock,
 void
 nice_tcp_bsd_socket_set_passive_parent (NiceSocket *socket, NiceSocket *passive_parent);
 
+NiceSocket *
+nice_tcp_bsd_socket_get_passive_parent (NiceSocket *socket);
+
 G_END_DECLS
 
 #endif /* _TCP_BSD_H */

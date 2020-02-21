@@ -478,3 +478,11 @@ nice_tcp_bsd_socket_set_passive_parent (NiceSocket *sock, NiceSocket *passive_pa
 
   priv->passive_parent = passive_parent;
 }
+
+NiceSocket *
+nice_tcp_bsd_socket_get_passive_parent (NiceSocket *sock)
+{
+  TcpPriv *priv = sock->priv;
+
+  return priv->passive_parent;
+}

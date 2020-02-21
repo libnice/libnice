@@ -1918,31 +1918,108 @@ gint conn_check_compare (const CandidateCheckPair *a, const CandidateCheckPair *
   return 0;
 }
 
+/* Find a transport compatible with a given socket.
+ *
+ * Returns TRUE when a matching transport can be guessed from
+ * the type of the socket in an unambiguous way.
+ */
 static gboolean
-priv_match_remote_candidate_transport_and_socket_type (NiceAgent *agent,
-    NiceCandidate *candidate, NiceSocket *socket)
+nice_socket_has_compatible_transport (NiceSocket *socket,
+    NiceCandidateTransport *transport)
+{
+  gboolean found = TRUE;
+
+  g_assert (socket);
+  g_assert (transport);
+
+  switch (socket->type) {
+    case NICE_SOCKET_TYPE_TCP_BSD:
+      if (nice_tcp_bsd_socket_get_passive_parent (socket))
+        *transport = NICE_CANDIDATE_TRANSPORT_TCP_PASSIVE;
+      else
+        *transport = NICE_CANDIDATE_TRANSPORT_TCP_ACTIVE;
+      break;
+    case NICE_SOCKET_TYPE_TCP_PASSIVE:
+      *transport = NICE_CANDIDATE_TRANSPORT_TCP_PASSIVE;
+      break;
+    case NICE_SOCKET_TYPE_TCP_ACTIVE:
+      *transport = NICE_CANDIDATE_TRANSPORT_TCP_ACTIVE;
+      break;
+    case NICE_SOCKET_TYPE_UDP_BSD:
+      *transport = NICE_CANDIDATE_TRANSPORT_UDP;
+      break;
+    default:
+      found = FALSE;
+  }
+
+  return found;
+}
+
+/* Test if a local socket and a local candidate are compatible. This
+ * function does supplementary tests when the address and port are not
+ * sufficient to give a unique candidate. We try to avoid comparing
+ * directly the sockptr value, when possible, to rely on objective
+ * properties of the candidate and the socket instead, and we also
+ * choose to ignore the conncheck list for the same reason.
+ */
+static gboolean
+local_candidate_and_socket_compatible (NiceAgent *agent,
+    NiceCandidate *lcand, NiceSocket *socket)
 {
   gboolean ret = TRUE;
-  gboolean reliable = nice_socket_is_reliable (socket);
+  NiceCandidateTransport transport;
+
   g_assert (socket);
-  g_assert (candidate);
+  g_assert (lcand);
 
-  /* Detect some obvious incompatibilities.
-   *
-   * In rare situations, tcp and udp candidate may have the same
-   * couple (address, port), they must be identified by their
-   * matching transport.
+  if (nice_socket_has_compatible_transport (socket, &transport))
+    ret = (lcand->transport == transport);
+  else if (socket->type == NICE_SOCKET_TYPE_UDP_TURN)
+    /* Socket of type udp-turn will match a unique local candidate
+     * by its sockptr value. An an udp-turn socket doesn't carry enough
+     * information when base socket is udp-turn-over-tcp to disambiguate
+     * between a tcp-act and a tcp-pass local candidate.
+     */
+    ret = (lcand->sockptr == socket);
+
+  nice_debug_verbose ("Agent %p : socket %p and local cand %p %s.",
+      agent, socket, lcand,
+      ret ? "compatible" : "not compatible");
+
+  return ret;
+}
+
+/* Test if a local socket and a remote candidate are compatible.
+ * This function is very close to its local candidate counterpart,
+ * the difference is that we also use information from the local
+ * candidate we may have identified previously. This is needed
+ * to disambiguate the transport of the candidate with a socket
+ * of type udp-turn.
+ *
+ */
+static gboolean
+remote_candidate_and_socket_compatible (NiceAgent *agent,
+    NiceCandidate *lcand, NiceCandidate *rcand, NiceSocket *socket)
+{
+  gboolean ret = TRUE;
+  NiceCandidateTransport transport;
+
+  g_assert (socket);
+  g_assert (rcand);
+
+  if (nice_socket_has_compatible_transport (socket, &transport))
+    ret = (conn_check_match_transport (rcand->transport) == transport);
+
+  /* This supplementary test with the local candidate is needed with
+   * socket of type udp-turn, the type doesn't allow to disambiguate
+   * between a tcp-pass and a tcp-act remote candidate
    */
-  if (!reliable && candidate->transport == NICE_CANDIDATE_TRANSPORT_TCP_ACTIVE)
-    ret = FALSE;
-  if (reliable && candidate->transport == NICE_CANDIDATE_TRANSPORT_UDP)
-    ret = FALSE;
+  if (lcand && ret)
+    ret = (conn_check_match_transport (lcand->transport) == rcand->transport);
 
-  nice_debug_verbose ("Agent %p : socket/candidate compat: %s (%s) and %s: %s",
-      agent, priv_socket_type_to_string (socket->type),
-      reliable ? "reliable" : "not reliable",
-      priv_candidate_transport_to_string (candidate->transport),
-      ret ? "yes" : "no");
+  nice_debug_verbose ("Agent %p : socket %p and remote cand %p %s.",
+      agent, socket, rcand,
+      ret ? "compatible" : "not compatible");
 
   return ret;
 }
@@ -1951,8 +2028,9 @@ void
 conn_check_remote_candidates_set(NiceAgent *agent, NiceStream *stream,
     NiceComponent *component)
 {
-  GSList *l, *m;
-  GList *k;
+  GList *i;
+  GSList *j;
+  NiceCandidate *lcand = NULL, *rcand = NULL;
 
   nice_debug ("Agent %p : conn_check_remote_candidates_set %u %u",
     agent, stream->id, component->id);
@@ -1964,57 +2042,69 @@ conn_check_remote_candidates_set(NiceAgent *agent, NiceStream *stream,
     nice_debug ("Agent %p : credentials have been set, "
       "we can process incoming checks", agent);
 
-  for (k = component->incoming_checks.head; k;) {
-    IncomingCheck *icheck = k->data;
-    GList *k_next = k->next;
+  for (i = component->incoming_checks.head; i;) {
+    IncomingCheck *icheck = i->data;
+    GList *i_next = i->next;
 
     /* sect 7.2.1.3., "Learning Peer Reflexive Candidates", has to
      * be handled separately */
-    for (l = component->remote_candidates; l; l = l->next) {
-      NiceCandidate *rcand = l->data;
-      NiceCandidate *lcand = NULL;
+    for (j = component->local_candidates; j; j = j->next) {
+      NiceCandidate *cand = j->data;
+      NiceAddress *addr;
 
-      if (nice_address_equal (&rcand->addr, &icheck->from) &&
-          priv_match_remote_candidate_transport_and_socket_type
-            (agent, rcand, icheck->local_socket)) {
-        for (m = component->local_candidates; m; m = m->next) {
-          NiceCandidate *cand = m->data;
-          NiceAddress *addr;
+      if (cand->type == NICE_CANDIDATE_TYPE_RELAYED)
+        addr = &cand->addr;
+      else
+        addr = &cand->base_addr;
 
-          if (cand->type == NICE_CANDIDATE_TYPE_RELAYED)
-            addr = &cand->addr;
-          else
-            addr = &cand->base_addr;
-
-          if (nice_address_equal (addr, &icheck->local_socket->addr)) {
-            lcand = cand;
-            break;
-          }
-        }
-
-        g_assert (lcand != NULL);
-        if (lcand->transport == NICE_CANDIDATE_TRANSPORT_TCP_PASSIVE) {
-          CandidateCheckPair *pair;
-          pair = priv_conn_check_add_for_candidate_pair_matched (agent,
-              stream->id, component, lcand, rcand, NICE_CHECK_SUCCEEDED);
-          if (pair)
-            pair->valid = TRUE;
-        }
-
-        priv_schedule_triggered_check (agent, stream, component,
-            icheck->local_socket, rcand);
-        if (icheck->use_candidate)
-          priv_mark_pair_nominated (agent, stream, component,
-              lcand, rcand);
-
-        if (icheck->username)
-          g_free (icheck->username);
-        g_slice_free (IncomingCheck, icheck);
-        g_queue_delete_link (&component->incoming_checks, k);
+      if (nice_address_equal (&icheck->local_socket->addr, addr) &&
+          local_candidate_and_socket_compatible (agent, cand,
+          icheck->local_socket)) {
+        lcand = cand;
         break;
       }
     }
-    k = k_next;
+
+    g_assert (lcand != NULL);
+
+    for (j = component->remote_candidates; j; j = j->next) {
+      NiceCandidate *cand = j->data;
+      if (nice_address_equal (&cand->addr, &icheck->from) &&
+          remote_candidate_and_socket_compatible (agent, lcand, cand,
+          icheck->local_socket)) {
+        rcand = cand;
+        break;
+      }
+    }
+
+    if (lcand->transport == NICE_CANDIDATE_TRANSPORT_TCP_PASSIVE) {
+      CandidateCheckPair *pair = NULL;
+
+      for (j = stream->conncheck_list; j; j = j->next) {
+        CandidateCheckPair *p = j->data;
+        if (lcand == p->local && rcand == p->remote) {
+          pair = p;
+          break;
+        }
+      }
+      if (pair == NULL) {
+        pair = priv_conn_check_add_for_candidate_pair_matched (agent,
+            stream->id, component, lcand, rcand, NICE_CHECK_SUCCEEDED);
+        if (pair)
+          pair->valid = TRUE;
+      }
+    }
+
+    priv_schedule_triggered_check (agent, stream, component,
+        icheck->local_socket, rcand);
+    if (icheck->use_candidate)
+      priv_mark_pair_nominated (agent, stream, component, lcand, rcand);
+
+    if (icheck->username)
+      g_free (icheck->username);
+    g_slice_free (IncomingCheck, icheck);
+    g_queue_delete_link (&component->incoming_checks, i);
+    i = i_next;
   }
 }
 
@@ -3447,35 +3537,35 @@ static CandidateCheckPair *priv_process_response_check_for_reflexive(NiceAgent *
 {
   CandidateCheckPair *new_pair = NULL;
   NiceAddress mapped;
-  GSList *i, *j;
+  GSList *i;
   NiceCandidate *local_cand = NULL;
 
   nice_address_set_from_sockaddr (&mapped, mapped_sockaddr);
 
-  for (j = component->local_candidates; j; j = j->next) {
-    NiceCandidate *cand = j->data;
-    if (nice_address_equal (&mapped, &cand->addr) &&
-      conn_check_match_transport (remote_candidate->transport) ==
-      cand->transport) {
-      local_cand = cand;
+  for (i = component->local_candidates; i; i = i->next) {
+    NiceCandidate *cand = i->data;
 
-      /* The mapped address allows to look for a previously discovered
-       * peer reflexive local candidate, and its related pair. This
-       * new_pair will be marked 'Valid', while the pair 'p' of the
-       * initial stun request will be marked 'Succeeded'
-       *
-       * In the case of a tcp-act/tcp-pass pair 'p', where the local
-       * candidate is of type tcp-act, and its port number is zero, a
-       * conncheck on this pair *always* leads to the creation of a
-       * discovered peer-reflexive tcp-act local candidate.
-       */
-      for (i = stream->conncheck_list; i; i = i->next) {
-        CandidateCheckPair *pair = i->data;
-        if (pair->local == cand && remote_candidate == pair->remote) {
-          new_pair = pair;
-          break;
-        }
-      }
+    if (nice_address_equal (&mapped, &cand->addr) &&
+        local_candidate_and_socket_compatible (agent, cand, sockptr)) {
+      local_cand = cand;
+      break;
+    }
+  }
+
+  /* The mapped address allows to look for a previously discovered
+   * peer reflexive local candidate, and its related pair. This
+   * new_pair will be marked 'Valid', while the pair 'p' of the
+   * initial stun request will be marked 'Succeeded'
+   *
+   * In the case of a tcp-act/tcp-pass pair 'p', where the local
+   * candidate is of type tcp-act, and its port number is zero, a
+   * conncheck on this pair *always* leads to the creation of a
+   * discovered peer-reflexive tcp-act local candidate.
+   */
+  for (i = stream->conncheck_list; i; i = i->next) {
+    CandidateCheckPair *pair = i->data;
+    if (local_cand == pair->local && remote_candidate == pair->remote) {
+      new_pair = pair;
       break;
     }
   }
@@ -4606,15 +4696,6 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, NiceStream *stream,
   username = (uint8_t *) stun_message_find (&req, STUN_ATTRIBUTE_USERNAME,
 					    &username_len);
 
-  for (i = component->remote_candidates; i; i = i->next) {
-    NiceCandidate *cand = i->data;
-    if (nice_address_equal (from, &cand->addr) &&
-        priv_match_remote_candidate_transport_and_socket_type
-          (agent, cand, nicesock)) {
-      remote_candidate = cand;
-      break;
-    }
-  }
   for (i = component->local_candidates; i; i = i->next) {
     NiceCandidate *cand = i->data;
     NiceAddress *addr;
@@ -4624,8 +4705,19 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, NiceStream *stream,
     else
       addr = &cand->base_addr;
 
-    if (nice_address_equal (&nicesock->addr, addr)) {
+    if (nice_address_equal (&nicesock->addr, addr) &&
+        local_candidate_and_socket_compatible (agent, cand, nicesock)) {
       local_candidate = cand;
+      break;
+    }
+  }
+
+  for (i = component->remote_candidates; i; i = i->next) {
+    NiceCandidate *cand = i->data;
+    if (nice_address_equal (from, &cand->addr) &&
+        remote_candidate_and_socket_compatible (agent, local_candidate,
+        cand, nicesock)) {
+      remote_candidate = cand;
       break;
     }
   }
