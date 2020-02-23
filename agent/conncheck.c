@@ -2044,6 +2044,9 @@ conn_check_remote_candidates_set(NiceAgent *agent, NiceStream *stream,
     IncomingCheck *icheck = i->data;
     GList *i_next = i->next;
 
+    nice_debug ("Agent %p : replaying icheck=%p (sock=%p)",
+        agent, icheck, icheck->local_socket);
+
     /* sect 7.2.1.3., "Learning Peer Reflexive Candidates", has to
      * be handled separately */
     for (j = component->local_candidates; j; j = j->next) {
@@ -3161,6 +3164,9 @@ static gboolean priv_schedule_triggered_check (NiceAgent *agent, NiceStream *str
   CandidateCheckPair *p;
 
   g_assert (remote_cand != NULL);
+
+  nice_debug ("Agent %p : scheduling triggered check with socket=%p "
+      "and remote cand=%p.", agent, local_socket, remote_cand);
 
   for (i = stream->conncheck_list; i ; i = i->next) {
       p = i->data;
@@ -4824,6 +4830,7 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, NiceStream *stream,
         /* step: send a reply immediately but postpone other processing */
         priv_store_pending_check (agent, component, from, nicesock,
             username, username_len, priority, use_candidate);
+        priv_print_conn_check_lists (agent, G_STRFUNC, ", icheck stored");
       }
     } else {
       nice_debug ("Agent %p : Invalid STUN packet, ignoring... %s",
