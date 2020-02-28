@@ -273,7 +273,7 @@ get_local_ips_ioctl (gboolean include_loopback)
   GList *loopbacks = NULL;
 #ifdef IGNORED_IFACE_PREFIX
   const gchar **prefix;
-  gboolean ignored = FALSE;
+  gboolean ignored;
 #endif
 
   if ((sockfd = socket (AF_INET, SOCK_DGRAM, IPPROTO_IP)) < 0) {
@@ -336,11 +336,12 @@ get_local_ips_ioctl (gboolean include_loopback)
     }
 
 #ifdef IGNORED_IFACE_PREFIX
+    ignored = FALSE;
     for (prefix = ignored_iface_prefix_list; *prefix; prefix++) {
       if (g_str_has_prefix (ifr->ifr_name, *prefix)) {
         nice_debug ("Ignoring interface %s as it matches prefix %s",
             ifr->ifr_name, *prefix);
-        ignored = true;
+        ignored = TRUE;
         break;
       }
     }
@@ -375,7 +376,7 @@ nice_interfaces_get_local_ips (gboolean include_loopback)
   GList *loopbacks = NULL;
 #ifdef IGNORED_IFACE_PREFIX
   const gchar **prefix;
-  gboolean ignored = FALSE;
+  gboolean ignored;
 #endif
 
   if (getifaddrs (&results) < 0) {
@@ -426,7 +427,7 @@ nice_interfaces_get_local_ips (gboolean include_loopback)
         nice_debug ("Ignoring interface %s as it matches prefix %s",
             ifa->ifa_name, *prefix);
         g_free (addr_string);
-        ignored = true;
+        ignored = TRUE;
         break;
       }
     }
