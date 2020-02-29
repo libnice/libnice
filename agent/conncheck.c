@@ -3557,26 +3557,24 @@ static CandidateCheckPair *priv_process_response_check_for_reflexive(NiceAgent *
     nice_component_add_valid_candidate (agent, component, remote_candidate);
   }
   else {
-    if (!local_cand) {
-      if (!agent->force_relay) {
-        /* step: find a new local candidate, see RFC 5245 7.1.3.2.1.
-         * "Discovering Peer Reflexive Candidates"
-         *
-         * The priority equal to the value of the PRIORITY attribute
-         * in the Binding request is taken from the "parent" pair p
-         */
-        local_cand = discovery_add_peer_reflexive_candidate (agent,
-                                                             stream->id,
-                                                             component->id,
-                                                             p->stun_priority,
-                                                            &mapped,
-                                                             sockptr,
-                                                             local_candidate,
-                                                             remote_candidate);
-        nice_debug ("Agent %p : added a new peer-reflexive local candidate %p "
-            "with transport %s", agent, local_cand,
-            priv_candidate_transport_to_string (local_cand->transport));
-      }
+    if (local_cand == NULL && !agent->force_relay) {
+      /* step: find a new local candidate, see RFC 5245 7.1.3.2.1.
+       * "Discovering Peer Reflexive Candidates"
+       *
+       * The priority equal to the value of the PRIORITY attribute
+       * in the Binding request is taken from the "parent" pair p
+       */
+      local_cand = discovery_add_peer_reflexive_candidate (agent,
+                                                           stream->id,
+                                                           component->id,
+                                                           p->stun_priority,
+                                                          &mapped,
+                                                           sockptr,
+                                                           local_candidate,
+                                                           remote_candidate);
+      nice_debug ("Agent %p : added a new peer-reflexive local candidate %p "
+          "with transport %s", agent, local_cand,
+          priv_candidate_transport_to_string (local_cand->transport));
     }
 
     /* step: add a new discovered pair (see RFC 5245 7.1.3.2.2
