@@ -27,6 +27,7 @@ nice_tests = [
   'test-turn',
   'test-drop-invalid',
   'test-nomination',
+  'test-interfaces',
 ]
 
 if cc.has_header('arpa/inet.h')

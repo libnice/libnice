@@ -56,7 +56,8 @@ check_PROGRAMS = \
 	test-credentials \
 	test-turn \
 	test-drop-invalid \
-	test-nomination
+	test-nomination \
+	test-interfaces
 
 dist_check_SCRIPTS = \
 	check-test-fullmode-with-stun.sh \
@@ -138,6 +139,8 @@ test_nomination_LDADD = $(COMMON_LDADD)
 
 test_gstreamer_CFLAGS = $(AM_CFLAGS) $(GST_CHECK_CFLAGS)
 test_gstreamer_LDADD = -lnice -L$(top_builddir)/nice/.libs $(GLIB_LIBS) $(GUPNP_LIBS) $(GST_CHECK_LIBS) $(GST_LIBS)
+
+test_interfaces_LDADD = $(COMMON_LDADD)
 
 all-local:
 	chmod a+x $(srcdir)/check-test-fullmode-with-stun.sh
