@@ -2841,7 +2841,7 @@ nice_agent_set_relay_info(NiceAgent *agent,
 
   length = g_list_length (component->turn_servers);
   if (length == NICE_CANDIDATE_MAX_TURN_SERVERS) {
-    nice_debug ("Agent %p : cannot have more than %d turn servers.",
+    g_warning ("Agent %p : cannot have more than %d turn servers.",
         agent, length);
     ret = FALSE;
     goto done;
@@ -3118,7 +3118,7 @@ nice_agent_gather_candidates (
 
   length = g_slist_length (local_addresses);
   if (length > NICE_CANDIDATE_MAX_LOCAL_ADDRESSES) {
-    nice_debug ("Agent %p : cannot have more than %d local addresses.",
+    g_warning ("Agent %p : cannot have more than %d local addresses.",
         agent, NICE_CANDIDATE_MAX_LOCAL_ADDRESSES);
   }
 
