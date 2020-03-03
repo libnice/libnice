@@ -3119,7 +3119,7 @@ nice_agent_gather_candidates (
   length = g_slist_length (local_addresses);
   if (length > NICE_CANDIDATE_MAX_LOCAL_ADDRESSES) {
     nice_debug ("Agent %p : cannot have more than %d local addresses.",
-        agent, length);
+        agent, NICE_CANDIDATE_MAX_LOCAL_ADDRESSES);
   }
 
   for (cid = 1; cid <= stream->n_components; cid++) {
@@ -3139,7 +3139,7 @@ nice_agent_gather_candidates (
     /* generate a local host candidate for each local address */
     length = 0;
     for (i = local_addresses;
-        i && length <= NICE_CANDIDATE_MAX_LOCAL_ADDRESSES;
+        i && length < NICE_CANDIDATE_MAX_LOCAL_ADDRESSES;
         i = i->next, length++) {
       NiceAddress *addr = i->data;
       NiceCandidate *host_candidate;

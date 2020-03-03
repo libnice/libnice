@@ -86,7 +86,7 @@ G_BEGIN_DECLS
  *
  * The maximum number of turns servers.
  */
-#define NICE_CANDIDATE_MAX_TURN_SERVERS              7
+#define NICE_CANDIDATE_MAX_TURN_SERVERS              8
 
 /**
  * NICE_CANDIDATE_MAX_LOCAL_ADDRESSES
@@ -97,7 +97,7 @@ G_BEGIN_DECLS
  * @NICE_CANDIDATE_MAX_TURN_SERVERS. We choose 6 bits for the number of
  * local addresses, and 3 bits for the number of turn servers.
  */
-#define NICE_CANDIDATE_MAX_LOCAL_ADDRESSES           63
+#define NICE_CANDIDATE_MAX_LOCAL_ADDRESSES           64
 
 /**
  * NiceCandidateType:

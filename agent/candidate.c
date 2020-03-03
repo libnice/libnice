@@ -147,8 +147,8 @@ nice_candidate_ice_local_preference_full (guint direction_preference,
    *       9-12: <unused>
    *      13-15: direction_preference
    */
-  g_assert (other_preference <= NICE_CANDIDATE_MAX_LOCAL_ADDRESSES);
-  g_assert (turn_preference <= NICE_CANDIDATE_MAX_TURN_SERVERS);
+  g_assert (other_preference < NICE_CANDIDATE_MAX_LOCAL_ADDRESSES);
+  g_assert (turn_preference < NICE_CANDIDATE_MAX_TURN_SERVERS);
   g_assert (direction_preference < 8);
 
   return (direction_preference << 13) +
@@ -253,8 +253,8 @@ nice_candidate_ms_ice_local_preference_full (guint transport_preference,
    *      9-11: direction_preference
    *     12-15: transport_preference
    */
-  g_assert (other_preference <= NICE_CANDIDATE_MAX_LOCAL_ADDRESSES);
-  g_assert (turn_preference <= NICE_CANDIDATE_MAX_TURN_SERVERS);
+  g_assert (other_preference < NICE_CANDIDATE_MAX_LOCAL_ADDRESSES);
+  g_assert (turn_preference < NICE_CANDIDATE_MAX_TURN_SERVERS);
   g_assert (direction_preference < 8);
   g_assert (transport_preference < 16);
 
