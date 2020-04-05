@@ -3179,15 +3179,19 @@ nice_agent_gather_candidates (
         current_port = start_port;
 
         host_candidate = NULL;
-        while (res == HOST_CANDIDATE_CANT_CREATE_SOCKET) {
+        while (res == HOST_CANDIDATE_CANT_CREATE_SOCKET ||
+            res == HOST_CANDIDATE_DUPLICATE_PORT) {
           nice_debug ("Agent %p: Trying to create host candidate on port %d", agent, current_port);
           nice_address_set_port (addr, current_port);
           res =  discovery_add_local_host_candidate (agent, stream->id, cid,
               addr, transport, &host_candidate);
           if (current_port > 0)
             current_port++;
-          if (current_port > component->max_port) current_port = component->min_port;
-          if (current_port == 0 || current_port == start_port)
+          if (current_port > component->max_port)
+            current_port = component->min_port;
+          if (current_port == start_port && res != HOST_CANDIDATE_DUPLICATE_PORT)
+            break;
+          if (current_port == 0 && res != HOST_CANDIDATE_DUPLICATE_PORT)
             break;
         }
 
@@ -3196,7 +3200,7 @@ nice_agent_gather_candidates (
               agent);
           continue;
         } else if (res == HOST_CANDIDATE_FAILED) {
-          nice_debug ("Agent %p: Could ot retrieive component %d/%d", agent,
+          nice_debug ("Agent %p: Could not retrieve component %d/%d", agent,
               stream->id, cid);
           continue;
         } else if (res == HOST_CANDIDATE_CANT_CREATE_SOCKET) {
@@ -3207,6 +3211,10 @@ nice_agent_gather_candidates (
                 " s%d:%d. Invalid interface?", agent, ip, stream->id,
                 component->id);
           }
+          continue;
+        } else if (res == HOST_CANDIDATE_DUPLICATE_PORT) {
+          nice_debug ("Agent %p: Ignoring local candidate, duplicate port",
+              agent);
           continue;
         }
 

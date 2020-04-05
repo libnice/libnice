@@ -603,6 +603,28 @@ void priv_generate_candidate_credentials (NiceAgent *agent,
 
 }
 
+static gboolean
+priv_local_host_candidate_duplicate_port (NiceComponent *component,
+  NiceCandidate *candidate)
+{
+  GSList *i;
+
+  if (candidate->transport == NICE_CANDIDATE_TRANSPORT_TCP_ACTIVE)
+    return FALSE;
+
+  for (i = component->local_candidates; i; i = i->next) {
+    NiceCandidate *c = i->data;
+
+    if (candidate->transport == c->transport &&
+        nice_address_ip_version (&candidate->addr) ==
+        nice_address_ip_version (&c->addr) &&
+        nice_address_get_port (&candidate->addr) ==
+        nice_address_get_port (&c->addr))
+      return TRUE;
+  }
+  return FALSE;
+}
+
 /*
  * Creates a local host candidate for 'component_id' of stream
  * 'stream_id'.
@@ -667,6 +689,11 @@ HostCandidateResult discovery_add_local_host_candidate (
   candidate->sockptr = nicesock;
   candidate->addr = nicesock->addr;
   candidate->base_addr = nicesock->addr;
+
+  if (priv_local_host_candidate_duplicate_port (component, candidate)) {
+    res = HOST_CANDIDATE_DUPLICATE_PORT;
+    goto errors;
+  }
 
   if (!priv_add_local_candidate_pruned (agent, stream_id, component,
           candidate)) {
