@@ -3693,8 +3693,6 @@ static gboolean priv_add_remote_candidate (
       return FALSE;
     }
     candidate = nice_candidate_new (type);
-    component->remote_candidates = g_slist_append (component->remote_candidates,
-        candidate);
 
     candidate->stream_id = stream_id;
     candidate->component_id = component_id;
@@ -3719,11 +3717,22 @@ static gboolean priv_add_remote_candidate (
        * a controlling agent MUST use the regular selection algorithm,
        * RFC 6544, sect 8, "Concluding ICE Processing"
        */
-      if (agent->nomination_mode == NICE_NOMINATION_MODE_AGGRESSIVE &&
+      if (agent->controlling_mode &&
+          agent->nomination_mode == NICE_NOMINATION_MODE_AGGRESSIVE &&
           transport != NICE_CANDIDATE_TRANSPORT_UDP) {
-        nice_debug ("Agent %p : we have TCP candidates, switching back "
-            "to regular nomination mode", agent);
-        agent->nomination_mode = NICE_NOMINATION_MODE_REGULAR;
+        if (component->state < NICE_COMPONENT_STATE_CONNECTING) {
+          nice_debug ("Agent %p : we have a TCP candidate, switching back "
+              "to regular nomination mode", agent);
+          agent->nomination_mode = NICE_NOMINATION_MODE_REGULAR;
+        } else {
+          /* changing nomination mode from aggressive to regular while
+           * conncheck is ongoing may cause unexpected results (inflight
+           * aggressive stun requests may nominate a pair unilaterally)
+           */
+          nice_debug ("Agent %p : we have a TCP candidate, but conncheck "
+              "has started already in aggressive mode, ignore it", agent);
+          goto errors;
+        }
       }
     }
 
@@ -3745,6 +3754,9 @@ static gboolean priv_add_remote_candidate (
     if (conn_check_add_for_candidate (agent, stream_id,
         component, candidate) < 0)
       goto errors;
+
+    component->remote_candidates = g_slist_append (component->remote_candidates,
+        candidate);
   }
   return TRUE;
 
