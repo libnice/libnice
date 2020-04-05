@@ -271,6 +271,10 @@ priv_print_conn_check_lists (NiceAgent *agent, const gchar *where, const gchar *
 
   nice_debug ("Agent %p : *** conncheck list DUMP (called from %s%s)",
       agent, where, detail ? detail : "");
+  nice_debug ("Agent %p : *** agent nomination mode %s, %s",
+      agent, agent->nomination_mode == NICE_NOMINATION_MODE_AGGRESSIVE ?
+      "aggressive" : "regular",
+      agent->controlling_mode ? "controlling" : "controlled");
   for (i = agent->streams; i ; i = i->next) {
     NiceStream *stream = i->data;
     for (j = 1; j <= stream->n_components; j++) {
