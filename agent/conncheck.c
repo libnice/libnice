@@ -2216,6 +2216,38 @@ conn_check_update_selected_pair (NiceAgent *agent, NiceComponent *component,
 }
 
 /*
+ * Update the retransmit flag of pairs with higher priority than
+ * the first nominated pair
+ */
+void
+conn_check_update_retransmit_flag (NiceAgent *agent, guint stream_id,
+    guint component_id)
+{
+  NiceStream *stream;
+  NiceComponent *component;
+  CandidateCheckPair *pair;
+  GSList *i;
+
+  if (agent_find_component (agent, stream_id, component_id, &stream,
+      &component)) {
+
+    for (i = stream->conncheck_list; i; i = i->next) {
+      pair = i->data;
+      if (pair->component_id != component_id)
+        continue;
+      if (pair->nominated)
+        break;
+      if (pair->state == NICE_CHECK_IN_PROGRESS && !pair->retransmit &&
+          pair->stun_transactions) {
+        pair->retransmit = TRUE;
+        nice_debug ("Agent %p : pair %p will be retransmitted.", agent, pair);
+      }
+    }
+  }
+  return;
+}
+
+/*
  * Updates the check list state.
  *
  * Implements parts of the algorithm described in 

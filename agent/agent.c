@@ -3692,6 +3692,7 @@ static gboolean priv_add_remote_candidate (
           "priority nominated pair %p.", agent, pair);
       conn_check_update_selected_pair (agent, component, pair);
     }
+    conn_check_update_retransmit_flag (agent, stream_id, component_id);
   }
   else {
     /* case 2: add a new candidate */

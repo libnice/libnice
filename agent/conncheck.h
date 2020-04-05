@@ -121,6 +121,8 @@ conn_check_prune_socket (NiceAgent *agent, NiceStream *stream, NiceComponent *co
 void recalculate_pair_priorities (NiceAgent *agent);
 void conn_check_update_selected_pair (NiceAgent *agent,
     NiceComponent *component, CandidateCheckPair *pair);
+void conn_check_update_retransmit_flag (NiceAgent *agent, guint stream_id,
+    guint component_id);
 
 
 #endif /*_NICE_CONNCHECK_H */
