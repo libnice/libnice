@@ -775,109 +775,91 @@ static gboolean priv_conn_check_tick_stream (NiceStream *stream, NiceAgent *agen
     CandidateCheckPair *p = i->data;
     gchar tmpbuf1[INET6_ADDRSTRLEN], tmpbuf2[INET6_ADDRSTRLEN];
     NiceComponent *component;
-    StunTransaction *stun;
+    guint index = 0, remaining = 0;
 
     if (p->stun_transactions == NULL)
+      continue;
+
+    if (p->state != NICE_CHECK_IN_PROGRESS)
       continue;
 
     if (!agent_find_component (agent, p->stream_id, p->component_id,
         NULL, &component))
       continue;
 
-    /* The first stun transaction of the list may eventually be
-     * retransmitted, other stun transactions just have their
-     * timer updated.
-     */
-
-    j = p->stun_transactions->next;
-
-    /* process all stun transactions except the first one */
+    j = p->stun_transactions;
     while (j) {
-      StunTransaction *s = j->data;
+      StunTransaction *stun = j->data;
       GSList *next = j->next;
 
-      if (now >= s->next_tick)
-        switch (stun_timer_refresh (&s->timer)) {
+      if (now < stun->next_tick)
+        remaining++;
+      else
+        switch (stun_timer_refresh (&stun->timer)) {
           case STUN_USAGE_TIMER_RETURN_TIMEOUT:
-            priv_remove_stun_transaction (p, s, component);
+timer_return_timeout:
+            priv_remove_stun_transaction (p, stun, component);
             break;
           case STUN_USAGE_TIMER_RETURN_RETRANSMIT:
-            timeout = stun_timer_remainder (&s->timer);
-            s->next_tick = now + timeout * 1000;
+            /* case: retransmission stopped, due to the nomination of
+             * a pair with a higher priority than this in-progress pair,
+             * ICE spec, sect 8.1.2 "Updating States", item 2.2
+             */
+            if (!p->retransmit || index > 0)
+              goto timer_return_timeout;
+
+            /* case: not ready, so schedule a new timeout */
+            timeout = stun_timer_remainder (&stun->timer);
+
+            nice_debug ("Agent %p :STUN transaction retransmitted on pair %p "
+                "(timer=%d/%d %d/%dms).",
+                agent, p,
+                stun->timer.retransmissions, stun->timer.max_retransmissions,
+                stun->timer.delay - timeout, stun->timer.delay);
+
+            agent_socket_send (p->sockptr, &p->remote->addr,
+                stun_message_length (&stun->message),
+                (gchar *)stun->buffer);
+
+            /* note: convert from milli to microseconds for g_time_val_add() */
+            stun->next_tick = now + timeout * 1000;
+
+            return TRUE;
+          case STUN_USAGE_TIMER_RETURN_SUCCESS:
+            timeout = stun_timer_remainder (&stun->timer);
+            /* note: convert from milli to microseconds for g_time_val_add() */
+            stun->next_tick = now + timeout * 1000;
+            remaining++;
             break;
           default:
+            g_assert_not_reached();
             break;
-      }
+        }
       j = next;
+      index++;
     }
 
-    if (p->state != NICE_CHECK_IN_PROGRESS)
-      continue;
+    if (remaining > 0)
+      keep_timer_going = TRUE;
+    else {
+      nice_address_to_string (&p->local->addr, tmpbuf1);
+      nice_address_to_string (&p->remote->addr, tmpbuf2);
+      nice_debug ("Agent %p : Retransmissions failed, giving up on pair %p",
+          agent, p);
+      nice_debug ("Agent %p : Failed pair is [%s]:%u --> [%s]:%u", agent,
+          tmpbuf1, nice_address_get_port (&p->local->addr),
+          tmpbuf2, nice_address_get_port (&p->remote->addr));
+      candidate_check_pair_fail (stream, agent, p);
+      priv_print_conn_check_lists (agent, G_STRFUNC,
+          ", retransmission failed");
 
-    /* process the first stun transaction of the list */
-    stun = p->stun_transactions->data;
-    if (now < stun->next_tick)
-      continue;
-
-    switch (stun_timer_refresh (&stun->timer)) {
-      case STUN_USAGE_TIMER_RETURN_TIMEOUT:
-timer_return_timeout:
-        /* case: error, abort processing */
-        nice_address_to_string (&p->local->addr, tmpbuf1);
-        nice_address_to_string (&p->remote->addr, tmpbuf2);
-        nice_debug ("Agent %p : Retransmissions failed, giving up on pair %p",
-            agent, p);
-        nice_debug ("Agent %p : Failed pair is [%s]:%u --> [%s]:%u", agent,
-            tmpbuf1, nice_address_get_port (&p->local->addr),
-            tmpbuf2, nice_address_get_port (&p->remote->addr));
-        candidate_check_pair_fail (stream, agent, p);
-        priv_print_conn_check_lists (agent, G_STRFUNC,
-            ", retransmission failed");
-
-        /* perform a check if a transition state from connected to
-         * ready can be performed. This may happen here, when the last
-         * in-progress pair has expired its retransmission count
-         * in priv_conn_check_tick_stream(), which is a condition to
-         * make the transition connected to ready.
-         */
-        priv_update_check_list_state_for_ready (agent, stream, component);
-        break;
-      case STUN_USAGE_TIMER_RETURN_RETRANSMIT:
-        /* case: retransmission stopped, due to the nomination of
-         * a pair with a higher priority than this in-progress pair,
-         * ICE spec, sect 8.1.2 "Updating States", item 2.2
-         */
-        if (!p->retransmit)
-          goto timer_return_timeout;
-
-        /* case: not ready, so schedule a new timeout */
-        timeout = stun_timer_remainder (&stun->timer);
-
-        nice_debug ("Agent %p :STUN transaction retransmitted on pair %p "
-            "(timer=%d/%d %d/%dms).",
-            agent, p,
-            stun->timer.retransmissions, stun->timer.max_retransmissions,
-            stun->timer.delay - timeout, stun->timer.delay);
-
-        agent_socket_send (p->sockptr, &p->remote->addr,
-            stun_message_length (&stun->message),
-            (gchar *)stun->buffer);
-
-        /* note: convert from milli to microseconds for g_time_val_add() */
-        stun->next_tick = now + timeout * 1000;
-
-        return TRUE;
-      case STUN_USAGE_TIMER_RETURN_SUCCESS:
-        timeout = stun_timer_remainder (&stun->timer);
-
-        /* note: convert from milli to microseconds for g_time_val_add() */
-        stun->next_tick = now + timeout * 1000;
-
-        keep_timer_going = TRUE;
-        break;
-      default:
-        /* Nothing to do. */
-        break;
+      /* perform a check if a transition state from connected to
+       * ready can be performed. This may happen here, when the last
+       * in-progress pair has expired its retransmission count
+       * in priv_conn_check_tick_stream(), which is a condition to
+       * make the transition connected to ready.
+       */
+      priv_update_check_list_state_for_ready (agent, stream, component);
     }
   }
 
