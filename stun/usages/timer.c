@@ -86,8 +86,10 @@ static void stun_gettime (struct timeval *now)
 }
 
 
-static void add_delay (struct timeval *ts, unsigned delay)
+static void set_delay (struct timeval *ts, unsigned delay)
 {
+  stun_gettime (ts);
+
   /* Delay is in ms. */
   ts->tv_sec += delay / 1000;
   ts->tv_usec += (delay % 1000) * 1000;
@@ -103,11 +105,10 @@ static void add_delay (struct timeval *ts, unsigned delay)
 void stun_timer_start (StunTimer *timer, unsigned int initial_timeout,
     unsigned int max_retransmissions)
 {
-  stun_gettime (&timer->deadline);
   timer->retransmissions = 1;
   timer->delay = initial_timeout;
   timer->max_retransmissions = max_retransmissions;
-  add_delay (&timer->deadline, timer->delay);
+  set_delay (&timer->deadline, timer->delay);
 }
 
 
@@ -149,7 +150,7 @@ StunUsageTimerReturn stun_timer_refresh (StunTimer *timer)
       timer->delay = timer->delay / 2;
     else
       timer->delay = timer->delay * 2;
-    add_delay (&timer->deadline, timer->delay);
+    set_delay (&timer->deadline, timer->delay);
     timer->retransmissions++;
     return STUN_USAGE_TIMER_RETURN_RETRANSMIT;
   }
