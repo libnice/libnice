@@ -3122,56 +3122,51 @@ int conn_check_send (NiceAgent *agent, CandidateCheckPair *pair)
 static guint priv_prune_pending_checks (NiceAgent *agent, NiceStream *stream, guint component_id)
 {
   GSList *i;
-  guint64 highest_nominated_priority = 0;
   guint in_progress = 0;
+  gboolean found_nominated = FALSE;
   gchar prio1[NICE_CANDIDATE_PAIR_PRIORITY_MAX_SIZE];
   gchar prio2[NICE_CANDIDATE_PAIR_PRIORITY_MAX_SIZE];
 
   nice_debug ("Agent %p: Finding highest priority for component %d",
       agent, component_id);
 
-  for (i = stream->conncheck_list; i; i = i->next) {
-    CandidateCheckPair *p = i->data;
-    if (p->component_id == component_id && p->valid == TRUE &&
-        p->nominated == TRUE) {
-      if (p->priority > highest_nominated_priority) {
-        highest_nominated_priority = p->priority;
-      }
-    }
-  }
-
-  nice_candidate_pair_priority_to_string (highest_nominated_priority, prio1);
-  nice_debug ("Agent %p: Pruning pending checks. Highest nominated priority "
-      "is %s.", agent, prio1);
-
-  /* step: cancel all FROZEN and WAITING pairs for the component */
   i = stream->conncheck_list;
   while (i) {
     CandidateCheckPair *p = i->data;
     GSList *next = i->next;
 
-    if (p->component_id == component_id) {
-      if (p->state == NICE_CHECK_FROZEN || p->state == NICE_CHECK_WAITING) {
-        nice_debug ("Agent %p : pair %p removed.", agent, p);
-        candidate_check_pair_free (agent, p);
-        stream->conncheck_list = g_slist_delete_link(stream->conncheck_list, i);
-      }
+    if (p->component_id != component_id) {
+      i = next;
+      continue;
+    }
 
-      /* note: a SHOULD level req. in ICE 8.1.2. "Updating States" (ID-19) */
-      else if (p->state == NICE_CHECK_IN_PROGRESS) {
-        if (p->priority < highest_nominated_priority) {
-          p->retransmit  = FALSE;
-          nice_debug ("Agent %p : pair %p will not be retransmitted.",
-              agent, p);
-        } else {
-          /* We must keep the higher priority pairs running because if a udp
-           * packet was lost, we might end up using a bad candidate */
-          nice_candidate_pair_priority_to_string (p->priority, prio2);
-          nice_debug ("Agent %p : pair %p kept IN_PROGRESS because priority "
-              "%s is higher than currently nominated pair %s.",
-              agent, p, prio2, prio1);
-          in_progress++;
-        }
+    if (p->valid && p->nominated && !found_nominated) {
+      found_nominated = TRUE;
+      nice_candidate_pair_priority_to_string (p->priority, prio1);
+      nice_debug ("Agent %p: Pruning pending checks. Highest nominated "
+          "priority is %s.", agent, prio1);
+    }
+
+    /* step: cancel all FROZEN and WAITING pairs for the component */
+    if (p->state == NICE_CHECK_FROZEN || p->state == NICE_CHECK_WAITING) {
+      nice_debug ("Agent %p : pair %p removed.", agent, p);
+      candidate_check_pair_free (agent, p);
+      stream->conncheck_list = g_slist_delete_link(stream->conncheck_list, i);
+    }
+
+    /* note: a SHOULD level req. in ICE 8.1.2. "Updating States" (ID-19) */
+    else if (p->state == NICE_CHECK_IN_PROGRESS) {
+      if (found_nominated) {
+        p->retransmit  = FALSE;
+        nice_debug ("Agent %p : pair %p will not be retransmitted.", agent, p);
+      } else {
+        /* We must keep the higher priority pairs running because if a udp
+         * packet was lost, we might end up using a bad candidate */
+        nice_candidate_pair_priority_to_string (p->priority, prio2);
+        nice_debug ("Agent %p : pair %p kept IN_PROGRESS because priority "
+            "%s is higher than currently nominated pair %s.",
+            agent, p, prio2, prio1);
+        in_progress++;
       }
     }
     i = next;
