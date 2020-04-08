@@ -149,7 +149,7 @@ void discovery_prune_socket (NiceAgent *agent, NiceSocket *sock)
  */
 void refresh_free (NiceAgent *agent, CandidateRefresh *cand)
 {
-  nice_debug ("Freeing candidate refresh %p", cand);
+  nice_debug ("Agent %p : Freeing candidate refresh %p", agent, cand);
 
   agent->refresh_list = g_slist_remove (agent->refresh_list, cand);
 
@@ -178,7 +178,8 @@ static gboolean on_refresh_remove_timeout (NiceAgent *agent,
       {
         StunTransactionId id;
 
-        nice_debug ("TURN deallocate for refresh %p timed out", cand);
+        nice_debug ("Agent %p : TURN deallocate for refresh %p timed out",
+            agent, cand);
 
         stun_message_id (&cand->stun_message, id);
         stun_agent_forget_transaction (&cand->stun_agent, id);
@@ -187,7 +188,8 @@ static gboolean on_refresh_remove_timeout (NiceAgent *agent,
         break;
       }
     case STUN_USAGE_TIMER_RETURN_RETRANSMIT:
-      nice_debug ("Retransmitting TURN deallocate for refresh %p", cand);
+      nice_debug ("Agent %p : Retransmitting TURN deallocate for refresh %p",
+          agent, cand);
 
       agent_socket_send (cand->nicesock, &cand->server,
           stun_message_length (&cand->stun_message), (gchar *)cand->stun_buffer);
@@ -220,7 +222,8 @@ static gboolean refresh_remove_async (NiceAgent *agent, gpointer pointer)
   CandidateRefresh *cand = (CandidateRefresh *) pointer;
   StunUsageTurnCompatibility turn_compat = agent_to_turn_compatibility (agent);
 
-  nice_debug ("Sending request to remove TURN allocation for refresh %p", cand);
+  nice_debug ("Agent %p : Sending request to remove TURN allocation "
+      "for refresh %p", agent, cand);
 
   if (cand->timer_source != NULL) {
     g_source_destroy (cand->timer_source);
