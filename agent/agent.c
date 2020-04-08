@@ -3593,6 +3593,7 @@ static gboolean priv_add_remote_candidate (
   const gchar *password,
   const gchar *foundation)
 {
+  NiceStream *stream;
   NiceComponent *component;
   NiceCandidate *candidate;
   CandidateCheckPair *pair;
@@ -3604,7 +3605,8 @@ static gboolean priv_add_remote_candidate (
       !agent->use_ice_tcp)
     return FALSE;
 
-  if (!agent_find_component (agent, stream_id, component_id, NULL, &component))
+  if (!agent_find_component (agent, stream_id, component_id, &stream,
+      &component))
     return FALSE;
 
   /* step: check whether the candidate already exists */
@@ -3692,7 +3694,7 @@ static gboolean priv_add_remote_candidate (
           "priority nominated pair %p.", agent, pair);
       conn_check_update_selected_pair (agent, component, pair);
     }
-    conn_check_update_retransmit_flag (agent, stream_id, component_id);
+    conn_check_update_check_list_state_for_ready (agent, stream, component);
   }
   else {
     /* case 2: add a new candidate */

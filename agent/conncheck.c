@@ -63,8 +63,7 @@
 #include "stun/usages/turn.h"
 
 static void priv_update_check_list_failed_components (NiceAgent *agent, NiceStream *stream);
-static void priv_update_check_list_state_for_ready (NiceAgent *agent, NiceStream *stream, NiceComponent *component);
-static guint priv_prune_pending_checks (NiceAgent *agent, NiceStream *stream, guint component_id);
+static guint priv_prune_pending_checks (NiceAgent *agent, NiceStream *stream, NiceComponent *component);
 static gboolean priv_schedule_triggered_check (NiceAgent *agent, NiceStream *stream, NiceComponent *component, NiceSocket *local_socket, NiceCandidate *remote_cand);
 static void priv_mark_pair_nominated (NiceAgent *agent, NiceStream *stream, NiceComponent *component, NiceCandidate *localcand, NiceCandidate *remotecand);
 static size_t priv_create_username (NiceAgent *agent, NiceStream *stream,
@@ -863,7 +862,7 @@ timer_return_timeout:
        * in priv_conn_check_tick_stream(), which is a condition to
        * make the transition connected to ready.
        */
-      priv_update_check_list_state_for_ready (agent, stream, component);
+      conn_check_update_check_list_state_for_ready (agent, stream, component);
     }
   }
 
@@ -1352,7 +1351,7 @@ static gboolean priv_conn_check_tick_agent_locked (NiceAgent *agent,
       priv_update_check_list_failed_components (agent, stream);
       for (j = stream->components; j; j = j->next) {
         NiceComponent *component = j->data;
-        priv_update_check_list_state_for_ready (agent, stream, component);
+        conn_check_update_check_list_state_for_ready (agent, stream, component);
       }
     }
 
@@ -2216,38 +2215,6 @@ conn_check_update_selected_pair (NiceAgent *agent, NiceComponent *component,
 }
 
 /*
- * Update the retransmit flag of pairs with higher priority than
- * the first nominated pair
- */
-void
-conn_check_update_retransmit_flag (NiceAgent *agent, guint stream_id,
-    guint component_id)
-{
-  NiceStream *stream;
-  NiceComponent *component;
-  CandidateCheckPair *pair;
-  GSList *i;
-
-  if (agent_find_component (agent, stream_id, component_id, &stream,
-      &component)) {
-
-    for (i = stream->conncheck_list; i; i = i->next) {
-      pair = i->data;
-      if (pair->component_id != component_id)
-        continue;
-      if (pair->nominated)
-        break;
-      if (pair->state == NICE_CHECK_IN_PROGRESS && !pair->retransmit &&
-          pair->stun_transactions) {
-        pair->retransmit = TRUE;
-        nice_debug ("Agent %p : pair %p will be retransmitted.", agent, pair);
-      }
-    }
-  }
-  return;
-}
-
-/*
  * Updates the check list state.
  *
  * Implements parts of the algorithm described in 
@@ -2330,7 +2297,8 @@ static void priv_update_check_list_failed_components (NiceAgent *agent, NiceStre
  *
  * Sends a component state changesignal via 'agent'.
  */
-static void priv_update_check_list_state_for_ready (NiceAgent *agent, NiceStream *stream, NiceComponent *component)
+void conn_check_update_check_list_state_for_ready (NiceAgent *agent,
+    NiceStream *stream, NiceComponent *component)
 {
   GSList *i;
   guint valid = 0, nominated = 0;
@@ -2354,7 +2322,7 @@ static void priv_update_check_list_state_for_ready (NiceAgent *agent, NiceStream
     /* Only go to READY if no checks are left in progress. If there are
      * any that are kept, then this function will be called again when the
      * conncheck tick timer finishes them all */
-    if (priv_prune_pending_checks (agent, stream, component->id) == 0) {
+    if (priv_prune_pending_checks (agent, stream, component) == 0) {
       /* Continue through the states to give client code a nice
        * logical progression. See http://phabricator.freedesktop.org/D218 for
        * discussion. */
@@ -2435,7 +2403,7 @@ static void priv_mark_pair_nominated (NiceAgent *agent, NiceStream *stream, Nice
       }
 
       if (pair->nominated)
-        priv_update_check_list_state_for_ready (agent, stream, component);
+        conn_check_update_check_list_state_for_ready (agent, stream, component);
     }
   }
 }
@@ -3133,34 +3101,33 @@ int conn_check_send (NiceAgent *agent, CandidateCheckPair *pair)
  * Implemented the pruning steps described in ICE sect 8.1.2
  * "Updating States" (ID-19) after a pair has been nominated.
  *
- * @see priv_update_check_list_state_failed_components()
+ * @see conn_check_update_check_list_state_failed_components()
  */
-static guint priv_prune_pending_checks (NiceAgent *agent, NiceStream *stream, guint component_id)
+static guint priv_prune_pending_checks (NiceAgent *agent, NiceStream *stream, NiceComponent *component)
 {
   GSList *i;
+  guint64 priority;
   guint in_progress = 0;
-  gboolean found_nominated = FALSE;
-  gchar prio1[NICE_CANDIDATE_PAIR_PRIORITY_MAX_SIZE];
-  gchar prio2[NICE_CANDIDATE_PAIR_PRIORITY_MAX_SIZE];
+  gchar prio[NICE_CANDIDATE_PAIR_PRIORITY_MAX_SIZE];
 
-  nice_debug ("Agent %p: Finding highest priority for component %d",
-      agent, component_id);
+  nice_debug ("Agent %p: Pruning pending checks for s%d/c%d",
+      agent, stream->id, component->id);
+
+  /* Called when we have at least one selected pair */
+  priority = component->selected_pair.priority;
+  g_assert (priority > 0);
+
+  nice_candidate_pair_priority_to_string (priority, prio);
+  nice_debug ("Agent %p : selected pair priority is %s", agent, prio);
 
   i = stream->conncheck_list;
   while (i) {
     CandidateCheckPair *p = i->data;
     GSList *next = i->next;
 
-    if (p->component_id != component_id) {
+    if (p->component_id != component->id) {
       i = next;
       continue;
-    }
-
-    if (p->valid && p->nominated && !found_nominated) {
-      found_nominated = TRUE;
-      nice_candidate_pair_priority_to_string (p->priority, prio1);
-      nice_debug ("Agent %p: Pruning pending checks. Highest nominated "
-          "priority is %s.", agent, prio1);
     }
 
     /* step: cancel all FROZEN and WAITING pairs for the component */
@@ -3172,16 +3139,25 @@ static guint priv_prune_pending_checks (NiceAgent *agent, NiceStream *stream, gu
 
     /* note: a SHOULD level req. in ICE 8.1.2. "Updating States" (ID-19) */
     else if (p->state == NICE_CHECK_IN_PROGRESS) {
-      if (found_nominated) {
-        p->retransmit  = FALSE;
-        nice_debug ("Agent %p : pair %p will not be retransmitted.", agent, p);
+      if (p->priority < priority) {
+        if (p->retransmit && p->stun_transactions) {
+          p->retransmit  = FALSE;
+          nice_debug ("Agent %p : pair %p will not be retransmitted.",
+              agent, p);
+        }
       } else {
         /* We must keep the higher priority pairs running because if a udp
          * packet was lost, we might end up using a bad candidate */
-        nice_candidate_pair_priority_to_string (p->priority, prio2);
+        nice_candidate_pair_priority_to_string (p->priority, prio);
         nice_debug ("Agent %p : pair %p kept IN_PROGRESS because priority "
-            "%s is higher than currently nominated pair %s.",
-            agent, p, prio2, prio1);
+            "%s is higher than priority of best nominated pair.", agent, p, prio);
+        /* We may also have to enable the retransmit flag of pairs with
+         * a higher priority than the first nominated pair
+         */
+        if (!p->retransmit && p->stun_transactions) {
+          p->retransmit = TRUE;
+          nice_debug ("Agent %p : pair %p will be retransmitted.", agent, p);
+        }
         in_progress++;
       }
     }
@@ -3280,7 +3256,8 @@ static gboolean priv_schedule_triggered_check (NiceAgent *agent, NiceStream *str
              * an incoming stun request generates a discovered peer reflexive,
              * that causes the ready -> connected transition.
              */
-            priv_update_check_list_state_for_ready (agent, stream, component);
+            conn_check_update_check_list_state_for_ready (agent, stream,
+                component);
             break;
           default:
             break;
@@ -3789,7 +3766,7 @@ static gboolean priv_map_reply_to_conn_check_request (NiceAgent *agent, NiceStre
 
 	/* step: update pair states (ICE 7.1.2.2.3 "Updating pair
 	   states" and 8.1.2 "Updating States", ID-19) */
-	priv_update_check_list_state_for_ready (agent, stream, component);
+	conn_check_update_check_list_state_for_ready (agent, stream, component);
       } else if (res == STUN_USAGE_ICE_RETURN_ROLE_CONFLICT) {
         uint64_t tie;
         gboolean controlled_mode;
