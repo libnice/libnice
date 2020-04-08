@@ -2450,9 +2450,25 @@ static CandidateCheckPair *priv_add_new_check_pair (NiceAgent *agent,
 {
   NiceStream *stream;
   CandidateCheckPair *pair;
+  guint64 priority;
 
   g_assert (local != NULL);
   g_assert (remote != NULL);
+
+  priority = agent_candidate_pair_priority (agent, local, remote);
+
+  if (component->selected_pair.priority &&
+      priority < component->selected_pair.priority) {
+    gchar prio1[NICE_CANDIDATE_PAIR_PRIORITY_MAX_SIZE];
+    gchar prio2[NICE_CANDIDATE_PAIR_PRIORITY_MAX_SIZE];
+
+    nice_candidate_pair_priority_to_string (priority, prio1);
+    nice_candidate_pair_priority_to_string (component->selected_pair.priority,
+        prio2);
+    nice_debug ("Agent %p : do not create a pair that would have a priority "
+        "%s lower than selected pair priority %s.", agent, prio1, prio2);
+    return NULL;
+  }
 
   stream = agent_find_stream (agent, stream_id);
   pair = g_slice_new0 (CandidateCheckPair);
