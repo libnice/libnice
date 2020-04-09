@@ -3140,10 +3140,17 @@ static guint priv_prune_pending_checks (NiceAgent *agent, NiceStream *stream, Ni
     /* note: a SHOULD level req. in ICE 8.1.2. "Updating States" (ID-19) */
     else if (p->state == NICE_CHECK_IN_PROGRESS) {
       if (p->priority < priority) {
+        priv_remove_pair_from_triggered_check_queue (agent, p);
         if (p->retransmit && p->stun_transactions) {
           p->retransmit  = FALSE;
           nice_debug ("Agent %p : pair %p will not be retransmitted.",
               agent, p);
+        } else if (p->retransmit) {
+          /* Pair in-progress, but stun request not yet sent */
+          nice_debug ("Agent %p : pair %p removed.", agent, p);
+          candidate_check_pair_free (agent, p);
+          stream->conncheck_list = g_slist_delete_link(stream->conncheck_list,
+              i);
         }
       } else {
         /* We must keep the higher priority pairs running because if a udp
@@ -3161,6 +3168,12 @@ static guint priv_prune_pending_checks (NiceAgent *agent, NiceStream *stream, Ni
         in_progress++;
       }
     }
+    /* A triggered check on a failed pair will depend on the retransmit
+     * flag, so on the relative priority of this pair and the nominated
+     * pair.
+     */
+    else if (p->state == NICE_CHECK_FAILED)
+      p->retransmit = (p->priority > priority ? TRUE : FALSE);
     i = next;
   }
 
