@@ -3784,6 +3784,12 @@ static gboolean priv_map_reply_to_conn_check_request (NiceAgent *agent, NiceStre
         uint64_t tie;
         gboolean controlled_mode;
 
+        if (!p->retransmit) {
+          nice_debug ("Agent %p : Role conflict with pair %p, not restarting",
+              agent, p);
+          return TRUE;
+        }
+
 	/* case: role conflict error, need to restart with new role */
 	nice_debug ("Agent %p : Role conflict with pair %p, restarting",
             agent, p);
