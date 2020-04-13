@@ -3532,6 +3532,8 @@ static void priv_update_pair_foundations (NiceAgent *agent,
               NICE_CANDIDATE_PAIR_MAX_FOUNDATION);
           nice_debug ("Agent %p : Updating pair %p foundation to '%s'",
               agent, pair, pair->foundation);
+          if (pair->state == NICE_CHECK_SUCCEEDED)
+            conn_check_unfreeze_related (agent, pair);
           if (component->selected_pair.local == pair->local &&
               component->selected_pair.remote == pair->remote) {
             gchar priority[NICE_CANDIDATE_PAIR_PRIORITY_MAX_SIZE];
