@@ -2914,34 +2914,40 @@ size_t priv_get_password (NiceAgent *agent, NiceStream *stream,
   return 0;
 }
 
-/* Implement the computation specific in RFC 5245 section 16 */
+/* Implement the computation specific in RFC 8445 section 14 */
 
 static unsigned int priv_compute_conncheck_timer (NiceAgent *agent, NiceStream *stream)
 {
-  GSList *i;
+  GSList *i, *j;
   guint waiting_and_in_progress = 0;
-  guint n = 0;
   unsigned int rto = 0;
 
-  for (i = stream->conncheck_list; i ; i = i->next) {
-    CandidateCheckPair *p = i->data;
-    if (p->state == NICE_CHECK_IN_PROGRESS ||
-        p->state == NICE_CHECK_WAITING)
-      waiting_and_in_progress++;
+  /* we can compute precisely the number of pairs in-progress or
+   * waiting for all streams, instead of limiting the value to one
+   * stream, and multiplying it by the number of active streams.
+   * Since RFC8445, this number of waiting and in-progress pairs
+   * if maxed by the number of different foundations in the conncheck
+   * list.
+   */
+  for (i = agent->streams; i ; i = i->next) {
+    NiceStream *s = i->data;
+    for (j = s->conncheck_list; j ; j = j->next) {
+      CandidateCheckPair *p = j->data;
+      if (p->state == NICE_CHECK_IN_PROGRESS ||
+          p->state == NICE_CHECK_WAITING)
+        waiting_and_in_progress++;
+    }
   }
 
-  n = priv_number_of_active_check_lists (agent);
-  rto = agent->timer_ta  * n * waiting_and_in_progress;
+  rto = agent->timer_ta  * waiting_and_in_progress;
 
-  /* We assume non-reliable streams are RTP, so we use 100 as the max */
+  /* RFC8445 indicates that the min rto value should be 500ms, but
+   * we prefer a lower value of 100ms, which should be overriden
+   * most of the time, when a significant number of pairs are handled.
+   */
   nice_debug ("Agent %p : timer set to %dms, "
-    "waiting+in_progress=%d, nb_active=%d",
-    agent, agent->reliable ? MAX (rto, 500) : MAX (rto, 100),
-    waiting_and_in_progress, n);
-  if (agent->reliable)
-    return MAX (rto, 500);
-  else
-    return MAX (rto, 100);
+    "waiting+in_progress=%d", agent, MAX (rto, 100), waiting_and_in_progress);
+  return MAX (rto, 100);
 }
 
 /*
