@@ -130,29 +130,39 @@ struct stun_timer_s {
  * STUN_TIMER_DEFAULT_TIMEOUT:
  *
  * The default intial timeout to use for the timer
- * RFC recommendds 500, but it's ridiculous, 50ms is known to work in most
- * cases as it is also what is used by SIP style VoIP when sending A-Law and
- * mu-Law audio, so 200ms should be hyper safe. With an initial timeout
- * of 200ms, a default of 7 transmissions, the last timeout will be
- * 16 * 200ms, and we expect to receive a response from the stun server
- * before (1 + 2 + 4 + 8 + 16 + 32 + 16) * 200ms = 15200 ms after the initial
- * stun request has been sent.
+ * This timeout is used for discovering server reflexive and relay
+ * candidates, and also for keepalives, and turn refreshes.
+ *
+ * This value is important because it defines how much time will be
+ * required to discover our local candidates, and this is an
+ * uncompressible delay before the agent signals that candidates
+ * gathering is done.
+ *
+ * The overall delay required for the discovery stun requests is
+ * computed as follow, with 3 retransmissions and an initial delay
+ * of 500ms :  500 * ( 1 + 2 + 1 ) = 2000 ms
+ * The timeout doubles at each retransmission, except for the last one.
  */
-#define STUN_TIMER_DEFAULT_TIMEOUT 200
+#define STUN_TIMER_DEFAULT_TIMEOUT 500
 
 /**
  * STUN_TIMER_DEFAULT_MAX_RETRANSMISSIONS:
  *
- * The default maximum retransmissions allowed before a timer decides to timeout
+ * The default maximum retransmissions before declaring that the
+ * transaction timed out.
  */
-#define STUN_TIMER_DEFAULT_MAX_RETRANSMISSIONS 7
+#define STUN_TIMER_DEFAULT_MAX_RETRANSMISSIONS 3
 
 /**
  * STUN_TIMER_DEFAULT_RELIABLE_TIMEOUT:
  *
  * The default intial timeout to use for a reliable timer
+ *
+ * The idea with this value is that stun request sent over udp or tcp
+ * should fail at the same time, with an initial default timeout set
+ * to 500ms.
  */
-#define STUN_TIMER_DEFAULT_RELIABLE_TIMEOUT 7900
+#define STUN_TIMER_DEFAULT_RELIABLE_TIMEOUT 2000
 
 /**
  * StunUsageTimerReturn:

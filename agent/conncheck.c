@@ -2762,13 +2762,10 @@ static unsigned int priv_compute_conncheck_timer (NiceAgent *agent, NiceStream *
 
   rto = agent->timer_ta  * waiting_and_in_progress;
 
-  /* RFC8445 indicates that the min rto value should be 500ms, but
-   * we prefer a lower value of 100ms, which should be overriden
-   * most of the time, when a significant number of pairs are handled.
-   */
   nice_debug ("Agent %p : timer set to %dms, "
-    "waiting+in_progress=%d", agent, MAX (rto, 100), waiting_and_in_progress);
-  return MAX (rto, 100);
+    "waiting+in_progress=%d", agent, MAX (rto, STUN_TIMER_DEFAULT_TIMEOUT),
+    waiting_and_in_progress);
+  return MAX (rto, STUN_TIMER_DEFAULT_TIMEOUT);
 }
 
 /*
