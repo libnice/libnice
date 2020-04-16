@@ -475,11 +475,10 @@ void
 conn_check_unfreeze_related (NiceAgent *agent, CandidateCheckPair *pair)
 {
   GSList *i, *j;
+  gboolean result = FALSE;
 
   g_assert (pair);
   g_assert (pair->state == NICE_CHECK_SUCCEEDED);
-
-  priv_print_conn_check_lists (agent, G_STRFUNC, NULL);
 
   for (i = agent->streams; i ; i = i->next) {
     NiceStream *s = i->data;
@@ -495,9 +494,15 @@ conn_check_unfreeze_related (NiceAgent *agent, CandidateCheckPair *pair)
         nice_debug ("Agent %p : Unfreezing check %p "
             "(after successful check %p).", agent, p, pair);
         SET_PAIR_STATE (agent, p, NICE_CHECK_WAITING);
+        result = TRUE;
       }
     }
   }
+  /* We dump the conncheck list when something interesting happened, ie
+   * when we unfroze some pairs.
+   */
+  if (result)
+    priv_print_conn_check_lists (agent, G_STRFUNC, NULL);
 }
 
 /*
@@ -514,11 +519,10 @@ static void
 priv_conn_check_unfreeze_maybe (NiceAgent *agent, CandidateCheckPair *pair)
 {
   GSList *i, *j;
+  gboolean result = FALSE;
 
   g_assert (pair);
   g_assert (pair->state == NICE_CHECK_FROZEN);
-
-  priv_print_conn_check_lists (agent, G_STRFUNC, NULL);
 
   for (i = agent->streams; i ; i = i->next) {
     NiceStream *s = i->data;
@@ -531,9 +535,15 @@ priv_conn_check_unfreeze_maybe (NiceAgent *agent, CandidateCheckPair *pair)
         nice_debug ("Agent %p : Unfreezing check %p "
             "(after successful check %p).", agent, pair, p);
         SET_PAIR_STATE (agent, pair, NICE_CHECK_WAITING);
+        result = TRUE;
       }
     }
   }
+  /* We dump the conncheck list when something interesting happened, ie
+   * when we unfroze some pairs.
+   */
+  if (result)
+    priv_print_conn_check_lists (agent, G_STRFUNC, NULL);
 }
 
 guint
@@ -773,9 +783,9 @@ timer_return_timeout:
   }
 
   if (pair) {
-    priv_print_conn_check_lists (agent, G_STRFUNC,
-        ", got a pair in Waiting state");
     priv_conn_check_initiate (agent, pair);
+    priv_print_conn_check_lists (agent, G_STRFUNC,
+        ", initiated an ordinary connection check");
     return TRUE;
   }
 
@@ -1152,9 +1162,10 @@ static gboolean priv_conn_check_tick_agent_locked (NiceAgent *agent,
   pair = priv_get_pair_from_triggered_check_queue (agent);
 
   if (pair) {
+    int result = conn_check_send (agent, pair);
     priv_print_conn_check_lists (agent, G_STRFUNC,
-        ", got a pair from triggered check list");
-    if (conn_check_send (agent, pair)) {
+        ", initiated a connection check from triggered check list");
+    if (result) {
       SET_PAIR_STATE (agent, pair, NICE_CHECK_FAILED);
       return FALSE;
     }
