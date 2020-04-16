@@ -607,23 +607,31 @@ void priv_generate_candidate_credentials (NiceAgent *agent,
 }
 
 static gboolean
-priv_local_host_candidate_duplicate_port (NiceComponent *component,
+priv_local_host_candidate_duplicate_port (NiceAgent *agent,
   NiceCandidate *candidate)
 {
-  GSList *i;
+  GSList *i, *j, *k;
 
   if (candidate->transport == NICE_CANDIDATE_TRANSPORT_TCP_ACTIVE)
     return FALSE;
 
-  for (i = component->local_candidates; i; i = i->next) {
-    NiceCandidate *c = i->data;
+  for (i = agent->streams; i; i = i->next) {
+    NiceStream *stream = i->data;
 
-    if (candidate->transport == c->transport &&
-        nice_address_ip_version (&candidate->addr) ==
-        nice_address_ip_version (&c->addr) &&
-        nice_address_get_port (&candidate->addr) ==
-        nice_address_get_port (&c->addr))
-      return TRUE;
+    for (j = stream->components; j; j = j->next) {
+      NiceComponent *component = j->data;
+
+      for (k = component->local_candidates; k; k = k->next) {
+        NiceCandidate *c = k->data;
+
+        if (candidate->transport == c->transport &&
+            nice_address_ip_version (&candidate->addr) ==
+            nice_address_ip_version (&c->addr) &&
+            nice_address_get_port (&candidate->addr) ==
+            nice_address_get_port (&c->addr))
+          return TRUE;
+      }
+    }
   }
   return FALSE;
 }
@@ -693,7 +701,7 @@ HostCandidateResult discovery_add_local_host_candidate (
   candidate->addr = nicesock->addr;
   candidate->base_addr = nicesock->addr;
 
-  if (priv_local_host_candidate_duplicate_port (component, candidate)) {
+  if (priv_local_host_candidate_duplicate_port (agent, candidate)) {
     res = HOST_CANDIDATE_DUPLICATE_PORT;
     goto errors;
   }
