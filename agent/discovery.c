@@ -514,32 +514,51 @@ static void priv_assign_foundation (NiceAgent *agent, NiceCandidate *candidate)
       for (k = component->local_candidates; k; k = k->next) {
 	NiceCandidateImpl *n = k->data;
 
-        /* note: candidate must not on the local candidate list */
+        /* note: candidate must not be on the local candidate list */
 	g_assert (c != n);
 
-	if (candidate->type == n->c.type &&
-            candidate->transport == n->c.transport &&
-	    nice_address_equal_no_port (&candidate->base_addr, &n->c.base_addr) &&
-            (candidate->type != NICE_CANDIDATE_TYPE_RELAYED ||
-                priv_compare_turn_servers (c->turn, n->turn)) &&
-            !(agent->compatibility == NICE_COMPATIBILITY_GOOGLE &&
-                n->c.type == NICE_CANDIDATE_TYPE_RELAYED)) {
+	if (candidate->type != n->c.type)
+          continue;
+
+        if (candidate->transport != n->c.transport)
+          continue;
+
+        if (candidate->type == NICE_CANDIDATE_TYPE_RELAYED &&
+	    !nice_address_equal_no_port (&candidate->addr, &n->c.addr))
+          continue;
+
+        /* The base of a relayed candidate is that candidate itself, see
+         * sect 5.1.1.2. (Server Reflexive and Relayed Candidates) or
+         * ICE spec (RFC8445). It allows the relayed candidate from the
+         * same TURN server to share the same foundation.
+         */
+        if (candidate->type != NICE_CANDIDATE_TYPE_RELAYED &&
+            !nice_address_equal_no_port (&candidate->base_addr, &n->c.base_addr))
+          continue;
+
+        if (candidate->type == NICE_CANDIDATE_TYPE_RELAYED &&
+            !priv_compare_turn_servers (c->turn, n->turn))
+          continue;
+
+        if (candidate->type == NICE_CANDIDATE_TYPE_RELAYED &&
+            agent->compatibility == NICE_COMPATIBILITY_GOOGLE)
 	  /* note: currently only one STUN server per stream at a
 	   *       time is supported, so there is no need to check
 	   *       for candidates that would otherwise share the
 	   *       foundation, but have different STUN servers */
-	  g_strlcpy (candidate->foundation, n->c.foundation,
-              NICE_CANDIDATE_MAX_FOUNDATION);
-          if (n->c.username) {
-            g_free (candidate->username);
-            candidate->username = g_strdup (n->c.username);
-          }
-          if (n->c.password) {
-            g_free (candidate->password);
-            candidate->password = g_strdup (n->c.password);
-          }
-	  return;
-	}
+          continue;
+
+	g_strlcpy (candidate->foundation, n->c.foundation,
+            NICE_CANDIDATE_MAX_FOUNDATION);
+        if (n->c.username) {
+          g_free (candidate->username);
+          candidate->username = g_strdup (n->c.username);
+        }
+        if (n->c.password) {
+          g_free (candidate->password);
+          candidate->password = g_strdup (n->c.password);
+        }
+	return;
       }
     }
   }
