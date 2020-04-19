@@ -127,7 +127,8 @@ discovery_add_relay_candidate (
   NiceAddress *address,
   NiceCandidateTransport transport,
   NiceSocket *base_socket,
-  TurnServer *turn);
+  TurnServer *turn,
+  uint32_t *lifetime);
 
 NiceCandidate*
 discovery_add_server_reflexive_candidate (

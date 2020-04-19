@@ -921,7 +921,8 @@ discovery_add_relay_candidate (
   NiceAddress *address,
   NiceCandidateTransport transport,
   NiceSocket *base_socket,
-  TurnServer *turn)
+  TurnServer *turn,
+  uint32_t *lifetime)
 {
   NiceCandidate *candidate;
   NiceCandidateImpl *c;
@@ -974,8 +975,11 @@ discovery_add_relay_candidate (
 
   priv_assign_foundation (agent, candidate);
 
-  if (!priv_add_local_candidate_pruned (agent, stream_id, component, candidate))
-    goto errors;
+  if (!priv_add_local_candidate_pruned (agent, stream_id, component, candidate)) {
+    if (lifetime)
+      *lifetime = 0;
+    return c;
+  }
 
   nice_component_attach_socket (component, relay_socket);
   agent_signal_new_candidate (agent, candidate);

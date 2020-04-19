@@ -1676,7 +1676,8 @@ static void priv_turn_allocate_refresh_tick_unlocked (NiceAgent *agent,
 
   buffer_len = stun_usage_turn_create_refresh (&cand->stun_agent,
       &cand->stun_message,  cand->stun_buffer, sizeof(cand->stun_buffer),
-      cand->stun_resp_msg.buffer == NULL ? NULL : &cand->stun_resp_msg, -1,
+      cand->stun_resp_msg.buffer == NULL ? NULL : &cand->stun_resp_msg,
+      cand->disposing ? 0 : -1,
       username, username_len,
       password, password_len,
       turn_compat);
@@ -3823,7 +3824,6 @@ priv_add_new_turn_refresh (NiceAgent *agent, CandidateDiscovery *cdisco,
     return;
 
   cand = g_slice_new0 (CandidateRefresh);
-  agent->refresh_list = g_slist_append (agent->refresh_list, cand);
 
   cand->candidate = relay_cand;
   cand->nicesock = cdisco->nicesock;
@@ -3842,16 +3842,27 @@ priv_add_new_turn_refresh (NiceAgent *agent, CandidateDiscovery *cdisco,
     cand->stun_resp_msg.key = NULL;
   }
 
-  nice_debug ("Agent %p : Adding new refresh candidate %p with timeout %d",
-      agent, cand, priv_calc_turn_timeout (lifetime));
-  /* step: also start the refresh timer */
-  /* refresh should be sent 1 minute before it expires */
-  agent_timeout_add_seconds_with_context (agent, &cand->timer_source,
-      "Candidate TURN refresh",
-      priv_calc_turn_timeout (lifetime),
-      priv_turn_allocate_refresh_tick_agent_locked, cand);
+  if (lifetime > 0) {
+    agent->refresh_list = g_slist_append (agent->refresh_list, cand);
+    nice_debug ("Agent %p : Adding new refresh candidate %p with timeout %d",
+        agent, cand, priv_calc_turn_timeout (lifetime));
+    /* step: also start the refresh timer */
+    /* refresh should be sent 1 minute before it expires */
+    agent_timeout_add_seconds_with_context (agent, &cand->timer_source,
+        "Candidate TURN refresh",
+        priv_calc_turn_timeout (lifetime),
+        priv_turn_allocate_refresh_tick_agent_locked, cand);
 
-  nice_debug ("timer source is : %p", cand->timer_source);
+    nice_debug ("timer source is : %p", cand->timer_source);
+  } else {
+    nice_debug ("Agent %p : Sending request to remove TURN allocation "
+        "for refresh %p", agent, cand);
+    cand->disposing = TRUE;
+    priv_turn_allocate_refresh_tick_unlocked (agent, cand);
+    if (relay_cand->sockptr)
+      nice_socket_free (relay_cand->sockptr);
+    nice_candidate_free ((NiceCandidate *)relay_cand);
+  }
 
   return;
 }
@@ -4022,7 +4033,8 @@ static gboolean priv_map_reply_to_relay_request (NiceAgent *agent, StunMessage *
                 &niceaddr,
                 NICE_CANDIDATE_TRANSPORT_TCP_ACTIVE,
                 d->nicesock,
-                d->turn);
+                d->turn,
+                &lifetime);
 
             if (relay_cand) {
               if (agent->compatibility == NICE_COMPATIBILITY_OC2007 ||
@@ -4042,7 +4054,8 @@ static gboolean priv_map_reply_to_relay_request (NiceAgent *agent, StunMessage *
                 &niceaddr,
                 NICE_CANDIDATE_TRANSPORT_TCP_PASSIVE,
                 d->nicesock,
-                d->turn);
+                d->turn,
+                &lifetime);
           } else {
             relay_cand = discovery_add_relay_candidate (
                 agent,
@@ -4051,7 +4064,8 @@ static gboolean priv_map_reply_to_relay_request (NiceAgent *agent, StunMessage *
                 &niceaddr,
                 NICE_CANDIDATE_TRANSPORT_UDP,
                 d->nicesock,
-                d->turn);
+                d->turn,
+                &lifetime);
           }
 
           if (relay_cand) {
