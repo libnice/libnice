@@ -786,6 +786,8 @@ timer_return_timeout:
     priv_conn_check_initiate (agent, pair);
     priv_print_conn_check_lists (agent, G_STRFUNC,
         ", initiated an ordinary connection check");
+    if (stun_sent)
+      *stun_sent = TRUE;
     return TRUE;
   }
 
