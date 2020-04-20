@@ -3203,13 +3203,9 @@ static gboolean priv_schedule_triggered_check (NiceAgent *agent, NiceStream *str
       p = i->data;
       if (p->component_id == component->id &&
 	  p->remote == remote_cand &&
-          ((p->local->transport == NICE_CANDIDATE_TRANSPORT_TCP_PASSIVE &&
-              p->sockptr == local_socket) ||
-              (p->local->transport != NICE_CANDIDATE_TRANSPORT_TCP_PASSIVE &&
-                  p->local->sockptr == local_socket))) {
-        /* We don't check for p->sockptr because in the case of
-         * tcp-active we don't want to retrigger a check on a pair that
-         * was FAILED when a peer-reflexive pair was created */
+          p->sockptr == local_socket) {
+        /* If we match with a peer-reflexive discovered pair, we
+         * use the parent succeeded pair instead */
 
         if (p->succeeded_pair != NULL) {
           g_assert_cmpint (p->state, ==, NICE_CHECK_DISCOVERED);
