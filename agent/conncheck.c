@@ -1971,9 +1971,14 @@ local_candidate_and_socket_compatible (NiceAgent *agent,
   g_assert (socket);
   g_assert (lcand);
 
-  if (nice_socket_has_compatible_transport (socket, &transport))
+  if (nice_socket_has_compatible_transport (socket, &transport)) {
     ret = (lcand->transport == transport);
-  else if (socket->type == NICE_SOCKET_TYPE_UDP_TURN)
+    /* tcp-active discovered peer-reflexive local candidate, where
+     * socket is the tcp connect related socket */
+    if (ret && transport == NICE_CANDIDATE_TRANSPORT_TCP_ACTIVE &&
+        nice_address_get_port (&lcand->addr) > 0)
+      ret = (lcand->sockptr == socket);
+  } else if (socket->type == NICE_SOCKET_TYPE_UDP_TURN)
     /* Socket of type udp-turn will match a unique local candidate
      * by its sockptr value. An an udp-turn socket doesn't carry enough
      * information when base socket is udp-turn-over-tcp to disambiguate
