@@ -536,6 +536,24 @@ priv_conn_check_unfreeze_maybe (NiceAgent *agent, CandidateCheckPair *pair)
   }
 }
 
+guint
+conn_check_stun_transactions_count (NiceAgent *agent)
+{
+  GSList *i, *j;
+  guint count = 0;
+
+  for (i = agent->streams; i ; i = i->next) {
+    NiceStream *s = i->data;
+    for (j = s->conncheck_list; j ; j = j->next) {
+      CandidateCheckPair *p = j->data;
+
+      if (p->stun_transactions)
+        count += g_slist_length (p->stun_transactions);
+    }
+  }
+  return count;
+}
+
 /*
  * Create a new STUN transaction and add it to the list
  * of ongoing stun transactions of a pair.

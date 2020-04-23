@@ -3733,11 +3733,7 @@ static gboolean priv_add_remote_candidate (
       if (agent->controlling_mode &&
           agent->nomination_mode == NICE_NOMINATION_MODE_AGGRESSIVE &&
           transport != NICE_CANDIDATE_TRANSPORT_UDP) {
-        if (component->state < NICE_COMPONENT_STATE_CONNECTING) {
-          nice_debug ("Agent %p : we have a TCP candidate, switching back "
-              "to regular nomination mode", agent);
-          agent->nomination_mode = NICE_NOMINATION_MODE_REGULAR;
-        } else {
+        if (conn_check_stun_transactions_count (agent) > 0) {
           /* changing nomination mode from aggressive to regular while
            * conncheck is ongoing may cause unexpected results (inflight
            * aggressive stun requests may nominate a pair unilaterally)
@@ -3745,6 +3741,10 @@ static gboolean priv_add_remote_candidate (
           nice_debug ("Agent %p : we have a TCP candidate, but conncheck "
               "has started already in aggressive mode, ignore it", agent);
           goto errors;
+        } else {
+          nice_debug ("Agent %p : we have a TCP candidate, switching back "
+              "to regular nomination mode", agent);
+          agent->nomination_mode = NICE_NOMINATION_MODE_REGULAR;
         }
       }
     }

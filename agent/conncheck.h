@@ -124,6 +124,7 @@ void conn_check_update_selected_pair (NiceAgent *agent,
 void conn_check_update_check_list_state_for_ready (NiceAgent *agent,
     NiceStream *stream, NiceComponent *component);
 void conn_check_unfreeze_related (NiceAgent *agent, CandidateCheckPair *pair);
+guint conn_check_stun_transactions_count (NiceAgent *agent);
 
 
 #endif /*_NICE_CONNCHECK_H */
