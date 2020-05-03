@@ -3788,11 +3788,14 @@ priv_calc_turn_timeout (guint lifetime)
     return lifetime / 2;
 }
 
-static CandidateRefresh *
+static void
 priv_add_new_turn_refresh (NiceAgent *agent, CandidateDiscovery *cdisco,
     NiceCandidate *relay_cand, guint lifetime)
 {
   CandidateRefresh *cand;
+
+  if (cdisco->turn->type != NICE_RELAY_TYPE_TURN_UDP)
+    return;
 
   cand = g_slice_new0 (CandidateRefresh);
   agent->refresh_list = g_slist_append (agent->refresh_list, cand);
@@ -3810,7 +3813,7 @@ priv_add_new_turn_refresh (NiceAgent *agent, CandidateDiscovery *cdisco,
         sizeof(cand->stun_resp_buffer));
     memcpy(&cand->stun_resp_msg, &cdisco->stun_resp_msg, sizeof(StunMessage));
     cand->stun_resp_msg.buffer = cand->stun_resp_buffer;
-    cand->stun_resp_msg.agent = NULL;
+    cand->stun_resp_msg.agent = &cand->stun_agent;
     cand->stun_resp_msg.key = NULL;
   }
 
@@ -3825,7 +3828,7 @@ priv_add_new_turn_refresh (NiceAgent *agent, CandidateDiscovery *cdisco,
 
   nice_debug ("timer source is : %p", cand->timer_source);
 
-  return cand;
+  return;
 }
 
 static void priv_handle_turn_alternate_server (NiceAgent *agent,
@@ -3984,9 +3987,8 @@ static gboolean priv_map_reply_to_relay_request (NiceAgent *agent, StunMessage *
                     &d->stun_message);
                 nice_udp_turn_socket_set_ms_connection_id(relay_cand->sockptr,
                     resp);
-              } else {
-                priv_add_new_turn_refresh (agent, d, relay_cand, lifetime);
               }
+              priv_add_new_turn_refresh (agent, d, relay_cand, lifetime);
             }
 
             relay_cand = discovery_add_relay_candidate (
@@ -4024,9 +4026,8 @@ static gboolean priv_map_reply_to_relay_request (NiceAgent *agent, StunMessage *
                   &d->stun_message);
               nice_udp_turn_socket_set_ms_connection_id(relay_cand->sockptr,
                   resp);
-            } else {
-              priv_add_new_turn_refresh (agent, d, relay_cand, lifetime);
             }
+            priv_add_new_turn_refresh (agent, d, relay_cand, lifetime);
 
             /* In case a new candidate has been added */
             conn_check_schedule_next (agent);
