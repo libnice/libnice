@@ -3859,11 +3859,30 @@ static void priv_handle_turn_alternate_server (NiceAgent *agent,
 
       nice_address_to_string (&server, ip);
       nice_debug ("Agent %p : Cancelling and setting alternate server %s for "
-          "CandidateDiscovery %p", agent, ip, d);
+          "CandidateDiscovery %p on s%d/c%d", agent, ip, d,
+          d->stream_id, d->component_id);
       d->server = alternate;
       d->turn->server = alternate;
       d->pending = FALSE;
       agent->discovery_unsched_items++;
+
+      if (d->turn->type == NICE_RELAY_TYPE_TURN_TCP ||
+          d->turn->type == NICE_RELAY_TYPE_TURN_TLS) {
+        NiceStream *stream;
+        NiceComponent *component;
+
+        if (!agent_find_component (agent, d->stream_id, d->component_id,
+            &stream, &component)) {
+          nice_debug ("Could not find stream or component in "
+              "priv_handle_turn_alternate_server");
+          continue;
+        }
+        d->nicesock = agent_create_tcp_turn_socket (agent, stream, component,
+            d->nicesock, &d->server, d->turn->type,
+            nice_socket_is_reliable (d->nicesock));
+
+        nice_component_attach_socket (component, d->nicesock);
+      }
     }
   }
 }
@@ -4089,7 +4108,7 @@ static gboolean priv_map_reply_to_relay_request (NiceAgent *agent, StunMessage *
               d->stun_message.buffer_len = 0;
               d->done = TRUE;
             }
-          } else {
+          } else if (d->pending) {
             /* case: STUN error, the check STUN context was freed */
             d->stun_message.buffer = NULL;
             d->stun_message.buffer_len = 0;
