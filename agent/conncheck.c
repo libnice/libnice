@@ -4048,6 +4048,7 @@ static gboolean priv_map_reply_to_relay_request (NiceAgent *agent, StunMessage *
           /* handle alternate server */
           nice_address_set_from_sockaddr (&addr, &alternate.addr);
           priv_handle_turn_alternate_server (agent, d, d->server, addr);
+          trans_found = TRUE;
         } else if (res == STUN_USAGE_TURN_RETURN_RELAY_SUCCESS ||
                    res == STUN_USAGE_TURN_RETURN_MAPPED_SUCCESS) {
           /* case: successful allocate, create a new local candidate */
@@ -4245,8 +4246,9 @@ static gboolean priv_map_reply_to_relay_refresh (NiceAgent *agent, StunMessage *
   StunTransactionId response_id;
   stun_message_id (resp, response_id);
 
-  for (i = agent->refresh_list; i && trans_found != TRUE; i = i->next) {
+  for (i = agent->refresh_list; i && trans_found != TRUE;) {
     CandidateRefresh *cand = i->data;
+    GSList *next = i->next;
 
     if (!cand->disposing && cand->stun_message.buffer) {
       stun_message_id (&cand->stun_message, refresh_id);
@@ -4266,6 +4268,7 @@ static gboolean priv_map_reply_to_relay_refresh (NiceAgent *agent, StunMessage *
           g_source_destroy (cand->tick_source);
           g_source_unref (cand->tick_source);
           cand->tick_source = NULL;
+          trans_found = TRUE;
         } else if (res == STUN_USAGE_TURN_RETURN_ERROR) {
           int code = -1;
           uint8_t *sent_realm = NULL;
@@ -4308,6 +4311,7 @@ static gboolean priv_map_reply_to_relay_refresh (NiceAgent *agent, StunMessage *
         }
       }
     }
+    i = next;
   }
 
   return trans_found;
