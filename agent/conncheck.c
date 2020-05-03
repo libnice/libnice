@@ -3231,7 +3231,7 @@ static gboolean priv_schedule_triggered_check (NiceAgent *agent, NiceStream *str
              * so there's no reason to recheck this pair, since it can in
              * no way replace the nominated one.
              */
-            if (!nice_socket_is_reliable (p->sockptr) && p->retransmit) {
+            if (p->retransmit) {
               nice_debug ("Agent %p : pair %p added for a triggered check.",
                   agent, p);
               priv_add_pair_to_triggered_check_queue (agent, p);
