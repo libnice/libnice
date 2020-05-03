@@ -2086,12 +2086,9 @@ conn_check_remote_candidates_set(NiceAgent *agent, NiceStream *stream,
           break;
         }
       }
-      if (pair == NULL) {
-        pair = priv_conn_check_add_for_candidate_pair_matched (agent,
-            stream->id, component, lcand, rcand, NICE_CHECK_SUCCEEDED);
-        if (pair)
-          pair->valid = TRUE;
-      }
+      if (pair == NULL)
+        priv_conn_check_add_for_candidate_pair_matched (agent,
+            stream->id, component, lcand, rcand, NICE_CHECK_WAITING);
     }
 
     priv_schedule_triggered_check (agent, stream, component,
@@ -4837,16 +4834,11 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, NiceStream *stream,
             remote_candidate2 ? remote_candidate2 : remote_candidate);
         if(remote_candidate && stream->remote_ufrag[0]) {
           if (local_candidate &&
-              local_candidate->transport == NICE_CANDIDATE_TRANSPORT_TCP_PASSIVE) {
-            CandidateCheckPair *pair;
-
-            pair = priv_conn_check_add_for_candidate_pair_matched (agent,
+              local_candidate->transport == NICE_CANDIDATE_TRANSPORT_TCP_PASSIVE)
+            priv_conn_check_add_for_candidate_pair_matched (agent,
                 stream->id, component, local_candidate, remote_candidate,
-                NICE_CHECK_SUCCEEDED);
-            if (pair) {
-              pair->valid = TRUE;
-            }
-          } else
+                NICE_CHECK_WAITING);
+          else
             conn_check_add_for_candidate (agent, stream->id, component, remote_candidate);
         }
       }
