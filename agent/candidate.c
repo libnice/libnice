@@ -390,7 +390,7 @@ void
 nice_candidate_pair_priority_to_string (guint64 prio, gchar *string)
 {
   g_snprintf (string, NICE_CANDIDATE_PAIR_PRIORITY_MAX_SIZE,
-      "%08lx:%08lx:%" G_GUINT64_FORMAT,
+      "%08" G_GINT64_MODIFIER "x:%08" G_GINT64_MODIFIER "x:%" G_GUINT64_FORMAT,
       prio >> 32, (prio >> 1) & 0x7fffffff, prio & 1);
 }
 
