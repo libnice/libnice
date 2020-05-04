@@ -310,7 +310,8 @@ add_test_setup('valgrind',
 			     '--error-exitcode=1',
 			     '--suppressions='+meson.current_source_dir()+'/tests/libnice.supp',
 			     '--num-callers=10'],
-	       timeout_multiplier: 10
+	       timeout_multiplier: 10,
+	       env: ['CK_FORK=no']
 	      )
 
 configure_file(output : 'config.h', configuration : cdata)
