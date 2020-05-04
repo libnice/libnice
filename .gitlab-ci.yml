@@ -79,7 +79,7 @@ build meson:
       - build/
 
 build msys2:
-  image: 'registry.freedesktop.org/gstreamer/gst-ci/amd64/windows:v8'
+  image: 'registry.freedesktop.org/gstreamer/gst-ci/amd64/windows:v10'
   stage: 'build'
   tags:
     - 'docker'
