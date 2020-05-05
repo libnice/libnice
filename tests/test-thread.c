@@ -46,13 +46,13 @@
 #include <unistd.h>
 #endif
 
-GMainLoop *error_loop;
-
 volatile gint global_lagent_cands = 0;
 volatile gint global_ragent_cands = 0;
 
-volatile gint global_lagent_buffers = 0;
-volatile gint global_ragent_buffers = 0;
+GMutex buffers_mutex;
+GCond buffers_cond;
+gint global_lagent_buffers = 0;
+gint global_ragent_buffers = 0;
 
 /* Waits about 10 seconds for @var to be NULL/FALSE */
 #define WAIT_UNTIL_UNSET(var, context)			\
@@ -69,23 +69,10 @@ volatile gint global_ragent_buffers = 0;
       g_assert (!(var));				\
     }
 
-static gboolean timer_cb (gpointer pointer)
-{
-  g_debug ("test-thread:%s: %p", G_STRFUNC, pointer);
-
-  /* note: should not be reached, abort */
-  g_debug ("ERROR: test has got stuck, aborting...");
-  exit (-1);
-
-}
-
 static gpointer
 mainloop_thread (gpointer data)
 {
   GMainLoop *loop = data;
-
-  /* Synchronise thread starting. */
-  while (!g_main_loop_is_running (error_loop));
 
   g_main_loop_run (loop);
 
@@ -142,13 +129,15 @@ static void cb_candidate_gathering_done(NiceAgent *agent, guint stream_id, gpoin
 }
 
 
-
 static void cb_nice_recv (NiceAgent *agent, guint stream_id, guint component_id, guint len, gchar *buf, gpointer user_data)
 {
   gchar data[10];
-  volatile gint *count = NULL;
-  gint count_val;
+  gint *count = NULL;
 
+  g_debug ("Agent %p Stream %d Component: %d Received %u bytes", agent,
+      stream_id, component_id, len);
+
+  g_mutex_lock (&buffers_mutex);
   if (GPOINTER_TO_UINT (user_data) == 1)
     count = &global_lagent_buffers;
   else if (GPOINTER_TO_UINT (user_data) == 2)
@@ -156,21 +145,19 @@ static void cb_nice_recv (NiceAgent *agent, guint stream_id, guint component_id,
   else
     g_error ("Invalid agent ?");
 
-  count_val = g_atomic_int_get (count);
-  if (count_val == 10)
+  if (*count == 10)
     return;
 
   g_assert_cmpuint (len, ==, 10);
 
-  memset (data, count_val + '1', 10);
+  memset (data, *count + '1', 10);
 
   g_assert (memcmp (buf, data, 10) == 0);
 
-  g_atomic_int_inc (count);
+  (*count)++;
 
-  if (g_atomic_int_get (&global_ragent_buffers) == 10 &&
-      g_atomic_int_get (&global_lagent_buffers) == 10)
-    g_main_loop_quit (error_loop);
+  g_cond_signal (&buffers_cond);
+  g_mutex_unlock (&buffers_mutex);
 }
 
 
@@ -183,6 +170,9 @@ static void cb_component_state_changed (NiceAgent *agent,
   int i;
   gchar data[10];
 
+  g_debug("Agent %p Stream %d Component %d state %s", agent, stream_id,
+      component_id, nice_component_state_to_string (state));
+
   if (state != NICE_COMPONENT_STATE_READY)
     return;
 
@@ -190,9 +180,13 @@ static void cb_component_state_changed (NiceAgent *agent,
     {
       memset (data, i+'1', 10);
 
+      g_debug ("Agent %p Stream: %d Component: %d Sending 10 bytes", agent, stream_id,
+          component_id);
+
       nice_agent_send (agent, stream_id, component_id, 10, data);
     }
 }
+
 
 int main (void)
 {
@@ -222,9 +216,6 @@ int main (void)
   ldmainloop = g_main_loop_new (ldmainctx, FALSE);
   rdmainloop = g_main_loop_new (rdmainctx, FALSE);
 
-  error_loop = g_main_loop_new (NULL, FALSE);
-
-
   /* step: create the agents L and R */
   lagent = nice_agent_new (lmainctx, NICE_COMPATIBILITY_MSN);
   ragent = nice_agent_new (rmainctx, NICE_COMPATIBILITY_MSN);
@@ -236,9 +227,6 @@ int main (void)
   g_object_set (G_OBJECT (ragent), "controlling-mode", FALSE, NULL);
   g_object_set (G_OBJECT (lagent), "upnp", FALSE, NULL);
   g_object_set (G_OBJECT (ragent), "upnp", FALSE, NULL);
-
-  /* step: add a timer to catch state changes triggered by signals */
-  g_timeout_add_seconds (150, timer_cb, NULL);
 
   /* step: specify which local interface to use */
   if (!nice_address_set_from_string (&baseaddr, "127.0.0.1"))
@@ -317,8 +305,17 @@ int main (void)
   g_assert (ldthread);
   g_assert (rdthread);
 
-  /* Run loop for error timer */
-  g_main_loop_run (error_loop);
+  g_debug ("ragent_buffers: %d lagent_buffers: %d", global_lagent_buffers,
+      global_ragent_buffers);
+  g_mutex_lock (&buffers_mutex);
+  while (global_ragent_buffers < 10 ||
+      global_lagent_buffers < 10) {
+    g_cond_wait (&buffers_cond, &buffers_mutex);
+    g_debug ("ragent_buffers: %d lagent_buffers: %d", global_lagent_buffers,
+        global_ragent_buffers);
+  }
+  g_mutex_unlock (&buffers_mutex);
+
 
   while (!g_main_loop_is_running (ldmainloop));
   while (g_main_loop_is_running (ldmainloop))
@@ -356,7 +353,6 @@ int main (void)
   g_main_loop_unref (ldmainloop);
   g_main_loop_unref (rdmainloop);
 
-  g_main_loop_unref (error_loop);
 #ifdef G_OS_WIN32
   WSACleanup();
 #endif
