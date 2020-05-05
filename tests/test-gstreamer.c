@@ -147,8 +147,8 @@ static void
 recv_cb (NiceAgent * agent,
     guint stream_id, guint component_id, guint len, gchar * buf, gpointer data)
 {
-  GST_INFO ("Received data on agent %" GST_PTR_FORMAT
-      ", stream: %d, compoment: %d", agent, stream_id, component_id);
+  g_debug ("Received data on agent %p, stream: %d, compoment: %d", agent,
+      stream_id, component_id);
 }
 
 static void
@@ -158,7 +158,7 @@ print_candidate (gpointer data, gpointer user_data)
   gchar str_addr[INET6_ADDRSTRLEN];
 
   nice_address_to_string (&cand->addr, str_addr);
-  GST_INFO ("Cadidate: %s:%d", str_addr, nice_address_get_port (&cand->addr));
+  g_debug ("Cadidate: %s:%d", str_addr, nice_address_get_port (&cand->addr));
 }
 
 static void
@@ -166,7 +166,7 @@ cb_candidate_gathering_done (NiceAgent * agent, guint stream_id, gpointer data)
 {
   GSList *candidates;
 
-  GST_INFO ("Candidates gathered on agent %" GST_PTR_FORMAT ", stream: %d",
+  g_debug ("Candidates gathered on agent %p, stream: %d",
       agent, stream_id);
 
   candidates = nice_agent_get_local_candidates (agent, stream_id, 1);
@@ -174,7 +174,7 @@ cb_candidate_gathering_done (NiceAgent * agent, guint stream_id, gpointer data)
   nice_agent_set_remote_candidates (NICE_AGENT (data), stream_id, 1,
       candidates);
 
-  GST_INFO ("Got %d candidates", g_slist_length (candidates));
+  g_debug ("Got %d candidates", g_slist_length (candidates));
   g_slist_foreach (candidates, print_candidate, NULL);
 
   g_slist_free_full (candidates, (GDestroyNotify) nice_candidate_free);
@@ -189,8 +189,8 @@ credentials_negotiation (NiceAgent * a_agent, NiceAgent * b_agent,
 
   nice_agent_get_local_credentials (a_agent, a_stream, &user, &passwd);
   nice_agent_set_remote_credentials (b_agent, b_stream, user, passwd);
-  GST_DEBUG_OBJECT (a_agent, "User: %s", user);
-  GST_DEBUG_OBJECT (a_agent, "Passwd: %s", passwd);
+  g_debug ("Agent: %p User: %s", a_agent, user);
+  g_debug ("Agent: %p Passwd: %s", a_agent, passwd);
 
   g_free (user);
   g_free (passwd);
@@ -200,7 +200,7 @@ static void
 cb_component_state_changed (NiceAgent * agent, guint stream_id,
     guint component_id, guint state, gpointer user_data)
 {
-  GST_DEBUG ("State changed: %" GST_PTR_FORMAT " to %s", agent,
+  g_debug ("State changed: %p to %s", agent,
       nice_component_state_to_string (state));
 
   if (state == NICE_COMPONENT_STATE_READY) {
@@ -289,7 +289,7 @@ GST_START_TEST (buffer_list_test)
 
   list = create_buffer_list ();
 
-  GST_DEBUG ("Waiting for agents to be ready ready");
+  g_debug ("Waiting for agents to be ready ready");
 
   g_main_loop_run (loop);
 
