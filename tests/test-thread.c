@@ -148,11 +148,11 @@ static void cb_nice_recv (NiceAgent *agent, guint stream_id, guint component_id,
   if (*count == 10)
     return;
 
-  g_assert_cmpuint (len, ==, 10);
 
   memset (data, *count + '1', 10);
 
-  g_assert (memcmp (buf, data, 10) == 0);
+  g_assert_cmpmem (buf, len, data, 10);
+  g_assert_cmpuint (len, ==, 10);
 
   (*count)++;
 

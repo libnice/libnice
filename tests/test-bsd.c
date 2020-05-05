@@ -210,7 +210,7 @@ test_multi_buffer_recv (void)
     g_assert_cmpuint (bufs[6].size, ==, 0);
 
     g_assert_cmpint (strncmp ((gchar *) buf, "hello-world", 11), ==, 0);
-    g_assert_cmpint (memcmp (buf + 11, dummy_buf, 9), ==, 0);
+    g_assert_cmpmem (buf + 11, 9, dummy_buf, 9);
   }
 
   nice_socket_free (client);

@@ -79,7 +79,7 @@ read_stream_cb (GObject *pollable_stream, gpointer _user_data)
   g_assert_cmpint (len, ==, MESSAGE_SIZE);
 
   memset (expected_data, user_data->recv_count + '1', sizeof (expected_data));
-  g_assert (memcmp (buf, expected_data, sizeof (expected_data)) == 0);
+  g_assert_cmpmem (buf, sizeof (expected_data), expected_data, sizeof (expected_data));
 
   user_data->recv_count++;
 

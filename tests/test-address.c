@@ -130,7 +130,7 @@ test_ipv6 (void)
   nice_address_to_string (&addr, str);
   nice_address_to_string (&other, str);
 
-  g_assert (memcmp (&sin, &sin2, sizeof(sin)) == 0);
+  g_assert_cmpmem (&sin,  sizeof(sin), &sin2, sizeof(sin2));
 
   /* private IPv6 address */
   nice_address_set_ipv6 (&addr, (guchar *)

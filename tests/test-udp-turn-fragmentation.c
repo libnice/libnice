@@ -186,8 +186,8 @@ tcp_turn_fragmentation (void)
         continue;
       }
       g_assert (message->length == vec->size);
-      g_assert (!memcmp (message->buffers->buffer, vec->buffer,
-          message->length));
+      g_assert_cmpmem (message->buffers->buffer, message->length,
+          vec->buffer,  message->length);
 
       li = li->next;
     }

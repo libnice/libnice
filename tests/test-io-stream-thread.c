@@ -75,7 +75,8 @@ read_thread_cb (GInputStream *input_stream, TestIOStreamThreadData *data)
     g_assert_cmpint (len, ==, sizeof (buf));
 
     memset (expected_data, user_data->recv_count + '1', sizeof (expected_data));
-    g_assert (memcmp (buf, expected_data, sizeof (expected_data)) == 0);
+    g_assert_cmpmem (buf, sizeof (expected_data), expected_data,
+        sizeof (expected_data));
   }
 
   check_for_termination (data, &user_data->recv_count,

@@ -158,7 +158,7 @@ print_candidate (gpointer data, gpointer user_data)
   gchar str_addr[INET6_ADDRSTRLEN];
 
   nice_address_to_string (&cand->addr, str_addr);
-  g_debug ("Cadidate: %s:%d", str_addr, nice_address_get_port (&cand->addr));
+  g_debug ("Candidate: %s:%d", str_addr, nice_address_get_port (&cand->addr));
 }
 
 static void

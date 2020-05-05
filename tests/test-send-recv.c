@@ -428,7 +428,7 @@ validate_received_buffer (TestIOStreamThreadData *data, gsize buffer_offset,
   memset (expected_buf, 0xaa, buf_len);
   generate_buffer_data (test_data->buffer_data_strategy, buffer_offset,
       expected_buf, len);
-  g_assert (memcmp (*buf, expected_buf, len) == 0);
+  g_assert_cmpmem (*buf, len, expected_buf, len);
   g_free (expected_buf);
 
   test_data->received_bytes += len;
@@ -481,8 +481,7 @@ validate_received_messages (TestIOStreamThreadData *data, gsize buffer_offset,
         memset (expected_buf, 0xaa, buffer->size);
         generate_buffer_data (test_data->buffer_data_strategy, buffer_offset,
             expected_buf, valid_len);
-        g_assert_cmpint (memcmp (buffer->buffer, expected_buf, valid_len), ==,
-            0);
+        g_assert_cmpmem (buffer->buffer, valid_len, expected_buf, valid_len);
         g_free (expected_buf);
         buffer_offset += valid_len;
         message_len_remaining -= valid_len;
