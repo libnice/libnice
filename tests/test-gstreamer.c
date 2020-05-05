@@ -50,18 +50,24 @@ static GstStaticPadTemplate sinktemplate = GST_STATIC_PAD_TEMPLATE ("src",
     GST_STATIC_CAPS_ANY);
 
 GMainLoop *loop;
-gint ready = 0;
+static gint ready = 0;
 
+
+static GCond cond;
 static guint bytes_received;
-guint data_size;
+static guint data_size;
+
 
 static gboolean
 count_bytes (GstBuffer ** buffer, guint idx, gpointer data)
 {
   gsize size = gst_buffer_get_size (*buffer);
 
-  GST_DEBUG ("received %" G_GSIZE_FORMAT " bytes", size);
+  g_debug ("received %" G_GSIZE_FORMAT " bytes", size);
+  g_mutex_lock(&mutex);
   bytes_received += size;
+  g_cond_signal (&cond);
+  g_mutex_unlock (&mutex);
 
   return TRUE;
 }
@@ -71,11 +77,6 @@ sink_chain_list_function (GstPad * pad, GstObject * parent,
     GstBufferList * list)
 {
   gst_buffer_list_foreach (list, count_bytes, NULL);
-
-  if (data_size <= bytes_received) {
-    GST_DEBUG ("We received expected data size");
-    g_main_loop_quit (loop);
-  }
 
   gst_buffer_list_unref (list);
 
@@ -87,13 +88,11 @@ sink_chain_function (GstPad * pad, GstObject * parent, GstBuffer * buffer)
 {
   gsize size = gst_buffer_get_size (buffer);
 
-  GST_DEBUG ("received %" G_GSIZE_FORMAT " bytes", size);
+  g_debug ("received %" G_GSIZE_FORMAT " bytes", size);
+  g_mutex_lock(&mutex);
   bytes_received += size;
-
-  if (data_size <= bytes_received) {
-    GST_DEBUG ("We received expected data size");
-    g_main_loop_quit (loop);
-  }
+  g_cond_signal (&cond);
+  g_mutex_unlock (&mutex);
 
   gst_buffer_unref (buffer);
 
@@ -296,8 +295,16 @@ GST_START_TEST (buffer_list_test)
 
   fail_unless_equals_int (gst_pad_push_list (srcpad, list), GST_FLOW_OK);
 
-  GST_DEBUG ("Waiting for buffers");
-  g_main_loop_run (loop);
+  g_debug ("Waiting for buffers");
+
+  g_mutex_lock (&mutex);
+  while (bytes_received < data_size) {
+    g_cond_wait (&cond, &mutex);
+  }
+  g_mutex_unlock (&mutex);
+
+  g_assert_cmpuint (bytes_received, ==, data_size);
+  g_debug ("We received expected data size");
 
   fail_unless_equals_int (data_size, bytes_received);
 
