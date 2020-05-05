@@ -2064,6 +2064,24 @@ conn_check_remote_candidates_set(NiceAgent *agent, NiceStream *stream,
       }
     }
 
+    if (lcand == NULL) {
+      for (j = component->local_candidates; j; j = j->next) {
+        NiceCandidate *cand = j->data;
+        NiceAddress *addr = &cand->base_addr;
+
+        /* tcp-active (not peer-reflexive discovered) local candidate, where
+         * socket is the tcp connect related socket */
+        if (nice_address_equal_no_port (&icheck->local_socket->addr, addr) &&
+            nice_address_get_port (&cand->addr) == 0 &&
+            cand->transport == NICE_CANDIDATE_TRANSPORT_TCP_ACTIVE &&
+            local_candidate_and_socket_compatible (agent, cand,
+            icheck->local_socket)) {
+          lcand = cand;
+          break;
+        }
+      }
+    }
+
     g_assert (lcand != NULL);
 
     for (j = component->remote_candidates; j; j = j->next) {
