@@ -228,6 +228,10 @@ void agent_signal_initial_binding_request_received (NiceAgent *agent, NiceStream
 
 guint64 agent_candidate_pair_priority (NiceAgent *agent, NiceCandidate *local, NiceCandidate *remote);
 
+NiceSocket * agent_create_tcp_turn_socket (NiceAgent *agent,
+    NiceStream *stream, NiceComponent *component, NiceSocket *nicesock,
+    NiceAddress *server, NiceRelayType type, gboolean reliable_tcp);
+
 typedef gboolean (*NiceTimeoutLockedCallback)(NiceAgent *agent,
     gpointer user_data);
 void agent_timeout_add_with_context (NiceAgent *agent, GSource **out,

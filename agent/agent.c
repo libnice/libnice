@@ -2613,6 +2613,69 @@ priv_add_new_candidate_discovery_stun (NiceAgent *agent,
   ++agent->discovery_unsched_items;
 }
 
+NiceSocket *
+agent_create_tcp_turn_socket (NiceAgent *agent, NiceStream *stream,
+    NiceComponent *component, NiceSocket *nicesock,
+    NiceAddress *server, NiceRelayType type, gboolean reliable_tcp)
+{
+  NiceAddress proxy_server;
+  NiceAddress local_address = nicesock->addr;
+
+  nice_address_set_port (&local_address, 0);
+  nicesock = NULL;
+
+  /* TODO: add support for turn-tcp RFC 6062 */
+  if (agent->proxy_type != NICE_PROXY_TYPE_NONE &&
+      agent->proxy_ip != NULL &&
+      nice_address_set_from_string (&proxy_server, agent->proxy_ip)) {
+    nice_address_set_port (&proxy_server, agent->proxy_port);
+    nicesock = nice_tcp_bsd_socket_new (agent->main_context, &local_address,
+        &proxy_server, reliable_tcp);
+
+    if (nicesock) {
+      _priv_set_socket_tos (agent, nicesock, stream->tos);
+      if (agent->proxy_type == NICE_PROXY_TYPE_SOCKS5) {
+        nicesock = nice_socks5_socket_new (nicesock, server,
+            agent->proxy_username, agent->proxy_password);
+      } else if (agent->proxy_type == NICE_PROXY_TYPE_HTTP){
+        nicesock = nice_http_socket_new (nicesock, server,
+            agent->proxy_username, agent->proxy_password);
+      } else {
+        nice_socket_free (nicesock);
+        nicesock = NULL;
+      }
+    }
+  }
+
+  if (nicesock == NULL) {
+    nicesock = nice_tcp_bsd_socket_new (agent->main_context, &local_address,
+        server, reliable_tcp);
+
+    if (nicesock)
+      _priv_set_socket_tos (agent, nicesock, stream->tos);
+  }
+
+  /* The TURN server may be invalid or not listening */
+  if (nicesock == NULL)
+    return NULL;
+
+  nice_socket_set_writable_callback (nicesock, _tcp_sock_is_writable,
+      component);
+
+  if (type ==  NICE_RELAY_TYPE_TURN_TLS &&
+      agent->compatibility == NICE_COMPATIBILITY_GOOGLE) {
+    nicesock = nice_pseudossl_socket_new (nicesock,
+        NICE_PSEUDOSSL_SOCKET_COMPATIBILITY_GOOGLE);
+  } else if (type == NICE_RELAY_TYPE_TURN_TLS &&
+      (agent->compatibility == NICE_COMPATIBILITY_OC2007 ||
+          agent->compatibility == NICE_COMPATIBILITY_OC2007R2)) {
+    nicesock = nice_pseudossl_socket_new (nicesock,
+        NICE_PSEUDOSSL_SOCKET_COMPATIBILITY_MSOC);
+  }
+  return nice_udp_turn_over_tcp_socket_new (nicesock,
+      agent_to_turn_socket_compatibility (agent));
+}
+
 static void
 priv_add_new_candidate_discovery_turn (NiceAgent *agent,
     NiceSocket *nicesock, TurnServer *turn,
@@ -2620,7 +2683,6 @@ priv_add_new_candidate_discovery_turn (NiceAgent *agent,
 {
   CandidateDiscovery *cdisco;
   NiceComponent *component = nice_stream_find_component_by_id (stream, component_id);
-  NiceAddress local_address;
 
   /* note: no need to check for redundant candidates, as this is
    *       done later on in the process */
@@ -2647,7 +2709,6 @@ priv_add_new_candidate_discovery_turn (NiceAgent *agent,
     }
     cdisco->nicesock = nicesock;
   } else {
-    NiceAddress proxy_server;
     gboolean reliable_tcp = FALSE;
 
     /* MS-TURN will allocate a transport with the same protocol it received
@@ -2658,7 +2719,11 @@ priv_add_new_candidate_discovery_turn (NiceAgent *agent,
      * over which the Allocate request was received; a request that is
      * received over TCP returns a TCP allocated transport address.
      */
-    if (turn_tcp)
+    /* TURN-TCP is currently unsupport unless it's OC2007 compatibliity */
+    /* TODO: Add support for TURN-TCP */
+    if (turn_tcp &&
+        (agent->compatibility == NICE_COMPATIBILITY_OC2007 ||
+         agent->compatibility == NICE_COMPATIBILITY_OC2007R2))
       reliable_tcp = TRUE;
 
     /* Ignore tcp candidates if we disabled ice-tcp */
@@ -2668,68 +2733,13 @@ priv_add_new_candidate_discovery_turn (NiceAgent *agent,
       return;
     }
 
-    /* TURN-TCP is currently unsupport unless it's OC2007 compatibliity */
-    /* TODO: Add support for TURN-TCP */
-    if ((agent->compatibility != NICE_COMPATIBILITY_OC2007 &&
-            agent->compatibility != NICE_COMPATIBILITY_OC2007R2) ||
-            reliable_tcp == FALSE) {
+    if (turn_tcp == FALSE) {
       g_slice_free (CandidateDiscovery, cdisco);
       return;
     }
 
-    local_address = nicesock->addr;
-    nice_address_set_port (&local_address, 0);
-    nicesock = NULL;
-
-    /* TODO: add support for turn-tcp RFC 6062 */
-    if (agent->proxy_type != NICE_PROXY_TYPE_NONE &&
-        agent->proxy_ip != NULL &&
-        nice_address_set_from_string (&proxy_server, agent->proxy_ip)) {
-      nice_address_set_port (&proxy_server, agent->proxy_port);
-      nicesock = nice_tcp_bsd_socket_new (agent->main_context, &local_address,
-          &proxy_server, reliable_tcp);
-
-      if (nicesock) {
-        _priv_set_socket_tos (agent, nicesock, stream->tos);
-        if (agent->proxy_type == NICE_PROXY_TYPE_SOCKS5) {
-          nicesock = nice_socks5_socket_new (nicesock, &turn->server,
-              agent->proxy_username, agent->proxy_password);
-        } else if (agent->proxy_type == NICE_PROXY_TYPE_HTTP){
-          nicesock = nice_http_socket_new (nicesock, &turn->server,
-              agent->proxy_username, agent->proxy_password);
-        } else {
-          nice_socket_free (nicesock);
-          nicesock = NULL;
-        }
-      }
-
-    }
-    if (nicesock == NULL) {
-      nicesock = nice_tcp_bsd_socket_new (agent->main_context, &local_address,
-          &turn->server, reliable_tcp);
-
-      if (nicesock)
-        _priv_set_socket_tos (agent, nicesock, stream->tos);
-    }
-
-    /* The TURN server may be invalid or not listening */
-    if (nicesock == NULL)
-      return;
-
-    nice_socket_set_writable_callback (nicesock, _tcp_sock_is_writable, component);
-
-    if (turn->type ==  NICE_RELAY_TYPE_TURN_TLS &&
-        agent->compatibility == NICE_COMPATIBILITY_GOOGLE) {
-      nicesock = nice_pseudossl_socket_new (nicesock,
-          NICE_PSEUDOSSL_SOCKET_COMPATIBILITY_GOOGLE);
-    } else if (turn->type == NICE_RELAY_TYPE_TURN_TLS &&
-        (agent->compatibility == NICE_COMPATIBILITY_OC2007 ||
-            agent->compatibility == NICE_COMPATIBILITY_OC2007R2)) {
-      nicesock = nice_pseudossl_socket_new (nicesock,
-          NICE_PSEUDOSSL_SOCKET_COMPATIBILITY_MSOC);
-    }
-    cdisco->nicesock = nice_udp_turn_over_tcp_socket_new (nicesock,
-        agent_to_turn_socket_compatibility (agent));
+    cdisco->nicesock = agent_create_tcp_turn_socket (agent, stream,
+        component, nicesock, &turn->server, turn->type, reliable_tcp);
 
     nice_component_attach_socket (component, cdisco->nicesock);
   }
