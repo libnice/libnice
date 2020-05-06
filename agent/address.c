@@ -298,14 +298,18 @@ ipv4_address_is_private (guint32 addr)
 {
   addr = ntohl (addr);
 
-  /* http://tools.ietf.org/html/rfc3330 */
+  /* http://tools.ietf.org/html/rfc3330 
+   * https://tools.ietf.org/html/rfc3927
+   */
   return (
       /* 10.0.0.0/8 */
       ((addr & 0xff000000) == 0x0a000000) ||
-      /* 172.16.0.0/12 */
+      /* 172.16.0.0 - 172.31.255.255  = 172.16.0.0/12 */
       ((addr & 0xfff00000) == 0xac100000) ||
       /* 192.168.0.0/16 */
       ((addr & 0xffff0000) == 0xc0a80000) ||
+      /* 169.254.x.x/16  (for APIPA) */
+      ((addr & 0xffff0000) == 0xa9fe0000) ||
       /* 127.0.0.0/8 */
       ((addr & 0xff000000) == 0x7f000000));
 }
@@ -315,9 +319,11 @@ static gboolean
 ipv6_address_is_private (const guchar *addr)
 {
   return (
-      /* fe80::/10 */
+      /* fe80::/10 (link local addresses, needs scope) */
       ((addr[0] == 0xfe) && ((addr[1] & 0xc0) == 0x80)) ||
-      /* fc00::/7 */
+      /* fd00::/8 (official private IP block) */
+      (addr[0] == 0xfd) ||
+      /* fc00::/7 (those are ULA) */
       ((addr[0] & 0xfe) == 0xfc) ||
       /* ::1 loopback */
       ((memcmp (addr, "\x00\x00\x00\x00"

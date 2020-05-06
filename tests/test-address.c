@@ -84,9 +84,71 @@ test_ipv4 (void)
   /* test private address check */
   {
     NiceAddress *heap_addr = nice_address_new ();
+
+    g_assert (nice_address_set_from_string (heap_addr, "127.0.0.1.1") != TRUE);
+
     g_assert (nice_address_set_from_string (heap_addr, "127.0.0.1") == TRUE);
     g_assert (nice_address_is_private (heap_addr) == TRUE);
-    g_assert (nice_address_set_from_string (heap_addr, "127.0.0.1.1") != TRUE);
+
+    g_assert (nice_address_set_from_string (heap_addr, "127.1.1.1") == TRUE);
+    g_assert (nice_address_is_private (heap_addr) == TRUE);
+
+    g_assert (nice_address_set_from_string(heap_addr, "192.168.2.0"));
+    g_assert (nice_address_is_private (heap_addr) == TRUE);
+
+    g_assert (nice_address_set_from_string(heap_addr, "192.168.15.69"));
+    g_assert (nice_address_is_private (heap_addr) == TRUE);
+
+    g_assert (nice_address_set_from_string(heap_addr, "192.169.0.0"));
+    g_assert (nice_address_is_private (heap_addr) == FALSE);
+
+    g_assert (nice_address_set_from_string(heap_addr, "192.167.0.0"));
+    g_assert (nice_address_is_private (heap_addr) == FALSE);
+
+    g_assert (nice_address_set_from_string(heap_addr, "10.2.1.2"));
+    g_assert (nice_address_is_private (heap_addr) == TRUE);
+
+    g_assert (nice_address_set_from_string(heap_addr, "11.0.0.0"));
+    g_assert (nice_address_is_private (heap_addr) == FALSE);
+
+    g_assert (nice_address_set_from_string(heap_addr, "9.255.255.255"));
+    g_assert (nice_address_is_private (heap_addr) == FALSE);
+
+    g_assert (nice_address_set_from_string(heap_addr, "172.15.255.255"));
+    g_assert (nice_address_is_private (heap_addr) == FALSE);
+
+    g_assert (nice_address_set_from_string(heap_addr, "172.16.0.0"));
+    g_assert (nice_address_is_private (heap_addr) == TRUE);
+
+    g_assert (nice_address_set_from_string(heap_addr, "172.31.255.255"));
+    g_assert (nice_address_is_private (heap_addr) == TRUE);
+
+    g_assert (nice_address_set_from_string(heap_addr, "172.32.0.0"));
+    g_assert (nice_address_is_private (heap_addr) == FALSE);
+    g_assert (nice_address_set_from_string(heap_addr, "172.63.0.0"));
+    g_assert (nice_address_is_private (heap_addr) == FALSE);
+
+    g_assert (nice_address_set_from_string(heap_addr, "169.253.255.255"));
+    g_assert (nice_address_is_private (heap_addr) == FALSE);
+
+    g_assert (nice_address_set_from_string(heap_addr, "169.254.0.0"));
+    g_assert (nice_address_is_private (heap_addr) == TRUE);
+
+    g_assert (nice_address_set_from_string(heap_addr, "169.254.255.255"));
+    g_assert (nice_address_is_private (heap_addr) == TRUE);
+
+    g_assert (nice_address_set_from_string(heap_addr, "169.255.0.0"));
+    g_assert (nice_address_is_private (heap_addr) == FALSE);
+
+    g_assert (nice_address_set_from_string(heap_addr, "fe70::0"));
+    g_assert (nice_address_is_private (heap_addr) == FALSE);
+    
+    g_assert (nice_address_set_from_string(heap_addr, "fe80::0"));
+    g_assert (nice_address_is_private (heap_addr) == TRUE);
+
+    g_assert (nice_address_set_from_string(heap_addr, "fe81::0"));
+    g_assert (nice_address_is_private (heap_addr) == TRUE);
+
     nice_address_free (heap_addr);
   }
 }
