@@ -269,7 +269,11 @@ get_local_ips_ioctl (gboolean include_loopback)
   gint size = 0;
   struct ifreq *ifr;
   struct ifconf ifc;
-  struct sockaddr_in *sa;
+  union {
+    struct sockaddr_in *sin;
+    struct sockaddr *sa;
+  } sa;
+  
   GList *loopbacks = NULL;
 #ifdef IGNORED_IFACE_PREFIX
   const gchar **prefix;
@@ -324,12 +328,12 @@ get_local_ips_ioctl (gboolean include_loopback)
     if ((ifr->ifr_flags & IFF_RUNNING) == 0)
       continue;
 
-    sa = (struct sockaddr_in *) &ifr->ifr_addr;
+    sa.sa = &ifr->ifr_addr;
     nice_debug ("Interface:  %s", ifr->ifr_name);
-    nice_debug ("IP Address: %s", inet_ntoa (sa->sin_addr));
+    nice_debug ("IP Address: %s", inet_ntoa (sa.sin->sin_addr));
     if ((ifr->ifr_flags & IFF_LOOPBACK) == IFF_LOOPBACK){
       if (include_loopback)
-        loopbacks = add_ip_to_list (loopbacks, g_strdup (inet_ntoa (sa->sin_addr)), TRUE);
+        loopbacks = add_ip_to_list (loopbacks, g_strdup (inet_ntoa (sa.sin->sin_addr)), TRUE);
       else
         nice_debug ("Ignoring loopback interface");
       continue;
@@ -350,10 +354,10 @@ get_local_ips_ioctl (gboolean include_loopback)
       continue;
 #endif
 
-    if (nice_interfaces_is_private_ip ((struct sockaddr *) sa)) {
-      ips = add_ip_to_list (ips, g_strdup (inet_ntoa (sa->sin_addr)), TRUE);
+    if (nice_interfaces_is_private_ip (sa.sa)) {
+      ips = add_ip_to_list (ips, g_strdup (inet_ntoa (sa.sin->sin_addr)), TRUE);
     } else {
-      ips = add_ip_to_list (ips, g_strdup (inet_ntoa (sa->sin_addr)), FALSE);
+      ips = add_ip_to_list (ips, g_strdup (inet_ntoa (sa.sin->sin_addr)), FALSE);
     }
   }
 
