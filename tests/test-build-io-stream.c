@@ -396,10 +396,10 @@ test_zero_length_reads_writes (NiceAddress *addr)
   pollable_output_stream = G_POLLABLE_OUTPUT_STREAM (output_stream);
 
   /* Check zero-length reads and writes complete immediately without error. */
-  g_assert (g_input_stream_read (input_stream, buf, 0, NULL, &error) == 0);
+  g_assert_cmpint (g_input_stream_read (input_stream, buf, 0, NULL, &error), ==, 0);
   g_assert_no_error (error);
 
-  g_assert (g_output_stream_write (output_stream, buf, 0, NULL, &error) == 0);
+  g_assert_cmpint (g_output_stream_write (output_stream, buf, 0, NULL, &error), ==, 0);
   g_assert_no_error (error);
 
   g_assert (
@@ -417,10 +417,10 @@ test_zero_length_reads_writes (NiceAddress *addr)
   nice_agent_remove_stream (agent, stream_id);
   g_assert (g_io_stream_is_closed (G_IO_STREAM (io_stream)));
 
-  g_assert (g_input_stream_read (input_stream, buf, 0, NULL, &error) == 0);
+  g_assert_cmpint (g_input_stream_read (input_stream, buf, 0, NULL, &error), ==, 0);
   g_assert_no_error (error);
 
-  g_assert (g_output_stream_write (output_stream, buf, 0, NULL, &error) == 0);
+  g_assert_cmpint (g_output_stream_write (output_stream, buf, 0, NULL, &error), ==, 0);
   g_assert_no_error (error);
 
   g_assert (

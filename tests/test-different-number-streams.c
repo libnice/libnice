@@ -121,7 +121,7 @@ int main (void)
   timer_id = g_timeout_add (30000, timer_cb, NULL);
 
   ls_id = nice_agent_add_stream (lagent, 2);
-  g_assert (ls_id > 0);
+  g_assert_cmpuint (ls_id, >, 0);
   nice_agent_get_local_credentials(lagent, ls_id, &lufrag, &lpassword);
 
   /* step: attach to mainloop (needed to register the fds) */
@@ -134,11 +134,11 @@ int main (void)
 
   if (ADD_2_STREAMS) {
     rs_id_1 = nice_agent_add_stream (ragent, 2);
-    g_assert (rs_id_1 > 0);
+    g_assert_cmpuint (rs_id_1, >, 0);
     nice_agent_get_local_credentials(ragent, rs_id_1, &rufrag1, &rpassword1);
 
     rs_id_2 = nice_agent_add_stream (ragent, 2);
-    g_assert (rs_id_2 > 0);
+    g_assert_cmpuint (rs_id_2, >, 0);
     nice_agent_get_local_credentials(ragent, rs_id_2, &rufrag2, &rpassword2);
 
     nice_agent_set_remote_credentials (ragent, rs_id_2, lufrag, lpassword);
@@ -171,7 +171,7 @@ int main (void)
         g_main_loop_get_context (global_mainloop), cb_nice_recv, NULL);
   } else {
     rs_id_1 = nice_agent_add_stream (ragent, 2);
-    g_assert (rs_id_1 > 0);
+    g_assert_cmpuint (rs_id_1, >, 0);
     nice_agent_get_local_credentials(ragent, rs_id_1, &rufrag1, &rpassword1);
 
     nice_agent_set_remote_credentials (ragent, rs_id_1, lufrag, lpassword);

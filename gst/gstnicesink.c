@@ -226,7 +226,7 @@ fill_vectors (GOutputVector * vecs, GstMapInfo * maps, guint n, GstBuffer * buf)
   gsize size = 0;
   guint i;
 
-  g_assert (gst_buffer_n_memory (buf) == n);
+  g_assert_cmpuint (gst_buffer_n_memory (buf), ==, n);
 
   for (i = 0; i < n; ++i) {
     mem = gst_buffer_peek_memory (buf, i);

@@ -333,7 +333,7 @@ nice_socket_queue_send (GQueue *send_queue, const NiceAddress *to,
       offset += len;
     }
 
-    g_assert (offset == tbs->length);
+    g_assert_cmpint (offset, ==, tbs->length);
   }
 }
 

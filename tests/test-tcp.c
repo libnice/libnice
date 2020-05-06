@@ -62,7 +62,7 @@ on_server_connection_available (gpointer user_data)
 static gboolean
 on_server_input_available (gpointer user_data)
 {
-  g_assert (5 == nice_socket_recv (server, &tmp, 5, buf));
+  g_assert_cmpint (5, ==, nice_socket_recv (server, &tmp, 5, buf));
   g_assert (nice_address_equal (&tmp, &client->addr));
 
   g_main_loop_quit (mainloop);
@@ -73,7 +73,7 @@ on_server_input_available (gpointer user_data)
 static gboolean
 on_client_input_available (gpointer user_data)
 {
-  g_assert (5 == nice_socket_recv (client, &tmp, 5, buf));
+  g_assert_cmpint (5, ==, nice_socket_recv (client, &tmp, 5, buf));
   g_assert (nice_address_equal (&tmp, &server->addr));
 
   g_main_loop_quit (mainloop);
@@ -139,11 +139,11 @@ main (void)
   g_assert (nice_address_get_port (&tmp) != 0);
 
 
-  g_assert (5 == nice_socket_send (client, &tmp, 5, "hello"));
+  g_assert_cmpint (5, ==, nice_socket_send (client, &tmp, 5, "hello"));
   g_main_loop_run (mainloop); /* -> on_server_input_available */
   g_assert (0 == strncmp (buf, "hello", 5));
 
-  g_assert (5 == nice_socket_send (server, &tmp, 5, "uryyb"));
+  g_assert_cmpint (5, ==, nice_socket_send (server, &tmp, 5, "uryyb"));
   g_main_loop_run (mainloop); /* -> on_client_input_available */
   g_assert (0 == strncmp (buf, "uryyb", 5));
 

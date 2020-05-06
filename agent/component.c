@@ -944,8 +944,8 @@ nice_component_emit_io_callback (NiceAgent *agent, NiceComponent *component,
     return;
 
   g_assert (NICE_IS_AGENT (agent));
-  g_assert (stream_id > 0);
-  g_assert (component_id > 0);
+  g_assert_cmpuint (stream_id, >, 0);
+  g_assert_cmpuint (component_id, >, 0);
   g_assert (io_callback != NULL);
 
   /* Only allocate a closure if the callback is being deferred to an idle

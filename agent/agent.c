@@ -4178,7 +4178,7 @@ agent_recv_message_unlocked (
     retval = sockret;
   }
 
-  g_assert (retval != RECV_OOB);
+  g_assert_cmpint (retval, !=, RECV_OOB);
   if (message->length == 0) {
     retval = RECV_OOB;
     nice_debug_verbose ("%s: Agent %p: message handled out-of-band", G_STRFUNC,
@@ -4608,7 +4608,7 @@ pending_io_messages_recv_messages (NiceComponent *component, gboolean reliable,
   IOCallbackData *data;
   NiceInputMessage *message = &messages[iter->message];
 
-  g_assert (component->io_callback_id == 0);
+  g_assert_cmpuint (component->io_callback_id, ==, 0);
 
   data = g_queue_peek_head (&component->pending_io_messages);
   if (data == NULL)
@@ -5161,7 +5161,7 @@ nice_agent_send_messages_nonblocking_internal (
         g_set_error (&child_error, G_IO_ERROR, G_IO_ERROR_FAILED,
             "Error writing data to socket.");
       } else if (n_sent > 0 && allow_partial) {
-        g_assert (n_messages == 1);
+        g_assert_cmpuint (n_messages, ==, 1);
         n_sent = output_message_get_size (messages);
       }
     }
@@ -5182,7 +5182,7 @@ nice_agent_send_messages_nonblocking_internal (
 
 done:
   g_assert ((child_error != NULL) == (n_sent == -1));
-  g_assert (n_sent != 0);
+  g_assert_cmpint (n_sent, !=, 0);
   g_assert (n_sent < 0 ||
       (!allow_partial && (guint) n_sent <= n_messages) ||
       (allow_partial && n_messages == 1 &&
@@ -5615,8 +5615,8 @@ component_io_cb (GSocket *gsocket, GIOCondition condition, gpointer user_data)
     RecvStatus retval;
 
     /* Don’t want to trample over partially-valid buffers. */
-    g_assert (component->recv_messages_iter.buffer == 0);
-    g_assert (component->recv_messages_iter.offset == 0);
+    g_assert_cmpuint (component->recv_messages_iter.buffer, ==, 0);
+    g_assert_cmpint (component->recv_messages_iter.offset, ==, 0);
 
     while (!nice_input_message_iter_is_at_end (&component->recv_messages_iter,
         component->recv_messages, component->n_recv_messages)) {

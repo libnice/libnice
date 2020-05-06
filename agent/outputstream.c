@@ -466,7 +466,7 @@ nice_output_stream_write (GOutputStream *stream, const void *buffer, gsize count
   write_data_unref (write_data);
 
   g_object_unref (agent);
-  g_assert (len != 0);
+  g_assert_cmpint (len, !=, 0);
 
   return len;
 }

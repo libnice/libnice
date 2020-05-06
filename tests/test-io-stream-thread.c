@@ -146,8 +146,8 @@ int main (void)
   run_io_stream_test (30, TRUE, &callbacks, l_data, NULL, r_data, NULL);
 
   /* Verify that correct number of local candidates were reported. */
-  g_assert (l_data->cand_count == 1);
-  g_assert (r_data->cand_count == 1);
+  g_assert_cmpuint (l_data->cand_count, ==, 1);
+  g_assert_cmpuint (r_data->cand_count, ==, 1);
 
   g_free (r_data);
   g_free (l_data);

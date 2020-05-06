@@ -304,7 +304,7 @@ add_stream (NiceAgent *agent)
   guint stream_id;
 
   stream_id = nice_agent_add_stream (agent, 2);
-  g_assert (stream_id > 0);
+  g_assert_cmpuint (stream_id, >, 0);
 
   g_object_set_data (G_OBJECT (agent), "stream-id",
       GUINT_TO_POINTER (stream_id));

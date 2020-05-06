@@ -91,7 +91,7 @@ read_thread_cb (GInputStream *input_stream, TestIOStreamThreadData *data)
       user_data->cancellable, &error);
   g_assert_error (error, G_IO_ERROR, G_IO_ERROR_CANCELLED);
   g_error_free (error);
-  g_assert (len == -1);
+  g_assert_cmpint (len, ==, -1);
 
   g_main_loop_quit (data->error_loop);
 }

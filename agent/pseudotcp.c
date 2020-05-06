@@ -328,7 +328,7 @@ pseudo_tcp_fifo_set_capacity (PseudoTcpFifo *b, gsize size)
 static void
 pseudo_tcp_fifo_consume_read_data (PseudoTcpFifo *b, gsize size)
 {
-  g_assert (size <= b->data_length);
+  g_assert_cmpint (size, <=, b->data_length);
 
   b->read_position = (b->read_position + size) % b->buffer_length;
   b->data_length -= size;
@@ -337,7 +337,7 @@ pseudo_tcp_fifo_consume_read_data (PseudoTcpFifo *b, gsize size)
 static void
 pseudo_tcp_fifo_consume_write_buffer (PseudoTcpFifo *b, gsize size)
 {
-  g_assert (size <= b->buffer_length - b->data_length);
+  g_assert_cmpint (size, <=, b->buffer_length - b->data_length);
 
   b->data_length += size;
 }
@@ -1376,7 +1376,7 @@ queue (PseudoTcpSocket *self, const gchar * data, guint32 len, TcpFlags flags)
 
   available_space = pseudo_tcp_fifo_get_write_remaining (&priv->sbuf);
   if (len > available_space) {
-    g_assert (flags == FLAG_NONE);
+    g_assert_cmpint (flags, ==, FLAG_NONE);
     len = available_space;
   }
 
@@ -1422,7 +1422,7 @@ packet(PseudoTcpSocket *self, guint32 seq, TcpFlags flags,
   } buffer;
   PseudoTcpWriteResult wres = WR_SUCCESS;
 
-  g_assert(HEADER_SIZE + len <= MAX_PACKET);
+  g_assert_cmpuint (HEADER_SIZE + len, <=, MAX_PACKET);
 
   *buffer.u32 = htonl(priv->conv);
   *(buffer.u32 + 1) = htonl(seq);
@@ -1441,7 +1441,7 @@ packet(PseudoTcpSocket *self, guint32 seq, TcpFlags flags,
 
     bytes_read = pseudo_tcp_fifo_read_offset (&priv->sbuf, buffer.u8 + HEADER_SIZE,
         len, offset);
-    g_assert (bytes_read == len);
+    g_assert_cmpint (bytes_read, ==, len);
   }
 
   DEBUG (PSEUDO_TCP_DEBUG_VERBOSE, "Sending <CONV=%u><FLG=%u><SEQ=%u:%u><ACK=%u>"
@@ -1713,7 +1713,7 @@ process(PseudoTcpSocket *self, Segment *seg)
     for (nFree = nAcked; nFree > 0; ) {
       SSegment *data;
 
-      g_assert(g_queue_get_length (&priv->slist) != 0);
+      g_assert_cmpuint (g_queue_get_length (&priv->slist), !=, 0);
       data = (SSegment *) g_queue_peek_head (&priv->slist);
 
       if (nFree < data->len) {
@@ -1995,7 +1995,7 @@ process(PseudoTcpSocket *self, Segment *seg)
 
       res = pseudo_tcp_fifo_write_offset (&priv->rbuf, (guint8 *) seg->data,
           seg->len, nOffset);
-      g_assert (res == seg->len);
+      g_assert_cmpint (res, ==, seg->len);
 
       if (seg->seq == priv->rcv_nxt) {
         GList *iter = NULL;
@@ -2091,7 +2091,7 @@ transmit(PseudoTcpSocket *self, SSegment *segment, guint32 now)
       return ECONNABORTED;  /* FIXME: This error code doesn’t quite seem right */
     }
 
-    g_assert(wres == WR_TOO_LARGE);
+    g_assert_cmpint (wres, ==, WR_TOO_LARGE);
 
     while (TRUE) {
       if (PACKET_MAXIMUMS[priv->msslevel + 1] == 0) {
@@ -2495,7 +2495,7 @@ resize_receive_buffer (PseudoTcpSocket *self, guint32 new_size)
   // buffer. This should always be true because this method is called either
   // before connection is established or when peers are exchanging connect
   // messages.
-  g_assert(result);
+  g_assert (result);
   priv->rbuf_len = new_size;
   priv->rwnd_scale = scale_factor;
   priv->ssthresh = new_size;

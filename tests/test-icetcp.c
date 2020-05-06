@@ -293,8 +293,8 @@ static int run_full_test (NiceAgent *lagent, NiceAgent *ragent, NiceAddress *bas
   ls_id = nice_agent_add_stream (lagent, 2);
 
   rs_id = nice_agent_add_stream (ragent, 2);
-  g_assert (ls_id > 0);
-  g_assert (rs_id > 0);
+  g_assert_cmpuint (ls_id, >, 0);
+  g_assert_cmpuint (rs_id, >, 0);
 
   /* Gather candidates */
   g_assert (nice_agent_gather_candidates (lagent, ls_id) == TRUE);
@@ -305,13 +305,13 @@ static int run_full_test (NiceAgent *lagent, NiceAgent *ragent, NiceAddress *bas
     NiceCandidate *cand = NULL;
 
     cands = nice_agent_get_local_candidates (lagent, ls_id, 1);
-    g_assert (g_slist_length (cands) == 2);
+    g_assert_cmpuint (g_slist_length (cands), ==, 2);
     cand = cands->data;
-    g_assert (cand->type == NICE_CANDIDATE_TYPE_HOST);
+    g_assert_cmpint (cand->type, ==, NICE_CANDIDATE_TYPE_HOST);
     g_assert (cand->transport == NICE_CANDIDATE_TRANSPORT_TCP_ACTIVE ||
               cand->transport == NICE_CANDIDATE_TRANSPORT_TCP_PASSIVE);
     cand = cands->next->data;
-    g_assert (cand->type == NICE_CANDIDATE_TYPE_HOST);
+    g_assert_cmpint (cand->type, ==, NICE_CANDIDATE_TYPE_HOST);
     g_assert (cand->transport == NICE_CANDIDATE_TRANSPORT_TCP_ACTIVE ||
               cand->transport == NICE_CANDIDATE_TRANSPORT_TCP_PASSIVE);
     for (i = cands; i; i = i->next)
@@ -381,9 +381,9 @@ static int run_full_test (NiceAgent *lagent, NiceAgent *ragent, NiceAddress *bas
     }
   }
   g_debug ("Sent %d bytes", ret);
-  g_assert (ret == 16);
+  g_assert_cmpint (ret, ==, 16);
   g_main_loop_run (global_mainloop);
-  g_assert (global_ragent_read == 16);
+  g_assert_cmpint (global_ragent_read, ==, 16);
 
   g_debug ("test-icetcp: Ran mainloop, removing streams...");
 
@@ -459,28 +459,28 @@ int main (void)
   g_debug ("test-icetcp: TEST STARTS / running test for the 1st time");
   result = run_full_test (lagent, ragent, &baseaddr, 4 ,0);
   priv_print_global_status ();
-  g_assert (result == 0);
-  g_assert (global_lagent_state[0] == NICE_COMPONENT_STATE_READY);
-  g_assert (global_lagent_state[1] == NICE_COMPONENT_STATE_READY);
-  g_assert (global_ragent_state[0] == NICE_COMPONENT_STATE_READY);
-  g_assert (global_ragent_state[1] == NICE_COMPONENT_STATE_READY);
+  g_assert_cmpint (result, ==, 0);
+  g_assert_cmpint (global_lagent_state[0], ==, NICE_COMPONENT_STATE_READY);
+  g_assert_cmpint (global_lagent_state[1], ==, NICE_COMPONENT_STATE_READY);
+  g_assert_cmpint (global_ragent_state[0], ==, NICE_COMPONENT_STATE_READY);
+  g_assert_cmpint (global_ragent_state[1], ==, NICE_COMPONENT_STATE_READY);
   /* note: verify that correct number of local candidates were reported */
-  g_assert (global_lagent_cands >= 2);
-  g_assert (global_ragent_cands >= 2);
+  g_assert_cmpint (global_lagent_cands, >=, 2);
+  g_assert_cmpint (global_ragent_cands, >=, 2);
 
 
   /* step: run test again without unref'ing agents */
   g_debug ("test-icetcp: TEST STARTS / running test for the 2nd time");
   result = run_full_test (lagent, ragent, &baseaddr, 4, 0);
   priv_print_global_status ();
-  g_assert (result == 0);
-  g_assert (global_lagent_state[0] == NICE_COMPONENT_STATE_READY);
-  g_assert (global_lagent_state[1] == NICE_COMPONENT_STATE_READY);
-  g_assert (global_ragent_state[0] == NICE_COMPONENT_STATE_READY);
-  g_assert (global_ragent_state[1] == NICE_COMPONENT_STATE_READY);
+  g_assert_cmpint (result, ==, 0);
+  g_assert_cmpint (global_lagent_state[0], ==, NICE_COMPONENT_STATE_READY);
+  g_assert_cmpint (global_lagent_state[1], ==, NICE_COMPONENT_STATE_READY);
+  g_assert_cmpint (global_ragent_state[0], ==, NICE_COMPONENT_STATE_READY);
+  g_assert_cmpint (global_ragent_state[1], ==, NICE_COMPONENT_STATE_READY);
   /* note: verify that correct number of local candidates were reported */
-  g_assert (global_lagent_cands >= 2);
-  g_assert (global_ragent_cands >= 2);
+  g_assert_cmpint (global_lagent_cands, >=, 2);
+  g_assert_cmpint (global_ragent_cands, >=, 2);
 
   g_object_unref (lagent);
   g_object_unref (ragent);

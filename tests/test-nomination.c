@@ -182,8 +182,8 @@ run_test(NiceNominationMode l_nomination_mode,
 
   ls_id = nice_agent_add_stream (lagent, 1);
   rs_id = nice_agent_add_stream (ragent, 1);
-  g_assert (ls_id > 0);
-  g_assert (rs_id > 0);
+  g_assert_cmpuint (ls_id, >, 0);
+  g_assert_cmpuint (rs_id, >, 0);
 
   /* Gather candidates and test nice_agent_set_port_range */
   g_assert (nice_agent_gather_candidates (lagent, ls_id) == TRUE);
@@ -210,8 +210,8 @@ run_test(NiceNominationMode l_nomination_mode,
   while (global_lagent_state[0] != NICE_COMPONENT_STATE_READY ||
       global_ragent_state[0] != NICE_COMPONENT_STATE_READY)
     g_main_context_iteration (NULL, TRUE);
-  g_assert (global_lagent_state[0] == NICE_COMPONENT_STATE_READY);
-  g_assert (global_ragent_state[0] == NICE_COMPONENT_STATE_READY);
+  g_assert_cmpint (global_lagent_state[0], ==, NICE_COMPONENT_STATE_READY);
+  g_assert_cmpint (global_ragent_state[0], ==, NICE_COMPONENT_STATE_READY);
 
   nice_agent_remove_stream (lagent, ls_id);
   nice_agent_remove_stream (ragent, rs_id);

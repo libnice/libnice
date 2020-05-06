@@ -78,7 +78,7 @@ static void swap_candidates(NiceAgent *local, guint local_id, NiceAgent *remote,
   g_debug ("test-credentials:%s", G_STRFUNC);
   cands = nice_agent_get_local_candidates(local, local_id,
                                           NICE_COMPONENT_TYPE_RTP);
-  g_assert(nice_agent_set_remote_candidates(remote, remote_id,
+  g_assert (nice_agent_set_remote_candidates(remote, remote_id,
                                             NICE_COMPONENT_TYPE_RTP, cands));
 
   g_slist_free_full (cands, (GDestroyNotify) nice_candidate_free);
@@ -119,8 +119,8 @@ static void setup(NiceAgent *lagent, NiceAgent *ragent)
 {
   NiceAddress addr;
 
-  g_assert (nice_agent_add_stream (lagent, 1) == 1);
-  g_assert (nice_agent_add_stream (ragent, 1) == 1);
+  g_assert_cmpuint (nice_agent_add_stream (lagent, 1), ==, 1);
+  g_assert_cmpuint (nice_agent_add_stream (ragent, 1), ==, 1);
   g_assert (NULL != lagent->streams);
   g_assert (NULL != ragent->streams);
 
@@ -182,8 +182,8 @@ int main (void)
 
   nice_agent_set_local_credentials (lagent, 1, "unicorns", "awesome");
   nice_agent_get_local_credentials (lagent, 1, &ufrag, &password);
-  g_assert (g_strcmp0("unicorns", ufrag) == 0);
-  g_assert (g_strcmp0("awesome", password) == 0);
+  g_assert_cmpstr ("unicorns", ==, ufrag);
+  g_assert_cmpstr ("awesome", ==, password);
   g_free (ufrag);
   g_free (password);
 

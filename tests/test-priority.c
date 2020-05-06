@@ -64,16 +64,16 @@ main (void)
   g_list_free_full (ips, g_free);
 
   /* test 0 */
-  g_assert (ip_local_preference < NICE_CANDIDATE_MAX_LOCAL_ADDRESSES);
+  g_assert_cmpuint (ip_local_preference, <, NICE_CANDIDATE_MAX_LOCAL_ADDRESSES);
 
   /* test 1 */
   g_assert_cmpuint (nice_candidate_jingle_priority (candidate), ==, 1000);
   /* Host UDP */
   candidate->transport = NICE_CANDIDATE_TRANSPORT_UDP;
   candidate->component_id = 1;
-  g_assert_cmpuint (nice_candidate_ice_priority (candidate, FALSE, FALSE) , ==, 0x782000FF + 0x100 * ip_local_preference );
+  g_assert_cmpuint (nice_candidate_ice_priority (candidate, FALSE, FALSE), ==, 0x782000FF + 0x100 * ip_local_preference );
   /* Host UDP reliable */
-  g_assert_cmpuint (nice_candidate_ice_priority (candidate, TRUE, FALSE) , ==, 0x3C2000FF + 0x100 * ip_local_preference );
+  g_assert_cmpuint (nice_candidate_ice_priority (candidate, TRUE, FALSE), ==, 0x3C2000FF + 0x100 * ip_local_preference );
   /* Host tcp-active unreliable */
   candidate->transport = NICE_CANDIDATE_TRANSPORT_TCP_ACTIVE;
   g_assert_cmpuint (nice_candidate_ice_priority (candidate, FALSE, FALSE) & 0xFFE000FF, ==, 0x3C8000FF);

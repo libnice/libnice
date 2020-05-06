@@ -245,8 +245,8 @@ static int run_fallback_test (NiceAgent *lagent, NiceAgent *ragent, NiceAddress 
   /* step: add one stream, with RTP+RTCP components, to each agent */
   ls_id = nice_agent_add_stream (lagent, 2);
   rs_id = nice_agent_add_stream (ragent, 2);
-  g_assert (ls_id > 0);
-  g_assert (rs_id > 0);
+  g_assert_cmpuint (ls_id, >, 0);
+  g_assert_cmpuint (rs_id, >, 0);
 
   nice_agent_gather_candidates (lagent, ls_id);
   nice_agent_gather_candidates (ragent, rs_id);
@@ -317,8 +317,8 @@ static int run_fallback_test (NiceAgent *lagent, NiceAgent *ragent, NiceAddress 
     g_main_loop_run (global_mainloop);
 
   /* note: verify that agents are in correct state */
-  g_assert (global_lagent_state == NICE_COMPONENT_STATE_READY);
-  g_assert (global_ragent_state == NICE_COMPONENT_STATE_READY);
+  g_assert_cmpint (global_lagent_state, ==, NICE_COMPONENT_STATE_READY);
+  g_assert_cmpint (global_ragent_state, ==, NICE_COMPONENT_STATE_READY);
 
   /* step: next send a packet -> should work even if no ICE processing
    *       has been done */
@@ -327,12 +327,12 @@ static int run_fallback_test (NiceAgent *lagent, NiceAgent *ragent, NiceAddress 
 
   /* step: send a new test packet from L ot R */
   global_ragent_read = 0;
-  g_assert (nice_agent_send (lagent, ls_id, 1, 16, "1234567812345678") == 16);
+  g_assert_cmpint (nice_agent_send (lagent, ls_id, 1, 16, "1234567812345678"), ==, 16);
   global_ragent_read_exit = 16;
   g_main_loop_run (global_mainloop);
 
   /* note: verify that payload was succesfully received */
-  g_assert (global_ragent_read == 16);
+  g_assert_cmpint (global_ragent_read, ==, 16);
 
   g_debug ("test-fallback: Ran mainloop, removing streams...");
 
@@ -381,8 +381,8 @@ static int run_safe_fallback_test (NiceAgent *lagent, NiceAgent *ragent, NiceAdd
   /* step: add one stream, with RTP+RTCP components, to each agent */
   ls_id = nice_agent_add_stream (lagent, 2);
   rs_id = nice_agent_add_stream (ragent, 2);
-  g_assert (ls_id > 0);
-  g_assert (rs_id > 0);
+  g_assert_cmpuint (ls_id, >, 0);
+  g_assert_cmpuint (rs_id, >, 0);
 
   nice_agent_gather_candidates (lagent, ls_id);
   nice_agent_gather_candidates (ragent, rs_id);
@@ -449,8 +449,8 @@ static int run_safe_fallback_test (NiceAgent *lagent, NiceAgent *ragent, NiceAdd
     g_main_loop_run (global_mainloop);
 
   /* note: verify that agents are in correct state */
-  g_assert (global_lagent_state == NICE_COMPONENT_STATE_READY);
-  g_assert (global_ragent_state == NICE_COMPONENT_STATE_READY);
+  g_assert_cmpint (global_lagent_state, ==, NICE_COMPONENT_STATE_READY);
+  g_assert_cmpint (global_ragent_state, ==, NICE_COMPONENT_STATE_READY);
 
   /* step: next send a packet -> should work even if no ICE processing
    *       has been done */
@@ -459,12 +459,12 @@ static int run_safe_fallback_test (NiceAgent *lagent, NiceAgent *ragent, NiceAdd
 
   /* step: send a new test packet from L ot R */
   global_ragent_read = 0;
-  g_assert (nice_agent_send (lagent, ls_id, 1, 16, "1234567812345678") == 16);
+  g_assert_cmpint (nice_agent_send (lagent, ls_id, 1, 16, "1234567812345678"), ==, 16);
   global_ragent_read_exit = 16;
   g_main_loop_run (global_mainloop);
 
   /* note: verify that payload was succesfully received */
-  g_assert (global_ragent_read == 16);
+  g_assert_cmpint (global_ragent_read, ==, 16);
 
   g_debug ("test-fallback: Ran mainloop, removing streams...");
 
@@ -549,17 +549,17 @@ int main (void)
   g_debug ("test-fallback: TEST STARTS / fallback test");
   result = run_fallback_test (lagent, ragent, &baseaddr);
   priv_print_global_status ();
-  g_assert (result == 0);
-  g_assert (global_lagent_state == NICE_COMPONENT_STATE_READY);
-  g_assert (global_ragent_state == NICE_COMPONENT_STATE_READY);
+  g_assert_cmpint (result, ==, 0);
+  g_assert_cmpint (global_lagent_state, ==, NICE_COMPONENT_STATE_READY);
+  g_assert_cmpint (global_ragent_state, ==, NICE_COMPONENT_STATE_READY);
 
   /* step: run the safe test without sending any stnu */
   g_debug ("test-fallback: TEST STARTS / safe fallback test");
   result = run_safe_fallback_test (lagent, ragent, &baseaddr);
   priv_print_global_status ();
-  g_assert (result == 0);
-  g_assert (global_lagent_state == NICE_COMPONENT_STATE_READY);
-  g_assert (global_ragent_state == NICE_COMPONENT_STATE_READY);
+  g_assert_cmpint (result, ==, 0);
+  g_assert_cmpint (global_lagent_state, ==, NICE_COMPONENT_STATE_READY);
+  g_assert_cmpint (global_ragent_state, ==, NICE_COMPONENT_STATE_READY);
 
   g_object_unref (lagent);
   g_object_unref (ragent);

@@ -290,8 +290,8 @@ int main (void)
   ls_id = nice_agent_add_stream (lagent, 1);
 
   rs_id = nice_agent_add_stream (ragent, 1);
-  g_assert (ls_id > 0);
-  g_assert (rs_id > 0);
+  g_assert_cmpuint (ls_id, >, 0);
+  g_assert_cmpuint (rs_id, >, 0);
 
 
   nice_agent_gather_candidates (lagent, ls_id);
@@ -350,13 +350,13 @@ int main (void)
 
   /* note: verify that STUN binding requests were sent */
   g_assert (global_lagent_ibr_received == TRUE);
-  g_assert (global_ragent_ibr_received == TRUE);
+  g_assert_cmpint (global_ragent_ibr_received, ==, TRUE);
 
-  g_assert (global_lagent_state == NICE_COMPONENT_STATE_READY);
-  g_assert (global_ragent_state == NICE_COMPONENT_STATE_READY);
+  g_assert_cmpint (global_lagent_state, ==, NICE_COMPONENT_STATE_READY);
+  g_assert_cmpint (global_ragent_state, ==, NICE_COMPONENT_STATE_READY);
   /* note: verify that correct number of local candidates were reported */
-  g_assert (global_lagent_cands == 1);
-  g_assert (global_ragent_cands == 1);
+  g_assert_cmpint (global_lagent_cands, ==, 1);
+  g_assert_cmpint (global_ragent_cands, ==, 1);
 
   g_debug ("test-trickle: agents are ready.. now adding new buggy candidate");
 
@@ -372,9 +372,9 @@ int main (void)
     nice_candidate_free ((NiceCandidate *) i->data);
   g_slist_free (cands);
 
-  g_assert (global_lagent_state == NICE_COMPONENT_STATE_CONNECTED);
+  g_assert_cmpint (global_lagent_state, ==, NICE_COMPONENT_STATE_CONNECTED);
   g_main_loop_run (global_mainloop);
-  g_assert (global_lagent_state == NICE_COMPONENT_STATE_READY);
+  g_assert_cmpint (global_lagent_state, ==, NICE_COMPONENT_STATE_READY);
 
   /*
   g_debug ("test-trickle: buggy candidate worked, testing lower priority cand");
@@ -387,13 +387,13 @@ int main (void)
     nice_candidate_free ((NiceCandidate *) i->data);
   g_slist_free (cands);
 
-  g_assert (global_lagent_state == NICE_COMPONENT_STATE_READY);*/
+  g_assert_cmpint (global_lagent_state, ==, NICE_COMPONENT_STATE_READY);*/
 
   /* note: test payload send and receive */
   global_ragent_read = 0;
-  g_assert (nice_agent_send (lagent, ls_id, 1, 16, "1234567812345678") == 16);
+  g_assert_cmpint (nice_agent_send (lagent, ls_id, 1, 16, "1234567812345678"), ==, 16);
   g_main_loop_run (global_mainloop);
-  g_assert (global_ragent_read == 16);
+  g_assert_cmpint (global_ragent_read, ==, 16);
 
   g_debug ("test-trickle: Ran mainloop, removing streams...");
 
@@ -402,11 +402,11 @@ int main (void)
   nice_agent_remove_stream (lagent, ls_id);
   nice_agent_remove_stream (ragent, rs_id);
   priv_print_global_status ();
-  g_assert (global_lagent_state == NICE_COMPONENT_STATE_READY);
-  g_assert (global_ragent_state >= NICE_COMPONENT_STATE_CONNECTED);
+  g_assert_cmpint (global_lagent_state, ==, NICE_COMPONENT_STATE_READY);
+  g_assert_cmpint (global_ragent_state, >=, NICE_COMPONENT_STATE_CONNECTED);
   /* note: verify that correct number of local candidates were reported */
-  g_assert (global_lagent_cands == 1);
-  g_assert (global_ragent_cands == 1);
+  g_assert_cmpint (global_lagent_cands, ==, 1);
+  g_assert_cmpint (global_ragent_cands, ==, 1);
 
 
   g_object_unref (lagent);

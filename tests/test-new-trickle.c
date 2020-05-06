@@ -129,7 +129,7 @@ static int listen_socket (unsigned int *port)
     if (getsockname (fd, &addr.addr, &socklen) < 0)
       g_error ("getsockname failed: %s", strerror (errno));
 
-    g_assert (socklen == sizeof(struct sockaddr_in));
+    g_assert_cmpint (socklen, ==, sizeof(struct sockaddr_in));
     *port = ntohs (addr.in.sin_port);
     g_assert (*port != 0);
   }
@@ -304,7 +304,7 @@ static void cb_nice_recv (NiceAgent *agent, guint stream_id, guint component_id,
   ret = strncmp ("0000", buf, 4);
   if (ret == 0) {
     ret = strncmp ("00001234567812345678", buf, 16);
-    g_assert (ret == 0);
+    g_assert_cmpint (ret, ==, 0);
 
     g_debug ("test-tricklemode:%s: ragent recieved %d bytes : quit mainloop",
              G_STRFUNC, len);
@@ -341,7 +341,7 @@ static void cb_component_state_changed (NiceAgent *agent, guint stream_id, guint
     ret = nice_agent_send (agent, stream_id, component_id,
                            20, "00001234567812345678");
     g_debug ("Sent %d bytes", ret);
-    g_assert (ret == 20);
+    g_assert_cmpint (ret, ==, 20);
   }
 }
 
@@ -352,8 +352,8 @@ static void swap_candidates(NiceAgent *local, guint local_id, NiceAgent *remote,
   g_debug ("test-tricklemode:%s", G_STRFUNC);
   cands = nice_agent_get_local_candidates(local, local_id,
                                           NICE_COMPONENT_TYPE_RTP);
-  g_assert(nice_agent_set_remote_candidates(remote, remote_id,
-                                            NICE_COMPONENT_TYPE_RTP, cands));
+  g_assert (nice_agent_set_remote_candidates(remote, remote_id,
+                                             NICE_COMPONENT_TYPE_RTP, cands));
 
   if (signal_stun_reply) {
     g_mutex_lock (stun_mutex_ptr);
@@ -433,8 +433,8 @@ static void init_test(NiceAgent *lagent, NiceAgent *ragent, gboolean connect_new
   global_ls_id = nice_agent_add_stream (lagent, 1);
   global_rs_id = nice_agent_add_stream (ragent, 1);
 
-  g_assert (global_ls_id > 0);
-  g_assert (global_rs_id > 0);
+  g_assert_cmpuint (global_ls_id, >, 0);
+  g_assert_cmpuint (global_rs_id, >, 0);
 
   g_debug ("lagent stream is : %d and ragent stream is %d",
            global_ls_id,
@@ -521,8 +521,8 @@ static void standard_test(NiceAgent *lagent, NiceAgent *ragent)
     g_main_context_iteration (NULL, TRUE);
   g_cancellable_reset (global_cancellable);
 
-  g_assert (global_lagent_state == NICE_COMPONENT_STATE_READY);
-  g_assert (global_ragent_state >= NICE_COMPONENT_STATE_CONNECTED);
+  g_assert_cmpint (global_lagent_state, ==, NICE_COMPONENT_STATE_READY);
+  g_assert_cmpint (global_ragent_state, >=, NICE_COMPONENT_STATE_CONNECTED);
 
   cleanup (lagent, ragent);
 }
@@ -573,8 +573,8 @@ static void bad_credentials_test(NiceAgent *lagent, NiceAgent *ragent)
   g_cancellable_reset (global_cancellable);
 
   g_assert (data_received);
-  g_assert (global_lagent_state == NICE_COMPONENT_STATE_READY);
-  g_assert (global_ragent_state >= NICE_COMPONENT_STATE_CONNECTED);
+  g_assert_cmpint (global_lagent_state, ==, NICE_COMPONENT_STATE_READY);
+  g_assert_cmpint (global_ragent_state, >=, NICE_COMPONENT_STATE_CONNECTED);
 
   // Wait for lagent to finish gathering candidates
   while (!lagent_candidate_gathering_done)
@@ -641,8 +641,8 @@ static void bad_candidate_test(NiceAgent *lagent,NiceAgent *ragent)
 
   g_assert (lagent_candidate_gathering_done);
 
-  g_assert (global_lagent_state >= NICE_COMPONENT_STATE_CONNECTED);
-  g_assert (global_ragent_state >= NICE_COMPONENT_STATE_CONNECTED);
+  g_assert_cmpint (global_lagent_state, >=, NICE_COMPONENT_STATE_CONNECTED);
+  g_assert_cmpint (global_ragent_state, >=, NICE_COMPONENT_STATE_CONNECTED);
 
   cleanup (lagent, ragent);
 }
@@ -689,8 +689,8 @@ static void new_candidate_test(NiceAgent *lagent, NiceAgent *ragent)
   g_assert (lagent_candidate_gathering_done);
   g_assert (ragent_candidate_gathering_done);
 
-  g_assert (global_lagent_state == NICE_COMPONENT_STATE_READY);
-  g_assert (global_ragent_state >= NICE_COMPONENT_STATE_CONNECTED);
+  g_assert_cmpint (global_lagent_state, ==, NICE_COMPONENT_STATE_READY);
+  g_assert_cmpint (global_ragent_state, >=, NICE_COMPONENT_STATE_CONNECTED);
 
   cleanup (lagent, ragent);
 }

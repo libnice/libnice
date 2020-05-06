@@ -89,7 +89,7 @@ main (void)
   nice_agent_add_local_address (agent, &addr_local);
 
   g_assert (agent->local_addresses != NULL);
-  g_assert (g_slist_length (agent->local_addresses) == 1);
+  g_assert_cmpuint (g_slist_length (agent->local_addresses), ==, 1);
   g_assert (nice_address_equal (agent->local_addresses->data, &addr_local));
 
   /* add a stream */
@@ -98,7 +98,7 @@ main (void)
 
   /* adding a stream should cause host candidates to be generated */
   candidates = nice_agent_get_local_candidates (agent, stream_id, 1);
-  g_assert (g_slist_length (candidates) == 1);
+  g_assert_cmpuint (g_slist_length (candidates), ==, 1);
   candidate = candidates->data;
   /* socket manager uses random port number */
   nice_address_set_port (&addr_local, 1);

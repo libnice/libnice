@@ -307,8 +307,8 @@ static int run_full_test (NiceAgent *lagent, NiceAgent *ragent, NiceAddress *bas
   ls_id = nice_agent_add_stream (lagent, 2);
 
   rs_id = nice_agent_add_stream (ragent, 2);
-  g_assert (ls_id > 0);
-  g_assert (rs_id > 0);
+  g_assert_cmpuint (ls_id, >, 0);
+  g_assert_cmpuint (rs_id, >, 0);
 
   /* Gather candidates and test nice_agent_set_port_range */
   nice_agent_set_port_range (lagent, ls_id, 1, 10000, 11000);
@@ -329,41 +329,41 @@ static int run_full_test (NiceAgent *lagent, NiceAgent *ragent, NiceAddress *bas
     NiceCandidate *cand = NULL;
 
     cands = nice_agent_get_local_candidates (lagent, ls_id, 1);
-    g_assert (g_slist_length (cands) == 1);
+    g_assert_cmpuint (g_slist_length (cands), ==, 1);
     cand = cands->data;
-    g_assert (cand->type == NICE_CANDIDATE_TYPE_HOST);
-    g_assert (nice_address_get_port (&cand->addr) >= 10000);
-    g_assert (nice_address_get_port (&cand->addr) <= 11000);
+    g_assert_cmpint (cand->type, ==, NICE_CANDIDATE_TYPE_HOST);
+    g_assert_cmpuint (nice_address_get_port (&cand->addr), >=, 10000);
+    g_assert_cmpuint (nice_address_get_port (&cand->addr), <=, 11000);
     for (i = cands; i; i = i->next)
       nice_candidate_free ((NiceCandidate *) i->data);
     g_slist_free (cands);
 
     cands = nice_agent_get_local_candidates (lagent, ls_id, 2);
-    g_assert (g_slist_length (cands) == 1);
+    g_assert_cmpuint (g_slist_length (cands), ==, 1);
     cand = cands->data;
-    g_assert (cand->type == NICE_CANDIDATE_TYPE_HOST);
-    g_assert (nice_address_get_port (&cand->addr) >= 11000);
-    g_assert (nice_address_get_port (&cand->addr) <= 12000);
+    g_assert_cmpuint (cand->type, ==, NICE_CANDIDATE_TYPE_HOST);
+    g_assert_cmpuint (nice_address_get_port (&cand->addr), >=, 11000);
+    g_assert_cmpuint (nice_address_get_port (&cand->addr), <=, 12000);
     for (i = cands; i; i = i->next)
       nice_candidate_free ((NiceCandidate *) i->data);
     g_slist_free (cands);
 
     cands = nice_agent_get_local_candidates (ragent, rs_id, 1);
-    g_assert (g_slist_length (cands) == 1);
+    g_assert_cmpuint (g_slist_length (cands), ==, 1);
     cand = cands->data;
-    g_assert (cand->type == NICE_CANDIDATE_TYPE_HOST);
-    g_assert (nice_address_get_port (&cand->addr) >= 12000);
-    g_assert (nice_address_get_port (&cand->addr) <= 13000);
+    g_assert_cmpint (cand->type, ==, NICE_CANDIDATE_TYPE_HOST);
+    g_assert_cmpuint (nice_address_get_port (&cand->addr), >=, 12000);
+    g_assert_cmpuint (nice_address_get_port (&cand->addr), <=, 13000);
     for (i = cands; i; i = i->next)
       nice_candidate_free ((NiceCandidate *) i->data);
     g_slist_free (cands);
 
     cands = nice_agent_get_local_candidates (ragent, rs_id, 2);
-    g_assert (g_slist_length (cands) == 1);
+    g_assert_cmpuint (g_slist_length (cands), ==, 1);
     cand = cands->data;
-    g_assert (cand->type == NICE_CANDIDATE_TYPE_HOST);
-    g_assert (nice_address_get_port (&cand->addr) >= 13000);
-    g_assert (nice_address_get_port (&cand->addr) <= 14000);
+    g_assert_cmpint (cand->type, ==, NICE_CANDIDATE_TYPE_HOST);
+    g_assert_cmpuint (nice_address_get_port (&cand->addr), >=, 13000);
+    g_assert_cmpuint (nice_address_get_port (&cand->addr), <=, 14000);
     for (i = cands; i; i = i->next)
       nice_candidate_free ((NiceCandidate *) i->data);
     g_slist_free (cands);
@@ -435,10 +435,10 @@ static int run_full_test (NiceAgent *lagent, NiceAgent *ragent, NiceAddress *bas
   ret = nice_agent_send (lagent, ls_id, 1, 16, "1234567812345678");
   g_assert (ret != -1);
   g_debug ("Sent %d bytes", ret);
-  g_assert (ret == 16);
+  g_assert_cmpint (ret, ==, 16);
   while (global_ragent_read != 16)
     g_main_context_iteration (NULL, TRUE);
-  g_assert (global_ragent_read == 16);
+  g_assert_cmpint (global_ragent_read, ==, 16);
 
   g_debug ("test-drop-invalid: Ran mainloop, removing streams...");
 
@@ -520,19 +520,19 @@ int main (void)
   g_debug ("test-drop-invalid: TEST STARTS / running test for the 1st time");
   result = run_full_test (lagent, ragent, &baseaddr, 4 ,0);
   priv_print_global_status ();
-  g_assert (result == 0);
-  g_assert (global_lagent_state[0] == NICE_COMPONENT_STATE_READY);
-  g_assert (global_lagent_state[1] == NICE_COMPONENT_STATE_READY);
-  g_assert (global_ragent_state[0] == NICE_COMPONENT_STATE_READY);
-  g_assert (global_ragent_state[1] == NICE_COMPONENT_STATE_READY);
+  g_assert_cmpint (result, ==, 0);
+  g_assert_cmpint (global_lagent_state[0], ==, NICE_COMPONENT_STATE_READY);
+  g_assert_cmpint (global_lagent_state[1], ==, NICE_COMPONENT_STATE_READY);
+  g_assert_cmpint (global_ragent_state[0], ==, NICE_COMPONENT_STATE_READY);
+  g_assert_cmpint (global_ragent_state[1], ==, NICE_COMPONENT_STATE_READY);
   /* When using TURN, we get peer reflexive candidates for the host cands
      that we removed so we can get another new_selected_pair signal later
      depending on timing/racing, we could double (or not) the amount we expected
   */
 
   /* note: verify that correct number of local candidates were reported */
-  g_assert (global_lagent_cands == 2);
-  g_assert (global_ragent_cands == 2);
+  g_assert_cmpint (global_lagent_cands, ==, 2);
+  g_assert_cmpint (global_ragent_cands, ==, 2);
 
   g_object_unref (lagent);
   g_object_unref (ragent);

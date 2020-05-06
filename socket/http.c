@@ -203,7 +203,7 @@ socket_close (NiceSocket *sock)
 static void
 assert_ring_buffer_valid (HttpPriv *priv)
 {
-  g_assert (priv->recv_buf_fill <= priv->recv_buf_length);
+  g_assert_cmpint (priv->recv_buf_fill, <=, priv->recv_buf_length);
   g_assert (priv->recv_buf_pos == 0 ||
       priv->recv_buf_pos < priv->recv_buf_length);
   g_assert (priv->recv_buf_length == 0 || priv->recv_buf != NULL);

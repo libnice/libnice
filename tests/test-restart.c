@@ -232,8 +232,8 @@ static int run_restart_test (NiceAgent *lagent, NiceAgent *ragent, NiceAddress *
   /* step: add one stream, with RTP+RTCP components, to each agent */
   ls_id = nice_agent_add_stream (lagent, 2);
   rs_id = nice_agent_add_stream (ragent, 2);
-  g_assert (ls_id > 0);
-  g_assert (rs_id > 0);
+  g_assert_cmpuint (ls_id, >, 0);
+  g_assert_cmpuint (rs_id, >, 0);
 
   nice_agent_gather_candidates (lagent, ls_id);
   nice_agent_gather_candidates (ragent, rs_id);
@@ -317,11 +317,11 @@ static int run_restart_test (NiceAgent *lagent, NiceAgent *ragent, NiceAddress *
   g_assert (global_lagent_ibr_received == TRUE);
   g_assert (global_ragent_ibr_received == TRUE);
   /* note: verify that correct number of local candidates were reported */
-  g_assert (global_lagent_cands == 2);
-  g_assert (global_ragent_cands == 2);
+  g_assert_cmpint (global_lagent_cands, ==, 2);
+  g_assert_cmpint (global_ragent_cands, ==, 2);
   /* note: verify that agents are in correct state */
-  g_assert (global_lagent_state == NICE_COMPONENT_STATE_READY);
-  g_assert (global_ragent_state == NICE_COMPONENT_STATE_READY);
+  g_assert_cmpint (global_lagent_state, ==, NICE_COMPONENT_STATE_READY);
+  g_assert_cmpint (global_ragent_state, ==, NICE_COMPONENT_STATE_READY);
 
   /* step: next send a packet (should work during restart) and
    *       then request an ICE restart by resetting the remote
@@ -332,7 +332,7 @@ static int run_restart_test (NiceAgent *lagent, NiceAgent *ragent, NiceAddress *
 
   /* step: send a new test packet from L ot R */
   global_ragent_read = 0;
-  g_assert (nice_agent_send (lagent, ls_id, 1, 16, "1234567812345678") == 16);
+  g_assert_cmpint (nice_agent_send (lagent, ls_id, 1, 16, "1234567812345678"), ==, 16);
 
   /* Both agent have a distinct role at the end of the conncheck */
   g_assert (lagent->controlling_mode == TRUE);
@@ -362,7 +362,7 @@ static int run_restart_test (NiceAgent *lagent, NiceAgent *ragent, NiceAddress *
   }
   
   /* send another packet after restart */
-  g_assert (nice_agent_send (lagent, ls_id, 1, 16, "1234567812345678") == 16);
+  g_assert_cmpint (nice_agent_send (lagent, ls_id, 1, 16, "1234567812345678"), ==, 16);
 
   /* step: reset state variables */
   global_lagent_ibr_received = FALSE;
@@ -384,7 +384,7 @@ static int run_restart_test (NiceAgent *lagent, NiceAgent *ragent, NiceAddress *
   g_main_loop_run (global_mainloop);
 
   /* note: verify that payload was succesfully received */
-  g_assert (global_ragent_read == 32);
+  g_assert_cmpint (global_ragent_read, ==, 32);
   /* note: verify binding requests were resent after restart */
   g_assert (global_lagent_ibr_received == TRUE);
   g_assert (global_ragent_ibr_received == TRUE);
@@ -476,9 +476,9 @@ int main (void)
   g_debug ("test-restart: TEST STARTS / restart test");
   result = run_restart_test (lagent, ragent, &baseaddr);
   priv_print_global_status ();
-  g_assert (result == 0);
-  g_assert (global_lagent_state == NICE_COMPONENT_STATE_READY);
-  g_assert (global_ragent_state == NICE_COMPONENT_STATE_READY);
+  g_assert_cmpint (result, ==, 0);
+  g_assert_cmpint (global_lagent_state, ==, NICE_COMPONENT_STATE_READY);
+  g_assert_cmpint (global_ragent_state, ==, NICE_COMPONENT_STATE_READY);
 
   g_object_unref (lagent);
   g_object_unref (ragent);

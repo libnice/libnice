@@ -271,7 +271,7 @@ int main (void)
     g_assert (mode == TRUE);
     g_object_set (G_OBJECT (lagent), "max-connectivity-checks", 300, NULL);
     g_object_get (G_OBJECT (lagent), "max-connectivity-checks", &max_checks, NULL);
-    g_assert (max_checks == 300);
+    g_assert_cmpuint (max_checks, ==, 300);
   }
 
   /* step: run test the first time */
@@ -285,8 +285,8 @@ int main (void)
 
   ls_id = nice_agent_add_stream (lagent, 2);
   rs_id = nice_agent_add_stream (ragent, 2);
-  g_assert (ls_id > 0);
-  g_assert (rs_id > 0);
+  g_assert_cmpuint (ls_id, >, 0);
+  g_assert_cmpuint (rs_id, >, 0);
 
   g_object_set_data (G_OBJECT (lagent), "id", GUINT_TO_POINTER (ls_id));
   g_object_set_data (G_OBJECT (ragent), "id", GUINT_TO_POINTER (rs_id));
@@ -336,8 +336,8 @@ int main (void)
   g_thread_join (rthread);
 
   /* note: verify that correct number of local candidates were reported */
-  g_assert (g_atomic_int_get (&global_lagent_cands) == 1);
-  g_assert (g_atomic_int_get (&global_ragent_cands) == 1);
+  g_assert_cmpint (g_atomic_int_get (&global_lagent_cands), ==, 1);
+  g_assert_cmpint (g_atomic_int_get (&global_ragent_cands), ==, 1);
 
   g_object_add_weak_pointer (G_OBJECT (lagent), (gpointer *) &lagent);
   g_object_add_weak_pointer (G_OBJECT (ragent), (gpointer *) &ragent);

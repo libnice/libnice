@@ -124,7 +124,7 @@ static void readable (PseudoTcpSocket *sock, gpointer data)
         else {
           total_wrote += len;
 
-          g_assert (total_wrote <= total_read);
+          g_assert_cmpint (total_wrote, <=, total_read);
           g_debug ("Written %d bytes, need %d bytes", total_wrote, total_read);
           if (total_wrote == total_read && feof (in)) {
             g_assert (reading_done);

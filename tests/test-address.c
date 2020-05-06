@@ -52,10 +52,10 @@ test_ipv4 (void)
   nice_address_init (&addr);
   nice_address_init (&other);
   nice_address_set_ipv4 (&addr, 0x01020304);
-  g_assert (addr.s.ip4.sin_family == AF_INET);
+  g_assert_cmpint (addr.s.ip4.sin_family, ==, AF_INET);
 
   nice_address_to_string (&addr, str);
-  g_assert (0 == strcmp (str, "1.2.3.4"));
+  g_assert_cmpstr (str, ==, "1.2.3.4");
 
   nice_address_to_string (&addr, str);
 
@@ -115,10 +115,10 @@ test_ipv6 (void)
       "\x44\x55\x66\x77"
       "\x88\x99\xaa\xbb"
       "\xcc\xdd\xee\xff");
-  g_assert (addr.s.ip6.sin6_family == AF_INET6);
+  g_assert_cmpint (addr.s.ip6.sin6_family, ==, AF_INET6);
 
   nice_address_to_string (&addr, str);
-  g_assert (0 == strcmp (str, "11:2233:4455:6677:8899:aabb:ccdd:eeff"));
+  g_assert_cmpstr (str, ==, "11:2233:4455:6677:8899:aabb:ccdd:eeff");
 
   nice_address_set_port (&addr, 9876); /* in native byte order */
   nice_address_set_from_string (&other, "11:2233:4455:6677:8899:aabb:ccdd:eeff");
