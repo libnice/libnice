@@ -204,44 +204,13 @@ nice_interfaces_get_local_interfaces (void)
 
 
 static gboolean
-nice_interfaces_is_private_ip (const struct sockaddr *_sa)
+nice_interfaces_is_private_ip (const struct sockaddr *sa)
 {
-  union {
-    const struct sockaddr *addr;
-    const struct sockaddr_in *in;
-    const struct sockaddr_in6 *in6;
-  } sa;
+  NiceAddress niceaddr;
 
-  sa.addr = _sa;
-
-  if (sa.addr->sa_family == AF_INET) {
-    /* 10.x.x.x/8 */
-    if (g_ntohl (sa.in->sin_addr.s_addr) >> 24 == 0x0A)
-      return TRUE;
-
-    /* 172.16.0.0 - 172.31.255.255 = 172.16.0.0/10 */
-    if (g_ntohl (sa.in->sin_addr.s_addr) >> 20 == 0xAC1)
-      return TRUE;
-
-    /* 192.168.x.x/16 */
-    if (g_ntohl (sa.in->sin_addr.s_addr) >> 16 == 0xC0A8)
-      return TRUE;
-
-    /* 169.254.x.x/16  (for APIPA) */
-    if (g_ntohl (sa.in->sin_addr.s_addr) >> 16 == 0xA9FE)
-      return TRUE;
-  } else if (sa.addr->sa_family == AF_INET6) {
-    /* fc00::/7 Unique local address (ULA) */
-    if ((sa.in6->sin6_addr.s6_addr[0] & 0xFE) == 0xFC)
-      return TRUE;
-
-    /* fe80::/10 link-local address */
-    if ( (sa.in6->sin6_addr.s6_addr[0]         == 0xFE)  &&
-        ((sa.in6->sin6_addr.s6_addr[1] & 0xC0) == 0x80))
-      return TRUE;
-  }
-  
-  return FALSE;
+  nice_address_init (&niceaddr);
+  nice_address_set_from_sockaddr (&niceaddr, sa);
+  return nice_address_is_private (&niceaddr);
 }
 
 static GList *
