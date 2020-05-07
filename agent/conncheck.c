@@ -3794,7 +3794,9 @@ priv_add_new_turn_refresh (NiceAgent *agent, CandidateDiscovery *cdisco,
 {
   CandidateRefresh *cand;
 
-  if (cdisco->turn->type != NICE_RELAY_TYPE_TURN_UDP)
+  if (cdisco->turn->type == NICE_RELAY_TYPE_TURN_TLS &&
+      (agent->compatibility == NICE_COMPATIBILITY_OC2007 ||
+       agent->compatibility == NICE_COMPATIBILITY_OC2007R2))
     return;
 
   cand = g_slice_new0 (CandidateRefresh);
