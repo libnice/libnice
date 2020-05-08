@@ -129,6 +129,8 @@ build msys2:
 
 .build msvc:
   extends: build msys2
+  variables:
+    GLIB_VERSION: 2.64.2
   script:
     # For some reason, options are separated by newline instead of space, so we
     # have to replace them first.
@@ -145,9 +147,9 @@ build msys2:
     - New-Item -Path subprojects -Name openssl.wrap -Value "[wrap-git]`r`ndirectory=openssl`r`nurl=https://gitlab.freedesktop.org/libnice/openssl-binaries-for-ci.git`r`nrevision=1.1.1c`r`n"
     - cmd.exe /C "C:\BuildTools\Common7\Tools\VsDevCmd.bat -host_arch=amd64 -arch=$env:ARCH &&
         meson subprojects download &&
-        meson wrap promote subprojects\glib\subprojects\libffi.wrap &&
-        meson wrap promote subprojects\glib\subprojects\zlib.wrap &&
-        meson wrap promote subprojects\glib\subprojects\proxy-libintl.wrap &&
+        meson wrap promote subprojects\glib-$env:GLIB_VERSION\subprojects\libffi.wrap &&
+        meson wrap promote subprojects\glib-$env:GLIB_VERSION\subprojects\zlib.wrap &&
+        meson wrap promote subprojects\glib-$env:GLIB_VERSION\subprojects\proxy-libintl.wrap &&
         meson subprojects download"
     - cmd.exe /C "C:\BuildTools\Common7\Tools\VsDevCmd.bat -host_arch=amd64 -arch=$env:ARCH &&
         meson build $env:MESON_ARGS &&

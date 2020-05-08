@@ -1,5 +1,5 @@
-[wrap-git]
-directory=glib
-url=https://gitlab.gnome.org/GNOME/glib.git
-push-url=git@gitlab.gnome.org:GNOME/glib.git
-revision=glib-2-64
+[wrap-file]
+directory=glib-2.64.2
+source_url=https://ftp.gnome.org/pub/gnome/sources/glib/2.64/glib-2.64.2.tar.xz
+source_filename=glib-2.64.2.tar.xz
+source_hash=9a2f21ed8f13b9303399de13a0252b7cbcede593d26971378ec6cb90e87f2277
