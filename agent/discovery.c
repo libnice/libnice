@@ -430,6 +430,7 @@ static gboolean priv_add_local_candidate_pruned (NiceAgent *agent, guint stream_
 
     if (c->type == NICE_CANDIDATE_TYPE_RELAYED &&
         candidate->type == NICE_CANDIDATE_TYPE_RELAYED &&
+        c->transport == candidate->transport &&
         nice_address_equal_no_port (&c->addr, &candidate->addr)) {
       nice_debug ("Agent %p : s%d/c%d : relay cand %p redundant, ignoring.",
           agent, stream_id, component->id, candidate);
@@ -438,6 +439,7 @@ static gboolean priv_add_local_candidate_pruned (NiceAgent *agent, guint stream_
 
     if (c->type == NICE_CANDIDATE_TYPE_SERVER_REFLEXIVE &&
         candidate->type == NICE_CANDIDATE_TYPE_SERVER_REFLEXIVE &&
+        c->transport == candidate->transport &&
         nice_address_equal_no_port (&c->addr, &candidate->addr)) {
       nice_debug ("Agent %p : s%d/c%d : srflx cand %p redundant, ignoring.",
           agent, stream_id, component->id, candidate);
