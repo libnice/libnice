@@ -150,6 +150,7 @@ struct _NiceAgent
   GSList *local_addresses;        /* list of NiceAddresses for local
 				     interfaces */
   GSList *streams;                /* list of Stream objects */
+  GSList *pruning_streams;        /* list of Streams current being shut down */
   GMainContext *main_context;     /* main context pointer */
   guint next_candidate_id;        /* id of next created candidate */
   guint next_stream_id;           /* id of next created candidate */

@@ -82,6 +82,7 @@ typedef struct
   gboolean disposing;
   GDestroyNotify destroy_cb;
   gpointer destroy_cb_data;
+  GSource *destroy_source;
 } CandidateRefresh;
 
 void refresh_free (NiceAgent *agent, CandidateRefresh *refresh);

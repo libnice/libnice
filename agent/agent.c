@@ -3415,7 +3415,7 @@ on_stream_refreshes_pruned (NiceAgent *agent, NiceStream *stream)
 
   nice_stream_close (agent, stream);
 
-  g_object_unref (agent);
+  agent->pruning_streams = g_slist_remove (agent->pruning_streams, stream);
 
   agent_unlock (agent);
 
@@ -3451,13 +3451,13 @@ nice_agent_remove_stream (
     return;
   }
 
-  g_object_ref (agent);
-
   /* note: remove items with matching stream_ids from both lists */
   conn_check_prune_stream (agent, stream);
   discovery_prune_stream (agent, stream_id);
   refresh_prune_stream_async (agent, stream,
       (NiceTimeoutLockedCallback) on_stream_refreshes_pruned);
+
+  agent->pruning_streams = g_slist_prepend (agent->pruning_streams, stream);
 
   /* Remove the stream and signal its removal. */
   agent->streams = g_slist_remove (agent->streams, stream);
@@ -5411,6 +5411,16 @@ nice_agent_dispose (GObject *object)
     g_object_unref (s);
 
     agent->streams = g_slist_delete_link(agent->streams, agent->streams);
+  }
+
+  while (agent->pruning_streams) {
+    NiceStream *s = agent->pruning_streams->data;
+
+    nice_stream_close (agent, s);
+    g_object_unref (s);
+
+    agent->pruning_streams = g_slist_delete_link(agent->pruning_streams,
+        agent->pruning_streams);
   }
 
   while ((sig = g_queue_pop_head (&agent->pending_signals))) {

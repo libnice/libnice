@@ -163,6 +163,11 @@ void refresh_free (NiceAgent *agent, CandidateRefresh *cand)
     g_clear_pointer (&cand->tick_source, g_source_unref);
   }
 
+  if (cand->destroy_source) {
+    g_source_destroy (cand->destroy_source);
+    g_source_unref (cand->destroy_source);
+  }
+
   if (cand->destroy_cb) {
     cand->destroy_cb (cand->destroy_cb_data);
   }
@@ -231,6 +236,10 @@ static gboolean refresh_remove_async (NiceAgent *agent, gpointer pointer)
     cand->timer_source = NULL;
   }
 
+  g_source_destroy (cand->destroy_source);
+  g_source_unref (cand->destroy_source);
+  cand->destroy_source = NULL;
+
   username = (uint8_t *)cand->candidate->turn->username;
   username_len = (size_t) strlen (cand->candidate->turn->username);
   password = (uint8_t *)cand->candidate->turn->password;
@@ -297,7 +306,6 @@ static void refresh_prune_async (NiceAgent *agent, GSList *refreshes,
 
   for (it = refreshes; it; it = it->next) {
     CandidateRefresh *cand = it->data;
-    GSource *timeout_source = NULL;
 
     if (cand->disposing)
       continue;
@@ -307,11 +315,9 @@ static void refresh_prune_async (NiceAgent *agent, GSList *refreshes,
     cand->destroy_cb = (GDestroyNotify) on_refresh_removed;
     cand->destroy_cb_data = data;
 
-    agent_timeout_add_with_context( agent, &timeout_source,
-        "TURN refresh remove async", timeout,
-        refresh_remove_async, cand);
+    agent_timeout_add_with_context(agent, &cand->destroy_source,
+        "TURN refresh remove async", timeout, refresh_remove_async, cand);
 
-    g_source_unref (timeout_source);
     ++data->items_to_free;
   }
 
