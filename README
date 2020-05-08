@@ -5,7 +5,7 @@ Nice: GLib ICE library
 Copyright
 ---------
 
- (C) 2006-2018 Collabora Ltd.
+ (C) 2006-2020 Collabora Ltd.
  (C) 2006-2011 Nokia Corporation
 
 License
@@ -26,11 +26,8 @@ Requirements
 Build instructions
 ------------------
 
-To build on Linux and Mac, you only need to type the usual commands :
-  ./configure && make && sudo make install
-Please refer to the INSTALL file for more details.
-If you are building from git, you must first run the ./autogen.sh script
-to generate the configure file for you.
+To build, you need Python 3 and Meson. Then need to do:
+  meson build && ninja -C build && sudo ninja -C build install
 
 Structure
 ---------
@@ -49,15 +46,20 @@ Relevant standards
 
 These standards are relevant to nice's current implementation.
 
-ICE RFC 5245
-  http://tools.ietf.org/html/rfc5245
+ICE
+  http://tools.ietf.org/html/rfc5245 (old)
+  http://tools.ietf.org/html/rfc8445
 STUN
-  http://tools.ietf.org/html/rfc3489
+  http://tools.ietf.org/html/rfc3489 (old)
   http://tools.ietf.org/html/rfc5389
 TURN 
   http://tools.ietf.org/html/rfc5766
 RTP
   http://tools.ietf.org/html/rfc3550
+ICE-TCP RFC
+  http://tools.ietf.org/html/rfc6544
+Trickle ICE
+   https://tools.ietf.org/html/draft-ietf-ice-trickle-21
 XMPP Jingle ICE transport
   http://www.xmpp.org/extensions/xep-0176.html
 
