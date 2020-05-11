@@ -386,7 +386,8 @@ static CandidateCheckPair *priv_conn_check_find_next_waiting (GSList *conn_check
  *
  * @return TRUE on success, FALSE on error
  */
-static gboolean priv_conn_check_initiate (NiceAgent *agent, CandidateCheckPair *pair)
+static gboolean
+priv_conn_check_initiate (NiceAgent *agent, CandidateCheckPair *pair)
 {
   SET_PAIR_STATE (agent, pair, NICE_CHECK_IN_PROGRESS);
   if (conn_check_send (agent, pair)) {
@@ -660,12 +661,11 @@ candidate_check_pair_fail (NiceStream *stream, NiceAgent *agent, CandidateCheckP
  * @return will return FALSE when no more pending timers.
  */
 static gboolean
-priv_conn_check_tick_stream (NiceStream *stream, NiceAgent *agent,
-    gboolean *stun_sent)
+priv_conn_check_tick_stream (NiceAgent *agent, NiceStream *stream)
 {
   gboolean keep_timer_going = FALSE;
+  gboolean pair_failed = FALSE;
   GSList *i, *j;
-  CandidateCheckPair *pair;
   unsigned int timeout;
   gint64 now;
 
@@ -722,8 +722,7 @@ timer_return_timeout:
                 stun_message_length (&stun->message),
                 (gchar *)stun->buffer);
 
-            if (stun_sent)
-              *stun_sent = TRUE;
+            agent->stun_sent = TRUE;
 
             /* note: convert from milli to microseconds for g_time_val_add() */
             stun->next_tick = now + timeout * 1000;
@@ -754,8 +753,7 @@ timer_return_timeout:
           tmpbuf1, nice_address_get_port (&p->local->addr),
           tmpbuf2, nice_address_get_port (&p->remote->addr));
       candidate_check_pair_fail (stream, agent, p);
-      priv_print_conn_check_lists (agent, G_STRFUNC,
-          ", retransmission failed");
+      pair_failed = TRUE;
 
       /* perform a check if a transition state from connected to
        * ready can be performed. This may happen here, when the last
@@ -766,6 +764,17 @@ timer_return_timeout:
       conn_check_update_check_list_state_for_ready (agent, stream, component);
     }
   }
+  if (pair_failed)
+    priv_print_conn_check_lists (agent, G_STRFUNC, ", retransmission failed");
+
+  return keep_timer_going;
+}
+
+static gboolean
+priv_conn_check_ordinary_check (NiceAgent *agent, NiceStream *stream)
+{
+  CandidateCheckPair *pair;
+  gboolean keep_timer_going = FALSE;
 
   /* step: perform an ordinary check, sec 6.1.4.2 point 3. (Performing
    * Connectivity Checks) of ICE spec (RFC8445)
@@ -783,19 +792,39 @@ timer_return_timeout:
   }
 
   if (pair) {
-    priv_conn_check_initiate (agent, pair);
+    keep_timer_going = priv_conn_check_initiate (agent, pair);
     priv_print_conn_check_lists (agent, G_STRFUNC,
         ", initiated an ordinary connection check");
-    if (stun_sent)
-      *stun_sent = TRUE;
-    return TRUE;
   }
 
   return keep_timer_going;
 }
 
 static gboolean
-priv_conn_check_tick_stream_nominate (NiceStream *stream, NiceAgent *agent)
+priv_conn_check_triggered_check (NiceAgent *agent, NiceStream *stream)
+{
+  CandidateCheckPair *pair;
+  gboolean keep_timer_going = FALSE;
+
+  /* step: perform a test from the triggered checks list,
+   * sect 6.1.4.2 point 1. (Performing Connectivity Checks) of ICE
+   * spec (RFC8445)
+   */
+  pair = priv_get_pair_from_triggered_check_queue (agent);
+
+  if (pair) {
+    if (conn_check_send (agent, pair))
+      SET_PAIR_STATE (agent, pair, NICE_CHECK_FAILED);
+    keep_timer_going = TRUE;
+    priv_print_conn_check_lists (agent, G_STRFUNC,
+        ", initiated a connection check from triggered check list");
+  }
+  return keep_timer_going;
+}
+
+
+static gboolean
+priv_conn_check_tick_stream_nominate (NiceAgent *agent, NiceStream *stream)
 {
   gboolean keep_timer_going = FALSE;
   /* s_xxx counters are stream-wide */
@@ -1153,41 +1182,39 @@ conn_check_stop (NiceAgent *agent)
 static gboolean priv_conn_check_tick_agent_locked (NiceAgent *agent,
     gpointer user_data)
 {
-  CandidateCheckPair *pair = NULL;
   gboolean keep_timer_going = FALSE;
   GSList *i, *j;
 
-  /* step: perform a test from the triggered checks list,
-   * sect 6.1.4.2 point 1. (Performing Connectivity Checks) of ICE
-   * spec (RFC8445)
-   */
-  pair = priv_get_pair_from_triggered_check_queue (agent);
+  /* A single stun request per timer callback, to respect stun pacing */
+  agent->stun_sent = FALSE;
 
-  if (pair) {
-    int result = conn_check_send (agent, pair);
-    priv_print_conn_check_lists (agent, G_STRFUNC,
-        ", initiated a connection check from triggered check list");
-    if (result) {
-      SET_PAIR_STATE (agent, pair, NICE_CHECK_FAILED);
-      return FALSE;
-    }
-    return TRUE;
+  /* step: process triggered checks
+   * these steps are ordered by priority, since a single stun request
+   * is sent per callback, we process the important steps first.
+   */
+  for (i = agent->streams; i && !agent->stun_sent; i = i->next) {
+    NiceStream *stream = i->data;
+
+    if (priv_conn_check_triggered_check (agent, stream))
+      keep_timer_going = TRUE;
   }
 
-  /* step: process ongoing STUN transactions and
-   * perform an ordinary check, ICE spec, 5.8, "Scheduling Checks"
-   */
-  for (i = agent->streams; i ; i = i->next) {
+  /* step: process ongoing STUN transactions */
+  for (i = agent->streams; i && !agent->stun_sent; i = i->next) {
     NiceStream *stream = i->data;
-    gboolean stun_sent = FALSE;
 
-    if (priv_conn_check_tick_stream (stream, agent, &stun_sent))
+    if (priv_conn_check_tick_stream (agent, stream))
       keep_timer_going = TRUE;
-    if (priv_conn_check_tick_stream_nominate (stream, agent))
+    if (priv_conn_check_tick_stream_nominate (agent, stream))
       keep_timer_going = TRUE;
-    /* A single stun request per timer callback, to respect stun pacing */
-    if (stun_sent)
-      break;
+  }
+
+  /* step: process ordinary checks */
+  for (i = agent->streams; i && !agent->stun_sent; i = i->next) {
+    NiceStream *stream = i->data;
+
+    if (priv_conn_check_ordinary_check (agent, stream))
+      keep_timer_going = TRUE;
   }
 
   /* note: we provide a grace period before declaring a component as
@@ -2962,6 +2989,8 @@ int conn_check_send (NiceAgent *agent, CandidateCheckPair *pair)
   if (agent->compatibility == NICE_COMPATIBILITY_OC2007R2)
     ms_ice2_legacy_conncheck_send (&stun->message, pair->sockptr,
         &pair->remote->addr);
+
+  agent->stun_sent = TRUE;
 
   return 0;
 }
