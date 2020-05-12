@@ -185,7 +185,6 @@ struct _NiceAgent
   guint conncheck_ongoing_idle_delay; /* ongoing delay before timer stop */
   gboolean controlling_mode;          /* controlling mode used by the
                                          conncheck */
-  gboolean stun_sent;                 /* a stun request has been */
   /* XXX: add pointer to internal data struct for ABI-safe extensions */
 };
 
