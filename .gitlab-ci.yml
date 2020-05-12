@@ -126,6 +126,11 @@ build msys2:
     - C:\msys64\usr\bin\bash -c "meson build $env:MESON_ARGS &&
         ninja -C build &&
         meson test -C build --print-errorlogs --suite libnice"
+  artifacts:
+    when: on_failure
+    paths:
+      - build/meson-logs/
+      - build/build.ninja
 
 .build msvc:
   extends: build msys2
