@@ -594,10 +594,20 @@
 	...
 	fun:g_bus_get_sync
 }
+
+# glibc does not deallocate thread-local storage
+
 {
-	pthread-create-rhel7
-	Memcheck:Leak
-	fun:calloc
-	fun:_dl_allocate_tls
-	fun:pthread_create@@GLIBC_2.2.5
+   <tls>
+   Memcheck:Leak
+   ...
+   fun:_dl_allocate_tls
+   fun:pthread_create@@*
+}
+
+{
+   <tls>
+   Memcheck:Leak
+   ...
+   fun:_dl_allocate_tls
 }
