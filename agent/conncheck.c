@@ -2423,17 +2423,19 @@ static CandidateCheckPair *priv_conn_check_add_for_candidate_pair_matched (
 
   pair = priv_add_new_check_pair (agent, stream_id, component, local, remote,
       initial_state);
-  if (component->state == NICE_COMPONENT_STATE_CONNECTED ||
-      component->state == NICE_COMPONENT_STATE_READY) {
-    agent_signal_component_state_change (agent,
-        stream_id,
-        component->id,
-        NICE_COMPONENT_STATE_CONNECTED);
-  } else {
-    agent_signal_component_state_change (agent,
-        stream_id,
-        component->id,
-        NICE_COMPONENT_STATE_CONNECTING);
+  if (pair) {
+    if (component->state == NICE_COMPONENT_STATE_CONNECTED ||
+        component->state == NICE_COMPONENT_STATE_READY) {
+      agent_signal_component_state_change (agent,
+          stream_id,
+          component->id,
+          NICE_COMPONENT_STATE_CONNECTED);
+    } else {
+      agent_signal_component_state_change (agent,
+          stream_id,
+          component->id,
+          NICE_COMPONENT_STATE_CONNECTING);
+    }
   }
 
   return pair;
@@ -2468,9 +2470,9 @@ gboolean conn_check_add_for_candidate_pair (NiceAgent *agent,
   /* note: match pairs only if transport and address family are the same */
   if (local->transport == conn_check_match_transport (remote->transport) &&
      local->addr.s.addr.sa_family == remote->addr.s.addr.sa_family) {
-    priv_conn_check_add_for_candidate_pair_matched (agent, stream_id, component,
-        local, remote, NICE_CHECK_FROZEN);
-    ret = TRUE;
+    if (priv_conn_check_add_for_candidate_pair_matched (agent, stream_id,
+        component, local, remote, NICE_CHECK_FROZEN))
+      ret = TRUE;
   }
 
   return ret;
