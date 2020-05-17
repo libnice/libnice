@@ -3166,20 +3166,20 @@ static gboolean priv_schedule_triggered_check (NiceAgent *agent, NiceStream *str
                   agent_signal_component_state_change (agent, stream->id,
                       component->id, NICE_COMPONENT_STATE_CONNECTING);
                   conn_check_schedule_next (agent);
+                /* If the component if in ready state, move it back to
+                 * connected as this failed pair with a higher priority
+                 * than the nominated pair requires to pursue the
+                 * conncheck
+                 */
+                } else if (component->state == NICE_COMPONENT_STATE_READY) {
+                  agent_signal_component_state_change (agent, stream->id,
+                      component->id, NICE_COMPONENT_STATE_CONNECTED);
+                  conn_check_schedule_next (agent);
                 }
             }
             break;
 	  case NICE_CHECK_SUCCEEDED:
             nice_debug ("Agent %p : nothing to do for pair %p.", agent, p);
-            /* note: this is a bit unsure corner-case -- let's do the
-               same state update as for processing responses to our own checks */
-            /* note: this update is required by the trickle test, to
-             * ensure the transition ready -> connected -> ready, because
-             * an incoming stun request generates a discovered peer reflexive,
-             * that causes the ready -> connected transition.
-             */
-            conn_check_update_check_list_state_for_ready (agent, stream,
-                component);
             break;
           default:
             break;
