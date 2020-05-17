@@ -679,9 +679,6 @@ priv_conn_check_tick_stream (NiceAgent *agent, NiceStream *stream)
     if (p->stun_transactions == NULL)
       continue;
 
-    if (p->state != NICE_CHECK_IN_PROGRESS)
-      continue;
-
     if (!agent_find_component (agent, p->stream_id, p->component_id,
         NULL, &component))
       continue;
