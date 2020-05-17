@@ -334,7 +334,6 @@ priv_add_pair_to_triggered_check_queue (NiceAgent *agent, CandidateCheckPair *pa
 {
   g_assert (pair);
 
-  SET_PAIR_STATE (agent, pair, NICE_CHECK_IN_PROGRESS);
   if (agent->triggered_check_queue == NULL ||
       g_slist_find (agent->triggered_check_queue, pair) == NULL)
     agent->triggered_check_queue = g_slist_append (agent->triggered_check_queue, pair);
@@ -808,8 +807,6 @@ priv_conn_check_triggered_check (NiceAgent *agent, NiceStream *stream)
   pair = priv_get_pair_from_triggered_check_queue (agent);
 
   if (pair) {
-    /* A pair in triggered check list must be in state in-progress */
-    g_assert_cmpint (pair->state, ==, NICE_CHECK_IN_PROGRESS);
     stun_sent = priv_conn_check_initiate (agent, pair);
     priv_print_conn_check_lists (agent, G_STRFUNC,
         ", initiated a connection check from triggered check list");
@@ -2275,16 +2272,29 @@ static void priv_mark_pair_nominated (NiceAgent *agent, NiceStream *stream, Nice
         g_assert_cmpint (pair->state, ==, NICE_CHECK_DISCOVERED);
       }
 
-      /* If the state of this pair is In-Progress, [...] the resulting
-       * valid pair has its nominated flag set when the response
-       * arrives.
+      /* If the received Binding request triggered a new check to be
+       * enqueued in the triggered-check queue (Section 7.3.1.4), once
+       * the check is sent and if it generates a successful response,
+       * and generates a valid pair, the agent sets the nominated flag
+       * of the pair to true
        */
-      if (NICE_AGENT_IS_COMPATIBLE_WITH_RFC5245_OR_OC2007R2 (agent) &&
-          pair->state == NICE_CHECK_IN_PROGRESS) {
+      if (NICE_AGENT_IS_COMPATIBLE_WITH_RFC5245_OR_OC2007R2 (agent)) {
+        if (g_slist_find (agent->triggered_check_queue, pair) ||
+            pair->state == NICE_CHECK_IN_PROGRESS) {
+
+        /* This pair is not always in the triggered check list, for
+         * example if it is in-progress with a lower priority than an
+         * already nominated pair, and with its retransmit flag unset.
+         * Is that case, it is not rescheduled for a connection check,
+         * see function priv_schedule_triggered_check(), case
+         * NICE_CHECK_IN_PROGRESS.
+         */
         pair->mark_nominated_on_response_arrival = TRUE;
-        nice_debug ("Agent %p : pair %p (%s) is in-progress, "
+        nice_debug ("Agent %p : pair %p (%s) is %s, "
             "will be nominated on response receipt.",
-            agent, pair, pair->foundation);
+            agent, pair, pair->foundation,
+            priv_state_to_string (pair->state));
+        }
       }
 
       if (pair->valid ||
@@ -3047,7 +3057,12 @@ static guint priv_prune_pending_checks (NiceAgent *agent, NiceStream *stream, Ni
           nice_debug ("Agent %p : pair %p will not be retransmitted.",
               agent, p);
         } else if (p->retransmit) {
-          /* Pair in-progress, but stun request not yet sent */
+          /* Pair in-progress, but stun request not yet sent: for
+           * example retriggered checks on role conflicted pairs that
+           * were previously in-progress/retransmit=yes, and put on
+           * triggered check queue stayed in-progress, with no stun
+           * ongoing.
+           */
           nice_debug ("Agent %p : pair %p removed.", agent, p);
           candidate_check_pair_free (agent, p);
           stream->conncheck_list = g_slist_delete_link(stream->conncheck_list,
