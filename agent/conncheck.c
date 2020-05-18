@@ -621,6 +621,8 @@ priv_remove_stun_transaction (CandidateCheckPair *pair,
   priv_forget_stun_transaction (stun, component);
   pair->stun_transactions = g_slist_remove (pair->stun_transactions, stun);
   priv_free_stun_transaction (stun);
+  if (pair->stun_transactions == NULL)
+    pair->retransmit = FALSE;
 }
 
 /*
@@ -639,6 +641,7 @@ priv_free_all_stun_transactions (CandidateCheckPair *pair,
     g_slist_foreach (pair->stun_transactions, priv_forget_stun_transaction, component);
   g_slist_free_full (pair->stun_transactions, priv_free_stun_transaction);
   pair->stun_transactions = NULL;
+  pair->retransmit = FALSE;
 }
 
 static void
@@ -2281,10 +2284,9 @@ static void priv_mark_pair_nominated (NiceAgent *agent, NiceStream *stream, Nice
 
         /* This pair is not always in the triggered check list, for
          * example if it is in-progress with a lower priority than an
-         * already nominated pair, and with its retransmit flag unset.
-         * Is that case, it is not rescheduled for a connection check,
-         * see function priv_schedule_triggered_check(), case
-         * NICE_CHECK_IN_PROGRESS.
+         * already nominated pair.  Is that case, it is not rescheduled
+         * for a connection check, see function
+         * priv_schedule_triggered_check(), case NICE_CHECK_IN_PROGRESS.
          */
         pair->mark_nominated_on_response_arrival = TRUE;
         nice_debug ("Agent %p : pair %p (%s) is %s, "
@@ -3049,21 +3051,10 @@ static guint priv_prune_pending_checks (NiceAgent *agent, NiceStream *stream, Ni
     else if (p->state == NICE_CHECK_IN_PROGRESS) {
       if (p->priority < priority) {
         priv_remove_pair_from_triggered_check_queue (agent, p);
-        if (p->retransmit && p->stun_transactions) {
-          p->retransmit  = FALSE;
+        if (p->retransmit) {
+          p->retransmit = FALSE;
           nice_debug ("Agent %p : pair %p will not be retransmitted.",
               agent, p);
-        } else if (p->retransmit) {
-          /* Pair in-progress, but stun request not yet sent: for
-           * example retriggered checks on role conflicted pairs that
-           * were previously in-progress/retransmit=yes, and put on
-           * triggered check queue stayed in-progress, with no stun
-           * ongoing.
-           */
-          nice_debug ("Agent %p : pair %p removed.", agent, p);
-          candidate_check_pair_free (agent, p);
-          stream->conncheck_list = g_slist_delete_link(stream->conncheck_list,
-              i);
         }
       } else {
         /* We must keep the higher priority pairs running because if a udp
@@ -3081,12 +3072,6 @@ static guint priv_prune_pending_checks (NiceAgent *agent, NiceStream *stream, Ni
         in_progress++;
       }
     }
-    /* A triggered check on a failed pair will depend on the retransmit
-     * flag, so on the relative priority of this pair and the nominated
-     * pair.
-     */
-    else if (p->state == NICE_CHECK_FAILED)
-      p->retransmit = (p->priority > priority ? TRUE : FALSE);
     i = next;
   }
 
@@ -3143,19 +3128,18 @@ static gboolean priv_schedule_triggered_check (NiceAgent *agent, NiceStream *str
              * for that pair.  The controlling role of this new check may
              * be different from the role of this cancelled check.
              *
-             * note: the flag retransmit unset means that
-             * another pair, with a higher priority is already nominated,
-             * so there's no reason to recheck this pair, since it can in
-             * no way replace the nominated one.
+             * When another pair, with a higher priority is already
+             * nominated, so there's no reason to recheck this pair,
+             * since it can in no way replace the nominated one.
              */
-            if (p->retransmit) {
+            if (p->priority > component->selected_pair.priority) {
               nice_debug ("Agent %p : pair %p added for a triggered check.",
                   agent, p);
               priv_add_pair_to_triggered_check_queue (agent, p);
             }
             break;
           case NICE_CHECK_FAILED:
-            if (p->retransmit) {
+            if (p->priority > component->selected_pair.priority) {
                 nice_debug ("Agent %p : pair %p added for a triggered check.",
                     agent, p);
                 priv_add_pair_to_triggered_check_queue (agent, p);
