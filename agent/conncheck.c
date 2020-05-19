@@ -3018,6 +3018,7 @@ static guint priv_prune_pending_checks (NiceAgent *agent, NiceStream *stream, Ni
   GSList *i;
   guint64 priority;
   guint in_progress = 0;
+  guint triggered_check = 0;
   gchar prio[NICE_CANDIDATE_PAIR_PRIORITY_MAX_SIZE];
 
   nice_debug ("Agent %p: Pruning pending checks for s%d/c%d",
@@ -3040,8 +3041,25 @@ static guint priv_prune_pending_checks (NiceAgent *agent, NiceStream *stream, Ni
       continue;
     }
 
+    /* We do not remove a pair from the conncheck list if it is also in
+     * the triggered check queue.  This is not what suggests the ICE
+     * spec, but it proved to be more robust in the aggressive
+     * nomination scenario, precisely because these pairs may have the
+     * use-candidate flag set, and the peer agent may already have
+     * selected such one.
+     */
+    if (g_slist_find (agent->triggered_check_queue, p) &&
+        p->state != NICE_CHECK_IN_PROGRESS) {
+      if (p->priority < priority) {
+        nice_debug ("Agent %p : pair %p removed.", agent, p);
+        candidate_check_pair_free (agent, p);
+        stream->conncheck_list = g_slist_delete_link(stream->conncheck_list, i);
+      } else
+        triggered_check++;
+    }
+
     /* step: cancel all FROZEN and WAITING pairs for the component */
-    if (p->state == NICE_CHECK_FROZEN || p->state == NICE_CHECK_WAITING) {
+    else if (p->state == NICE_CHECK_FROZEN || p->state == NICE_CHECK_WAITING) {
       nice_debug ("Agent %p : pair %p removed.", agent, p);
       candidate_check_pair_free (agent, p);
       stream->conncheck_list = g_slist_delete_link(stream->conncheck_list, i);
@@ -3075,7 +3093,7 @@ static guint priv_prune_pending_checks (NiceAgent *agent, NiceStream *stream, Ni
     i = next;
   }
 
-  return in_progress;
+  return in_progress + triggered_check;
 }
 
 /*
