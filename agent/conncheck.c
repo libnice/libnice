@@ -71,6 +71,8 @@ static size_t priv_create_username (NiceAgent *agent, NiceStream *stream,
     uint8_t *dest, guint dest_len, gboolean inbound);
 static size_t priv_get_password (NiceAgent *agent, NiceStream *stream,
     NiceCandidate *remote, uint8_t **password);
+static void candidate_check_pair_fail (NiceStream *stream,
+    NiceAgent *agent, CandidateCheckPair *p);
 static void candidate_check_pair_free (NiceAgent *agent,
     CandidateCheckPair *pair);
 static CandidateCheckPair *priv_conn_check_add_for_candidate_pair_matched (
@@ -390,7 +392,17 @@ priv_conn_check_initiate (NiceAgent *agent, CandidateCheckPair *pair)
 {
   SET_PAIR_STATE (agent, pair, NICE_CHECK_IN_PROGRESS);
   if (conn_check_send (agent, pair)) {
-    SET_PAIR_STATE (agent, pair, NICE_CHECK_FAILED);
+    NiceStream *stream;
+    NiceComponent *component;
+
+    if (!agent_find_component (agent, pair->stream_id, pair->component_id,
+        &stream, &component)) {
+      nice_debug ("Could not find stream or component in conn_check_initiate");
+      SET_PAIR_STATE (agent, pair, NICE_CHECK_FAILED);
+      return FALSE;
+    }
+    candidate_check_pair_fail (stream, agent, pair);
+    conn_check_update_check_list_state_for_ready (agent, stream, component);
     return FALSE;
   }
   return TRUE;
@@ -1176,7 +1188,7 @@ static gboolean priv_conn_check_tick_agent_locked (NiceAgent *agent,
 {
   gboolean keep_timer_going = FALSE;
   gboolean stun_sent = FALSE;
-  GSList *i, *j;
+  GSList *i;
 
   /* step: process triggered checks
    * these steps are ordered by priority, since a single stun request
@@ -1237,10 +1249,6 @@ static gboolean priv_conn_check_tick_agent_locked (NiceAgent *agent,
     for (i = agent->streams; i; i = i->next) {
       NiceStream *stream = i->data;
       priv_update_check_list_failed_components (agent, stream);
-      for (j = stream->components; j; j = j->next) {
-        NiceComponent *component = j->data;
-        conn_check_update_check_list_state_for_ready (agent, stream, component);
-      }
     }
 
     nice_debug ("Agent %p : %s: stopping conncheck timer", agent, G_STRFUNC);
@@ -3578,6 +3586,8 @@ static gboolean priv_map_reply_to_conn_check_request (NiceAgent *agent, NiceStre
 		tmpbuf, nice_address_get_port (&p->remote->addr),
 		tmpbuf2, nice_address_get_port (from));
 	  }
+          conn_check_update_check_list_state_for_ready (agent,
+              stream, component);
 	  return TRUE;
 	}
 
@@ -3587,6 +3597,8 @@ static gboolean priv_map_reply_to_conn_check_request (NiceAgent *agent, NiceStre
             nice_debug ("Agent %p : pair %p FAILED "
                 "(got a matching pair without a known remote candidate).", agent, p);
           }
+          conn_check_update_check_list_state_for_ready (agent,
+              stream, component);
           return TRUE;
         }
 
@@ -3728,6 +3740,7 @@ static gboolean priv_map_reply_to_conn_check_request (NiceAgent *agent, NiceStre
       } else {
 	/* case: STUN error, the check STUN context was freed */
 	candidate_check_pair_fail (stream, agent, p);
+        conn_check_update_check_list_state_for_ready (agent, stream, component);
       }
       return TRUE;
     }
@@ -4856,6 +4869,7 @@ conn_check_prune_socket (NiceAgent *agent, NiceStream *stream, NiceComponent *co
     NiceSocket *sock)
 {
   GSList *l;
+  gboolean pair_failed = FALSE;
 
   if (component->selected_pair.local &&
       component->selected_pair.local->sockptr == sock &&
@@ -4879,8 +4893,15 @@ conn_check_prune_socket (NiceAgent *agent, NiceStream *stream, NiceComponent *co
       candidate_check_pair_fail (stream, agent, p);
       candidate_check_pair_free (agent, p);
       stream->conncheck_list = g_slist_delete_link (stream->conncheck_list, l);
+      pair_failed = TRUE;
     }
 
     l = next;
   }
+
+  /* outside of the previous loop, because it may
+   * remove pairs from the conncheck list
+   */
+  if (pair_failed)
+    conn_check_update_check_list_state_for_ready (agent, stream, component);
 }
