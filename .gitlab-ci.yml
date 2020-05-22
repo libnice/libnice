@@ -3,9 +3,12 @@ stages:
  - test
  - deploy
 
+default:
+  image: registry.freedesktop.org/libnice/libnice/centos7/meson-build
+
+
 build:
   stage: build
-  image: registry.freedesktop.org/libnice/libnice/centos7/meson-build
   variables:
     PREFIX: "${CI_PROJECT_DIR}/libnice-prefix"
   except:
@@ -118,7 +121,6 @@ build msvc x86:
         
 test:
   stage: test
-  image: registry.freedesktop.org/libnice/libnice/centos7/meson-build
   needs:
     - build
   except:
@@ -144,7 +146,6 @@ test valgrind:
 
 doc-and-install:
   stage: test
-  image: registry.freedesktop.org/libnice/libnice/centos7/meson-build
   needs:
     - build
   except:
@@ -162,7 +163,6 @@ doc-and-install:
 
 submit-to-coverity:
  stage: test
- image: registry.freedesktop.org/libnice/libnice/centos7/meson-build
  variables:
    COVERITY_PROJECT: libnice
    PREFIX: "${CI_PROJECT_DIR}/libnice-prefix"
