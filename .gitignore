@@ -171,7 +171,13 @@ examples/threaded-example
 examples/sdp-example
 
 # docs/ stuff
-docs/reference/libnice/libnice*.txt
+docs/reference/libnice/gtkdoc-check.test
+docs/reference/libnice/libnice-decl-list.txt
+docs/reference/libnice/libnice-decl.txt
+docs/reference/libnice/libnice-overrides.txt
+docs/reference/libnice/libnice-undeclared.txt
+docs/reference/libnice/libnice-undocumented.txt
+docs/reference/libnice/libnice-unused.txt
 docs/reference/libnice/libnice.args
 docs/reference/libnice/libnice.hierarchy
 docs/reference/libnice/libnice.interfaces
