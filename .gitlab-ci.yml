@@ -195,6 +195,7 @@ test valgrind meson:
   script:
     - ifconfig
     - source scl_source enable rh-python36 && true
+    - meson configure build -Dgtk_doc=disabled
     - meson test -C build/ --setup valgrind --print-errorlogs
 
 
