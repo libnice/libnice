@@ -46,7 +46,7 @@ typedef struct _NiceComponent NiceComponent;
 
 #include "agent.h"
 #include "agent-priv.h"
-#include "candidate.h"
+#include "candidate-priv.h"
 #include "stun/stunagent.h"
 #include "stun/usages/timer.h"
 #include "pseudotcp.h"
@@ -80,8 +80,8 @@ struct _CandidatePairKeepalive
 
 struct _CandidatePair
 {
-  NiceCandidate *local;
-  NiceCandidate *remote;
+  NiceCandidateImpl *local;
+  NiceCandidateImpl *remote;
   guint64 priority;           /* candidate pair priority */
   guint32 stun_priority;
   CandidatePairKeepalive keepalive;
@@ -168,7 +168,7 @@ struct _NiceComponent {
 				    see ICE 11.1. "Sending Media" (ID-19) */
   gboolean fallback_mode;      /* in this case, accepts packets from all, ignore candidate validation */
   NiceCandidate *restart_candidate; /* for storing active remote candidate during a restart */
-  NiceCandidate *turn_candidate; /* for storing active turn candidate if turn servers have been cleared */
+  NiceCandidateImpl *turn_candidate; /* for storing active turn candidate if turn servers have been cleared */
   /* I/O handling. The main context must always be non-NULL, and is used for all
    * socket recv() operations. All io_callback emissions are invoked in this
    * context too.
@@ -253,7 +253,7 @@ NiceCandidate *
 nice_component_find_remote_candidate (NiceComponent *component,
     const NiceAddress *addr, NiceCandidateTransport transport);
 
-NiceCandidate *
+NiceCandidateImpl *
 nice_component_set_selected_remote_candidate (NiceComponent *component,
     NiceAgent *agent, NiceCandidate *candidate);
 

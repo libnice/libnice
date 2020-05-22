@@ -43,6 +43,7 @@
 
 #include "stream.h"
 #include "agent.h"
+#include "candidate-priv.h"
 
 typedef struct
 {
@@ -67,7 +68,7 @@ typedef struct
 {
   NiceSocket *nicesock;     /* existing socket to use */
   NiceAddress server;       /* STUN/TURN server address */
-  NiceCandidate *candidate; /* candidate to refresh */
+  NiceCandidateImpl *candidate; /* candidate to refresh */
   guint stream_id;
   guint component_id;
   StunAgent stun_agent;
@@ -90,8 +91,8 @@ void refresh_prune_agent_async (NiceAgent *agent,
   NiceTimeoutLockedCallback function, gpointer user_data);
 void refresh_prune_stream_async (NiceAgent *agent, NiceStream *stream,
   NiceTimeoutLockedCallback function);
-void refresh_prune_candidate (NiceAgent *agent, NiceCandidate *candidate);
-void refresh_prune_candidate_async (NiceAgent *agent, NiceCandidate *candidate,
+void refresh_prune_candidate (NiceAgent *agent, NiceCandidateImpl *candidate);
+void refresh_prune_candidate_async (NiceAgent *agent, NiceCandidateImpl *cand,
   NiceTimeoutLockedCallback function);
 
 
@@ -116,9 +117,9 @@ discovery_add_local_host_candidate (
   NiceAddress *address,
   NiceCandidateTransport transport,
   gboolean accept_duplicate,
-  NiceCandidate **candidate);
+  NiceCandidateImpl **candidate);
 
-NiceCandidate*
+NiceCandidateImpl*
 discovery_add_relay_candidate (
   NiceAgent *agent,
   guint stream_id,

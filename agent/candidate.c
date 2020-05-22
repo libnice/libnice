@@ -53,6 +53,7 @@
 #include "agent.h"
 #include "component.h"
 #include "interfaces.h"
+#include "candidate-priv.h"
 
 G_DEFINE_BOXED_TYPE (NiceCandidate, nice_candidate, nice_candidate_copy,
     nice_candidate_free);
@@ -65,17 +66,17 @@ G_DEFINE_BOXED_TYPE (NiceCandidate, nice_candidate, nice_candidate_copy,
 NICEAPI_EXPORT NiceCandidate *
 nice_candidate_new (NiceCandidateType type)
 {
-  NiceCandidate *candidate;
+  NiceCandidateImpl *c;
 
-  candidate = g_slice_new0 (NiceCandidate);
-  candidate->type = type;
-  return candidate;
+  c = g_slice_new0 (NiceCandidateImpl);
+  c->c.type = type;
+  return (NiceCandidate *) c;
 }
-
 
 NICEAPI_EXPORT void
 nice_candidate_free (NiceCandidate *candidate)
 {
+  NiceCandidateImpl *c = (NiceCandidateImpl *) candidate;
   /* better way of checking if socket is allocated? */
 
   if (candidate->username)
@@ -84,10 +85,10 @@ nice_candidate_free (NiceCandidate *candidate)
   if (candidate->password)
     g_free (candidate->password);
 
-  if (candidate->turn)
-    turn_server_unref (candidate->turn);
+  if (c->turn)
+    turn_server_unref (c->turn);
 
-  g_slice_free (NiceCandidate, candidate);
+  g_slice_free (NiceCandidateImpl, c);
 }
 
 
@@ -199,6 +200,7 @@ nice_candidate_ip_local_preference (const NiceCandidate *candidate)
 static guint16
 nice_candidate_ice_local_preference (const NiceCandidate *candidate)
 {
+  const NiceCandidateImpl *c = (NiceCandidateImpl *) candidate;
   guint direction_preference = 0;
   guint turn_preference = 0;
 
@@ -235,8 +237,8 @@ nice_candidate_ice_local_preference (const NiceCandidate *candidate)
    * creation time.
    */
   if (candidate->type == NICE_CANDIDATE_TYPE_RELAYED) {
-    g_assert (candidate->turn);
-    turn_preference = candidate->turn->preference;
+    g_assert (c->turn);
+    turn_preference = c->turn->preference;
   }
 
   return nice_candidate_ice_local_preference_full (direction_preference,
@@ -267,6 +269,7 @@ nice_candidate_ms_ice_local_preference_full (guint transport_preference,
 static guint32
 nice_candidate_ms_ice_local_preference (const NiceCandidate *candidate)
 {
+  const NiceCandidateImpl *c = (NiceCandidateImpl *) candidate;
   guint transport_preference = 0;
   guint direction_preference = 0;
   guint turn_preference = 0;
@@ -292,8 +295,8 @@ nice_candidate_ms_ice_local_preference (const NiceCandidate *candidate)
    * creation time.
    */
   if (candidate->type == NICE_CANDIDATE_TYPE_RELAYED) {
-    g_assert (candidate->turn);
-    turn_preference = candidate->turn->preference;
+    g_assert (c->turn);
+    turn_preference = c->turn->preference;
   }
 
   return nice_candidate_ms_ice_local_preference_full(transport_preference,
@@ -305,6 +308,7 @@ static guint8
 nice_candidate_ice_type_preference (const NiceCandidate *candidate,
     gboolean reliable, gboolean nat_assisted)
 {
+  const NiceCandidateImpl *c = (NiceCandidateImpl *) candidate;
   guint8 type_preference;
 
   switch (candidate->type)
@@ -322,7 +326,7 @@ nice_candidate_ice_type_preference (const NiceCandidate *candidate,
         type_preference = NICE_CANDIDATE_TYPE_PREF_SERVER_REFLEXIVE;
       break;
     case NICE_CANDIDATE_TYPE_RELAYED:
-      if (candidate->turn->type == NICE_RELAY_TYPE_TURN_UDP)
+      if (c->turn->type == NICE_RELAY_TYPE_TURN_UDP)
         type_preference = NICE_CANDIDATE_TYPE_PREF_RELAYED_UDP;
       else
         type_preference = NICE_CANDIDATE_TYPE_PREF_RELAYED;
@@ -400,18 +404,19 @@ nice_candidate_pair_priority_to_string (guint64 prio, gchar *string)
 NICEAPI_EXPORT NiceCandidate *
 nice_candidate_copy (const NiceCandidate *candidate)
 {
-  NiceCandidate *copy;
+  const NiceCandidateImpl *c = (NiceCandidateImpl *)candidate;
+  NiceCandidateImpl *copy;
 
-  g_return_val_if_fail (candidate != NULL, NULL);
+  g_return_val_if_fail (c != NULL, NULL);
 
-  copy = nice_candidate_new (candidate->type);
-  memcpy (copy, candidate, sizeof(NiceCandidate));
+  copy = (NiceCandidateImpl *) nice_candidate_new (candidate->type);
+  memcpy (copy, candidate, sizeof(NiceCandidateImpl));
 
   copy->turn = NULL;
-  copy->username = g_strdup (copy->username);
-  copy->password = g_strdup (copy->password);
+  copy->c.username = g_strdup (copy->c.username);
+  copy->c.password = g_strdup (copy->c.password);
 
-  return copy;
+  return (NiceCandidate *) copy;
 }
 
 NICEAPI_EXPORT gboolean

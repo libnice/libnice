@@ -41,6 +41,7 @@
 #endif
 
 #include "agent.h"
+#include "candidate-priv.h"
 
 #include "socket/socket.h"
 
@@ -223,7 +224,7 @@ static void set_candidates (NiceAgent *from, guint from_stream,
    */
 
   for (item1 = cands; item1; item1 = item1->next) {
-    NiceCandidate *cand = item1->data;
+    NiceCandidateImpl *cand = item1->data;
     NiceSocket *nicesock = cand->sockptr;
 
     g_assert (nicesock);

@@ -225,6 +225,7 @@ static gboolean refresh_remove_async (NiceAgent *agent, gpointer pointer)
   gsize password_len;
   size_t buffer_len = 0;
   CandidateRefresh *cand = (CandidateRefresh *) pointer;
+  NiceCandidateImpl *c = (NiceCandidateImpl *) cand->candidate;
   StunUsageTurnCompatibility turn_compat = agent_to_turn_compatibility (agent);
 
   nice_debug ("Agent %p : Sending request to remove TURN allocation "
@@ -240,17 +241,17 @@ static gboolean refresh_remove_async (NiceAgent *agent, gpointer pointer)
   g_source_unref (cand->destroy_source);
   cand->destroy_source = NULL;
 
-  username = (uint8_t *)cand->candidate->turn->username;
-  username_len = (size_t) strlen (cand->candidate->turn->username);
-  password = (uint8_t *)cand->candidate->turn->password;
-  password_len = (size_t) strlen (cand->candidate->turn->password);
+  username = (uint8_t *)c->turn->username;
+  username_len = (size_t) strlen (c->turn->username);
+  password = (uint8_t *)c->turn->password;
+  password_len = (size_t) strlen (c->turn->password);
 
   if (turn_compat == STUN_USAGE_TURN_COMPATIBILITY_MSN ||
       turn_compat == STUN_USAGE_TURN_COMPATIBILITY_OC2007) {
-    username = cand->candidate->turn->decoded_username;
-    password = cand->candidate->turn->decoded_password;
-    username_len = cand->candidate->turn->decoded_username_len;
-    password_len = cand->candidate->turn->decoded_password_len;
+    username = c->turn->decoded_username;
+    password = c->turn->decoded_password;
+    username_len = c->turn->decoded_username_len;
+    password_len = c->turn->decoded_password_len;
   }
 
   buffer_len = stun_usage_turn_create_refresh (&cand->stun_agent,
@@ -366,7 +367,7 @@ void refresh_prune_stream_async (NiceAgent *agent, NiceStream *stream,
  * situations when an error is detected in socket communication that prevents
  * sending more requests to the server.
  */
-void refresh_prune_candidate (NiceAgent *agent, NiceCandidate *candidate)
+void refresh_prune_candidate (NiceAgent *agent, NiceCandidateImpl *candidate)
 {
   GSList *i;
 
@@ -387,8 +388,8 @@ void refresh_prune_candidate (NiceAgent *agent, NiceCandidate *candidate)
  * closes the associated port allocations on TURN server. Invokes 'function'
  * when the process finishes.
  */
-void refresh_prune_candidate_async (NiceAgent *agent, NiceCandidate *candidate,
-    NiceTimeoutLockedCallback function)
+void refresh_prune_candidate_async (NiceAgent *agent,
+    NiceCandidateImpl *candidate, NiceTimeoutLockedCallback function)
 {
   GSList *refreshes = NULL;
   GSList *i;
@@ -485,37 +486,38 @@ priv_compare_turn_servers (TurnServer *turn1, TurnServer *turn2)
 static void priv_assign_foundation (NiceAgent *agent, NiceCandidate *candidate)
 {
   GSList *i, *j, *k;
+  NiceCandidateImpl *c = (NiceCandidateImpl *) candidate;
 
   for (i = agent->streams; i; i = i->next) {
     NiceStream *stream = i->data;
     for (j = stream->components; j; j = j->next) {
       NiceComponent *component = j->data;
       for (k = component->local_candidates; k; k = k->next) {
-	NiceCandidate *n = k->data;
+	NiceCandidateImpl *n = k->data;
 
-	/* note: candidate must not on the local candidate list */
-	g_assert (candidate != n);
+        /* note: candidate must not on the local candidate list */
+	g_assert (c != n);
 
-	if (candidate->type == n->type &&
-            candidate->transport == n->transport &&
-	    nice_address_equal_no_port (&candidate->base_addr, &n->base_addr) &&
+	if (candidate->type == n->c.type &&
+            candidate->transport == n->c.transport &&
+	    nice_address_equal_no_port (&candidate->base_addr, &n->c.base_addr) &&
             (candidate->type != NICE_CANDIDATE_TYPE_RELAYED ||
-                priv_compare_turn_servers (candidate->turn, n->turn)) &&
+                priv_compare_turn_servers (c->turn, n->turn)) &&
             !(agent->compatibility == NICE_COMPATIBILITY_GOOGLE &&
-                n->type == NICE_CANDIDATE_TYPE_RELAYED)) {
+                n->c.type == NICE_CANDIDATE_TYPE_RELAYED)) {
 	  /* note: currently only one STUN server per stream at a
 	   *       time is supported, so there is no need to check
 	   *       for candidates that would otherwise share the
 	   *       foundation, but have different STUN servers */
-	  g_strlcpy (candidate->foundation, n->foundation,
+	  g_strlcpy (candidate->foundation, n->c.foundation,
               NICE_CANDIDATE_MAX_FOUNDATION);
-          if (n->username) {
+          if (n->c.username) {
             g_free (candidate->username);
-            candidate->username = g_strdup (n->username);
+            candidate->username = g_strdup (n->c.username);
           }
-          if (n->password) {
+          if (n->c.password) {
             g_free (candidate->password);
-            candidate->password = g_strdup (n->password);
+            candidate->password = g_strdup (n->c.password);
           }
 	  return;
 	}
@@ -673,9 +675,10 @@ HostCandidateResult discovery_add_local_host_candidate (
   NiceAddress *address,
   NiceCandidateTransport transport,
   gboolean accept_duplicate,
-  NiceCandidate **outcandidate)
+  NiceCandidateImpl **outcandidate)
 {
   NiceCandidate *candidate;
+  NiceCandidateImpl *c;
   NiceComponent *component;
   NiceStream *stream;
   NiceSocket *nicesock = NULL;
@@ -686,6 +689,7 @@ HostCandidateResult discovery_add_local_host_candidate (
     return res;
 
   candidate = nice_candidate_new (NICE_CANDIDATE_TYPE_HOST);
+  c = (NiceCandidateImpl *) candidate;
   candidate->transport = transport;
   candidate->stream_id = stream_id;
   candidate->component_id = component_id;
@@ -727,7 +731,7 @@ HostCandidateResult discovery_add_local_host_candidate (
     goto errors;
   }
 
-  candidate->sockptr = nicesock;
+  c->sockptr = nicesock;
   candidate->addr = nicesock->addr;
   candidate->base_addr = nicesock->addr;
 
@@ -745,7 +749,7 @@ HostCandidateResult discovery_add_local_host_candidate (
   _priv_set_socket_tos (agent, nicesock, stream->tos);
   nice_component_attach_socket (component, nicesock);
 
-  *outcandidate = candidate;
+  *outcandidate = c;
 
   return HOST_CANDIDATE_SUCCESS;
 
@@ -773,6 +777,7 @@ discovery_add_server_reflexive_candidate (
   gboolean nat_assisted)
 {
   NiceCandidate *candidate;
+  NiceCandidateImpl *c;
   NiceComponent *component;
   NiceStream *stream;
   gboolean result = FALSE;
@@ -781,13 +786,14 @@ discovery_add_server_reflexive_candidate (
     return NULL;
 
   candidate = nice_candidate_new (NICE_CANDIDATE_TYPE_SERVER_REFLEXIVE);
+  c = (NiceCandidateImpl *) candidate;
   candidate->transport = transport;
   candidate->stream_id = stream_id;
   candidate->component_id = component_id;
   candidate->addr = *address;
 
   /* step: link to the base candidate+socket */
-  candidate->sockptr = base_socket;
+  c->sockptr = base_socket;
   candidate->base_addr = base_socket->addr;
 
   if (agent->compatibility == NICE_COMPATIBILITY_GOOGLE) {
@@ -859,7 +865,7 @@ discovery_discover_tcp_server_reflexive_candidates (
           component_id,
           address,
           c->transport,
-          c->sockptr,
+          ((NiceCandidateImpl *) c)->sockptr,
           FALSE);
     }
   }
@@ -871,7 +877,7 @@ discovery_discover_tcp_server_reflexive_candidates (
  *
  * @return pointer to the created candidate, or NULL on error
  */
-NiceCandidate*
+NiceCandidateImpl *
 discovery_add_relay_candidate (
   NiceAgent *agent,
   guint stream_id,
@@ -882,6 +888,7 @@ discovery_add_relay_candidate (
   TurnServer *turn)
 {
   NiceCandidate *candidate;
+  NiceCandidateImpl *c;
   NiceComponent *component;
   NiceStream *stream;
   NiceSocket *relay_socket = NULL;
@@ -890,11 +897,12 @@ discovery_add_relay_candidate (
     return NULL;
 
   candidate = nice_candidate_new (NICE_CANDIDATE_TYPE_RELAYED);
+  c = (NiceCandidateImpl *) candidate;
   candidate->transport = transport;
   candidate->stream_id = stream_id;
   candidate->component_id = component_id;
   candidate->addr = *address;
-  candidate->turn = turn_server_ref (turn);
+  c->turn = turn_server_ref (turn);
 
   /* step: link to the base candidate+socket */
   relay_socket = nice_udp_turn_socket_new (agent->main_context, address,
@@ -904,7 +912,7 @@ discovery_add_relay_candidate (
   if (!relay_socket)
     goto errors;
 
-  candidate->sockptr = relay_socket;
+  c->sockptr = relay_socket;
   candidate->base_addr = base_socket->addr;
 
   if (agent->compatibility == NICE_COMPATIBILITY_GOOGLE) {
@@ -936,7 +944,7 @@ discovery_add_relay_candidate (
   nice_component_attach_socket (component, relay_socket);
   agent_signal_new_candidate (agent, candidate);
 
-  return candidate;
+  return c;
 
 errors:
   nice_candidate_free (candidate);
@@ -963,6 +971,7 @@ discovery_add_peer_reflexive_candidate (
   NiceCandidate *remote)
 {
   NiceCandidate *candidate;
+  NiceCandidateImpl *c;
   NiceComponent *component;
   NiceStream *stream;
   gboolean result;
@@ -971,6 +980,7 @@ discovery_add_peer_reflexive_candidate (
     return NULL;
 
   candidate = nice_candidate_new (NICE_CANDIDATE_TYPE_PEER_REFLEXIVE);
+  c = (NiceCandidateImpl *) candidate;
   if (local)
     candidate->transport = local->transport;
   else if (remote)
@@ -985,7 +995,7 @@ discovery_add_peer_reflexive_candidate (
   candidate->stream_id = stream_id;
   candidate->component_id = component_id;
   candidate->addr = *address;
-  candidate->sockptr = base_socket;
+  c->sockptr = base_socket;
   candidate->base_addr = base_socket->addr;
   /* We don't ensure priority uniqueness in this case, since the
    * discovered candidate receives the same priority than its
@@ -1058,8 +1068,10 @@ NiceCandidate *discovery_learn_remote_peer_reflexive_candidate (
   NiceCandidate *remote)
 {
   NiceCandidate *candidate;
+  NiceCandidateImpl *c;
 
   candidate = nice_candidate_new (NICE_CANDIDATE_TYPE_PEER_REFLEXIVE);
+  c = (NiceCandidateImpl *) candidate;
 
   candidate->addr = *remote_address;
   candidate->base_addr = *remote_address;
@@ -1074,7 +1086,7 @@ NiceCandidate *discovery_learn_remote_peer_reflexive_candidate (
     else
       candidate->transport = NICE_CANDIDATE_TRANSPORT_TCP_ACTIVE;
   }
-  candidate->sockptr = nicesock;
+  c->sockptr = nicesock;
   candidate->stream_id = stream->id;
   candidate->component_id = component->id;
 

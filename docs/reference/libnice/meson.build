@@ -8,6 +8,7 @@ ignore_headers = [
   'agent-priv.h',
   'iostream.h',
   'inputstream.h',
+  'candidate-priv.h',
   'outputstream.h',
   'gstnice.h',
   'gstnicesrc.h',
