@@ -13,6 +13,8 @@ stun_sources = [
   'usages/timer.c',
 ]
 
+stun_include = include_directories('.')
+
 install_headers(
   'stunagent.h',
   'stunmessage.h',

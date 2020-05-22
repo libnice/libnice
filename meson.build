@@ -1,6 +1,6 @@
 project('libnice', 'c',
   version: '0.1.16.1',
-  meson_version : '>= 0.49.1',
+  meson_version : '>= 0.52',
   default_options : ['warning_level=1', 'buildtype=debugoptimized'])
 
 nice_version = meson.project_version()

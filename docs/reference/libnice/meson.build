@@ -28,7 +28,7 @@ gnome.gtkdoc('libnice',
              main_xml: 'libnice-docs.xml',
              namespace: 'nice',
              mode: 'none',
-             src_dir: nice_incs,
+             src_dir: [agent_include, stun_include],
              dependencies: libnice_dep,
              scan_args: [
                '--rebuild-types',
@@ -47,7 +47,8 @@ gnome.gtkdoc('libnice',
                '--output-format=xml',
                '--name-space=Nice',
              ],
-             install: true)
+             install: true,
+             check: true)
 
 # If we ever need to regenerate this diagram.
 # Since it’s not expected to change much, let’s not depend on GraphViz to
