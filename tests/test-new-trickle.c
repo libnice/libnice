@@ -642,7 +642,7 @@ static void bad_candidate_test(NiceAgent *lagent,NiceAgent *ragent)
   g_assert (lagent_candidate_gathering_done);
 
   g_assert_cmpint (global_lagent_state, >=, NICE_COMPONENT_STATE_CONNECTED);
-  g_assert_cmpint (global_ragent_state, >=, NICE_COMPONENT_STATE_CONNECTED);
+  g_assert_cmpint (global_ragent_state, >=, NICE_COMPONENT_STATE_CONNECTING);
 
   cleanup (lagent, ragent);
 }
