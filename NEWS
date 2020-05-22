@@ -1,7 +1,19 @@
-libnice 0.1.17 (2020-05-21)
+libnice 0.1.17 (2020-05-22)
 ===========================
 Add API to retrieve the underlying BSD sockets
-
+Support systems with multiple loopback devices
+Ignore non-running network interfaces
+Ignore multiple interface prefixes
+Now tries to nominate matching pairs across components and streams
+Retry TURN deallocation on timeout, requires not destoying the NiceAgent right after the stream
+Use different port for every host candidate
+Make timeouts and retransmissions more in line with the RFCs
+Find OpenSSL without pkg-config, for Windows
+Complete meson support
+GLib required version update to 2.54
+Removed deprecated GLib APIs
+Many ICE compatibility and performance improvements
+Many bug fixes
 
 libnice 0.1.16 (2019-05-09)
 ===========================

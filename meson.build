@@ -1,5 +1,5 @@
 project('libnice', 'c',
-  version: '0.1.16.1',
+  version: '0.1.17',
   meson_version : '>= 0.52',
   default_options : ['warning_level=1', 'buildtype=debugoptimized'])
 
@@ -15,8 +15,12 @@ else
 endif
 
 # maintain compatibility with the previous libtool versioning
+# libversion has 3 parts A.B.C
+# A is the ABI version, change it if the ABI is broken, changing it resets B and C to 0. It matches soversion
+# B is the ABI age, change it on new APIs that don't break existing ones, changing it resets C to 0
+# C is the revision, change on new updates that don't change APIs
 soversion = 10
-libversion = '10.9.0'
+libversion = '10.10.0'
 
 glib_req = '>= 2.54'
 gnutls_req = '>= 2.12.0'
