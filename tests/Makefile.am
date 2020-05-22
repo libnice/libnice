@@ -148,4 +148,5 @@ all-local:
 
 EXTRA_DIST = \
 	libnice.supp \
-	meson.build
+	meson.build \
+	test-fullmode-with-stun.c
