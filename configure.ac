@@ -5,8 +5,8 @@ dnl Always compile with -Wall; if --enable-compile-warnings=error is passed,
 dnl also use -Werror. git and pre-releases default to -Werror
 
 dnl use a three digit version number for releases, and four for cvs/prerelease
-AC_INIT([libnice],[0.1.17])
-LIBNICE_RELEASE="yes"
+AC_INIT([libnice],[0.1.17.1])
+LIBNICE_RELEASE="no"
 
 AC_CANONICAL_TARGET
 
