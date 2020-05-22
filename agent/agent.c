@@ -2024,8 +2024,9 @@ pseudo_tcp_socket_readable (PseudoTcpSocket *sock, gpointer user_data)
     nice_debug ("%s: no data read", G_STRFUNC);
   }
 
-  if (stream && component)
-    adjust_tcp_clock (agent, stream, component);
+  g_assert (stream);
+  g_assert (component);
+  adjust_tcp_clock (agent, stream, component);
 
 out:
 
