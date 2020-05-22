@@ -24,12 +24,25 @@ ignore_headers = [
   'win32_common.h',
 ]
 
+if dependency('gtk-doc', version: '<1.30', required: false).found()
+  prog_python = import('python').find_installation('python3')
+  fake_makefile = custom_target ('libnice-docs-test-Makefile',
+                                 output: 'Makefile',
+                                 command: [
+                                   prog_python, '-c',
+                                   'with open("@OUTPUT@","w") as f: f.writelines(["""DOC_MODULE=libnice\nDOC_MAIN_SGML_FILE=libnice-docs.sgml\n"""])'
+                                   ])
+else
+  fake_makefile = []
+endif
+
 gnome.gtkdoc('libnice',
+             content_files: [fake_makefile],
              main_xml: 'libnice-docs.xml',
              namespace: 'nice',
              mode: 'none',
              src_dir: [agent_include, stun_include],
-             dependencies: libnice_dep,
+             dependencies: [libnice_dep, fake_makefile],
              scan_args: [
                '--rebuild-types',
                #'--deprecated-guards=G_DISABLE_DEPRECATED',
