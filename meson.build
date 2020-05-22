@@ -117,7 +117,6 @@ message('werror enabled: @0@'.format(werror))
 
 if warning_level >= 2
   warnings += [
-    '-Wextra',
     '-Wundef',
     '-Wnested-externs',
     '-Wwrite-strings',
