@@ -3497,6 +3497,11 @@ nice_agent_gather_candidates (
       ret = FALSE;
       goto error;
     }
+
+    if (component->state == NICE_COMPONENT_STATE_DISCONNECTED ||
+        component->state == NICE_COMPONENT_STATE_FAILED)
+      agent_signal_component_state_change (agent,
+          stream->id, component->id, NICE_COMPONENT_STATE_GATHERING);
   }
 
   stream->gathering = TRUE;

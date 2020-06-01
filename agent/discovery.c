@@ -1209,16 +1209,6 @@ static gboolean priv_discovery_tick_unlocked (NiceAgent *agent)
       if (nice_address_is_valid (&cand->server) &&
           (cand->type == NICE_CANDIDATE_TYPE_SERVER_REFLEXIVE ||
               cand->type == NICE_CANDIDATE_TYPE_RELAYED)) {
-        NiceComponent *component;
-
-        if (agent_find_component (agent, cand->stream_id,
-                cand->component_id, NULL, &component) &&
-            (component->state == NICE_COMPONENT_STATE_DISCONNECTED ||
-                component->state == NICE_COMPONENT_STATE_FAILED))
-          agent_signal_component_state_change (agent,
-					       cand->stream_id,
-					       cand->component_id,
-					       NICE_COMPONENT_STATE_GATHERING);
 
         if (cand->type == NICE_CANDIDATE_TYPE_SERVER_REFLEXIVE) {
           buffer_len = stun_usage_bind_create (&cand->stun_agent,
