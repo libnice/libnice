@@ -4129,8 +4129,7 @@ agent_recv_message_unlocked (
             }
           }
         }
-        if (agent->rfc4571_expecting_length > 0 &&
-            available >= agent->rfc4571_expecting_length) {
+        if (agent->rfc4571_expecting_length > 0) {
           GInputVector *local_bufs;
           NiceInputMessage local_message;
           gsize off;
@@ -4154,23 +4153,40 @@ agent_recv_message_unlocked (
           /* Only read up to the expected number of bytes in the frame */
           off = 0;
           for (i = 0; i < n_bufs; i++) {
-            if (message->buffers[i].size < agent->rfc4571_expecting_length - off) {
-              local_bufs[i].buffer = message->buffers[i].buffer;
-              local_bufs[i].size = message->buffers[i].size;
-              local_message.n_buffers++;
+            if (message->buffers[i].size + off < message->length) {
+              /* Skip already full buffers */
               off += message->buffers[i].size;
             } else {
-              local_bufs[i].buffer = message->buffers[i].buffer;
-              local_bufs[i].size = MIN (message->buffers[i].size,
-                  agent->rfc4571_expecting_length - off);
+              gssize diff = 0;
+
+              /* If we have a partially full buffer, offset the pointer */
+              if (off < message->length)
+                diff = message->length - off;
+
+              /* Those buffers are filled */
+              local_bufs[local_message.n_buffers].buffer =
+                  ((char *) message->buffers[i].buffer) + diff;
+              local_bufs[local_message.n_buffers].size =
+                  MIN (message->buffers[i].size - diff,
+                       agent->rfc4571_expecting_length - off);
+              off += local_message.buffers[local_message.n_buffers].size;
               local_message.n_buffers++;
-              off += local_bufs[i].size;
+
+              /* If we have a big enough buffer, let's just stop */
+              if (off == message->length + agent->rfc4571_expecting_length)
+                break;
             }
           }
           sockret = nice_socket_recv_messages (nicesock, &local_message, 1);
           if (sockret == 1) {
-            message->length = local_message.length;
+            message->length += local_message.length;
             agent->rfc4571_expecting_length -= local_message.length;
+            if (agent->rfc4571_expecting_length != 0) {
+              retval = RECV_WOULD_BLOCK;  /* EWOULDBLOCK */
+              nice_debug_verbose ("%s: Agent %p: TCP message incomplete",
+                G_STRFUNC, agent);
+              goto done;
+            }
           }
         }
       }
