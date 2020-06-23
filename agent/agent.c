@@ -3164,6 +3164,7 @@ nice_agent_gather_candidates (
         NiceCandidateTransport transport;
         guint current_port;
         guint start_port;
+        gboolean accept_duplicate = FALSE;
         HostCandidateResult res = HOST_CANDIDATE_CANT_CREATE_SOCKET;
 
         if ((agent->use_ice_udp == FALSE && add_type == ADD_HOST_UDP) ||
@@ -3194,14 +3195,17 @@ nice_agent_gather_candidates (
             res == HOST_CANDIDATE_DUPLICATE_PORT) {
           nice_debug ("Agent %p: Trying to create host candidate on port %d", agent, current_port);
           nice_address_set_port (addr, current_port);
-          res =  discovery_add_local_host_candidate (agent, stream->id, cid,
-              addr, transport, &host_candidate);
+          res = discovery_add_local_host_candidate (agent, stream->id, cid,
+              addr, transport, accept_duplicate, &host_candidate);
           if (current_port > 0)
             current_port++;
           if (current_port > component->max_port)
             current_port = component->min_port;
-          if (current_port == start_port && res != HOST_CANDIDATE_DUPLICATE_PORT)
-            break;
+          if (current_port == start_port) {
+            if (accept_duplicate)
+              break;
+            accept_duplicate = TRUE;
+          }
           if (current_port == 0 && res != HOST_CANDIDATE_DUPLICATE_PORT)
             break;
         }
@@ -3217,16 +3221,26 @@ nice_agent_gather_candidates (
         } else if (res == HOST_CANDIDATE_CANT_CREATE_SOCKET) {
           if (nice_debug_is_enabled ()) {
             gchar ip[NICE_ADDRESS_STRING_LEN];
+
             nice_address_to_string (addr, ip);
-            nice_debug ("Agent %p: Unable to add local host candidate %s for"
-                " s%d:%d. Invalid interface?", agent, ip, stream->id,
-                component->id);
+            nice_debug ("Agent %p: Unable to add local host %s candidate %s"
+                " for s%d:%d. Invalid interface?", agent,
+                nice_candidate_transport_to_string (transport), ip,
+                stream->id, component->id);
           }
           continue;
         } else if (res == HOST_CANDIDATE_DUPLICATE_PORT) {
-          nice_debug ("Agent %p: Ignoring local candidate, duplicate port",
-              agent);
-          continue;
+           if (nice_debug_is_enabled ()) {
+            gchar ip[NICE_ADDRESS_STRING_LEN];
+
+            nice_address_to_string (addr, ip);
+            nice_debug ("Agent %p: Unable to add local host %s candidate %s"
+                " for"
+                " s%d:%d. Every port is duplicated", agent, ip,
+                nice_candidate_transport_to_string (transport), stream->id,
+                component->id);
+           }
+           goto error;
         }
 
         found_local_address = TRUE;

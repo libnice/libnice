@@ -115,6 +115,7 @@ discovery_add_local_host_candidate (
   guint component_id,
   NiceAddress *address,
   NiceCandidateTransport transport,
+  gboolean accept_duplicate,
   NiceCandidate **candidate);
 
 NiceCandidate*

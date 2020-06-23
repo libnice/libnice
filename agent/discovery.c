@@ -614,7 +614,7 @@ void priv_generate_candidate_credentials (NiceAgent *agent,
 
 static gboolean
 priv_local_host_candidate_duplicate_port (NiceAgent *agent,
-  NiceCandidate *candidate)
+  NiceCandidate *candidate, gboolean accept_duplicate)
 {
   GSList *i, *j, *k;
 
@@ -634,8 +634,26 @@ priv_local_host_candidate_duplicate_port (NiceAgent *agent,
             nice_address_ip_version (&candidate->addr) ==
             nice_address_ip_version (&c->addr) &&
             nice_address_get_port (&candidate->addr) ==
-            nice_address_get_port (&c->addr))
+            nice_address_get_port (&c->addr)) {
+
+          if (accept_duplicate && candidate->stream_id == stream->id &&
+              candidate->component_id == component->id) {
+            /* We accept it anyway, but with a warning! */
+            gchar ip[NICE_ADDRESS_STRING_LEN];
+            gchar ip2[NICE_ADDRESS_STRING_LEN];
+
+            nice_address_to_string (&candidate->addr, ip);
+            nice_address_to_string (&c->addr, ip2);
+            nice_debug ("Agent %p: Local host %s candidate %s"
+                " for s%d:%d will use the same port %d as %s .", agent, ip,
+                nice_candidate_transport_to_string (c->transport),
+                stream->id, component->id, nice_address_get_port (&c->addr),
+                ip2);
+            return FALSE;
+          }
+
           return TRUE;
+        }
       }
     }
   }
@@ -654,6 +672,7 @@ HostCandidateResult discovery_add_local_host_candidate (
   guint component_id,
   NiceAddress *address,
   NiceCandidateTransport transport,
+  gboolean accept_duplicate,
   NiceCandidate **outcandidate)
 {
   NiceCandidate *candidate;
@@ -707,7 +726,7 @@ HostCandidateResult discovery_add_local_host_candidate (
   candidate->addr = nicesock->addr;
   candidate->base_addr = nicesock->addr;
 
-  if (priv_local_host_candidate_duplicate_port (agent, candidate)) {
+  if (priv_local_host_candidate_duplicate_port (agent, candidate, accept_duplicate)) {
     res = HOST_CANDIDATE_DUPLICATE_PORT;
     goto errors;
   }
