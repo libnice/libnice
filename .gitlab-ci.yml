@@ -48,7 +48,13 @@ build msys2:
     # For some reason docker build hangs if this is included in the image, needs more troubleshooting
     - $env:PATH += ';C:\msys64\usr\bin;C:\msys64\mingw64\bin;C:\msys64\mingw32\bin'
     - C:\msys64\usr\bin\bash -c "pacman-key --init && pacman-key --populate msys2 && pacman-key --refresh-keys || true"
-    - C:\msys64\usr\bin\bash -c "pacman -Syuu --noconfirm"
+    - echo "Updating MSYS2"
+    - C:\msys64\usr\bin\bash -c "pacman -Syuu --noconfirm || echo Update failed, ignoring"
+    - echo "Killing all MSYS2 processes"
+    - taskkill /F /FI "MODULES eq msys-2.0.dll"
+    - echo "Completing MSYS2 update"
+    - C:\msys64\usr\bin\bash -c "pacman -Suu --noconfirm"
+    - echo "Installing needed MSYS2 packages"
     - C:\msys64\usr\bin\bash -c "pacman -Sy --noconfirm --needed mingw-w64-x86_64-toolchain ninja"
 
     # For some reason, options are separated by newline instead of space, so we
