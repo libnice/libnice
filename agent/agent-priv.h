@@ -166,6 +166,7 @@ struct _NiceAgent
   GSource *conncheck_timer_source; /* source of conncheck timer */
   GSource *keepalive_timer_source; /* source of keepalive timer */
   GSList *refresh_list;         /* list of CandidateRefresh items */
+  GSList *pruning_refreshes;      /* list of Refreshes current being shut down*/
   guint64 tie_breaker;            /* tie breaker (ICE sect 5.2
 				     "Determining Role" ID-19) */
   NiceCompatibility compatibility; /* property: Compatibility mode */

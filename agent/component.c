@@ -173,6 +173,7 @@ nice_component_remove_socket (NiceAgent *agent, NiceComponent *cmp,
   stream = agent_find_stream (agent, cmp->stream_id);
 
   discovery_prune_socket (agent, nsocket);
+  refresh_prune_socket (agent, nsocket);
   if (stream)
     conn_check_prune_socket (agent, stream, cmp, nsocket);
 

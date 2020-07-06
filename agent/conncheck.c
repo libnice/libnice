@@ -3855,6 +3855,7 @@ priv_add_new_turn_refresh (NiceAgent *agent, CandidateDiscovery *cdisco,
 
     nice_debug ("timer source is : %p", cand->timer_source);
   } else {
+    agent->pruning_refreshes = g_slist_append (agent->pruning_refreshes, cand);
     nice_debug ("Agent %p : Sending request to remove TURN allocation "
         "for refresh %p", agent, cand);
     cand->disposing = TRUE;

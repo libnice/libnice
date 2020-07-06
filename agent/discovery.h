@@ -94,6 +94,7 @@ void refresh_prune_stream_async (NiceAgent *agent, NiceStream *stream,
 void refresh_prune_candidate (NiceAgent *agent, NiceCandidateImpl *candidate);
 void refresh_prune_candidate_async (NiceAgent *agent, NiceCandidateImpl *cand,
   NiceTimeoutLockedCallback function);
+void refresh_prune_socket (NiceAgent *agent, NiceSocket *nicesock);
 
 
 void discovery_free (NiceAgent *agent);
