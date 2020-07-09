@@ -4693,6 +4693,7 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, NiceStream *stream,
     return FALSE;
   }
 
+  agent->media_after_tick = TRUE;
 
   if (stun_message_get_class (&req) == STUN_REQUEST) {
     if (   agent->compatibility == NICE_COMPATIBILITY_MSN

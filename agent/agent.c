@@ -4341,7 +4341,6 @@ agent_recv_message_unlocked (
         nice_debug ("%s: Valid STUN packet received.", G_STRFUNC);
         retval = RECV_OOB;
         g_free (big_buf);
-        agent->media_after_tick = TRUE;
         goto done;
       }
     }
