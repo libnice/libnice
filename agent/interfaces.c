@@ -539,7 +539,8 @@ _nice_get_adapters_addresses (void)
   return addresses;
 }
 
-GList * nice_interfaces_get_local_interfaces (void)
+GList *
+nice_interfaces_get_local_interfaces (void)
 {
   IP_ADAPTER_ADDRESSES *addresses, *a;
   GList *ret = NULL;
@@ -558,7 +559,8 @@ GList * nice_interfaces_get_local_interfaces (void)
   return ret;
 }
 
-GList * nice_interfaces_get_local_ips (gboolean include_loopback)
+GList *
+nice_interfaces_get_local_ips (gboolean include_loopback)
 {
   IP_ADAPTER_ADDRESSES *addresses, *a;
   DWORD pref = 0;
@@ -635,7 +637,8 @@ GList * nice_interfaces_get_local_ips (gboolean include_loopback)
   return ret;
 }
 
-gchar * nice_interfaces_get_ip_for_interface (gchar *interface_name)
+gchar *
+nice_interfaces_get_ip_for_interface (gchar *interface_name)
 {
   IP_ADAPTER_ADDRESSES *addresses, *a;
   IP_ADAPTER_UNICAST_ADDRESS *unicast;
