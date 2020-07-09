@@ -89,14 +89,25 @@ sockaddr_to_string (const struct sockaddr *addr)
   size_t addr_len;
 
   switch (addr->sa_family) {
-    case AF_INET: addr_len = sizeof (struct sockaddr_in); break;
-    case AF_INET6: addr_len = sizeof (struct sockaddr_in6); break;
-    default: return NULL;
+    case AF_INET:
+      addr_len = sizeof (struct sockaddr_in);
+      break;
+    case AF_INET6:
+      addr_len = sizeof (struct sockaddr_in6);
+      break;
+    default:
+      nice_debug ("Unknown sockaddr family: %i", addr->sa_family);
+      return NULL;
   }
 
   if (getnameinfo (addr, addr_len,
           addr_as_string, sizeof (addr_as_string), NULL, 0,
           NI_NUMERICHOST) != 0) {
+#ifdef G_OS_WIN32
+    gchar *msg = g_win32_error_message (WSAGetLastError ());
+    nice_debug ("Error running getnameinfo: %s", msg);
+    g_free (msg);
+#endif
     return NULL;
   }
 
