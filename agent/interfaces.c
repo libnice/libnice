@@ -497,39 +497,13 @@ nice_interfaces_get_ip_for_interface (gchar *interface_name)
 #define MIB_IPADDR_DELETED 0x0040
 #endif
 
-GList * nice_interfaces_get_local_interfaces (void)
+static IP_ADAPTER_ADDRESSES *
+_nice_get_adapters_addresses (void)
 {
-  ULONG size = 0;
-  PMIB_IFTABLE if_table;
-  GList * ret = NULL;
-
-  GetIfTable(NULL, &size, TRUE);
-
-  if (!size)
-    return NULL;
-
-  if_table = (PMIB_IFTABLE)g_malloc0(size);
-
-  if (GetIfTable(if_table, &size, TRUE) == ERROR_SUCCESS) {
-    DWORD i;
-    for (i = 0; i < if_table->dwNumEntries; i++) {
-      ret = g_list_prepend (ret, g_strdup ((gchar*)if_table->table[i].bDescr));
-    }
-  }
-
-  g_free(if_table);
-
-  return ret;
-}
-
-GList * nice_interfaces_get_local_ips (gboolean include_loopback)
-{
-  IP_ADAPTER_ADDRESSES *addresses = NULL, *a;
+  IP_ADAPTER_ADDRESSES *addresses = NULL;
   ULONG status;
   guint iterations;
   ULONG addresses_size;
-  DWORD pref = 0;
-  GList *ret = NULL;
 
   /* As suggested on
    * http://msdn.microsoft.com/en-gb/library/windows/desktop/aa365915%28v=vs.85%29.aspx */
@@ -555,10 +529,44 @@ GList * nice_interfaces_get_local_ips (gboolean include_loopback)
 
   /* Error? */
   if (status != NO_ERROR) {
-    nice_debug ("Error retrieving local addresses (error code %lu).", status);
+    gchar *msg = g_win32_error_message (status);
+    nice_debug ("Error retrieving local addresses: %s", msg);
+    g_free (msg);
     g_free (addresses);
     return NULL;
   }
+
+  return addresses;
+}
+
+GList * nice_interfaces_get_local_interfaces (void)
+{
+  IP_ADAPTER_ADDRESSES *addresses, *a;
+  GList *ret = NULL;
+
+  addresses = _nice_get_adapters_addresses ();
+  if (!addresses)
+    return NULL;
+
+  for (a = addresses; a != NULL; a = a->Next) {
+    gchar *name = g_utf16_to_utf8 (a->FriendlyName, -1, NULL, NULL, NULL);
+    ret = g_list_append (ret, name);
+  }
+
+  g_free(addresses);
+
+  return ret;
+}
+
+GList * nice_interfaces_get_local_ips (gboolean include_loopback)
+{
+  IP_ADAPTER_ADDRESSES *addresses, *a;
+  DWORD pref = 0;
+  GList *ret = NULL;
+
+  addresses = _nice_get_adapters_addresses ();
+  if (!addresses)
+    return NULL;
 
   /*
    * Get the best interface for transport to 0.0.0.0.
@@ -613,7 +621,7 @@ GList * nice_interfaces_get_local_ips (gboolean include_loopback)
         continue;
       }
 
-      nice_debug ("IP address: %s", addr_string);
+      nice_debug ("Adapter %S IP address: %s", a->FriendlyName, addr_string);
 
       if (a->IfIndex == pref || a->Ipv6IfIndex == pref)
         ret = g_list_prepend (ret, addr_string);
@@ -627,79 +635,67 @@ GList * nice_interfaces_get_local_ips (gboolean include_loopback)
   return ret;
 }
 
-/*
- * returns ip address as an utf8 string
- */
-// Source for idx's type (Was IF_INDEX):
-// http://msdn.microsoft.com/en-us/library/aa366836(v=VS.85).aspx
-// (Title: MIB_IFROW structure)
-static gchar *
-win32_get_ip_for_interface (DWORD idx)
-{
-  ULONG size = 0;
-  PMIB_IPADDRTABLE ip_table;
-  gchar * ret = NULL;
-
-  GetIpAddrTable (NULL, &size, TRUE);
-
-  if (!size)
-    return NULL;
-
-  ip_table = (PMIB_IPADDRTABLE)g_malloc0 (size);
-
-  if (GetIpAddrTable (ip_table, &size, TRUE) == ERROR_SUCCESS) {
-    DWORD i;
-    for (i = 0; i < ip_table->dwNumEntries; i++) {
-      PMIB_IPADDRROW ipaddr = &ip_table->table[i];
-      if (ipaddr->dwIndex == idx &&
-          !(ipaddr->wType & (MIB_IPADDR_DISCONNECTED | MIB_IPADDR_DELETED))) {
-        ret = g_strdup_printf ("%lu.%lu.%lu.%lu",
-            (ipaddr->dwAddr      ) & 0xFF,
-            (ipaddr->dwAddr >>  8) & 0xFF,
-            (ipaddr->dwAddr >> 16) & 0xFF,
-            (ipaddr->dwAddr >> 24) & 0xFF);
-        break;
-      }
-    }
-  }
-
-  g_free (ip_table);
-  return ret;
-}
-
 gchar * nice_interfaces_get_ip_for_interface (gchar *interface_name)
 {
-  ULONG size = 0;
-  PMIB_IFTABLE if_table;
+  IP_ADAPTER_ADDRESSES *addresses, *a;
+  IP_ADAPTER_UNICAST_ADDRESS *unicast;
+  DWORD status;
   gchar * ret = NULL;
 
-  GetIfTable (NULL, &size, TRUE);
-
-  if (!size)
+  addresses = _nice_get_adapters_addresses ();
+  if (!addresses)
     return NULL;
 
-  if_table = (PMIB_IFTABLE)g_malloc0 (size);
+  for (a = addresses; a != NULL; a = a->Next) {
+    IP_ADAPTER_UNICAST_ADDRESS *unicast;
+    gchar *name;
 
-  if (GetIfTable (if_table, &size, TRUE) == ERROR_SUCCESS) {
-    DWORD i;
-    gchar * tmp_str;
-    for (i = 0; i < if_table->dwNumEntries; i++) {
-      tmp_str = g_utf16_to_utf8 (
-          if_table->table[i].wszName, MAX_INTERFACE_NAME_LEN,
-          NULL, NULL, NULL);
-
-      if (strlen (interface_name) == strlen (tmp_str) &&
-          g_ascii_strncasecmp (interface_name, tmp_str, strlen (interface_name)) == 0) {
-        ret = win32_get_ip_for_interface (if_table->table[i].dwIndex);
-        g_free (tmp_str);
-        break;
-      }
-
-      g_free (tmp_str);
+    /* Various conditions for ignoring the interface. */
+    if (a->OperStatus == IfOperStatusDown ||
+        a->OperStatus == IfOperStatusNotPresent ||
+        a->OperStatus == IfOperStatusLowerLayerDown) {
+      nice_debug ("Rejecting interface '%S' because it is down or not present",
+          a->FriendlyName);
+      continue;
     }
+
+    name = g_utf16_to_utf8 (a->FriendlyName, -1, NULL, NULL, NULL);
+    status = g_strcmp0 (interface_name, name);
+    g_free (name);
+
+    /* Found the adapter */
+    if (status == 0)
+      break;
+
+    nice_debug ("Rejecting interface '%s' != '%s'", name, interface_name);
   }
 
-  g_free (if_table);
+  if (!a) {
+    nice_debug ("No matches found for interface %s", interface_name);
+    goto out;
+  }
+
+  /* Grab the interface’s ipv4 unicast addresses. */
+  for (unicast = a->FirstUnicastAddress;
+       unicast != NULL; unicast = unicast->Next) {
+    if (unicast->Address.lpSockaddr->sa_family != AF_INET) {
+      nice_debug ("Rejecting ipv6 address on interface %S", a->FriendlyName);
+      continue;
+    }
+
+    ret = sockaddr_to_string (unicast->Address.lpSockaddr);
+    if (ret == NULL) {
+      nice_debug ("Failed to convert address to string for interface: %S",
+          a->FriendlyName);
+      continue;
+    }
+
+    nice_debug ("Adapter %S IP address: %s", a->FriendlyName, ret);
+    break;
+  }
+
+out:
+  g_free (addresses);
 
   return ret;
 }
