@@ -600,8 +600,21 @@ GList * nice_interfaces_get_local_ips (gboolean include_loopback)
    * Get the best interface for transport to 0.0.0.0.
    * This interface should be first in list!
    */
-  if (GetBestInterface (0, &pref) != NO_ERROR)
-    pref = 0;
+  {
+    DWORD retcode;
+    struct sockaddr_in sa_any = {0};
+
+    sa_any.sin_family = AF_INET;
+    sa_any.sin_addr.s_addr = htonl (INADDR_ANY);
+
+    retcode = GetBestInterfaceEx ((SOCKADDR *) &sa_any, &pref);
+    if (retcode != NO_ERROR) {
+      gchar *msg = g_win32_error_message (retcode);
+      nice_debug ("Error fetching best interface: %s", msg);
+      g_free (msg);
+      pref = 0;
+    }
+  }
 
   /* Loop over the adapters. */
   for (a = addresses; a != NULL; a = a->Next) {
