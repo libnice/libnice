@@ -497,42 +497,6 @@ nice_interfaces_get_ip_for_interface (gchar *interface_name)
 #define MIB_IPADDR_DELETED 0x0040
 #endif
 
-#if 0
-static gboolean started_wsa_engine = FALSE;
-
-/*
- * private function that initializes the WinSock engine and
- *  returns a prebuilt socket
- */
-SOCKET nice_interfaces_get_WSA_socket ()
-{
-  WORD wVersionRequested;
-  WSADATA wsaData;
-  int err;
-  SOCKET sock;
-
-  if (started_wsa_engine == FALSE) {
-    wVersionRequested = MAKEWORD ( 2, 0 );
-
-    err = WSAStartup ( wVersionRequested, &wsaData );
-    if ( err != 0 ) {
-      nice_debug ("Error : Could not start the winsocket engine");
-      return INVALID_SOCKET;
-    }
-    started_wsa_engine = TRUE;
-  }
-
-
-  if ((sock = socket (AF_INET, SOCK_DGRAM, 0)) == INVALID_SOCKET) {
-    nice_debug ("Error : Could not open socket to retrieve interface list,"
-        " error no : %d", WSAGetLastError ());
-    return INVALID_SOCKET;
-  }
-
-  return sock;
-}
-#endif
-
 GList * nice_interfaces_get_local_interfaces (void)
 {
   ULONG size = 0;
