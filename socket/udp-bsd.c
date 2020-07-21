@@ -292,6 +292,8 @@ socket_send_messages (NiceSocket *sock, const NiceAddress *to,
     /* Single message: use g_socket_send_message */
     len = g_socket_send_message (sock->fileno, gaddr, messages->buffers,
         messages->n_buffers, NULL, 0, G_SOCKET_MSG_NONE, NULL, &child_error);
+    if(len > 0)
+      len = 1;
   } else {
     /* Multiple messages: use g_socket_send_messages, which might use
      * the more efficient sendmmsg if supported by the platform */
