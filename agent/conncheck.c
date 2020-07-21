@@ -166,40 +166,6 @@ priv_ice_return_to_string (StunUsageIceReturn ice_return)
 }
 
 static const gchar *
-priv_candidate_type_to_string (NiceCandidateType type)
-{
-  switch (type) {
-    case NICE_CANDIDATE_TYPE_HOST:
-      return "host";
-    case NICE_CANDIDATE_TYPE_SERVER_REFLEXIVE:
-      return "srflx";
-    case NICE_CANDIDATE_TYPE_PEER_REFLEXIVE:
-      return "prflx";
-    case NICE_CANDIDATE_TYPE_RELAYED:
-      return "relay";
-    default:
-      g_assert_not_reached ();
-  }
-}
-
-static const gchar *
-priv_candidate_transport_to_string (NiceCandidateTransport transport)
-{
-  switch (transport) {
-    case NICE_CANDIDATE_TRANSPORT_UDP:
-      return "udp";
-    case NICE_CANDIDATE_TRANSPORT_TCP_ACTIVE:
-      return "tcp-act";
-    case NICE_CANDIDATE_TRANSPORT_TCP_PASSIVE:
-      return "tcp-pass";
-    case NICE_CANDIDATE_TRANSPORT_TCP_SO:
-      return "tcp-so";
-    default:
-      g_assert_not_reached ();
-  }
-}
-
-static const gchar *
 priv_socket_type_to_string (NiceSocketType type)
 {
   switch (type) {
@@ -296,12 +262,12 @@ priv_print_conn_check_lists (NiceAgent *agent, const gchar *where, const gchar *
               "%s:[%s]:%u > %s:[%s]:%u prio=%s/%08x state=%c%s%s%s%s",
               agent, pair->stream_id, pair->component_id, pair,
               pair->foundation,
-              priv_candidate_type_to_string (pair->local->type),
-              priv_candidate_type_to_string (pair->remote->type),
+              nice_candidate_type_to_string (pair->local->type),
+              nice_candidate_type_to_string (pair->remote->type),
               priv_socket_type_to_string (pair->sockptr->type),
-              priv_candidate_transport_to_string (pair->local->transport),
+              nice_candidate_transport_to_string (pair->local->transport),
               local_addr, nice_address_get_port (&pair->local->addr),
-              priv_candidate_transport_to_string (pair->remote->transport),
+              nice_candidate_transport_to_string (pair->remote->transport),
               remote_addr, nice_address_get_port (&pair->remote->addr),
               priority, pair->stun_priority,
               priv_state_to_gchar (pair->state),
@@ -1118,9 +1084,9 @@ priv_conn_check_tick_stream_nominate (NiceAgent *agent, NiceStream *stream)
           nice_debug ("Agent %p : restarting check of %s:%s pair %p with "
               "USE-CANDIDATE attrib (regular nomination) for "
               "stream %d component %d", agent,
-              priv_candidate_transport_to_string (
+              nice_candidate_transport_to_string (
                   this_component_pair->local->transport),
-              priv_candidate_transport_to_string (
+              nice_candidate_transport_to_string (
                   this_component_pair->remote->transport),
               this_component_pair, stream->id, component->id);
           this_component_pair->use_candidate_on_next_check = TRUE;
@@ -2397,8 +2363,8 @@ static CandidateCheckPair *priv_add_new_check_pair (NiceAgent *agent,
   nice_debug ("Agent %p : added a new pair %p with foundation '%s' and "
       "transport %s:%s to stream %u component %u",
       agent, pair, pair->foundation,
-      priv_candidate_transport_to_string (pair->local->transport),
-      priv_candidate_transport_to_string (pair->remote->transport),
+      nice_candidate_transport_to_string (pair->local->transport),
+      nice_candidate_transport_to_string (pair->remote->transport),
       stream_id, component->id);
 
   if (initial_state == NICE_CHECK_FROZEN)
@@ -3361,8 +3327,8 @@ static CandidateCheckPair *priv_add_peer_reflexive_pair (NiceAgent *agent, guint
   nice_debug ("Agent %p : added a new peer-discovered pair %p with "
       "foundation '%s' and transport %s:%s to stream %u component %u",
       agent, pair, pair->foundation,
-      priv_candidate_transport_to_string (pair->local->transport),
-      priv_candidate_transport_to_string (pair->remote->transport),
+      nice_candidate_transport_to_string (pair->local->transport),
+      nice_candidate_transport_to_string (pair->remote->transport),
       stream_id, component->id);
 
   stream->conncheck_list = g_slist_insert_sorted (stream->conncheck_list, pair,
@@ -3493,7 +3459,7 @@ static CandidateCheckPair *priv_process_response_check_for_reflexive(NiceAgent *
                                                            remote_candidate);
       nice_debug ("Agent %p : added a new peer-reflexive local candidate %p "
           "with transport %s", agent, local_cand,
-          priv_candidate_transport_to_string (local_cand->transport));
+          nice_candidate_transport_to_string (local_cand->transport));
     }
 
     /* step: add a new discovered pair (see RFC 5245 7.1.3.2.2

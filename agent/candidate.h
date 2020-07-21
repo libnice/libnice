@@ -278,6 +278,35 @@ nice_candidate_equal_target (const NiceCandidate *candidate1,
   GType nice_candidate_get_type (void);
 
 /**
+ * nice_candidate_type_to_string:
+ * @type: a #NiceCandidateType
+ *
+ * Useful for debugging functions, just returns a static string with the
+ * candidate type.
+ *
+ * Returns: a static string with the candidate type
+ *
+ * Since: 0.1.18
+ */
+const gchar *
+nice_candidate_type_to_string (NiceCandidateType type);
+
+/**
+ * nice_candidate_transport_to_string:
+ * @transport: a #NiceCandidateTransport
+ *
+ * Useful for debugging functions, just returns a static string with the
+ * candidate transport.
+ *
+ * Returns: a static string with the candidate transport
+ *
+ * Since: 0.1.18
+ */
+const gchar *
+nice_candidate_transport_to_string (NiceCandidateTransport transport);
+
+
+/**
  * NICE_TYPE_CANDIDATE:
  *
  * A boxed type for a #NiceCandidate.

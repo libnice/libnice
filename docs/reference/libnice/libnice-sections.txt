@@ -97,6 +97,8 @@ nice_candidate_new
 nice_candidate_free
 nice_candidate_copy
 nice_candidate_equal_target
+nice_candidate_transport_to_string
+nice_candidate_type_to_string
 <SUBSECTION Standard>
 NICE_TYPE_CANDIDATE
 nice_candidate_get_type

@@ -424,3 +424,38 @@ nice_candidate_equal_target (const NiceCandidate *candidate1,
   return (candidate1->transport == candidate2->transport &&
       nice_address_equal (&candidate1->addr, &candidate2->addr));
 }
+
+
+NICEAPI_EXPORT const gchar *
+nice_candidate_type_to_string (NiceCandidateType type)
+{
+  switch (type) {
+    case NICE_CANDIDATE_TYPE_HOST:
+      return "host";
+    case NICE_CANDIDATE_TYPE_SERVER_REFLEXIVE:
+      return "srflx";
+    case NICE_CANDIDATE_TYPE_PEER_REFLEXIVE:
+      return "prflx";
+    case NICE_CANDIDATE_TYPE_RELAYED:
+      return "relay";
+    default:
+      g_assert_not_reached ();
+  }
+}
+
+NICEAPI_EXPORT const gchar *
+nice_candidate_transport_to_string (NiceCandidateTransport transport)
+{
+  switch (transport) {
+    case NICE_CANDIDATE_TRANSPORT_UDP:
+      return "udp";
+    case NICE_CANDIDATE_TRANSPORT_TCP_ACTIVE:
+      return "tcp-act";
+    case NICE_CANDIDATE_TRANSPORT_TCP_PASSIVE:
+      return "tcp-pass";
+    case NICE_CANDIDATE_TRANSPORT_TCP_SO:
+      return "tcp-so";
+    default:
+      g_assert_not_reached ();
+  }
+}
