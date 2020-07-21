@@ -247,13 +247,15 @@ socket_recv_messages (NiceSocket *sock,
   return i;
 }
 
-static gssize
-socket_send_message (NiceSocket *sock, const NiceAddress *to,
-    const NiceOutputMessage *message)
+static gint
+socket_send_messages (NiceSocket *sock, const NiceAddress *to,
+    const NiceOutputMessage *messages, guint n_messages)
 {
+  guint i;
+
   struct UdpBsdSocketPrivate *priv = sock->priv;
   GError *child_error = NULL;
-  gssize len;
+  guint len;
   GSocketAddress *gaddr = NULL;
 
   /* Make sure socket has not been freed: */
@@ -286,8 +288,27 @@ socket_send_message (NiceSocket *sock, const NiceAddress *to,
   }
   g_mutex_unlock (&priv->mutex);
 
-  len = g_socket_send_message (sock->fileno, gaddr, message->buffers,
-      message->n_buffers, NULL, 0, G_SOCKET_MSG_NONE, NULL, &child_error);
+  if (n_messages == 1) {
+    /* Single message: use g_socket_send_message */
+    len = g_socket_send_message (sock->fileno, gaddr, messages->buffers,
+        messages->n_buffers, NULL, 0, G_SOCKET_MSG_NONE, NULL, &child_error);
+  } else {
+    /* Multiple messages: use g_socket_send_messages, which might use
+     * the more efficient sendmmsg if supported by the platform */
+    GOutputMessage *go_messages = g_malloc_n (n_messages, sizeof (GOutputMessage));
+    for (i = 0; i < n_messages; i++) {
+      const NiceOutputMessage *message = &messages[i];
+      go_messages[i].address = gaddr;
+      go_messages[i].vectors = message->buffers;
+      go_messages[i].num_vectors = message->n_buffers;
+      go_messages[i].bytes_sent = 0;
+      go_messages[i].control_messages = NULL;
+      go_messages[i].num_control_messages = 0;
+    }
+    len = g_socket_send_messages (sock->fileno, go_messages,
+        n_messages, G_SOCKET_MSG_NONE, NULL, &child_error);
+    g_free (go_messages);
+  }
 
   if (len < 0) {
     if (g_error_matches (child_error, G_IO_ERROR, G_IO_ERROR_WOULD_BLOCK)) {
@@ -326,35 +347,6 @@ socket_send_message (NiceSocket *sock, const NiceAddress *to,
   g_clear_object (&gaddr);
 
   return len;
-}
-
-static gint
-socket_send_messages (NiceSocket *sock, const NiceAddress *to,
-    const NiceOutputMessage *messages, guint n_messages)
-{
-  guint i;
-
-  /* Make sure socket has not been freed: */
-  g_assert (sock->priv != NULL);
-
-  for (i = 0; i < n_messages; i++) {
-    const NiceOutputMessage *message = &messages[i];
-    gssize len;
-
-    len = socket_send_message (sock, to, message);
-
-    if (len < 0) {
-      /* Error. */
-      if (i > 0)
-        break;
-      return len;
-    } else if (len == 0) {
-      /* EWOULDBLOCK. */
-      break;
-    }
-  }
-
-  return i;
 }
 
 static gint
