@@ -44,9 +44,12 @@
 #include <unistd.h>
 #endif
 
-#if !GLIB_CHECK_VERSION(2, 58, 0)
-#define G_SOURCE_FUNC(f) ((GSourceFunc) (void (*)(void)) (f))
+/* Remove this when we request GLib 2.58 */
+#if defined (GLIB_VERSION_2_58) && GLIB_VERSION_MAX_ALLOWED >= GLIB_VERSION_2_58
+#error "Remove this paragraph"
 #endif
+#undef G_SOURCE_FUNC
+#define G_SOURCE_FUNC(f) ((GSourceFunc) (void (*)(void)) (f))
 
 /* Make the message sufficiently large to not hit Nagle’s algorithm in the
  * pseudo-TCP implementation, and hence run really slowly. */
