@@ -680,6 +680,7 @@ HostCandidateResult discovery_add_local_host_candidate (
   NiceStream *stream;
   NiceSocket *nicesock = NULL;
   HostCandidateResult res = HOST_CANDIDATE_FAILED;
+  GError *error = NULL;
 
   if (!agent_find_component (agent, stream_id, component_id, &stream, &component))
     return res;
@@ -713,12 +714,16 @@ HostCandidateResult discovery_add_local_host_candidate (
   } else if (transport == NICE_CANDIDATE_TRANSPORT_TCP_ACTIVE) {
     nicesock = nice_tcp_active_socket_new (agent->main_context, address);
   } else if (transport == NICE_CANDIDATE_TRANSPORT_TCP_PASSIVE) {
-    nicesock = nice_tcp_passive_socket_new (agent->main_context, address);
+    nicesock = nice_tcp_passive_socket_new (agent->main_context, address, &error);
   } else {
     /* TODO: Add TCP-SO */
   }
   if (!nicesock) {
-    res = HOST_CANDIDATE_CANT_CREATE_SOCKET;
+    if (error && g_error_matches (error, G_IO_ERROR, G_IO_ERROR_ADDRESS_IN_USE))
+      res = HOST_CANDIDATE_DUPLICATE_PORT;
+    else
+      res = HOST_CANDIDATE_CANT_CREATE_SOCKET;
+    g_clear_error (&error);
     goto errors;
   }
 

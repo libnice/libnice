@@ -50,10 +50,20 @@ int main (int argc, char **argv)
 
   agent = nice_agent_new (NULL, NICE_COMPATIBILITY_RFC5245);
 
-  stream1 = nice_agent_add_stream (agent, 1);
+  stream1 = nice_agent_add_stream (agent, 2);
 
   nice_agent_set_port_range (agent, stream1, 1, 8888, 8888);
-  nice_agent_gather_candidates (agent, stream1);
+  nice_agent_set_port_range (agent, stream1, 2, 8888, 8888);
+
+  /* First test with ICE-TCP enabled, this should fail on creating the port */
+  g_assert (nice_agent_gather_candidates (agent, stream1) == FALSE);
+
+  /* First test with ICE-TCP disabled, this should fail on our explicit test */
+  g_object_set (agent, "ice-tcp", FALSE, NULL);
+  g_assert (nice_agent_gather_candidates (agent, stream1) == FALSE);
+
+  nice_agent_set_port_range (agent, stream1, 2, 9999, 9999);
+  g_assert (nice_agent_gather_candidates (agent, stream1));
 
   g_object_unref (agent);
 

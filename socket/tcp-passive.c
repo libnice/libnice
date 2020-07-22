@@ -79,7 +79,7 @@ static void socket_set_writable_callback (NiceSocket *sock,
 static guint nice_address_hash (const NiceAddress * key);
 
 NiceSocket *
-nice_tcp_passive_socket_new (GMainContext *ctx, NiceAddress *addr)
+nice_tcp_passive_socket_new (GMainContext *ctx, NiceAddress *addr, GError **error)
 {
   union {
     struct sockaddr_storage storage;
@@ -129,8 +129,8 @@ nice_tcp_passive_socket_new (GMainContext *ctx, NiceAddress *addr)
   /* GSocket: All socket file descriptors are set to be close-on-exec. */
   g_socket_set_blocking (gsock, false);
 
-  gret = g_socket_bind (gsock, gaddr, FALSE, NULL) &&
-      g_socket_listen (gsock, NULL);
+  gret = g_socket_bind (gsock, gaddr, FALSE, error) &&
+      g_socket_listen (gsock, error);
   g_object_unref (gaddr);
 
   if (gret == FALSE) {

@@ -86,6 +86,7 @@ main (void)
 {
   NiceAddress active_bind_addr, passive_bind_addr;
   GSource *srv_listen_source, *srv_input_source, *cli_input_source;
+  GError *error = NULL;
 
   g_networking_init ();
 
@@ -101,7 +102,8 @@ main (void)
   nice_address_init (&tmp);
 
   passive_sock = nice_tcp_passive_socket_new (g_main_loop_get_context (mainloop),
-      &passive_bind_addr);
+      &passive_bind_addr, &error);
+  g_assert_no_error (error);
   g_assert (passive_sock);
 
   srv_listen_source = g_socket_create_source (passive_sock->fileno,

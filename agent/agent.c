@@ -3193,7 +3193,8 @@ nice_agent_gather_candidates (
         host_candidate = NULL;
         while (res == HOST_CANDIDATE_CANT_CREATE_SOCKET ||
             res == HOST_CANDIDATE_DUPLICATE_PORT) {
-          nice_debug ("Agent %p: Trying to create host candidate on port %d", agent, current_port);
+          nice_debug ("Agent %p: Trying to create %s host candidate on port %d", agent,
+              nice_candidate_transport_to_string (transport), current_port);
           nice_address_set_port (addr, current_port);
           res = discovery_add_local_host_candidate (agent, stream->id, cid,
               addr, transport, accept_duplicate, &host_candidate);
@@ -3240,6 +3241,7 @@ nice_agent_gather_candidates (
                 nice_candidate_transport_to_string (transport), stream->id,
                 component->id);
            }
+           ret = FALSE;
            goto error;
         }
 
