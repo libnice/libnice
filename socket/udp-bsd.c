@@ -255,7 +255,7 @@ socket_send_messages (NiceSocket *sock, const NiceAddress *to,
 
   struct UdpBsdSocketPrivate *priv = sock->priv;
   GError *child_error = NULL;
-  guint len;
+  gint len;
   GSocketAddress *gaddr = NULL;
 
   /* Make sure socket has not been freed: */
