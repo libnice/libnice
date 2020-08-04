@@ -297,7 +297,7 @@ socket_send_messages (NiceSocket *sock, const NiceAddress *to,
   } else {
     /* Multiple messages: use g_socket_send_messages, which might use
      * the more efficient sendmmsg if supported by the platform */
-    GOutputMessage *go_messages = g_malloc_n (n_messages, sizeof (GOutputMessage));
+    GOutputMessage *go_messages = g_alloca (n_messages * sizeof (GOutputMessage));
     for (i = 0; i < n_messages; i++) {
       const NiceOutputMessage *message = &messages[i];
       go_messages[i].address = gaddr;
@@ -309,7 +309,6 @@ socket_send_messages (NiceSocket *sock, const NiceAddress *to,
     }
     len = g_socket_send_messages (sock->fileno, go_messages,
         n_messages, G_SOCKET_MSG_NONE, NULL, &child_error);
-    g_free (go_messages);
   }
 
   if (len < 0) {
