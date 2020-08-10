@@ -194,13 +194,21 @@ NICEAPI_EXPORT void
 nice_address_set_from_sockaddr (NiceAddress *addr,
                                 const struct sockaddr *sa)
 {
+  union {
+    const struct sockaddr *sa;
+    const struct sockaddr_in *in;
+    const struct sockaddr_in6 *in6;
+  } s;
+
+  s.sa = sa;
+
   switch (sa->sa_family)
     {
     case AF_INET:
-      memcpy(&addr->s.ip4, sa, sizeof (addr->s.ip4));
+      memcpy(&addr->s.ip4, s.in, sizeof (addr->s.ip4));
       break;
     case AF_INET6:
-      memcpy(&addr->s.ip6, sa, sizeof (addr->s.ip6));
+      memcpy(&addr->s.ip6, s.in6, sizeof (addr->s.ip6));
       break;
     default:
       g_return_if_reached ();
