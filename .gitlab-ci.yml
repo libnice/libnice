@@ -173,7 +173,7 @@ submit-to-coverity:
  before_script:
   - mkdir -p "${CI_PROJECT_DIR}"
  script:
-  - curl -v https://scan.coverity.com/download/linux64  -o coverity_tool.tgz  --form token="${COVERITY_TOKEN}" --form project="${COVERITY_PROJECT}" && tar xf coverity_tool.tgz && rm coverity_tool.tgz
+  - curl -v https://scan.coverity.com/download/linux64  -o coverity_tool.tgz  --data "token=${COVERITY_TOKEN}&project=${COVERITY_PROJECT}" && tar xf coverity_tool.tgz && rm coverity_tool.tgz
   - mv cov-analysis-linux64-* cov-analysis-linux64
   - source scl_source enable rh-python36 && true
   - meson --werror --warnlevel 2 -Dgtk_doc=disabled -Dinstrospection=disabled --prefix=$PREFIX cov-build/
