@@ -74,6 +74,10 @@
 #endif /* G_OS_UNIX */
 
 #ifdef IGNORED_IFACE_PREFIX
+#ifdef G_OS_WIN32
+#include <stdio.h>
+#endif
+
 static const gchar *ignored_iface_prefix_list[] = {
   IGNORED_IFACE_PREFIX,
   NULL
@@ -565,6 +569,11 @@ nice_interfaces_get_local_ips (gboolean include_loopback)
   IP_ADAPTER_ADDRESSES *addresses, *a;
   DWORD pref = 0;
   GList *ret = NULL;
+#ifdef IGNORED_IFACE_PREFIX
+  const gchar **prefix;
+  gboolean ignored;
+  const char output[256];
+#endif
 
   addresses = _nice_get_adapters_addresses ();
   if (!addresses)
@@ -610,6 +619,22 @@ nice_interfaces_get_local_ips (gboolean include_loopback)
       nice_debug ("Rejecting loopback interface ‘%S’.", a->FriendlyName);
       continue;
     }
+
+#ifdef IGNORED_IFACE_PREFIX
+    sprintf_s(output, 256, "%ws", a->FriendlyName);
+    ignored = FALSE;
+    for (prefix = ignored_iface_prefix_list; *prefix; prefix++) {
+      if (g_str_has_prefix (output, *prefix)) {
+        nice_debug ("Ignoring interface %s as it matches prefix %s",
+            output, *prefix);
+        ignored = TRUE;
+        break;
+      }
+    }
+
+    if (ignored)
+      continue;
+#endif
 
     /* Grab the interface’s unicast addresses. */
     for (unicast = a->FirstUnicastAddress;
