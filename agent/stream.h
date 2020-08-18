@@ -90,6 +90,12 @@ struct _NiceStream {
   gboolean peer_gathering_done;
   gint tos;
   guint tick_counter;
+
+#ifdef HAVE_GUPNP
+  GSList *upnp_mapping;            /* NiceCandidate being mapped */
+  GSList *upnp_mapped;             /* NiceCandidate mapped with UPnP */
+  GSource *upnp_timer_source;      /* source of upnp timeout timer */
+#endif
 };
 
 typedef struct {

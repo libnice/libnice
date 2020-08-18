@@ -89,7 +89,7 @@ nice_stream_close (NiceAgent *agent, NiceStream *stream)
 
   for (i = stream->components; i; i = i->next) {
     NiceComponent *component = i->data;
-    nice_component_close (agent, component);
+    nice_component_close (agent, stream, component);
   }
 }
 

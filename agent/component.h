@@ -236,7 +236,8 @@ NiceComponent *
 nice_component_new (guint component_id, NiceAgent *agent, NiceStream *stream);
 
 void
-nice_component_close (NiceAgent *agent, NiceComponent *component);
+nice_component_close (NiceAgent *agent, NiceStream *stream,
+    NiceComponent *component);
 
 gboolean
 nice_component_find_pair (NiceComponent *component, NiceAgent *agent,

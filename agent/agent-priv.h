@@ -166,12 +166,10 @@ struct _NiceAgent
 				     "Determining Role" ID-19) */
   NiceCompatibility compatibility; /* property: Compatibility mode */
   gboolean media_after_tick;       /* Received media after keepalive tick */
+  gboolean upnp_enabled;           /* whether UPnP discovery is enabled */
 #ifdef HAVE_GUPNP
   GUPnPSimpleIgdThread* upnp;	   /* GUPnP Single IGD agent */
-  gboolean upnp_enabled;           /* whether UPnP discovery is enabled */
   guint upnp_timeout;              /* UPnP discovery timeout */
-  GSList *upnp_mapping;            /* NiceAddresses of cands being mapped */
-  GSource *upnp_timer_source;      /* source of upnp timeout timer */
 #endif
   gchar *software_attribute;       /* SOFTWARE attribute */
   gboolean reliable;               /* property: reliable */
@@ -246,7 +244,7 @@ StunUsageIceCompatibility agent_to_ice_compatibility (NiceAgent *agent);
 StunUsageTurnCompatibility agent_to_turn_compatibility (NiceAgent *agent);
 NiceTurnSocketCompatibility agent_to_turn_socket_compatibility (NiceAgent *agent);
 
-void agent_remove_local_candidate (NiceAgent *agent,
+void agent_remove_local_candidate (NiceAgent *agent, NiceStream *stream,
     NiceCandidate *candidate);
 
 void nice_agent_init_stun_agent (NiceAgent *agent, StunAgent *stun_agent);

@@ -197,8 +197,8 @@ nice_component_remove_socket (NiceAgent *agent, NiceComponent *cmp,
       conn_check_prune_socket (agent, stream, cmp, candidate->sockptr);
       nice_component_detach_socket (cmp, candidate->sockptr);
     }
-    agent_remove_local_candidate (agent, (NiceCandidate *) candidate);
-    nice_candidate_free ((NiceCandidate *) candidate);
+    agent_remove_local_candidate (agent, stream, (NiceCandidate *) candidate);
+    nice_candidate_free ((NiceCandidate *)candidate);
 
     cmp->local_candidates = g_slist_delete_link (cmp->local_candidates, i);
     i = next;
@@ -289,7 +289,7 @@ nice_component_clean_turn_servers (NiceAgent *agent, NiceComponent *cmp)
       cmp->selected_pair.priority = 0;
       cmp->turn_candidate = candidate;
     } else {
-      agent_remove_local_candidate (agent, (NiceCandidate *) candidate);
+      agent_remove_local_candidate (agent, stream, (NiceCandidate *) candidate);
       relay_candidates = g_slist_append(relay_candidates, candidate);
     }
     cmp->local_candidates = g_slist_delete_link (cmp->local_candidates, i);
@@ -324,7 +324,7 @@ nice_component_clear_selected_pair (NiceComponent *component)
 /* Must be called with the agent lock held as it touches internal Component
  * state. */
 void
-nice_component_close (NiceAgent *agent, NiceComponent *cmp)
+nice_component_close (NiceAgent *agent, NiceStream *stream, NiceComponent *cmp)
 {
   IOCallbackData *data;
   GOutputVector *vec;
@@ -353,7 +353,7 @@ nice_component_close (NiceAgent *agent, NiceComponent *cmp)
         cmp->turn_candidate = NULL;
 
   while (cmp->local_candidates) {
-    agent_remove_local_candidate (agent, cmp->local_candidates->data);
+    agent_remove_local_candidate (agent, stream, cmp->local_candidates->data);
     nice_candidate_free (cmp->local_candidates->data);
     cmp->local_candidates = g_slist_delete_link (cmp->local_candidates,
         cmp->local_candidates);
