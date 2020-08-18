@@ -37,7 +37,6 @@ else
 endif
 
 gnome.gtkdoc('libnice',
-             content_files: [fake_makefile],
              main_xml: 'libnice-docs.xml',
              namespace: 'nice',
              mode: 'none',
