@@ -3196,7 +3196,7 @@ static gboolean priv_schedule_triggered_check (NiceAgent *agent, NiceStream *str
 
 
 /*
- * Sends a reply to an successfully received STUN connectivity 
+ * Sends a reply to a successfully received STUN connectivity
  * check request. Implements parts of the ICE spec section 7.2 (STUN
  * Server Procedures).
  *
@@ -3210,7 +3210,7 @@ static gboolean priv_schedule_triggered_check (NiceAgent *agent, NiceStream *str
  * @param rbuf_len length of STUN message to send
  * @param msg the STUN message to send
  * @param use_candidate whether the request had USE_CANDIDATE attribute
- * 
+ *
  * @pre (rcand == NULL || nice_address_equal(rcand->addr, toaddr) == TRUE)
  */
 static void priv_reply_to_conn_check (NiceAgent *agent, NiceStream *stream,
@@ -3222,14 +3222,23 @@ static void priv_reply_to_conn_check (NiceAgent *agent, NiceStream *stream,
 
   if (nice_debug_is_enabled ()) {
     gchar tmpbuf[INET6_ADDRSTRLEN];
+    StunTransactionId id;
     nice_address_to_string (toaddr, tmpbuf);
-    nice_debug ("Agent %p : STUN-CC RESP to '%s:%u', socket=%u, len=%u, cand=%p (c-id:%u), use-cand=%d.", agent,
-	     tmpbuf,
-	     nice_address_get_port (toaddr),
-             sockptr->fileno ? g_socket_get_fd(sockptr->fileno) : -1,
-	     (unsigned)rbuf_len,
-	     rcand, component->id,
-	     (int)use_candidate);
+
+    /* get stun message transaction id and convert it to hex. */
+    stun_message_id(msg, id);
+    nice_debug ("Agent %p : STUN-CC RESP to '%s:%u', socket=%u, len=%u, cand=%p (c-id:%u),"
+        " use-cand=%d, "
+        "transactionId=%hhx%hhx%hhx%hhx%hhx%hhx%hhx%hhx%hhx%hhx%hhx%hhx%hhx%hhx%hhx%hhx",
+        agent,
+        tmpbuf,
+        nice_address_get_port (toaddr),
+        sockptr->fileno ? g_socket_get_fd(sockptr->fileno) : -1,
+        (unsigned)rbuf_len,
+        rcand, component->id,
+        (int)use_candidate,
+        id[0], id[1], id[2], id[3], id[4], id[5], id[6], id[7], id[8], id[9], id[10],
+        id[11], id[12], id[13], id[14], id[15]);
   }
 
   agent_socket_send (sockptr, toaddr, rbuf_len, (const gchar*)msg->buffer);
