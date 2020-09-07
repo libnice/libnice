@@ -404,10 +404,9 @@ nice_candidate_pair_priority_to_string (guint64 prio, gchar *string)
 NICEAPI_EXPORT NiceCandidate *
 nice_candidate_copy (const NiceCandidate *candidate)
 {
-  const NiceCandidateImpl *c = (NiceCandidateImpl *)candidate;
   NiceCandidateImpl *copy;
 
-  g_return_val_if_fail (c != NULL, NULL);
+  g_return_val_if_fail (candidate != NULL, NULL);
 
   copy = (NiceCandidateImpl *) nice_candidate_new (candidate->type);
   memcpy (copy, candidate, sizeof(NiceCandidateImpl));
