@@ -123,6 +123,9 @@ typedef enum {
  * @STUN_VALIDATION_UNKNOWN_ATTRIBUTE: The message is valid but contains one
  * or more unknown comprehension attributes. This is a response, or error,
  * or indication message and no error response should be sent
+ * @STUN_VALIDATION_FORBIDDEN: The message response is valid and indicates
+ * the peer responded with the error code 403 'Forbidden'.  No response
+ * should be sent.
  *
  * This enum is used as the return value of stun_agent_validate() and represents
  * the status result of the validation of a STUN message.
@@ -137,6 +140,7 @@ typedef enum {
   STUN_VALIDATION_UNMATCHED_RESPONSE,
   STUN_VALIDATION_UNKNOWN_REQUEST_ATTRIBUTE,
   STUN_VALIDATION_UNKNOWN_ATTRIBUTE,
+  STUN_VALIDATION_FORBIDDEN,
 } StunValidationStatus;
 
 /**
@@ -168,6 +172,9 @@ typedef enum {
  * @STUN_AGENT_USAGE_NO_ALIGNED_ATTRIBUTES: The agent should not assume STUN
  * attributes are aligned on 32-bit boundaries when parsing messages and also
  * do not add padding when creating messages.
+ * @STUN_AGENT_USAGE_CONSENT_FRESHNESS: The agent should expect and use
+ * the %STUN_VALIDATION_FORBIDDEN return value from ERROR-CODE responses and
+ * abort all transactions accordingly.
  *
  * This enum defines a bitflag usages for a #StunAgent and they will define how
  * the agent should behave, independently of the compatibility mode it uses.
@@ -183,6 +190,7 @@ typedef enum {
   STUN_AGENT_USAGE_NO_INDICATION_AUTH        = (1 << 5),
   STUN_AGENT_USAGE_FORCE_VALIDATER           = (1 << 6),
   STUN_AGENT_USAGE_NO_ALIGNED_ATTRIBUTES     = (1 << 7),
+  STUN_AGENT_USAGE_CONSENT_FRESHNESS         = (1 << 8),
 } StunAgentUsageFlags;
 
 

@@ -123,6 +123,7 @@ enum
   PROP_ICE_TRICKLE,
   PROP_SUPPORT_RENOMINATION,
   PROP_IDLE_TIMEOUT,
+  PROP_CONSENT_FRESHNESS,
 };
 
 
@@ -773,6 +774,8 @@ nice_agent_class_init (NiceAgentClass *klass)
    * This is always enabled if the compatibility mode is
    * %NICE_COMPATIBILITY_GOOGLE.
    *
+   * This is always enabled if the 'consent-freshness' property is %TRUE
+   *
    * Since: 0.1.8
    */
    g_object_class_install_property (gobject_class, PROP_KEEPALIVE_CONNCHECK,
@@ -889,6 +892,28 @@ nice_agent_class_init (NiceAgentClass *klass)
         "Whether to perform Trickle ICE as per draft-ietf-ice-trickle-ice-21.",
         FALSE,
         G_PARAM_READWRITE));
+
+   /**
+    * NiceAgent:consent-freshness
+    *
+    * Whether to perform periodic consent freshness checks as specified in
+    * RFC 7675.  When %TRUE, the agent will periodically send binding requests
+    * to the peer to maintain the consent to send with the peer.  On receipt
+    * of any authenticated error response, a component will immediately move
+    * to the failed state.
+    *
+    * Setting this property to %TRUE implies that 'keepalive-conncheck' should
+    * be %TRUE as well.
+    *
+    * Since: 0.1.20
+    */
+   g_object_class_install_property (gobject_class, PROP_CONSENT_FRESHNESS,
+      g_param_spec_boolean (
+        "consent-freshness",
+        "Consent Freshness",
+        "Whether to perform the consent freshness checks as specified in RFC 7675",
+        FALSE,
+        G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY));
 
   /* install signals */
 
@@ -1314,6 +1339,7 @@ nice_agent_new_full (GMainContext *ctx,
       "full-mode", (flags & NICE_AGENT_OPTION_LITE_MODE) ? FALSE : TRUE,
       "ice-trickle", (flags & NICE_AGENT_OPTION_ICE_TRICKLE) ? TRUE : FALSE,
       "support-renomination", (flags & NICE_AGENT_OPTION_SUPPORT_RENOMINATION) ? TRUE : FALSE,
+      "consent-freshness", (flags & NICE_AGENT_OPTION_CONSENT_FRESHNESS) ? TRUE : FALSE,
       NULL);
 
   return agent;
@@ -1438,7 +1464,7 @@ nice_agent_get_property (
       break;
 
     case PROP_KEEPALIVE_CONNCHECK:
-      if (agent->compatibility == NICE_COMPATIBILITY_GOOGLE)
+      if (agent->compatibility == NICE_COMPATIBILITY_GOOGLE || agent->consent_freshness)
         g_value_set_boolean (value, TRUE);
       else
         g_value_set_boolean (value, agent->keepalive_conncheck);
@@ -1462,6 +1488,10 @@ nice_agent_get_property (
 
     case PROP_ICE_TRICKLE:
       g_value_set_boolean (value, agent->use_ice_trickle);
+      break;
+
+    case PROP_CONSENT_FRESHNESS:
+      g_value_set_boolean (value, agent->consent_freshness);
       break;
 
     default:
@@ -1502,9 +1532,14 @@ nice_agent_init_stun_agent (NiceAgent *agent, StunAgent *stun_agent)
         STUN_AGENT_USAGE_USE_FINGERPRINT |
         STUN_AGENT_USAGE_NO_ALIGNED_ATTRIBUTES);
   } else {
+    StunAgentUsageFlags stun_usage = 0;
+
+    if (agent->consent_freshness)
+      stun_usage |= STUN_AGENT_USAGE_CONSENT_FRESHNESS;
+
     stun_agent_init (stun_agent, STUN_ALL_KNOWN_ATTRIBUTES,
         STUN_COMPATIBILITY_RFC5389,
-        STUN_AGENT_USAGE_SHORT_TERM_CREDENTIALS |
+        stun_usage | STUN_AGENT_USAGE_SHORT_TERM_CREDENTIALS |
         STUN_AGENT_USAGE_USE_FINGERPRINT);
   }
   stun_agent_set_software (stun_agent, agent->software_attribute);
@@ -1675,6 +1710,10 @@ nice_agent_set_property (
 
     case PROP_ICE_TRICKLE:
       agent->use_ice_trickle = g_value_get_boolean (value);
+      break;
+
+    case PROP_CONSENT_FRESHNESS:
+      agent->consent_freshness = g_value_get_boolean (value);
       break;
 
     default:
@@ -5187,6 +5226,13 @@ nice_agent_send_messages_nonblocking_internal (
     goto done;
   }
 
+  if (component->selected_pair.local != NULL &&
+        !component->selected_pair.remote_consent.have) {
+    g_set_error (&child_error, G_IO_ERROR, G_IO_ERROR_PERMISSION_DENIED,
+                 "Consent to send has been revoked by the peer");
+    goto done;
+  }
+
   /* FIXME: Cancellation isn’t yet supported, but it doesn’t matter because
    * we only deal with non-blocking writes. */
   if (component->selected_pair.local != NULL) {
@@ -5965,6 +6011,8 @@ nice_agent_set_selected_pair (
       NICE_COMPONENT_STATE_READY);
 
   /* step: set the selected pair */
+  /* XXX: assume we have consent to send to this selected remote address */
+  pair.remote_consent.have = TRUE;
   nice_component_update_selected_pair (agent, component, &pair);
   agent_signal_new_selected_pair (agent, stream_id, component_id,
       (NiceCandidate *) pair.local, (NiceCandidate *) pair.remote);
@@ -7102,4 +7150,29 @@ nice_agent_get_sockets (NiceAgent *agent, guint stream_id, guint component_id)
   agent_unlock (agent);
 
   return array;
+}
+
+NICEAPI_EXPORT gboolean
+nice_agent_consent_lost (
+    NiceAgent *agent,
+    guint stream_id,
+    guint component_id)
+{
+  gboolean result = FALSE;
+  NiceComponent *component;
+
+  agent_lock (agent);
+  if (!agent->consent_freshness) {
+    g_warning ("Agent %p: Attempt made to signal consent lost for "
+        "stream/component %u/%u but RFC7675/consent-freshness is not enabled "
+        "for this agent. Ignoring request", agent, stream_id, component_id);
+  } else if (agent_find_component (agent, stream_id, component_id, NULL, &component)) {
+    nice_debug ("Agent %p: local consent lost for stream/component %u/%u", agent,
+        component->stream_id, component->id);
+    component->have_local_consent = FALSE;
+    result = TRUE;
+  }
+  agent_unlock_and_emit (agent);
+
+  return result;
 }

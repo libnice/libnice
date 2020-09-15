@@ -414,6 +414,8 @@ typedef uint8_t StunTransactionId[STUN_MESSAGE_TRANS_ID_LEN];
  * "Bad Request" error as defined in RFC5389
  * @STUN_ERROR_UNAUTHORIZED: The ERROR-CODE value for the
  * "Unauthorized" error as defined in RFC5389
+ * @STUN_ERROR_FORBIDDEN: The ERROR-CODE value for the
+ * "Forbidden" error as defined in RFC7675
  * @STUN_ERROR_UNKNOWN_ATTRIBUTE: The ERROR-CODE value for the
  * "Unknown Attribute" error as defined in RFC5389
  * @STUN_ERROR_ALLOCATION_MISMATCH:The ERROR-CODE value for the
@@ -457,6 +459,7 @@ typedef enum
   STUN_ERROR_TRY_ALTERNATE=300,      /* RFC5389 */
   STUN_ERROR_BAD_REQUEST=400,      /* RFC5389 */
   STUN_ERROR_UNAUTHORIZED=401,      /* RFC5389 */
+  STUN_ERROR_FORBIDDEN=403,      /* RFC7675 */
   STUN_ERROR_UNKNOWN_ATTRIBUTE=420,    /* RFC5389 */
   STUN_ERROR_ALLOCATION_MISMATCH=437,   /* TURN-12 */
   STUN_ERROR_STALE_NONCE=438,      /* RFC5389 */

@@ -65,17 +65,23 @@ G_BEGIN_DECLS
 
 typedef struct _CandidatePair CandidatePair;
 typedef struct _CandidatePairKeepalive CandidatePairKeepalive;
+typedef struct _CandidatePairConsentCheck CandidatePairConsentCheck;
 typedef struct _IncomingCheck IncomingCheck;
 
 struct _CandidatePairKeepalive
 {
   guint64 next_tick;    /* next tick timestamp */
-  GSource *tick_source;
   guint stream_id;
   guint component_id;
   StunTimer timer;
-  uint8_t stun_buffer[STUN_MAX_MESSAGE_SIZE_IPV6];
-  StunMessage stun_message;
+};
+
+struct _CandidatePairConsentCheck
+{
+  GSource *tick_source;
+  gboolean have;
+  guint64 last_received;        /* g_get_monotonic_time() of last remote
+                                   consent received */
 };
 
 struct _CandidatePair
@@ -85,6 +91,7 @@ struct _CandidatePair
   guint64 priority;           /* candidate pair priority */
   guint32 stun_priority;
   CandidatePairKeepalive keepalive;
+  CandidatePairConsentCheck remote_consent;
 };
 
 struct _IncomingCheck
@@ -224,6 +231,8 @@ struct _NiceComponent {
    * ACKs on. The messages are dequeued to the pseudo-TCP socket once a selected
    * UDP socket is available. This is only used for reliable Components. */
   GQueue queued_tcp_packets;
+
+  gboolean have_local_consent;
 };
 
 typedef struct {

@@ -407,6 +407,7 @@ typedef enum
  * @NICE_AGENT_OPTION_ICE_TRICKLE: Enable ICE trickle mode
  * @NICE_AGENT_OPTION_SUPPORT_RENOMINATION: Enable renomination triggered by NOMINATION STUN attribute
  * proposed here: https://tools.ietf.org/html/draft-thatcher-ice-renomination-00
+ * @NICE_AGENT_OPTION_CONSENT_FRESHNESS: Enable RFC 7675 consent freshness support. (Since: 0.1.20)
  *
  * These are options that can be passed to nice_agent_new_full(). They set
  * various properties on the agent. Not including them sets the property to
@@ -420,6 +421,7 @@ typedef enum {
   NICE_AGENT_OPTION_LITE_MODE = 1 << 2,
   NICE_AGENT_OPTION_ICE_TRICKLE = 1 << 3,
   NICE_AGENT_OPTION_SUPPORT_RENOMINATION = 1 << 4,
+  NICE_AGENT_OPTION_CONSENT_FRESHNESS = 1 << 5,
 } NiceAgentOption;
 
 /**
@@ -919,6 +921,9 @@ nice_agent_get_remote_candidates (
  * "ICE Restarts"), as well as when reacting (spec section 9.2.1.1.
  * "Detecting ICE Restart") to a restart.
  *
+ * If consent-freshness has been enabled on @agent, as specified in RFC7675
+ * then restarting streams will restore the local consent.
+ *
  * Returns: %TRUE on success %FALSE on error
  **/
 gboolean
@@ -937,6 +942,9 @@ nice_agent_restart (
  *
  * Unlike nice_agent_restart(), this applies to a single stream. It also
  * does not generate a new tie breaker.
+ *
+ * If consent-freshness has been enabled on @agent, as specified in RFC7675
+ * then restart @stream_id will restore the local consent for that stream.
  *
  * Returns: %TRUE on success %FALSE on error
  *
@@ -1658,6 +1666,34 @@ gboolean
 nice_agent_peer_candidate_gathering_done (
     NiceAgent *agent,
     guint stream_id);
+
+/**
+ * nice_agent_consent_lost:
+ * @agent: The #NiceAgent Object
+ * @stream_id: The ID of the stream
+ * @component_id: The ID of the component
+ *
+ * Notifies the agent that consent to receive has been revoked.  This will
+ * cause the component to fail with 403 'Forbidden' all incoming STUN binding
+ * requests as specified in RFC 7675.
+ *
+ * A stream with a component in the consent-lost state can be reused by
+ * performing an ice restart with nice_agent_restart() or
+ * nice_agent_restart_stream().
+ *
+ * Calling the function only has an effect when @agent has been created with
+ * @NICE_AGENT_OPTION_CONSENT_FRESHNESS.
+ *
+ * Returns: %FALSE if the stream or component could not be found or consent
+ *     freshness is not enabled, %TRUE otherwise
+ *
+ * Since: 0.1.20
+ */
+gboolean
+nice_agent_consent_lost (
+    NiceAgent *agent,
+    guint stream_id,
+    guint component_id);
 
 /**
  * nice_agent_close_async:

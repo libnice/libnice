@@ -18,6 +18,7 @@ nice_address_to_string
 nice_agent_add_local_address
 nice_agent_add_stream
 nice_agent_close_async
+nice_agent_consent_lost
 nice_agent_recv
 nice_agent_recv_messages
 nice_agent_recv_nonblocking

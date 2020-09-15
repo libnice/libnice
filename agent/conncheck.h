@@ -49,6 +49,11 @@
 
 #define NICE_CANDIDATE_PAIR_MAX_FOUNDATION        NICE_CANDIDATE_MAX_FOUNDATION*2
 
+/* A helper macro to test whether connection checks should continue to be
+ * performed after a component has successfully connected */
+#define NICE_AGENT_DO_KEEPALIVE_CONNCHECKS(obj) \
+  ((obj)->consent_freshness || (obj)->keepalive_conncheck || (obj)->compatibility == NICE_COMPATIBILITY_GOOGLE)
+
 /**
  * NiceCheckState:
  * @NICE_CHECK_WAITING: Waiting to be scheduled.

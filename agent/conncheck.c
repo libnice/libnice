@@ -1234,66 +1234,43 @@ static gboolean priv_conn_check_tick_agent_locked (NiceAgent *agent,
   return TRUE;
 }
 
-static gboolean priv_conn_keepalive_retransmissions_tick_agent_locked (
+static gboolean priv_conn_remote_consent_tick_agent_locked (
     NiceAgent *agent, gpointer pointer)
 {
   CandidatePair *pair = (CandidatePair *) pointer;
+  guint64 consent_timeout = 0;
+  guint64 now;
 
-  g_source_destroy (pair->keepalive.tick_source);
-  g_source_unref (pair->keepalive.tick_source);
-  pair->keepalive.tick_source = NULL;
+  if (pair->remote_consent.tick_source) {
+    g_source_destroy (pair->remote_consent.tick_source);
+    g_source_unref (pair->remote_consent.tick_source);
+  }
+  pair->remote_consent.tick_source = NULL;
 
-  switch (stun_timer_refresh (&pair->keepalive.timer)) {
-    case STUN_USAGE_TIMER_RETURN_TIMEOUT:
-      {
-        /* Time out */
-        StunTransactionId id;
-        NiceComponent *component;
+  if (agent->consent_freshness) {
+    consent_timeout = NICE_AGENT_TIMER_CONSENT_TIMEOUT * 1000;
+  } else {
+    consent_timeout = NICE_AGENT_TIMER_KEEPALIVE_TIMEOUT* 1000;
+  }
 
-        if (!agent_find_component (agent,
-                pair->keepalive.stream_id, pair->keepalive.component_id,
-                NULL, &component)) {
-          nice_debug ("Could not find stream or component in"
-              " priv_conn_keepalive_retransmissions_tick");
-          return FALSE;
-        }
-
-        stun_message_id (&pair->keepalive.stun_message, id);
-        stun_agent_forget_transaction (&component->stun_agent, id);
-        pair->keepalive.stun_message.buffer = NULL;
-
-        if (agent->media_after_tick) {
-          nice_debug ("Agent %p : Keepalive conncheck timed out!! "
-              "but media was received. Suspecting keepalive lost because of "
-              "network bottleneck", agent);
-        } else {
-          nice_debug ("Agent %p : Keepalive conncheck timed out!! "
-              "peer probably lost connection", agent);
-          agent_signal_component_state_change (agent,
-              pair->keepalive.stream_id, pair->keepalive.component_id,
-              NICE_COMPONENT_STATE_FAILED);
-        }
-        break;
-      }
-    case STUN_USAGE_TIMER_RETURN_RETRANSMIT:
-      /* Retransmit */
-      agent_socket_send (pair->local->sockptr, &pair->remote->c.addr,
-          stun_message_length (&pair->keepalive.stun_message),
-          (gchar *)pair->keepalive.stun_buffer);
-
-      nice_debug ("Agent %p : Retransmitting keepalive conncheck",
-          agent);
-
-      G_GNUC_FALLTHROUGH;
-    case STUN_USAGE_TIMER_RETURN_SUCCESS:
-      agent_timeout_add_with_context (agent,
-          &pair->keepalive.tick_source,
-          "Pair keepalive", stun_timer_remainder (&pair->keepalive.timer),
-          priv_conn_keepalive_retransmissions_tick_agent_locked, pair);
-      break;
-    default:
-      g_assert_not_reached();
-      break;
+  now = g_get_monotonic_time();
+  if (now - pair->remote_consent.last_received > consent_timeout) {
+    guint64 time_since = now - pair->remote_consent.last_received;
+    pair->remote_consent.have = FALSE;
+    nice_debug ("Agent %p : pair %p consent for stream/component %u/%u timed "
+         "out! -> FAILED.  Last consent received: %" G_GUINT64_FORMAT ".%" G_GUINT64_FORMAT "s ago",
+        agent, pair, pair->keepalive.stream_id, pair->keepalive.component_id,
+        time_since / G_USEC_PER_SEC, time_since % G_USEC_PER_SEC);
+    agent_signal_component_state_change (agent, pair->keepalive.stream_id,
+        pair->keepalive.component_id, NICE_COMPONENT_STATE_FAILED);
+  } else {
+    guint64 delay = (consent_timeout - now - pair->remote_consent.last_received) / 1000;
+    nice_debug ("Agent %p : pair %p rechecking consent in %" G_GUINT64_FORMAT ".%03" G_GUINT64_FORMAT "s",
+        agent, pair, delay / 1000, delay % 1000);
+    agent_timeout_add_with_context (agent,
+        &pair->remote_consent.tick_source,
+        "Pair remote consent", delay,
+        priv_conn_remote_consent_tick_agent_locked, pair);
   }
 
   return FALSE;
@@ -1400,12 +1377,17 @@ static gboolean priv_conn_keepalive_tick_unlocked (NiceAgent *agent)
   guint64 next_timer_tick;
 
   now = g_get_monotonic_time ();
-  min_next_tick = now + 1000 * NICE_AGENT_TIMER_TR_DEFAULT;
+  if (agent->consent_freshness) {
+    min_next_tick = now + 1000 * NICE_AGENT_TIMER_MIN_CONSENT_INTERVAL;
+  } else {
+    min_next_tick = now + 1000 * NICE_AGENT_TIMER_TR_DEFAULT;
+  }
 
   /* case 1: session established and media flowing
    *         (ref ICE sect 11 "Keepalives" RFC-8445)
-   * TODO: keepalives should be send only when no packet has been sent
-   * on that pair in the last Tr seconds, and not unconditionally.
+   * TODO: without RFC 7675 (consent freshness), keepalives should be sent
+   * only when no packet has been sent on that pair in the last Tr seconds,
+   * and not unconditionally.
    */
   for (i = agent->streams; i; i = i->next) {
 
@@ -1417,7 +1399,7 @@ static gboolean priv_conn_keepalive_tick_unlocked (NiceAgent *agent)
 
         /* Disable keepalive checks on TCP candidates unless explicitly enabled */
         if (p->local->c.transport != NICE_CANDIDATE_TRANSPORT_UDP &&
-            !agent->keepalive_conncheck)
+            !NICE_AGENT_DO_KEEPALIVE_CONNCHECKS (agent))
           continue;
 
         if (p->keepalive.next_tick) {
@@ -1427,8 +1409,7 @@ static gboolean priv_conn_keepalive_tick_unlocked (NiceAgent *agent)
             continue;
         }
 
-        if (agent->compatibility == NICE_COMPATIBILITY_GOOGLE ||
-            agent->keepalive_conncheck) {
+        if (NICE_AGENT_DO_KEEPALIVE_CONNCHECKS (agent)) {
           uint8_t uname[NICE_STREAM_MAX_UNAME];
           size_t uname_len =
               priv_create_username (agent, agent_find_stream (agent, stream->id),
@@ -1438,29 +1419,24 @@ static gboolean priv_conn_keepalive_tick_unlocked (NiceAgent *agent)
           size_t password_len = priv_get_password (agent,
               agent_find_stream (agent, stream->id),
               (NiceCandidate *) p->remote, &password);
+          uint8_t stun_buffer[STUN_MAX_MESSAGE_SIZE_IPV6];
+          StunMessage stun_message;
 
-          if (p->keepalive.stun_message.buffer != NULL) {
-            nice_debug ("Agent %p: Keepalive for s%u:c%u still"
-                " retransmitting, not restarting", agent, stream->id,
-                component->id);
-            continue;
-          }
-
-          if (nice_debug_is_enabled ()) {
-            gchar tmpbuf[INET6_ADDRSTRLEN];
-            nice_address_to_string (&p->remote->c.addr, tmpbuf);
-            nice_debug ("Agent %p : Keepalive STUN-CC REQ to '%s:%u', "
-                "(c-id:%u), username='%.*s' (%" G_GSIZE_FORMAT "), "
-                "password='%.*s' (%" G_GSIZE_FORMAT "), priority=%08x.",
-                agent, tmpbuf, nice_address_get_port (&p->remote->c.addr),
-                component->id, (int) uname_len, uname, uname_len,
-                (int) password_len, password, password_len,
-                p->stun_priority);
-          }
           if (uname_len > 0) {
+            if (nice_debug_is_enabled ()) {
+              gchar tmpbuf[INET6_ADDRSTRLEN];
+              nice_address_to_string (&p->remote->c.addr, tmpbuf);
+              nice_debug ("Agent %p : Keepalive STUN-CC REQ to '%s:%u', "
+                  "(c-id:%u), username='%.*s' (%" G_GSIZE_FORMAT "), "
+                  "password='%.*s' (%" G_GSIZE_FORMAT "), priority=%08x.",
+                  agent, tmpbuf, nice_address_get_port (&p->remote->c.addr),
+                  component->id, (int) uname_len, uname, uname_len,
+                  (int) password_len, password, password_len,
+                  p->stun_priority);
+            }
+
             buf_len = stun_usage_ice_conncheck_create (&component->stun_agent,
-                &p->keepalive.stun_message, p->keepalive.stun_buffer,
-                sizeof(p->keepalive.stun_buffer),
+                &stun_message, stun_buffer, sizeof(stun_buffer),
                 uname, uname_len, password, password_len,
                 agent->controlling_mode, agent->controlling_mode,
                 p->stun_priority,
@@ -1469,27 +1445,31 @@ static gboolean priv_conn_keepalive_tick_unlocked (NiceAgent *agent)
                 agent_to_ice_compatibility (agent));
 
             nice_debug ("Agent %p: conncheck created %zd - %p",
-                agent, buf_len, p->keepalive.stun_message.buffer);
+                agent, buf_len, stun_message.buffer);
 
             if (buf_len > 0) {
-              stun_timer_start (&p->keepalive.timer,
-                  agent->stun_initial_timeout,
-                  agent->stun_max_retransmissions);
+              /* random range over 0.8 -> 1.2 as specified in RFC7675 */
+              double modifier = g_random_double() * 0.4 + 0.8;
+              guint64 delay = 1000 * MAX((guint64) ((NICE_AGENT_TIMER_CONSENT_DEFAULT) * modifier),
+                  NICE_AGENT_TIMER_MIN_CONSENT_INTERVAL);
+
+              p->keepalive.stream_id = stream->id;
+              p->keepalive.component_id = component->id;
+              p->keepalive.next_tick = now + delay;
+
+              if (p->remote_consent.have) {
+                if (p->remote_consent.last_received == 0) {
+                  p->remote_consent.last_received = g_get_monotonic_time();
+                }
+
+                priv_conn_remote_consent_tick_agent_locked (agent, p);
+              }
 
               agent->media_after_tick = FALSE;
 
               /* send the conncheck */
               agent_socket_send (p->local->sockptr, &p->remote->c.addr,
-                  buf_len, (gchar *)p->keepalive.stun_buffer);
-
-              p->keepalive.stream_id = stream->id;
-              p->keepalive.component_id = component->id;
-              p->keepalive.next_tick = now + 1000 * NICE_AGENT_TIMER_TR_DEFAULT;
-
-              agent_timeout_add_with_context (agent,
-                  &p->keepalive.tick_source, "Pair keepalive",
-                  stun_timer_remainder (&p->keepalive.timer),
-                  priv_conn_keepalive_retransmissions_tick_agent_locked, p);
+                  buf_len, (gchar *) stun_buffer);
 
               next_timer_tick = now + agent->timer_ta * 1000;
               goto done;
@@ -1498,18 +1478,20 @@ static gboolean priv_conn_keepalive_tick_unlocked (NiceAgent *agent)
             }
           }
         } else {
+          uint8_t stun_buffer[STUN_MAX_MESSAGE_SIZE_IPV6];
+          StunMessage stun_message;
+
           buf_len = stun_usage_bind_keepalive (&component->stun_agent,
-              &p->keepalive.stun_message, p->keepalive.stun_buffer,
-              sizeof(p->keepalive.stun_buffer));
+              &stun_message, stun_buffer, sizeof(stun_buffer));
 
           if (buf_len > 0) {
             agent_socket_send (p->local->sockptr, &p->remote->c.addr, buf_len,
-                (gchar *)p->keepalive.stun_buffer);
+                (gchar *) stun_buffer);
 
             p->keepalive.next_tick = now + 1000 * NICE_AGENT_TIMER_TR_DEFAULT;
 
             if (agent->compatibility == NICE_COMPATIBILITY_OC2007R2) {
-              ms_ice2_legacy_conncheck_send (&p->keepalive.stun_message,
+              ms_ice2_legacy_conncheck_send (&stun_message,
                   p->local->sockptr, &p->remote->c.addr);
             }
 
@@ -2082,6 +2064,7 @@ conn_check_update_selected_pair (NiceAgent *agent, NiceComponent *component,
     cpair.remote = (NiceCandidateImpl *) pair->remote;
     cpair.priority = pair->priority;
     cpair.stun_priority = pair->stun_priority;
+    cpair.remote_consent.have = TRUE;
 
     nice_component_update_selected_pair (agent, component, &cpair);
 
@@ -4291,27 +4274,13 @@ static gboolean priv_map_reply_to_relay_remove (NiceAgent *agent,
 static gboolean priv_map_reply_to_keepalive_conncheck (NiceAgent *agent,
     NiceComponent *component, StunMessage *resp)
 {
-  StunTransactionId conncheck_id;
-  StunTransactionId response_id;
-  stun_message_id (resp, response_id);
-
-  if (component->selected_pair.keepalive.stun_message.buffer) {
-      stun_message_id (&component->selected_pair.keepalive.stun_message,
-          conncheck_id);
-      if (memcmp (conncheck_id, response_id, sizeof(StunTransactionId)) == 0) {
-        nice_debug ("Agent %p : Keepalive for selected pair received.",
-            agent);
-        if (component->selected_pair.keepalive.tick_source) {
-          g_source_destroy (component->selected_pair.keepalive.tick_source);
-          g_source_unref (component->selected_pair.keepalive.tick_source);
-          component->selected_pair.keepalive.tick_source = NULL;
-        }
-        component->selected_pair.keepalive.stun_message.buffer = NULL;
-        return TRUE;
-      }
+  nice_debug ("Agent %p : Keepalive for selected pair %p received.",
+      agent, &component->selected_pair);
+  if (agent->consent_freshness) {
+    guint64 now = g_get_monotonic_time();
+    component->selected_pair.remote_consent.last_received = now;
   }
-
-  return FALSE;
+  return TRUE;
 }
 
 
@@ -4602,6 +4571,41 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, NiceStream *stream,
     return TRUE;
   }
 
+  if (valid == STUN_VALIDATION_FORBIDDEN) {
+    CandidatePair *pair = &component->selected_pair;
+    gchar tmpbuf[INET6_ADDRSTRLEN];
+    nice_address_to_string (from, tmpbuf);
+    nice_debug ("Agent %p : received 403: 'Forbidden' for %u/%u (stream/component) from [%s]:%u",
+        agent, stream->id, component->id, tmpbuf, nice_address_get_port (from));
+
+    for (i = stream->conncheck_list; i; i = i->next) {
+      CandidateCheckPair *p = i->data;
+
+      if (nice_address_equal (from, &p->remote->addr)) {
+        candidate_check_pair_fail (stream, agent, p);
+      }
+    }
+
+    /* if the pair was selected, it is no longer useful */
+    if (nice_address_equal (from, &pair->remote->c.addr)) {
+      pair->remote_consent.have = FALSE;
+      nice_debug ("Agent %p : pair %p lost consent for %u/%u (stream/component)",
+          agent, pair, stream->id, component->id);
+
+      /* explicit revocation received, we don't need to time out anymore */
+      if (pair->remote_consent.tick_source) {
+        g_source_destroy (pair->remote_consent.tick_source);
+        g_source_unref (pair->remote_consent.tick_source);
+        pair->remote_consent.tick_source = NULL;
+      }
+
+      agent_signal_component_state_change (agent, stream->id, component->id,
+          NICE_COMPONENT_STATE_FAILED);
+    }
+
+    return TRUE;
+  }
+
   username = (uint8_t *) stun_message_find (&req, STUN_ATTRIBUTE_USERNAME,
 					    &username_len);
 
@@ -4729,6 +4733,22 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, NiceStream *stream,
       } else {
         nice_debug ("Agent %p : received MSN incoming check from unknown remote candidate. "
             "Ignoring request", agent);
+        return TRUE;
+      }
+    }
+
+    if (!component->have_local_consent) {
+      /* RFC 7675: return forbidden to all authenticated requests if we should
+       * signal lost consent */
+      nice_debug("Agent %p : returning FORBIDDEN on stream/component %u/%u "
+          "for lost local consent", agent, stream->id, component->id);
+      if (stun_agent_init_error (&component->stun_agent, &msg, rbuf, rbuf_len,
+              &req, STUN_ERROR_FORBIDDEN)) {
+        rbuf_len = stun_agent_finish_message (&component->stun_agent, &msg, NULL, 0);
+        if (rbuf_len > 0 && agent->compatibility != NICE_COMPATIBILITY_MSN &&
+              agent->compatibility != NICE_COMPATIBILITY_OC2007) {
+          agent_socket_send (nicesock, from, rbuf_len, (const gchar*) rbuf);
+        }
         return TRUE;
       }
     }

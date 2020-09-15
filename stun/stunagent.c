@@ -337,6 +337,13 @@ StunValidationStatus stun_agent_validate (StunAgent *agent, StunMessage *msg,
     }
   }
 
+  if (agent->usage_flags & STUN_AGENT_USAGE_CONSENT_FRESHNESS &&
+      stun_message_get_class (msg) == STUN_ERROR) {
+    stun_message_find_error (msg, &error_code);
+    if (error_code == STUN_ERROR_FORBIDDEN) {
+      return STUN_VALIDATION_FORBIDDEN;
+    }
+  }
 
   if (sent_id_idx != -1 && sent_id_idx < STUN_AGENT_MAX_SAVED_IDS) {
     agent->sent_ids[sent_id_idx].valid = FALSE;

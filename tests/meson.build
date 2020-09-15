@@ -28,7 +28,8 @@ nice_tests = [
   'test-drop-invalid',
   'test-nomination',
   'test-interfaces',
-  'test-set-port-range'
+  'test-set-port-range',
+  'test-consent',
 ]
 
 if cc.has_header('arpa/inet.h')
