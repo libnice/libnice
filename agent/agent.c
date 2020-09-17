@@ -3984,6 +3984,59 @@ typedef enum {
   RECV_SUCCESS = 1,
 } RecvStatus;
 
+/* returns TRUE if nicesock is turn type */
+static gboolean
+_agent_recv_turn_message_unlocked (
+  NiceAgent *agent,
+  NiceStream *stream,
+  NiceComponent *component,
+  NiceSocket **nicesock,
+  NiceInputMessage *message,
+  RecvStatus * recv_status)
+{
+  GList *item;
+  gboolean is_turn = FALSE;
+
+  if ((*nicesock)->type == NICE_SOCKET_TYPE_UDP_TURN)
+    return TRUE;
+
+  if (component->turn_candidate &&
+      nice_socket_is_based_on (component->turn_candidate->sockptr, *nicesock) &&
+      nice_address_equal (message->from,
+          &component->turn_candidate->turn->server)) {
+    *recv_status = nice_udp_turn_socket_parse_recv_message (
+        component->turn_candidate->sockptr, nicesock, message);
+    return TRUE;
+  }
+
+  for (item = component->turn_servers; item; item = g_list_next (item)) {
+    TurnServer *turn = item->data;
+    GSList *i = NULL;
+
+    if (!nice_address_equal (message->from, &turn->server))
+      continue;
+
+    is_turn = TRUE;
+
+    for (i = component->local_candidates; i; i = i->next) {
+      NiceCandidateImpl *cand = i->data;
+
+      if (cand->c.type == NICE_CANDIDATE_TYPE_RELAYED &&
+          cand->turn == turn &&
+          cand->c.stream_id == stream->id &&
+          nice_socket_is_based_on (cand->sockptr, *nicesock)) {
+        nice_debug_verbose ("Agent %p : Packet received from TURN server candidate.",
+            agent);
+        *recv_status = nice_udp_turn_socket_parse_recv_message (cand->sockptr, nicesock,
+            message);
+        return TRUE;
+      }
+    }
+  }
+
+  return is_turn;
+}
+
 /*
  * agent_recv_message_unlocked:
  * @agent: a #NiceAgent
@@ -4014,10 +4067,9 @@ agent_recv_message_unlocked (
   NiceInputMessage *message)
 {
   NiceAddress from;
-  GList *item;
   RecvStatus retval;
   gint sockret;
-  gboolean is_turn = FALSE;
+  gboolean is_turn;
 
   /* We need an address for packet parsing, below. */
   if (message->from == NULL) {
@@ -4246,44 +4298,8 @@ agent_recv_message_unlocked (
         nice_address_get_port (message->from), message->length);
   }
 
-  if (nicesock->type == NICE_SOCKET_TYPE_UDP_TURN)
-    is_turn = TRUE;
-
-  if (!is_turn && component->turn_candidate &&
-      nice_socket_is_based_on (component->turn_candidate->sockptr, nicesock) &&
-      nice_address_equal (message->from,
-          &component->turn_candidate->turn->server)) {
-    is_turn = TRUE;
-    retval = nice_udp_turn_socket_parse_recv_message (
-        component->turn_candidate->sockptr, &nicesock, message);
-  }
-
-  for (item = component->turn_servers; item && !is_turn;
-       item = g_list_next (item)) {
-    TurnServer *turn = item->data;
-    GSList *i = NULL;
-
-    if (!nice_address_equal (message->from, &turn->server))
-      continue;
-
-    nice_debug_verbose ("Agent %p : Packet received from TURN server candidate.",
-        agent);
-    is_turn = TRUE;
-
-    for (i = component->local_candidates; i; i = i->next) {
-      NiceCandidateImpl *cand = i->data;
-
-      if (cand->c.type == NICE_CANDIDATE_TYPE_RELAYED &&
-          cand->turn == turn &&
-          cand->c.stream_id == stream->id &&
-          nice_socket_is_based_on (cand->sockptr, nicesock)) {
-        retval = nice_udp_turn_socket_parse_recv_message (cand->sockptr, &nicesock,
-            message);
-        break;
-      }
-    }
-    break;
-  }
+  is_turn = _agent_recv_turn_message_unlocked (agent, stream, component, &nicesock,
+      message, &retval);
 
   if (agent->force_relay && !is_turn) {
     /* Ignore messages not from TURN if TURN is required */
