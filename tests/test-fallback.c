@@ -215,16 +215,15 @@ static void priv_get_local_addr (NiceAgent *agent, guint stream_id, guint compon
 static int run_fallback_test (NiceAgent *lagent, NiceAgent *ragent, NiceAddress *baseaddr)
 {
   NiceAddress laddr, raddr, laddr_rtcp, raddr_rtcp;   
-  NiceCandidate cdes;
+  NiceCandidate *cdes;
   GSList *cands;
   guint ls_id, rs_id;
 
-  memset (&cdes, 0, sizeof(NiceCandidate));
-  cdes.priority = 100000;
-  strcpy (cdes.foundation, "1");
-  cdes.type = NICE_CANDIDATE_TYPE_HOST;
-  cdes.transport = NICE_CANDIDATE_TRANSPORT_UDP;
-  cdes.base_addr = *baseaddr;
+  cdes = nice_candidate_new (NICE_CANDIDATE_TYPE_HOST);
+  cdes->priority = 100000;
+  strcpy (cdes->foundation, "1");
+  cdes->transport = NICE_CANDIDATE_TRANSPORT_UDP;
+  cdes->base_addr = *baseaddr;
 
   /* step: initialize variables modified by the callbacks */
   global_components_ready = 0;
@@ -291,16 +290,16 @@ static int run_fallback_test (NiceAgent *lagent, NiceAgent *ragent, NiceAddress 
 
   /* step: exchange candidate information but not the credentials */
 
-  cands = g_slist_append (NULL, &cdes);
-  cdes.component_id = NICE_COMPONENT_TYPE_RTP;
-  cdes.addr = raddr;
+  cands = g_slist_append (NULL, cdes);
+  cdes->component_id = NICE_COMPONENT_TYPE_RTP;
+  cdes->addr = raddr;
   nice_agent_set_remote_candidates (lagent, ls_id, NICE_COMPONENT_TYPE_RTP, cands);
-  cdes.addr = laddr;
+  cdes->addr = laddr;
   nice_agent_set_remote_candidates (ragent, rs_id, NICE_COMPONENT_TYPE_RTP, cands);
-  cdes.component_id = NICE_COMPONENT_TYPE_RTCP;
-  cdes.addr = raddr_rtcp;
+  cdes->component_id = NICE_COMPONENT_TYPE_RTCP;
+  cdes->addr = raddr_rtcp;
   nice_agent_set_remote_candidates (lagent, ls_id, NICE_COMPONENT_TYPE_RTCP, cands);
-  cdes.addr = laddr_rtcp;
+  cdes->addr = laddr_rtcp;
   nice_agent_set_remote_candidates (ragent, rs_id, NICE_COMPONENT_TYPE_RTCP, cands);
 
   /* step: fall back to non-ICE mode on both sides */
@@ -339,6 +338,7 @@ static int run_fallback_test (NiceAgent *lagent, NiceAgent *ragent, NiceAddress 
   /* step: clean up resources and exit */
 
   g_slist_free (cands);
+  nice_candidate_free (cdes);
   nice_agent_remove_stream (lagent, ls_id);
   nice_agent_remove_stream (ragent, rs_id);
 
@@ -351,15 +351,14 @@ static int run_fallback_test (NiceAgent *lagent, NiceAgent *ragent, NiceAddress 
 static int run_safe_fallback_test (NiceAgent *lagent, NiceAgent *ragent, NiceAddress *baseaddr)
 {
   NiceAddress laddr, raddr, laddr_rtcp, raddr_rtcp;
-  NiceCandidate cdes;
+  NiceCandidate *cdes;
   guint ls_id, rs_id;
 
-  memset (&cdes, 0, sizeof(NiceCandidate));
-  cdes.priority = 100000;
-  strcpy (cdes.foundation, "1");
-  cdes.type = NICE_CANDIDATE_TYPE_HOST;
-  cdes.transport = NICE_CANDIDATE_TRANSPORT_UDP;
-  cdes.base_addr = *baseaddr;
+  cdes = nice_candidate_new (NICE_CANDIDATE_TYPE_HOST);
+  cdes->priority = 100000;
+  strcpy (cdes->foundation, "1");
+  cdes->transport = NICE_CANDIDATE_TRANSPORT_UDP;
+  cdes->base_addr = *baseaddr;
 
   /* step: initialize variables modified by the callbacks */
   global_components_ready = 0;
@@ -427,19 +426,19 @@ static int run_safe_fallback_test (NiceAgent *lagent, NiceAgent *ragent, NiceAdd
 
   /* step: exchange candidate information but not the credentials */
 
-  cdes.component_id = NICE_COMPONENT_TYPE_RTP;
-  cdes.addr = raddr;
-  g_assert (nice_agent_set_selected_remote_candidate (lagent, ls_id, NICE_COMPONENT_TYPE_RTP, &cdes));
+  cdes->component_id = NICE_COMPONENT_TYPE_RTP;
+  cdes->addr = raddr;
+  g_assert (nice_agent_set_selected_remote_candidate (lagent, ls_id, NICE_COMPONENT_TYPE_RTP, cdes));
 
-  cdes.addr = laddr;
-  g_assert (nice_agent_set_selected_remote_candidate (ragent, rs_id, NICE_COMPONENT_TYPE_RTP, &cdes));
+  cdes->addr = laddr;
+  g_assert (nice_agent_set_selected_remote_candidate (ragent, rs_id, NICE_COMPONENT_TYPE_RTP, cdes));
 
-  cdes.component_id = NICE_COMPONENT_TYPE_RTCP;
-  cdes.addr = raddr_rtcp;
-  g_assert (nice_agent_set_selected_remote_candidate (lagent, ls_id, NICE_COMPONENT_TYPE_RTCP, &cdes));
+  cdes->component_id = NICE_COMPONENT_TYPE_RTCP;
+  cdes->addr = raddr_rtcp;
+  g_assert (nice_agent_set_selected_remote_candidate (lagent, ls_id, NICE_COMPONENT_TYPE_RTCP, cdes));
 
-  cdes.addr = laddr_rtcp;
-  g_assert (nice_agent_set_selected_remote_candidate (ragent, rs_id, NICE_COMPONENT_TYPE_RTCP, &cdes));
+  cdes->addr = laddr_rtcp;
+  g_assert (nice_agent_set_selected_remote_candidate (ragent, rs_id, NICE_COMPONENT_TYPE_RTCP, cdes));
 
   g_debug ("test-fallback: Requested for fallback, running mainloop until component state change is completed...");
 
@@ -470,6 +469,7 @@ static int run_safe_fallback_test (NiceAgent *lagent, NiceAgent *ragent, NiceAdd
 
   /* step: clean up resources and exit */
 
+  nice_candidate_free (cdes);
   nice_agent_remove_stream (lagent, ls_id);
   nice_agent_remove_stream (ragent, rs_id);
 
