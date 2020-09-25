@@ -97,9 +97,17 @@ static void socket_set_writable_callback (NiceSocket *sock,
     NiceSocketWritableCb callback, gpointer user_data);
 static gboolean socket_is_based_on (NiceSocket *sock, NiceSocket *other);
 
+static void
+_append_extra_header (gpointer key, gpointer value, gpointer user_data)
+{
+  GString *str = user_data;
+  g_string_append_printf (str, "%s: %s\r\n", (gchar *)key, (gchar *)value);
+}
+
 NiceSocket *
 nice_http_socket_new (NiceSocket *base_socket,
-    NiceAddress *addr, gchar *username, gchar *password)
+    NiceAddress *addr, gchar *username, gchar *password,
+    GHashTable *extra_headers)
 {
   HttpPriv *priv;
   NiceSocket *sock = NULL;
@@ -133,7 +141,7 @@ nice_http_socket_new (NiceSocket *base_socket,
     /* Send HTTP CONNECT */
     {
       gchar *msg = NULL;
-      gchar *credential = NULL;
+      GString *str = NULL;
       gchar host[INET6_ADDRSTRLEN];
       gint port = nice_address_get_port (&priv->addr);
       GOutputVector local_bufs;
@@ -141,25 +149,31 @@ nice_http_socket_new (NiceSocket *base_socket,
 
       nice_address_to_string (&priv->addr, host);
 
-      if (username) {
-        gchar * userpass = g_strdup_printf ("%s:%s", username,
-            password ? password : "");
-        gchar * auth = g_base64_encode ((guchar *)userpass, strlen (userpass));
-        credential = g_strdup_printf ("Proxy-Authorization: Basic %s\r\n", auth);
-        g_free (auth);
-        g_free (userpass);
-      }
-      msg = g_strdup_printf ("CONNECT %s:%d HTTP/1.0\r\n"
+      str = g_string_new (NULL);
+      g_string_printf (str, "CONNECT %s:%d HTTP/1.0\r\n"
           "Host: %s\r\n"
           "User-Agent: %s\r\n"
           "Content-Length: 0\r\n"
           "Proxy-Connection: Keep-Alive\r\n"
           "Connection: Keep-Alive\r\n"
           "Cache-Control: no-cache\r\n"
-          "Pragma: no-cache\r\n"
-          "%s\r\n", host, port, host, HTTP_USER_AGENT,
-          credential? credential : "" );
-      g_free (credential);
+          "Pragma: no-cache\r\n",
+          host, port, host, HTTP_USER_AGENT);
+
+      if (extra_headers) {
+        g_hash_table_foreach (extra_headers, _append_extra_header, str);
+      }
+
+      if (username) {
+        gchar * userpass = g_strdup_printf ("%s:%s", username,
+            password ? password : "");
+        gchar * auth = g_base64_encode ((guchar *)userpass, strlen (userpass));
+        g_string_append_printf (str, "Proxy-Authorization: Basic %s\r\n", auth);
+        g_free (auth);
+        g_free (userpass);
+      }
+      g_string_append_printf (str, "\r\n");
+      msg = g_string_free (str, FALSE);
 
       local_bufs.buffer = msg;
       local_bufs.size = strlen (msg);

@@ -45,7 +45,8 @@ G_BEGIN_DECLS
 
 NiceSocket *
 nice_http_socket_new (NiceSocket *base_socket,
-    NiceAddress *addr, gchar *username, gchar *password);
+    NiceAddress *addr, gchar *username, gchar *password,
+    GHashTable *extra_headers);
 
 
 G_END_DECLS

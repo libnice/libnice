@@ -112,6 +112,7 @@ enum
   PROP_PROXY_PORT,
   PROP_PROXY_USERNAME,
   PROP_PROXY_PASSWORD,
+  PROP_PROXY_EXTRA_HEADERS,
   PROP_UPNP,
   PROP_UPNP_TIMEOUT,
   PROP_RELIABLE,
@@ -612,6 +613,23 @@ nice_agent_class_init (NiceAgentClass *klass)
         "Proxy server password",
         "The password used to authenticate with the proxy",
         NULL,
+        G_PARAM_READWRITE));
+
+  /**
+   * NiceAgent:proxy-extra-headers: (type GLib.HashTable(utf8,utf8))
+   *
+   * Optional extra headers to append to the HTTP proxy CONNECT request.
+   * Provided as key/value-pairs in hash table corresponding to
+   * header-name/header-value.
+   *
+   * Since: 0.1.20
+   */
+  g_object_class_install_property (gobject_class, PROP_PROXY_EXTRA_HEADERS,
+      g_param_spec_boxed (
+        "proxy-extra-headers",
+        "Extra headers for HTTP proxy connect",
+        "Extra headers to append to the HTTP proxy CONNECT request",
+        G_TYPE_HASH_TABLE,
         G_PARAM_READWRITE));
 
   /**
@@ -1427,6 +1445,10 @@ nice_agent_get_property (
       g_value_set_string (value, agent->proxy_password);
       break;
 
+    case PROP_PROXY_EXTRA_HEADERS:
+      g_value_set_boxed (value, agent->proxy_extra_headers);
+      break;
+
     case PROP_UPNP:
 #ifdef HAVE_GUPNP
       g_value_set_boolean (value, agent->upnp_enabled);
@@ -1564,6 +1586,12 @@ nice_agent_reset_all_stun_agents (NiceAgent *agent, gboolean only_software)
 }
 
 static void
+copy_hash_entry (const gchar *key, const gchar *value, GHashTable *hdest)
+{
+    g_hash_table_insert (hdest, g_strdup (key), g_strdup (value));
+}
+
+static void
 nice_agent_set_property (
   GObject *object,
   guint property_id,
@@ -1652,6 +1680,17 @@ nice_agent_set_property (
       agent->proxy_password = g_value_dup_string (value);
       break;
 
+    case PROP_PROXY_EXTRA_HEADERS:{
+      GHashTable *h = g_value_get_boxed (value);
+      if (agent->proxy_extra_headers) {
+        g_hash_table_unref (agent->proxy_extra_headers);
+      }
+      agent->proxy_extra_headers = g_hash_table_new_full (g_str_hash,
+          g_str_equal, g_free, g_free);
+      g_hash_table_foreach (h, (GHFunc)copy_hash_entry,
+          agent->proxy_extra_headers);
+      break;
+    }
     case PROP_UPNP_TIMEOUT:
 #ifdef HAVE_GUPNP
       agent->upnp_timeout = g_value_get_uint (value);
@@ -2673,7 +2712,8 @@ agent_create_tcp_turn_socket (NiceAgent *agent, NiceStream *stream,
             agent->proxy_username, agent->proxy_password);
       } else if (agent->proxy_type == NICE_PROXY_TYPE_HTTP){
         nicesock = nice_http_socket_new (nicesock, server,
-            agent->proxy_username, agent->proxy_password);
+            agent->proxy_username, agent->proxy_password,
+            agent->proxy_extra_headers);
       } else {
         nice_socket_free (nicesock);
         nicesock = NULL;
@@ -5761,7 +5801,10 @@ nice_agent_dispose (GObject *object)
   agent->proxy_username = NULL;
   g_free (agent->proxy_password);
   agent->proxy_password = NULL;
-
+  if (agent->proxy_extra_headers != NULL) {
+    g_hash_table_unref (agent->proxy_extra_headers);
+    agent->proxy_extra_headers = NULL;
+  }
   nice_rng_free (agent->rng);
   agent->rng = NULL;
 
