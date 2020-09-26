@@ -388,6 +388,10 @@ nice_interfaces_get_local_ips (gboolean include_loopback)
     if (ifa->ifa_addr == NULL)
       continue;
 
+    if (ifa->ifa_addr->sa_family != AF_INET &&
+        ifa->ifa_addr->sa_family != AF_INET6)
+      continue;
+
     /* Convert to a string. */
     addr_string = sockaddr_to_string (ifa->ifa_addr);
     if (addr_string == NULL) {
