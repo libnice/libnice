@@ -61,8 +61,10 @@ static void
 test_socket_initial_properties (void)
 {
   NiceSocket *sock;
+  GError *error = NULL;
 
-  sock = nice_udp_bsd_socket_new (NULL);
+  sock = nice_udp_bsd_socket_new (NULL, &error);
+  g_assert_no_error (error);
   g_assert (sock != NULL);
 
   // not bound to a particular interface
@@ -78,8 +80,10 @@ test_socket_address_properties (void)
 {
   NiceSocket *sock;
   NiceAddress tmp;
+  GError *error = NULL;
 
-  sock = nice_udp_bsd_socket_new (NULL);
+  sock = nice_udp_bsd_socket_new (NULL, &error);
+  g_assert_no_error (error);
   g_assert (sock != NULL);
 
   g_assert (nice_address_set_from_string (&tmp, "127.0.0.1"));
@@ -97,11 +101,14 @@ test_simple_send_recv (void)
   NiceSocket *client;
   NiceAddress tmp;
   gchar buf[5];
+  GError *error = NULL;
 
-  server = nice_udp_bsd_socket_new (NULL);
+  server = nice_udp_bsd_socket_new (NULL, &error);
+  g_assert_no_error (error);
   g_assert (server != NULL);
 
-  client = nice_udp_bsd_socket_new (NULL);
+  client = nice_udp_bsd_socket_new (NULL, &error);
+  g_assert_no_error (error);
   g_assert (client != NULL);
 
   g_assert (nice_address_set_from_string (&tmp, "127.0.0.1"));
@@ -132,8 +139,10 @@ test_zero_send_recv (void)
   gchar buf[5];
   NiceOutputMessage local_out_message;
   NiceInputMessage local_in_message;
+  GError *error = NULL;
 
-  sock = nice_udp_bsd_socket_new (NULL);
+  sock = nice_udp_bsd_socket_new (NULL, &error);
+  g_assert_no_error (error);
   g_assert (sock != NULL);
 
   g_assert (nice_address_set_from_string (&tmp, "127.0.0.1"));
@@ -168,11 +177,14 @@ test_multi_buffer_recv (void)
   NiceAddress tmp;
   guint8 buf[20];
   guint8 dummy_buf[9];
+  GError *error = NULL;
 
-  server = nice_udp_bsd_socket_new (NULL);
+  server = nice_udp_bsd_socket_new (NULL, &error);
+  g_assert_no_error (error);
   g_assert (server != NULL);
 
-  client = nice_udp_bsd_socket_new (NULL);
+  client = nice_udp_bsd_socket_new (NULL, &error);
+  g_assert_no_error (error);
   g_assert (client != NULL);
 
   g_assert (nice_address_set_from_string (&tmp, "127.0.0.1"));
@@ -239,11 +251,14 @@ test_multi_message_recv (guint n_sends, guint n_receives,
   NiceSocket *server;
   NiceSocket *client;
   NiceAddress tmp;
+  GError *error = NULL;
 
-  server = nice_udp_bsd_socket_new (NULL);
+  server = nice_udp_bsd_socket_new (NULL, &error);
+  g_assert_no_error (error);
   g_assert (server != NULL);
 
-  client = nice_udp_bsd_socket_new (NULL);
+  client = nice_udp_bsd_socket_new (NULL, &error);
+  g_assert_no_error (error);
   g_assert (client != NULL);
 
   g_assert (nice_address_set_from_string (&tmp, "127.0.0.1"));

@@ -44,7 +44,7 @@
 G_BEGIN_DECLS
 
 NiceSocket *
-nice_udp_bsd_socket_new (NiceAddress *addr);
+nice_udp_bsd_socket_new (NiceAddress *addr, GError **error);
 
 G_END_DECLS
 

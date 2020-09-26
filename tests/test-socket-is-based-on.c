@@ -84,6 +84,7 @@ main (int argc, char *argv[])
   GMainLoop *mainloop = NULL;
 
   NiceAddress addr;
+  GError *error = NULL;
 
   g_networking_init ();
 
@@ -95,7 +96,8 @@ main (int argc, char *argv[])
   nice_address_set_from_string (&addr, "127.0.0.1");
 
   /* Standalone socket */
-  udp_bsd = nice_udp_bsd_socket_new (&addr);
+  udp_bsd = nice_udp_bsd_socket_new (&addr, &error);
+  g_assert_no_error (error);
 
   /* tcp_passive -> pseudossl -> udp_turn_over_tcp */
   tcp_active = nice_tcp_active_socket_new (g_main_loop_get_context (mainloop),

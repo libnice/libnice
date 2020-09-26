@@ -646,12 +646,29 @@ priv_local_host_candidate_duplicate_port (NiceAgent *agent,
 
             nice_address_to_string (&candidate->addr, ip);
             nice_address_to_string (&c->addr, ip2);
-            nice_debug ("Agent %p: Local host %s candidate %s"
-                " for s%d:%d will use the same port %d as %s .", agent, ip,
+            nice_debug ("Agent %p: s%d/c%d: host candidate %s:[%s]:%u "
+                " will use the same port as %s:[%s]:%u", agent,
+                stream->id, component->id,
+                nice_candidate_transport_to_string (candidate->transport),
+                ip, nice_address_get_port (&candidate->addr),
                 nice_candidate_transport_to_string (c->transport),
-                stream->id, component->id, nice_address_get_port (&c->addr),
-                ip2);
+                ip2, nice_address_get_port (&c->addr));
             return FALSE;
+          }
+          {
+            gchar ip[NICE_ADDRESS_STRING_LEN];
+            gchar ip2[NICE_ADDRESS_STRING_LEN];
+
+            nice_address_to_string (&candidate->addr, ip);
+            nice_address_to_string (&c->addr, ip2);
+            nice_debug ("Agent %p: s%d/c%d: host candidate %s:[%s]:%u "
+                " has the same port as %s:[%s]:%u from s%d/c%d", agent,
+                candidate->stream_id, candidate->component_id,
+                nice_candidate_transport_to_string (candidate->transport),
+                ip, nice_address_get_port (&candidate->addr),
+                nice_candidate_transport_to_string (c->transport),
+                ip2, nice_address_get_port (&c->addr),
+                stream->id, component->id);
           }
 
           return TRUE;
@@ -714,7 +731,7 @@ HostCandidateResult discovery_add_local_host_candidate (
   /* note: candidate username and password are left NULL as stream
      level ufrag/password are used */
   if (transport == NICE_CANDIDATE_TRANSPORT_UDP) {
-    nicesock = nice_udp_bsd_socket_new (address);
+    nicesock = nice_udp_bsd_socket_new (address, &error);
   } else if (transport == NICE_CANDIDATE_TRANSPORT_TCP_ACTIVE) {
     nicesock = nice_tcp_active_socket_new (agent->main_context, address);
   } else if (transport == NICE_CANDIDATE_TRANSPORT_TCP_PASSIVE) {

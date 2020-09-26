@@ -419,13 +419,15 @@ static int run_full_test (NiceAgent *lagent, NiceAgent *ragent, NiceAddress *bas
     NiceCandidate *local_cand = NULL;
     NiceCandidate *remote_cand = NULL;
     NiceSocket *tmpsock;
+    GError *error = NULL;
 
     g_assert (nice_agent_get_selected_pair (lagent, ls_id, 1, &local_cand,
             &remote_cand));
     g_assert (local_cand);
     g_assert (remote_cand);
 
-    tmpsock = nice_udp_bsd_socket_new (NULL);
+    tmpsock = nice_udp_bsd_socket_new (NULL, &error);
+    g_assert_no_error (error);
     nice_socket_send (tmpsock, &remote_cand->addr, 4, "ABCD");
     nice_socket_send (tmpsock, &local_cand->addr, 5, "ABCDE");
     nice_socket_free (tmpsock);

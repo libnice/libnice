@@ -2699,7 +2699,7 @@ priv_add_new_candidate_discovery_turn (NiceAgent *agent,
       NiceSocket *new_socket;
       nice_address_set_port (&addr, 0);
 
-      new_socket = nice_udp_bsd_socket_new (&addr);
+      new_socket = nice_udp_bsd_socket_new (&addr, NULL);
       if (new_socket) {
         _priv_set_socket_tos (agent, new_socket, stream->tos);
         nice_component_attach_socket (component, new_socket);
@@ -3229,6 +3229,25 @@ agent_remove_local_candidate (NiceAgent *agent, NiceStream *stream,
 
 #endif
 
+static const gchar *
+priv_host_candidate_result_to_string (HostCandidateResult result)
+{
+  switch (result) {
+    case HOST_CANDIDATE_SUCCESS:
+      return "success";
+    case HOST_CANDIDATE_FAILED:
+      return "failed";
+    case HOST_CANDIDATE_CANT_CREATE_SOCKET:
+      return "can't create socket";
+    case HOST_CANDIDATE_REDUNDANT:
+      return "redundant";
+    case HOST_CANDIDATE_DUPLICATE_PORT:
+      return "duplicate port";
+    default:
+      g_assert_not_reached ();
+  }
+}
+
 NICEAPI_EXPORT gboolean
 nice_agent_gather_candidates (
   NiceAgent *agent,
@@ -3349,11 +3368,20 @@ nice_agent_gather_candidates (
         host_candidate = NULL;
         while (res == HOST_CANDIDATE_CANT_CREATE_SOCKET ||
             res == HOST_CANDIDATE_DUPLICATE_PORT) {
-          nice_debug ("Agent %p: Trying to create %s host candidate on port %d", agent,
-              nice_candidate_transport_to_string (transport), current_port);
           nice_address_set_port (addr, current_port);
           res = discovery_add_local_host_candidate (agent, stream->id, cid,
               addr, transport, accept_duplicate, &host_candidate);
+          if (nice_debug_is_enabled ()) {
+            gchar ip[NICE_ADDRESS_STRING_LEN];
+            nice_address_to_string (addr, ip);
+            nice_debug ("Agent %p: s%d/c%d: creation of host candidate "
+                "%s:[%s]:%u: %s%s", agent, stream->id, cid,
+                nice_candidate_transport_to_string (transport), ip,
+                transport == NICE_CANDIDATE_TRANSPORT_TCP_ACTIVE ?
+                    0 : current_port,
+                priv_host_candidate_result_to_string (res),
+                accept_duplicate ? " (accept duplicate)" : "");
+          }
           if (current_port > 0)
             current_port++;
           if (current_port > component->max_port)
@@ -3367,38 +3395,13 @@ nice_agent_gather_candidates (
             break;
         }
 
-        if (res == HOST_CANDIDATE_REDUNDANT) {
-          nice_debug ("Agent %p: Ignoring local candidate, it's redundant",
-              agent);
+        if (res == HOST_CANDIDATE_REDUNDANT ||
+            res == HOST_CANDIDATE_FAILED ||
+            res == HOST_CANDIDATE_CANT_CREATE_SOCKET)
           continue;
-        } else if (res == HOST_CANDIDATE_FAILED) {
-          nice_debug ("Agent %p: Could not retrieve component %d/%d", agent,
-              stream->id, cid);
-          continue;
-        } else if (res == HOST_CANDIDATE_CANT_CREATE_SOCKET) {
-          if (nice_debug_is_enabled ()) {
-            gchar ip[NICE_ADDRESS_STRING_LEN];
-
-            nice_address_to_string (addr, ip);
-            nice_debug ("Agent %p: Unable to add local host %s candidate %s"
-                " for s%d:%d. Invalid interface?", agent,
-                nice_candidate_transport_to_string (transport), ip,
-                stream->id, component->id);
-          }
-          continue;
-        } else if (res == HOST_CANDIDATE_DUPLICATE_PORT) {
-           if (nice_debug_is_enabled ()) {
-            gchar ip[NICE_ADDRESS_STRING_LEN];
-
-            nice_address_to_string (addr, ip);
-            nice_debug ("Agent %p: Unable to add local host %s candidate %s"
-                " for"
-                " s%d:%d. Every port is duplicated", agent, ip,
-                nice_candidate_transport_to_string (transport), stream->id,
-                component->id);
-           }
-           ret = FALSE;
-           goto error;
+        else if (res == HOST_CANDIDATE_DUPLICATE_PORT) {
+          ret = FALSE;
+          goto error;
         }
 
         found_local_address = TRUE;

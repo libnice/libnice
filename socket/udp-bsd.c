@@ -79,7 +79,7 @@ struct UdpBsdSocketPrivate
 };
 
 NiceSocket *
-nice_udp_bsd_socket_new (NiceAddress *addr)
+nice_udp_bsd_socket_new (NiceAddress *addr, GError **error)
 {
   union {
     struct sockaddr_storage storage;
@@ -100,7 +100,7 @@ nice_udp_bsd_socket_new (NiceAddress *addr)
 
   if (name.storage.ss_family == AF_UNSPEC || name.storage.ss_family == AF_INET) {
     gsock = g_socket_new (G_SOCKET_FAMILY_IPV4, G_SOCKET_TYPE_DATAGRAM,
-        G_SOCKET_PROTOCOL_UDP, NULL);
+        G_SOCKET_PROTOCOL_UDP, error);
     name.storage.ss_family = AF_INET;
 #ifdef HAVE_SA_LEN
     name.storage.ss_len = sizeof (struct sockaddr_in);
@@ -123,7 +123,7 @@ nice_udp_bsd_socket_new (NiceAddress *addr)
   g_socket_set_blocking (gsock, false);
   gaddr = g_socket_address_new_from_native (&name.addr, sizeof (name));
   if (gaddr != NULL) {
-    gret = g_socket_bind (gsock, gaddr, FALSE, NULL);
+    gret = g_socket_bind (gsock, gaddr, FALSE, error);
     g_object_unref (gaddr);
   }
 
