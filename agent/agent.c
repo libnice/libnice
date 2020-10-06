@@ -3926,6 +3926,7 @@ nice_agent_set_remote_credentials (
     g_strlcpy (stream->remote_password, pwd, NICE_STREAM_MAX_PWD);
 
     conn_check_remote_credentials_set(agent, stream);
+    conn_check_schedule_next (agent);
 
     ret = TRUE;
     goto done;
