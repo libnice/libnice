@@ -47,7 +47,12 @@ build msys2:
 
     # For some reason docker build hangs if this is included in the image, needs more troubleshooting
     - $env:PATH += ';C:\msys64\usr\bin;C:\msys64\mingw64\bin;C:\msys64\mingw32\bin'
+    # It seems that the gpg doesn't like the SSL secured version of the keyserver
     - C:\msys64\usr\bin\bash -c "pacman-key --init && pacman-key --populate msys2 && pacman-key --refresh-keys || true"
+    - echo "Download newest msys2 keyring"
+    - C:\msys64\usr\bin\bash -c "curl -O http://repo.msys2.org/msys/x86_64/msys2-keyring-r21.b39fb11-1-any.pkg.tar.xz && pacman -U --noconfirm msys2-keyring-r21.b39fb11-1-any.pkg.tar.xz"
+    - C:\msys64\usr\bin\bash -c "pacman-key --init && pacman-key --populate msys2"
+    - C:\msys64\usr\bin\bash -c "pacman-key --refresh-keys || true"
     - echo "Updating MSYS2"
     - C:\msys64\usr\bin\bash -c "pacman -Syuu --noconfirm || echo Update failed, ignoring"
     - echo "Killing all MSYS2 processes"
