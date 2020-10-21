@@ -193,7 +193,8 @@ pages:
     paths:
       - public
     expire_in: 1 year
-  trigger: libnice/libnice-website
+  # For some reason, trigger gets rejected
+  # trigger: libnice/libnice-website
   script:
     - mkdir public/
     - mv build/docs/reference/libnice/html/ public/libnice/
