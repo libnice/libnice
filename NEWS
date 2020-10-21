@@ -1,3 +1,18 @@
+libnice 0.1.18 (2020-10-20)
+===========================
+Remove the autotools build system, now only meson is available
+On Windows, use crypto library instead of CryptGenRandom() which is deprecated
+On Windows, use GetBestInterfaceEx() for UWP compatibility
+On Windows, fix the listing of interfaces to use the correct APIs
+On Windows, implement ignoring interfaces
+Accept receiving messages in multiple steps over TCP
+Accept duplicated ports as last option instead of spinning forever
+Use sendmmsg if possible to send multiple packets in one call
+Fail gathering if no port is available
+Hide the implementation of NiceCandidate, this hides some parts that were previously visible
+Enable TURN server connects where both TCP and UDP use the same port number
+Don't count rejected STUN messages as keepalive packets
+
 libnice 0.1.17 (2020-05-22)
 ===========================
 Add API to retrieve the underlying BSD sockets
