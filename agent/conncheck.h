@@ -111,7 +111,6 @@ int conn_check_add_for_candidate (NiceAgent *agent, guint stream_id, NiceCompone
 int conn_check_add_for_local_candidate (NiceAgent *agent, guint stream_id, NiceComponent *component, NiceCandidate *local);
 gboolean conn_check_add_for_candidate_pair (NiceAgent *agent, guint stream_id, NiceComponent *component, NiceCandidate *local, NiceCandidate *remote);
 void conn_check_free (NiceAgent *agent);
-void conn_check_schedule_next (NiceAgent *agent);
 int conn_check_send (NiceAgent *agent, CandidateCheckPair *pair);
 void conn_check_prune_stream (NiceAgent *agent, NiceStream *stream);
 gboolean conn_check_handle_inbound_stun (NiceAgent *agent, NiceStream *stream, NiceComponent *component, NiceSocket *udp_socket, const NiceAddress *from, gchar *buf, guint len);

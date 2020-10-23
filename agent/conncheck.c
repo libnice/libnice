@@ -80,6 +80,7 @@ static CandidateCheckPair *priv_conn_check_add_for_candidate_pair_matched (
     NiceCandidate *local, NiceCandidate *remote, NiceCheckState initial_state);
 static gboolean priv_conn_keepalive_tick_agent_locked (NiceAgent *agent,
     gpointer pointer);
+static void priv_schedule_next (NiceAgent *agent);
 
 static gint64 priv_timer_remainder (gint64 timer, gint64 now)
 {
@@ -303,8 +304,10 @@ priv_add_pair_to_triggered_check_queue (NiceAgent *agent, CandidateCheckPair *pa
   g_assert (pair);
 
   if (agent->triggered_check_queue == NULL ||
-      g_slist_find (agent->triggered_check_queue, pair) == NULL)
+      g_slist_find (agent->triggered_check_queue, pair) == NULL) {
     agent->triggered_check_queue = g_slist_append (agent->triggered_check_queue, pair);
+    priv_schedule_next (agent);
+  }
 }
 
 /* Remove the pair from the triggered checks list
@@ -1743,7 +1746,7 @@ static gboolean priv_turn_allocate_refresh_tick_agent_locked (NiceAgent *agent,
 /*
  * Initiates the next pending connectivity check.
  */
-void conn_check_schedule_next (NiceAgent *agent)
+static void priv_schedule_next (NiceAgent *agent)
 {
   if (agent->discovery_unsched_items > 0)
     nice_debug ("Agent %p : WARN: starting conn checks before local candidate gathering is finished.", agent);
@@ -2362,6 +2365,8 @@ static CandidateCheckPair *priv_add_new_check_pair (NiceAgent *agent,
 
   stream->conncheck_list = g_slist_insert_sorted (stream->conncheck_list, pair,
       (GCompareFunc)conn_check_compare);
+
+  priv_schedule_next (agent);
 
   nice_debug ("Agent %p : added a new pair %p with foundation '%s' and "
       "transport %s:%s to stream %u component %u",
@@ -3141,20 +3146,17 @@ static gboolean priv_schedule_triggered_check (NiceAgent *agent, NiceStream *str
                 /* If the component for this pair is in failed state, move it
                  * back to connecting, and reinitiate the timers
                  */
-                if (component->state == NICE_COMPONENT_STATE_FAILED) {
+                if (component->state == NICE_COMPONENT_STATE_FAILED)
                   agent_signal_component_state_change (agent, stream->id,
                       component->id, NICE_COMPONENT_STATE_CONNECTING);
-                  conn_check_schedule_next (agent);
                 /* If the component if in ready state, move it back to
                  * connected as this failed pair with a higher priority
                  * than the nominated pair requires to pursue the
                  * conncheck
                  */
-                } else if (component->state == NICE_COMPONENT_STATE_READY) {
+                else if (component->state == NICE_COMPONENT_STATE_READY)
                   agent_signal_component_state_change (agent, stream->id,
                       component->id, NICE_COMPONENT_STATE_CONNECTED);
-                  conn_check_schedule_next (agent);
-                }
             }
             break;
 	  case NICE_CHECK_SUCCEEDED:
@@ -4109,9 +4111,6 @@ static gboolean priv_map_reply_to_relay_request (NiceAgent *agent, StunMessage *
                   resp);
             }
             priv_add_new_turn_refresh (agent, d, relay_cand, lifetime);
-
-            /* In case a new candidate has been added */
-            conn_check_schedule_next (agent);
           }
 
           d->stun_message.buffer = NULL;
