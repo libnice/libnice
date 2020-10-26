@@ -197,7 +197,8 @@ nice_component_remove_socket (NiceAgent *agent, NiceComponent *cmp,
       conn_check_prune_socket (agent, stream, cmp, candidate->sockptr);
       nice_component_detach_socket (cmp, candidate->sockptr);
     }
-    agent_remove_local_candidate (agent, stream, (NiceCandidate *) candidate);
+    if (stream)
+      agent_remove_local_candidate (agent, stream, (NiceCandidate *) candidate);
     nice_candidate_free ((NiceCandidate *)candidate);
 
     cmp->local_candidates = g_slist_delete_link (cmp->local_candidates, i);
