@@ -3773,6 +3773,8 @@ static gboolean priv_add_remote_candidate (
   NiceCandidateImpl *c;
   CandidateCheckPair *pair;
 
+  if (type == NICE_CANDIDATE_TYPE_PEER_REFLEXIVE)
+    return FALSE;
   if (transport == NICE_CANDIDATE_TRANSPORT_UDP &&
       !agent->use_ice_udp)
     return FALSE;
