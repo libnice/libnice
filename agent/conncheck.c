@@ -4906,10 +4906,14 @@ conn_check_prune_socket (NiceAgent *agent, NiceStream *stream, NiceComponent *co
     if (p_count == 0)
       agent_signal_component_state_change (agent,
         stream->id, component->id, NICE_COMPONENT_STATE_FAILED);
-    else if (p_nominated == 0 &&
-        component->state >= NICE_COMPONENT_STATE_CONNECTED)
-      agent_signal_component_state_change (agent,
-        stream->id, component->id, NICE_COMPONENT_STATE_CONNECTING);
+    else if (p_nominated == 0) {
+      if (component->state == NICE_COMPONENT_STATE_READY)
+          agent_signal_component_state_change (agent,
+            stream->id, component->id, NICE_COMPONENT_STATE_FAILED);
+      else if (component->state == NICE_COMPONENT_STATE_CONNECTED)
+          agent_signal_component_state_change (agent,
+            stream->id, component->id, NICE_COMPONENT_STATE_CONNECTING);
+    }
   }
 
   /* outside of the previous loop, because it may
