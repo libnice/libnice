@@ -2557,7 +2557,10 @@ void agent_signal_component_state_change (NiceAgent *agent, guint stream_id, gui
             TRANSITION (FAILED, GATHERING) ||
             /* Possible by calling set_remote_candidates() without calling
              * nice_agent_gather_candidates(): */
-            TRANSITION (DISCONNECTED, CONNECTING));
+            TRANSITION (DISCONNECTED, CONNECTING) ||
+            /* If a tcp socket of connected pair is disconnected, in
+             * conn_check_prune_socket(): */
+            TRANSITION (CONNECTED, CONNECTING));
 
 #undef TRANSITION
 

@@ -4852,14 +4852,20 @@ conn_check_prune_socket (NiceAgent *agent, NiceStream *stream, NiceComponent *co
 {
   GSList *l;
   gboolean pair_failed = FALSE;
+  gboolean selected_pair_failed = FALSE;
+  guint p_nominated = 0, p_count = 0;
 
   if (component->selected_pair.local &&
-      component->selected_pair.local->sockptr == sock &&
-      component->state == NICE_COMPONENT_STATE_READY) {
+      component->selected_pair.local->sockptr == sock) {
     nice_debug ("Agent %p: Selected pair socket %p has been destroyed, "
         "declaring failed", agent, sock);
-    agent_signal_component_state_change (agent,
-        stream->id, component->id, NICE_COMPONENT_STATE_FAILED);
+    selected_pair_failed = TRUE;
+    if (component->state == NICE_COMPONENT_STATE_READY)
+      agent_signal_component_state_change (agent,
+          stream->id, component->id, NICE_COMPONENT_STATE_FAILED);
+    else if (component->state == NICE_COMPONENT_STATE_CONNECTED)
+      agent_signal_component_state_change (agent,
+          stream->id, component->id, NICE_COMPONENT_STATE_CONNECTING);
   }
 
   /* Prune from the candidate check pairs. */
@@ -4867,18 +4873,43 @@ conn_check_prune_socket (NiceAgent *agent, NiceStream *stream, NiceComponent *co
     CandidateCheckPair *p = l->data;
     GSList *next = l->next;
 
+    if (p->component_id != component->id) {
+      l = next;
+      continue;
+    }
+
+    if (selected_pair_failed && !p->retransmit && p->stun_transactions)
+      p->retransmit = TRUE;
+
     if ((p->local != NULL && ((NiceCandidateImpl*) p->local)->sockptr == sock) ||
         (p->remote != NULL && ((NiceCandidateImpl*)p->remote)->sockptr == sock) ||
         (p->sockptr == sock)) {
       nice_debug ("Agent %p : Retransmissions failed, giving up on pair %p",
           agent, p);
+      if (component->selected_pair.local == ((NiceCandidateImpl *)p->local) &&
+          component->selected_pair.remote == ((NiceCandidateImpl *)p->remote))
+        selected_pair_failed = TRUE;
       candidate_check_pair_fail (stream, agent, p);
       candidate_check_pair_free (agent, p);
       stream->conncheck_list = g_slist_delete_link (stream->conncheck_list, l);
       pair_failed = TRUE;
+    } else {
+      p_count++;
+      if (p->nominated)
+        p_nominated++;
     }
 
     l = next;
+  }
+
+  if (pair_failed) {
+    if (p_count == 0)
+      agent_signal_component_state_change (agent,
+        stream->id, component->id, NICE_COMPONENT_STATE_FAILED);
+    else if (p_nominated == 0 &&
+        component->state >= NICE_COMPONENT_STATE_CONNECTED)
+      agent_signal_component_state_change (agent,
+        stream->id, component->id, NICE_COMPONENT_STATE_CONNECTING);
   }
 
   /* outside of the previous loop, because it may

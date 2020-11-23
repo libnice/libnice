@@ -185,11 +185,8 @@ nice_component_remove_socket (NiceAgent *agent, NiceComponent *cmp,
       continue;
     }
 
-    if (candidate == cmp->selected_pair.local) {
+    if (candidate == cmp->selected_pair.local)
       nice_component_clear_selected_pair (cmp);
-      agent_signal_component_state_change (agent, cmp->stream_id,
-          cmp->id, NICE_COMPONENT_STATE_FAILED);
-    }
 
     refresh_prune_candidate (agent, candidate);
     if (candidate->sockptr != nsocket && stream) {
@@ -217,11 +214,8 @@ nice_component_remove_socket (NiceAgent *agent, NiceComponent *cmp,
       continue;
     }
 
-    if (candidate == cmp->selected_pair.remote) {
+    if (candidate == cmp->selected_pair.remote)
       nice_component_clear_selected_pair (cmp);
-      agent_signal_component_state_change (agent, cmp->stream_id,
-          cmp->id, NICE_COMPONENT_STATE_FAILED);
-    }
 
     if (stream)
       conn_check_prune_socket (agent, stream, cmp, candidate->sockptr);
