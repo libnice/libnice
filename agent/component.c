@@ -386,6 +386,8 @@ nice_component_close (NiceAgent *agent, NiceStream *stream, NiceComponent *cmp)
     g_free ((gpointer) vec->buffer);
     g_slice_free (GOutputVector, vec);
   }
+
+  g_free (cmp->recv_buffer);
 }
 
 /*
@@ -921,14 +923,13 @@ emit_io_callback_cb (gpointer user_data)
 /* This must be called with the agent lock *held*. */
 void
 nice_component_emit_io_callback (NiceAgent *agent, NiceComponent *component,
-    const guint8 *buf, gsize buf_len)
+    gsize buf_len)
 {
   guint stream_id, component_id;
   NiceAgentRecvFunc io_callback;
   gpointer io_user_data;
 
   g_assert (component != NULL);
-  g_assert (buf != NULL);
   g_assert (buf_len > 0);
 
   stream_id = component->stream_id;
@@ -955,7 +956,7 @@ nice_component_emit_io_callback (NiceAgent *agent, NiceComponent *component,
     /* Thread owns the main context, so invoke the callback directly. */
     agent_unlock_and_emit (agent);
     io_callback (agent, stream_id,
-        component_id, buf_len, (gchar *) buf, io_user_data);
+        component_id, buf_len, (gchar *) component->recv_buffer, io_user_data);
     agent_lock (agent);
   } else {
     IOCallbackData *data;
@@ -964,7 +965,7 @@ nice_component_emit_io_callback (NiceAgent *agent, NiceComponent *component,
 
     /* Slow path: Current thread doesn’t own the Component’s context at the
      * moment, so schedule the callback in an idle handler. */
-    data = io_callback_data_new (buf, buf_len);
+    data = io_callback_data_new (component->recv_buffer, buf_len);
     g_queue_push_tail (&component->pending_io_messages,
         data);  /* transfer ownership */
 
@@ -1114,6 +1115,13 @@ nice_component_init (NiceComponent *component)
   g_queue_init (&component->incoming_checks);
 
   component->have_local_consent = TRUE;
+
+/* Maximum size of a UDP packet’s payload, as the packet’s length field is 16b
+ * wide. */
+#define MAX_BUFFER_SIZE ((1 << 16) - 1)  /* 65535 */
+
+  component->recv_buffer = g_malloc (MAX_BUFFER_SIZE);
+  component->recv_buffer_size = MAX_BUFFER_SIZE;
 }
 
 static void

@@ -233,6 +233,14 @@ struct _NiceComponent {
   GQueue queued_tcp_packets;
 
   gboolean have_local_consent;
+
+  /* scratch buffer for use in the component_io_cb() function to
+   * hold the incoming packet, allocated at component creation, since
+   * the callback is a critical path, where memory allocation should
+   * be avoided.
+   */
+  guint8 *recv_buffer;
+  guint recv_buffer_size;
 };
 
 typedef struct {
@@ -295,7 +303,7 @@ nice_component_set_io_callback (NiceComponent *component,
     GError **error);
 void
 nice_component_emit_io_callback (NiceAgent *agent, NiceComponent *component,
-    const guint8 *buf, gsize buf_len);
+    gsize buf_len);
 gboolean
 nice_component_has_io_callback (NiceComponent *component);
 void

@@ -75,10 +75,6 @@
 #include "pseudotcp.h"
 #include "agent-enum-types.h"
 
-/* Maximum size of a UDP packet’s payload, as the packet’s length field is 16b
- * wide. */
-#define MAX_BUFFER_SIZE ((1 << 16) - 1)  /* 65535 */
-
 #define DEFAULT_STUN_PORT  3478
 #define DEFAULT_UPNP_TIMEOUT 200  /* milliseconds */
 #define DEFAULT_IDLE_TIMEOUT 5000 /* milliseconds */
@@ -1967,12 +1963,12 @@ pseudo_tcp_socket_readable (PseudoTcpSocket *sock, gpointer user_data)
    * no data loss of packets already received and dequeued. */
   if (has_io_callback) {
     do {
-      guint8 buf[MAX_BUFFER_SIZE];
       gssize len;
 
       /* FIXME: Why copy into a temporary buffer here? Why can’t the I/O
        * callbacks be emitted directly from the pseudo-TCP receive buffer? */
-      len = pseudo_tcp_socket_recv (sock, (gchar *) buf, sizeof(buf));
+      len = pseudo_tcp_socket_recv (sock, (gchar *) component->recv_buffer,
+          component->recv_buffer_size);
 
       nice_debug ("%s: I/O callback case: Received %" G_GSSIZE_FORMAT " bytes",
           G_STRFUNC, len);
@@ -2006,7 +2002,7 @@ pseudo_tcp_socket_readable (PseudoTcpSocket *sock, gpointer user_data)
         break;
       }
 
-      nice_component_emit_io_callback (agent, component, buf, len);
+      nice_component_emit_io_callback (agent, component, len);
 
       if (!agent_find_component (agent, stream_id, component_id,
               &stream, &component)) {
@@ -5748,10 +5744,9 @@ component_io_cb (GSocket *gsocket, GIOCondition condition, gpointer user_data)
      * In fact, in the case of a reliable agent with I/O callbacks, zero
      * memcpy()s can be achieved (for in-order packet delivery) by emittin the
      * I/O callback directly from the pseudo-TCP receive buffer. */
-    guint8 local_body_buf[MAX_BUFFER_SIZE];
     GInputVector local_bufs[] = {
       { local_header_buf, sizeof (local_header_buf) },
-      { local_body_buf, sizeof (local_body_buf) },
+      { component->recv_buffer, component->recv_buffer_size },
     };
     NiceInputMessage local_message = {
       local_bufs, G_N_ELEMENTS (local_bufs), NULL, 0
@@ -5798,8 +5793,9 @@ component_io_cb (GSocket *gsocket, GIOCondition condition, gpointer user_data)
     }
   } else if (has_io_callback) {
     while (has_io_callback) {
-      guint8 local_buf[MAX_BUFFER_SIZE];
-      GInputVector local_bufs = { local_buf, sizeof (local_buf) };
+      GInputVector local_bufs = {
+        component->recv_buffer, component->recv_buffer_size
+      };
       NiceInputMessage local_message = { &local_bufs, 1, NULL, 0 };
       RecvStatus retval;
 
@@ -5824,7 +5820,7 @@ component_io_cb (GSocket *gsocket, GIOCondition condition, gpointer user_data)
             " bytes", G_STRFUNC, agent, local_message.length);
 
         if (local_message.length > 0) {
-          nice_component_emit_io_callback (agent, component, local_buf,
+          nice_component_emit_io_callback (agent, component,
               local_message.length);
         }
       }
