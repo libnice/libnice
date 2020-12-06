@@ -108,6 +108,7 @@ typedef struct {
 
   GByteArray *fragment_buffer;
   NiceAddress from;
+  uint8_t *send_buffer;
 } UdpTurnPriv;
 
 
@@ -256,6 +257,8 @@ nice_udp_turn_socket_new (GMainContext *ctx, NiceAddress *addr,
           (GDestroyNotify) nice_address_free,
           priv_send_data_queue_destroy);
 
+  priv->send_buffer = g_malloc (STUN_MAX_MESSAGE_SIZE);
+
   sock->type = NICE_SOCKET_TYPE_UDP_TURN;
   sock->fileno = NULL;
   sock->addr = *addr;
@@ -332,6 +335,8 @@ socket_close (NiceSocket *sock)
   if (priv->fragment_buffer) {
     g_byte_array_free(priv->fragment_buffer, TRUE);
   }
+
+  g_free (priv->send_buffer);
 
   g_free (priv);
 
@@ -787,7 +792,7 @@ socket_send_message (NiceSocket *sock, const NiceAddress *to,
 {
   UdpTurnPriv *priv = (UdpTurnPriv *) sock->priv;
   StunMessage msg;
-  uint8_t buffer[STUN_MAX_MESSAGE_SIZE];
+  uint8_t *buffer;
   size_t msg_len;
   union {
     struct sockaddr_storage storage;
@@ -799,6 +804,8 @@ socket_send_message (NiceSocket *sock, const NiceAddress *to,
 
   /* Make sure socket has not been freed: */
   g_assert (sock->priv != NULL);
+
+  buffer = priv->send_buffer;
 
   for (i = priv->channels; i; i = i->next) {
     ChannelBinding *b = i->data;
@@ -815,7 +822,7 @@ socket_send_message (NiceSocket *sock, const NiceAddress *to,
         priv->compatibility == NICE_TURN_SOCKET_COMPATIBILITY_RFC5766) {
       gsize message_len = output_message_get_size (message);
 
-      if (message_len + sizeof(uint32_t) <= sizeof(buffer)) {
+      if (message_len + sizeof(uint32_t) <= STUN_MAX_MESSAGE_SIZE) {
         guint j;
         uint16_t len16, channel16;
         gsize message_offset = 0;
@@ -861,7 +868,7 @@ socket_send_message (NiceSocket *sock, const NiceAddress *to,
     if (priv->compatibility == NICE_TURN_SOCKET_COMPATIBILITY_DRAFT9 ||
         priv->compatibility == NICE_TURN_SOCKET_COMPATIBILITY_RFC5766) {
       if (!stun_agent_init_indication (&priv->agent, &msg,
-              buffer, sizeof(buffer), STUN_IND_SEND))
+              buffer, STUN_MAX_MESSAGE_SIZE, STUN_IND_SEND))
         goto error;
       if (stun_message_append_xor_addr (&msg, STUN_ATTRIBUTE_PEER_ADDRESS,
               &sa.storage, sizeof(sa)) !=
@@ -869,7 +876,7 @@ socket_send_message (NiceSocket *sock, const NiceAddress *to,
         goto error;
     } else {
       if (!stun_agent_init_request (&priv->agent, &msg,
-              buffer, sizeof(buffer), STUN_SEND))
+              buffer, STUN_MAX_MESSAGE_SIZE, STUN_SEND))
         goto error;
 
       if (stun_message_append32 (&msg, STUN_ATTRIBUTE_MAGIC_COOKIE,
