@@ -5624,6 +5624,11 @@ nice_agent_dispose (GObject *object)
     free_queued_signal (sig);
   }
 
+  if (agent->refresh_list)
+    g_warning ("Agent %p : We still have alive TURN refreshes. Consider "
+        "using nice_agent_close_async() to prune them before releasing the "
+        "agent.", agent);
+
   g_free (agent->stun_server_ip);
   agent->stun_server_ip = NULL;
 
