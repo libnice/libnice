@@ -5629,6 +5629,15 @@ nice_agent_dispose (GObject *object)
         "using nice_agent_close_async() to prune them before releasing the "
         "agent.", agent);
 
+  for (i = agent->refresh_list; i;) {
+    GSList *next = i->next;
+    CandidateRefresh *refresh = i->data;
+
+    if (!refresh->disposing)
+      refresh_free (agent, refresh);
+    i = next;
+  }
+
   g_free (agent->stun_server_ip);
   agent->stun_server_ip = NULL;
 
