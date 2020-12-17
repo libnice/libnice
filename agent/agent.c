@@ -7127,6 +7127,15 @@ on_agent_refreshes_pruned (NiceAgent *agent, gpointer user_data)
 {
   GTask *task = user_data;
 
+  if (agent->refresh_list) {
+    GSource *timeout_source = NULL;
+    agent_timeout_add_with_context (agent, &timeout_source,
+        "Async refresh prune", agent->stun_initial_timeout,
+        on_agent_refreshes_pruned, user_data);
+    g_source_unref (timeout_source);
+    return G_SOURCE_REMOVE;
+  }
+
   /* This is called from a timeout cb with agent lock held */
 
   agent_unlock (agent);
