@@ -286,11 +286,7 @@ typedef struct {
 static void on_refresh_removed (RefreshPruneAsyncData *data)
 {
   if (data->items_to_free == 0 || --(data->items_to_free) == 0) {
-    GSource *timeout_source = NULL;
-    agent_timeout_add_with_context (data->agent, &timeout_source,
-        "Async refresh prune", 0, data->cb, data->user_data);
-
-    g_source_unref (timeout_source);
+    data->cb (data->agent, data->user_data);
     g_free (data);
   }
 }
