@@ -209,18 +209,17 @@ static void priv_get_local_addr (NiceAgent *agent, guint stream_id, guint compon
 static int run_consent_test (NiceAgent *lagent, NiceAgent *ragent, NiceAddress *baseaddr)
 {
   NiceAddress laddr, raddr, laddr_rtcp, raddr_rtcp;   
-  NiceCandidate cdes;
+  NiceCandidate *cdes;
   GSList *cands;
   guint ls_id, rs_id;
 
   /* XXX: dear compiler, these are for you: */
   (void)baseaddr;
 
-  memset (&cdes, 0, sizeof(NiceCandidate));
-  cdes.priority = 10000;
-  strcpy (cdes.foundation, "1");
-  cdes.type = NICE_CANDIDATE_TYPE_HOST;
-  cdes.transport = NICE_CANDIDATE_TRANSPORT_UDP;
+  cdes = nice_candidate_new (NICE_CANDIDATE_TYPE_HOST);
+  cdes->priority = 100000;
+  strcpy (cdes->foundation, "1");
+  cdes->transport = NICE_CANDIDATE_TRANSPORT_UDP;
 
   /* step: initialize variables modified by the callbacks */
   global_components_ready = 0;
@@ -288,7 +287,7 @@ static int run_consent_test (NiceAgent *lagent, NiceAgent *ragent, NiceAddress *
            nice_address_get_port (&laddr_rtcp));
 
   /* step: pass the remote candidates to agents  */
-  cands = g_slist_append (NULL, &cdes);
+  cands = g_slist_append (NULL, cdes);
   {
       gchar *ufrag = NULL, *password = NULL;
       nice_agent_get_local_credentials(lagent, ls_id, &ufrag, &password);
@@ -302,15 +301,15 @@ static int run_consent_test (NiceAgent *lagent, NiceAgent *ragent, NiceAddress *
       g_free (ufrag);
       g_free (password);
   }
-  cdes.component_id = NICE_COMPONENT_TYPE_RTP;
-  cdes.addr = raddr;
+  cdes->component_id = NICE_COMPONENT_TYPE_RTP;
+  cdes->addr = raddr;
   nice_agent_set_remote_candidates (lagent, ls_id, NICE_COMPONENT_TYPE_RTP, cands);
-  cdes.addr = laddr;
+  cdes->addr = laddr;
   nice_agent_set_remote_candidates (ragent, rs_id, NICE_COMPONENT_TYPE_RTP, cands);
-  cdes.component_id = NICE_COMPONENT_TYPE_RTCP;
-  cdes.addr = raddr_rtcp;
+  cdes->component_id = NICE_COMPONENT_TYPE_RTCP;
+  cdes->addr = raddr_rtcp;
   nice_agent_set_remote_candidates (lagent, ls_id, NICE_COMPONENT_TYPE_RTCP, cands);
-  cdes.addr = laddr_rtcp;
+  cdes->addr = laddr_rtcp;
   nice_agent_set_remote_candidates (ragent, rs_id, NICE_COMPONENT_TYPE_RTCP, cands);
 
   g_debug ("test-consent: Set properties, next running mainloop until connectivity checks succeed...");
@@ -387,15 +386,15 @@ static int run_consent_test (NiceAgent *lagent, NiceAgent *ragent, NiceAddress *
   global_components_failed = 0;
 
   /* step: exchange remote candidates */
-  cdes.component_id = NICE_COMPONENT_TYPE_RTP;
-  cdes.addr = raddr;
+  cdes->component_id = NICE_COMPONENT_TYPE_RTP;
+  cdes->addr = raddr;
   nice_agent_set_remote_candidates (lagent, ls_id, NICE_COMPONENT_TYPE_RTP, cands);
-  cdes.addr = laddr;
+  cdes->addr = laddr;
   nice_agent_set_remote_candidates (ragent, rs_id, NICE_COMPONENT_TYPE_RTP, cands);
-  cdes.component_id = NICE_COMPONENT_TYPE_RTCP;
-  cdes.addr = raddr_rtcp;
+  cdes->component_id = NICE_COMPONENT_TYPE_RTCP;
+  cdes->addr = raddr_rtcp;
   nice_agent_set_remote_candidates (lagent, ls_id, NICE_COMPONENT_TYPE_RTCP, cands);
-  cdes.addr = laddr_rtcp;
+  cdes->addr = laddr_rtcp;
   nice_agent_set_remote_candidates (ragent, rs_id, NICE_COMPONENT_TYPE_RTCP, cands);
 
   g_debug ("test-consent: run main loop after ICE restart...");
@@ -421,6 +420,7 @@ static int run_consent_test (NiceAgent *lagent, NiceAgent *ragent, NiceAddress *
   /* step: clean up resources and exit */
 
   g_slist_free (cands);
+  nice_candidate_free (cdes);
   nice_agent_remove_stream (lagent, ls_id);
   nice_agent_remove_stream (ragent, rs_id);
 
