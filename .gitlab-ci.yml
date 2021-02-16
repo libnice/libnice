@@ -38,7 +38,7 @@ build msys2:
     ErrorActionPreference: 'Stop'
     WarningPreference: 'Stop'
   before_script:
-    - pip3 install -U meson
+    - pip3 install -U meson==0.56.2
   script:
     # Make sure powershell exists on errors
     # https://docs.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_preference_variables?view=powershell-6
