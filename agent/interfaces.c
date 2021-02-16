@@ -576,7 +576,7 @@ nice_interfaces_get_local_ips (gboolean include_loopback)
 #ifdef IGNORED_IFACE_PREFIX
   const gchar **prefix;
   gboolean ignored;
-  const char output[256];
+  char output[256];
 #endif
 
   addresses = _nice_get_adapters_addresses ();
@@ -679,7 +679,6 @@ nice_interfaces_get_ip_for_interface (gchar *interface_name)
     return NULL;
 
   for (a = addresses; a != NULL; a = a->Next) {
-    IP_ADAPTER_UNICAST_ADDRESS *unicast;
     gchar *name;
 
     /* Various conditions for ignoring the interface. */
