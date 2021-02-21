@@ -2599,7 +2599,10 @@ void agent_signal_component_state_change (NiceAgent *agent, guint stream_id, gui
             TRANSITION (DISCONNECTED, CONNECTING) ||
             /* If a tcp socket of connected pair is disconnected, in
              * conn_check_prune_socket(): */
-            TRANSITION (CONNECTED, CONNECTING));
+            TRANSITION (CONNECTED, CONNECTING) ||
+            /* with ICE restart in nice_stream_restart() */
+            TRANSITION (CONNECTED, GATHERING) ||
+            TRANSITION (READY, GATHERING));
 
 #undef TRANSITION
 
@@ -5562,8 +5565,8 @@ nice_agent_restart_stream (
     goto done;
   }
 
-  /* step: reset local credentials for the stream and
-   * clean up the list of remote candidates */
+  /* step: reset local credentials for the stream,
+   * clean up the list of candidates, and the conncheck list */
   nice_stream_restart (stream, agent);
 
   res = TRUE;
