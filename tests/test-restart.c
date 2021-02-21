@@ -202,7 +202,6 @@ static int run_restart_test (NiceAgent *lagent, NiceAgent *ragent, NiceAddress *
   NiceCandidate cdes;
   GSList *cands;
   guint ls_id, rs_id;
-  guint64 tie_breaker;
 
   /* XXX: dear compiler, these are for you: */
   (void)baseaddr;
@@ -338,14 +337,7 @@ static int run_restart_test (NiceAgent *lagent, NiceAgent *ragent, NiceAddress *
   g_assert (lagent->controlling_mode == TRUE);
   g_assert (ragent->controlling_mode == FALSE);
   /* step: restart agents, exchange updated credentials */
-  tie_breaker = ragent->tie_breaker;
   nice_agent_restart (ragent);
-  g_assert (tie_breaker != ragent->tie_breaker);
-  /* This role switch of ragent should be done now, and both agents
-   * have now the same role, which should generate a role conflict
-   * resolution situation */
-  g_assert (lagent->controlling_mode == TRUE);
-  g_assert (ragent->controlling_mode == TRUE);
   nice_agent_restart (lagent);
   {
       gchar *ufrag = NULL, *password = NULL;

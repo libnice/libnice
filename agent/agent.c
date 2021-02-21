@@ -5534,14 +5534,6 @@ nice_agent_restart (
 
   agent_lock (agent);
 
-  /* step: regenerate tie-breaker value */
-  priv_generate_tie_breaker (agent);
-
-  /* step: reset controlling mode from the property value */
-  agent->controlling_mode = agent->saved_controlling_mode;
-  nice_debug ("Agent %p : ICE restart, reset role to \"%s\".",
-      agent, agent->controlling_mode ? "controlling" : "controlled");
-
   for (i = agent->streams; i; i = i->next) {
     NiceStream *stream = i->data;
 
