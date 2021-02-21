@@ -117,6 +117,13 @@ nice_stream_initialize_credentials (NiceStream *stream, NiceRNG *rng)
    *       '"ice-ufrag" and "ice-pwd" Attributes', ID-19) */
   nice_rng_generate_bytes_print (rng, NICE_STREAM_DEF_UFRAG - 1, stream->local_ufrag);
   nice_rng_generate_bytes_print (rng, NICE_STREAM_DEF_PWD - 1, stream->local_password);
+
+  /* reset remote credentials, because we cannot assume that we'll
+   * receive new remote credentials from the SDP before the conncheck
+   * restarts with new inbound STUN requests
+   */
+  stream->remote_ufrag[0] = 0;
+  stream->remote_password[0] = 0;
 }
 
 /*
