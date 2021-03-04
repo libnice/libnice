@@ -999,7 +999,7 @@ nice_agent_attach_recv (
  * @component_id: the ID of the component to receive on
  * @buf: (array length=buf_len) (out caller-allocates): caller-allocated buffer
  * to write the received data into, of length at least @buf_len
- * @buf_len: length of @buf
+ * @buf_len: (in): length of @buf
  * @cancellable: (allow-none): a #GCancellable to allow the operation to be
  * cancelled from another thread, or %NULL
  * @error: (allow-none): return location for a #GError, or %NULL
@@ -1092,7 +1092,7 @@ nice_agent_recv_messages (
  * @component_id: the ID of the component to receive on
  * @buf: (array length=buf_len) (out caller-allocates): caller-allocated buffer
  * to write the received data into, of length at least @buf_len
- * @buf_len: length of @buf
+ * @buf_len: (in): length of @buf
  * @cancellable: (allow-none): a #GCancellable to allow the operation to be
  * cancelled from another thread, or %NULL
  * @error: (allow-none): return location for a #GError, or %NULL
