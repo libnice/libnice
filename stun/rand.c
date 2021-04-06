@@ -39,7 +39,20 @@
 
 #include "rand.h"
 
-#if defined(HAVE_OPENSSL)
+#if defined(_WIN32)
+
+#include <windows.h>
+
+void nice_RAND_nonce (uint8_t *dst, int len)
+{
+  HCRYPTPROV prov;
+
+  CryptAcquireContextW (&prov, NULL, NULL, PROV_RSA_FULL, CRYPT_VERIFYCONTEXT);
+  CryptGenRandom (prov, len, dst);
+  CryptReleaseContext (prov, 0);
+}
+
+#elif defined(HAVE_OPENSSL)
 
 #include <openssl/rand.h>
 

@@ -190,7 +190,9 @@ gthread_dep = dependency('gthread-2.0',
 # Cryto library
 opt_cryptolib = get_option('crypto-library')
 message('Crypto library requested: ' + opt_cryptolib)
-if opt_cryptolib != 'openssl'
+if opt_cryptolib == 'auto' and host_machine.system() == 'windows'
+  crypto_dep = cc.find_library('advapi32')
+elif opt_cryptolib != 'openssl'
   crypto_dep = dependency('gnutls', version: gnutls_req, required: false)
   cdata.set('HAVE_GNUTLS', crypto_dep.found())
   if not crypto_dep.found() and opt_cryptolib == 'auto'
