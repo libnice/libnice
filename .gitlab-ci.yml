@@ -77,13 +77,6 @@ build msys2:
     - C:\msys64\usr\bin\bash -c "curl -O http://repo.msys2.org/msys/x86_64/msys2-keyring-r21.b39fb11-1-any.pkg.tar.xz && pacman -U --noconfirm msys2-keyring-r21.b39fb11-1-any.pkg.tar.xz"
     - C:\msys64\usr\bin\bash -c "pacman-key --init && pacman-key --populate msys2"
     - C:\msys64\usr\bin\bash -c "pacman-key --refresh-keys || true"
-    - echo "Updating MSYS2"
-    - C:\msys64\usr\bin\bash -c "pacman -Syuu --noconfirm || echo Update failed, ignoring"
-    - echo "Killing all MSYS2 processes"
-    - taskkill /F /FI "MODULES eq msys-2.0.dll"
-    - echo "Completing MSYS2 update"
-    - C:\msys64\usr\bin\bash -c "pacman -Suu --noconfirm"
-    - echo "Installing needed MSYS2 packages"
     - C:\msys64\usr\bin\bash -c "pacman -Sy --noconfirm --needed mingw-w64-x86_64-toolchain ninja"
 
     # For some reason, options are separated by newline instead of space, so we
