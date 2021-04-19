@@ -22,6 +22,7 @@ default:
 #
 check allow-edit:
   extends: '.fdo.ci-fairy'
+  interruptible: true
   needs: []
   stage: 'verify'
   variables:
@@ -34,6 +35,7 @@ check allow-edit:
 
 build:
   stage: build
+  interruptible: true
   variables:
     PREFIX: "${CI_PROJECT_DIR}/libnice-prefix"
   except:
@@ -49,9 +51,11 @@ build:
     paths:
       - build/
 
+
 build msys2:
   image: 'registry.freedesktop.org/gstreamer/gst-ci/amd64/windows:2021-02-24.0-master'
   stage: 'build'
+  interruptible: true
   tags:
     - 'docker'
     - 'windows'
@@ -156,6 +160,7 @@ build msvc x86:
         
 test:
   stage: test
+  interruptible: true
   needs:
     - build
   except:
@@ -181,6 +186,7 @@ test valgrind:
 
 doc-and-install:
   stage: test
+  interruptible: true
   needs:
     - build
   except:
