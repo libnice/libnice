@@ -63,14 +63,15 @@ build msys2:
     ErrorActionPreference: 'Stop'
     WarningPreference: 'Stop'
   before_script:
-    - pip3 install -U meson==0.56.2
-  script:
     # Make sure powershell exists on errors
     # https://docs.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_preference_variables?view=powershell-6
     - $ErrorActionPreference = "Stop"
 
+    - pip3 install -U meson==0.56.2
+
     # For some reason docker build hangs if this is included in the image, needs more troubleshooting
     - $env:PATH += ';C:\msys64\usr\bin;C:\msys64\mingw64\bin;C:\msys64\mingw32\bin'
+
     # It seems that the gpg doesn't like the SSL secured version of the keyserver
     - C:\msys64\usr\bin\bash -c "pacman-key --init && pacman-key --populate msys2 && pacman-key --refresh-keys || true"
     - echo "Download newest msys2 keyring"
@@ -78,6 +79,13 @@ build msys2:
     - C:\msys64\usr\bin\bash -c "pacman-key --init && pacman-key --populate msys2"
     - C:\msys64\usr\bin\bash -c "pacman-key --refresh-keys || true"
     - C:\msys64\usr\bin\bash -c "pacman -Sy --noconfirm --needed mingw-w64-x86_64-toolchain ninja"
+
+  script:
+    # Make sure powershell exists on errors
+    # https://docs.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_preference_variables?view=powershell-6
+    - $ErrorActionPreference = "Stop"
+    # For some reason docker build hangs if this is included in the image, needs more troubleshooting
+    - $env:PATH += ';C:\msys64\usr\bin;C:\msys64\mingw64\bin;C:\msys64\mingw32\bin'
 
     # For some reason, options are separated by newline instead of space, so we
     # have to replace them first.
