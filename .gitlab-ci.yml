@@ -50,7 +50,7 @@ build:
       - build/
 
 build msys2:
-  image: 'registry.freedesktop.org/gstreamer/gst-ci/amd64/windows:v13-master'
+  image: 'registry.freedesktop.org/gstreamer/gst-ci/amd64/windows:2021-02-24.0-master'
   stage: 'build'
   tags:
     - 'docker'
