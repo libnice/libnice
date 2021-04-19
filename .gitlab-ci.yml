@@ -1,11 +1,36 @@
+include:
+ - remote: "https://gitlab.freedesktop.org/freedesktop/ci-templates/-/raw/7ea696055e322cc7aa4bcbe5422b56a198c4bdff/templates/ci-fairy.yml"
+
 stages:
+ - verify
  - build
  - test
  - deploy
 
+workflow:
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS'
+      when: never
+    - if: '$CI_COMMIT_BRANCH'
+
 default:
   image: registry.freedesktop.org/libnice/libnice/centos7/meson-build
 
+#
+# Check "allow-edit" checkbox on merge requests with ci-fairy
+#
+check allow-edit:
+  extends: '.fdo.ci-fairy'
+  needs: []
+  stage: 'verify'
+  variables:
+    GIT_STRATEGY: 'none'
+  script:
+    - ci-fairy check-merge-request --require-allow-collaboration
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+      when: always
 
 build:
   stage: build
