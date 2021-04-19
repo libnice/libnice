@@ -98,9 +98,9 @@ build msys2:
     #
     # Gitlab Runner issue: https://gitlab.com/gitlab-org/gitlab-runner/issues/4291
     # Blocked upgrade issue: https://gitlab.freedesktop.org/gstreamer/gst-ci/issues/6#note_192780
-    - C:\msys64\usr\bin\bash -c "meson build $env:MESON_ARGS &&
-        ninja -j 1 -C build &&
-        meson test -C build --print-errorlogs --suite libnice"
+    - C:\msys64\usr\bin\bash -c "meson build $env:MESON_ARGS"
+    - C:\msys64\usr\bin\bash -c "ninja -j 1 -C build"
+    - C:\msys64\usr\bin\bash -c "meson test -C build --print-errorlogs --suite libnice"
   artifacts:
     when: on_failure
     paths:
