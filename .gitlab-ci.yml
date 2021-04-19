@@ -52,7 +52,7 @@ build:
       - build/
 
 
-build msys2:
+.build windows:
   image: 'registry.freedesktop.org/gstreamer/gst-ci/amd64/windows:2021-02-24.0-master'
   stage: 'build'
   interruptible: true
@@ -70,7 +70,15 @@ build msys2:
     # Make sure powershell exists on errors
     # https://docs.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_preference_variables?view=powershell-6
     - $ErrorActionPreference = "Stop"
+    - pip3 install -U meson==0.56.2
 
+
+build msys2:
+  extends: .build windows
+  before_script:
+    # Make sure powershell exists on errors
+    # https://docs.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_preference_variables?view=powershell-6
+    - $ErrorActionPreference = "Stop"
     - pip3 install -U meson==0.56.2
 
     # For some reason docker build hangs if this is included in the image, needs more troubleshooting
@@ -120,7 +128,7 @@ build msys2:
       - build/build.ninja
 
 .build msvc:
-  extends: build msys2
+  extends: .build windows
   variables:
     GLIB_VERSION: 2.64.2
   script:
