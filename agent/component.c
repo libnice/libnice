@@ -1222,6 +1222,7 @@ nice_component_finalize (GObject *obj)
   cmp = NICE_COMPONENT (obj);
 
   /* Component should have been closed already. */
+  g_warn_if_fail (cmp->socket_sources == NULL);
   g_warn_if_fail (cmp->local_candidates == NULL);
   g_warn_if_fail (cmp->remote_candidates == NULL);
   g_warn_if_fail (g_queue_get_length (&cmp->incoming_checks) == 0);

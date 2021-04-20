@@ -5672,25 +5672,31 @@ component_io_cb (GSocket *gsocket, GIOCondition condition, gpointer user_data)
 
   component = socket_source->component;
 
+  if (g_source_is_destroyed (g_main_current_source ())) {
+    /* Silently return FALSE. */
+    nice_debug ("%s: source %p destroyed", G_STRFUNC, g_main_current_source ());
+    return G_SOURCE_REMOVE;
+  }
+
   agent = g_weak_ref_get (&component->agent_ref);
   if (agent == NULL)
     return G_SOURCE_REMOVE;
 
   agent_lock (agent);
 
-  stream = agent_find_stream (agent, component->stream_id);
-
-  if (stream == NULL) {
-    nice_debug ("%s: stream %d destroyed", G_STRFUNC, component->stream_id);
+  if (g_source_is_destroyed (g_main_current_source ())) {
+    /* Silently return FALSE. */
+    nice_debug ("%s: source %p destroyed", G_STRFUNC, g_main_current_source ());
 
     agent_unlock (agent);
     g_object_unref (agent);
     return G_SOURCE_REMOVE;
   }
 
-  if (g_source_is_destroyed (g_main_current_source ())) {
-    /* Silently return FALSE. */
-    nice_debug ("%s: source %p destroyed", G_STRFUNC, g_main_current_source ());
+  stream = agent_find_stream (agent, component->stream_id);
+
+  if (stream == NULL) {
+    nice_debug ("%s: stream %d destroyed", G_STRFUNC, component->stream_id);
 
     agent_unlock (agent);
     g_object_unref (agent);
