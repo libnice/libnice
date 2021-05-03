@@ -1099,8 +1099,8 @@ priv_forget_send_request_timeout (gpointer pointer)
     return G_SOURCE_REMOVE;
   }
 
-  send_request_free (req);
   g_queue_remove (req->priv->send_requests, req);
+  send_request_free (req);
 
   g_mutex_unlock (&mutex);
 
