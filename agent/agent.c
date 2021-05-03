@@ -6676,10 +6676,12 @@ _generate_stream_sdp (NiceAgent *agent, NiceStream *stream,
 NICEAPI_EXPORT gchar *
 nice_agent_generate_local_sdp (NiceAgent *agent)
 {
-  GString * sdp = g_string_new (NULL);
+  GString *sdp;
   GSList *i;
 
   g_return_val_if_fail (NICE_IS_AGENT (agent), NULL);
+
+  sdp = g_string_new (NULL);
 
   agent_lock (agent);
 
