@@ -3876,10 +3876,6 @@ static gboolean priv_add_remote_candidate (
   else {
     /* case 2: add a new candidate */
 
-    if (type == NICE_CANDIDATE_TYPE_PEER_REFLEXIVE) {
-      nice_debug("Agent %p : Warning: ignoring externally set peer-reflexive candidate!", agent);
-      return FALSE;
-    }
     candidate = nice_candidate_new (type);
 
     candidate->stream_id = stream_id;
