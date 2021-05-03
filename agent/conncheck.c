@@ -2824,6 +2824,7 @@ int conn_check_send (NiceAgent *agent, CandidateCheckPair *pair)
   NiceComponent *component;
   gsize uname_len;
   uint8_t *password = NULL;
+  uint8_t *free_password = NULL;
   gsize password_len;
   bool controlling = agent->controlling_mode;
  /* XXX: add API to support different nomination modes: */
@@ -2843,7 +2844,8 @@ int conn_check_send (NiceAgent *agent, CandidateCheckPair *pair)
   if (password != NULL &&
       (agent->compatibility == NICE_COMPATIBILITY_MSN ||
        agent->compatibility == NICE_COMPATIBILITY_OC2007)) {
-    password = g_base64_decode ((gchar *) password, &password_len);
+    free_password = password =
+        g_base64_decode ((gchar *) password, &password_len);
   }
 
   if (nice_debug_is_enabled ()) {
@@ -2894,6 +2896,7 @@ int conn_check_send (NiceAgent *agent, CandidateCheckPair *pair)
 
   if (uname_len == 0) {
     nice_debug ("Agent %p: no credentials found, cancelling conncheck", agent);
+    g_free (free_password);
     return -1;
   }
 
@@ -2910,10 +2913,7 @@ int conn_check_send (NiceAgent *agent, CandidateCheckPair *pair)
   nice_debug ("Agent %p: conncheck created %zd - %p", agent, buffer_len,
       stun->message.buffer);
 
-  if (agent->compatibility == NICE_COMPATIBILITY_MSN ||
-      agent->compatibility == NICE_COMPATIBILITY_OC2007) {
-    g_free (password);
-  }
+  g_free (free_password);
 
   if (buffer_len == 0) {
     nice_debug ("Agent %p: buffer is empty, cancelling conncheck", agent);
