@@ -322,6 +322,7 @@ socket_send_message (NiceSocket *sock,
 
     if (ret < 0) {
       if (g_error_matches (gerr, G_IO_ERROR, G_IO_ERROR_WOULD_BLOCK) ||
+          g_error_matches (gerr, G_IO_ERROR, G_IO_ERROR_NOT_CONNECTED) ||
           g_error_matches (gerr, G_IO_ERROR, G_IO_ERROR_FAILED)) {
         /* Queue the message and send it later. */
         nice_socket_queue_send_with_callback (&priv->send_queue,
