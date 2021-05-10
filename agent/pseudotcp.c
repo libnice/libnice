@@ -169,7 +169,7 @@ const guint16 PACKET_MAXIMUMS[] = {
 #define DEF_RTO     1000 /* 1 seconds (RFC 6298 sect 2.1) */
 #define MAX_RTO    60000 /* 60 seconds */
 #define DEFAULT_ACK_DELAY    100 /* 100 milliseconds */
-#define DEFAULT_NO_DELAY     FALSE
+#define DEFAULT_NO_DELAY     TRUE
 
 #define DEFAULT_RCV_BUF_SIZE (60 * 1024)
 #define DEFAULT_SND_BUF_SIZE (90 * 1024)
