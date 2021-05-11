@@ -50,6 +50,7 @@ typedef struct {
 
   gsize recv_count;
   gsize *other_recv_count;
+  gsize recv_offset;
 
   gsize send_count;
   gsize *other_send_count;
@@ -67,8 +68,8 @@ read_stream_cb (GObject *pollable_stream, gpointer _user_data)
 
   /* Try to receive some data. */
   len = g_pollable_input_stream_read_nonblocking (
-      G_POLLABLE_INPUT_STREAM (pollable_stream), buf, sizeof (buf), NULL,
-      &error);
+      G_POLLABLE_INPUT_STREAM (pollable_stream), buf,
+      sizeof (buf) - user_data->recv_offset, NULL, &error);
 
   if (len == -1) {
     g_assert_error (error, G_IO_ERROR, G_IO_ERROR_WOULD_BLOCK);
@@ -76,12 +77,14 @@ read_stream_cb (GObject *pollable_stream, gpointer _user_data)
     return TRUE;
   }
 
-  g_assert_cmpint (len, ==, MESSAGE_SIZE);
+  memset (expected_data, user_data->recv_count + '1', len);
+  g_assert_cmpmem (buf, len, expected_data, len);
 
-  memset (expected_data, user_data->recv_count + '1', sizeof (expected_data));
-  g_assert_cmpmem (buf, sizeof (expected_data), expected_data, sizeof (expected_data));
-
-  user_data->recv_count++;
+  user_data->recv_offset += len;
+  if (user_data->recv_offset == MESSAGE_SIZE) {
+    user_data->recv_offset = 0;
+    user_data->recv_count++;
+  }
 
   if (user_data->recv_count == 10) {
     g_main_loop_quit (user_data->read_loop);
@@ -167,11 +170,13 @@ int main (void)
   l_data->send_count = 0;
   l_data->other_recv_count = &r_data->recv_count;
   l_data->other_send_count = &r_data->send_count;
+  l_data->recv_offset = 0;
 
   r_data->recv_count = 0;
   r_data->send_count = 0;
   r_data->other_recv_count = &l_data->recv_count;
   r_data->other_send_count = &l_data->send_count;
+  r_data->recv_offset = 0;
 
   run_io_stream_test (30, TRUE, &callbacks, l_data, NULL, r_data, NULL);
 
