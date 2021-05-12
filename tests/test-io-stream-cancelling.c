@@ -128,7 +128,7 @@ int main (void)
   r_cancellation_thread = spawn_thread ("libnice R cancel",
       cancellation_thread_cb, &r_data);
 
-  run_io_stream_test (30, TRUE, &callbacks, &l_data, NULL, &r_data, NULL);
+  run_io_stream_test (30, TRUE, &callbacks, &l_data, NULL, &r_data, NULL, 0);
 
   g_thread_join (l_cancellation_thread);
   g_thread_join (r_cancellation_thread);

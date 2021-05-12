@@ -23,6 +23,7 @@ nice_tests = [
   'test-trickle',
   'test-tcp',
   'test-icetcp',
+  'test-bytestream-tcp',
   'test-credentials',
   'test-turn',
   'test-drop-invalid',
@@ -40,7 +41,7 @@ if cc.has_header('arpa/inet.h')
 endif
 
 foreach tname : nice_tests
-  if tname.startswith('test-io-stream') or tname.startswith('test-send-recv')
+  if tname.startswith('test-io-stream') or tname.startswith('test-send-recv') or tname == 'test-bytestream-tcp'
     extra_src = ['test-io-stream-common.c']
   else
     extra_src = []

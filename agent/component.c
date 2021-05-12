@@ -388,6 +388,7 @@ nice_component_close (NiceAgent *agent, NiceStream *stream, NiceComponent *cmp)
   }
 
   g_free (cmp->recv_buffer);
+  g_free (cmp->rfc4571_buffer);
 }
 
 /*
@@ -1129,6 +1130,9 @@ nice_component_init (NiceComponent *component)
 
   component->recv_buffer = g_malloc (MAX_BUFFER_SIZE);
   component->recv_buffer_size = MAX_BUFFER_SIZE;
+
+  component->rfc4571_buffer_size = sizeof (guint16) + G_MAXUINT16;
+  component->rfc4571_buffer = g_malloc (component->rfc4571_buffer_size);
 }
 
 static void
@@ -1304,6 +1308,9 @@ static gboolean
 component_source_prepare (GSource *source, gint *timeout_)
 {
   ComponentSource *component_source = (ComponentSource *) source;
+  /* We can’t be sure if the ComponentSource itself needs to be dispatched until
+   * poll() is called on all the child sources. */
+  gboolean skip_poll = FALSE;
   NiceAgent *agent;
   NiceComponent *component;
   GSList *parentl, *childl;
@@ -1320,6 +1327,11 @@ component_source_prepare (GSource *source, gint *timeout_)
           &component))
     goto done;
 
+  if (component->rfc4571_wakeup_needed) {
+    component->rfc4571_wakeup_needed = FALSE;
+    skip_poll = TRUE;
+    goto done;
+  }
 
   if (component->socket_sources_age ==
       component_source->component_socket_sources_age)
@@ -1393,9 +1405,7 @@ component_source_prepare (GSource *source, gint *timeout_)
   agent_unlock_and_emit (agent);
   g_object_unref (agent);
 
-  /* We can’t be sure if the ComponentSource itself needs to be dispatched until
-   * poll() is called on all the child sources. */
-  return FALSE;
+  return skip_poll;
 }
 
 static gboolean
@@ -1658,4 +1668,10 @@ nice_component_get_sockets (NiceComponent *component)
   }
 
   return array;
+}
+
+guint
+nice_component_compute_rfc4571_headroom (NiceComponent *component)
+{
+  return component->rfc4571_buffer_offset - component->rfc4571_frame_offset;
 }

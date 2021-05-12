@@ -1146,7 +1146,9 @@ test (gboolean reliable, StreamApi stream_api, gsize n_bytes, guint n_messages,
       &l_data.received_bytes, &l_data.received_messages);
 
   run_io_stream_test (deadlock_timeout, reliable, &callbacks[stream_api],
-      &l_data, NULL, &r_data, NULL);
+      &l_data, NULL, &r_data, NULL,
+      /* Ensure TCP has the same behavior as Pseudo-TCP in reliable mode: */
+      reliable ? TEST_IO_STREAM_OPTION_BYTESTREAM_TCP : 0);
 
   test_data_clear (&r_data);
   test_data_clear (&l_data);

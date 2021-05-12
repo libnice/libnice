@@ -409,6 +409,7 @@ typedef enum
  * @NICE_AGENT_OPTION_SUPPORT_RENOMINATION: Enable renomination triggered by NOMINATION STUN attribute
  * proposed here: https://tools.ietf.org/html/draft-thatcher-ice-renomination-00
  * @NICE_AGENT_OPTION_CONSENT_FRESHNESS: Enable RFC 7675 consent freshness support. (Since: 0.1.19)
+ * @NICE_AGENT_OPTION_BYTESTREAM_TCP: Use bytestream mode for reliable TCP connections. (Since: 0.1.20)
  *
  * These are options that can be passed to nice_agent_new_full(). They set
  * various properties on the agent. Not including them sets the property to
@@ -424,6 +425,7 @@ typedef enum {
   NICE_AGENT_OPTION_ICE_TRICKLE = 1 << 3,
   NICE_AGENT_OPTION_SUPPORT_RENOMINATION = 1 << 4,
   NICE_AGENT_OPTION_CONSENT_FRESHNESS = 1 << 5,
+  NICE_AGENT_OPTION_BYTESTREAM_TCP = 1 << 6,
 } NiceAgentOption;
 
 /**

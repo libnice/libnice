@@ -178,10 +178,10 @@ struct _NiceAgent
 #endif
   gchar *software_attribute;       /* SOFTWARE attribute */
   gboolean reliable;               /* property: reliable */
+  gboolean bytestream_tcp;         /* property: bytestream-tcp */
   gboolean keepalive_conncheck;    /* property: keepalive_conncheck */
 
   GQueue pending_signals;
-  guint16 rfc4571_expecting_length;
   gboolean use_ice_udp;
   gboolean use_ice_tcp;
   gboolean use_ice_trickle;

@@ -128,7 +128,8 @@ int main (void)
   WSAStartup (0x0202, &w);
 #endif
 
-  run_io_stream_test (30, TRUE, &callbacks, (gpointer) TRUE, NULL, NULL, NULL);
+  run_io_stream_test (30, TRUE, &callbacks, (gpointer) TRUE, NULL, NULL, NULL,
+      0);
 
 #ifdef G_OS_WIN32
   WSACleanup ();

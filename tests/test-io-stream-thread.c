@@ -143,7 +143,7 @@ int main (void)
   r_data->send_count = 0;
   r_data->other_send_count = &l_data->send_count;
 
-  run_io_stream_test (30, TRUE, &callbacks, l_data, NULL, r_data, NULL);
+  run_io_stream_test (30, TRUE, &callbacks, l_data, NULL, r_data, NULL, 0);
 
   /* Verify that correct number of local candidates were reported. */
   g_assert_cmpuint (l_data->cand_count, ==, 1);

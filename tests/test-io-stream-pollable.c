@@ -178,7 +178,7 @@ int main (void)
   r_data->other_send_count = &l_data->send_count;
   r_data->recv_offset = 0;
 
-  run_io_stream_test (30, TRUE, &callbacks, l_data, NULL, r_data, NULL);
+  run_io_stream_test (30, TRUE, &callbacks, l_data, NULL, r_data, NULL, 0);
 
   g_free (r_data);
   g_free (l_data);

@@ -1,7 +1,7 @@
 /*
  * This file is part of the Nice GLib ICE library.
  *
- * (C) 2014 Collabora Ltd.
+ * (C) 2013 Collabora Ltd.
  *  Contact: Philip Withnall
  *
  * The contents of this file are subject to the Mozilla Public License Version
@@ -45,77 +45,53 @@
 #include <unistd.h>
 #endif
 
-#define NUM_MESSAGES 10
+typedef struct {
+  gsize recv_count;
+  gsize *other_recv_count;
 
-guint count = 0;
-GMutex count_lock;
-GCond count_cond;
+  gsize send_count;
+  gsize *other_send_count;
+} ThreadData;
+
+static const gchar test_sequence[] = { '1', '2', '3', '4' };
 
 static void
 read_thread_cb (GInputStream *input_stream, TestIOStreamThreadData *data)
 {
+  ThreadData *user_data = data->user_data;
+  guint8 buf[2];
   GError *error = NULL;
-  gssize len;
-  guint8 buf[MESSAGE_SIZE];
 
+  g_input_stream_read_all (input_stream, buf, sizeof (buf), NULL, NULL, &error);
+  g_assert_no_error (error);
+  user_data->recv_count++;
+  g_assert_cmpmem (buf, sizeof (buf), test_sequence, sizeof (buf));
 
-  g_mutex_lock (&count_lock);
-  count++;
-  g_cond_broadcast (&count_cond);
-  g_mutex_unlock (&count_lock);
+  g_input_stream_read_all (input_stream, buf, sizeof (buf), NULL, NULL, &error);
+  g_assert_no_error (error);
+  user_data->recv_count++;
+  g_assert_cmpmem (buf, sizeof (buf), test_sequence + 2, sizeof (buf));
 
-  /* Block on receiving some data. */
-  do {
-    len = g_input_stream_read (input_stream, buf, sizeof (buf), NULL, &error);
-    if (!data->user_data) {
-      g_assert_cmpint (len, ==, sizeof(buf));
-      return;
-    }
-  } while (len > 0);
-  g_assert_cmpint (len, ==, -1);
-
-  g_assert_error (error, G_IO_ERROR, G_IO_ERROR_BROKEN_PIPE);
-  g_clear_error (&error);
-
-  stop_main_loop (data->error_loop);
+  check_for_termination (data, &user_data->recv_count,
+      user_data->other_recv_count, &user_data->send_count, 2);
 }
 
 static void
 write_thread_cb (GOutputStream *output_stream, TestIOStreamThreadData *data)
 {
-  gchar buf[MESSAGE_SIZE] = {0};
-  gssize ret;
+  ThreadData *user_data = data->user_data;
   GError *error = NULL;
-  gpointer tmp;
-  guint stream_id;
 
-  ret = g_output_stream_write (output_stream, buf, sizeof (buf), NULL,
-      &error);
-
-  g_mutex_lock (&count_lock);
-  count++;
-  g_cond_broadcast (&count_cond);
-  if (data->user_data) {
-    g_assert_cmpint (ret, ==, sizeof(buf));
-    g_mutex_unlock (&count_lock);
-    return;
-  }
-
-  while (count != 4)
-    g_cond_wait (&count_cond, &count_lock);
-  g_mutex_unlock (&count_lock);
-
-
-  /* Now we remove the stream, lets see how the writer handles that */
-
-  tmp = g_object_get_data (G_OBJECT (data->other->agent), "stream-id");
-  stream_id = GPOINTER_TO_UINT (tmp);
-
-  nice_agent_remove_stream (data->other->agent, stream_id);
+  g_output_stream_write_all (output_stream, test_sequence,
+      sizeof (test_sequence), NULL, NULL, &error);
+  g_assert_no_error (error);
+  user_data->send_count += 2;
 }
 
 int main (void)
 {
+  ThreadData *l_data, *r_data;
+
   const TestIOStreamCallbacks callbacks = {
     read_thread_cb,
     write_thread_cb,
@@ -128,12 +104,27 @@ int main (void)
   WSAStartup (0x0202, &w);
 #endif
 
-  run_io_stream_test (30, TRUE, &callbacks, (gpointer) TRUE, NULL, NULL, NULL,
-      0);
+  l_data = g_malloc0 (sizeof (ThreadData));
+  r_data = g_malloc0 (sizeof (ThreadData));
+
+  l_data->recv_count = 0;
+  l_data->other_recv_count = &r_data->recv_count;
+  l_data->send_count = 0;
+  l_data->other_send_count = &r_data->send_count;
+
+  r_data->recv_count = 0;
+  r_data->other_recv_count = &l_data->recv_count;
+  r_data->send_count = 0;
+  r_data->other_send_count = &l_data->send_count;
+
+  run_io_stream_test (30, TRUE, &callbacks, l_data, NULL, r_data, NULL,
+      TEST_IO_STREAM_OPTION_TCP_ONLY | TEST_IO_STREAM_OPTION_BYTESTREAM_TCP);
+
+  g_free (r_data);
+  g_free (l_data);
 
 #ifdef G_OS_WIN32
   WSACleanup ();
 #endif
-
   return 0;
 }

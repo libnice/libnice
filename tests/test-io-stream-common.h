@@ -105,12 +105,19 @@ struct _TestIOStreamThreadData {
   guint *start_count;
 };
 
+typedef enum
+{
+  TEST_IO_STREAM_OPTION_TCP_ONLY = 1 << 0,
+  TEST_IO_STREAM_OPTION_BYTESTREAM_TCP = 1 << 1,
+} TestIOStreamOption;
+
 GThread *spawn_thread (const gchar *thread_name, GThreadFunc thread_func,
     gpointer user_data);
 void run_io_stream_test (guint deadlock_timeout, gboolean reliable,
     const TestIOStreamCallbacks *callbacks,
     gpointer l_user_data, GDestroyNotify l_user_data_free,
-    gpointer r_user_data, GDestroyNotify r_user_data_free);
+    gpointer r_user_data, GDestroyNotify r_user_data_free,
+    TestIOStreamOption flags);
 void check_for_termination (TestIOStreamThreadData *data, gsize *recv_count,
     gsize *other_recv_count, volatile gsize *send_count, gsize expected_recv_count);
 

@@ -243,7 +243,8 @@ new_selected_pair_cb (NiceAgent *agent, guint stream_id, guint component_id,
 
 static NiceAgent *
 create_agent (gboolean controlling_mode, TestIOStreamThreadData *data,
-    GMainContext **main_context, GMainLoop **main_loop)
+    GMainContext **main_context, GMainLoop **main_loop,
+    TestIOStreamOption flags)
 {
   NiceAgent *agent;
   NiceAddress base_addr;
@@ -253,16 +254,28 @@ create_agent (gboolean controlling_mode, TestIOStreamThreadData *data,
   *main_context = g_main_context_new ();
   *main_loop = g_main_loop_new (*main_context, FALSE);
 
-  /* Use Google compatibility to ignore credentials. */
   if (data->reliable)
-    agent = nice_agent_new_reliable (*main_context, NICE_COMPATIBILITY_GOOGLE);
+    agent = nice_agent_new_reliable (*main_context, NICE_COMPATIBILITY_RFC5245);
   else
-    agent = nice_agent_new (*main_context, NICE_COMPATIBILITY_GOOGLE);
+    agent = nice_agent_new (*main_context, NICE_COMPATIBILITY_RFC5245);
 
   g_object_set (G_OBJECT (agent),
       "controlling-mode", controlling_mode,
       "upnp", FALSE,
       NULL);
+
+  if (flags & TEST_IO_STREAM_OPTION_TCP_ONLY) {
+    g_object_set (G_OBJECT (agent),
+        "ice-udp", FALSE,
+        "ice-tcp", TRUE,
+        NULL);
+  }
+
+  if (flags & TEST_IO_STREAM_OPTION_BYTESTREAM_TCP) {
+    g_object_set (G_OBJECT (agent),
+        "bytestream-tcp", TRUE,
+        NULL);
+  }
 
   /* Specify which local interface to use. */
   g_assert_true (nice_address_set_from_string (&base_addr, "127.0.0.1"));
@@ -311,6 +324,28 @@ add_stream (NiceAgent *agent)
 }
 
 static void
+swap_credentials (NiceAgent *agent)
+{
+  guint stream_id;
+  gchar *ufrag, *password;
+  NiceAgent *other_agent;
+  guint other_stream_id;
+
+  stream_id = GPOINTER_TO_UINT (
+      g_object_get_data (G_OBJECT (agent), "stream-id"));
+  nice_agent_get_local_credentials (agent, stream_id, &ufrag, &password);
+
+  other_agent = g_object_get_data (G_OBJECT (agent), "other-agent");
+  other_stream_id = GPOINTER_TO_UINT (
+      g_object_get_data (G_OBJECT (other_agent), "stream-id"));
+  nice_agent_set_remote_credentials (other_agent, other_stream_id, ufrag,
+      password);
+
+  g_free (ufrag);
+  g_free (password);
+}
+
+static void
 run_agent (TestIOStreamThreadData *data, NiceAgent *agent)
 {
   guint stream_id;
@@ -346,7 +381,8 @@ void
 run_io_stream_test (guint deadlock_timeout, gboolean reliable,
     const TestIOStreamCallbacks *callbacks,
     gpointer l_user_data, GDestroyNotify l_user_data_free,
-    gpointer r_user_data, GDestroyNotify r_user_data_free)
+    gpointer r_user_data, GDestroyNotify r_user_data_free,
+    TestIOStreamOption flags)
 {
   GMainLoop *error_loop;
   GThread *l_main_thread, *r_main_thread;
@@ -396,9 +432,9 @@ run_io_stream_test (guint deadlock_timeout, gboolean reliable,
 
   /* Create the L and R agents. */
   l_data.agent = create_agent (TRUE, &l_data,
-      &l_data.main_context, &l_data.main_loop);
+      &l_data.main_context, &l_data.main_loop, flags);
   r_data.agent = create_agent (FALSE, &r_data,
-      &r_data.main_context, &r_data.main_loop);
+      &r_data.main_context, &r_data.main_loop, flags);
 
   g_object_set_data (G_OBJECT (l_data.agent), "other-agent", r_data.agent);
   g_object_set_data (G_OBJECT (r_data.agent), "other-agent", l_data.agent);
@@ -411,6 +447,8 @@ run_io_stream_test (guint deadlock_timeout, gboolean reliable,
 
   add_stream (l_data.agent);
   add_stream (r_data.agent);
+  swap_credentials (l_data.agent);
+  swap_credentials (r_data.agent);
   run_agent (&l_data, l_data.agent);
   run_agent (&r_data, r_data.agent);
 
