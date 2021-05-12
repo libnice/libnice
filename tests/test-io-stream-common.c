@@ -581,12 +581,6 @@ check_for_termination (TestIOStreamThreadData *data, gsize *recv_count,
   data->done = TRUE;
   if (data->other->done)
     g_main_loop_quit (data->error_loop);
-
-  /* If both sides have finished, quit the test main loop. */
-  if (*recv_count > expected_recv_count &&
-      *other_recv_count > expected_recv_count) {
-    g_main_loop_quit (data->error_loop);
-  }
 }
 
 void
