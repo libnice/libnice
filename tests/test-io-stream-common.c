@@ -583,11 +583,21 @@ check_for_termination (TestIOStreamThreadData *data, gsize *recv_count,
     g_main_loop_quit (data->error_loop);
 }
 
+static gboolean
+stop_main_loop_when_idle (gpointer data)
+{
+  GMainLoop *loop = data;
+
+  g_main_loop_quit (loop);
+
+  return G_SOURCE_REMOVE;
+}
+
 void
 stop_main_loop (GMainLoop *loop)
 {
   GSource *src = g_idle_source_new ();
-  g_source_set_callback (src, G_SOURCE_FUNC (g_main_loop_quit),
+  g_source_set_callback (src, stop_main_loop_when_idle,
       g_main_loop_ref (loop), (GDestroyNotify) g_main_loop_unref);
   g_source_attach (src, g_main_loop_get_context (loop));
   g_source_unref (src);
