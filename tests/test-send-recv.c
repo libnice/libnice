@@ -497,10 +497,6 @@ validate_received_messages (TestIOStreamThreadData *data, gsize buffer_offset,
       g_assert_cmpuint (message->length, ==, 0);
     prev_message_len = message->length;
 
-    /* If the API was blocking, it should have completely filled the message. */
-    if (stream_api_is_blocking (test_data->stream_api) && data->reliable)
-      g_assert_cmpuint (message->length, ==, total_buf_len);
-
     g_assert_true (message->from == NULL);
   }
 
