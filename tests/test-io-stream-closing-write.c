@@ -54,15 +54,15 @@ GCond count_cond;
 static void
 read_thread_cb (GInputStream *input_stream, TestIOStreamThreadData *data)
 {
+  guint8 buf[MESSAGE_SIZE];
+  gsize bytes_read = 0;
   gpointer tmp;
   guint stream_id;
-  GError *error = NULL;
-  gssize len;
-  guint8 buf[MESSAGE_SIZE];
 
   /* Block on receiving some data. */
-  len = g_input_stream_read (input_stream, buf, sizeof (buf), NULL, &error);
-  g_assert_cmpint (len, ==, sizeof(buf));
+  g_input_stream_read_all (input_stream, buf, sizeof (buf), &bytes_read, NULL,
+      NULL);
+  g_assert_cmpint (bytes_read, ==, sizeof (buf));
 
   g_mutex_lock (&count_lock);
   count++;
@@ -87,8 +87,9 @@ read_thread_cb (GInputStream *input_stream, TestIOStreamThreadData *data)
 static void
 write_thread_cb (GOutputStream *output_stream, TestIOStreamThreadData *data)
 {
+  gboolean success;
   gchar buf[MESSAGE_SIZE] = {0};
-  gssize ret;
+  gsize bytes_written;
   GError *error = NULL;
 
   g_mutex_lock (&count_lock);
@@ -97,16 +98,16 @@ write_thread_cb (GOutputStream *output_stream, TestIOStreamThreadData *data)
   g_mutex_unlock (&count_lock);
 
   do {
+    bytes_written = 0;
     g_assert_no_error (error);
-    ret = g_output_stream_write (output_stream, buf, sizeof (buf), NULL,
-        &error);
+    success = g_output_stream_write_all (output_stream, buf, sizeof (buf),
+        &bytes_written, NULL, &error);
 
     if (!data->user_data) {
-      g_assert_cmpint (ret, ==, sizeof (buf));
+      g_assert_cmpint (bytes_written, ==, sizeof (buf));
       return;
     }
-  } while (ret > 0);
-  g_assert_cmpint (ret, ==, -1);
+  } while (success);
 
   g_assert_error (error, G_IO_ERROR, G_IO_ERROR_CLOSED);
   g_clear_error (&error);
