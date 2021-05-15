@@ -389,6 +389,8 @@ nice_component_close (NiceAgent *agent, NiceStream *stream, NiceComponent *cmp)
 
   g_free (cmp->recv_buffer);
   g_free (cmp->rfc4571_buffer);
+  cmp->recv_buffer = NULL;
+  cmp->rfc4571_buffer = NULL;
 }
 
 /*
