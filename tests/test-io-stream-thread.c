@@ -67,12 +67,11 @@ read_thread_cb (GInputStream *input_stream, TestIOStreamThreadData *data)
     guint8 expected_data[MESSAGE_SIZE];
     GError *error = NULL;
     guint8 buf[MESSAGE_SIZE];
-    gssize len;
 
     /* Block on receiving some data. */
-    len = g_input_stream_read (input_stream, buf, sizeof (buf), NULL, &error);
+    g_input_stream_read_all (input_stream, buf, sizeof (buf), NULL, NULL,
+        &error);
     g_assert_no_error (error);
-    g_assert_cmpint (len, ==, sizeof (buf));
 
     memset (expected_data, user_data->recv_count + '1', sizeof (expected_data));
     g_assert_cmpmem (buf, sizeof (expected_data), expected_data,
@@ -105,7 +104,8 @@ write_thread_cb (GOutputStream *output_stream, TestIOStreamThreadData *data)
 
     memset (buf, user_data->send_count + '1', MESSAGE_SIZE);
 
-    g_output_stream_write (output_stream, buf, sizeof (buf), NULL, &error);
+    g_output_stream_write_all (output_stream, buf, sizeof (buf), NULL, NULL,
+        &error);
     g_assert_no_error (error);
   }
 }
