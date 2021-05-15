@@ -333,7 +333,6 @@ nice_input_stream_close (GInputStream *stream, GCancellable *cancellable,
 {
   NiceInputStreamPrivate *priv = NICE_INPUT_STREAM (stream)->priv;
   NiceComponent *component = NULL;
-  NiceStream *_stream = NULL;
   NiceAgent *agent;  /* owned */
 
   /* Has the agent disappeared? */
@@ -343,11 +342,10 @@ nice_input_stream_close (GInputStream *stream, GCancellable *cancellable,
 
   agent_lock (agent);
 
-  /* Shut down the read side of the pseudo-TCP stream, if it still exists. */
-  if (agent_find_component (agent, priv->stream_id, priv->component_id,
-          &_stream, &component) && agent->reliable &&
-      !pseudo_tcp_socket_is_closed (component->tcp)) {
-    pseudo_tcp_socket_shutdown (component->tcp, PSEUDO_TCP_SHUTDOWN_RD);
+  /* Shut down the read side of the TCP stream, if it still exists. */
+  if (agent_find_component (agent, priv->stream_id, priv->component_id, NULL,
+          &component)) {
+    nice_component_shutdown (component, TRUE, FALSE);
   }
 
   agent_unlock (agent);

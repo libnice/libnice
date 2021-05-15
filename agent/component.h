@@ -266,6 +266,10 @@ void
 nice_component_close (NiceAgent *agent, NiceStream *stream,
     NiceComponent *component);
 
+void
+nice_component_shutdown (NiceComponent *component, gboolean shutdown_read,
+    gboolean shutdown_write);
+
 gboolean
 nice_component_find_pair (NiceComponent *component, NiceAgent *agent,
     const gchar *lfoundation, const gchar *rfoundation, CandidatePair *pair);

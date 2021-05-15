@@ -477,7 +477,6 @@ nice_output_stream_close (GOutputStream *stream, GCancellable *cancellable,
 {
   NiceOutputStreamPrivate *priv = NICE_OUTPUT_STREAM (stream)->priv;
   NiceComponent *component = NULL;
-  NiceStream *_stream = NULL;
   NiceAgent *agent;  /* owned */
 
   /* Has the agent disappeared? */
@@ -487,11 +486,10 @@ nice_output_stream_close (GOutputStream *stream, GCancellable *cancellable,
 
   agent_lock (agent);
 
-  /* Shut down the write side of the pseudo-TCP stream. */
-  if (agent_find_component (agent, priv->stream_id, priv->component_id,
-          &_stream, &component) && agent->reliable &&
-      !pseudo_tcp_socket_is_closed (component->tcp)) {
-    pseudo_tcp_socket_shutdown (component->tcp, PSEUDO_TCP_SHUTDOWN_WR);
+  /* Shut down the write side of the TCP stream. */
+  if (agent_find_component (agent, priv->stream_id, priv->component_id, NULL,
+          &component)) {
+    nice_component_shutdown (component, FALSE, TRUE);
   }
 
   agent_unlock (agent);

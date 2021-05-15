@@ -393,6 +393,35 @@ nice_component_close (NiceAgent *agent, NiceStream *stream, NiceComponent *cmp)
   cmp->rfc4571_buffer = NULL;
 }
 
+void
+nice_component_shutdown (NiceComponent *component, gboolean shutdown_read,
+    gboolean shutdown_write)
+{
+  GSList *i;
+
+  g_assert (shutdown_read || shutdown_write);
+
+  if (!pseudo_tcp_socket_is_closed (component->tcp)) {
+    PseudoTcpShutdown how;
+
+    if (shutdown_read && shutdown_write)
+      how = PSEUDO_TCP_SHUTDOWN_RDWR;
+    else if (shutdown_read)
+      how = PSEUDO_TCP_SHUTDOWN_RD;
+    else
+      how = PSEUDO_TCP_SHUTDOWN_WR;
+
+    pseudo_tcp_socket_shutdown (component->tcp, how);
+  }
+
+  for (i = component->socket_sources; i; i = i->next) {
+    SocketSource *source = i->data;
+    NiceSocket *sock = source->socket;
+    if (sock->type == NICE_SOCKET_TYPE_TCP_BSD)
+      g_socket_shutdown (sock->fileno, shutdown_read, shutdown_write, NULL);
+  }
+}
+
 /*
  * Finds a candidate pair that has matching foundation ids.
  *
