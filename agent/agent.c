@@ -5827,8 +5827,9 @@ component_io_cb (GSocket *gsocket, GIOCondition condition, gpointer user_data)
     return G_SOURCE_REMOVE;
   }
 
-  /* Remove disconnected sockets when we get a HUP */
-  if (condition & G_IO_HUP) {
+  /* Remove disconnected sockets when we get a HUP and there's no more data to
+   * be read. */
+  if (condition & G_IO_HUP && !(condition & G_IO_IN)) {
     nice_debug ("Agent %p: NiceSocket %p has received HUP", agent,
         socket_source->socket);
     if (component->selected_pair.local &&
