@@ -74,6 +74,10 @@
 
 typedef struct _StunMessage StunMessage;
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * StunClass:
  * @STUN_REQUEST: A STUN Request message
@@ -1016,5 +1020,8 @@ bool stun_optional (uint16_t t);
  */
 const char *stun_strerror (StunError code);
 
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* _STUN_MESSAGE_H */
