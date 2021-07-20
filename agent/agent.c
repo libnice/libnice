@@ -2596,9 +2596,9 @@ void agent_signal_component_state_change (NiceAgent *agent, guint stream_id, gui
             /* If a tcp socket of connected pair is disconnected, in
              * conn_check_prune_socket(): */
             TRANSITION (CONNECTED, CONNECTING) ||
-            /* with ICE restart in nice_stream_restart() */
-            TRANSITION (CONNECTED, GATHERING) ||
-            TRANSITION (READY, GATHERING));
+            /* with ICE restart in nice_stream_restart(),
+             * it can always go back to gathering */
+            (new_state == NICE_COMPONENT_STATE_GATHERING));
 
 #undef TRANSITION
 
