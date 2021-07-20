@@ -51,7 +51,7 @@ build:
 
 
 .build windows:
-  image: 'registry.freedesktop.org/gstreamer/gst-ci/amd64/windows:2021-02-24.0-master'
+  image: 'registry.freedesktop.org/gstreamer/gst-ci/amd64/windows:2021-06-30.0-master'
   stage: 'build'
   interruptible: true
   tags:
