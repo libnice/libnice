@@ -64,12 +64,6 @@ build:
     # Make sure any failure in PowerShell scripts is fatal
     ErrorActionPreference: 'Stop'
     WarningPreference: 'Stop'
-  before_script:
-    # Make sure powershell exists on errors
-    # https://docs.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_preference_variables?view=powershell-6
-    - $ErrorActionPreference = "Stop"
-    - pip3 install -U meson==0.56.2
-
 
 build msys2:
   extends: .build windows
@@ -77,7 +71,6 @@ build msys2:
     # Make sure powershell exists on errors
     # https://docs.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_preference_variables?view=powershell-6
     - $ErrorActionPreference = "Stop"
-    - pip3 install -U meson==0.56.2
 
     # For some reason docker build hangs if this is included in the image, needs more troubleshooting
     - $env:PATH += ';C:\msys64\usr\bin;C:\msys64\mingw64\bin;C:\msys64\mingw32\bin'
