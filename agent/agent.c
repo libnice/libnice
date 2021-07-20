@@ -2573,11 +2573,7 @@ void agent_signal_component_state_change (NiceAgent *agent, guint stream_id, gui
   g_assert (/* Can (almost) always transition to FAILED (including
              * DISCONNECTED → FAILED which happens if one component fails
              * before another leaves DISCONNECTED): */
-            TRANSITION (DISCONNECTED, FAILED) ||
-            TRANSITION (GATHERING, FAILED) ||
-            TRANSITION (CONNECTING, FAILED) ||
-            TRANSITION (CONNECTED, FAILED) ||
-            TRANSITION (READY, FAILED) ||
+            (new_state == NICE_COMPONENT_STATE_FAILED) ||
             /* Standard progression towards a ready connection: */
             TRANSITION (DISCONNECTED, GATHERING) ||
             TRANSITION (GATHERING, CONNECTING) ||
