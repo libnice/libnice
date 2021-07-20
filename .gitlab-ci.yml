@@ -67,6 +67,7 @@ build:
 
 build msys2:
   extends: .build windows
+  allow_failure: true
   before_script:
     # Make sure powershell exists on errors
     # https://docs.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_preference_variables?view=powershell-6
