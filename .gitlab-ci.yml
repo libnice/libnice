@@ -139,7 +139,6 @@ build msys2:
     - cmd.exe /C "C:\BuildTools\Common7\Tools\VsDevCmd.bat -host_arch=amd64 -arch=$env:ARCH &&
         meson subprojects download &&
         meson wrap promote subprojects\glib-$env:GLIB_VERSION\subprojects\libffi.wrap &&
-        meson wrap promote subprojects\glib-$env:GLIB_VERSION\subprojects\zlib.wrap &&
         meson wrap promote subprojects\glib-$env:GLIB_VERSION\subprojects\proxy-libintl.wrap &&
         meson subprojects download"
     - cmd.exe /C "C:\BuildTools\Common7\Tools\VsDevCmd.bat -host_arch=amd64 -arch=$env:ARCH &&
