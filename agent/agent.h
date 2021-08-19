@@ -407,7 +407,7 @@ typedef enum
  * @NICE_AGENT_OPTION_ICE_TRICKLE: Enable ICE trickle mode
  * @NICE_AGENT_OPTION_SUPPORT_RENOMINATION: Enable renomination triggered by NOMINATION STUN attribute
  * proposed here: https://tools.ietf.org/html/draft-thatcher-ice-renomination-00
- * @NICE_AGENT_OPTION_CONSENT_FRESHNESS: Enable RFC 7675 consent freshness support. (Since: 0.1.20)
+ * @NICE_AGENT_OPTION_CONSENT_FRESHNESS: Enable RFC 7675 consent freshness support. (Since: 0.1.19)
  *
  * These are options that can be passed to nice_agent_new_full(). They set
  * various properties on the agent. Not including them sets the property to
@@ -1687,7 +1687,7 @@ nice_agent_peer_candidate_gathering_done (
  * Returns: %FALSE if the stream or component could not be found or consent
  *     freshness is not enabled, %TRUE otherwise
  *
- * Since: 0.1.20
+ * Since: 0.1.19
  */
 gboolean
 nice_agent_consent_lost (

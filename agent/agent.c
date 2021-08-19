@@ -901,7 +901,7 @@ nice_agent_class_init (NiceAgentClass *klass)
     * Setting this property to %TRUE implies that 'keepalive-conncheck' should
     * be %TRUE as well.
     *
-    * Since: 0.1.20
+    * Since: 0.1.19
     */
    g_object_class_install_property (gobject_class, PROP_CONSENT_FRESHNESS,
       g_param_spec_boolean (
