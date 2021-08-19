@@ -117,10 +117,6 @@
       <title>Index of new symbols in 0.1.17</title>
       <xi:include href="xml/api-index-0.1.17.xml"><xi:fallback/></xi:include>
     </index>
-    <index role="0.1.18">
-      <title>Index of new symbols in 0.1.18</title>
-      <xi:include href="xml/api-index-0.1.18.xml"><xi:fallback/></xi:include>
-    </index>
     <index role="0.1.20">
       <title>Index of new symbols in 0.1.20</title>
       <xi:include href="xml/api-index-0.1.20.xml"><xi:fallback/></xi:include>

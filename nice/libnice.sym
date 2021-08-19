@@ -69,6 +69,7 @@ nice_candidate_free
 nice_candidate_get_type
 nice_candidate_new
 nice_candidate_transport_get_type
+nice_candidate_transport_to_string
 nice_candidate_type_get_type
 nice_candidate_type_to_string
 nice_compatibility_get_type
