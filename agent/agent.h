@@ -400,6 +400,7 @@ typedef enum
 
 /**
  * NiceAgentOption:
+ * @NICE_AGENT_OPTION_NONE: No enabled options (Since: 0.1.19)
  * @NICE_AGENT_OPTION_REGULAR_NOMINATION: Enables regular nomination, default
  *  is aggrssive mode (see #NiceNominationMode).
  * @NICE_AGENT_OPTION_RELIABLE: Enables reliable mode, possibly using PseudoTCP, *  see nice_agent_new_reliable().
@@ -416,6 +417,7 @@ typedef enum
  * Since: 0.1.15
  */
 typedef enum {
+  NICE_AGENT_OPTION_NONE = 0,
   NICE_AGENT_OPTION_REGULAR_NOMINATION = 1 << 0,
   NICE_AGENT_OPTION_RELIABLE = 1 << 1,
   NICE_AGENT_OPTION_LITE_MODE = 1 << 2,

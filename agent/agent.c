@@ -1298,26 +1298,14 @@ nice_agent_init (NiceAgent *agent)
 NICEAPI_EXPORT NiceAgent *
 nice_agent_new (GMainContext *ctx, NiceCompatibility compat)
 {
-  NiceAgent *agent = g_object_new (NICE_TYPE_AGENT,
-      "compatibility", compat,
-      "main-context", ctx,
-      "reliable", FALSE,
-      NULL);
-
-  return agent;
+  return nice_agent_new_full (ctx, compat, NICE_AGENT_OPTION_NONE);
 }
 
 
 NICEAPI_EXPORT NiceAgent *
 nice_agent_new_reliable (GMainContext *ctx, NiceCompatibility compat)
 {
-  NiceAgent *agent = g_object_new (NICE_TYPE_AGENT,
-      "compatibility", compat,
-      "main-context", ctx,
-      "reliable", TRUE,
-      NULL);
-
-  return agent;
+  return nice_agent_new_full (ctx, compat, NICE_AGENT_OPTION_RELIABLE);
 }
 
 
