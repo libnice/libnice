@@ -1,6 +1,3 @@
-include:
- - remote: "https://gitlab.freedesktop.org/freedesktop/ci-templates/-/raw/7ea696055e322cc7aa4bcbe5422b56a198c4bdff/templates/ci-fairy.yml"
-
 stages:
  - verify
  - build
@@ -18,15 +15,21 @@ default:
 #
 # Check "allow-edit" checkbox on merge requests with ci-fairy
 #
-check allow-edit:
-  extends: '.fdo.ci-fairy'
+
+include:
+  - project: 'freedesktop/ci-templates'
+    file: '/templates/ci-fairy.yml'
+
+check-allow-collaboration:
+  extends:
+    - .fdo.ci-fairy
+  script:
+   - ci-fairy check-merge-request --require-allow-collaboration
   interruptible: true
   needs: []
   stage: 'verify'
   variables:
     GIT_STRATEGY: 'none'
-  script:
-    - ci-fairy check-merge-request --require-allow-collaboration
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
       when: always
