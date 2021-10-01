@@ -630,6 +630,20 @@ candidate_check_pair_fail (NiceStream *stream, NiceAgent *agent, CandidateCheckP
   component = nice_stream_find_component_by_id (stream, p->component_id);
   SET_PAIR_STATE (agent, p, NICE_CHECK_FAILED);
   priv_free_all_stun_transactions (p, component);
+
+  /* Ensure related succeeded-discovered pairs change to state failed
+   * simultaneously, to avoid leaving dangling pointers if one is freeed
+   * while the other is still in the conncheck list. Such transition is
+   * very rare, and only occurs in regular nomination mode, when the
+   * network conditions change between the time the pair is initially
+   * discovered and the time it is rechecked with the use-candidate
+   * flag.
+   */
+  if (p->discovered_pair != NULL) {
+    nice_debug ("Agent %p : related discovered pair %p of pair %p "
+        "will fail too.", agent, p->discovered_pair, p);
+    SET_PAIR_STATE (agent, p->discovered_pair, NICE_CHECK_FAILED);
+  }
 }
 
 /*
@@ -3435,6 +3449,14 @@ static CandidateCheckPair *priv_process_response_check_for_reflexive(NiceAgent *
      */
     if (new_pair == p)
       p->valid = TRUE;
+    else
+      /* this new_pair distinct from p may also be in state failed (if
+       * the related succeeded pair p was in state failed previously, but
+       * retriggered a successful check a bit later), so we force its
+       * state back to discovered there.
+       */
+      SET_PAIR_STATE (agent, new_pair, NICE_CHECK_DISCOVERED);
+
     SET_PAIR_STATE (agent, p, NICE_CHECK_SUCCEEDED);
     priv_remove_pair_from_triggered_check_queue (agent, p);
     priv_free_all_stun_transactions (p, component);
