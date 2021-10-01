@@ -261,7 +261,7 @@ nice_component_find_pair (NiceComponent *component, NiceAgent *agent,
     const gchar *lfoundation, const gchar *rfoundation, CandidatePair *pair);
 
 void
-nice_component_restart (NiceComponent *component);
+nice_component_restart (NiceComponent *component, NiceAgent *agent);
 
 void
 nice_component_update_selected_pair (NiceAgent *agent, NiceComponent *component,

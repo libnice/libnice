@@ -145,7 +145,7 @@ nice_stream_restart (NiceStream *stream, NiceAgent *agent)
   for (i = stream->components; i; i = i->next) {
     NiceComponent *component = i->data;
 
-    nice_component_restart (component);
+    nice_component_restart (component, agent);
     agent_signal_component_state_change (agent,
         stream->id, component->id, NICE_COMPONENT_STATE_GATHERING);
   }

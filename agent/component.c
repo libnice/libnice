@@ -433,7 +433,7 @@ nice_component_find_pair (NiceComponent *cmp, NiceAgent *agent, const gchar *lfo
  * session.
  */
 void
-nice_component_restart (NiceComponent *cmp)
+nice_component_restart (NiceComponent *cmp, NiceAgent *agent)
 {
   GSList *i;
   IncomingCheck *c;
@@ -462,6 +462,13 @@ nice_component_restart (NiceComponent *cmp)
   cmp->selected_pair.priority = 0;
 
   cmp->have_local_consent = TRUE;
+
+  /* The stun agent may contain references to the password previously
+   * stored in some remote candidates, freeed here, that were used by
+   * keep-alive stun requests. The stun agent must be reset to get rid
+   * of these references.
+   */
+  nice_agent_init_stun_agent (agent, &cmp->stun_agent);
 
   /* note: component state managed by agent */
 }
