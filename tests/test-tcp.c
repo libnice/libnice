@@ -93,7 +93,7 @@ main (void)
   mainloop = g_main_loop_new (NULL, FALSE);
 
   nice_address_init (&active_bind_addr);
-  g_assert_true (nice_address_set_from_string (&active_bind_addr, "::1"));
+  g_assert_true (nice_address_set_from_string (&active_bind_addr, "127.0.0.1"));
 
   nice_address_init (&passive_bind_addr);
   g_assert_true (nice_address_set_from_string (&passive_bind_addr, "127.0.0.1"));

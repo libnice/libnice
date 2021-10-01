@@ -948,7 +948,8 @@ socket_send_message (NiceSocket *sock, const NiceAddress *to,
     if (priv->compatibility == NICE_TURN_SOCKET_COMPATIBILITY_RFC5766 &&
         !priv_has_permission_for_peer (priv, to)) {
       if (!priv_has_sent_permission_for_peer (priv, to)) {
-        priv_send_create_permission (priv, to);
+        if (!priv_send_create_permission (priv, to))
+          goto error;
       }
 
       /* enque data */
@@ -2012,7 +2013,7 @@ priv_send_create_permission(UdpTurnPriv *priv,
     const NiceAddress *peer)
 {
   guint msg_buf_len;
-  gboolean res = FALSE;
+  gssize res = 0;
   TURNMessage *msg = g_new0 (TURNMessage, 1);
   union {
     struct sockaddr_storage storage;
@@ -2051,6 +2052,11 @@ priv_send_create_permission(UdpTurnPriv *priv,
             msg_buf_len, (gchar *) msg->buffer, FALSE);
     }
 
+    if (res < 0) {
+      g_free(msg);
+      goto done;
+    }
+
     if (nice_socket_is_reliable (priv->base_socket)) {
       stun_timer_start_reliable (&msg->timer,
         STUN_TIMER_DEFAULT_RELIABLE_TIMEOUT);
@@ -2065,7 +2071,8 @@ priv_send_create_permission(UdpTurnPriv *priv,
     g_free(msg);
   }
 
-  return res;
+done:
+  return (res > 0);
 }
 
 static gboolean

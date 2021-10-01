@@ -2975,12 +2975,18 @@ int conn_check_send (NiceAgent *agent, CandidateCheckPair *pair)
             component2);
 
         nice_component_attach_socket (component2, new_socket);
+      } else {
+        priv_remove_stun_transaction (pair, stun, component);
+        return -1;
       }
     }
   }
   /* send the conncheck */
-  agent_socket_send (pair->sockptr, &pair->remote->addr,
-      buffer_len, (gchar *)stun->buffer);
+  if (agent_socket_send (pair->sockptr, &pair->remote->addr,
+      buffer_len, (gchar *)stun->buffer) < 0) {
+    priv_remove_stun_transaction (pair, stun, component);
+    return -1;
+  }
 
   if (agent->compatibility == NICE_COMPATIBILITY_OC2007R2)
     ms_ice2_legacy_conncheck_send (&stun->message, pair->sockptr,

@@ -335,7 +335,7 @@ socket_send_messages (NiceSocket *sock, const NiceAddress *to,
       nice_address_to_string (&local_addr, local_addr_str);
       g_object_unref (gsocket);
 
-      nice_debug_verbose ("%s: udp-bsd socket %p %s:%u -> %s:%u: error: %s",
+      nice_debug ("%s: udp-bsd socket %p %s:%u -> %s:%u: error: %s",
           G_STRFUNC, sock,
           local_addr_str, nice_address_get_port (&local_addr),
           remote_addr_str, nice_address_get_port (&remote_addr),

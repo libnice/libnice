@@ -41,6 +41,7 @@
 
 #include "socket.h"
 #include "tcp-active.h"
+#include "agent-priv.h"
 
 #include <string.h>
 #include <errno.h>
@@ -192,7 +193,14 @@ nice_tcp_active_socket_connect (NiceSocket *sock, NiceAddress *addr)
   gboolean gret = FALSE;
   GSocketAddress *gaddr;
   NiceAddress local_addr;
+  NiceAddress remote_addr;
   NiceSocket *new_socket = NULL;
+  union {
+    struct sockaddr_storage ss;
+    struct sockaddr sa;
+  } sa;
+  char remote_addr_str[INET6_ADDRSTRLEN];
+  char local_addr_str[INET6_ADDRSTRLEN];
 
   if (addr == NULL) {
     /* We can't connect a tcp socket with no destination address */
@@ -234,29 +242,27 @@ nice_tcp_active_socket_connect (NiceSocket *sock, NiceAddress *addr)
   /* setting TCP_NODELAY to TRUE in order to avoid packet batching */
   g_socket_set_option (gsock, IPPROTO_TCP, TCP_NODELAY, TRUE, NULL);
 
-  /* Allow g_socket_bind to fail */
-  g_socket_bind (gsock, priv->local_addr, FALSE, NULL);
+  gret = g_socket_bind (gsock, priv->local_addr, FALSE, &gerr);
+
+  if (gret == FALSE) {
+    if (g_error_matches (gerr, G_IO_ERROR, G_IO_ERROR_PENDING) == FALSE)
+      goto error;
+    g_clear_error (&gerr);
+  }
 
   gret = g_socket_connect (gsock, gaddr, NULL, &gerr);
   g_object_unref (gaddr);
 
   if (gret == FALSE) {
-    if (g_error_matches (gerr, G_IO_ERROR, G_IO_ERROR_PENDING) == FALSE) {
-      g_error_free (gerr);
-      g_socket_close (gsock, NULL);
-      g_object_unref (gsock);
-      return NULL;
-    }
+    if (g_error_matches (gerr, G_IO_ERROR, G_IO_ERROR_PENDING) == FALSE)
+      goto error;
     g_error_free (gerr);
   }
 
   gaddr = g_socket_get_local_address (gsock, NULL);
   if (gaddr == NULL ||
-      !g_socket_address_to_native (gaddr, &name.addr, sizeof (name), NULL)) {
-    g_socket_close (gsock, NULL);
-    g_object_unref (gsock);
-    return NULL;
-  }
+      !g_socket_address_to_native (gaddr, &name.addr, sizeof (name), NULL))
+    goto error2;
   g_object_unref (gaddr);
 
   nice_address_set_from_sockaddr (&local_addr, &name.addr);
@@ -266,4 +272,26 @@ nice_tcp_active_socket_connect (NiceSocket *sock, NiceAddress *addr)
   g_object_unref (gsock);
 
   return new_socket;
+
+error:
+  g_socket_address_to_native (gaddr, &sa, sizeof (sa), NULL);
+  nice_address_set_from_sockaddr (&remote_addr, &sa.sa);
+  nice_address_to_string (&remote_addr, remote_addr_str);
+
+  g_socket_address_to_native (priv->local_addr, &sa, sizeof (sa), NULL);
+  nice_address_set_from_sockaddr (&local_addr, &sa.sa);
+  nice_address_to_string (&local_addr, local_addr_str);
+
+  nice_debug ("%s: tcp-active socket %p %s:%u -> %s:%u: error: %s",
+      G_STRFUNC, sock,
+      local_addr_str, nice_address_get_port (&local_addr),
+      remote_addr_str, nice_address_get_port (&remote_addr),
+      gerr->message);
+
+  g_error_free (gerr);
+
+error2:
+  g_socket_close (gsock, NULL);
+  g_object_unref (gsock);
+  return NULL;
 }
