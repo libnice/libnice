@@ -209,7 +209,8 @@ else
   endif
 endif
 
-if not crypto_dep.found() and opt_cryptolib != 'gnutls'
+crypto_found = crypto_dep.found()
+if not crypto_found and opt_cryptolib != 'gnutls'
   # MSVC builds of OpenSSL does not generate pkg-config files,
   # so we check for it manually here in this case, if we can't find those files
   # Based on the CMake check for OpenSSL in CURL's CMakeLists.txt,
@@ -239,10 +240,11 @@ if not crypto_dep.found() and opt_cryptolib != 'gnutls'
 
   if libcrypto_dep.found() and libssl_dep.found()
     crypto_dep = [libcrypto_dep, libssl_dep]
+    crypto_found = true
   endif
 endif
 
-if not crypto_dep.found()
+if not crypto_found
   if opt_cryptolib == 'gnutls'
     error('GnuTLS requested as crypto library, but not found')
   elif opt_cryptolib == 'openssl'
