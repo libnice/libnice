@@ -48,7 +48,7 @@
 #include <string.h>
 #include <assert.h>
 
-#if defined(_WIN32)
+#if defined(USE_WIN32_CRYPTO)
 #include <malloc.h>
 typedef struct _StunKeyBlob {
   BLOBHEADER header;
@@ -71,7 +71,7 @@ void stun_sha1 (const uint8_t *msg, size_t len, size_t msg_len, uint8_t *sha,
 
   assert (len >= 44u);
 
-#if defined(_WIN32)
+#if defined(USE_WIN32_CRYPTO)
 {
   HCRYPTPROV prov;
   size_t blob_size;
@@ -238,7 +238,7 @@ void stun_hash_creds (const uint8_t *realm, size_t realm_len,
   const uint8_t *realm_trimmed = priv_trim_var (realm, &realm_len);
   const uint8_t *colon = (uint8_t *)":";
 
-#if defined(_WIN32)
+#if defined(USE_WIN32_CRYPTO)
   HCRYPTPROV prov;
   HCRYPTHASH hash;
   DWORD md5_digest_len;

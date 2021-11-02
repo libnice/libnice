@@ -39,7 +39,7 @@
 
 #include "rand.h"
 
-#if defined(_WIN32)
+#if defined(USE_WIN32_CRYPTO)
 
 #include <windows.h>
 
