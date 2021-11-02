@@ -66,7 +66,7 @@ gint global_ragent_buffers = 0;
 	  g_main_context_iteration (context, FALSE);	\
 	}						\
 							\
-      g_assert (!(var));				\
+      g_assert_true (!(var));				\
     }
 
 static gpointer
@@ -119,7 +119,7 @@ static void cb_candidate_gathering_done(NiceAgent *agent, guint stream_id, gpoin
   g_free (password);
 
   cands = nice_agent_get_local_candidates(agent, id, 1);
-  g_assert (cands != NULL);
+  g_assert_true (cands != NULL);
 
   nice_agent_set_remote_candidates (other, other_id, 1, cands);
 
@@ -263,12 +263,12 @@ int main (void)
     guint port = 0;
     gboolean mode = FALSE;
     g_object_get (G_OBJECT (lagent), "stun-server", &string, NULL);
-    g_assert (stun_server == NULL || strcmp (string, stun_server) == 0);
+    g_assert_true (stun_server == NULL || strcmp (string, stun_server) == 0);
     g_free (string);
     g_object_get (G_OBJECT (lagent), "stun-server-port", &port, NULL);
-    g_assert (stun_server_port == NULL || port == (guint)atoi (stun_server_port));
+    g_assert_true (stun_server_port == NULL || port == (guint)atoi (stun_server_port));
     g_object_get (G_OBJECT (lagent), "controlling-mode", &mode, NULL);
-    g_assert (mode == TRUE);
+    g_assert_true (mode == TRUE);
     g_object_set (G_OBJECT (lagent), "max-connectivity-checks", 300, NULL);
     g_object_get (G_OBJECT (lagent), "max-connectivity-checks", &max_checks, NULL);
     g_assert_cmpuint (max_checks, ==, 300);
@@ -280,8 +280,8 @@ int main (void)
   lthread = g_thread_new ("lthread libnice", mainloop_thread, lmainloop);
   rthread = g_thread_new ("rthread libnice", mainloop_thread, rmainloop);
 
-  g_assert (lthread);
-  g_assert (rthread);
+  g_assert_true (lthread);
+  g_assert_true (rthread);
 
   ls_id = nice_agent_add_stream (lagent, 2);
   rs_id = nice_agent_add_stream (ragent, 2);
@@ -302,8 +302,8 @@ int main (void)
   ldthread = g_thread_new ("ldthread libnice", mainloop_thread, ldmainloop);
   rdthread = g_thread_new ("rdthread libnice", mainloop_thread, rdmainloop);
 
-  g_assert (ldthread);
-  g_assert (rdthread);
+  g_assert_true (ldthread);
+  g_assert_true (rdthread);
 
   g_debug ("ragent_buffers: %d lagent_buffers: %d", global_lagent_buffers,
       global_ragent_buffers);

@@ -85,7 +85,7 @@ static void cb_component_state_changed (NiceAgent *agent, guint stream_id, guint
     global_components_ready++;
   else if (state == NICE_COMPONENT_STATE_CONNECTED && ready_to_connected)
     global_components_ready--;
-  g_assert (state != NICE_COMPONENT_STATE_FAILED);
+  g_assert_true (state != NICE_COMPONENT_STATE_FAILED);
 
   g_debug ("test-turn: checks READY %u.", global_components_ready);
 }
@@ -222,13 +222,13 @@ run_test(guint turn_port, gboolean is_ipv6,
   nice_agent_set_relay_info(ragent, rs_id, 1,
       localhost, turn_port, TURN_USER, TURN_PASS, turn_type);
 
-  g_assert (global_lagent_gathering_done == FALSE);
-  g_assert (global_ragent_gathering_done == FALSE);
+  g_assert_true (global_lagent_gathering_done == FALSE);
+  g_assert_true (global_ragent_gathering_done == FALSE);
   g_debug ("test-turn: Added streams, running context until 'candidate-gathering-done'...");
 
   /* Gather candidates and test nice_agent_set_port_range */
-  g_assert (nice_agent_gather_candidates (lagent, ls_id) == TRUE);
-  g_assert (nice_agent_gather_candidates (ragent, rs_id) == TRUE);
+  g_assert_true (nice_agent_gather_candidates (lagent, ls_id) == TRUE);
+  g_assert_true (nice_agent_gather_candidates (ragent, rs_id) == TRUE);
 
   nice_agent_attach_recv (lagent, ls_id, NICE_COMPONENT_TYPE_RTP,
       g_main_context_default (), cb_nice_recv, GUINT_TO_POINTER (1));
@@ -237,10 +237,10 @@ run_test(guint turn_port, gboolean is_ipv6,
 
   while (!global_lagent_gathering_done)
     g_main_context_iteration (NULL, TRUE);
-  g_assert (global_lagent_gathering_done == TRUE);
+  g_assert_true (global_lagent_gathering_done == TRUE);
   while (!global_ragent_gathering_done)
     g_main_context_iteration (NULL, TRUE);
-  g_assert (global_ragent_gathering_done == TRUE);
+  g_assert_true (global_ragent_gathering_done == TRUE);
 
   set_credentials (lagent, ls_id, ragent, rs_id);
 

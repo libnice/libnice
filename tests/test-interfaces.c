@@ -50,24 +50,24 @@ test_ipv4 (void)
   /* test private addresses */
   nice_address_set_from_string (&addr, "10.1.2.3");
   nice_address_copy_to_sockaddr (&addr, &sin.addr);
-  g_assert (nice_interfaces_is_private_ip (&sin.addr));
+  g_assert_true (nice_interfaces_is_private_ip (&sin.addr));
 
   nice_address_set_from_string (&addr, "172.22.22.22");
   nice_address_copy_to_sockaddr (&addr, &sin.addr);
-  g_assert (nice_interfaces_is_private_ip (&sin.addr));
+  g_assert_true (nice_interfaces_is_private_ip (&sin.addr));
 
   nice_address_set_from_string (&addr, "192.168.122.1");
   nice_address_copy_to_sockaddr (&addr, &sin.addr);
-  g_assert (nice_interfaces_is_private_ip (&sin.addr));
+  g_assert_true (nice_interfaces_is_private_ip (&sin.addr));
 
   nice_address_set_from_string (&addr, "169.254.1.2");
   nice_address_copy_to_sockaddr (&addr, &sin.addr);
-  g_assert (nice_interfaces_is_private_ip (&sin.addr));
+  g_assert_true (nice_interfaces_is_private_ip (&sin.addr));
 
   /* test public addresses */
   nice_address_set_from_string (&addr, "1.2.3.4");
   nice_address_copy_to_sockaddr (&addr, &sin.addr);
-  g_assert (nice_interfaces_is_private_ip (&sin.addr) == FALSE);
+  g_assert_true (nice_interfaces_is_private_ip (&sin.addr) == FALSE);
 
 }
 
@@ -85,13 +85,13 @@ test_ipv6 (void)
   nice_address_set_from_string (&addr,
       "fe8f:2233:4455:6677:8899:aabb:ccdd:eeff");
   nice_address_copy_to_sockaddr (&addr, &sin.addr);
-  g_assert (nice_interfaces_is_private_ip (&sin.addr));
+  g_assert_true (nice_interfaces_is_private_ip (&sin.addr));
 
   /* test public addresses */
   nice_address_set_from_string (&addr,
       "11:2233:4455:6677:8899:aabb:ccdd:eeff");
   nice_address_copy_to_sockaddr (&addr, &sin.addr);
-  g_assert (nice_interfaces_is_private_ip (&sin.addr) == FALSE);
+  g_assert_true (nice_interfaces_is_private_ip (&sin.addr) == FALSE);
 }
 #endif /* G_OS_UNIX */
 

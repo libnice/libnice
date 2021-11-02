@@ -55,7 +55,7 @@
 	  g_main_context_iteration (context, FALSE);	\
 	}						\
 							\
-      g_assert (!(var));				\
+      g_assert_true (!(var));				\
     }
 
 gint
@@ -76,21 +76,21 @@ main (void)
   nice_address_init (&addr_local);
   nice_address_init (&addr_remote);
 
-  g_assert (nice_address_set_from_string (&addr_local, "127.0.0.1"));
-  g_assert (nice_address_set_from_string (&addr_remote, "127.0.0.1"));
+  g_assert_true (nice_address_set_from_string (&addr_local, "127.0.0.1"));
+  g_assert_true (nice_address_set_from_string (&addr_remote, "127.0.0.1"));
   nice_address_set_port (&addr_remote, 2345);
 
   agent = nice_agent_new ( NULL, NICE_COMPATIBILITY_RFC5245);
   g_object_set (G_OBJECT (agent), "ice-tcp", FALSE,  NULL);
 
-  g_assert (agent->local_addresses == NULL);
+  g_assert_true (agent->local_addresses == NULL);
 
   /* add one local address */
   nice_agent_add_local_address (agent, &addr_local);
 
-  g_assert (agent->local_addresses != NULL);
+  g_assert_true (agent->local_addresses != NULL);
   g_assert_cmpuint (g_slist_length (agent->local_addresses), ==, 1);
-  g_assert (nice_address_equal (agent->local_addresses->data, &addr_local));
+  g_assert_true (nice_address_equal (agent->local_addresses->data, &addr_local));
 
   /* add a stream */
   stream_id = nice_agent_add_stream (agent, 1);
@@ -103,8 +103,8 @@ main (void)
   /* socket manager uses random port number */
   nice_address_set_port (&addr_local, 1);
   nice_address_set_port (&(candidate->addr), 1);
-  g_assert (nice_address_equal (&(candidate->addr), &addr_local));
-  g_assert (strncmp (candidate->foundation, "1", 1) == 0);
+  g_assert_true (nice_address_equal (&(candidate->addr), &addr_local));
+  g_assert_true (strncmp (candidate->foundation, "1", 1) == 0);
   for (i = candidates; i; i = i->next)
     nice_candidate_free ((NiceCandidate *) i->data);
   g_slist_free (candidates);

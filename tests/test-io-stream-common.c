@@ -61,7 +61,7 @@ gboolean started;
 	  g_main_context_iteration (context, FALSE);	\
 	}						\
 							\
-      g_assert (!(var));				\
+      g_assert_true (!(var));				\
     }
 
 static gboolean timer_cb (gpointer pointer)
@@ -177,7 +177,7 @@ candidate_gathering_done_cb (NiceAgent *agent, guint stream_id,
   g_free (password);
 
   cands = nice_agent_get_local_candidates (agent, id, 1);
-  g_assert (cands != NULL);
+  g_assert_true (cands != NULL);
 
   nice_agent_set_remote_candidates (other, other_id, 1, cands);
 
@@ -192,7 +192,7 @@ reliable_transport_writable_cb (NiceAgent *agent, guint stream_id,
 {
   TestIOStreamThreadData *data = user_data;
 
-  g_assert (data->reliable);
+  g_assert_true (data->reliable);
 
   /* Signal writeability. */
   g_mutex_lock (&data->write_mutex);
@@ -205,7 +205,7 @@ reliable_transport_writable_cb (NiceAgent *agent, guint stream_id,
     GOutputStream *output_stream;
 
     io_stream = g_object_get_data (G_OBJECT (agent), "io-stream");
-    g_assert (io_stream != NULL);
+    g_assert_true (io_stream != NULL);
     output_stream = g_io_stream_get_output_stream (io_stream);
 
     data->callbacks->reliable_transport_writable (output_stream, agent,
@@ -265,7 +265,7 @@ create_agent (gboolean controlling_mode, TestIOStreamThreadData *data,
       NULL);
 
   /* Specify which local interface to use. */
-  g_assert (nice_address_set_from_string (&base_addr, "127.0.0.1"));
+  g_assert_true (nice_address_set_from_string (&base_addr, "127.0.0.1"));
   nice_agent_add_local_address (agent, &base_addr);
 
   /* Hook up signals. */
@@ -337,7 +337,7 @@ spawn_thread (const gchar *thread_name, GThreadFunc thread_func,
   GThread *thread;
 
   thread = g_thread_new (thread_name, thread_func, user_data);
-  g_assert (thread);
+  g_assert_true (thread);
 
   return thread;
 }

@@ -311,8 +311,8 @@ int main (void)
       global_ragent_gathering_done != TRUE) {
     g_debug ("test-trickle: Added streams, running mainloop until 'candidate-gathering-done'...");
     g_main_loop_run (global_mainloop);
-    g_assert (global_lagent_gathering_done == TRUE);
-    g_assert (global_ragent_gathering_done == TRUE);
+    g_assert_true (global_lagent_gathering_done == TRUE);
+    g_assert_true (global_ragent_gathering_done == TRUE);
   }
 
   {
@@ -349,7 +349,7 @@ int main (void)
   g_main_loop_run (global_mainloop);
 
   /* note: verify that STUN binding requests were sent */
-  g_assert (global_lagent_ibr_received == TRUE);
+  g_assert_true (global_lagent_ibr_received == TRUE);
   g_assert_cmpint (global_ragent_ibr_received, ==, TRUE);
 
   g_assert_cmpint (global_lagent_state, ==, NICE_COMPONENT_STATE_READY);

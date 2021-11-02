@@ -297,8 +297,8 @@ static int run_full_test (NiceAgent *lagent, NiceAgent *ragent, NiceAddress *bas
   g_assert_cmpuint (rs_id, >, 0);
 
   /* Gather candidates */
-  g_assert (nice_agent_gather_candidates (lagent, ls_id) == TRUE);
-  g_assert (nice_agent_gather_candidates (ragent, rs_id) == TRUE);
+  g_assert_true (nice_agent_gather_candidates (lagent, ls_id) == TRUE);
+  g_assert_true (nice_agent_gather_candidates (ragent, rs_id) == TRUE);
 
   {
     GSList *cands = NULL, *i;
@@ -308,11 +308,11 @@ static int run_full_test (NiceAgent *lagent, NiceAgent *ragent, NiceAddress *bas
     g_assert_cmpuint (g_slist_length (cands), ==, 2);
     cand = cands->data;
     g_assert_cmpint (cand->type, ==, NICE_CANDIDATE_TYPE_HOST);
-    g_assert (cand->transport == NICE_CANDIDATE_TRANSPORT_TCP_ACTIVE ||
+    g_assert_true (cand->transport == NICE_CANDIDATE_TRANSPORT_TCP_ACTIVE ||
               cand->transport == NICE_CANDIDATE_TRANSPORT_TCP_PASSIVE);
     cand = cands->next->data;
     g_assert_cmpint (cand->type, ==, NICE_CANDIDATE_TYPE_HOST);
-    g_assert (cand->transport == NICE_CANDIDATE_TRANSPORT_TCP_ACTIVE ||
+    g_assert_true (cand->transport == NICE_CANDIDATE_TRANSPORT_TCP_ACTIVE ||
               cand->transport == NICE_CANDIDATE_TRANSPORT_TCP_PASSIVE);
     for (i = cands; i; i = i->next)
       nice_candidate_free ((NiceCandidate *) i->data);
@@ -339,8 +339,8 @@ static int run_full_test (NiceAgent *lagent, NiceAgent *ragent, NiceAddress *bas
       global_ragent_gathering_done != TRUE) {
     g_debug ("test-icetcp: Added streams, running mainloop until 'candidate-gathering-done'...");
     g_main_loop_run (global_mainloop);
-    g_assert (global_lagent_gathering_done == TRUE);
-    g_assert (global_ragent_gathering_done == TRUE);
+    g_assert_true (global_lagent_gathering_done == TRUE);
+    g_assert_true (global_ragent_gathering_done == TRUE);
   }
 
   set_credentials (lagent, ls_id, ragent, rs_id);
@@ -358,8 +358,8 @@ static int run_full_test (NiceAgent *lagent, NiceAgent *ragent, NiceAddress *bas
   g_main_loop_run (global_mainloop);
 
   /* note: verify that STUN binding requests were sent */
-  g_assert (global_lagent_ibr_received == TRUE);
-  g_assert (global_ragent_ibr_received == TRUE);
+  g_assert_true (global_lagent_ibr_received == TRUE);
+  g_assert_true (global_ragent_ibr_received == TRUE);
 
   /* note: test payload send and receive */
   global_ragent_read = 0;

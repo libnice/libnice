@@ -56,14 +56,14 @@ int main (int argc, char **argv)
   nice_agent_set_port_range (agent, stream1, 2, 8888, 8888);
 
   /* First test with ICE-TCP enabled, this should fail on creating the port */
-  g_assert (nice_agent_gather_candidates (agent, stream1) == FALSE);
+  g_assert_true (nice_agent_gather_candidates (agent, stream1) == FALSE);
 
   /* First test with ICE-TCP disabled, this should fail on our explicit test */
   g_object_set (agent, "ice-tcp", FALSE, NULL);
-  g_assert (nice_agent_gather_candidates (agent, stream1) == FALSE);
+  g_assert_true (nice_agent_gather_candidates (agent, stream1) == FALSE);
 
   nice_agent_set_port_range (agent, stream1, 2, 9999, 9999);
-  g_assert (nice_agent_gather_candidates (agent, stream1));
+  g_assert_true (nice_agent_gather_candidates (agent, stream1));
 
   g_object_unref (agent);
 

@@ -202,7 +202,7 @@ static void priv_get_local_addr (NiceAgent *agent, guint stream_id, guint compon
   for (i = cands; i; i = i->next) {
     NiceCandidate *cand = i->data;
     if (cand) {
-      g_assert (dstaddr);
+      g_assert_true (dstaddr);
       *dstaddr = cand->addr;
       break;
     }
@@ -266,8 +266,8 @@ static int run_fallback_test (NiceAgent *lagent, NiceAgent *ragent, NiceAddress 
       global_ragent_gathering_done != TRUE) {
     g_debug ("test-fallback: Added streams, running mainloop until 'candidate-gathering-done'...");
     g_main_loop_run (global_mainloop);
-    g_assert (global_lagent_gathering_done == TRUE);
-    g_assert (global_ragent_gathering_done == TRUE);
+    g_assert_true (global_lagent_gathering_done == TRUE);
+    g_assert_true (global_ragent_gathering_done == TRUE);
   }
 
   /* step: find out the local candidates of each agent */
@@ -303,10 +303,10 @@ static int run_fallback_test (NiceAgent *lagent, NiceAgent *ragent, NiceAddress 
   nice_agent_set_remote_candidates (ragent, rs_id, NICE_COMPONENT_TYPE_RTCP, cands);
 
   /* step: fall back to non-ICE mode on both sides */
-  g_assert (nice_agent_set_selected_pair (lagent, ls_id, NICE_COMPONENT_TYPE_RTP, "1", "1") == TRUE);
-  g_assert (nice_agent_set_selected_pair (lagent, ls_id, NICE_COMPONENT_TYPE_RTCP, "1", "1") == TRUE);
-  g_assert (nice_agent_set_selected_pair (ragent, rs_id, NICE_COMPONENT_TYPE_RTP, "1", "1") == TRUE);
-  g_assert (nice_agent_set_selected_pair (ragent, rs_id, NICE_COMPONENT_TYPE_RTCP, "1", "1") == TRUE);
+  g_assert_true (nice_agent_set_selected_pair (lagent, ls_id, NICE_COMPONENT_TYPE_RTP, "1", "1") == TRUE);
+  g_assert_true (nice_agent_set_selected_pair (lagent, ls_id, NICE_COMPONENT_TYPE_RTCP, "1", "1") == TRUE);
+  g_assert_true (nice_agent_set_selected_pair (ragent, rs_id, NICE_COMPONENT_TYPE_RTP, "1", "1") == TRUE);
+  g_assert_true (nice_agent_set_selected_pair (ragent, rs_id, NICE_COMPONENT_TYPE_RTCP, "1", "1") == TRUE);
 
   g_debug ("test-fallback: Requested for fallback, running mainloop until component state change is completed...");
 
@@ -402,8 +402,8 @@ static int run_safe_fallback_test (NiceAgent *lagent, NiceAgent *ragent, NiceAdd
       global_ragent_gathering_done != TRUE) {
     g_debug ("test-fallback: Added streams, running mainloop until 'candidate-gathering-done'...");
     g_main_loop_run (global_mainloop);
-    g_assert (global_lagent_gathering_done == TRUE);
-    g_assert (global_ragent_gathering_done == TRUE);
+    g_assert_true (global_lagent_gathering_done == TRUE);
+    g_assert_true (global_ragent_gathering_done == TRUE);
   }
 
   /* step: find out the local candidates of each agent */
@@ -428,17 +428,17 @@ static int run_safe_fallback_test (NiceAgent *lagent, NiceAgent *ragent, NiceAdd
 
   cdes->component_id = NICE_COMPONENT_TYPE_RTP;
   cdes->addr = raddr;
-  g_assert (nice_agent_set_selected_remote_candidate (lagent, ls_id, NICE_COMPONENT_TYPE_RTP, cdes));
+  g_assert_true (nice_agent_set_selected_remote_candidate (lagent, ls_id, NICE_COMPONENT_TYPE_RTP, cdes));
 
   cdes->addr = laddr;
-  g_assert (nice_agent_set_selected_remote_candidate (ragent, rs_id, NICE_COMPONENT_TYPE_RTP, cdes));
+  g_assert_true (nice_agent_set_selected_remote_candidate (ragent, rs_id, NICE_COMPONENT_TYPE_RTP, cdes));
 
   cdes->component_id = NICE_COMPONENT_TYPE_RTCP;
   cdes->addr = raddr_rtcp;
-  g_assert (nice_agent_set_selected_remote_candidate (lagent, ls_id, NICE_COMPONENT_TYPE_RTCP, cdes));
+  g_assert_true (nice_agent_set_selected_remote_candidate (lagent, ls_id, NICE_COMPONENT_TYPE_RTCP, cdes));
 
   cdes->addr = laddr_rtcp;
-  g_assert (nice_agent_set_selected_remote_candidate (ragent, rs_id, NICE_COMPONENT_TYPE_RTCP, cdes));
+  g_assert_true (nice_agent_set_selected_remote_candidate (ragent, rs_id, NICE_COMPONENT_TYPE_RTCP, cdes));
 
   g_debug ("test-fallback: Requested for fallback, running mainloop until component state change is completed...");
 

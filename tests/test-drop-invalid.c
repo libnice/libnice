@@ -98,7 +98,7 @@ static void cb_nice_recv (NiceAgent *agent, guint stream_id, guint component_id,
    * send before the negotiation is over.
    */
   g_assert_cmpuint (len, ==, 16);
-  g_assert (strncmp ("1234567812345678", buf, 16) == 0);
+  g_assert_true (strncmp ("1234567812345678", buf, 16) == 0);
 
   if (component_id == 2)
     return;
@@ -227,7 +227,7 @@ static void set_candidates (NiceAgent *from, guint from_stream,
     NiceCandidateImpl *cand = item1->data;
     NiceSocket *nicesock = cand->sockptr;
 
-    g_assert (nicesock);
+    g_assert_true (nicesock);
 
     for (item2 = peer_cands; item2; item2 = item2->next) {
       NiceCandidate *target_cand = item2->data;
@@ -266,14 +266,14 @@ get_port (NiceAgent *agent, guint stream_id, guint component_id)
   GSList *item;
   guint16 port = 0;
 
-  g_assert (cands != NULL);
+  g_assert_true (cands != NULL);
 
   for (item = cands; item; item = item->next) {
     NiceCandidate *cand = item->data;
     port = nice_address_get_port (&cand->addr);
     break;
   }
-  g_assert (port != 0);
+  g_assert_true (port != 0);
 
   g_slist_free_full (cands, (GDestroyNotify) nice_candidate_free);
 
@@ -314,16 +314,16 @@ static int run_full_test (NiceAgent *lagent, NiceAgent *ragent, NiceAddress *bas
   /* Gather candidates and test nice_agent_set_port_range */
   nice_agent_set_port_range (lagent, ls_id, 1, 10000, 11000);
   nice_agent_set_port_range (lagent, ls_id, 2, 11000, 12000);
-  g_assert (nice_agent_gather_candidates (lagent, ls_id) == TRUE);
+  g_assert_true (nice_agent_gather_candidates (lagent, ls_id) == TRUE);
 
   port = get_port (lagent, ls_id, 1);
   nice_agent_set_port_range (ragent, rs_id, 1, 12000, 13000);
   nice_agent_set_port_range (ragent, rs_id, 2, port, port);
-  g_assert (nice_agent_gather_candidates (ragent, rs_id) == FALSE);
-  g_assert (nice_agent_get_local_candidates (ragent, rs_id, 1) == NULL);
-  g_assert (nice_agent_get_local_candidates (ragent, rs_id, 2) == NULL);
+  g_assert_true (nice_agent_gather_candidates (ragent, rs_id) == FALSE);
+  g_assert_true (nice_agent_get_local_candidates (ragent, rs_id, 1) == NULL);
+  g_assert_true (nice_agent_get_local_candidates (ragent, rs_id, 2) == NULL);
   nice_agent_set_port_range (ragent, rs_id, 2, 13000, 14000);
-  g_assert (nice_agent_gather_candidates (ragent, rs_id) == TRUE);
+  g_assert_true (nice_agent_gather_candidates (ragent, rs_id) == TRUE);
 
   {
     GSList *cands = NULL, *i;
@@ -391,8 +391,8 @@ static int run_full_test (NiceAgent *lagent, NiceAgent *ragent, NiceAddress *bas
       global_ragent_gathering_done != TRUE) {
     g_debug ("test-drop-invalid: Added streams, running mainloop until 'candidate-gathering-done'...");
     g_main_loop_run (global_mainloop);
-    g_assert (global_lagent_gathering_done == TRUE);
-    g_assert (global_ragent_gathering_done == TRUE);
+    g_assert_true (global_lagent_gathering_done == TRUE);
+    g_assert_true (global_ragent_gathering_done == TRUE);
   }
 
   set_credentials (lagent, ls_id, ragent, rs_id);
@@ -410,8 +410,8 @@ static int run_full_test (NiceAgent *lagent, NiceAgent *ragent, NiceAddress *bas
   g_main_loop_run (global_mainloop);
 
   /* note: verify that STUN binding requests were sent */
-  g_assert (global_lagent_ibr_received == TRUE);
-  g_assert (global_ragent_ibr_received == TRUE);
+  g_assert_true (global_lagent_ibr_received == TRUE);
+  g_assert_true (global_ragent_ibr_received == TRUE);
 
   /* note: Send a packet from another address */
   /* These should also be ignored */
@@ -421,10 +421,10 @@ static int run_full_test (NiceAgent *lagent, NiceAgent *ragent, NiceAddress *bas
     NiceSocket *tmpsock;
     GError *error = NULL;
 
-    g_assert (nice_agent_get_selected_pair (lagent, ls_id, 1, &local_cand,
+    g_assert_true (nice_agent_get_selected_pair (lagent, ls_id, 1, &local_cand,
             &remote_cand));
-    g_assert (local_cand);
-    g_assert (remote_cand);
+    g_assert_true (local_cand);
+    g_assert_true (remote_cand);
 
     tmpsock = nice_udp_bsd_socket_new (NULL, &error);
     g_assert_no_error (error);
@@ -436,7 +436,7 @@ static int run_full_test (NiceAgent *lagent, NiceAgent *ragent, NiceAddress *bas
   /* note: test payload send and receive */
   global_ragent_read = 0;
   ret = nice_agent_send (lagent, ls_id, 1, 16, "1234567812345678");
-  g_assert (ret != -1);
+  g_assert_true (ret != -1);
   g_debug ("Sent %d bytes", ret);
   g_assert_cmpint (ret, ==, 16);
   while (global_ragent_read != 16)

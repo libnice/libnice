@@ -197,7 +197,7 @@ static void priv_get_local_addr (NiceAgent *agent, guint stream_id, guint compon
   for (i = cands; i; i = i->next) {
     NiceCandidate *cand = i->data;
     if (cand) {
-      g_assert (dstaddr);
+      g_assert_true (dstaddr);
       *dstaddr = cand->addr;
     }
   }
@@ -264,8 +264,8 @@ static int run_consent_test (NiceAgent *lagent, NiceAgent *ragent, NiceAddress *
       global_ragent_gathering_done != TRUE) {
     g_debug ("test-consent: Added streams, running mainloop until 'candidate-gathering-done'...");
     g_main_loop_run (global_mainloop);
-    g_assert (global_lagent_gathering_done == TRUE);
-    g_assert (global_ragent_gathering_done == TRUE);
+    g_assert_true (global_lagent_gathering_done == TRUE);
+    g_assert_true (global_ragent_gathering_done == TRUE);
   }
 
   /* step: find out the local candidates of each agent */
@@ -319,8 +319,8 @@ static int run_consent_test (NiceAgent *lagent, NiceAgent *ragent, NiceAddress *
   g_main_loop_run (global_mainloop);
 
   /* note: verify that STUN binding requests were sent */
-  g_assert (global_lagent_ibr_received == TRUE);
-  g_assert (global_ragent_ibr_received == TRUE);
+  g_assert_true (global_lagent_ibr_received == TRUE);
+  g_assert_true (global_ragent_ibr_received == TRUE);
   /* note: verify that correct number of local candidates were reported */
   g_assert_cmpint (global_lagent_cands, ==, 2);
   g_assert_cmpint (global_ragent_cands, ==, 2);
@@ -336,12 +336,12 @@ static int run_consent_test (NiceAgent *lagent, NiceAgent *ragent, NiceAddress *
   global_components_failed = 0;
 
   /* step: synthesize marking the components as consent failed */
-  g_assert (nice_agent_consent_lost (ragent, rs_id, NICE_COMPONENT_TYPE_RTP));
-  g_assert (nice_agent_consent_lost (ragent, rs_id, NICE_COMPONENT_TYPE_RTCP));
+  g_assert_true (nice_agent_consent_lost (ragent, rs_id, NICE_COMPONENT_TYPE_RTP));
+  g_assert_true (nice_agent_consent_lost (ragent, rs_id, NICE_COMPONENT_TYPE_RTCP));
 
   /* step: synthesize marking the components as consent failed */
-  g_assert (nice_agent_consent_lost (lagent, rs_id, NICE_COMPONENT_TYPE_RTP));
-  g_assert (nice_agent_consent_lost (lagent, rs_id, NICE_COMPONENT_TYPE_RTCP));
+  g_assert_true (nice_agent_consent_lost (lagent, rs_id, NICE_COMPONENT_TYPE_RTP));
+  g_assert_true (nice_agent_consent_lost (lagent, rs_id, NICE_COMPONENT_TYPE_RTCP));
 
   /* transition to failed will take roughly 4-6 seconds as that's the pacing
    * of the consent connection checks */
@@ -401,8 +401,8 @@ static int run_consent_test (NiceAgent *lagent, NiceAgent *ragent, NiceAddress *
   g_main_loop_run (global_mainloop);
 
   /* note: verify binding requests were resent after restart */
-  g_assert (global_lagent_ibr_received == TRUE);
-  g_assert (global_ragent_ibr_received == TRUE);
+  g_assert_true (global_lagent_ibr_received == TRUE);
+  g_assert_true (global_ragent_ibr_received == TRUE);
 
   /* send another packet after consent lost and after ice restart that will succeed */
   g_assert_cmpint (nice_agent_send (lagent, ls_id, 1, 16, "1234567812345678"), ==, 16);

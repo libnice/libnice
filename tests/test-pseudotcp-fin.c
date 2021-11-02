@@ -245,7 +245,7 @@ expect_segment (PseudoTcpSocket *socket, GQueue/*<owned GBytes>*/ *queue,
 
   /* Grab the segment. */
   bytes = g_queue_peek_head (queue);
-  g_assert (bytes != NULL);
+  g_assert_true (bytes != NULL);
 
   b.u8 = g_bytes_get_data (bytes, &size);
   g_assert_cmpuint (size, >=, 24);  /* minimum packet size */
@@ -286,7 +286,7 @@ forward_segment (GQueue/*<owned GBytes>*/ *from, PseudoTcpSocket *to)
   gboolean retval;
 
   segment = g_queue_pop_head (from);
-  g_assert (segment != NULL);
+  g_assert_true (segment != NULL);
   b = g_bytes_get_data (segment, &size);
   retval = pseudo_tcp_socket_notify_packet (to, (const gchar *) b, size);
   g_bytes_unref (segment);
@@ -297,13 +297,13 @@ forward_segment (GQueue/*<owned GBytes>*/ *from, PseudoTcpSocket *to)
 static void
 forward_segment_ltr (Data *data)
 {
-  g_assert (forward_segment (data->left_sent, data->right));
+  g_assert_true (forward_segment (data->left_sent, data->right));
 }
 
 static void
 forward_segment_rtl (Data *data)
 {
-  g_assert (forward_segment (data->right_sent, data->left));
+  g_assert_true (forward_segment (data->right_sent, data->left));
 }
 
 static void
@@ -312,7 +312,7 @@ duplicate_segment (GQueue/*<owned GBytes>*/ *queue)
   GBytes *segment;  /* unowned */
 
   segment = g_queue_peek_head (queue);
-  g_assert (segment != NULL);
+  g_assert_true (segment != NULL);
   g_queue_push_head (queue, g_bytes_ref (segment));
 }
 
@@ -323,7 +323,7 @@ drop_segment (PseudoTcpSocket *socket, GQueue/*<owned GBytes>*/ *queue)
   gchar *str;
 
   segment = g_queue_pop_head (queue);
-  g_assert (segment != NULL);
+  g_assert_true (segment != NULL);
 
   str = segment_bytes_to_string (g_bytes_get_data (segment, NULL));
   g_debug ("%p drop: %s", socket, str);
@@ -340,9 +340,9 @@ reorder_segments (PseudoTcpSocket *socket, GQueue/*<owned GBytes>*/ *queue)
   gchar *str;
 
   segment1 = g_queue_pop_head (queue);
-  g_assert (segment1 != NULL);
+  g_assert_true (segment1 != NULL);
   segment2 = g_queue_pop_head (queue);
-  g_assert (segment2 != NULL);
+  g_assert_true (segment2 != NULL);
 
   str = segment_bytes_to_string (g_bytes_get_data (segment1, NULL));
   g_debug ("%p reorder: %s", socket, str);
@@ -969,9 +969,9 @@ pseudotcp_close_duplicate_ack (void)
   expect_ack (data.left, data.left_sent, 8, 8);
   duplicate_segment (data.left_sent);
   forward_segment_ltr (&data);
-  g_assert (!forward_segment (data.left_sent, data.right));
+  g_assert_true (!forward_segment (data.left_sent, data.right));
   expect_rst (data.right, data.right_sent, 8, 8);
-  g_assert (!forward_segment (data.right_sent, data.left));
+  g_assert_true (!forward_segment (data.right_sent, data.left));
 
   expect_sockets_closed (&data);
 
@@ -997,7 +997,7 @@ pseudotcp_close_rst (void)
   g_assert_cmpint (pseudo_tcp_socket_recv (data.left, (char *) buf, sizeof (buf)), ==, 0);
 
   expect_rst (data.left, data.left_sent, 7, 7);
-  g_assert (!forward_segment (data.left_sent, data.right));
+  g_assert_true (!forward_segment (data.left_sent, data.right));
 
   /* Check the RHS is closed. */
   g_assert_cmpint (pseudo_tcp_socket_send (data.right, "foo", 3), ==, -1);
@@ -1031,7 +1031,7 @@ pseudotcp_close_pending_received (void)
   close_socket (data.left);
 
   expect_rst (data.left, data.left_sent, 7, 10);
-  g_assert (!forward_segment (data.left_sent, data.right));
+  g_assert_true (!forward_segment (data.left_sent, data.right));
 
   /* Check the RHS is closed. */
   g_assert_cmpint (pseudo_tcp_socket_send (data.right, "foo", 3), ==, -1);
@@ -1067,10 +1067,10 @@ pseudotcp_close_rst_afterwards (void)
   /* Send some data from RHS to LHS, which should result in an RST. */
   g_assert_cmpint (pseudo_tcp_socket_send (data.right, "foo", 3), ==, 3);
   expect_data (data.right, data.right_sent, 7, 7, 3);
-  g_assert (!forward_segment (data.right_sent, data.left));
+  g_assert_true (!forward_segment (data.right_sent, data.left));
 
   expect_rst (data.left, data.left_sent, 7, 7);
-  g_assert (!forward_segment (data.left_sent, data.right));
+  g_assert_true (!forward_segment (data.left_sent, data.right));
 
   /* Check the RHS is closed. */
   g_assert_cmpint (pseudo_tcp_socket_send (data.right, "foo", 3), ==, -1);
@@ -1107,7 +1107,7 @@ pseudotcp_compatibility (void)
 
   /* Close it. Sending shouldn’t fail. */
   pseudo_tcp_socket_close (data.left, FALSE);
-  g_assert (!pseudo_tcp_socket_is_closed (data.left));
+  g_assert_true (!pseudo_tcp_socket_is_closed (data.left));
 
   g_assert_cmpint (pseudo_tcp_socket_send (data.left, "foo", 3), ==, 3);
   g_assert_cmpint (pseudo_tcp_socket_recv (data.left, (char *) buf, sizeof (buf)), ==, -1);
@@ -1125,7 +1125,7 @@ pseudotcp_compatibility (void)
    * outstanding data. */
   increment_time_both (&data, 50);
 
-  g_assert (!pseudo_tcp_socket_get_next_clock (data.left, &timeout));
+  g_assert_true (!pseudo_tcp_socket_get_next_clock (data.left, &timeout));
 
   /* Check the RHS can be closed after receiving the data just sent. */
   g_assert_cmpint (pseudo_tcp_socket_recv (data.right, (char *) buf, sizeof (buf)), ==, 3);
@@ -1134,7 +1134,7 @@ pseudotcp_compatibility (void)
 
   pseudo_tcp_socket_close (data.right, FALSE);
 
-  g_assert (!pseudo_tcp_socket_get_next_clock (data.right, &timeout));
+  g_assert_true (!pseudo_tcp_socket_get_next_clock (data.right, &timeout));
 
   expect_sockets_closed (&data);
 

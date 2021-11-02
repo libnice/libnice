@@ -144,9 +144,9 @@ int main (void)
     nice_agent_set_remote_credentials (ragent, rs_id_2, lufrag, lpassword);
     nice_agent_set_remote_credentials (lagent, ls_id, rufrag2, rpassword2);
 
-    g_assert (nice_agent_gather_candidates (lagent, ls_id) == TRUE);
-    g_assert (nice_agent_gather_candidates (ragent, rs_id_2) == TRUE);
-    g_assert (nice_agent_gather_candidates (ragent, rs_id_1) == TRUE);
+    g_assert_true (nice_agent_gather_candidates (lagent, ls_id) == TRUE);
+    g_assert_true (nice_agent_gather_candidates (ragent, rs_id_2) == TRUE);
+    g_assert_true (nice_agent_gather_candidates (ragent, rs_id_1) == TRUE);
 
     if (USE_SECOND_STREAM) {
       set_candidates (ragent, rs_id_2, lagent, ls_id, NICE_COMPONENT_TYPE_RTP);
@@ -177,8 +177,8 @@ int main (void)
     nice_agent_set_remote_credentials (ragent, rs_id_1, lufrag, lpassword);
     nice_agent_set_remote_credentials (lagent, ls_id, rufrag1, rpassword1);
 
-    g_assert (nice_agent_gather_candidates (lagent, ls_id) == TRUE);
-    g_assert (nice_agent_gather_candidates (ragent, rs_id_1) == TRUE);
+    g_assert_true (nice_agent_gather_candidates (lagent, ls_id) == TRUE);
+    g_assert_true (nice_agent_gather_candidates (ragent, rs_id_1) == TRUE);
 
     /* step: attach to mainloop (needed to register the fds) */
     nice_agent_attach_recv (ragent, rs_id_1, NICE_COMPONENT_TYPE_RTP,

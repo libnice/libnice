@@ -352,14 +352,14 @@ get_port (NiceAgent *agent, guint stream_id, guint component_id)
   GSList *item;
   guint16 port = 0;
 
-  g_assert (cands != NULL);
+  g_assert_true (cands != NULL);
 
   for (item = cands; item; item = item->next) {
     NiceCandidate *cand = item->data;
     port = nice_address_get_port (&cand->addr);
     break;
   }
-  g_assert (port != 0);
+  g_assert_true (port != 0);
 
   g_slist_free_full (cands, (GDestroyNotify) nice_candidate_free);
 
@@ -419,12 +419,12 @@ static int run_full_test (NiceAgent *lagent, NiceAgent *ragent, NiceAddress *bas
 
   nice_agent_set_port_range (ragent, rs_id, 2, port, port);
 
-  g_assert (nice_agent_gather_candidates (ragent, rs_id) == FALSE);
-  g_assert (nice_agent_get_local_candidates (ragent, rs_id, 1) == NULL);
-  g_assert (nice_agent_get_local_candidates (ragent, rs_id, 2) == NULL);
+  g_assert_true (nice_agent_gather_candidates (ragent, rs_id) == FALSE);
+  g_assert_true (nice_agent_get_local_candidates (ragent, rs_id, 1) == NULL);
+  g_assert_true (nice_agent_get_local_candidates (ragent, rs_id, 2) == NULL);
   nice_agent_set_port_range (ragent, rs_id, 2, 0, 0);
-  g_assert (nice_agent_gather_candidates (lagent, ls_id) == TRUE);
-  g_assert (nice_agent_gather_candidates (ragent, rs_id) == TRUE);
+  g_assert_true (nice_agent_gather_candidates (lagent, ls_id) == TRUE);
+  g_assert_true (nice_agent_gather_candidates (ragent, rs_id) == TRUE);
 
 #if USE_LOOPBACK
   {
@@ -486,8 +486,8 @@ static int run_full_test (NiceAgent *lagent, NiceAgent *ragent, NiceAddress *bas
       global_ragent_gathering_done != TRUE) {
     g_debug ("test-fullmode: Added streams, running mainloop until 'candidate-gathering-done'...");
     g_main_loop_run (global_mainloop);
-    g_assert (global_lagent_gathering_done == TRUE);
-    g_assert (global_ragent_gathering_done == TRUE);
+    g_assert_true (global_lagent_gathering_done == TRUE);
+    g_assert_true (global_ragent_gathering_done == TRUE);
   }
 
   set_credentials (lagent, ls_id, ragent, rs_id);
@@ -505,8 +505,8 @@ static int run_full_test (NiceAgent *lagent, NiceAgent *ragent, NiceAddress *bas
   g_main_loop_run (global_mainloop);
 
   /* note: verify that STUN binding requests were sent */
-  g_assert (global_lagent_ibr_received == TRUE);
-  g_assert (global_ragent_ibr_received == TRUE);
+  g_assert_true (global_lagent_ibr_received == TRUE);
+  g_assert_true (global_ragent_ibr_received == TRUE);
 
   /* note: test payload send and receive */
   global_ragent_read = 0;
@@ -609,8 +609,8 @@ static int run_full_test_delayed_answer (NiceAgent *lagent, NiceAgent *ragent, N
       global_ragent_gathering_done != TRUE) {
     g_debug ("test-fullmode: Added streams, running mainloop until 'candidate-gathering-done'...");
     g_main_loop_run (global_mainloop);
-    g_assert (global_lagent_gathering_done == TRUE);
-    g_assert (global_ragent_gathering_done == TRUE);
+    g_assert_true (global_lagent_gathering_done == TRUE);
+    g_assert_true (global_ragent_gathering_done == TRUE);
   }
 
   set_credentials (lagent, ls_id, ragent, rs_id);
@@ -628,7 +628,7 @@ static int run_full_test_delayed_answer (NiceAgent *lagent, NiceAgent *ragent, N
   global_exit_when_ibr_received = 0;
 
   /* note: verify that STUN binding requests were sent */
-  g_assert (global_lagent_ibr_received == TRUE);
+  g_assert_true (global_lagent_ibr_received == TRUE);
 
   g_debug ("test-fullmode: Delayed answer received, continuing processing..");
 
@@ -639,7 +639,7 @@ static int run_full_test_delayed_answer (NiceAgent *lagent, NiceAgent *ragent, N
   g_debug ("test-fullmode: Running mainloop until connectivity checks succeeed.");
 
   g_main_loop_run (global_mainloop);
-  g_assert (global_ragent_ibr_received == TRUE);
+  g_assert_true (global_ragent_ibr_received == TRUE);
   g_assert_cmpuint (global_components_failed, ==, 0);
 
   /* note: test payload send and receive */
@@ -730,8 +730,8 @@ static int run_full_test_wrong_password (NiceAgent *lagent, NiceAgent *ragent, N
       global_ragent_gathering_done != TRUE) {
     g_debug ("test-fullmode: Added streams, running mainloop until 'candidate-gathering-done'...");
     g_main_loop_run (global_mainloop);
-    g_assert (global_lagent_gathering_done == TRUE);
-    g_assert (global_ragent_gathering_done == TRUE);
+    g_assert_true (global_lagent_gathering_done == TRUE);
+    g_assert_true (global_ragent_gathering_done == TRUE);
   }
 
   g_debug ("test-fullmode: Got local candidates...");
@@ -817,8 +817,8 @@ static int run_full_test_control_conflict (NiceAgent *lagent, NiceAgent *ragent,
       global_ragent_gathering_done != TRUE) {
     g_debug ("test-fullmode: Added streams, running mainloop until 'candidate-gathering-done'...");
     g_main_loop_run (global_mainloop);
-    g_assert (global_lagent_gathering_done == TRUE);
-    g_assert (global_ragent_gathering_done == TRUE);
+    g_assert_true (global_lagent_gathering_done == TRUE);
+    g_assert_true (global_ragent_gathering_done == TRUE);
   }
 
   g_debug ("test-fullmode: Got local candidates...");
@@ -965,17 +965,17 @@ int main (void)
     guint port = 0;
     gboolean mode = FALSE;
     g_object_get (G_OBJECT (lagent), "stun-server", &string, NULL);
-    g_assert (stun_server == NULL || strcmp (string, stun_server) == 0);
+    g_assert_true (stun_server == NULL || strcmp (string, stun_server) == 0);
     g_free (string);
     g_object_get (G_OBJECT (lagent), "stun-server-port", &port, NULL);
-    g_assert (stun_server_port == NULL || port == (guint)atoi (stun_server_port));
+    g_assert_true (stun_server_port == NULL || port == (guint)atoi (stun_server_port));
     g_object_get (G_OBJECT (lagent), "proxy-ip", &string, NULL);
     g_assert_cmpstr (string, ==, PROXY_IP);
     g_free (string);
     g_object_get (G_OBJECT (lagent), "proxy-port", &port, NULL);
     g_assert_cmpuint (port, ==, PROXY_PORT);
     g_object_get (G_OBJECT (lagent), "controlling-mode", &mode, NULL);
-    g_assert (mode == TRUE);
+    g_assert_true (mode == TRUE);
     g_object_set (G_OBJECT (lagent), "max-connectivity-checks", 300, NULL);
     g_object_get (G_OBJECT (lagent), "max-connectivity-checks", &max_checks, NULL);
     g_assert_cmpuint (max_checks, ==, 300);
@@ -1067,9 +1067,9 @@ int main (void)
   priv_print_global_status ();
   g_assert_cmpint (result, ==, 0);
   /* should FAIL as agent L can't send any checks: */
-  g_assert (global_lagent_state[0] == NICE_COMPONENT_STATE_FAILED ||
+  g_assert_true (global_lagent_state[0] == NICE_COMPONENT_STATE_FAILED ||
 	    global_lagent_state[1] == NICE_COMPONENT_STATE_FAILED);
-  g_assert (global_lagent_state[0] == NICE_COMPONENT_STATE_FAILED ||
+  g_assert_true (global_lagent_state[0] == NICE_COMPONENT_STATE_FAILED ||
 	    global_lagent_state[1] == NICE_COMPONENT_STATE_FAILED);
 #endif
 
@@ -1079,13 +1079,13 @@ int main (void)
   priv_print_global_status ();
   /* should SUCCEED as agent L can send the checks: */
   g_assert_cmpint (result, ==, 0);
-  g_assert (global_lagent_state[0] == NICE_COMPONENT_STATE_CONNECTED ||
+  g_assert_true (global_lagent_state[0] == NICE_COMPONENT_STATE_CONNECTED ||
       global_lagent_state[0] == NICE_COMPONENT_STATE_READY);
-  g_assert (global_lagent_state[1] == NICE_COMPONENT_STATE_CONNECTED ||
+  g_assert_true (global_lagent_state[1] == NICE_COMPONENT_STATE_CONNECTED ||
       global_lagent_state[1] == NICE_COMPONENT_STATE_READY);
-  g_assert (global_ragent_state[0] == NICE_COMPONENT_STATE_CONNECTED ||
+  g_assert_true (global_ragent_state[0] == NICE_COMPONENT_STATE_CONNECTED ||
       global_ragent_state[0] == NICE_COMPONENT_STATE_READY);
-  g_assert(global_ragent_state[1] == NICE_COMPONENT_STATE_CONNECTED ||
+  g_assert_true (global_ragent_state[1] == NICE_COMPONENT_STATE_CONNECTED ||
       global_ragent_state[1] == NICE_COMPONENT_STATE_READY);
   g_object_set (G_OBJECT (lagent), "max-connectivity-checks", 100, NULL);
 

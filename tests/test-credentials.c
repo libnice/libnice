@@ -78,7 +78,7 @@ static void swap_candidates(NiceAgent *local, guint local_id, NiceAgent *remote,
   g_debug ("test-credentials:%s", G_STRFUNC);
   cands = nice_agent_get_local_candidates(local, local_id,
                                           NICE_COMPONENT_TYPE_RTP);
-  g_assert (nice_agent_set_remote_candidates(remote, remote_id,
+  g_assert_true (nice_agent_set_remote_candidates(remote, remote_id,
                                             NICE_COMPONENT_TYPE_RTP, cands));
 
   g_slist_free_full (cands, (GDestroyNotify) nice_candidate_free);
@@ -121,11 +121,11 @@ static void setup(NiceAgent *lagent, NiceAgent *ragent)
 
   g_assert_cmpuint (nice_agent_add_stream (lagent, 1), ==, 1);
   g_assert_cmpuint (nice_agent_add_stream (ragent, 1), ==, 1);
-  g_assert (NULL != lagent->streams);
-  g_assert (NULL != ragent->streams);
+  g_assert_true (NULL != lagent->streams);
+  g_assert_true (NULL != ragent->streams);
 
   nice_address_init (&addr);
-  g_assert (nice_address_set_from_string (&addr, "127.0.0.1"));
+  g_assert_true (nice_address_set_from_string (&addr, "127.0.0.1"));
   nice_agent_add_local_address (lagent, &addr);
   nice_agent_add_local_address (ragent, &addr);
 

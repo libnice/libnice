@@ -187,7 +187,7 @@ static void priv_get_local_addr (NiceAgent *agent, guint stream_id, guint compon
   for (i = cands; i; i = i->next) {
     NiceCandidate *cand = i->data;
     if (cand) {
-      g_assert (dstaddr);
+      g_assert_true (dstaddr);
       *dstaddr = cand->addr;
     }
   }
@@ -252,8 +252,8 @@ static int run_restart_test (NiceAgent *lagent, NiceAgent *ragent, NiceAddress *
       global_ragent_gathering_done != TRUE) {
     g_debug ("test-restart: Added streams, running mainloop until 'candidate-gathering-done'...");
     g_main_loop_run (global_mainloop);
-    g_assert (global_lagent_gathering_done == TRUE);
-    g_assert (global_ragent_gathering_done == TRUE);
+    g_assert_true (global_lagent_gathering_done == TRUE);
+    g_assert_true (global_ragent_gathering_done == TRUE);
   }
 
   /* step: find out the local candidates of each agent */
@@ -303,7 +303,7 @@ static int run_restart_test (NiceAgent *lagent, NiceAgent *ragent, NiceAddress *
    * here that the role cannot be externally modified after conncheck
    * has started. */
   g_object_set (G_OBJECT (ragent), "controlling-mode", TRUE, NULL);
-  g_assert (ragent->controlling_mode == FALSE);
+  g_assert_true (ragent->controlling_mode == FALSE);
 
   g_debug ("test-restart: Set properties, next running mainloop until connectivity checks succeed...");
 
@@ -312,8 +312,8 @@ static int run_restart_test (NiceAgent *lagent, NiceAgent *ragent, NiceAddress *
   g_main_loop_run (global_mainloop);
 
   /* note: verify that STUN binding requests were sent */
-  g_assert (global_lagent_ibr_received == TRUE);
-  g_assert (global_ragent_ibr_received == TRUE);
+  g_assert_true (global_lagent_ibr_received == TRUE);
+  g_assert_true (global_ragent_ibr_received == TRUE);
   /* note: verify that correct number of local candidates were reported */
   g_assert_cmpint (global_lagent_cands, ==, 2);
   g_assert_cmpint (global_ragent_cands, ==, 2);
@@ -333,8 +333,8 @@ static int run_restart_test (NiceAgent *lagent, NiceAgent *ragent, NiceAddress *
   g_assert_cmpint (nice_agent_send (lagent, ls_id, 1, 16, "1234567812345678"), ==, 16);
 
   /* Both agent have a distinct role at the end of the conncheck */
-  g_assert (lagent->controlling_mode == TRUE);
-  g_assert (ragent->controlling_mode == FALSE);
+  g_assert_true (lagent->controlling_mode == TRUE);
+  g_assert_true (ragent->controlling_mode == FALSE);
   /* step: restart agents, exchange updated credentials */
   nice_agent_restart (ragent);
   nice_agent_restart (lagent);
@@ -377,10 +377,10 @@ static int run_restart_test (NiceAgent *lagent, NiceAgent *ragent, NiceAddress *
   /* note: verify that payload was succesfully received */
   g_assert_cmpint (global_ragent_read, ==, 32);
   /* note: verify binding requests were resent after restart */
-  g_assert (global_lagent_ibr_received == TRUE);
-  g_assert (global_ragent_ibr_received == TRUE);
+  g_assert_true (global_lagent_ibr_received == TRUE);
+  g_assert_true (global_ragent_ibr_received == TRUE);
   /* note: verify that a role switch occured for one of the agents */
-  g_assert (ragent->controlling_mode != lagent->controlling_mode);
+  g_assert_true (ragent->controlling_mode != lagent->controlling_mode);
 
   g_debug ("test-restart: Ran mainloop, removing streams...");
 

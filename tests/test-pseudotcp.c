@@ -71,7 +71,7 @@ static void write_to_sock (PseudoTcpSocket *sock)
     len = fread (buf, 1, sizeof(buf), in);
     if (len == 0) {
       g_debug ("Done reading data from file");
-      g_assert (feof (in));
+      g_assert_true (feof (in));
       reading_done = TRUE;
       pseudo_tcp_socket_close (sock, FALSE);
       break;
@@ -84,7 +84,7 @@ static void write_to_sock (PseudoTcpSocket *sock)
         g_debug ("seeking  %" G_GSIZE_FORMAT " from %lu", wlen - len,
             ftell (in));
         fseek (in, wlen - len, SEEK_CUR);
-        g_assert (!feof (in));
+        g_assert_true (!feof (in));
         g_debug ("Socket queue full after %d bytes written", total);
         break;
       }
@@ -127,7 +127,7 @@ static void readable (PseudoTcpSocket *sock, gpointer data)
           g_assert_cmpint (total_wrote, <=, total_read);
           g_debug ("Written %d bytes, need %d bytes", total_wrote, total_read);
           if (total_wrote == total_read && feof (in)) {
-            g_assert (reading_done);
+            g_assert_true (reading_done);
             pseudo_tcp_socket_close (sock, FALSE);
           }
         }
