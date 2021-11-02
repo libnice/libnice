@@ -190,23 +190,21 @@ gthread_dep = dependency('gthread-2.0',
 # Cryto library
 opt_cryptolib = get_option('crypto-library')
 message('Crypto library requested: ' + opt_cryptolib)
+crypto_dep = dependency('', required: false) # special always not found
 if opt_cryptolib == 'auto' and host_machine.system() == 'windows'
   crypto_dep = cc.find_library('advapi32')
-elif opt_cryptolib != 'openssl'
+  cdata.set('USE_WIN32_CRYPTO', crypto_dep.found())
+endif
+
+if not crypto_dep.found() and opt_cryptolib != 'openssl'
   crypto_dep = dependency('gnutls', version: gnutls_req, required: false)
   cdata.set('HAVE_GNUTLS', crypto_dep.found())
-  if not crypto_dep.found() and opt_cryptolib == 'auto'
-    crypto_dep = dependency('openssl', required: false,
-      fallback: ['openssl', 'openssl_dep'])
-    cdata.set('HAVE_OPENSSL', crypto_dep.found())
-  endif
-else
-  crypto_dep = dependency('openssl', required: false)
+endif
+
+if not crypto_dep.found() and opt_cryptolib != 'gnutls'
+  crypto_dep = dependency('openssl', required: false,
+			  fallback: ['openssl', 'openssl_dep'])
   cdata.set('HAVE_OPENSSL', crypto_dep.found())
-  if not crypto_dep.found() and opt_cryptolib == 'auto'
-    crypto_dep = dependency('gnutls', version: gnutls_req, required: false)
-    cdata.set('HAVE_GNUTLS', crypto_dep.found())
-  endif
 endif
 
 crypto_found = crypto_dep.found()
@@ -240,6 +238,7 @@ if not crypto_found and opt_cryptolib != 'gnutls'
 
   if libcrypto_dep.found() and libssl_dep.found()
     crypto_dep = [libcrypto_dep, libssl_dep]
+    cdata.set('HAVE_OPENSSL', crypto_dep.found())
     crypto_found = true
   endif
 endif
