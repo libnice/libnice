@@ -2713,8 +2713,7 @@ priv_add_new_candidate_discovery_turn (NiceAgent *agent,
 
   if (turn->type == NICE_RELAY_TYPE_TURN_UDP) {
     if (agent->use_ice_udp == FALSE || turn_tcp == TRUE) {
-      g_slice_free (CandidateDiscovery, cdisco);
-      return;
+      goto skip;
     }
     if (agent->compatibility == NICE_COMPATIBILITY_GOOGLE) {
       NiceAddress addr = nicesock->addr;
@@ -2750,17 +2749,18 @@ priv_add_new_candidate_discovery_turn (NiceAgent *agent,
     /* Ignore tcp candidates if we disabled ice-tcp */
     if ((agent->use_ice_udp == FALSE && reliable_tcp == FALSE) ||
         (agent->use_ice_tcp == FALSE && reliable_tcp == TRUE)) {
-      g_slice_free (CandidateDiscovery, cdisco);
-      return;
+      goto skip;
     }
 
     if (turn_tcp == FALSE) {
-      g_slice_free (CandidateDiscovery, cdisco);
-      return;
+      goto skip;
     }
 
     cdisco->nicesock = agent_create_tcp_turn_socket (agent, stream,
         component, nicesock, &turn->server, turn->type, reliable_tcp);
+    if (!cdisco->nicesock) {
+      goto skip;
+    }
 
     nice_component_attach_socket (component, cdisco->nicesock);
   }
@@ -2799,6 +2799,11 @@ priv_add_new_candidate_discovery_turn (NiceAgent *agent,
       agent, cdisco);
   agent->discovery_list = g_slist_append (agent->discovery_list, cdisco);
   ++agent->discovery_unsched_items;
+
+  return;
+
+skip:
+  g_slice_free (CandidateDiscovery, cdisco);
 }
 
 NICEAPI_EXPORT guint
