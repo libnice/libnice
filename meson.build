@@ -203,7 +203,7 @@ elif opt_cryptolib != 'openssl'
 else
   crypto_dep = dependency('openssl', required: false)
   cdata.set('HAVE_OPENSSL', crypto_dep.found())
-  if not crypto_dep.found() and openssl == 'auto'
+  if not crypto_dep.found() and opt_cryptolib == 'auto'
     crypto_dep = dependency('gnutls', version: gnutls_req, required: false)
     cdata.set('HAVE_GNUTLS', crypto_dep.found())
   endif
