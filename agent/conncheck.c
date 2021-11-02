@@ -977,10 +977,10 @@ priv_conn_check_tick_stream_nominate (NiceAgent *agent, NiceStream *stream)
                * to test its parent pair instead.
                */
               if (p->succeeded_pair != NULL) {
-                g_assert_cmpint (p->state, ==, NICE_CHECK_DISCOVERED);
+                g_assert (p->state == NICE_CHECK_DISCOVERED);
                 p = p->succeeded_pair;
               }
-              g_assert_cmpint (p->state, ==, NICE_CHECK_SUCCEEDED);
+              g_assert (p->state == NICE_CHECK_SUCCEEDED);
 
               if (this_component_pair == NULL)
                 /* highest priority pair */
@@ -2137,7 +2137,7 @@ static void priv_update_check_list_failed_components (NiceAgent *agent, NiceStre
     for (i = stream->conncheck_list; i; i = i->next) {
       CandidateCheckPair *p = i->data;
 
-      g_assert_cmpuint (p->stream_id, ==, stream->id);
+      g_assert (p->stream_id == stream->id);
 
       if (p->component_id == (c + 1)) {
         if (p->nominated)
@@ -2243,7 +2243,7 @@ static void priv_mark_pair_nominated (NiceAgent *agent, NiceStream *stream, Nice
       if (pair->state == NICE_CHECK_SUCCEEDED &&
           pair->discovered_pair != NULL) {
         pair = pair->discovered_pair;
-        g_assert_cmpint (pair->state, ==, NICE_CHECK_DISCOVERED);
+        g_assert (pair->state == NICE_CHECK_DISCOVERED);
       }
 
       /* If the received Binding request triggered a new check to be
@@ -3102,7 +3102,7 @@ static gboolean priv_schedule_triggered_check (NiceAgent *agent, NiceStream *str
          * use the parent succeeded pair instead */
 
         if (p->succeeded_pair != NULL) {
-          g_assert_cmpint (p->state, ==, NICE_CHECK_DISCOVERED);
+          g_assert (p->state == NICE_CHECK_DISCOVERED);
           p = p->succeeded_pair;
         }
 

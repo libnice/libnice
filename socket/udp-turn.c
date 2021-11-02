@@ -671,10 +671,10 @@ _socket_send_messages_wrapped (NiceSocket *sock, const NiceAddress *to,
     guint i;
     gint ret;
 
-    g_assert_cmpuint (n_messages, ==, 1);
+    g_assert (n_messages == 1);
     message = &messages[0];
     message_len = output_message_get_size (message);
-    g_assert_cmpint (message_len, <=, G_MAXUINT16);
+    g_assert (message_len <= G_MAXUINT16);
 
     /* ICE-TCP requires that all packets be framed with RFC4571 */
 
@@ -1246,7 +1246,7 @@ nice_udp_turn_socket_cache_realm_nonce_locked (NiceSocket *sock,
   UdpTurnPriv *priv = sock->priv;
   gconstpointer tmp;
 
-  g_assert_cmpint (sock->type, ==, NICE_SOCKET_TYPE_UDP_TURN);
+  g_assert (sock->type == NICE_SOCKET_TYPE_UDP_TURN);
 
   g_free (priv->cached_realm);
   priv->cached_realm = NULL;
@@ -1293,7 +1293,7 @@ nice_udp_turn_socket_parse_recv_message (NiceSocket *sock, NiceSocket **from_soc
         message->from, message->length, message->buffers[0].buffer,
         message->from, message->buffers[0].buffer, message->length);
 
-    g_assert_cmpuint (len, <=, message->length);
+    g_assert (len <= message->length);
 
     message->length = len;
 
