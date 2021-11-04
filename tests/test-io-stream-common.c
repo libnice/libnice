@@ -549,6 +549,8 @@ check_for_termination (TestIOStreamThreadData *data, gsize *recv_count,
   while (*send_count < expected_recv_count) {
     if (data->callbacks->wait_transmission_cb) {
       data->callbacks->wait_transmission_cb (data->agent);
+    } else {
+      g_thread_yield ();
     }
   }
 
