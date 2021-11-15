@@ -22,6 +22,8 @@ endif
 libnice = library('nice',
   link_whole: [libagent, libsocket, libstun, librandom],
   dependencies: nice_deps,
+  # Add agent include to uninstalled pkgconfig file
+  include_directories: agent_include,
   version : libversion,
   soversion : soversion,
   vs_module_defs: libnice_def,
