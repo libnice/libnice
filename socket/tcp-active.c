@@ -246,23 +246,25 @@ nice_tcp_active_socket_connect (NiceSocket *sock, NiceAddress *addr)
 
   if (gret == FALSE) {
     if (g_error_matches (gerr, G_IO_ERROR, G_IO_ERROR_PENDING) == FALSE)
-      goto error;
+      goto bind_error;
     g_clear_error (&gerr);
   }
 
   gret = g_socket_connect (gsock, gaddr, NULL, &gerr);
-  g_object_unref (gaddr);
 
   if (gret == FALSE) {
     if (g_error_matches (gerr, G_IO_ERROR, G_IO_ERROR_PENDING) == FALSE)
-      goto error;
+      goto connect_error;
     g_error_free (gerr);
   }
+  g_object_unref (gaddr);
 
   gaddr = g_socket_get_local_address (gsock, NULL);
   if (gaddr == NULL ||
-      !g_socket_address_to_native (gaddr, &name.addr, sizeof (name), NULL))
-    goto error2;
+      !g_socket_address_to_native (gaddr, &name.addr, sizeof (name), NULL)) {
+    nice_debug ("Can't extra local address from connected socket");
+    goto error;
+  }
   g_object_unref (gaddr);
 
   nice_address_set_from_sockaddr (&local_addr, &name.addr);
@@ -274,7 +276,13 @@ nice_tcp_active_socket_connect (NiceSocket *sock, NiceAddress *addr)
   return new_socket;
 
 error:
+  g_socket_close (gsock, NULL);
+  g_object_unref (gsock);
+  return NULL;
+
+connect_error:
   g_socket_address_to_native (gaddr, &sa, sizeof (sa), NULL);
+  g_object_unref (gaddr);
   nice_address_set_from_sockaddr (&remote_addr, &sa.sa);
   nice_address_to_string (&remote_addr, remote_addr_str);
 
@@ -282,7 +290,7 @@ error:
   nice_address_set_from_sockaddr (&local_addr, &sa.sa);
   nice_address_to_string (&local_addr, local_addr_str);
 
-  nice_debug ("%s: tcp-active socket %p %s:%u -> %s:%u: error: %s",
+  nice_debug ("%s: tcp-active socket connect %p %s:%u -> %s:%u: error: %s",
       G_STRFUNC, sock,
       local_addr_str, nice_address_get_port (&local_addr),
       remote_addr_str, nice_address_get_port (&remote_addr),
@@ -290,8 +298,20 @@ error:
 
   g_error_free (gerr);
 
-error2:
-  g_socket_close (gsock, NULL);
-  g_object_unref (gsock);
-  return NULL;
+  goto error;
+
+bind_error:
+  g_socket_address_to_native (priv->local_addr, &sa, sizeof (sa), NULL);
+  nice_address_set_from_sockaddr (&local_addr, &sa.sa);
+  nice_address_to_string (&local_addr, local_addr_str);
+
+  nice_debug ("%s: tcp-active socket bind %p %s:%u error: %s",
+      G_STRFUNC, sock,
+      local_addr_str, nice_address_get_port (&local_addr),
+      gerr->message);
+
+  g_error_free (gerr);
+
+  goto error;
+
 }
