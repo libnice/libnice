@@ -4557,8 +4557,8 @@ done:
   }
 
   /* Clear local modifications. */
-  if (message->from == &from) {
-    message->from = NULL;
+  if (provided_message->from == &from) {
+    provided_message->from = NULL;
   }
 
   return retval;

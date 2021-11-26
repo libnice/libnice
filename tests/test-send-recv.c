@@ -689,7 +689,7 @@ read_thread_agent_cb (GInputStream *input_stream, TestIOStreamThreadData *data)
 
   while (test_data->received_bytes < test_data->n_bytes) {
     GError *error = NULL;
-    NiceInputMessage *messages;
+    NiceInputMessage *messages = {0};
     guint n_messages;
     gint n_valid_messages;
 
