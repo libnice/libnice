@@ -205,6 +205,10 @@ gst_nice_sink_init (GstNiceSink *sink)
   sink->n_messages = 1;
   sink->messages = g_new (NiceOutputMessage, sink->n_messages);
 #endif
+
+#if GST_CHECK_VERSION (1,12,0)
+  gst_base_sink_set_drop_out_of_segment (GST_BASE_SINK (sink), FALSE);
+#endif
 }
 
 static void
