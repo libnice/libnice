@@ -6,9 +6,10 @@ stages:
 
 workflow:
   rules:
-    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
-    - if: $CI_COMMIT_BRANCH == 'latest-release'
+    - if: $CI_COMMIT_BRANCH == "latest-release"
+    - if: $CI_PIPELINE_SOURCE == "web"
 
 default:
   image: registry.freedesktop.org/libnice/libnice/centos7/meson-build
