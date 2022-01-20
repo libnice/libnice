@@ -356,6 +356,37 @@ nice_address_is_private (const NiceAddress *a)
 }
 
 
+static gboolean
+ipv4_address_is_linklocal (guint32 addr)
+{
+  addr = ntohl (addr);
+
+  return (addr & 0xffff0000) == 0xa9fe0000;
+}
+
+
+static gboolean
+ipv6_address_is_linklocal (const guchar *addr)
+{
+  return (addr[0] == 0xfe) && ((addr[1] & 0xc0) == 0x80);
+}
+
+
+NICEAPI_EXPORT gboolean
+nice_address_is_linklocal (const NiceAddress *a)
+{
+  switch (a->s.addr.sa_family)
+    {
+    case AF_INET:
+      return ipv4_address_is_linklocal (a->s.ip4.sin_addr.s_addr);
+    case AF_INET6:
+      return ipv6_address_is_linklocal (a->s.ip6.sin6_addr.s6_addr);
+    default:
+      g_return_val_if_reached (FALSE);
+    }
+}
+
+
 NICEAPI_EXPORT gboolean
 nice_address_is_valid (const NiceAddress *a)
 {

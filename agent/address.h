@@ -278,6 +278,19 @@ gboolean
 nice_address_is_private (const NiceAddress *addr);
 
 /**
+ * nice_address_is_linklocal:
+ * @addr: The #NiceAddress to query
+ *
+ * Verifies if the address in @addr is a link-local address or not
+ *
+ * Returns: %TRUE if @addr is a link-local address, %FALSE otherwise
+ *
+ * Since: 0.1.19
+ */
+gboolean
+nice_address_is_linklocal (const NiceAddress *addr);
+
+/**
  * nice_address_is_valid:
  * @addr: The #NiceAddress to query
  *

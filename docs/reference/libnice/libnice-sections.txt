@@ -143,6 +143,7 @@ nice_address_equal
 nice_address_equal_no_port
 nice_address_to_string
 nice_address_is_private
+nice_address_is_linklocal
 nice_address_is_valid
 nice_address_ip_version
 </SECTION>

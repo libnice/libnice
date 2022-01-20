@@ -151,6 +151,40 @@ test_ipv4 (void)
 
     nice_address_free (heap_addr);
   }
+
+  /* test link-local address check */
+  {
+    NiceAddress *heap_addr = nice_address_new ();
+
+    g_assert_true (nice_address_set_from_string(heap_addr, "169.253.255.255"));
+    g_assert_true (nice_address_is_linklocal (heap_addr) == FALSE);
+
+    g_assert_true (nice_address_set_from_string(heap_addr, "169.254.0.0"));
+    g_assert_true (nice_address_is_linklocal (heap_addr) == TRUE);
+
+    g_assert_true (nice_address_set_from_string(heap_addr, "169.254.255.255"));
+    g_assert_true (nice_address_is_linklocal (heap_addr) == TRUE);
+
+    g_assert_true (nice_address_set_from_string (heap_addr, "127.0.0.1"));
+    g_assert_true (nice_address_is_linklocal (heap_addr) == FALSE);
+
+    g_assert_true (nice_address_set_from_string(heap_addr, "172.31.255.255"));
+    g_assert_true (nice_address_is_linklocal (heap_addr) == FALSE);
+
+    g_assert_true (nice_address_set_from_string(heap_addr, "192.168.15.69"));
+    g_assert_true (nice_address_is_linklocal (heap_addr) == FALSE);
+
+    g_assert_true (nice_address_set_from_string(heap_addr, "fe70::0"));
+    g_assert_true (nice_address_is_linklocal (heap_addr) == FALSE);
+
+    g_assert_true (nice_address_set_from_string(heap_addr, "fe80::0"));
+    g_assert_true (nice_address_is_linklocal (heap_addr) == TRUE);
+
+    g_assert_true (nice_address_set_from_string(heap_addr, "fe81::0"));
+    g_assert_true (nice_address_is_linklocal (heap_addr) == TRUE);
+
+    nice_address_free (heap_addr);
+  }
 }
 
 static void

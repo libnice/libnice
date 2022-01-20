@@ -3455,6 +3455,7 @@ nice_agent_gather_candidates (
 
         /* TODO: Add server-reflexive support for TCP candidates */
         if (agent->full_mode && agent->stun_server_ip && !agent->force_relay &&
+            !nice_address_is_linklocal (addr) &&
             transport == NICE_CANDIDATE_TRANSPORT_UDP) {
           NiceAddress stun_server;
           if (nice_address_set_from_string (&stun_server, agent->stun_server_ip)) {
@@ -3470,7 +3471,7 @@ nice_agent_gather_candidates (
           }
         }
 
-        if (agent->full_mode && component &&
+        if (agent->full_mode && component && !nice_address_is_linklocal (addr) &&
             transport != NICE_CANDIDATE_TRANSPORT_TCP_PASSIVE) {
           GList *item;
           int host_ip_version = nice_address_ip_version (&host_candidate->c.addr);

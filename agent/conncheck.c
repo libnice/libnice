@@ -2432,6 +2432,12 @@ static CandidateCheckPair *priv_conn_check_add_for_candidate_pair_matched (
   return pair;
 }
 
+static gboolean
+_is_linklocal_to_non_linklocal (NiceAddress *laddr, NiceAddress *raddr)
+{
+  return nice_address_is_linklocal (laddr) != nice_address_is_linklocal (raddr);
+}
+
 gboolean conn_check_add_for_candidate_pair (NiceAgent *agent,
     guint stream_id, NiceComponent *component, NiceCandidate *local,
     NiceCandidate *remote)
@@ -2458,9 +2464,11 @@ gboolean conn_check_add_for_candidate_pair (NiceAgent *agent,
     return FALSE;
   }
 
-  /* note: match pairs only if transport and address family are the same */
+  /* note: match pairs only if transport and address family are the same
+   *       and make sure link-local stay link-local */
   if (local->transport == conn_check_match_transport (remote->transport) &&
-     local->addr.s.addr.sa_family == remote->addr.s.addr.sa_family) {
+     local->addr.s.addr.sa_family == remote->addr.s.addr.sa_family &&
+     !_is_linklocal_to_non_linklocal (&local->addr, &remote->addr)) {
     if (priv_conn_check_add_for_candidate_pair_matched (agent, stream_id,
         component, local, remote, NICE_CHECK_FROZEN))
       ret = TRUE;
