@@ -238,7 +238,7 @@ if not crypto_found and opt_cryptolib != 'gnutls'
 
   if libcrypto_dep.found() and libssl_dep.found()
     crypto_dep = [libcrypto_dep, libssl_dep]
-    cdata.set('HAVE_OPENSSL', crypto_dep.found())
+    cdata.set('HAVE_OPENSSL', true)
     crypto_found = true
   endif
 endif
