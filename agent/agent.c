@@ -7374,11 +7374,16 @@ nice_agent_close_async (NiceAgent *agent, GAsyncReadyCallback callback,
   task = g_task_new (agent, NULL, callback, callback_data);
   g_task_set_source_tag (task, nice_agent_close_async);
 
+  /* Hold an extra ref here in case the application releases the last ref
+   * during the callback.
+   */
+  g_object_ref (agent);
   agent_lock (agent);
 
   refresh_prune_agent_async (agent, on_agent_refreshes_pruned, task);
 
   agent_unlock (agent);
+  g_object_unref (agent);
 }
 
 
