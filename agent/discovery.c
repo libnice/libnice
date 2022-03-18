@@ -200,7 +200,7 @@ static gboolean on_refresh_remove_timeout (NiceAgent *agent,
       agent_socket_send (cand->nicesock, &cand->server,
           stun_message_length (&cand->stun_message), (gchar *)cand->stun_buffer);
 
-      G_GNUC_FALLTHROUGH;
+      /* fall through */
     case STUN_USAGE_TIMER_RETURN_SUCCESS:
       agent_timeout_add_with_context (agent, &cand->tick_source,
           "TURN deallocate retransmission", stun_timer_remainder (&cand->timer),

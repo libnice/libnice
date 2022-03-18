@@ -1653,7 +1653,7 @@ static gboolean priv_turn_allocate_refresh_retransmissions_tick_agent_locked (
       agent_socket_send (cand->nicesock, &cand->server,
           stun_message_length (&cand->stun_message), (gchar *)cand->stun_buffer);
 
-      G_GNUC_FALLTHROUGH;
+      /* fall through */
     case STUN_USAGE_TIMER_RETURN_SUCCESS:
       agent_timeout_add_with_context (agent, &cand->tick_source,
           "Candidate TURN refresh", stun_timer_remainder (&cand->timer),
