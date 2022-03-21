@@ -3171,7 +3171,8 @@ priv_remove_upnp_mapping (NiceAgent *agent, NiceCandidate *host_candidate)
 
   nice_address_to_string (&host_candidate->addr, local_ip);
 
-  g_print ("REMOVING %s: %d\n", local_ip, nice_address_get_port (&host_candidate->addr));
+  nice_debug ("Removing UPnP mapping %s: %d", local_ip,
+      nice_address_get_port (&host_candidate->addr));
 
   gupnp_simple_igd_remove_port_local (GUPNP_SIMPLE_IGD (agent->upnp),
       host_candidate->transport == NICE_CANDIDATE_TRANSPORT_UDP ? "UDP" :
