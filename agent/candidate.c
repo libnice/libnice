@@ -463,3 +463,14 @@ nice_candidate_transport_to_string (NiceCandidateTransport transport)
       g_assert_not_reached ();
   }
 }
+
+NICEAPI_EXPORT void
+nice_candidate_relay_address (const NiceCandidate *candidate, NiceAddress *addr)
+{
+  const NiceCandidateImpl *c = (NiceCandidateImpl *) candidate;
+
+  g_return_if_fail (candidate != NULL);
+  g_return_if_fail (candidate->type != NICE_CANDIDATE_TYPE_RELAYED);
+
+  *addr = c->turn->server;
+}

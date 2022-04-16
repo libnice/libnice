@@ -40,6 +40,7 @@
 #ifndef __LIBNICE_CANDIDATE_H__
 #define __LIBNICE_CANDIDATE_H__
 
+#include "address.h"
 #include <glib.h>
 #include <glib-object.h>
 
@@ -254,6 +255,18 @@ nice_candidate_type_to_string (NiceCandidateType type);
 const gchar *
 nice_candidate_transport_to_string (NiceCandidateTransport transport);
 
+/**
+ * nice_candidate_relay_address:
+ * @candidate: A relay candidate
+ * @addr: The #NiceAddress to fill
+ *
+ * In case the given candidate is relayed through a TURN server, use this utility function to get
+ * its address.
+ *
+ * Since: 0.1.19
+ */
+void
+nice_candidate_relay_address (const NiceCandidate *candidate, NiceAddress *addr);
 
 /**
  * NICE_TYPE_CANDIDATE:
