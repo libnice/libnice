@@ -1,3 +1,16 @@
+libnice 0.1.19 (2022-05-03)
+===========================
+Allow incoming connchecks before remote candidates are set, allows for connection based on received bind requests
+Implement RFC 7675 for Consent Freshness
+Use a single server reflexive and local relay candidate, reduces useless duplicated local candidates
+Improved ICE restart implementation
+Use Windows native crypto API, removing the need for OpenSSL
+Add bytestream ICE-TCP and improve ICE-TCP
+Add API to know if a NiceAddress is link-local
+Add API to extact the relay address from a relayed NiceAddress
+Improve support for detection addresses on Android, iOS, macOS
+A number of bug fixes
+
 libnice 0.1.18 (2020-10-20)
 ===========================
 Remove the autotools build system, now only meson is available

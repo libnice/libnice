@@ -1,5 +1,5 @@
 project('libnice', 'c',
-  version: '0.1.18.1',
+  version: '0.1.19',
   meson_version : '>= 0.52',
   default_options : ['warning_level=1', 'buildtype=debugoptimized'])
 
@@ -20,7 +20,7 @@ endif
 # B is the ABI age, change it on new APIs that don't break existing ones, changing it resets C to 0
 # C is the revision, change on new updates that don't change APIs
 soversion = 10
-libversion = '10.11.0'
+libversion = '10.12.0'
 
 glib_req = '>= 2.54'
 gnutls_req = '>= 2.12.0'
