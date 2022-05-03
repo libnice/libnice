@@ -4219,6 +4219,7 @@ agent_recv_message_unlocked (
 
   /* We need an address for packet parsing, below. */
   if (message->from == NULL) {
+    nice_address_init (&from);
     message->from = &from;
   }
 
