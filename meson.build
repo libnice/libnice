@@ -1,5 +1,5 @@
 project('libnice', 'c',
-  version: '0.1.19',
+  version: '0.1.19.1',
   meson_version : '>= 0.52',
   default_options : ['warning_level=1', 'buildtype=debugoptimized'])
 
