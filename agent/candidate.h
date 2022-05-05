@@ -90,11 +90,11 @@ G_BEGIN_DECLS
 /**
  * NiceCandidateType:
  * @NICE_CANDIDATE_TYPE_HOST: A host candidate
- * @NICE_CANDIDATE_TYPE_SERVER_REFLEXIVE: A server reflexive candidate
+ * @NICE_CANDIDATE_TYPE_SERVER_REFLEXIVE: A server reflexive candidate (or a NAT-assisted candidate)
  * @NICE_CANDIDATE_TYPE_PEER_REFLEXIVE: A peer reflexive candidate
  * @NICE_CANDIDATE_TYPE_RELAYED: A relay candidate
  *
- * An enum represneting the type of a candidate
+ * An enum representing the type of a candidate
  */
 typedef enum
 {
@@ -267,6 +267,21 @@ nice_candidate_transport_to_string (NiceCandidateTransport transport);
  */
 void
 nice_candidate_relay_address (const NiceCandidate *candidate, NiceAddress *addr);
+
+/**
+ * nice_candidate_stun_server_address:
+ * @candidate: A server-reflexive candidate
+ * @addr: The #NiceAddress to fill
+ *
+ * In case the given candidate server-reflexive, use this utility function to get its address. The
+ * address will be filled only if the candidate was generated using an STUN server.
+ *
+ * Returns: TRUE if it's a STUN created ICE candidate, or FALSE if the reflexed's server was not STUN.
+ *
+ * Since: 0.1.20
+ */
+gboolean
+nice_candidate_stun_server_address (const NiceCandidate *candidate, NiceAddress *addr);
 
 /**
  * NICE_TYPE_CANDIDATE:

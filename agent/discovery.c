@@ -848,7 +848,7 @@ errors:
  *
  * @return pointer to the created candidate, or NULL on error
  */
-NiceCandidate*
+void
 discovery_add_server_reflexive_candidate (
   NiceAgent *agent,
   guint stream_id,
@@ -856,6 +856,7 @@ discovery_add_server_reflexive_candidate (
   NiceAddress *address,
   NiceCandidateTransport transport,
   NiceSocket *base_socket,
+  const NiceAddress *server_address,
   gboolean nat_assisted)
 {
   NiceCandidate *candidate;
@@ -865,7 +866,7 @@ discovery_add_server_reflexive_candidate (
   gboolean result = FALSE;
 
   if (!agent_find_component (agent, stream_id, component_id, &stream, &component))
-    return NULL;
+    return;
 
   candidate = nice_candidate_new (NICE_CANDIDATE_TYPE_SERVER_REFLEXIVE);
   c = (NiceCandidateImpl *) candidate;
@@ -891,6 +892,9 @@ discovery_add_server_reflexive_candidate (
         agent->reliable, nat_assisted);
   }
 
+  if (server_address != NULL)
+    c->stun_server = nice_address_dup (server_address);
+
   priv_generate_candidate_credentials (agent, candidate);
   priv_assign_foundation (agent, candidate);
 
@@ -902,8 +906,6 @@ discovery_add_server_reflexive_candidate (
     /* error: duplicate candidate */
     nice_candidate_free (candidate), candidate = NULL;
   }
-
-  return candidate;
 }
 
 /*
@@ -919,7 +921,8 @@ discovery_discover_tcp_server_reflexive_candidates (
   guint stream_id,
   guint component_id,
   NiceAddress *address,
-  NiceSocket *base_socket)
+  NiceSocket *base_socket,
+  const NiceAddress *server_addr)
 {
   NiceComponent *component;
   NiceStream *stream;
@@ -948,6 +951,7 @@ discovery_discover_tcp_server_reflexive_candidates (
           address,
           c->transport,
           ((NiceCandidateImpl *) c)->sockptr,
+          server_addr,
           FALSE);
     }
   }

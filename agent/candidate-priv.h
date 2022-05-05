@@ -105,6 +105,8 @@ struct _TurnServer
  * of type %NICE_CANDIDATE_TYPE_RELAYED
  * @sockptr: The underlying socket
  * @keepalive_next_tick: The timestamp for the next keepalive
+ * @stun_server: The STUN server address, if the candidate is
+ * of type %NICE_CANDIDATE_TYPE_SERVER_REFLEXIVE
  *
  * A structure to represent an ICE candidate
  */
@@ -114,6 +116,7 @@ struct _NiceCandidateImpl
   TurnServer *turn;
   NiceSocket *sockptr;
   guint64 keepalive_next_tick; /* next tick timestamp */
+  NiceAddress *stun_server;
 };
 
 

@@ -3758,7 +3758,7 @@ static gboolean priv_map_reply_to_conn_check_request (NiceAgent *agent, NiceStre
  *
  * @return TRUE if a matching transaction is found
  */
-static gboolean priv_map_reply_to_discovery_request (NiceAgent *agent, StunMessage *resp)
+static gboolean priv_map_reply_to_discovery_request (NiceAgent *agent, StunMessage *resp, const NiceAddress *server_address)
 {
   union {
     struct sockaddr_storage storage;
@@ -3814,14 +3814,17 @@ static gboolean priv_map_reply_to_discovery_request (NiceAgent *agent, StunMessa
                 &niceaddr,
                 NICE_CANDIDATE_TRANSPORT_UDP,
                 d->nicesock,
+                server_address,
                 FALSE);
+
             if (agent->use_ice_tcp)
               discovery_discover_tcp_server_reflexive_candidates (
                   agent,
                   d->stream_id,
                   d->component_id,
                   &niceaddr,
-                  d->nicesock);
+                  d->nicesock,
+                  server_address);
           }
           d->stun_message.buffer = NULL;
           d->stun_message.buffer_len = 0;
@@ -4045,6 +4048,7 @@ static gboolean priv_map_reply_to_relay_request (NiceAgent *agent, StunMessage *
                   &mappedniceaddr,
                   NICE_CANDIDATE_TRANSPORT_UDP,
                   d->nicesock,
+                  &niceaddr,
                   FALSE);
             }
             if (agent->use_ice_tcp) {
@@ -4059,7 +4063,8 @@ static gboolean priv_map_reply_to_relay_request (NiceAgent *agent, StunMessage *
                     d->stream_id,
                     d->component_id,
                     &mappedniceaddr,
-                    d->nicesock);
+                    d->nicesock,
+                    &niceaddr);
               }
             }
           }
@@ -4885,7 +4890,7 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, NiceStream *stream,
 
       /* step: let's try to match the response to an existing discovery */
       if (trans_found != TRUE)
-        trans_found = priv_map_reply_to_discovery_request (agent, &req);
+        trans_found = priv_map_reply_to_discovery_request (agent, &req, from);
 
       /* step: let's try to match the response to an existing turn allocate */
       if (trans_found != TRUE)

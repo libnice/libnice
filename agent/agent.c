@@ -3081,6 +3081,7 @@ static void _upnp_mapped_external_port (GUPnPSimpleIgd *self, gchar *proto,
         &externaddr,
         host_candidate->c.transport,
         host_candidate->sockptr,
+        NULL,
         TRUE);
 
     check_upnp_gathering_done (agent, stream);
