@@ -39,6 +39,14 @@
 #ifndef _NICE_H
 #define _NICE_H
 
+#define NICE_CHECK_VERSION(major, minor, micro)                         \
+    (NICE_VERSION_MAJOR > (major) ||                                    \
+     (NICE_VERSION_MAJOR == (major) && NICE_VERSION_MINOR > (minor)) || \
+     (NICE_VERSION_MAJOR == (major) && NICE_VERSION_MINOR == (minor) && \
+      NICE_VERSION_MICRO >= (micro)) ||                                 \
+     (NICE_VERSION_MAJOR == (major) && NICE_VERSION_MINOR == (minor) && \
+      NICE_VERSION_MICRO + 1 == (micro) && NICE_VERSION_NANO > 0))
+
 #include "agent.h"
 #include "interfaces.h"
 
