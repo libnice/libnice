@@ -1281,7 +1281,7 @@ static gboolean priv_conn_remote_consent_tick_agent_locked (
     agent_signal_component_state_change (agent, pair->keepalive.stream_id,
         pair->keepalive.component_id, NICE_COMPONENT_STATE_FAILED);
   } else {
-    guint64 delay = (consent_timeout - now - pair->remote_consent.last_received) / 1000;
+    guint64 delay = (consent_timeout - (now - pair->remote_consent.last_received)) / 1000;
     nice_debug ("Agent %p : pair %p rechecking consent in %" G_GUINT64_FORMAT ".%03" G_GUINT64_FORMAT "s",
         agent, pair, delay / 1000, delay % 1000);
     agent_timeout_add_with_context (agent,
