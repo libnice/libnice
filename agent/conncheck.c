@@ -4329,12 +4329,13 @@ static gboolean priv_map_reply_to_relay_remove (NiceAgent *agent,
 static gboolean priv_map_reply_to_keepalive_conncheck (NiceAgent *agent,
     NiceComponent *component, StunMessage *resp)
 {
+  guint64 now = g_get_monotonic_time();
+
   nice_debug ("Agent %p : Keepalive for selected pair %p received.",
       agent, &component->selected_pair);
-  if (agent->consent_freshness) {
-    guint64 now = g_get_monotonic_time();
-    component->selected_pair.remote_consent.last_received = now;
-  }
+
+  /* timeout is checked even if consent_freshness is disabled */
+  component->selected_pair.remote_consent.last_received = now;
   return TRUE;
 }
 
