@@ -65,7 +65,7 @@
 static void priv_update_check_list_failed_components (NiceAgent *agent, NiceStream *stream);
 static guint priv_prune_pending_checks (NiceAgent *agent, NiceStream *stream, NiceComponent *component);
 static gboolean priv_schedule_triggered_check (NiceAgent *agent, NiceStream *stream, NiceComponent *component, NiceSocket *local_socket, NiceCandidate *remote_cand);
-static void priv_mark_pair_nominated (NiceAgent *agent, NiceStream *stream, NiceComponent *component, NiceCandidate *localcand, NiceCandidate *remotecand);
+static gboolean priv_mark_pair_nominated (NiceAgent *agent, NiceStream *stream, NiceComponent *component, NiceCandidate *localcand, NiceCandidate *remotecand);
 static size_t priv_create_username (NiceAgent *agent, NiceStream *stream,
     guint component_id, NiceCandidate *remote, NiceCandidate *local,
     uint8_t *dest, guint dest_len, gboolean inbound);
@@ -212,11 +212,12 @@ print_component_incoming_checks (NiceAgent *agent, NiceStream *stream,
     nice_address_to_string (&icheck->local_socket->addr, tmpbuf1);
     nice_address_to_string (&icheck->from, tmpbuf2);
     nice_debug ("Agent %p : *** sc=%d/%d : icheck %p : "
-      "sock %s [%s]:%u > [%s]:%u",
+      "sock %s [%s]:%u > [%s]:%u, use_cand %u",
       agent, stream->id, component->id, icheck,
       priv_socket_type_to_string (icheck->local_socket->type),
       tmpbuf1, nice_address_get_port (&icheck->local_socket->addr),
-      tmpbuf2, nice_address_get_port (&icheck->from));
+      tmpbuf2, nice_address_get_port (&icheck->from),
+      icheck->use_candidate);
   }
 }
 
@@ -2223,20 +2224,44 @@ void conn_check_update_check_list_state_for_ready (NiceAgent *agent,
  * The remote party has signalled that the candidate pair
  * described by 'component' and 'remotecand' is nominated
  * for use.
+ * return TRUE if at least one matching pair is found and got nominated (or marked to be nominated on response_arrival).
  */
-static void priv_mark_pair_nominated (NiceAgent *agent, NiceStream *stream, NiceComponent *component, NiceCandidate *localcand, NiceCandidate *remotecand)
+static gboolean priv_mark_pair_nominated (NiceAgent *agent, NiceStream *stream, NiceComponent *component, NiceCandidate *localcand, NiceCandidate *remotecand)
 {
   GSList *i;
+  gboolean res = FALSE;
 
   g_assert (component);
 
   if (NICE_AGENT_IS_COMPATIBLE_WITH_RFC5245_OR_OC2007R2 (agent) &&
       agent->controlling_mode)
-    return;
+    return res;
+
+  if (nice_debug_is_verbose()) {
+    gchar remote_str[INET6_ADDRSTRLEN];
+    gchar local_str[INET6_ADDRSTRLEN];
+    nice_address_to_string(&remotecand->addr, remote_str);
+    nice_address_to_string(&localcand->addr, local_str);
+    nice_debug ("Agent %p : *** priv_mark_pair_nominated: local candidate %p [%s]:%u, remote candidate %p [%s]:%u",
+        agent, localcand, local_str, nice_address_get_port (&localcand->addr),
+        remotecand, remote_str, nice_address_get_port (&remotecand->addr));
+  }
 
   /* step: search for at least one nominated pair */
   for (i = stream->conncheck_list; i; i = i->next) {
     CandidateCheckPair *pair = i->data;
+
+    if (nice_debug_is_verbose()) {
+      gchar remote_str[INET6_ADDRSTRLEN];
+      gchar local_str[INET6_ADDRSTRLEN];
+      nice_address_to_string(&pair->remote->addr, remote_str);
+      nice_address_to_string(&pair->local->addr, local_str);
+      nice_debug ("Agent %p : *** priv_mark_pair_nominated: conncheck pair %p, state %u, valid %u, nom %u, disc p %p: local candidate %p [%s]:%u, remote candidate %p [%s]:%u",
+          agent, pair, pair->state, pair->valid, pair->nominated, pair->discovered_pair,
+          pair->local, local_str, nice_address_get_port (&pair->local->addr),
+          pair->remote, remote_str, nice_address_get_port (&pair->remote->addr));
+    }
+
     if (pair->local == localcand && pair->remote == remotecand) {
       /* ICE, 7.2.1.5. Updating the Nominated Flag */
       /* note: TCP candidates typically produce peer reflexive
@@ -2245,6 +2270,8 @@ static void priv_mark_pair_nominated (NiceAgent *agent, NiceStream *stream, Nice
        */
       if (pair->state == NICE_CHECK_SUCCEEDED &&
           pair->discovered_pair != NULL) {
+        nice_debug ("Agent %p : priv_mark_pair_nominated: conncheck pair %p - replace with discovered pair %p",
+            agent, pair, pair->discovered_pair);
         pair = pair->discovered_pair;
         g_assert (pair->state == NICE_CHECK_DISCOVERED);
       }
@@ -2266,6 +2293,7 @@ static void priv_mark_pair_nominated (NiceAgent *agent, NiceStream *stream, Nice
          * priv_schedule_triggered_check(), case NICE_CHECK_IN_PROGRESS.
          */
         pair->mark_nominated_on_response_arrival = TRUE;
+        res = TRUE;
         nice_debug ("Agent %p : pair %p (%s) is %s, "
             "will be nominated on response receipt.",
             agent, pair, pair->foundation,
@@ -2293,10 +2321,13 @@ static void priv_mark_pair_nominated (NiceAgent *agent, NiceStream *stream, Nice
               stream->id, component->id, NICE_COMPONENT_STATE_CONNECTED);
       }
 
-      if (pair->nominated)
+      if (pair->nominated) {
         conn_check_update_check_list_state_for_ready (agent, stream, component);
+        res = TRUE;
+      }
     }
   }
+  return res;
 }
 
 /*
@@ -3278,19 +3309,19 @@ static void priv_reply_to_conn_check (NiceAgent *agent, NiceStream *stream,
  * before we get information about the remote candidates (via
  * SDP or other signaling means).
  *
- * @return non-zero on error, zero on success
+ * @return pointer to created pending check, zero on error
  */
-static int priv_store_pending_check (NiceAgent *agent, NiceComponent *component,
+static IncomingCheck *priv_store_pending_check (NiceAgent *agent, NiceComponent *component,
     const NiceAddress *from, NiceSocket *sockptr, uint8_t *username,
     uint16_t username_len, uint32_t priority, gboolean use_candidate)
 {
-  IncomingCheck *icheck;
+  IncomingCheck *icheck = NULL;
   nice_debug ("Agent %p : Storing pending check.", agent);
 
   if (g_queue_get_length (&component->incoming_checks) >=
       NICE_AGENT_MAX_REMOTE_CANDIDATES) {
     nice_debug ("Agent %p : WARN: unable to store information for early incoming check.", agent);
-    return -1;
+    return icheck;
   }
 
   icheck = g_slice_new0 (IncomingCheck);
@@ -3304,7 +3335,7 @@ static int priv_store_pending_check (NiceAgent *agent, NiceComponent *component,
   if (username_len > 0)
     icheck->username = g_memdup (username, username_len);
 
-  return 0;
+  return icheck;
 }
 
 /*
@@ -4429,7 +4460,7 @@ static bool conncheck_stun_validater (StunAgent *agent,
  */
 static gboolean conn_check_handle_renomination (NiceAgent *agent, NiceStream *stream,
     NiceComponent *component, StunMessage *req,
-    NiceCandidate *remote_candidate, NiceCandidate *local_candidate)
+    NiceCandidate *remote_candidate, NiceCandidate *local_candidate, IncomingCheck *pending_check)
 {
   GSList *lst;
   if (!agent->controlling_mode && NICE_AGENT_IS_COMPATIBLE_WITH_RFC5245_OR_OC2007R2 (agent) &&
@@ -4474,7 +4505,22 @@ static gboolean conn_check_handle_renomination (NiceAgent *agent, NiceStream *st
         }
       }
     }
-    priv_mark_pair_nominated (agent, stream, component, local_candidate, remote_candidate);
+    if (!priv_mark_pair_nominated (agent, stream, component, local_candidate, remote_candidate)) {
+      /* No matching pair in conn check list. It means that we are probably handling incoming conn check,
+       * so triggered check (pending_check) will be performed in future once we have credentials and remote candidates.
+       * Constructed pair needs to be nominated then, so set use_candidate for pending check.
+       */
+      if (nice_debug_is_enabled ()) {
+        gchar remote_str[INET6_ADDRSTRLEN];
+        nice_address_to_string(&remote_candidate->addr, remote_str);
+        nice_debug ("Agent %p : no matching pair nominated while handling NOMINATION attr for "
+            "remote candidate [%s]:%u, pending check: %p - %s",
+            agent, remote_str, nice_address_get_port (&remote_candidate->addr),
+            pending_check, pending_check ? "set use_candidate" : "skip");
+      }
+      if (pending_check)
+        pending_check->use_candidate = TRUE;
+    }
     return TRUE;
   }
   return FALSE;
@@ -4520,6 +4566,7 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, NiceStream *stream,
   NiceCandidate *remote_candidate2 = NULL;
   NiceCandidate *local_candidate = NULL;
   gboolean discovery_msg = FALSE;
+  IncomingCheck *pending_check = NULL;
 
   nice_address_copy_to_sockaddr (from, &sockaddr.addr);
 
@@ -4869,7 +4916,7 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, NiceStream *stream,
          *       we get information about the remote candidates */
 
         /* step: send a reply immediately but postpone other processing */
-        priv_store_pending_check (agent, component, from, nicesock,
+        pending_check = priv_store_pending_check (agent, component, from, nicesock,
             username, username_len, priority, use_candidate);
         priv_print_conn_check_lists (agent, G_STRFUNC, ", icheck stored");
       }
@@ -4915,7 +4962,7 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, NiceStream *stream,
   }
 
   /* RENOMINATION attribute support */
-  conn_check_handle_renomination(agent, stream, component, &req, remote_candidate, local_candidate);
+  conn_check_handle_renomination(agent, stream, component, &req, remote_candidate, local_candidate, pending_check);
 
   return TRUE;
 }
