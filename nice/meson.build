@@ -1,4 +1,4 @@
-nice_gen_sources = []
+nice_gen_sources = [nice_version_h]
 nice_link_args = []
 
 # libnice.def

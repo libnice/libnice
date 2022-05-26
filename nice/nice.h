@@ -39,6 +39,8 @@
 #ifndef _NICE_H
 #define _NICE_H
 
+#include "nice-version.h"
+
 #define NICE_CHECK_VERSION(major, minor, micro)                         \
     (NICE_VERSION_MAJOR > (major) ||                                    \
      (NICE_VERSION_MAJOR == (major) && NICE_VERSION_MINOR > (minor)) || \

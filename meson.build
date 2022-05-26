@@ -84,6 +84,15 @@ add_project_arguments('-D_GNU_SOURCE',
   '-DNICE_VERSION_NANO=' + version_nano,
   language: 'c')
 
+version_conf = configuration_data()
+version_conf.set('NICE_VERSION_MAJOR', version_major)
+version_conf.set('NICE_VERSION_MINOR', version_minor)
+version_conf.set('NICE_VERSION_MICRO', version_micro)
+version_conf.set('NICE_VERSION_NANO', version_nano)
+nice_version_h = configure_file(output: 'nice-version.h',
+  install_dir: get_option('includedir') / 'nice',
+  configuration: version_conf)
+
 cdata = configuration_data()
 
 cdata.set_quoted('PACKAGE_STRING', meson.project_name())
