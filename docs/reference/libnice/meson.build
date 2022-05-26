@@ -41,7 +41,7 @@ gnome.gtkdoc('libnice',
              main_xml: 'libnice-docs.xml',
              namespace: 'nice',
              mode: 'none',
-             src_dir: [agent_include, stun_include],
+             src_dir: [agent_include, stun_include, nice_include],
              content_files: fake_makefile,
              dependencies: libnice_dep,
              scan_args: [
