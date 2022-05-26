@@ -45,9 +45,7 @@
     (NICE_VERSION_MAJOR > (major) ||                                    \
      (NICE_VERSION_MAJOR == (major) && NICE_VERSION_MINOR > (minor)) || \
      (NICE_VERSION_MAJOR == (major) && NICE_VERSION_MINOR == (minor) && \
-      NICE_VERSION_MICRO >= (micro)) ||                                 \
-     (NICE_VERSION_MAJOR == (major) && NICE_VERSION_MINOR == (minor) && \
-      NICE_VERSION_MICRO + 1 == (micro) && NICE_VERSION_NANO > 0))
+      NICE_VERSION_MICRO >= (micro)))
 
 #include "agent.h"
 #include "interfaces.h"
