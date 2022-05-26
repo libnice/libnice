@@ -88,6 +88,9 @@ inet_ntop_win32 (int af, const void *src, char *dst, socklen_t cnt)
 #endif
 
 
+NICEAPI_EXPORT
+G_DEFINE_BOXED_TYPE (NiceAddress, nice_address, nice_address_dup,
+    nice_address_free);
 
 NICEAPI_EXPORT void
 nice_address_init (NiceAddress *addr)

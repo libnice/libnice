@@ -148,6 +148,9 @@ nice_address_is_private
 nice_address_is_linklocal
 nice_address_is_valid
 nice_address_ip_version
+<SUBSECTION Standard>
+NICE_TYPE_ADDRESS
+nice_address_get_type
 </SECTION>
 
 
