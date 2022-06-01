@@ -417,6 +417,8 @@ nice_candidate_copy (const NiceCandidate *candidate)
   copy->turn = NULL;
   copy->c.username = g_strdup (copy->c.username);
   copy->c.password = g_strdup (copy->c.password);
+  if (copy->stun_server)
+    copy->stun_server = nice_address_dup (copy->stun_server);
 
   return (NiceCandidate *) copy;
 }
