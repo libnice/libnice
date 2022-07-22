@@ -51,6 +51,7 @@
 
 #include "udp-bsd.h"
 #include "agent-priv.h"
+#include "interfaces.h"
 
 #ifndef G_OS_WIN32
 #include <unistd.h>
@@ -118,6 +119,33 @@ nice_udp_bsd_socket_new (NiceAddress *addr, GError **error)
     g_slice_free (NiceSocket, sock);
     return NULL;
   }
+
+#if defined(IP_UNICAST_IF) && defined(IPV6_UNICAST_IF)
+  if (addr) {
+    guint if_index = nice_interfaces_get_if_index_by_addr (addr);
+
+    if (if_index) {
+      guint level, optname;
+      GError *gerr = NULL;
+
+      if (nice_address_ip_version (addr) == 6) {
+        level = IPPROTO_IPV6;
+        optname = IPV6_UNICAST_IF;
+      } else {
+        level = IPPROTO_IP;
+        optname = IP_UNICAST_IF;
+      }
+
+      if_index = htonl (if_index);
+      if (!g_socket_set_option (gsock, level, optname, if_index, &gerr)) {
+        nice_debug ("Could not bind socket to specific interface: %s",
+                    gerr->message);
+        g_clear_error (&gerr);
+      }
+    }
+  }
+#endif
+
 
   /* GSocket: All socket file descriptors are set to be close-on-exec. */
   g_socket_set_blocking (gsock, false);
