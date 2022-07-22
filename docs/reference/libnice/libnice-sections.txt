@@ -168,6 +168,7 @@ nice_debug_disable
 nice_interfaces_get_ip_for_interface
 nice_interfaces_get_local_interfaces
 nice_interfaces_get_local_ips
+nice_interfaces_get_if_index_by_addr
 </SECTION>
 
 <SECTION>

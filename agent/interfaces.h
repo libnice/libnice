@@ -37,6 +37,7 @@
  */
 
 #include <glib.h>
+#include <address.h>
 
 G_BEGIN_DECLS
 
@@ -76,6 +77,21 @@ GList * nice_interfaces_get_local_ips (gboolean include_loopback);
  * strings. The caller must free it.
  */
 GList * nice_interfaces_get_local_interfaces (void);
+
+
+/**
+ * nice_interfaces_get_if_index_by_addr:
+ * @addr: A #NiceAddress for a local interface
+ *
+ * Returns the interface index match the local address passed. This can
+ * by used for APIs that need a specific address.
+ *
+ * Returns: The interface index or 0 on error
+ *
+ * Since: 0.1.20
+ */
+
+guint nice_interfaces_get_if_index_by_addr (NiceAddress *addr);
 
 G_END_DECLS
 
