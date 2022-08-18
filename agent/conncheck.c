@@ -3316,16 +3316,11 @@ static IncomingCheck *priv_store_pending_check (NiceAgent *agent, NiceComponent 
     uint16_t username_len, uint32_t priority, gboolean use_candidate)
 {
   IncomingCheck *icheck = NULL;
+  guint max_incoming_checks = agent->max_conn_checks * 2;
+
   nice_debug ("Agent %p : Storing pending check.", agent);
 
-  if (g_queue_get_length (&component->incoming_checks) >=
-      NICE_AGENT_MAX_REMOTE_CANDIDATES) {
-    nice_debug ("Agent %p : WARN: unable to store information for early incoming check.", agent);
-    return icheck;
-  }
-
   icheck = g_slice_new0 (IncomingCheck);
-  g_queue_push_tail (&component->incoming_checks, icheck);
   icheck->from = *from;
   icheck->local_socket = sockptr;
   icheck->priority = priority;
@@ -3334,6 +3329,17 @@ static IncomingCheck *priv_store_pending_check (NiceAgent *agent, NiceComponent 
   icheck->username = NULL;
   if (username_len > 0)
     icheck->username = g_memdup (username, username_len);
+  g_queue_push_tail (&component->incoming_checks, icheck);
+
+  if (g_queue_get_length (&component->incoming_checks) >= max_incoming_checks) {
+    IncomingCheck *old_icheck = g_queue_pop_head (&component->incoming_checks);
+
+    g_free (old_icheck->username);
+    g_slice_free (IncomingCheck, old_icheck);
+
+    nice_debug ("Agent %p : WARN: Over %d early checks, dropping the oldest",
+        agent, max_incoming_checks);
+  }
 
   return icheck;
 }
