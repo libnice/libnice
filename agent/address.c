@@ -261,6 +261,16 @@ nice_address_to_string (const NiceAddress *addr, gchar *dst)
   }
 }
 
+NICEAPI_EXPORT gchar *
+nice_address_dup_string (const NiceAddress *addr)
+{
+  char dst[MAX(INET_ADDRSTRLEN, INET6_ADDRSTRLEN)] = "";
+
+  nice_address_to_string (addr, dst);
+
+  return g_strdup (dst);
+}
+
 
 NICEAPI_EXPORT gboolean
 nice_address_equal (const NiceAddress *a, const NiceAddress *b)
