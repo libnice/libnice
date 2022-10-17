@@ -25,7 +25,7 @@ include:
 .libnice.centos:7:
   variables:
     FDO_DISTRIBUTION_VERSION: '7'
-    FDO_DISTRIBUTION_TAG: '2022-10-17'
+    FDO_DISTRIBUTION_TAG: '2022-10-17-cov'
     FDO_UPSTREAM_REPO: 'libnice/libnice'
 
 check-allow-collaboration:
@@ -240,10 +240,14 @@ test:
     - ninja -C build/
     - meson test -C build/ --setup debug
     - ninja -C build coverage
+    - lcov_cobertura build/meson-logs/coverage.info -o build/meson-logs/coverage.xml
   coverage: '/lines......: \d+\.\d+% /'
   artifacts:
     reports:
       junit: build/meson-logs/testlog-*.junit.xml
+      coverage_report:
+        coverage_format: cobertura
+        path: build/meson-logs/coverage.xml
     when: on_failure
     paths:
       - build/meson-logs/
@@ -256,7 +260,6 @@ test valgrind:
     - meson configure build -Dgtk_doc=disabled
     - ninja -C build/
     - meson test -C build/ --setup valgrind --print-errorlogs
-
 
 doc-and-install:
   stage: test

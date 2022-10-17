@@ -19,4 +19,3 @@ RUN yum -y install git gtk-doc gnutls-devel gupnp-igd-devel gstreamer1-devel gob
 
 ADD pip-installs.sh /
 RUN bash -ex /pip-installs.sh && rm /pip-installs.sh
-
