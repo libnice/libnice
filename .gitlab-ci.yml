@@ -168,6 +168,12 @@ build msys2:
         meson build $env:MESON_ARGS &&
         ninja -C build &&
         meson test -C build --print-errorlogs --suite libnice"
+  artifacts:
+    reports:
+      junit: build/meson-logs/testlog-*.junit.xml
+    when: on_failure
+    paths:
+      - build/meson-logs/
 
 build msvc amd64:
   extends: .build msvc
@@ -234,6 +240,8 @@ test:
     - ninja -C build/
     - meson test -C build/ --setup debug
   artifacts:
+    reports:
+      junit: build/meson-logs/testlog-*.junit.xml
     when: on_failure
     paths:
       - build/meson-logs/
