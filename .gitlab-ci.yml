@@ -66,7 +66,7 @@ build:
   script:
     ## && true to make gitlab-ci happy
     - source scl_source enable rh-python36 && true
-    - meson --werror --warnlevel 2 -Dgtk_doc=enabled --prefix=$PREFIX build/
+    - meson --werror --warnlevel 2 -Dgtk_doc=enabled --prefix=$PREFIX -Db_coverage=true build/
     - ninja -C build/
   artifacts:
     paths:
@@ -239,6 +239,8 @@ test:
     - source scl_source enable rh-python36 && true
     - ninja -C build/
     - meson test -C build/ --setup debug
+    - ninja -C build coverage
+  coverage: '/lines......: \d+\.\d+% /'
   artifacts:
     reports:
       junit: build/meson-logs/testlog-*.junit.xml
