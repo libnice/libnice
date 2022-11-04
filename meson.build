@@ -119,6 +119,10 @@ foreach f : ['poll', 'getifaddrs']
   endif
 endforeach
 
+if cc.has_member('struct ifreq', 'ifr_ifindex', prefix: '#include <net/if.h>')
+  cdata.set('HAVE_IFR_IFINDEX', 1)
+endif
+
 if cc.has_argument('-fno-strict-aliasing')
   add_project_arguments('-fno-strict-aliasing', language: 'c')
 endif

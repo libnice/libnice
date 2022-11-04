@@ -373,6 +373,7 @@ get_local_ips_ioctl (gboolean include_loopback)
 static guint
 get_local_if_index_by_addr_ioctl (NiceAddress *addr)
 {
+#ifdef HAVE_IFR_IFINDEX
   gint sockfd;
   gint size = 0;
   struct ifreq *ifr;
@@ -427,6 +428,11 @@ get_local_if_index_by_addr_ioctl (NiceAddress *addr)
   close (sockfd);
 
   return if_index;
+#else
+  g_critical ("getifaddrs() should not fail on a platform that doesn't"
+      " include ifr_index in the struct ifreq. Please report the bug.");
+  return 0;
+#endif
 }
 
 #ifdef HAVE_GETIFADDRS
