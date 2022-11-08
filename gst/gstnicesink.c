@@ -49,12 +49,10 @@ static GstFlowReturn
 gst_nice_sink_render (
   GstBaseSink *basesink,
   GstBuffer *buffer);
-#if GST_CHECK_VERSION (1,0,0)
 static GstFlowReturn
 gst_nice_sink_render_list (
   GstBaseSink *basesink,
   GstBufferList *buffer_list);
-#endif
 
 static gboolean
 gst_nice_sink_unlock (GstBaseSink *basesink);
@@ -85,10 +83,8 @@ gst_nice_sink_get_property (
 
 static void
 gst_nice_sink_dispose (GObject *object);
-#if GST_CHECK_VERSION (1,0,0)
 static void
 gst_nice_sink_finalize (GObject *object);
-#endif
 
 static GstStateChangeReturn
 gst_nice_sink_change_state (
@@ -123,9 +119,7 @@ gst_nice_sink_class_init (GstNiceSinkClass *klass)
 
   gstbasesink_class = (GstBaseSinkClass *) klass;
   gstbasesink_class->render = GST_DEBUG_FUNCPTR (gst_nice_sink_render);
-#if GST_CHECK_VERSION (1,0,0)
   gstbasesink_class->render_list = GST_DEBUG_FUNCPTR (gst_nice_sink_render_list);
-#endif
   gstbasesink_class->unlock = GST_DEBUG_FUNCPTR (gst_nice_sink_unlock);
   gstbasesink_class->unlock_stop = GST_DEBUG_FUNCPTR (gst_nice_sink_unlock_stop);
 
@@ -133,20 +127,14 @@ gst_nice_sink_class_init (GstNiceSinkClass *klass)
   gobject_class->set_property = gst_nice_sink_set_property;
   gobject_class->get_property = gst_nice_sink_get_property;
   gobject_class->dispose = gst_nice_sink_dispose;
-#if GST_CHECK_VERSION (1,0,0)
   gobject_class->finalize = gst_nice_sink_finalize;
-#endif
 
   gstelement_class = (GstElementClass *) klass;
   gstelement_class->change_state = gst_nice_sink_change_state;
 
   gst_element_class_add_pad_template (gstelement_class,
       gst_static_pad_template_get (&gst_nice_sink_sink_template));
-#if GST_CHECK_VERSION (1,0,0)
   gst_element_class_set_metadata (gstelement_class,
-#else
-  gst_element_class_set_details_simple (gstelement_class,
-#endif
     "ICE sink",
     "Sink",
     "Interactive UDP connectivity establishment",
@@ -185,13 +173,10 @@ gst_nice_sink_class_init (GstNiceSinkClass *klass)
 static void
 gst_nice_sink_init (GstNiceSink *sink)
 {
-#if GST_CHECK_VERSION (1,0,0)
   guint max_mem;
-#endif
 
   g_cond_init (&sink->writable_cond);
 
-#if GST_CHECK_VERSION (1,0,0)
   /* pre-allocate OutputVector, MapInfo and OutputMessage arrays
    * for use in the render and render_list functions */
   max_mem = gst_buffer_get_max_memory ();
@@ -204,7 +189,6 @@ gst_nice_sink_init (GstNiceSink *sink)
 
   sink->n_messages = 1;
   sink->messages = g_new (NiceOutputMessage, sink->n_messages);
-#endif
 
 #if GST_CHECK_VERSION (1,12,0)
   gst_base_sink_set_drop_out_of_segment (GST_BASE_SINK (sink), FALSE);
@@ -222,7 +206,6 @@ _reliable_transport_writable (NiceAgent *agent, guint stream_id,
   GST_OBJECT_UNLOCK (sink);
 }
 
-#if GST_CHECK_VERSION (1,0,0)
 static gsize
 fill_vectors (GOutputVector * vecs, GstMapInfo * maps, guint n, GstBuffer * buf)
 {
@@ -319,14 +302,12 @@ gst_nice_sink_render_buffers (GstNiceSink * sink, GstBuffer ** buffers,
 
   return flow_ret;
 }
-#endif
 
 static GstFlowReturn
 gst_nice_sink_render (GstBaseSink *basesink, GstBuffer *buffer)
 {
   GstNiceSink *nicesink = GST_NICE_SINK (basesink);
   GstFlowReturn flow_ret = GST_FLOW_OK;
-#if GST_CHECK_VERSION (1,0,0)
   guint8 n_mem;
 
   n_mem = gst_buffer_n_memory (buffer);
@@ -336,36 +317,9 @@ gst_nice_sink_render (GstBaseSink *basesink, GstBuffer *buffer)
         n_mem);
   }
 
-#else
-  guint written = 0;
-  gint ret;
-  gchar *data = NULL;
-  guint size = 0;
-
-  data = (gchar *) GST_BUFFER_DATA (buffer);
-  size = GST_BUFFER_SIZE (buffer);
-
-  GST_OBJECT_LOCK (nicesink);
-  do {
-    ret = nice_agent_send (nicesink->agent, nicesink->stream_id,
-        nicesink->component_id, size - written, data + written);
-    if (ret > 0)
-      written += ret;
-
-    if (nicesink->reliable && written < size)
-      g_cond_wait (&nicesink->writable_cond, GST_OBJECT_GET_LOCK (nicesink));
-    if (nicesink->flushing) {
-      flow_ret = GST_FLOW_WRONG_STATE;
-      break;
-    }
-  } while (nicesink->reliable && written < size);
-  GST_OBJECT_UNLOCK (nicesink);
-
-#endif
   return flow_ret;
 }
 
-#if GST_CHECK_VERSION (1,0,0)
 static GstFlowReturn
 gst_nice_sink_render_list (GstBaseSink *basesink, GstBufferList *buffer_list)
 {
@@ -401,7 +355,6 @@ no_data:
 
   return flow_ret;
 }
-#endif
 
 static gboolean gst_nice_sink_unlock (GstBaseSink *basesink)
 {
@@ -441,7 +394,6 @@ gst_nice_sink_dispose (GObject *object)
   G_OBJECT_CLASS (gst_nice_sink_parent_class)->dispose (object);
 }
 
-#if GST_CHECK_VERSION (1,0,0)
 static void
 gst_nice_sink_finalize (GObject *object)
 {
@@ -459,7 +411,6 @@ gst_nice_sink_finalize (GObject *object)
 
   G_OBJECT_CLASS (gst_nice_sink_parent_class)->finalize (object);
 }
-#endif
 
 static void
 gst_nice_sink_set_property (

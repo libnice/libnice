@@ -129,11 +129,7 @@ gst_nice_src_class_init (GstNiceSrcClass *klass)
 
   gst_element_class_add_pad_template (gstelement_class,
       gst_static_pad_template_get (&gst_nice_src_src_template));
-#if GST_CHECK_VERSION (1,0,0)
   gst_element_class_set_metadata (gstelement_class,
-#else
-  gst_element_class_set_details_simple (gstelement_class,
-#endif
       "ICE source",
       "Source",
       "Interactive UDP connectivity establishment",
@@ -198,13 +194,8 @@ gst_nice_src_read_callback (NiceAgent *agent,
 
   GST_LOG_OBJECT (agent, "Got buffer, getting out of the main loop");
 
-#if GST_CHECK_VERSION (1,0,0)
   buffer = gst_buffer_new_allocate (NULL, len, NULL);
   gst_buffer_fill (buffer, 0, buf, len);
-#else
-  buffer = gst_buffer_new_and_alloc (len);
-  memcpy (GST_BUFFER_DATA (buffer), buf, len);
-#endif
   GST_OBJECT_LOCK (nicesrc);
   g_queue_push_tail (nicesrc->outbufs, buffer);
   g_main_loop_quit (nicesrc->mainloop);
@@ -280,11 +271,7 @@ gst_nice_src_create (
   GST_OBJECT_LOCK (basesrc);
   if (nicesrc->unlocked) {
     GST_OBJECT_UNLOCK (basesrc);
-#if GST_CHECK_VERSION (1,0,0)
     return GST_FLOW_FLUSHING;
-#else
-    return GST_FLOW_WRONG_STATE;
-#endif
   }
   if (g_queue_is_empty (nicesrc->outbufs)) {
     GST_OBJECT_UNLOCK (basesrc);
@@ -300,11 +287,7 @@ gst_nice_src_create (
     return GST_FLOW_OK;
   } else {
     GST_LOG_OBJECT (nicesrc, "Got interrupting, returning wrong-state");
-#if GST_CHECK_VERSION (1,0,0)
     return GST_FLOW_FLUSHING;
-#else
-    return GST_FLOW_WRONG_STATE;
-#endif
   }
 
 }
@@ -466,5 +449,3 @@ gst_nice_src_change_state (GstElement * element, GstStateChange transition)
 
   return ret;
 }
-
-
