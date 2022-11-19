@@ -475,7 +475,7 @@ nice_candidate_relay_address (const NiceCandidate *candidate, NiceAddress *addr)
   const NiceCandidateImpl *c = (NiceCandidateImpl *) candidate;
 
   g_return_if_fail (candidate != NULL);
-  g_return_if_fail (candidate->type != NICE_CANDIDATE_TYPE_RELAYED);
+  g_return_if_fail (candidate->type == NICE_CANDIDATE_TYPE_RELAYED);
 
   *addr = c->turn->server;
 }
@@ -486,7 +486,7 @@ nice_candidate_stun_server_address (const NiceCandidate *candidate, NiceAddress 
   const NiceCandidateImpl *c = (NiceCandidateImpl *) candidate;
 
   g_return_val_if_fail (candidate != NULL, FALSE);
-  g_return_val_if_fail (candidate->type != NICE_CANDIDATE_TYPE_SERVER_REFLEXIVE, FALSE);
+  g_return_val_if_fail (candidate->type == NICE_CANDIDATE_TYPE_SERVER_REFLEXIVE, FALSE);
 
   if (c->stun_server) {
     *addr = *c->stun_server;
