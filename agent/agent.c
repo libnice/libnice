@@ -401,7 +401,7 @@ nice_agent_class_init (NiceAgentClass *klass)
       g_param_spec_string (
         "stun-server",
         "STUN server IP address",
-        "The IP address (not the hostname) of the STUN server to use",
+        "The IP address (or hostname) of the STUN server to use",
         NULL,
         G_PARAM_READWRITE));
 
@@ -1310,6 +1310,8 @@ nice_agent_init (NiceAgent *agent)
   agent->bytestream_tcp = FALSE;
   agent->use_ice_udp = TRUE;
   agent->use_ice_tcp = TRUE;
+
+  agent->stun_resolving_cancellable = g_cancellable_new();
 
   agent->rng = nice_rng_new ();
   priv_generate_tie_breaker (agent);
@@ -2292,6 +2294,10 @@ void agent_gathering_done (NiceAgent *agent)
   gboolean upnp_running = FALSE;
   GSList *i, *j, *k, *l, *m;
 
+  if (agent->stun_resolving_list) {
+    nice_debug ("Agent %p: Gathering not done, resolving names", agent);
+  }
+
   for (i = agent->streams; i; i = i->next) {
     NiceStream *stream = i->data;
 
@@ -2656,6 +2662,8 @@ agent_candidate_pair_priority (NiceAgent *agent, NiceCandidate *local, NiceCandi
     return nice_candidate_pair_priority (remote->priority, local->priority);
 }
 
+
+
 static void
 priv_add_new_candidate_discovery_stun (NiceAgent *agent,
     NiceSocket *nicesock, NiceAddress server,
@@ -2685,6 +2693,118 @@ priv_add_new_candidate_discovery_stun (NiceAgent *agent,
   agent->discovery_list = g_slist_append (agent->discovery_list, cdisco);
   ++agent->discovery_unsched_items;
 }
+
+struct StunResolverData {
+  GWeakRef agent_ref;
+  guint stream_id;
+};
+
+static void
+stun_server_resolved_cb (GObject *src, GAsyncResult *result,
+    gpointer user_data)
+{
+  GResolver *resolver = G_RESOLVER (src);
+  GList *addresses, *item;
+  GError *error = NULL;
+  struct StunResolverData *data = user_data;
+  guint stream_id;
+  NiceAgent *agent;
+  NiceStream *stream;
+
+  agent = g_weak_ref_get (&data->agent_ref);
+  g_weak_ref_clear (&data->agent_ref);
+  if (agent == NULL)
+    return;
+  stream_id = data->stream_id;
+  g_slice_free (struct StunResolverData, data);
+
+  agent->stun_resolving_list = g_slist_remove_all (agent->stun_resolving_list,
+      data);
+
+  addresses = g_resolver_lookup_by_name_finish (resolver, result, &error);
+
+  if (addresses == NULL) {
+    g_warning ("Agent: %p: s:%d: Can't resolve STUN server: %s", agent,
+        stream_id, error->message);
+    g_clear_error (&error);
+    goto done;
+  }
+
+  agent_lock (agent);
+
+  stream = agent_find_stream (agent, stream_id);
+
+  for (item = addresses; item; item = item->next) {
+    GInetAddress *addr = item->data;
+    guint cid;
+    NiceAddress stun_server;
+    const guint8 *addr_bytes = g_inet_address_to_bytes (addr);
+
+    if (nice_debug_is_enabled ()) {
+      char *resolved_addr = g_inet_address_to_string (addr);
+
+      nice_debug ("Agent %p: s:%d: Resolved STUN server %s to %s",
+          agent, stream_id, agent->stun_server_ip, resolved_addr);
+      g_free (resolved_addr);
+    }
+
+    switch (g_inet_address_get_family (addr)) {
+    case G_SOCKET_FAMILY_IPV4:
+      nice_address_set_ipv4 (&stun_server, ntohl (*((guint32 *) addr_bytes)));
+      break;
+    case G_SOCKET_FAMILY_IPV6:
+      nice_address_set_ipv6 (&stun_server, addr_bytes);
+      break;
+    default:
+      /* Ignore others */
+      continue;
+    }
+    nice_address_set_port (&stun_server, agent->stun_server_port);
+
+    for (cid = 1; cid <= stream->n_components; cid++) {
+      NiceComponent *component = nice_stream_find_component_by_id (stream,
+          cid);
+      GSList *citem;
+
+      if (component == NULL)
+        continue;
+
+      for (citem = component->local_candidates; citem; citem = citem->next) {
+        NiceCandidateImpl *host_candidate = citem->data;
+
+        if (host_candidate->c.type != NICE_CANDIDATE_TYPE_HOST)
+          continue;
+
+        if (nice_address_is_linklocal (&host_candidate->c.addr))
+          continue;
+
+        /* TODO: Add server-reflexive support for TCP candidates */
+        if (host_candidate->c.transport != NICE_CANDIDATE_TRANSPORT_UDP)
+          continue;
+        if (nice_address_ip_version (&host_candidate->c.addr) !=
+            nice_address_ip_version (&stun_server))
+          continue;
+
+        priv_add_new_candidate_discovery_stun (agent,
+            host_candidate->sockptr,
+            stun_server,
+            stream,
+            cid);
+      }
+    }
+  }
+
+  if (agent->discovery_unsched_items)
+    discovery_schedule (agent);
+  else
+    agent_gathering_done (agent);
+  agent_unlock_and_emit (agent);
+
+ done:
+  g_list_free_full (addresses, g_object_unref);
+  g_object_unref (agent);
+}
+
 
 NiceSocket *
 agent_create_tcp_turn_socket (NiceAgent *agent, NiceStream *stream,
@@ -3330,6 +3450,25 @@ priv_host_candidate_result_to_string (HostCandidateResult result)
   }
 }
 
+static gboolean
+resolve_stun_in_context (NiceAgent *agent, gpointer data)
+{
+  GResolver *resolver = g_resolver_get_default ();
+  struct StunResolverData *rd = data;
+
+  nice_debug("Agent:%p s:%d: Resolving STUN server %s",
+      agent, rd->stream_id, agent->stun_server_ip);
+
+  g_main_context_push_thread_default (agent->main_context);
+  g_resolver_lookup_by_name_async (resolver, agent->stun_server_ip,
+      agent->stun_resolving_cancellable, stun_server_resolved_cb, rd);
+  g_main_context_pop_thread_default (agent->main_context);
+
+  g_object_unref (resolver);
+
+  return G_SOURCE_REMOVE;
+}
+
 NICEAPI_EXPORT gboolean
 nice_agent_gather_candidates (
   NiceAgent *agent,
@@ -3393,6 +3532,23 @@ nice_agent_gather_candidates (
   if (length > NICE_CANDIDATE_MAX_LOCAL_ADDRESSES) {
     g_warning ("Agent %p : cannot have more than %d local addresses.",
         agent, NICE_CANDIDATE_MAX_LOCAL_ADDRESSES);
+  }
+
+  if (agent->full_mode && agent->stun_server_ip && !agent->force_relay)
+  {
+    struct StunResolverData *rd = g_slice_new (struct StunResolverData);
+    GSource *source = NULL;
+
+    g_weak_ref_init (&rd->agent_ref, agent);
+    rd->stream_id = stream_id;
+
+    nice_debug("Agent:%p s:%d: Resolving STUN server %s",
+        agent, stream_id, agent->stun_server_ip);
+    agent_timeout_add_with_context (agent, &source, "STUN resolution", 0,
+        resolve_stun_in_context, rd);
+    g_source_unref (source);
+    agent->stun_resolving_list = g_slist_prepend (agent->stun_resolving_list,
+        rd);
   }
 
   for (cid = 1; cid <= stream->n_components; cid++) {
@@ -3494,24 +3650,6 @@ nice_agent_gather_candidates (
 
         priv_add_upnp_discovery (agent, stream, (NiceCandidate *) host_candidate);
 
-        /* TODO: Add server-reflexive support for TCP candidates */
-        if (agent->full_mode && agent->stun_server_ip && !agent->force_relay &&
-            !nice_address_is_linklocal (addr) &&
-            transport == NICE_CANDIDATE_TRANSPORT_UDP) {
-          NiceAddress stun_server;
-          if (nice_address_set_from_string (&stun_server, agent->stun_server_ip)) {
-            nice_address_set_port (&stun_server, agent->stun_server_port);
-
-            if (nice_address_ip_version (&host_candidate->c.addr) ==
-                nice_address_ip_version (&stun_server))
-              priv_add_new_candidate_discovery_stun (agent,
-                  host_candidate->sockptr,
-                  stun_server,
-                  stream,
-                  cid);
-          }
-        }
-
         if (agent->full_mode && component && !nice_address_is_linklocal (addr) &&
             transport != NICE_CANDIDATE_TRANSPORT_TCP_PASSIVE) {
           GList *item;
@@ -3567,6 +3705,7 @@ nice_agent_gather_candidates (
 
   /* note: no async discoveries pending, signal that we are ready */
   if (agent->discovery_unsched_items == 0 &&
+      agent->stun_resolving_list == NULL &&
 #ifdef HAVE_GUPNP
       stream->upnp_mapping == NULL) {
 #else
@@ -5738,6 +5877,11 @@ nice_agent_dispose (GObject *object)
   /* step: free resources for the connectivity check timers */
   conn_check_free (agent);
 
+  g_cancellable_cancel (agent->stun_resolving_cancellable);
+  g_clear_object (&agent->stun_resolving_cancellable);
+  g_slist_free (agent->stun_resolving_list);
+  agent->stun_resolving_list = NULL;
+
   priv_remove_keepalive_timer (agent);
 
   for (i = agent->local_addresses; i; i = i->next)
@@ -5828,7 +5972,6 @@ nice_agent_dispose (GObject *object)
 
   if (G_OBJECT_CLASS (nice_agent_parent_class)->dispose)
     G_OBJECT_CLASS (nice_agent_parent_class)->dispose (object);
-
 }
 
 gboolean
@@ -7425,6 +7568,7 @@ nice_agent_close_async (NiceAgent *agent, GAsyncReadyCallback callback,
   g_object_ref (agent);
   agent_lock (agent);
 
+  g_cancellable_cancel (agent->stun_resolving_cancellable);
   refresh_prune_agent_async (agent, on_agent_refreshes_pruned, task);
 
   agent_unlock (agent);

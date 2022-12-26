@@ -2634,7 +2634,7 @@ void conn_check_free (NiceAgent *agent)
 
 /*
  * Prunes the list of connectivity checks for items related
- * to stream 'stream_id'. 
+ * to stream 'stream_id'.
  *
  * @return TRUE on success, FALSE on a fatal error
  */

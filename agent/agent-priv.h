@@ -182,6 +182,9 @@ struct _NiceAgent
   gboolean bytestream_tcp;         /* property: bytestream-tcp */
   gboolean keepalive_conncheck;    /* property: keepalive_conncheck */
 
+  GCancellable *stun_resolving_cancellable; /* Cancel STUN name resolution */
+  GSList *stun_resolving_list;     /* List of ongoing resolutions */
+
   GQueue pending_signals;
   gboolean use_ice_udp;
   gboolean use_ice_tcp;
