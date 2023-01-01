@@ -582,7 +582,7 @@ nice_agent_set_port_range (
  * @agent: The #NiceAgent Object
  * @stream_id: The ID of the stream
  * @component_id: The ID of the component
- * @server_ip: The IP address of the TURN server
+ * @server_ip: The address of the TURN server
  * @server_port: The port of the TURN server
  * @username: The TURN username to use for the allocate
  * @password: The TURN password to use for the allocate

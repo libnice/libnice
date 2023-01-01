@@ -71,6 +71,7 @@ typedef struct _TurnServer TurnServer;
  * TurnServer:
  * @ref_count: Reference count for the structure.
  * @server: The #NiceAddress of the TURN server
+ * @server_address: The unresolved server address
  * @username: The TURN username
  * @password: The TURN password
  * @decoded_username: The base64 decoded TURN username
@@ -87,6 +88,8 @@ struct _TurnServer
   gint ref_count;
 
   NiceAddress server;
+  gchar *server_address;
+  guint server_port;
   gchar *username;
   gchar *password;
   guint8 *decoded_username;
@@ -95,6 +98,8 @@ struct _TurnServer
   gsize decoded_password_len;
   NiceRelayType type;
   guint preference;
+
+  gboolean resolution_failed;
 };
 
 

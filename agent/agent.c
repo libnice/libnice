@@ -2292,6 +2292,7 @@ _transport_to_string (NiceCandidateTransport type) {
 void agent_gathering_done (NiceAgent *agent)
 {
   gboolean upnp_running = FALSE;
+  gboolean dns_resolution_ongoing = FALSE;
   GSList *i, *j, *k, *l, *m;
 
   if (agent->stun_resolving_list) {
@@ -2318,6 +2319,11 @@ void agent_gathering_done (NiceAgent *agent)
 
     for (j = stream->components; j; j = j->next) {
       NiceComponent *component = j->data;
+
+      if (nice_component_resolving_turn (component)) {
+        dns_resolution_ongoing = TRUE;
+        continue;
+      }
 
       for (k = component->local_candidates; k;) {
         NiceCandidate *local_candidate = k->data;
@@ -2387,7 +2393,8 @@ next_cand:
     }
   }
 
-  if (agent->discovery_timer_source == NULL && !upnp_running)
+  if (agent->discovery_timer_source == NULL && !upnp_running &&
+      !dns_resolution_ongoing)
     agent_signal_gathering_done (agent);
 }
 
@@ -3016,6 +3023,167 @@ nice_agent_add_stream (
   return ret;
 }
 
+struct TurnResolverData {
+  GWeakRef component_ref;
+  TurnServer *turn;
+};
+
+static void
+turn_server_resolved_cb (GObject *src, GAsyncResult *result,
+    gpointer user_data)
+{
+  GResolver *resolver = G_RESOLVER (src);
+  GList *addresses = NULL, *item;
+  GError *error = NULL;
+  struct TurnResolverData *rd = user_data;
+  NiceAgent *agent;
+  NiceStream *stream;
+  NiceComponent *component;
+  TurnServer *turn = rd->turn;
+  gboolean first_filled = FALSE;
+
+  component = g_weak_ref_get (&rd->component_ref);
+  g_weak_ref_clear (&rd->component_ref);
+  g_slice_free (struct TurnResolverData, rd);
+  if (component == NULL) {
+    turn_server_unref (turn);
+    return;
+  }
+
+  agent = g_weak_ref_get (&component->agent_ref);
+  if (agent == NULL) {
+    g_object_unref (component);
+    turn_server_unref (turn);
+    return;
+  }
+
+  agent_lock (agent);
+
+  if (g_list_find (component->turn_servers, turn) == NULL) {
+    /* No longer relevant turn server */
+    goto done;
+  }
+
+  stream = agent_find_stream (agent, component->stream_id);
+
+  addresses = g_resolver_lookup_by_name_finish (resolver, result, &error);
+
+  if (addresses == NULL) {
+    g_warning ("Agent: %p: s:%d/c:%d: Can't resolve TURN server %s: %s", agent,
+        component->stream_id, component->id, turn->server_address,
+        error->message);
+    g_clear_error (&error);
+    turn->resolution_failed = TRUE;
+    goto done;
+  }
+
+  for (item = addresses; item; item = item->next) {
+    GInetAddress *addr = item->data;
+    const guint8 *addr_bytes = g_inet_address_to_bytes (addr);
+    GSList *citem;
+
+    if (nice_debug_is_enabled ()) {
+      char *resolved_addr = g_inet_address_to_string (addr);
+
+      nice_debug ("Agent %p: s:%d/c:%d: Resolved TURN server %s to %s",
+          agent, component->stream_id, component->id, turn->server_address,
+          resolved_addr);
+      g_free (resolved_addr);
+    }
+
+    /* If there is already one resolved, duplicate it */
+    if (first_filled) {
+      TurnServer *copy = turn_server_copy (turn);
+
+      turn_server_unref (turn);
+      turn = copy;
+      component->turn_servers = g_list_append (component->turn_servers,
+          turn_server_ref (turn));
+    }
+
+    switch (g_inet_address_get_family (addr)) {
+    case G_SOCKET_FAMILY_IPV4:
+      nice_address_set_ipv4 (&turn->server, ntohl (*((guint32 *) addr_bytes)));
+      break;
+    case G_SOCKET_FAMILY_IPV6:
+      nice_address_set_ipv6 (&turn->server, addr_bytes);
+      break;
+    default:
+      /* Ignore others */
+      continue;
+    }
+    nice_address_set_port (&turn->server, turn->server_port);
+
+    first_filled = TRUE;
+
+    if (stream->gathering_started) {
+      for (citem = component->local_candidates; citem; citem = citem->next) {
+        NiceCandidateImpl *host_candidate = citem->data;
+
+        if (host_candidate->c.type != NICE_CANDIDATE_TYPE_HOST)
+          continue;
+
+        if (nice_address_is_linklocal (&host_candidate->c.addr))
+          continue;
+
+        /* TODO: Add server-reflexive support for TCP candidates */
+        if (host_candidate->c.transport ==
+            NICE_CANDIDATE_TRANSPORT_TCP_PASSIVE)
+          continue;
+        if (nice_address_ip_version (&host_candidate->c.addr) !=
+            nice_address_ip_version (&turn->server))
+          continue;
+
+        priv_add_new_candidate_discovery_turn (agent,
+            host_candidate->sockptr, turn, stream, component->id,
+            host_candidate->c.transport != NICE_CANDIDATE_TRANSPORT_UDP);
+      }
+    }
+  }
+
+  if (agent->discovery_unsched_items)
+    discovery_schedule (agent);
+  else
+    agent_gathering_done (agent);
+
+ done:
+  agent_unlock_and_emit (agent);
+  g_list_free_full (addresses, g_object_unref);
+  turn_server_unref (turn);
+  g_object_unref (component);
+  g_object_unref (agent);
+}
+
+static gboolean
+resolve_turn_in_context (NiceAgent *agent, gpointer data)
+{
+  struct TurnResolverData *rd = data;
+  NiceComponent *component;
+  GResolver *resolver;
+
+  component = g_weak_ref_get (&rd->component_ref);
+  if (component == NULL) {
+    g_weak_ref_clear (&rd->component_ref);
+    turn_server_unref (rd->turn);
+    g_slice_free (struct TurnResolverData, rd);
+
+    return G_SOURCE_REMOVE;
+  }
+
+  resolver = g_resolver_get_default ();
+
+  g_main_context_push_thread_default (agent->main_context);
+  g_resolver_lookup_by_name_async (resolver, rd->turn->server_address,
+      component->turn_resolving_cancellable, turn_server_resolved_cb,
+      rd);
+  g_main_context_pop_thread_default (agent->main_context);
+
+  g_object_unref (resolver);
+
+  g_object_unref (component);
+
+  return G_SOURCE_REMOVE;
+}
 
 NICEAPI_EXPORT gboolean
 nice_agent_set_relay_info(NiceAgent *agent,
@@ -3050,18 +3218,13 @@ nice_agent_set_relay_info(NiceAgent *agent,
 
   length = g_list_length (component->turn_servers);
   if (length == NICE_CANDIDATE_MAX_TURN_SERVERS) {
-    g_warning ("Agent %p : cannot have more than %d turn servers.",
+    g_warning ("Agent %p : cannot have more than %d turn servers per component.",
         agent, length);
     ret = FALSE;
     goto done;
   }
 
   turn = turn_server_new (server_ip, server_port, username, password, type);
-
-  if (!turn) {
-    ret = FALSE;
-    goto done;
-  }
 
   nice_debug ("Agent %p: added relay server [%s]:%d of type %d to s/c %d/%d "
       "with user/pass : %s -- %s", agent, server_ip, server_port, type,
@@ -3075,25 +3238,43 @@ nice_agent_set_relay_info(NiceAgent *agent,
   turn->preference = length;
   component->turn_servers = g_list_append (component->turn_servers, turn);
 
- if (stream->gathering_started) {
+  if (!nice_address_is_valid (&turn->server)) {
+    GSource *source = NULL;
+    struct TurnResolverData *rd = g_slice_new (struct TurnResolverData);
+
+    g_weak_ref_init (&rd->component_ref, component);
+    rd->turn = turn_server_ref (turn);
+
+    nice_debug("Agent:%p s:%d/%d: Resolving TURN server %s",
+        agent, stream_id, component_id, server_ip);
+
+    agent_timeout_add_with_context (agent, &source, "TURN resolution", 0,
+        resolve_turn_in_context, rd);
+    g_source_unref (source);
+  }
+
+  if (stream->gathering_started) {
     GSList *i;
 
     stream->gathering = TRUE;
 
-    for (i = component->local_candidates; i; i = i->next) {
-      NiceCandidateImpl *c = i->data;
+    if (nice_address_is_valid (&turn->server)) {
+      for (i = component->local_candidates; i; i = i->next) {
+        NiceCandidateImpl *c = i->data;
 
-      if  (c->c.type == NICE_CANDIDATE_TYPE_HOST &&
-           c->c.transport != NICE_CANDIDATE_TRANSPORT_TCP_PASSIVE &&
-          nice_address_ip_version (&c->c.addr) ==
-          nice_address_ip_version (&turn->server))
-        priv_add_new_candidate_discovery_turn (agent,
-            c->sockptr, turn, stream, component_id,
-            c->c.transport != NICE_CANDIDATE_TRANSPORT_UDP);
+        if  (c->c.type == NICE_CANDIDATE_TYPE_HOST &&
+            c->c.transport != NICE_CANDIDATE_TRANSPORT_TCP_PASSIVE &&
+            nice_address_ip_version (&c->c.addr) ==
+            nice_address_ip_version (&turn->server)) {
+          priv_add_new_candidate_discovery_turn (agent,
+              c->sockptr, turn, stream, component_id,
+              c->c.transport != NICE_CANDIDATE_TRANSPORT_UDP);
+        }
+      }
+
+      if (agent->discovery_unsched_items)
+        discovery_schedule (agent);
     }
-
-    if (agent->discovery_unsched_items)
-      discovery_schedule (agent);
   }
 
 
@@ -3480,6 +3661,7 @@ nice_agent_gather_candidates (
   GSList *local_addresses = NULL;
   gboolean ret = TRUE;
   guint length;
+  gboolean resolving_turn = FALSE;
 
   g_return_val_if_fail (NICE_IS_AGENT (agent), FALSE);
   g_return_val_if_fail (stream_id >= 1, FALSE);
@@ -3658,6 +3840,12 @@ nice_agent_gather_candidates (
           for (item = component->turn_servers; item; item = item->next) {
             TurnServer *turn = item->data;
 
+            if (!nice_address_is_valid (&turn->server)) {
+              if (!turn->resolution_failed)
+                resolving_turn = TRUE;
+              continue;
+            }
+
             if (host_ip_version != nice_address_ip_version (&turn->server)) {
               continue;
             }
@@ -3706,6 +3894,7 @@ nice_agent_gather_candidates (
   /* note: no async discoveries pending, signal that we are ready */
   if (agent->discovery_unsched_items == 0 &&
       agent->stun_resolving_list == NULL &&
+      resolving_turn == FALSE &&
 #ifdef HAVE_GUPNP
       stream->upnp_mapping == NULL) {
 #else

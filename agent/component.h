@@ -251,6 +251,9 @@ struct _NiceComponent {
   guint rfc4571_consumed_size;
   NiceAddress rfc4571_remote_addr;
   gboolean rfc4571_wakeup_needed;
+
+  /* TURN resolution */
+  GCancellable *turn_resolving_cancellable;
 };
 
 typedef struct {
@@ -329,6 +332,9 @@ turn_server_new (const gchar *server_ip, guint server_port,
     const gchar *username, const gchar *password, NiceRelayType type);
 
 TurnServer *
+turn_server_copy (TurnServer *turn);
+
+TurnServer *
 turn_server_ref (TurnServer *turn);
 
 void
@@ -347,6 +353,10 @@ nice_component_get_sockets (NiceComponent *component);
 
 guint
 nice_component_compute_rfc4571_headroom (NiceComponent *component);
+
+gboolean
+nice_component_resolving_turn (NiceComponent *component);
+
 
 G_END_DECLS
 

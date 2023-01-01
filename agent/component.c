@@ -1164,6 +1164,8 @@ nice_component_init (NiceComponent *component)
 
   component->rfc4571_buffer_size = sizeof (guint16) + G_MAXUINT16;
   component->rfc4571_buffer = g_malloc (component->rfc4571_buffer_size);
+
+  component->turn_resolving_cancellable = g_cancellable_new ();
 }
 
 static void
@@ -1271,6 +1273,9 @@ nice_component_finalize (GObject *obj)
 
   g_list_free_full (cmp->valid_candidates,
       (GDestroyNotify) nice_candidate_free);
+
+  g_cancellable_cancel (cmp->turn_resolving_cancellable);
+  g_clear_object (&cmp->turn_resolving_cancellable);
 
   g_clear_object (&cmp->tcp);
   g_clear_object (&cmp->stop_cancellable);
@@ -1557,17 +1562,16 @@ TurnServer *
 turn_server_new (const gchar *server_ip, guint server_port,
     const gchar *username, const gchar *password, NiceRelayType type)
 {
-  TurnServer *turn = g_slice_new (TurnServer);
+  TurnServer *turn = g_slice_new0 (TurnServer);
 
   nice_address_init (&turn->server);
 
   turn->ref_count = 1;
-  if (nice_address_set_from_string (&turn->server, server_ip)) {
+  turn->server_port = server_port;
+  if (nice_address_set_from_string (&turn->server, server_ip))
     nice_address_set_port (&turn->server, server_port);
-  } else {
-    g_slice_free (TurnServer, turn);
-    return NULL;
-  }
+  else
+    turn->server_address = g_strdup (server_ip);
   turn->username = g_strdup (username);
   turn->password = g_strdup (password);
   turn->decoded_username =
@@ -1593,12 +1597,35 @@ turn_server_unref (TurnServer *turn)
   turn->ref_count--;
 
   if (turn->ref_count == 0) {
+    g_free (turn->server_address);
     g_free (turn->username);
     g_free (turn->password);
     g_free (turn->decoded_username);
     g_free (turn->decoded_password);
     g_slice_free (TurnServer, turn);
   }
+}
+
+TurnServer *
+turn_server_copy (TurnServer *turn)
+{
+  TurnServer *copy = g_slice_new0 (TurnServer);
+
+  copy->ref_count = 1;
+  copy->server = turn->server;
+  copy->server_address = g_strdup (turn->server_address);
+  copy->username = g_strdup (turn->username);
+  copy->password = g_strdup (turn->password);
+  copy->decoded_username = g_memdup (turn->decoded_username,
+      turn->decoded_username_len);
+  copy->decoded_password = g_memdup (turn->decoded_password,
+      turn->decoded_password_len);
+  copy->decoded_username_len = turn->decoded_username_len;
+  copy->decoded_password_len = turn->decoded_password_len;
+  copy->type = turn->type;
+  copy->preference = turn->preference;
+
+  return copy;
 }
 
 void
@@ -1705,4 +1732,22 @@ guint
 nice_component_compute_rfc4571_headroom (NiceComponent *component)
 {
   return component->rfc4571_buffer_offset - component->rfc4571_frame_offset;
+}
+
+gboolean
+nice_component_resolving_turn (NiceComponent *component)
+{
+  GList *item;
+
+  for (item = component->turn_servers; item; item = item->next) {
+    TurnServer *turn = item->data;
+
+    if (turn->resolution_failed)
+      continue;
+
+    if (!nice_address_is_valid (&turn->server))
+      return TRUE;
+  }
+
+  return FALSE;
 }
