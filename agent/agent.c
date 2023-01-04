@@ -2926,13 +2926,8 @@ priv_add_new_candidate_discovery_turn (NiceAgent *agent,
          agent->compatibility == NICE_COMPATIBILITY_OC2007R2))
       reliable_tcp = TRUE;
 
-    /* Ignore tcp candidates if we disabled ice-tcp */
-    if ((agent->use_ice_udp == FALSE && reliable_tcp == FALSE) ||
-        (agent->use_ice_tcp == FALSE && reliable_tcp == TRUE)) {
-      goto skip;
-    }
-
-    if (turn_tcp == FALSE) {
+    /* Ignore reliable tcp candidates if we disabled ice-tcp */
+    if (agent->use_ice_tcp == FALSE && reliable_tcp == TRUE) {
       goto skip;
     }
 
