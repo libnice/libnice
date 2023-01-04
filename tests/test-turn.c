@@ -340,10 +340,6 @@ udp_force_no_remove_tcp (void)
       NICE_RELAY_TYPE_TURN_TCP);
 }
 
-
-
-
-
 int
 main (int argc, char **argv)
 {
@@ -362,11 +358,11 @@ main (int argc, char **argv)
   if (g_spawn_command_line_sync ("turnserver --help", &out_str, &err_str, NULL,
           NULL) && err_str) {
     if (!strstr(err_str, "--user")) {
-      g_print ("rfc5766-turn-server not installed, skipping turn test\n");
+      g_print ("coturn not installed, skipping turn test\n");
       return 0;
     }
   } else {
-    g_print ("rfc5766-turn-server not installed, skipping turn test\n");
+    g_print ("coturn not installed, skipping turn test\n");
     return 0;
   }
   g_free (err_str);
@@ -377,6 +373,9 @@ main (int argc, char **argv)
       "--user", "toto:0xaae440b3348d50265b63703117c7bfd5",
       "--realm", "realm",
       "--listening-port", portstr,
+      "--listening-ip", "127.0.0.1",
+      "--allow-loopback-peers",
+      "--no-cli",
       NULL);
 
   g_test_add_func ("/nice/turn/udp", udp_no_force_no_remove_udp);
