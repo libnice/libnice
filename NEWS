@@ -1,3 +1,17 @@
+libnice 0.1.20 (2023-01-06)
+===========================
+Remove support for GStreamer 0.10 builds
+Add macro to check LIBNICE version
+Added utility function to get the STUN server from a candidate
+Support additional header in built-in HTT proxy client
+Add boxed type for NiceAddress for bindings
+Add API to get the interface index for a local address
+Explicitly bind to a specific interface when creating UDP sockets
+Limit the number of stored incoming checks based on a property
+Do asynchronous DNS resolution for STUN and TURN servers
+Add introspection friendly API to get an allocated string from a NiceCandidate
+Enable gst-full to link in a single element
+
 libnice 0.1.19 (2022-05-03)
 ===========================
 Allow incoming connchecks before remote candidates are set, allows for connection based on received bind requests
