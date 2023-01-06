@@ -11,7 +11,7 @@ version_micro = version_arr[2]
 if version_arr.length() == 4
   version_nano = version_arr[3]
 else
-  version_nano = 0
+  version_nano = '0'
 endif
 
 # maintain compatibility with the previous libtool versioning
