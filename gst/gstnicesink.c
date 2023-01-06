@@ -537,3 +537,10 @@ gst_nice_sink_change_state (GstElement * element, GstStateChange transition)
 
   return ret;
 }
+
+gboolean
+gst_element_register_nicesink (GstPlugin * plugin)
+{
+  return gst_element_register (plugin, "nicesink", GST_RANK_NONE,
+      GST_TYPE_NICE_SINK);
+}

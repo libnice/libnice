@@ -88,6 +88,8 @@ struct _GstNiceSinkClass
 
 GType gst_nice_sink_get_type (void);
 
+gboolean gst_element_register_nicesink (GstPlugin * plugin);
+
 G_END_DECLS
 
 #endif

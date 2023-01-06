@@ -449,3 +449,10 @@ gst_nice_src_change_state (GstElement * element, GstStateChange transition)
 
   return ret;
 }
+
+gboolean
+gst_element_register_nicesrc (GstPlugin * plugin)
+{
+  return gst_element_register (plugin, "nicesrc", GST_RANK_NONE,
+      GST_TYPE_NICE_SRC);
+}

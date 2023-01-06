@@ -81,6 +81,8 @@ struct _GstNiceSrcClass
 
 GType gst_nice_src_get_type (void);
 
+gboolean gst_element_register_nicesrc (GstPlugin * plugin);
+
 G_END_DECLS
 
 #endif // _GSTNICESRC_H

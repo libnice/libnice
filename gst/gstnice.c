@@ -44,12 +44,10 @@
 static gboolean
 plugin_init (GstPlugin *plugin)
 {
-  if (!gst_element_register (plugin, "nicesrc",
-        GST_RANK_NONE, GST_TYPE_NICE_SRC))
+  if (!gst_element_register_nicesrc (plugin))
     return FALSE;
 
-  if (!gst_element_register (plugin, "nicesink",
-        GST_RANK_NONE, GST_TYPE_NICE_SINK))
+  if (!gst_element_register_nicesink (plugin))
     return FALSE;
 
   return TRUE;
