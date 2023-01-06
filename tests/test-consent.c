@@ -234,10 +234,8 @@ static int run_consent_test (NiceAgent *lagent, NiceAgent *ragent, NiceAddress *
     global_ragent_cands = 0;
   global_ragent_read_exit = 32;
 
-  g_object_set (G_OBJECT (lagent), "controlling-mode", TRUE,
-      "consent-freshness", TRUE, NULL);
-  g_object_set (G_OBJECT (ragent), "controlling-mode", FALSE,
-      "consent-freshness", TRUE, NULL);
+  g_object_set (G_OBJECT (lagent), "controlling-mode", TRUE, NULL);
+  g_object_set (G_OBJECT (ragent), "controlling-mode", FALSE, NULL);
 
   /* step: add one stream, with RTP+RTCP components, to each agent */
   ls_id = nice_agent_add_stream (lagent, 2);
