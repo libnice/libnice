@@ -373,7 +373,7 @@ get_local_ips_ioctl (gboolean include_loopback)
 static guint
 get_local_if_index_by_addr_ioctl (NiceAddress *addr)
 {
-#ifdef HAVE_IFR_IFINDEX
+#ifdef HAVE_IFR_INDEX
   gint sockfd;
   gint size = 0;
   struct ifreq *ifr;
@@ -417,10 +417,10 @@ get_local_if_index_by_addr_ioctl (NiceAddress *addr)
 
     if (!nice_address_equal_no_port (myaddr, addr))
       continue;
-    if (ifr->ifr_ifindex == 0)
+    if (ifr->ifr_index == 0)
       continue;
 
-    if_index = ifr->ifr_ifindex;
+    if_index = ifr->ifr_index;
     break;
   }
 
