@@ -910,7 +910,7 @@ nice_interfaces_get_if_index_by_addr (NiceAddress *addr)
 
   addresses = _nice_get_adapters_addresses ();
   if (!addresses)
-    return NULL;
+    return 0;
 
   for (a = addresses; a != NULL; a = a->Next) {
     /* Various conditions for ignoring the interface. */
