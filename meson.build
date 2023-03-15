@@ -30,6 +30,7 @@ gst_req = '>= 1.0.0'
 nice_datadir = join_paths(get_option('prefix'), get_option('datadir'))
 
 cc = meson.get_compiler('c')
+static_build = get_option('default_library') == 'static'
 
 syslibs = []
 

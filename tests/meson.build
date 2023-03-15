@@ -68,7 +68,11 @@ foreach tname : nice_tests
   endif
 endforeach
 
-if gst_dep.found()
+# FIXME: The GStreamer test needs nicesrc and nicesink plugins to run. libnice might be part of the GStreamer build.
+# In this case, in static mode (gstreamer-full), the test should be built after gstreamer-full to initialize
+# properly the plugins (gstreamer and libnice ones) with gst_init_static_plugins.
+# That's the reason the test is now disabled in static mode.
+if gst_dep.found() and not static_build
   gst_check = dependency('gstreamer-check-1.0', required: get_option('gstreamer'),
                          fallback : ['gstreamer', 'gst_check_dep'])
   if gst_check.found()
