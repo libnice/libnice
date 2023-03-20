@@ -101,8 +101,6 @@ build msys2:
 
     # It seems that the gpg doesn't like the SSL secured version of the keyserver
     - C:\msys64\usr\bin\bash -c "pacman-key --init && pacman-key --populate msys2 && pacman-key --refresh-keys || true"
-    - echo "Download newest msys2 keyring"
-    - C:\msys64\usr\bin\bash -c "curl -O http://repo.msys2.org/msys/x86_64/msys2-keyring-r21.b39fb11-1-any.pkg.tar.xz && pacman -U --noconfirm msys2-keyring-r21.b39fb11-1-any.pkg.tar.xz"
     - C:\msys64\usr\bin\bash -c "pacman-key --init && pacman-key --populate msys2"
     - C:\msys64\usr\bin\bash -c "pacman-key --refresh-keys || true"
     - C:\msys64\usr\bin\bash -c "pacman -Sy --noconfirm --needed mingw-w64-x86_64-toolchain ninja"
