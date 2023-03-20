@@ -74,13 +74,13 @@ build:
 
 
 .build windows:
-  image: 'registry.freedesktop.org/gstreamer/gstreamer/amd64/windows:2021-10-01.0-master'
+  image: 'registry.freedesktop.org/gstreamer/gstreamer/amd64/windows:2023-03-11.0-main'
   stage: 'build'
   interruptible: true
   tags:
     - 'docker'
     - 'windows'
-    - '1809'
+    - '2022'
   variables:
     MESON_ARGS: >
       --prefix=${CI_PROJECT_DIR}/libnice-prefix
