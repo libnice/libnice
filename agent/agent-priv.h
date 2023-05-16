@@ -107,7 +107,7 @@ nice_input_message_iter_compare (const NiceInputMessageIter *a,
 #define NICE_AGENT_TIMER_TA_DEFAULT 20      /* timer Ta, msecs (impl. defined) */
 #define NICE_AGENT_TIMER_TR_DEFAULT 25000   /* timer Tr, msecs (impl. defined) */
 #define NICE_AGENT_TIMER_CONSENT_DEFAULT 5000    /* msec timer consent freshness connchecks (RFC 7675) */
-#define NICE_AGENT_TIMER_CONSENT_TIMEOUT 10000   /* msec timer for consent checks to timeout and assume consent lost (RFC 7675) */
+#define NICE_AGENT_TIMER_CONSENT_TIMEOUT 30000   /* msec timer for consent checks to timeout and assume consent lost (RFC 7675) */
 #define NICE_AGENT_TIMER_MIN_CONSENT_INTERVAL 4000  /* msec timer minimum for consent lost requests (RFC 7675) */
 #define NICE_AGENT_TIMER_KEEPALIVE_TIMEOUT 50000    /* msec timer for keepalive (without consent checks) to timeout and assume conection lost */
 #define NICE_AGENT_MAX_CONNECTIVITY_CHECKS_DEFAULT 100 /* see RFC 8445 6.1.2.5 */
