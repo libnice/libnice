@@ -1,0 +1,30 @@
+/**
+ * NICE_VERSION_MAJOR:
+ *
+ * Private, use NICE_CHECK_VERSION
+ */
+
+/**
+ * NICE_VERSION_MINOR:
+ *
+ * Private, use NICE_CHECK_VERSION
+ */
+
+/**
+ * NICE_VERSION_MICRO:
+ *
+ * Private, use NICE_CHECK_VERSION
+ */
+
+/**
+ * NICE_VERSION_NANO:
+ *
+ * Private, use NICE_CHECK_VERSION
+ */
+
+#pragma once
+
+#define NICE_VERSION_MAJOR @version_major@
+#define NICE_VERSION_MINOR @version_minor@
+#define NICE_VERSION_MICRO @version_micro@
+#define NICE_VERSION_NANO @version_nano@

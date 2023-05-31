@@ -1,4 +1,3 @@
-nice_gen_sources = [nice_version_h]
 nice_link_args = []
 
 # libnice.def
@@ -31,8 +30,20 @@ libnice = library('nice',
   link_depends: mapfile,
   install: true)
 
+version_conf = configuration_data()
+version_conf.set('version_major', version_major)
+version_conf.set('version_minor', version_minor)
+version_conf.set('version_micro', version_micro)
+version_conf.set('version_nano', version_nano)
+nice_version_h = configure_file(input : 'nice-version.h.in',
+  output: 'nice-version.h',
+  install_dir: get_option('includedir') / 'nice',
+  configuration: version_conf)
+
 install_headers('nice.h', subdir: 'nice')
 nice_include = include_directories('.')
+
+nice_gen_sources = [nice_version_h]
 
 # introspection
 build_gir = gir.found() and not get_option('introspection').disabled()

@@ -82,6 +82,10 @@ nice_nomination_mode_get_type
 nice_proxy_type_get_type
 <SUBSECTION Private>
 NiceAgentClass
+NICE_VERSION_MAJOR
+NICE_VERSION_MICRO
+NICE_VERSION_MINOR
+NICE_VERSION_NANO
 </SECTION>
 
 <SECTION>
