@@ -21,11 +21,19 @@ include:
     file: '/templates/ci-fairy.yml'
   - project: 'freedesktop/ci-templates'
     file: '/templates/centos.yml'
+  - project: 'freedesktop/ci-templates'
+    file: '/templates/fedora.yml'
 
 .libnice.centos:7:
   variables:
     FDO_DISTRIBUTION_VERSION: '7'
     FDO_DISTRIBUTION_TAG: '2022-10-17-cov'
+    FDO_UPSTREAM_REPO: 'libnice/libnice'
+
+.libnice.fedora:38:
+  variables:
+    FDO_DISTRIBUTION_VERSION: '38'
+    FDO_DISTRIBUTION_TAG: '2023-07-17'
     FDO_UPSTREAM_REPO: 'libnice/libnice'
 
 check-allow-collaboration:
@@ -50,6 +58,15 @@ build-centos-container:7:
   variables:
     FDO_DISTRIBUTION_PACKAGES: 'git gtk-doc gnutls-devel gupnp-igd-devel gstreamer1-devel gobject-introspection-devel valgrind net-tools centos-release-scl graphviz'
     FDO_DISTRIBUTION_EXEC: 'tests/docker/centos7-meson/pip-installs.sh'
+
+build-fedora-container:38:
+  extends:
+  - .fdo.container-build@fedora     # the CI template
+  - .libnice.fedora:38              # our template job above
+  stage: containers
+  variables:
+    FDO_DISTRIBUTION_PACKAGES: 'git gtk-doc gnutls-devel gupnp-igd-devel gstreamer1-devel gobject-introspection-devel valgrind net-tools graphviz meson ninja-build lcov python3-pip'
+    FDO_DISTRIBUTION_EXEC: 'tests/docker/fedora38/pip-installs.sh'
 
 build:
   stage: build
@@ -283,8 +300,8 @@ doc-and-install:
 submit-to-coverity:
  stage: test
  extends:
-  - .fdo.distribution-image@centos
-  - .libnice.centos:7
+  - .fdo.distribution-image@fedora
+  - .libnice.fedora:38
  variables:
    COVERITY_PROJECT: libnice
    PREFIX: "${CI_PROJECT_DIR}/libnice-prefix"
@@ -297,7 +314,6 @@ submit-to-coverity:
  script:
   - curl -v https://scan.coverity.com/download/linux64  -o coverity_tool.tgz  --data "token=${COVERITY_TOKEN}&project=${COVERITY_PROJECT}" && tar xf coverity_tool.tgz && rm coverity_tool.tgz
   - mv cov-analysis-linux64-* cov-analysis-linux64
-  - source scl_source enable rh-python36 && true
   - meson --werror --warnlevel 2 -Dgtk_doc=disabled -Dintrospection=disabled --prefix=$PREFIX cov-build/
   - export PATH="$PATH:${CI_PROJECT_DIR}/cov-analysis-linux64/bin"
   - echo $PATH
