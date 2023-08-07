@@ -8,6 +8,7 @@ nice_address_get_port
 nice_address_get_type
 nice_address_init
 nice_address_ip_version
+nice_address_is_linklocal
 nice_address_is_private
 nice_address_is_valid
 nice_address_new
