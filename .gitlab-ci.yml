@@ -91,7 +91,7 @@ build:
 
 
 .build windows:
-  image: 'registry.freedesktop.org/gstreamer/gstreamer/amd64/windows:2023-03-11.0-main'
+  image: 'registry.freedesktop.org/gstreamer/gstreamer/amd64/windows:2023-08-24.0-main'
   stage: 'build'
   interruptible: true
   tags:
