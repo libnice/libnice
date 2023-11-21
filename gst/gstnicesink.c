@@ -504,24 +504,23 @@ gst_nice_sink_change_state (GstElement * element, GstStateChange transition)
 
   switch (transition) {
     case GST_STATE_CHANGE_NULL_TO_READY:
-      if (sink->agent == NULL)
-        {
-          GST_ERROR_OBJECT (element,
-              "Trying to start Nice sink without an agent set");
-          return GST_STATE_CHANGE_FAILURE;
-        }
-      else if (sink->stream_id == 0)
-          {
-            GST_ERROR_OBJECT (element,
-                "Trying to start Nice sink without a stream set");
-            return GST_STATE_CHANGE_FAILURE;
-          }
-      else if (sink->component_id == 0)
-          {
-            GST_ERROR_OBJECT (element,
-                "Trying to start Nice sink without a component set");
-            return GST_STATE_CHANGE_FAILURE;
-          }
+      GST_OBJECT_LOCK (element);
+      if (sink->agent == NULL) {
+        GST_ERROR_OBJECT (element,
+            "Trying to start Nice sink without an agent set");
+        goto failure;
+      }
+      else if (sink->stream_id == 0) {
+        GST_ERROR_OBJECT (element,
+            "Trying to start Nice sink without a stream set");
+        goto failure;
+      }
+      else if (sink->component_id == 0) {
+        GST_ERROR_OBJECT (element,
+            "Trying to start Nice sink without a component set");
+        goto failure;
+      }
+      GST_OBJECT_UNLOCK (element);
       break;
     case GST_STATE_CHANGE_READY_TO_PAUSED:
     case GST_STATE_CHANGE_PAUSED_TO_PLAYING:
@@ -536,6 +535,10 @@ gst_nice_sink_change_state (GstElement * element, GstStateChange transition)
       transition);
 
   return ret;
+
+failure:
+  GST_OBJECT_UNLOCK (element);
+  return GST_STATE_CHANGE_FAILURE;
 }
 
 gboolean
