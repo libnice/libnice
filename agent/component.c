@@ -1717,9 +1717,9 @@ nice_component_get_sockets (NiceComponent *component)
   GPtrArray *array = g_ptr_array_new_with_free_func ((GDestroyNotify) g_object_unref);
   GSList *item;
 
-  for (item = component->local_candidates; item; item = item->next) {
-    NiceCandidateImpl *c = item->data;
-    NiceSocket *nicesock = c->sockptr;
+  for (item = component->socket_sources; item; item = item->next) {
+    SocketSource *source = item->data;
+    NiceSocket *nicesock = source->socket;
 
     if (nicesock->fileno && !g_ptr_array_find (array, nicesock->fileno, NULL))
       g_ptr_array_add (array, g_object_ref (nicesock->fileno));
