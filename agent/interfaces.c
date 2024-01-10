@@ -268,30 +268,29 @@ get_local_ips_ioctl (gboolean include_loopback)
        (gchar *) ifr < (gchar *) ifc.ifc_req + ifc.ifc_len;
        ++ifr) {
     gchar *addr_string;
-
-    if (ioctl (sockfd, SIOCGIFFLAGS, ifr)) {
-      nice_debug ("Error : Unable to get IP flags information for interface %s."
-          " Skipping...", ifr->ifr_name);
-      continue;  /* failed to get flags, skip it */
-    }
-
-    /* no ip address from interface that is down */
-    if ((ifr->ifr_flags & IFF_UP) == 0)
-      continue;
-
-    /* no ip address from interface that isn't running */
-    if ((ifr->ifr_flags & IFF_RUNNING) == 0)
-      continue;
-
-    if (ioctl(sockfd, SIOCGIFADDR, ifr)) {
-      nice_debug ("Error : Unable to get IP address information for interface %s."
-          " Skipping...", ifr->ifr_name);
-      continue;  /* failed to get address, skip it */
-    }
+    struct ifreq ifr2;
 
     if (ifr->ifr_addr.sa_family != AF_INET &&
         ifr->ifr_addr.sa_family != AF_INET6)
       continue;
+
+    memset (&ifr2, 0, sizeof (ifr2));
+    strncpy (ifr2.ifr_name, ifr->ifr_name, IFNAMSIZ);
+    if (ioctl (sockfd, SIOCGIFFLAGS, &ifr2)) {
+      nice_debug (
+          "Error : Unable to get IP flags information for interface %s."
+          " Skipping...", ifr->ifr_name);
+      continue; /* failed to get flags, skip it */
+    }
+
+    /* no ip address from interface that is down */
+    if ((ifr2.ifr_flags & IFF_UP) == 0)
+      continue;
+
+    /* no ip address from interface that isn't running */
+    if ((ifr2.ifr_flags & IFF_RUNNING) == 0)
+      continue;
+
 
      /* Convert to a string. */
     addr_string = sockaddr_to_string (&ifr->ifr_addr);
@@ -377,20 +376,31 @@ get_local_if_index_by_addr_ioctl (NiceAddress *addr)
        (gchar *) ifr < (gchar *) ifc.ifc_req + ifc.ifc_len;
        ++ifr) {
     NiceAddress *myaddr = (NiceAddress *) &ifr->ifr_addr;
+    struct ifreq ifr2;
 
     if (!nice_address_equal_no_port (myaddr, addr))
       continue;
+
+    memset (&ifr2, 0, sizeof (struct ifreq));
+    strncpy (ifr2.ifr_name, ifr->ifr_name, IFNAMSIZ);
+
+    if (ioctl (sockfd, SIOCGIFINDEX, &ifr2)) {
+      nice_debug ("Error : Unable to get IP address information for interface %s."
+          " Failing...", ifr->ifr_name);
+      goto done;
+    }
+
 #if defined(HAVE_IFR_INDEX)
-    if (ifr->ifr_index == 0)
+    if (ifr2.ifr_index == 0)
 #else
-    if (ifr->ifr_ifindex == 0)
+    if (ifr2.ifr_ifindex == 0)
 #endif
       continue;
 
 #if defined(HAVE_IFR_INDEX)
-    if_index = ifr->ifr_index;
+    if_index = ifr2.ifr_index;
 #else
-    if_index = ifr->ifr_ifindex;
+    if_index = ifr2.ifr_ifindex;
 #endif
     break;
   }
@@ -606,9 +616,8 @@ nice_interfaces_get_ip_for_interface (gchar *interface_name)
 
   g_return_val_if_fail (interface_name != NULL, NULL);
 
-  ifr.ifr_addr.sa_family = AF_INET;
-  memset (ifr.ifr_name, 0, sizeof (ifr.ifr_name));
-  g_strlcpy (ifr.ifr_name, interface_name, sizeof (ifr.ifr_name));
+  memset (&ifr, 0, sizeof (struct ifreq));
+  strncpy (ifr.ifr_name, interface_name, sizeof (ifr.ifr_name));
 
   if ((sockfd = socket (AF_INET, SOCK_DGRAM, IPPROTO_IP)) < 0) {
     nice_debug ("Error : Cannot open socket to retrieve interface list");
