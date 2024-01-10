@@ -126,7 +126,6 @@ get_local_interfaces_ioctl (void)
 {
   GList *interfaces = NULL;
   gint sockfd;
-  gint size = 0;
   struct ifreq *ifr;
   struct ifconf ifc;
 
@@ -137,27 +136,15 @@ get_local_interfaces_ioctl (void)
 
   ifc.ifc_len = 0;
   ifc.ifc_req = NULL;
-
-  /* Loop and get each interface the system has, one by one... */
-  do {
-    size += sizeof (struct ifreq);
-    /* realloc buffer size until no overflow occurs  */
-    if (NULL == (ifc.ifc_req = realloc (ifc.ifc_req, size))) {
-      nice_debug ("Error : Out of memory while allocation interface"
-          "configuration structure");
-      close (sockfd);
-      return NULL;
-    }
-    ifc.ifc_len = size;
-
-    if (ioctl (sockfd, SIOCGIFCONF, &ifc)) {
+  if (ioctl (sockfd, SIOCGIFCONF, &ifc)) {
       perror ("ioctl SIOCFIFCONF");
-      close (sockfd);
-      free (ifc.ifc_req);
-      return NULL;
+      goto done;
     }
-  } while (size <= ifc.ifc_len);
-
+  ifc.ifc_req = g_malloc0 (ifc.ifc_len);
+  if (ioctl (sockfd, SIOCGIFCONF, &ifc)) {
+      perror ("ioctl SIOCFIFCONF");
+      goto done;
+    }
 
   /* Loop throught the interface list and get the IP address of each IF */
   for (ifr = ifc.ifc_req;
@@ -167,7 +154,8 @@ get_local_interfaces_ioctl (void)
     interfaces = g_list_prepend (interfaces, g_strdup (ifr->ifr_name));
   }
 
-  free (ifc.ifc_req);
+done:
+  g_free (ifc.ifc_req);
   close (sockfd);
 
   return interfaces;
@@ -250,7 +238,6 @@ get_local_ips_ioctl (gboolean include_loopback)
 {
   GList *ips = NULL;
   gint sockfd;
-  gint size = 0;
   struct ifreq *ifr;
   struct ifconf ifc;
   GList *loopbacks = NULL;
@@ -266,27 +253,15 @@ get_local_ips_ioctl (gboolean include_loopback)
 
   ifc.ifc_len = 0;
   ifc.ifc_req = NULL;
-
-  /* Loop and get each interface the system has, one by one... */
-  do {
-    size += sizeof (struct ifreq);
-    /* realloc buffer size until no overflow occurs  */
-    if (NULL == (ifc.ifc_req = realloc (ifc.ifc_req, size))) {
-      nice_debug ("Error : Out of memory while allocation interface"
-          " configuration structure");
-      close (sockfd);
-      return NULL;
-    }
-    ifc.ifc_len = size;
-
-    if (ioctl (sockfd, SIOCGIFCONF, &ifc)) {
+  if (ioctl (sockfd, SIOCGIFCONF, &ifc)) {
       perror ("ioctl SIOCFIFCONF");
-      close (sockfd);
-      free (ifc.ifc_req);
-      return NULL;
+      goto done;
     }
-  } while  (size <= ifc.ifc_len);
-
+  ifc.ifc_req = g_malloc0 (ifc.ifc_len);
+  if (ioctl (sockfd, SIOCGIFCONF, &ifc)) {
+      perror ("ioctl SIOCFIFCONF");
+      goto done;
+    }
 
   /* Loop throught the interface list and get the IP address of each IF */
   for (ifr = ifc.ifc_req;
@@ -361,8 +336,9 @@ get_local_ips_ioctl (gboolean include_loopback)
     }
   }
 
+done:
   close (sockfd);
-  free (ifc.ifc_req);
+  g_free (ifc.ifc_req);
 
   if (loopbacks)
     ips = g_list_concat (ips, loopbacks);
@@ -375,7 +351,6 @@ get_local_if_index_by_addr_ioctl (NiceAddress *addr)
 {
 #if defined(HAVE_IFR_INDEX) || defined(HAVE_IFR_IFINDEX)
   gint sockfd;
-  gint size = 0;
   struct ifreq *ifr;
   struct ifconf ifc;
   guint if_index = 0;
@@ -387,27 +362,15 @@ get_local_if_index_by_addr_ioctl (NiceAddress *addr)
 
   ifc.ifc_len = 0;
   ifc.ifc_req = NULL;
-
-  /* Loop and get each interface the system has, one by one... */
-  do {
-    size += sizeof (struct ifreq);
-    /* realloc buffer size until no overflow occurs  */
-    if (NULL == (ifc.ifc_req = realloc (ifc.ifc_req, size))) {
-      nice_debug ("Error : Out of memory while allocation interface"
-          "configuration structure");
-      close (sockfd);
-      return 0;
-    }
-    ifc.ifc_len = size;
-
-    if (ioctl (sockfd, SIOCGIFCONF, &ifc)) {
+  if (ioctl (sockfd, SIOCGIFCONF, &ifc)) {
       perror ("ioctl SIOCFIFCONF");
-      close (sockfd);
-      free (ifc.ifc_req);
-      return 0;
+      goto done;
     }
-  } while (size <= ifc.ifc_len);
-
+  ifc.ifc_req = g_malloc0 (ifc.ifc_len);
+  if (ioctl (sockfd, SIOCGIFCONF, &ifc)) {
+      perror ("ioctl SIOCFIFCONF");
+      goto done;
+    }
 
   /* Loop throught the interface list and get the IP address of each IF */
   for (ifr = ifc.ifc_req;
@@ -432,7 +395,8 @@ get_local_if_index_by_addr_ioctl (NiceAddress *addr)
     break;
   }
 
-  free (ifc.ifc_req);
+done:
+  g_free (ifc.ifc_req);
   close (sockfd);
 
   return if_index;
