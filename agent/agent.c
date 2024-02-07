@@ -4149,6 +4149,9 @@ static gboolean priv_add_remote_candidate (
       !agent->use_ice_tcp)
     return FALSE;
 
+  if (priority == 0)
+    return FALSE;
+
   if (!agent_find_component (agent, stream_id, component_id, &stream,
       &component))
     return FALSE;

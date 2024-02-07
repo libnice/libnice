@@ -408,6 +408,7 @@ static void add_bad_candidate (NiceAgent *agent, guint stream_id, NiceCandidate 
   cand->stream_id = stream_id;
   cand->component_id = NICE_COMPONENT_TYPE_RTP;
   cand->addr = bad_addr;
+  cand->priority = 10;
 
   nice_agent_get_local_credentials (agent, stream_id,
                                     &cand->username, &cand->password);
