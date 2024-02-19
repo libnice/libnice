@@ -95,6 +95,6 @@ if find_program('sh', required : false).found() and find_program('dd', required 
 endif
 
 debugenv = environment()
-debugenv.set('G_MESSAGES_DEBUG', 'all')
+#debugenv.set('G_MESSAGES_DEBUG', 'libnice')
 debugenv.set('NICE_DEBUG', 'all')
 add_test_setup('debug', env: debugenv)
