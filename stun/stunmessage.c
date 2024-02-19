@@ -358,7 +358,7 @@ stun_message_append (StunMessage *msg, StunAttribute type, size_t length)
 
     /* Add padding if needed. Avoid a zero-length memset() call. */
     if (stun_padding (length) > 0) {
-      memset (a + length, ' ', stun_padding (length));
+      memset (a + length, 0, stun_padding (length));
       mlen += stun_padding (length);
     }
   }
