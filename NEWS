@@ -1,3 +1,12 @@
+libnice 0.1.22 (2024-03-04)
+===========================
+API: Make nice_address_is_local() available to applications
+Make padding be all zeros to conform to RFC8489
+Fix interface listing on Android
+Include TURN sockets in the list from nice_agent_get_sockets()
+Set consent refresh timeout in line with RFC 7675
+Fix ifr_ifindex build with cland and OpenBSD
+
 libnice 0.1.21 (2023-01-07)
 ===========================
 Only use `ifr_ifindex` if OS supports it, fixes build on iOS and FreeBSD
