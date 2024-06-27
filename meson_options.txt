@@ -7,6 +7,15 @@ option('ignored-network-interface-prefix', type: 'array', value: ['docker', 'vet
 option('crypto-library', type: 'combo', choices : ['auto', 'gnutls', 'openssl'], value : 'auto')
 
 # Common feature options
+option('glib_debug', type : 'feature', value : 'auto', yield : true,
+  description : 'Enable GLib debug infrastructure (see docs/macros.txt)',
+)
+option('glib_assert', type : 'boolean', value : true, yield : true,
+  description : 'Enable GLib assertion (see docs/macros.txt)',
+)
+option('glib_checks', type : 'boolean', value : true, yield : true,
+  description : 'Enable GLib checks such as API guards (see docs/macros.txt)',
+)
 option('examples', type : 'feature', value : 'auto', yield : true,
   description: 'Build examples')
 option('tests', type : 'feature', value : 'auto', yield : true,

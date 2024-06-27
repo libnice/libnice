@@ -76,9 +76,14 @@ if gst_dep.found() and not static_build
   gst_check = dependency('gstreamer-check-1.0', required: get_option('gstreamer'),
                          fallback : ['gstreamer', 'gst_check_dep'])
   if gst_check.found()
+    test_defines = [
+      '-DG_LOG_DOMAIN="libnice-tests"',
+      '-UG_DISABLE_ASSERT',
+      '-UG_DISABLE_CAST_CHECKS',
+    ]
     exe = executable('nice-test-gstreamer',
       'test-gstreamer.c', extra_src,
-      c_args: '-DG_LOG_DOMAIN="libnice-tests"',
+      c_args: test_defines,
       include_directories: nice_incs,
       dependencies: [nice_deps, gst_check, libm],
       link_with: libnice,

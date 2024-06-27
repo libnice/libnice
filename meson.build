@@ -85,6 +85,28 @@ add_project_arguments('-D_GNU_SOURCE',
   '-DNICE_VERSION_NANO=' + version_nano,
   language: 'c')
 
+# Same logic as in GLib.
+glib_debug = get_option('glib_debug')
+disable_cast_checks = glib_debug.disabled() or (
+  glib_debug.auto() and (not get_option('debug') or get_option('optimization') not in [ '0', 'g' ]))
+if disable_cast_checks
+  message('Disabling GLib cast checks')
+  add_project_arguments('-DG_DISABLE_CAST_CHECKS', language: 'c')
+  disable_cast_checks = true
+endif
+
+disable_glib_asserts = not get_option('glib_assert')
+if disable_glib_asserts
+  message('Disabling GLib asserts')
+  add_project_arguments('-DG_DISABLE_ASSERT', language: 'c')
+endif
+
+disable_glib_checks = not get_option('glib_checks')
+if disable_glib_checks
+  message('Disabling GLib checks')
+  add_project_arguments('-DG_DISABLE_CHECKS', language: 'c')
+endif
+
 cdata = configuration_data()
 
 cdata.set_quoted('PACKAGE_STRING', meson.project_name())
