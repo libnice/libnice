@@ -312,6 +312,8 @@ socket_send_message (NiceSocket *sock,
   if (priv->error)
     return -1;
 
+  g_mutex_lock(&mutex);
+
   message_len = output_message_get_size (message);
 
   /* First try to send the data, don't send it later if it can be sent now
@@ -352,6 +354,8 @@ socket_send_message (NiceSocket *sock,
       ret = 0;
     }
   }
+
+  g_mutex_unlock(&mutex);
 
   return ret;
 }
