@@ -2720,11 +2720,11 @@ stun_server_resolved_cb (GObject *src, GAsyncResult *result,
 
   agent = g_weak_ref_get (&data->agent_ref);
   g_weak_ref_clear (&data->agent_ref);
-  if (agent == NULL)
-    return;
+
   stream_id = data->stream_id;
   g_slice_free (struct StunResolverData, data);
-
+  if (agent == NULL)
+    return;
   agent->stun_resolving_list = g_slist_remove_all (agent->stun_resolving_list,
       data);
 
