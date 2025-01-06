@@ -67,7 +67,7 @@ struct _GstNiceSrc
   guint component_id;
   GMainContext *mainctx;
   GMainLoop *mainloop;
-  GQueue *outbufs;
+  GstBufferList *outbufs;
   gboolean unlocked;
   GSource *idle_source;
 };

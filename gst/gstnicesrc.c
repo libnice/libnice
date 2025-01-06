@@ -46,8 +46,6 @@ GST_DEBUG_CATEGORY_STATIC (nicesrc_debug);
 #define GST_CAT_DEFAULT nicesrc_debug
 
 
-#define BUFFER_SIZE (65536)
-
 static GstFlowReturn
 gst_nice_src_create (
   GstPushSrc *basesrc,
@@ -177,7 +175,7 @@ gst_nice_src_init (GstNiceSrc *src)
   src->mainloop = g_main_loop_new (src->mainctx, FALSE);
   src->unlocked = FALSE;
   src->idle_source = NULL;
-  src->outbufs = g_queue_new ();
+  src->outbufs = gst_buffer_list_new ();
 }
 
 static void
@@ -192,12 +190,12 @@ gst_nice_src_read_callback (NiceAgent *agent,
   GstNiceSrc *nicesrc = GST_NICE_SRC (basesrc);
   GstBuffer *buffer = NULL;
 
-  GST_LOG_OBJECT (agent, "Got buffer, getting out of the main loop");
+  GST_LOG_OBJECT (nicesrc, "Got buffer, adding it to buffer list and getting out of the main loop");
 
   buffer = gst_buffer_new_allocate (NULL, len, NULL);
   gst_buffer_fill (buffer, 0, buf, len);
   GST_OBJECT_LOCK (nicesrc);
-  g_queue_push_tail (nicesrc->outbufs, buffer);
+  gst_buffer_list_add (nicesrc->outbufs, buffer);
   g_main_loop_quit (nicesrc->mainloop);
   GST_OBJECT_UNLOCK (nicesrc);
 }
@@ -273,23 +271,27 @@ gst_nice_src_create (
     GST_OBJECT_UNLOCK (basesrc);
     return GST_FLOW_FLUSHING;
   }
-  if (g_queue_is_empty (nicesrc->outbufs)) {
+
+  if (!gst_buffer_list_length (nicesrc->outbufs)) {
     GST_OBJECT_UNLOCK (basesrc);
     g_main_loop_run (nicesrc->mainloop);
     GST_OBJECT_LOCK (basesrc);
   }
 
-  *buffer = g_queue_pop_head (nicesrc->outbufs);
+  gst_base_src_submit_buffer_list (GST_BASE_SRC_CAST (basesrc), nicesrc->outbufs);
+  nicesrc->outbufs = gst_buffer_list_new ();
   GST_OBJECT_UNLOCK (basesrc);
 
-  if (*buffer != NULL) {
-    GST_LOG_OBJECT (nicesrc, "Got buffer, pushing");
-    return GST_FLOW_OK;
-  } else {
-    GST_LOG_OBJECT (nicesrc, "Got interrupting, returning wrong-state");
-    return GST_FLOW_FLUSHING;
-  }
-
+  /* This is a workaround for a bug in GStreamer versions before 1.26
+   * where it do a critical if the buffer is NULL when returning OK
+   * It was fixed by:
+   * https://gitlab.freedesktop.org/gstreamer/gstreamer/-/merge_requests/6460
+   */
+#if GST_CHECK_VERSION(1, 26, 0)
+  return GST_FLOW_OK;
+#else
+  return gst_base_src_wait_playing (GST_BASE_SRC (basesrc));
+#endif
 }
 
 static void
@@ -309,10 +311,7 @@ gst_nice_src_dispose (GObject *object)
     g_main_context_unref (src->mainctx);
   src->mainctx = NULL;
 
-  if (src->outbufs) {
-    g_queue_free_full (src->outbufs, (GDestroyNotify) gst_buffer_unref);
-  }
-  src->outbufs = NULL;
+  gst_clear_buffer_list (&src->outbufs);
 
   if (src->idle_source) {
     g_source_destroy (src->idle_source);
@@ -418,8 +417,8 @@ gst_nice_src_change_state (GstElement * element, GstStateChange transition)
       nice_agent_attach_recv (src->agent, src->stream_id, src->component_id,
           src->mainctx, NULL, NULL);
       GST_OBJECT_LOCK (src);
-      g_list_free_full (src->outbufs->head, (GDestroyNotify) gst_buffer_unref);
-      g_queue_init (src->outbufs);
+      gst_clear_buffer_list (&src->outbufs);
+      src->outbufs = gst_buffer_list_new ();
       GST_OBJECT_UNLOCK (src);
       break;
     case GST_STATE_CHANGE_READY_TO_PAUSED:
