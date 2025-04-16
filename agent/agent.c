@@ -130,6 +130,7 @@ enum
   PROP_SUPPORT_RENOMINATION,
   PROP_IDLE_TIMEOUT,
   PROP_CONSENT_FRESHNESS,
+  PROP_CLOSE_FORCED,
 };
 
 
@@ -934,6 +935,23 @@ nice_agent_class_init (NiceAgentClass *klass)
         "Consent Freshness",
         "Whether to perform the consent freshness checks as specified in RFC 7675",
         FALSE,
+        G_PARAM_READWRITE));
+
+   /**
+    * NiceAgent:close-forced
+    *
+    * Whether to omit performing retransmissions and wait for a response for the 0-lifetime
+    * refresh request that is sent by nice_agent_close_async(). This favors a quick shutdown of
+    * the agent at the risk of lingering TURN server port allocations.
+    *
+    * Since: 0.1.23
+    */
+   g_object_class_install_property (gobject_class, PROP_CLOSE_FORCED,
+      g_param_spec_boolean (
+        "close-forced",
+        "Close Forced",
+        "Whether to close agent without waiting for indication that TURN server port allocations have been freed.",
+        FALSE,
         G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY));
 
   /* install signals */
@@ -1367,6 +1385,7 @@ nice_agent_new_full (GMainContext *ctx,
       "ice-trickle", (flags & NICE_AGENT_OPTION_ICE_TRICKLE) ? TRUE : FALSE,
       "support-renomination", (flags & NICE_AGENT_OPTION_SUPPORT_RENOMINATION) ? TRUE : FALSE,
       "consent-freshness", (flags & NICE_AGENT_OPTION_CONSENT_FRESHNESS) ? TRUE : FALSE,
+      "close-forced", (flags & NICE_AGENT_OPTION_CLOSE_FORCED) ? TRUE : FALSE,
       NULL);
 
   return agent;
@@ -1516,6 +1535,10 @@ nice_agent_get_property (
 
     case PROP_CONSENT_FRESHNESS:
       g_value_set_boolean (value, agent->consent_freshness);
+      break;
+
+    case PROP_CLOSE_FORCED:
+      g_value_set_boolean (value, agent->close_forced);
       break;
 
     default:
@@ -1756,6 +1779,10 @@ nice_agent_set_property (
 
     case PROP_CONSENT_FRESHNESS:
       agent->consent_freshness = g_value_get_boolean (value);
+      break;
+
+    case PROP_CLOSE_FORCED:
+      agent->close_forced = g_value_get_boolean (value);
       break;
 
     default:

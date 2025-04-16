@@ -266,12 +266,27 @@ static gboolean refresh_remove_async (NiceAgent *agent, gpointer pointer)
     agent_socket_send (cand->nicesock, &cand->server, buffer_len,
         (gchar *)cand->stun_buffer);
 
-    stun_timer_start (&cand->timer, agent->stun_initial_timeout,
-        agent->stun_max_retransmissions);
+    if (agent->close_forced) {
+      StunTransactionId id;
 
-    agent_timeout_add_with_context (agent, &cand->tick_source,
-        "TURN deallocate retransmission", stun_timer_remainder (&cand->timer),
-        (NiceTimeoutLockedCallback) on_refresh_remove_timeout, cand);
+      /* send the refresh twice if we won't do retransmissions */
+      if (!nice_socket_is_reliable (cand->nicesock)) {
+        agent_socket_send (cand->nicesock, &cand->server,
+            buffer_len, (gchar *)cand->stun_buffer);
+      }
+
+      /* then forget the transaction and free up resources immediately */
+      stun_message_id (&cand->stun_message, id);
+      stun_agent_forget_transaction (&cand->stun_agent, id);
+      refresh_free (agent, cand);
+    } else {
+      stun_timer_start (&cand->timer, agent->stun_initial_timeout,
+          agent->stun_max_retransmissions);
+
+      agent_timeout_add_with_context (agent, &cand->tick_source,
+          "TURN deallocate retransmission", stun_timer_remainder (&cand->timer),
+          (NiceTimeoutLockedCallback) on_refresh_remove_timeout, cand);
+    }
   }
   return G_SOURCE_REMOVE;
 }

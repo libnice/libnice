@@ -195,6 +195,7 @@ struct _NiceAgent
                                          conncheck */
   gboolean consent_freshness;         /* rfc 7675 consent freshness with
                                          connchecks */
+  gboolean close_forced;              /* property: close-forced */
   /* XXX: add pointer to internal data struct for ABI-safe extensions */
 };
 
