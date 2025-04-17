@@ -184,6 +184,7 @@ struct _NiceAgent
 
   GCancellable *stun_resolving_cancellable; /* Cancel STUN name resolution */
   GSList *stun_resolving_list;     /* List of ongoing resolutions */
+  guint turn_resolving_count;      /* Number of outstanding turn server resolve tasks */
 
   GQueue pending_signals;
   gboolean use_ice_udp;
@@ -196,6 +197,7 @@ struct _NiceAgent
   gboolean consent_freshness;         /* rfc 7675 consent freshness with
                                          connchecks */
   gboolean close_forced;              /* property: close-forced */
+  GTask* close_task;                  /* task associated with ongoing nice_agent_close_async() */
   /* XXX: add pointer to internal data struct for ABI-safe extensions */
 };
 
@@ -288,6 +290,9 @@ input_message_get_size (const NiceInputMessage *message);
 
 gssize agent_socket_send (NiceSocket *sock, const NiceAddress *addr, gsize len,
     const gchar *buf);
+
+void
+agent_maybe_finish_close_task (NiceAgent* agent);
 
 guint32
 nice_candidate_jingle_priority (NiceCandidate *candidate);

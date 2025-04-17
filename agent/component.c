@@ -414,6 +414,13 @@ nice_component_close (NiceAgent *agent, NiceStream *stream, NiceComponent *cmp)
 }
 
 void
+nice_component_cancel_turn_server_resolving (NiceComponent* component)
+{
+  if (component->turn_resolving_cancellable)
+    g_cancellable_cancel (component->turn_resolving_cancellable);
+}
+
+void
 nice_component_shutdown (NiceComponent *component, gboolean shutdown_read,
     gboolean shutdown_write)
 {

@@ -93,6 +93,17 @@ nice_stream_close (NiceAgent *agent, NiceStream *stream)
   }
 }
 
+void
+nice_stream_cancel_turn_server_resolving (NiceStream *stream)
+{
+  GSList *component_item;
+
+  for (component_item = stream->components; component_item;
+        component_item = component_item->next) {
+    nice_component_cancel_turn_server_resolving (component_item->data);
+  }
+}
+
 NiceComponent *
 nice_stream_find_component_by_id (NiceStream *stream, guint id)
 {

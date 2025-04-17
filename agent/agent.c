@@ -1333,7 +1333,9 @@ nice_agent_init (NiceAgent *agent)
   agent->use_ice_udp = TRUE;
   agent->use_ice_tcp = TRUE;
 
+  agent->close_task = NULL;
   agent->stun_resolving_cancellable = g_cancellable_new();
+  agent->turn_resolving_count = 0;
 
   agent->rng = nice_rng_new ();
   priv_generate_tie_breaker (agent);
@@ -2755,14 +2757,20 @@ stun_server_resolved_cb (GObject *src, GAsyncResult *result,
   g_slice_free (struct StunResolverData, data);
   if (agent == NULL)
     return;
+
+  agent_lock (agent);
   agent->stun_resolving_list = g_slist_remove_all (agent->stun_resolving_list,
       data);
+  agent_maybe_finish_close_task (agent);
+  agent_unlock (agent);
 
   addresses = g_resolver_lookup_by_name_finish (resolver, result, &error);
 
   if (addresses == NULL) {
-    g_warning ("Agent: %p: s:%d: Can't resolve STUN server: %s", agent,
-        stream_id, error->message);
+    if (!(g_error_matches (error, G_IO_ERROR, G_IO_ERROR_CANCELLED))) {
+      g_warning ("Agent: %p: s:%d: Can't resolve STUN server: %s", agent,
+          stream_id, error->message);
+    }
     g_clear_error (&error);
     goto done;
   }
@@ -3049,6 +3057,7 @@ nice_agent_add_stream (
 }
 
 struct TurnResolverData {
+  GWeakRef agent_ref; /* for turn_resolving_count */
   GWeakRef component_ref;
   TurnServer *turn;
 };
@@ -3069,13 +3078,25 @@ turn_server_resolved_cb (GObject *src, GAsyncResult *result,
 
   component = g_weak_ref_get (&rd->component_ref);
   g_weak_ref_clear (&rd->component_ref);
+  agent = g_weak_ref_get (&rd->agent_ref);
+  g_weak_ref_clear (&rd->agent_ref);
+
+  if (agent != NULL) {
+    agent_lock (agent);
+    agent->turn_resolving_count--;
+    agent_maybe_finish_close_task (agent);
+    agent_unlock (agent);
+  }
+
   g_slice_free (struct TurnResolverData, rd);
   if (component == NULL) {
+    if (agent != NULL) {
+      g_object_unref (agent);
+    }
     turn_server_unref (turn);
     return;
   }
 
-  agent = g_weak_ref_get (&component->agent_ref);
   if (agent == NULL) {
     g_object_unref (component);
     turn_server_unref (turn);
@@ -3094,9 +3115,11 @@ turn_server_resolved_cb (GObject *src, GAsyncResult *result,
   addresses = g_resolver_lookup_by_name_finish (resolver, result, &error);
 
   if (addresses == NULL) {
-    g_warning ("Agent: %p: s:%d/c:%d: Can't resolve TURN server %s: %s", agent,
-        component->stream_id, component->id, turn->server_address,
-        error->message);
+    if (!(g_error_matches (error, G_IO_ERROR, G_IO_ERROR_CANCELLED))) {
+      g_warning ("Agent: %p: s:%d/c:%d: Can't resolve TURN server %s: %s", agent,
+          component->stream_id, component->id, turn->server_address,
+          error->message);
+    }
     g_clear_error (&error);
     turn->resolution_failed = TRUE;
     goto done;
@@ -3188,9 +3211,14 @@ resolve_turn_in_context (NiceAgent *agent, gpointer data)
 
   component = g_weak_ref_get (&rd->component_ref);
   if (component == NULL) {
+    g_weak_ref_clear (&rd->agent_ref);
     g_weak_ref_clear (&rd->component_ref);
     turn_server_unref (rd->turn);
     g_slice_free (struct TurnResolverData, rd);
+
+    agent->turn_resolving_count--;
+    /* This is called from a timeout cb with agent lock held */
+    agent_maybe_finish_close_task (agent);
 
     return G_SOURCE_REMOVE;
   }
@@ -3267,8 +3295,10 @@ nice_agent_set_relay_info(NiceAgent *agent,
     GSource *source = NULL;
     struct TurnResolverData *rd = g_slice_new (struct TurnResolverData);
 
+    g_weak_ref_init (&rd->agent_ref, agent);
     g_weak_ref_init (&rd->component_ref, component);
     rd->turn = turn_server_ref (turn);
+    agent->turn_resolving_count++;
 
     nice_debug("Agent:%p s:%d/%d: Resolving TURN server %s",
         agent, stream_id, component_id, server_ip);
@@ -3986,33 +4016,20 @@ on_stream_refreshes_pruned (NiceAgent *agent, NiceStream *stream)
   return G_SOURCE_REMOVE;
 }
 
-NICEAPI_EXPORT void
-nice_agent_remove_stream (
-  NiceAgent *agent,
-  guint stream_id)
+static void
+nice_agent_remove_stream_internal (NiceAgent *agent, NiceStream *stream)
 {
-  guint stream_ids[] = { stream_id, 0 };
+  guint stream_ids[] = { stream->id, 0 };
 
   /* note that streams/candidates can be in use by other threads */
 
-  NiceStream *stream;
-
-  g_return_if_fail (NICE_IS_AGENT (agent));
-  g_return_if_fail (stream_id >= 1);
-
-  agent_lock (agent);
-  stream = agent_find_stream (agent, stream_id);
-
-  if (!stream) {
-    agent_unlock_and_emit (agent);
-    return;
-  }
+  nice_stream_cancel_turn_server_resolving (stream);
 
   priv_stop_upnp (agent, stream);
 
   /* note: remove items with matching stream_ids from both lists */
   conn_check_prune_stream (agent, stream);
-  discovery_prune_stream (agent, stream_id);
+  discovery_prune_stream (agent, stream->id);
 
   /* Remove the stream and signal its removal. */
   agent->streams = g_slist_remove (agent->streams, stream);
@@ -4026,6 +4043,25 @@ nice_agent_remove_stream (
 
   agent_queue_signal (agent, signals[SIGNAL_STREAMS_REMOVED],
       g_memdup (stream_ids, sizeof(stream_ids)));
+}
+
+NICEAPI_EXPORT void
+nice_agent_remove_stream (
+  NiceAgent *agent,
+  guint stream_id)
+{
+  NiceStream *stream;
+
+  g_return_if_fail (NICE_IS_AGENT (agent));
+  g_return_if_fail (stream_id >= 1);
+
+  agent_lock (agent);
+
+  stream = agent_find_stream (agent, stream_id);
+
+  if (stream) {
+    nice_agent_remove_stream_internal (agent, stream);
+  }
 
   agent_unlock_and_emit (agent);
 }
@@ -7744,21 +7780,19 @@ nice_agent_peer_candidate_gathering_done (NiceAgent *agent, guint stream_id)
   return result;
 }
 
-static gboolean
-on_agent_refreshes_pruned (NiceAgent *agent, gpointer user_data)
+void
+agent_maybe_finish_close_task (NiceAgent* agent)
 {
-  GTask *task = user_data;
+  GTask *task = agent->close_task;
 
-  if (agent->refresh_list) {
-    GSource *timeout_source = NULL;
-    agent_timeout_add_with_context (agent, &timeout_source,
-        "Async refresh prune", agent->stun_initial_timeout,
-        on_agent_refreshes_pruned, user_data);
-    g_source_unref (timeout_source);
-    return G_SOURCE_REMOVE;
+  if (agent->pruning_refreshes != NULL || agent->stun_resolving_list != NULL ||
+      agent->turn_resolving_count != 0 || task == NULL) {
+    return;
   }
 
-  /* This is called from a timeout cb with agent lock held */
+  agent->close_task = NULL;
+
+  /* This must be called with agent lock held */
 
   agent_unlock (agent);
 
@@ -7766,15 +7800,25 @@ on_agent_refreshes_pruned (NiceAgent *agent, gpointer user_data)
   g_object_unref (task);
 
   agent_lock (agent);
+}
 
-  return G_SOURCE_REMOVE;
+static void
+nice_agent_remove_streams (NiceAgent *agent)
+{
+  while (agent->streams != NULL) {
+    NiceStream *stream = agent->streams->data;
+
+    nice_agent_remove_stream_internal (agent, stream);
+  }
 }
 
 void
 nice_agent_close_async (NiceAgent *agent, GAsyncReadyCallback callback,
     gpointer callback_data)
 {
-  GTask *task;
+  GTask* task;
+
+  g_return_if_fail (agent->close_task == NULL);
 
   task = g_task_new (agent, NULL, callback, callback_data);
   g_task_set_source_tag (task, nice_agent_close_async);
@@ -7785,10 +7829,14 @@ nice_agent_close_async (NiceAgent *agent, GAsyncReadyCallback callback,
   g_object_ref (agent);
   agent_lock (agent);
 
-  g_cancellable_cancel (agent->stun_resolving_cancellable);
-  refresh_prune_agent_async (agent, on_agent_refreshes_pruned, task);
+  agent->close_task = task;
 
-  agent_unlock (agent);
+  g_cancellable_cancel (agent->stun_resolving_cancellable);
+  nice_agent_remove_streams (agent);
+
+  agent_maybe_finish_close_task (agent);
+
+  agent_unlock_and_emit (agent);
   g_object_unref (agent);
 }
 
