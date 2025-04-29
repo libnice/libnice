@@ -38,6 +38,7 @@
 
 #define RTP_HEADER_SIZE 12
 #define RTP_PAYLOAD_SIZE 1024
+#define RTP_PACKETS 2
 
 static GstStaticPadTemplate srctemplate = GST_STATIC_PAD_TEMPLATE ("src",
     GST_PAD_SRC,
@@ -102,37 +103,25 @@ create_buffer_list (void)
   GstBufferList *list;
   GstBuffer *rtp_buffer;
   GstBuffer *data_buffer;
+  guint i;
 
   list = gst_buffer_list_new ();
 
-  /*** First group, i.e. first packet. **/
+  for (i = 0; i < RTP_PACKETS; i++) {
+    /* Create the RTP header buffer */
+    rtp_buffer = gst_buffer_new_allocate (NULL, RTP_HEADER_SIZE, NULL);
+    gst_buffer_memset (rtp_buffer, 0, 0, RTP_HEADER_SIZE);
 
-  /* Create the RTP header buffer */
-  rtp_buffer = gst_buffer_new_allocate (NULL, RTP_HEADER_SIZE, NULL);
-  gst_buffer_memset (rtp_buffer, 0, 0, RTP_HEADER_SIZE);
+    /* Create the buffer that holds the payload */
+    data_buffer = gst_buffer_new_allocate (NULL, RTP_PAYLOAD_SIZE, NULL);
+    gst_buffer_memset (data_buffer, 0, 0, RTP_PAYLOAD_SIZE);
 
-  /* Create the buffer that holds the payload */
-  data_buffer = gst_buffer_new_allocate (NULL, RTP_PAYLOAD_SIZE, NULL);
-  gst_buffer_memset (data_buffer, 0, 0, RTP_PAYLOAD_SIZE);
-
-  /* Create a new group to hold the rtp header and the payload */
-  gst_buffer_list_add (list, gst_buffer_append (rtp_buffer, data_buffer));
-
-  /***  Second group, i.e. second packet. ***/
-
-  /* Create the RTP header buffer */
-  rtp_buffer = gst_buffer_new_allocate (NULL, RTP_HEADER_SIZE, NULL);
-  gst_buffer_memset (rtp_buffer, 0, 0, RTP_HEADER_SIZE);
-
-  /* Create the buffer that holds the payload */
-  data_buffer = gst_buffer_new_allocate (NULL, RTP_PAYLOAD_SIZE, NULL);
-  gst_buffer_memset (data_buffer, 0, 0, RTP_PAYLOAD_SIZE);
-
-  /* Create a new group to hold the rtp header and the payload */
-  gst_buffer_list_add (list, gst_buffer_append (rtp_buffer, data_buffer));
+    /* Create a new group to hold the rtp header and the payload */
+    gst_buffer_list_add (list, gst_buffer_append (rtp_buffer, data_buffer));
+  }
 
   /* Calculate the size of the data */
-  data_size = 2 * RTP_HEADER_SIZE + 2 * RTP_PAYLOAD_SIZE;
+  data_size = (RTP_PACKETS * RTP_HEADER_SIZE) + (RTP_PACKETS * RTP_PAYLOAD_SIZE);
 
   return list;
 }
