@@ -86,13 +86,7 @@ sink_chain_list_function (GstPad * pad, GstObject * parent,
 static GstFlowReturn
 sink_chain_function (GstPad * pad, GstObject * parent, GstBuffer * buffer)
 {
-  gsize size = gst_buffer_get_size (buffer);
-
-  g_debug ("received %" G_GSIZE_FORMAT " bytes", size);
-  g_mutex_lock(&mutex);
-  bytes_received += size;
-  g_cond_signal (&cond);
-  g_mutex_unlock (&mutex);
+  count_bytes(&buffer, 0, NULL);
 
   gst_buffer_unref (buffer);
 
