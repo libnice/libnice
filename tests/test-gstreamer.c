@@ -306,8 +306,6 @@ GST_START_TEST (buffer_list_test)
   g_assert_cmpuint (bytes_received, ==, data_size);
   g_debug ("We received expected data size");
 
-  fail_unless_equals_int (data_size, bytes_received);
-
   gst_check_teardown_pad_by_name (nicesink, "sink");
   gst_check_teardown_element (nicesink);
 
