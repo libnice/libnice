@@ -4585,9 +4585,9 @@ agent_recv_message_unlocked (
   gboolean is_turn;
 
   /* We need an address for packet parsing, below. */
-  if (message->from == NULL) {
+  if (provided_message->from == NULL) {
     nice_address_init (&from);
-    message->from = &from;
+    provided_message->from = &from;
   }
 
   /* ICE-TCP requires that all packets be framed with RFC4571 */
