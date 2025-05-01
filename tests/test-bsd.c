@@ -157,6 +157,7 @@ test_zero_send_recv (void)
   g_assert_cmpint (socket_recv (sock, &tmp, 0, NULL), ==, 0);
 
   /* And again with messages. */
+  memset(&local_out_message, 0, sizeof(local_out_message));
   g_assert_cmpint (nice_socket_send_messages (sock, &tmp,
       &local_out_message, 0), ==, 0);
   g_assert_cmpint (nice_socket_send_messages (sock, &tmp, NULL, 0), ==, 0);

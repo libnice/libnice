@@ -169,7 +169,7 @@ write_packet (PseudoTcpSocket *sock, const gchar *buffer, guint32 len,
 {
   Data *data = user_data;
   gchar *str;  /* owned */
-  GQueue/*<owned GBytes>*/ *queue;  /* unowned */
+  GQueue/*<owned GBytes>*/ *queue = NULL;  /* unowned */
   GBytes *segment;  /* owned */
 
   /* Debug output. */
