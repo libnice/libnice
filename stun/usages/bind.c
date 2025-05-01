@@ -225,6 +225,7 @@ stun_trans_init (StunTransport *tr, int fd,
     const struct sockaddr *srv, socklen_t srvlen)
 {
   assert (fd != -1);
+  assert (srv != NULL);
 
   if ((size_t) srvlen > sizeof (tr->dst))
     return STUN_USAGE_TRANS_RETURN_INVALID_ADDRESS;

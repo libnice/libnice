@@ -97,6 +97,9 @@ void stun_debug_bytes (const char *prefix, const void *data, size_t len)
     return;
 
   bytes = malloc (prefix_len + 2 + (len * 2) + 1);
+  if (bytes == NULL)
+    return;
+
   bytes[0] = 0;
   strcpy (bytes, prefix);
   strcpy (bytes + prefix_len, "0x");

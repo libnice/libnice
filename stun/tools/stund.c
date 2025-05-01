@@ -255,6 +255,7 @@ send_buf:
   return (len < buf_len) ? -1 : 0;
 }
 
+static int running = 1;
 
 static int run (int family, int protocol, unsigned port)
 {
@@ -269,17 +270,16 @@ static int run (int family, int protocol, unsigned port)
   stun_agent_init (&newagent, known_attributes,
       STUN_COMPATIBILITY_RFC5389, STUN_AGENT_USAGE_USE_FINGERPRINT);
 
-  for (;;)
+  while (running)
     dgram_process (sock, &oldagent, &newagent);
+
+  return 0;
 }
 
-
-/* Pretty useless dummy signal handler...
- * But calling exit() is needed for gcov to work properly. */
 static void exit_handler (int signum)
 {
   (void)signum;
-  exit (0);
+  running = 0;
 }
 
 
