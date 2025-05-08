@@ -40,6 +40,12 @@ if cc.has_header('arpa/inet.h')
   ]
 endif
 
+if host_machine.system() == 'linux'
+  nice_tests += [
+    'test-slow-resolving',
+  ]
+endif
+
 foreach tname : nice_tests
   if tname.startswith('test-io-stream') or tname.startswith('test-send-recv') or tname == 'test-bytestream-tcp'
     extra_src = ['test-io-stream-common.c']
@@ -55,7 +61,15 @@ foreach tname : nice_tests
     link_with: [libagent, libstun, libsocket, librandom],
     install: false)
   set_variable(tname.underscorify(), exe)
-  test(tname, exe)
+  if tname == 'test-slow-resolving'
+    dl_dep = cc.find_library('dl')
+    preload_lib = shared_library('slow-resolver', 'slow-resolver.c', dependencies: [dl_dep])
+    preload_env = environment()
+    preload_env.append('LD_PRELOAD', preload_lib.full_path())
+    test(tname, exe, env: preload_env)
+  else
+    test(tname, exe)
+  endif
 
   if tname == 'test-fullmode'
     wrapper_exe = executable ('nice-test-fullmode-with-stun',
