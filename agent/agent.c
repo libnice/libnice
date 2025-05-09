@@ -2901,7 +2901,7 @@ priv_add_new_candidate_discovery_turn (NiceAgent *agent,
       NiceSocket *new_socket;
       nice_address_set_port (&addr, 0);
 
-      new_socket = nice_udp_bsd_socket_new (&addr, NULL);
+      new_socket = nice_udp_bsd_socket_new (agent->main_context, &addr, NULL);
       if (new_socket) {
         _priv_set_socket_tos (agent, new_socket, stream->tos);
         nice_component_attach_socket (component, new_socket);

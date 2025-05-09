@@ -72,6 +72,9 @@ static void socket_set_writable_callback (NiceSocket *sock,
 
 struct UdpBsdSocketPrivate
 {
+  /* read-only */
+  GMainContext *context;
+
   GMutex mutex;
 
   /* protected by mutex */
@@ -80,7 +83,7 @@ struct UdpBsdSocketPrivate
 };
 
 NiceSocket *
-nice_udp_bsd_socket_new (NiceAddress *addr, GError **error)
+nice_udp_bsd_socket_new (GMainContext *ctx, NiceAddress *addr, GError **error)
 {
   union {
     struct sockaddr_storage storage;
@@ -176,6 +179,10 @@ nice_udp_bsd_socket_new (NiceAddress *addr, GError **error)
   nice_address_set_from_sockaddr (&sock->addr, &name.addr);
 
   priv = sock->priv = g_slice_new0 (struct UdpBsdSocketPrivate);
+  if (ctx == NULL) {
+    ctx = g_main_context_default ();
+  }
+  priv->context = g_main_context_ref (ctx);
   nice_address_init (&priv->niceaddr);
 
   sock->type = NICE_SOCKET_TYPE_UDP_BSD;
@@ -200,6 +207,10 @@ socket_close (NiceSocket *sock)
 
   g_clear_object (&priv->gaddr);
   g_mutex_clear (&priv->mutex);
+  if (priv->context) {
+    g_main_context_unref (priv->context);
+    priv->context = NULL;
+  }
   g_slice_free (struct UdpBsdSocketPrivate, sock->priv);
   sock->priv = NULL;
 

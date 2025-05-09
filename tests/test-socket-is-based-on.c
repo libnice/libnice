@@ -96,7 +96,7 @@ main (int argc, char *argv[])
   nice_address_set_from_string (&addr, "127.0.0.1");
 
   /* Standalone socket */
-  udp_bsd = nice_udp_bsd_socket_new (&addr, &error);
+  udp_bsd = nice_udp_bsd_socket_new (g_main_loop_get_context (mainloop), &addr, &error);
   g_assert_no_error (error);
 
   /* tcp_passive -> pseudossl -> udp_turn_over_tcp */

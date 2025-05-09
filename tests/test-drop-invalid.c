@@ -426,7 +426,7 @@ static int run_full_test (NiceAgent *lagent, NiceAgent *ragent, NiceAddress *bas
     g_assert_true (local_cand);
     g_assert_true (remote_cand);
 
-    tmpsock = nice_udp_bsd_socket_new (NULL, &error);
+    tmpsock = nice_udp_bsd_socket_new (g_main_context_default (), NULL, &error);
     g_assert_no_error (error);
     nice_socket_send (tmpsock, &remote_cand->addr, 4, "ABCD");
     nice_socket_send (tmpsock, &local_cand->addr, 5, "ABCDE");

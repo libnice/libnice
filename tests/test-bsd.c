@@ -63,7 +63,7 @@ test_socket_initial_properties (void)
   NiceSocket *sock;
   GError *error = NULL;
 
-  sock = nice_udp_bsd_socket_new (NULL, &error);
+  sock = nice_udp_bsd_socket_new (NULL, NULL, &error);
   g_assert_no_error (error);
   g_assert_true (sock != NULL);
 
@@ -82,7 +82,7 @@ test_socket_address_properties (void)
   NiceAddress tmp;
   GError *error = NULL;
 
-  sock = nice_udp_bsd_socket_new (NULL, &error);
+  sock = nice_udp_bsd_socket_new (NULL, NULL, &error);
   g_assert_no_error (error);
   g_assert_true (sock != NULL);
 
@@ -103,11 +103,11 @@ test_simple_send_recv (void)
   gchar buf[5];
   GError *error = NULL;
 
-  server = nice_udp_bsd_socket_new (NULL, &error);
+  server = nice_udp_bsd_socket_new (NULL, NULL, &error);
   g_assert_no_error (error);
   g_assert_true (server != NULL);
 
-  client = nice_udp_bsd_socket_new (NULL, &error);
+  client = nice_udp_bsd_socket_new (NULL, NULL, &error);
   g_assert_no_error (error);
   g_assert_true (client != NULL);
 
@@ -141,7 +141,7 @@ test_zero_send_recv (void)
   NiceInputMessage local_in_message;
   GError *error = NULL;
 
-  sock = nice_udp_bsd_socket_new (NULL, &error);
+  sock = nice_udp_bsd_socket_new (NULL, NULL, &error);
   g_assert_no_error (error);
   g_assert_true (sock != NULL);
 
@@ -180,11 +180,11 @@ test_multi_buffer_recv (void)
   guint8 dummy_buf[9];
   GError *error = NULL;
 
-  server = nice_udp_bsd_socket_new (NULL, &error);
+  server = nice_udp_bsd_socket_new (NULL, NULL, &error);
   g_assert_no_error (error);
   g_assert_true (server != NULL);
 
-  client = nice_udp_bsd_socket_new (NULL, &error);
+  client = nice_udp_bsd_socket_new (NULL, NULL, &error);
   g_assert_no_error (error);
   g_assert_true (client != NULL);
 
@@ -254,11 +254,11 @@ test_multi_message_recv (guint n_sends, guint n_receives,
   NiceAddress tmp;
   GError *error = NULL;
 
-  server = nice_udp_bsd_socket_new (NULL, &error);
+  server = nice_udp_bsd_socket_new (NULL, NULL, &error);
   g_assert_no_error (error);
   g_assert_true (server != NULL);
 
-  client = nice_udp_bsd_socket_new (NULL, &error);
+  client = nice_udp_bsd_socket_new (NULL, NULL, &error);
   g_assert_no_error (error);
   g_assert_true (client != NULL);
 
