@@ -79,10 +79,6 @@ add_project_arguments('-D_GNU_SOURCE',
   '-DHAVE_CONFIG_H',
   '-DGLIB_VERSION_MIN_REQUIRED=GLIB_VERSION_' + glib_req_minmax_str,
   '-DGLIB_VERSION_MAX_ALLOWED=GLIB_VERSION_' + glib_req_minmax_str,
-  '-DNICE_VERSION_MAJOR=' + version_major,
-  '-DNICE_VERSION_MINOR=' + version_minor,
-  '-DNICE_VERSION_MICRO=' + version_micro,
-  '-DNICE_VERSION_NANO=' + version_nano,
   language: 'c')
 
 # Same logic as in GLib.
