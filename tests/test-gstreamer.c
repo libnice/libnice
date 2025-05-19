@@ -21,6 +21,7 @@
  *
  * Contributors:
  *   Jose Antonio Santos Cadenas, Kurento.
+ *   Martin Nordholts, Axis Communications AB, 2025.
  *
  * Alternatively, the contents of this file may be used under the terms of the
  * the GNU Lesser General Public License Version 2.1 (the "LGPL"), in which
@@ -39,11 +40,6 @@
 #define RTP_HEADER_SIZE 12
 #define RTP_PAYLOAD_SIZE 1024
 #define RTP_PACKETS 2
-
-static GstStaticPadTemplate srctemplate = GST_STATIC_PAD_TEMPLATE ("src",
-    GST_PAD_SRC,
-    GST_PAD_ALWAYS,
-    GST_STATIC_CAPS_ANY);
 
 static GstStaticPadTemplate sinktemplate = GST_STATIC_PAD_TEMPLATE ("src",
     GST_PAD_SINK,
@@ -179,6 +175,27 @@ credentials_negotiation (NiceAgent * a_agent, NiceAgent * b_agent,
   g_free (passwd);
 }
 
+static gboolean
+bus_callback (GstBus * bus, GstMessage * message, gpointer data)
+{
+  switch (GST_MESSAGE_TYPE (message))
+    {
+      case GST_MESSAGE_ERROR:
+      {
+        gchar *element_name = NULL;
+        gchar *debug = NULL;
+        GError *err = NULL;
+        element_name = gst_object_get_name (message->src);
+        gst_message_parse_error (message, &err, &debug);
+        g_error ("Aborting test (without resource cleanup): %s: %s: %s", element_name, err->message, debug);
+      }
+      default:
+        break;
+    }
+
+  return G_SOURCE_CONTINUE;
+}
+
 static void
 cb_component_state_changed (NiceAgent * agent, guint stream_id,
     guint component_id, guint state, gpointer user_data)
@@ -196,9 +213,11 @@ cb_component_state_changed (NiceAgent * agent, guint stream_id,
 
 GST_START_TEST (buffer_list_test)
 {
-  GstSegment segment;
+  GstElement *nicesink_pipeline, *appsrc;
+  GstFlowReturn flow_ret;
+  GstBus *bus;
   GstElement *nicesink, *nicesrc;
-  GstPad *srcpad, *sinkpad;
+  GstPad *sinkpad;
   GstBufferList *list;
   NiceAgent *sink_agent, *src_agent;
   guint sink_stream, src_stream;
@@ -243,8 +262,16 @@ GST_START_TEST (buffer_list_test)
   nice_agent_gather_candidates (sink_agent, sink_stream);
   nice_agent_gather_candidates (src_agent, src_stream);
 
-  /* Create gstreamer elements */
+  /* Create nicesink pipeline */
+  nicesink_pipeline = gst_pipeline_new("nicesink-pipeline");
+  appsrc = gst_check_setup_element ("appsrc");
   nicesink = gst_check_setup_element ("nicesink");
+  bus = gst_pipeline_get_bus (GST_PIPELINE (nicesink_pipeline));
+  gst_bus_add_watch (bus, bus_callback, NULL);
+  gst_bin_add_many (GST_BIN (nicesink_pipeline), appsrc, nicesink, NULL);
+  g_assert (gst_element_link_many (appsrc, nicesink, NULL));
+
+  /* Create nicesrc pipeline */
   nicesrc = gst_check_setup_element ("nicesrc");
 
   g_object_set (nicesink, "agent", sink_agent, "stream", sink_stream,
@@ -252,23 +279,16 @@ GST_START_TEST (buffer_list_test)
   g_object_set (nicesrc, "agent", src_agent, "stream", src_stream, "component",
       NICE_COMPONENT_TYPE_RTP, NULL);
 
-  srcpad = gst_check_setup_src_pad_by_name (nicesink, &srctemplate, "sink");
   sinkpad = gst_check_setup_sink_pad_by_name (nicesrc, &sinktemplate, "src");
 
   gst_pad_set_chain_list_function_full (sinkpad, sink_chain_list_function, NULL,
       NULL);
   gst_pad_set_chain_function_full (sinkpad, sink_chain_function, NULL, NULL);
 
-  gst_element_set_state (nicesink, GST_STATE_PLAYING);
-  gst_pad_set_active (srcpad, TRUE);
+  gst_element_set_state (nicesink_pipeline, GST_STATE_PLAYING);
 
   gst_element_set_state (nicesrc, GST_STATE_PLAYING);
   gst_pad_set_active (sinkpad, TRUE);
-
-  gst_pad_push_event (srcpad, gst_event_new_stream_start ("test"));
-
-  gst_segment_init (&segment, GST_FORMAT_TIME);
-  gst_pad_push_event (srcpad, gst_event_new_segment (&segment));
 
   list = create_buffer_list ();
 
@@ -276,7 +296,9 @@ GST_START_TEST (buffer_list_test)
 
   g_main_loop_run (loop);
 
-  fail_unless_equals_int (gst_pad_push_list (srcpad, list), GST_FLOW_OK);
+  g_signal_emit_by_name (appsrc, "push-buffer-list", list, &flow_ret);
+  gst_buffer_list_unref(list);
+  fail_unless_equals_int (flow_ret, GST_FLOW_OK);
 
   g_debug ("Waiting for buffers");
 
@@ -289,8 +311,8 @@ GST_START_TEST (buffer_list_test)
   g_assert_cmpuint (bytes_received, ==, data_size);
   g_debug ("We received expected data size");
 
-  gst_check_teardown_pad_by_name (nicesink, "sink");
-  gst_check_teardown_element (nicesink);
+  gst_element_set_state (nicesink_pipeline, GST_STATE_NULL);
+  gst_object_unref (nicesink_pipeline);
 
   gst_check_teardown_pad_by_name (nicesrc, "src");
   gst_check_teardown_element (nicesrc);
