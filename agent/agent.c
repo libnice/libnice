@@ -2689,7 +2689,8 @@ priv_add_new_candidate_discovery_stun (NiceAgent *agent,
   cdisco->stream_id = stream->id;
   cdisco->component_id = component_id;
   stun_agent_init (&cdisco->stun_agent, STUN_ALL_KNOWN_ATTRIBUTES,
-      STUN_COMPATIBILITY_RFC3489,
+		   agent->compatibility == NICE_COMPATIBILITY_RFC5245 ?
+		   STUN_COMPATIBILITY_RFC5389 : STUN_COMPATIBILITY_RFC3489,
       (agent->compatibility == NICE_COMPATIBILITY_OC2007 ||
        agent->compatibility == NICE_COMPATIBILITY_OC2007R2) ?
         STUN_AGENT_USAGE_NO_ALIGNED_ATTRIBUTES : 0);
