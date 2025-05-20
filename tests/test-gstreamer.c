@@ -40,7 +40,36 @@
 
 #define RTP_HEADER_SIZE 12
 #define RTP_PAYLOAD_SIZE 1024
-#define RTP_PACKETS 2
+
+/* If GLib is compiled with HAVE_SENDMMSG then the number of messages sent in
+ * one sycall will be capped to IOV_MAX which typically is 1024. Trying to
+ * send more messages than that requires a retry-loop. Make the buffer list size
+ * twice as big to trigger this case in the test.
+ */
+#define RTP_PACKETS 2000
+
+/* Since we want to inject synthetic EWOULDBLOCK errors, make sure we do many
+ * distinct send calls.
+ */
+#define TIMES_TO_SEND 100
+
+/* Since we are dealing with UDP, we still need to expect some package loss on
+ * the receiver side. Mostly due to the limited default SO_RCVBUF of ~200kB. If
+ * you run the tests with temporarily very high /proc/sys/net/core/rmem_default
+ * you are likely to see no packet loss at all.
+ *
+ * Since we really dislike flakiness, we put this very low at 1% to make it
+ * likely to work with the default SO_RCVBUF size.
+ */
+#define RECEIVED_PACKETS_PERCENTAGE_FOR_PASS 1
+
+#define MIN_MESSAGES_TO_SEND_FOR_PASS ((size_t) RTP_PACKETS * (size_t) TIMES_TO_SEND)
+
+#define MIN_BYTES_RECEIVED_FOR_PASS \
+  ((TIMES_TO_SEND * RTP_PACKETS * (RTP_HEADER_SIZE + RTP_PAYLOAD_SIZE) * \
+    RECEIVED_PACKETS_PERCENTAGE_FOR_PASS) / \
+   100)
+
 
 static GstStaticPadTemplate sinktemplate = GST_STATIC_PAD_TEMPLATE ("src",
     GST_PAD_SINK,
@@ -51,21 +80,47 @@ GMainLoop *loop;
 static gint ready = 0;
 
 
-static GCond cond;
 static guint bytes_received;
-static guint data_size;
 
+static guint
+get_bytes_received (void)
+{
+  guint received = 0;
+  g_mutex_lock (&mutex);
+  received = bytes_received;
+  g_mutex_unlock (&mutex);
+  return received;
+}
+
+static void
+check_if_done (gpointer user_data)
+{
+  g_debug (
+      "messages sent = %zu / %zu (%.1f%%), bytes received = %u / %u (%.1f%%)",
+      nice_test_instrument_send_get_messages_sent (),
+      MIN_MESSAGES_TO_SEND_FOR_PASS,
+      (float) nice_test_instrument_send_get_messages_sent () /
+          (float) MIN_MESSAGES_TO_SEND_FOR_PASS * 100.0f,
+      get_bytes_received (),
+      MIN_BYTES_RECEIVED_FOR_PASS,
+      (float) get_bytes_received () / (float) MIN_BYTES_RECEIVED_FOR_PASS * 100.0f);
+
+  if (nice_test_instrument_send_get_messages_sent () >= MIN_MESSAGES_TO_SEND_FOR_PASS &&
+      get_bytes_received () >= MIN_BYTES_RECEIVED_FOR_PASS) {
+    g_main_loop_quit (loop);
+  }
+}
 
 static gboolean
 count_bytes (GstBuffer ** buffer, guint idx, gpointer data)
 {
   gsize size = gst_buffer_get_size (*buffer);
 
-  g_debug ("received %" G_GSIZE_FORMAT " bytes", size);
   g_mutex_lock(&mutex);
   bytes_received += size;
-  g_cond_signal (&cond);
   g_mutex_unlock (&mutex);
+
+  check_if_done (data);
 
   return TRUE;
 }
@@ -121,9 +176,6 @@ create_buffer_list (void)
   for (guint seqnum = 0; seqnum < RTP_PACKETS; seqnum++) {
     gst_buffer_list_add (list, create_buffer (seqnum));
   }
-
-  /* Calculate the size of the data */
-  data_size = (RTP_PACKETS * RTP_HEADER_SIZE) + (RTP_PACKETS * RTP_PAYLOAD_SIZE);
 
   return list;
 }
@@ -302,26 +354,47 @@ GST_START_TEST (buffer_list_test)
 
   g_main_loop_run (loop);
 
-  nice_test_instrument_send_set_calls_until_next_ewouldblock (0 /* disabled */);
-  g_signal_emit_by_name (appsrc, "push-buffer-list", list, &flow_ret);
+  /* Now that we are ready to send data, set up synthetic EWOULDBLOCK errors to
+   * get good code coverage. We inject EWOULDBLOCK every second call. That is
+   * quite aggressive, but the components under test should be able to cope with
+   * this.
+   */
+  nice_test_instrument_send_set_post_increment_callback (check_if_done, NULL);
+  nice_test_instrument_send_set_calls_until_next_ewouldblock (2);
+  for (int i = 0; i < TIMES_TO_SEND; i++) {
+    g_signal_emit_by_name (appsrc, "push-buffer-list", list, &flow_ret);
+  }
   gst_buffer_list_unref(list);
   fail_unless_equals_int (flow_ret, GST_FLOW_OK);
 
   g_debug ("Waiting for buffers");
 
-  g_mutex_lock (&mutex);
-  while (bytes_received < data_size) {
-    g_cond_wait (&cond, &mutex);
-  }
-  g_mutex_unlock (&mutex);
+  /* It is important that we run the main loop since that's where internal
+   * libnice callbacks (e.g. for G_IO_OUT) will be handled. Once we are done,
+   * check_if_done() will call g_main_loop_quit().
+   */
+  g_main_loop_run (loop);
 
-  g_assert_cmpuint (bytes_received, ==, data_size);
+  g_assert_cmpuint (
+      nice_test_instrument_send_get_messages_sent (),
+      >=,
+      MIN_MESSAGES_TO_SEND_FOR_PASS);
+  g_assert_cmpuint (get_bytes_received (), >=, MIN_MESSAGES_TO_SEND_FOR_PASS);
   g_debug ("We received expected data size");
 
   gst_element_set_state (nicesink_pipeline, GST_STATE_NULL);
   gst_object_unref (nicesink_pipeline);
 
+#if GST_CHECK_VERSION(1, 18, 0)
   gst_check_teardown_pad_by_name (nicesrc, "src");
+#else
+  /* CI on centos:8 uses GStreamer v1.16.1 which lacks
+   * https://gitlab.freedesktop.org/gstreamer/gstreamer/-/commit/9861ad2e12011aeece51f838a94dbc5712f98bfb
+   * The first stable GStreamer release with that fix is v1.18.0. So manually do
+   * a teardown since we're on a version older than that.
+   */
+  gst_object_unref (sinkpad);
+#endif
   gst_check_teardown_element (nicesrc);
 
   nice_address_free (addr);

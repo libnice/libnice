@@ -1101,16 +1101,19 @@ nice_agent_class_init (NiceAgentClass *klass)
    * @stream_id: The ID of the stream
    * @component_id: The ID of the component
    *
-   * This signal is fired on the reliable #NiceAgent when the underlying reliable
-   * transport becomes writable.
+   * This signal is fired on #NiceAgent when the underlying transport becomes writable.
    * This signal is only emitted when the nice_agent_send() function returns less
    * bytes than requested to send (or -1) and once when the connection
    * is established.
+   *
+   * Note: Since 0.1.23 this signal also fires for non-reliable transports.
+   * See https://gitlab.freedesktop.org/libnice/libnice/-/issues/202.
    *
    * Since: 0.0.11
    */
   signals[SIGNAL_RELIABLE_TRANSPORT_WRITABLE] =
       g_signal_new (
+          // TODO: Rename to "transport-writable" now that non-reliable transports are supported.
           "reliable-transport-writable",
           G_OBJECT_CLASS_TYPE (klass),
           G_SIGNAL_RUN_LAST,
@@ -2551,9 +2554,7 @@ void agent_signal_new_selected_pair (NiceAgent *agent, guint stream_id,
   agent_queue_signal (agent, signals[SIGNAL_NEW_SELECTED_PAIR],
       stream_id, component_id, lcandidate->foundation, rcandidate->foundation);
 
-  if(agent->reliable && nice_socket_is_reliable (lc->sockptr)) {
-    agent_signal_socket_writable (agent, component);
-  }
+  agent_signal_socket_writable (agent, component);
 }
 
 void agent_signal_new_candidate (NiceAgent *agent, NiceCandidate *candidate)

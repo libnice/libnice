@@ -24,6 +24,7 @@
  * Contributors:
  *   Dafydd Harries, Collabora Ltd.
  *   Youness Alaoui, Collabora Ltd.
+ *   Martin Nordholts, Axis Communications AB, 2025.
  *
  * Alternatively, the contents of this file may be used under the terms of the
  * the GNU Lesser General Public License Version 2.1 (the "LGPL"), in which
@@ -75,11 +76,18 @@ struct UdpBsdSocketPrivate
   /* read-only */
   GMainContext *context;
 
+  /* We follow the pattern set by `TcpPriv` and don't protect this data with a
+   * mutex.
+   */
+  NiceSocketWritableCb writable_cb;
+  gpointer writable_data;
+
   GMutex mutex;
 
   /* protected by mutex */
   NiceAddress niceaddr;
   GSocketAddress *gaddr;
+  GSource *io_source;
 };
 
 NiceSocket *
@@ -207,6 +215,11 @@ socket_close (NiceSocket *sock)
 
   g_clear_object (&priv->gaddr);
   g_mutex_clear (&priv->mutex);
+  if (priv->io_source) {
+    g_source_destroy (priv->io_source);
+    g_source_unref (priv->io_source);
+    priv->io_source = NULL;
+  }
   if (priv->context) {
     g_main_context_unref (priv->context);
     priv->context = NULL;
@@ -286,6 +299,42 @@ socket_recv_messages (NiceSocket *sock,
   return i;
 }
 
+static gboolean
+_udp_bsd_io_callback (GSocket *gsocket, GIOCondition condition, gpointer data)
+{
+  NiceSocket *sock = (NiceSocket *) data;
+  struct UdpBsdSocketPrivate *priv = sock->priv;
+
+  if (!(condition & G_IO_OUT)) {
+    /* The source must be kept alive as the socket is not writable. */
+    return G_SOURCE_CONTINUE;
+  }
+
+  /* From tcp-bsd.c. Unsure if needed, but kept just in case. */
+  if (g_source_is_destroyed (g_main_current_source ())) {
+    nice_debug ("Source was destroyed. Avoided race condition in udp-bsd.c:_udp_bsd_io_callback");
+    g_mutex_unlock (&priv->mutex);
+    return G_SOURCE_REMOVE;
+  }
+
+  /* The socket is now writable. Assume this was the last time we had to wait
+   * for the socket to become writable. If this was _not_ the last time, we will
+   * simply set up this source later again when we get the next
+   * G_IO_ERROR_WOULD_BLOCK.
+   */
+  g_mutex_lock (&priv->mutex);
+  g_source_destroy (priv->io_source);
+  g_source_unref (priv->io_source);
+  priv->io_source = NULL;
+  g_mutex_unlock (&priv->mutex);
+
+  if (priv->writable_cb) {
+    priv->writable_cb (sock, priv->writable_data);
+  }
+
+  return G_SOURCE_REMOVE;
+}
+
 static gint
 socket_send_messages (NiceSocket *sock, const NiceAddress *to,
     const NiceOutputMessage *messages, guint n_messages)
@@ -353,6 +402,22 @@ socket_send_messages (NiceSocket *sock, const NiceAddress *to,
   if (len < 0) {
     if (g_error_matches (child_error, G_IO_ERROR, G_IO_ERROR_WOULD_BLOCK)) {
       len = 0;
+
+      g_mutex_lock (&priv->mutex);
+      if (!priv->io_source && sock->fileno && priv->context) {
+        priv->io_source = g_socket_create_source (sock->fileno, G_IO_OUT, NULL);
+        /* `sock` is valid throughout the lifetime of the `GSource` because
+         * before `sock` is destroyed we remove the GSource in its
+         * `socket_close()`.
+         */
+        g_source_set_callback (
+            priv->io_source,
+            (GSourceFunc) G_CALLBACK (_udp_bsd_io_callback),
+            sock,
+            NULL);
+        g_source_attach (priv->io_source, priv->context);
+      }
+      g_mutex_unlock (&priv->mutex);
     } else if (nice_debug_is_verbose()) {
       union {
         struct sockaddr_storage ss;
@@ -412,5 +477,9 @@ static void
 socket_set_writable_callback (NiceSocket *sock,
     NiceSocketWritableCb callback, gpointer user_data)
 {
+  struct UdpBsdSocketPrivate *priv = sock->priv;
+
+  priv->writable_cb = callback;
+  priv->writable_data = user_data;
 }
 

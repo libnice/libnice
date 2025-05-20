@@ -24,6 +24,7 @@
  *
  * Contributors:
  *   Dafydd Harries, Collabora Ltd.
+ *   Martin Nordholts, Axis Communications AB, 2025.
  *
  * Alternatively, the contents of this file may be used under the terms of the
  * the GNU Lesser General Public License Version 2.1 (the "LGPL"), in which
@@ -246,6 +247,7 @@ gst_nice_sink_render_buffers (GstNiceSink * sink, GstBuffer ** buffers,
   guint i, mem;
   guint written = 0;
   gint ret;
+  gboolean keep_sending = TRUE;
   GstFlowReturn flow_ret = GST_FLOW_OK;
 
   GST_LOG_OBJECT (sink, "%u buffers, %u memories -> to be sent",
@@ -281,20 +283,45 @@ gst_nice_sink_render_buffers (GstNiceSink * sink, GstBuffer ** buffers,
 
   GST_OBJECT_LOCK (sink);
   do {
+    GError *err = NULL;
+
     ret = nice_agent_send_messages_nonblocking(sink->agent, sink->stream_id,
-        sink->component_id, msgs + written, num_buffers - written, NULL, NULL);
+        sink->component_id, msgs + written, num_buffers - written, NULL, &err);
 
     if (ret > 0)
       written += ret;
 
-    if (sink->reliable && written < num_buffers)
-      g_cond_wait (&sink->writable_cond, GST_OBJECT_GET_LOCK (sink));
+    if (written < num_buffers) {
+      gboolean wait_for_writable =
+          sink->reliable || g_error_matches (err, G_IO_ERROR, G_IO_ERROR_WOULD_BLOCK);
+      /* Note: We must check `sink->flushing` before we `g_cond_wait()` in case
+       * it became `TRUE` before we got the lock.
+       */
+      if (wait_for_writable && !sink->flushing) {
+        GST_LOG_OBJECT (sink, "Waiting for writable after %d of %d messages", written, num_buffers);
+        g_cond_wait (&sink->writable_cond, GST_OBJECT_GET_LOCK (sink));
+      } else if (!sink->reliable && err) {
+        /* We are in non-reliable mode and something serious has happened. Let's
+         * stop sending to not risk ending up in an infinite loop.
+         */
+        GST_WARNING_OBJECT (
+            sink,
+            "Failed sending %d of %d messages: %s",
+            num_buffers - written,
+            num_buffers,
+            err->message);
+        keep_sending = FALSE;
+      }
+    }
 
     if (sink->flushing) {
       flow_ret = GST_FLOW_FLUSHING;
-      break;
+      keep_sending = FALSE;
     }
-  } while (sink->reliable && written < num_buffers);
+
+    /* Don't `continue` or `break` the loop because that leaks any `err`s. */
+    g_clear_error (&err);
+  } while (keep_sending && written < num_buffers);
   GST_OBJECT_UNLOCK (sink);
 
   for (i = 0; i < mem; ++i)
@@ -430,10 +457,11 @@ gst_nice_sink_set_property (
       } else {
         sink->agent = g_value_dup_object (value);
         g_object_get (sink->agent, "reliable", &sink->reliable, NULL);
-        if (sink->reliable)
-          sink->writable_id = g_signal_connect (sink->agent,
-              "reliable-transport-writable",
-              (GCallback) _reliable_transport_writable, sink);
+        sink->writable_id = g_signal_connect (
+            sink->agent,
+            "reliable-transport-writable",
+            (GCallback) _reliable_transport_writable,
+            sink);
       }
       break;
 
