@@ -22,10 +22,10 @@ endif
 soversion = 10
 libversion = '10.14.0'
 
-glib_req = '>= 2.54'
-gnutls_req = '>= 2.12.0'
-gupnp_igd_req = '>= 0.2.4'
-gst_req = '>= 1.0.0'
+glib_req = '>= 2.56'
+gnutls_req = '>= 3.6.0'
+gupnp_igd_req = '>= 0.2.5'
+gst_req = '>= 1.14.0'
 
 nice_datadir = join_paths(get_option('prefix'), get_option('datadir'))
 
