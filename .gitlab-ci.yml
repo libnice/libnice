@@ -68,11 +68,8 @@ build-fedora-container:42:
     FDO_DISTRIBUTION_PACKAGES: 'git gtk-doc gnutls-devel gupnp-igd-devel gstreamer1-devel gstreamer1-plugins-base gobject-introspection-devel valgrind net-tools graphviz meson ninja-build lcov python3-pip'
     FDO_DISTRIBUTION_EXEC: 'tests/docker/fedora42/pip-installs.sh'
 
-build centos8:
+.build:
   stage: build
-  extends:
-  - .fdo.distribution-image@centos
-  - .libnice.centos:8
   interruptible: true
   variables:
     PREFIX: "${CI_PROJECT_DIR}/libnice-prefix"
@@ -87,6 +84,17 @@ build centos8:
     paths:
       - build/
 
+build centos:8:
+  extends:
+  - .fdo.distribution-image@centos
+  - .libnice.centos:8
+  - .build
+
+build fedora:42:
+  extends:
+  - .fdo.distribution-image@fedora
+  - .libnice.fedora:42
+  - .build
 
 .build windows:
   image: 'registry.freedesktop.org/gstreamer/gstreamer/amd64/windows:2023-08-24.0-main'
@@ -237,14 +245,10 @@ build msvc x86 openssl:
   variables:
     ARCH: 'x86'
 
-test centos8:
+.test:
   stage: test
   extends:
-  - .fdo.distribution-image@centos
-  - .libnice.centos:8
   interruptible: true
-  needs:
-    - build centos8
   except:
     - schedules
   script:
@@ -264,22 +268,38 @@ test centos8:
     paths:
       - build/meson-logs/
 
-test valgrind centos8:
-  extends: test centos8
+test centos:8:
+  extends:
+  - .fdo.distribution-image@centos
+  - .libnice.centos:8
+  - .test
+  needs:
+    - build centos:8
+
+test fedora:42:
+  extends:
+  - .fdo.distribution-image@fedora
+  - .libnice.fedora:42
+  - .test
+  needs:
+  - build fedora:42
+
+test valgrind centos:8:
+  extends: test centos:8
   script:
     - ifconfig
     - meson configure build -Dgtk_doc=disabled
     - ninja -C build/
     - meson test -C build/ --setup valgrind --print-errorlogs
 
-doc-and-install centos8:
+doc-and-install centos:8:
   stage: test
   extends:
   - .fdo.distribution-image@centos
   - .libnice.centos:8
   interruptible: true
   needs:
-    - build centos8
+    - build centos:8
   except:
     - schedules
   variables:
@@ -319,7 +339,7 @@ submit-to-coverity:
 pages:
   stage: deploy
   dependencies:
-    - doc-and-install centos8
+    - doc-and-install centos:8
   only:
     - latest-release
   artifacts:
