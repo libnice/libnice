@@ -12,3 +12,5 @@ lcov_excl_br_line = LCOV_EXCL_BR_LINE|g_return_if_fail|g_return_val_if_fail|g_as
 
 # Similarly for unreachable assertions.
 lcov_excl_line = LCOV_EXCL_LINE|g_return_if_reached|g_return_val_if_reached|g_assert_not_reached|g_warn_if_reached|nice_debug|g_error
+
+genhtml_flat_view = 1
