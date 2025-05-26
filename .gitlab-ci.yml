@@ -27,13 +27,13 @@ include:
 .libnice.centos:8:
   variables:
     FDO_DISTRIBUTION_VERSION: '8'
-    FDO_DISTRIBUTION_TAG: '2025-05-26-1'
+    FDO_DISTRIBUTION_TAG: '2025-05-26-2'
     FDO_UPSTREAM_REPO: 'libnice/libnice'
 
 .libnice.fedora:38:
   variables:
     FDO_DISTRIBUTION_VERSION: '38'
-    FDO_DISTRIBUTION_TAG: '2023-07-17'
+    FDO_DISTRIBUTION_TAG: '2025-05-26'
     FDO_UPSTREAM_REPO: 'libnice/libnice'
 
 check-allow-collaboration:
@@ -56,7 +56,7 @@ build-centos-container:8:
   - .libnice.centos:8               # our template job above
   stage: containers
   variables:
-    FDO_DISTRIBUTION_PACKAGES: 'git gnutls-devel gstreamer1-devel gobject-introspection-devel valgrind net-tools graphviz python3-pip'
+    FDO_DISTRIBUTION_PACKAGES: 'git gnutls-devel gstreamer1-devel gstreamer1-plugins-base gobject-introspection-devel valgrind net-tools graphviz python3-pip'
     FDO_DISTRIBUTION_EXEC: 'tests/docker/centos8/pip-installs.sh'
 
 build-fedora-container:38:
@@ -65,7 +65,7 @@ build-fedora-container:38:
   - .libnice.fedora:38              # our template job above
   stage: containers
   variables:
-    FDO_DISTRIBUTION_PACKAGES: 'git gtk-doc gnutls-devel gupnp-igd-devel gstreamer1-devel gobject-introspection-devel valgrind net-tools graphviz meson ninja-build lcov python3-pip'
+    FDO_DISTRIBUTION_PACKAGES: 'git gtk-doc gnutls-devel gupnp-igd-devel gstreamer1-devel gstreamer1-plugins-base gobject-introspection-devel valgrind net-tools graphviz meson ninja-build lcov python3-pip'
     FDO_DISTRIBUTION_EXEC: 'tests/docker/fedora38/pip-installs.sh'
 
 build centos8:
