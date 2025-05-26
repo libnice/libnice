@@ -611,3 +611,15 @@
    ...
    fun:_dl_allocate_tls
 }
+
+
+# Ignore GSSDP leaks in RHEL 8
+
+{
+    gssdp-string-rhel8
+    Memcheck:Leak
+    ...
+    obj:*/libgssdp-1.0*
+    ...
+    fun:g_initable_new_valist
+}

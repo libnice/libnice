@@ -251,7 +251,6 @@ test:
     - schedules
   script:
     - ifconfig
-    - source scl_source enable rh-python36 && true
     - ninja -C build/
     - meson test -C build/ --setup debug
     - ninja -C build coverage
@@ -271,7 +270,6 @@ test valgrind:
   extends: test
   script:
     - ifconfig
-    - source scl_source enable rh-python36 && true
     - meson configure build -Dgtk_doc=disabled
     - ninja -C build/
     - meson test -C build/ --setup valgrind --print-errorlogs
