@@ -30,10 +30,10 @@ include:
     FDO_DISTRIBUTION_TAG: '2025-05-26-2'
     FDO_UPSTREAM_REPO: 'libnice/libnice'
 
-.libnice.fedora:38:
+.libnice.fedora:42:
   variables:
-    FDO_DISTRIBUTION_VERSION: '38'
-    FDO_DISTRIBUTION_TAG: '2025-05-26'
+    FDO_DISTRIBUTION_VERSION: '42'
+    FDO_DISTRIBUTION_TAG: '2025-05-26-1'
     FDO_UPSTREAM_REPO: 'libnice/libnice'
 
 check-allow-collaboration:
@@ -59,14 +59,14 @@ build-centos-container:8:
     FDO_DISTRIBUTION_PACKAGES: 'git gnutls-devel gstreamer1-devel gstreamer1-plugins-base gobject-introspection-devel valgrind net-tools graphviz python3-pip'
     FDO_DISTRIBUTION_EXEC: 'tests/docker/centos8/pip-installs.sh'
 
-build-fedora-container:38:
+build-fedora-container:42:
   extends:
   - .fdo.container-build@fedora     # the CI template
-  - .libnice.fedora:38              # our template job above
+  - .libnice.fedora:42              # our template job above
   stage: containers
   variables:
     FDO_DISTRIBUTION_PACKAGES: 'git gtk-doc gnutls-devel gupnp-igd-devel gstreamer1-devel gstreamer1-plugins-base gobject-introspection-devel valgrind net-tools graphviz meson ninja-build lcov python3-pip'
-    FDO_DISTRIBUTION_EXEC: 'tests/docker/fedora38/pip-installs.sh'
+    FDO_DISTRIBUTION_EXEC: 'tests/docker/fedora42/pip-installs.sh'
 
 build centos8:
   stage: build
@@ -296,7 +296,7 @@ submit-to-coverity:
  stage: test
  extends:
   - .fdo.distribution-image@fedora
-  - .libnice.fedora:38
+  - .libnice.fedora:42
  variables:
    COVERITY_PROJECT: libnice
    PREFIX: "${CI_PROJECT_DIR}/libnice-prefix"
