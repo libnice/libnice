@@ -1538,7 +1538,7 @@ nice_component_input_source_new (NiceAgent *agent, guint stream_id,
   g_source_set_name ((GSource *) component_source, "ComponentSource");
 
   component_source->component_socket_sources_age = 0;
-  component_source->pollable_stream = g_object_ref (pollable_istream);
+  component_source->pollable_stream = G_OBJECT (g_object_ref (pollable_istream));
   g_weak_ref_init (&component_source->agent_ref, agent);
   component_source->stream_id = stream_id;
   component_source->component_id = component_id;
