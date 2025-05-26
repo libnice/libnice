@@ -24,10 +24,10 @@ include:
   - project: 'freedesktop/ci-templates'
     file: '/templates/fedora.yml'
 
-.libnice.centos:7:
+.libnice.centos:8:
   variables:
-    FDO_DISTRIBUTION_VERSION: '7'
-    FDO_DISTRIBUTION_TAG: '2022-10-17-cov'
+    FDO_DISTRIBUTION_VERSION: '8'
+    FDO_DISTRIBUTION_TAG: '2025-05-26-1'
     FDO_UPSTREAM_REPO: 'libnice/libnice'
 
 .libnice.fedora:38:
@@ -50,14 +50,14 @@ check-allow-collaboration:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
       when: always
 
-build-centos-container:7:
+build-centos-container:8:
   extends:
   - .fdo.container-build@centos     # the CI template
-  - .libnice.centos:7               # our template job above
+  - .libnice.centos:8               # our template job above
   stage: containers
   variables:
-    FDO_DISTRIBUTION_PACKAGES: 'git gtk-doc gnutls-devel gupnp-igd-devel gstreamer1-devel gobject-introspection-devel valgrind net-tools centos-release-scl graphviz'
-    FDO_DISTRIBUTION_EXEC: 'tests/docker/centos7-meson/pip-installs.sh'
+    FDO_DISTRIBUTION_PACKAGES: 'git gnutls-devel gstreamer1-devel gobject-introspection-devel valgrind net-tools graphviz python3-pip'
+    FDO_DISTRIBUTION_EXEC: 'tests/docker/centos8/pip-installs.sh'
 
 build-fedora-container:38:
   extends:
@@ -68,11 +68,11 @@ build-fedora-container:38:
     FDO_DISTRIBUTION_PACKAGES: 'git gtk-doc gnutls-devel gupnp-igd-devel gstreamer1-devel gobject-introspection-devel valgrind net-tools graphviz meson ninja-build lcov python3-pip'
     FDO_DISTRIBUTION_EXEC: 'tests/docker/fedora38/pip-installs.sh'
 
-build:
+build centos8:
   stage: build
   extends:
   - .fdo.distribution-image@centos
-  - .libnice.centos:7
+  - .libnice.centos:8
   interruptible: true
   variables:
     PREFIX: "${CI_PROJECT_DIR}/libnice-prefix"
@@ -81,8 +81,6 @@ build:
   before_script:
     - mkdir -p "${CI_PROJECT_DIR}"
   script:
-    ## && true to make gitlab-ci happy
-    - source scl_source enable rh-python36 && true
     - meson --werror --warnlevel 2 -Dgtk_doc=enabled --prefix=$PREFIX -Db_coverage=true build/
     - ninja -C build/
   artifacts:
@@ -239,14 +237,14 @@ build msvc x86 openssl:
   variables:
     ARCH: 'x86'
 
-test:
+test centos8:
   stage: test
   extends:
   - .fdo.distribution-image@centos
-  - .libnice.centos:7
+  - .libnice.centos:8
   interruptible: true
   needs:
-    - build
+    - build centos8
   except:
     - schedules
   script:
@@ -266,28 +264,27 @@ test:
     paths:
       - build/meson-logs/
 
-test valgrind:
-  extends: test
+test valgrind centos8:
+  extends: test centos8
   script:
     - ifconfig
     - meson configure build -Dgtk_doc=disabled
     - ninja -C build/
     - meson test -C build/ --setup valgrind --print-errorlogs
 
-doc-and-install:
+doc-and-install centos8:
   stage: test
   extends:
   - .fdo.distribution-image@centos
-  - .libnice.centos:7
+  - .libnice.centos:8
   interruptible: true
   needs:
-    - build
+    - build centos8
   except:
     - schedules
   variables:
     PREFIX: "${CI_PROJECT_DIR}/libnice-prefix"
   script:
-    - source scl_source enable rh-python36 && true
     - ninja -C build/ libnice-doc
     - ninja -C build/ install
     - ls -lR ${PREFIX}
@@ -322,7 +319,7 @@ submit-to-coverity:
 pages:
   stage: deploy
   dependencies:
-    - doc-and-install
+    - doc-and-install centos8
   only:
     - latest-release
   artifacts:
