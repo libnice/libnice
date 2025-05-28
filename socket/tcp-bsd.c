@@ -76,8 +76,6 @@ typedef struct {
   NiceSocket *passive_parent;
 } TcpPriv;
 
-#define MAX_QUEUE_LENGTH 20
-
 static void socket_close (NiceSocket *sock);
 static gint socket_recv_messages (NiceSocket *sock,
     NiceInputMessage *recv_messages, guint n_recv_messages);
