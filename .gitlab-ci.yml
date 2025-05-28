@@ -27,7 +27,7 @@ include:
 .libnice.centos:8:
   variables:
     FDO_DISTRIBUTION_VERSION: '8'
-    FDO_DISTRIBUTION_TAG: '2025-05-26-2'
+    FDO_DISTRIBUTION_TAG: '2025-05-26-3'
     FDO_UPSTREAM_REPO: 'libnice/libnice'
 
 .libnice.fedora:42:
