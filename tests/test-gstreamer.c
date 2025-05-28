@@ -169,9 +169,9 @@ cb_candidate_gathering_done (NiceAgent * agent, guint stream_id, gpointer data)
   g_debug ("Candidates gathered on agent %p, stream: %d",
       agent, stream_id);
 
-  candidates = nice_agent_get_local_candidates (agent, stream_id, 1);
+  candidates = nice_agent_get_local_candidates (agent, stream_id, NICE_COMPONENT_TYPE_RTP);
 
-  nice_agent_set_remote_candidates (NICE_AGENT (data), stream_id, 1,
+  nice_agent_set_remote_candidates (NICE_AGENT (data), stream_id, NICE_COMPONENT_TYPE_RTP,
       candidates);
 
   g_debug ("Got %d candidates", g_slist_length (candidates));
@@ -236,8 +236,8 @@ GST_START_TEST (buffer_list_test)
   nice_agent_add_local_address (sink_agent, addr);
   nice_agent_add_local_address (src_agent, addr);
 
-  sink_stream = nice_agent_add_stream (sink_agent, 1);
-  src_stream = nice_agent_add_stream (src_agent, 1);
+  sink_stream = nice_agent_add_stream (sink_agent, NICE_COMPONENT_TYPE_RTP);
+  src_stream = nice_agent_add_stream (src_agent, NICE_COMPONENT_TYPE_RTP);
 
   nice_agent_attach_recv (sink_agent, sink_stream, NICE_COMPONENT_TYPE_RTP,
       NULL, recv_cb, NULL);
@@ -265,9 +265,9 @@ GST_START_TEST (buffer_list_test)
   nicesrc = gst_check_setup_element ("nicesrc");
 
   g_object_set (nicesink, "agent", sink_agent, "stream", sink_stream,
-      "component", 1, NULL);
+      "component", NICE_COMPONENT_TYPE_RTP, NULL);
   g_object_set (nicesrc, "agent", src_agent, "stream", src_stream, "component",
-      1, NULL);
+      NICE_COMPONENT_TYPE_RTP, NULL);
 
   srcpad = gst_check_setup_src_pad_by_name (nicesink, &srctemplate, "sink");
   sinkpad = gst_check_setup_sink_pad_by_name (nicesrc, &sinktemplate, "src");
