@@ -65,6 +65,9 @@ typedef struct _TestState {
   gsize min_messages_to_send_for_pass;
   guint bytes_received;
   guint min_bytes_received_for_pass;
+  /* How many times each RTP seqnum is received. If nicesink is reliable
+   * we expect each sent seqnum to also be received. */
+  int seqnums_received[RTP_PACKETS];
 } TestState;
 
 
@@ -123,8 +126,13 @@ count_bytes (GstBuffer ** buffer, guint idx, gpointer data)
   TestState *test_state = data;
   gsize size = gst_buffer_get_size (*buffer);
 
+  guint16 seqnum;
+  gst_buffer_extract (*buffer, 2, &seqnum, sizeof (seqnum));
+  seqnum = ntohs (seqnum);
+
   g_mutex_lock(&mutex);
   test_state->bytes_received += size;
+  test_state->seqnums_received[seqnum]++;
   g_mutex_unlock (&mutex);
 
   check_if_done (data);
@@ -284,6 +292,7 @@ cb_component_state_changed (NiceAgent * agent, guint stream_id,
 
 static void
 nice_gstreamer_test (
+    gboolean reliable,
     gboolean ice_udp,
     gboolean ice_tcp,
     guint rtp_packets,
@@ -333,8 +342,9 @@ nice_gstreamer_test (
   addr = nice_address_new ();
   nice_address_set_from_string (addr, "127.0.0.1");
 
-  sink_agent = nice_agent_new (NULL, NICE_COMPATIBILITY_RFC5245);
-  src_agent = nice_agent_new (NULL, NICE_COMPATIBILITY_RFC5245);
+  NiceAgentOption flags = reliable ? NICE_AGENT_OPTION_RELIABLE : NICE_AGENT_OPTION_NONE;
+  sink_agent = nice_agent_new_full (NULL, NICE_COMPATIBILITY_RFC5245, flags);
+  src_agent = nice_agent_new_full (NULL, NICE_COMPATIBILITY_RFC5245, flags);
 
   g_object_set (G_OBJECT (sink_agent), "upnp", FALSE, "ice-udp", ice_udp, "ice-tcp", ice_tcp, NULL);
   g_object_set (G_OBJECT (src_agent), "upnp", FALSE, "ice-udp", ice_udp, "ice-tcp", ice_tcp, NULL);
@@ -427,6 +437,27 @@ nice_gstreamer_test (
 
   g_debug ("We received expected data size");
 
+  /* Now check how many seqnum errors we got. */
+  guint seqnum_errors = 0;
+  for (guint32 seqnum = 0; seqnum < rtp_packets; seqnum++) {
+    if (test_state->seqnums_received[seqnum] != test_state->times_to_send) {
+      seqnum_errors++;
+      if (seqnum_errors < 20) { /* More than 20 is irrelevant to see details of. */
+        gboolean seqnum_errors_allowed = !reliable;
+        g_debug (
+            "seqnum %u error (%s): wanted %d, got %d\n",
+            seqnum,
+            seqnum_errors_allowed ? "allowed" : ("NOT allowed"),
+            test_state->times_to_send,
+            test_state->seqnums_received[seqnum]);
+      }
+    }
+  }
+  if (reliable) {
+    /* In reliable mode we don't tolerate any seqnum errors. */
+    g_assert_cmpuint (seqnum_errors, ==, 0);
+  }
+
   gst_element_set_state (nicesink_pipeline, GST_STATE_NULL);
   gst_object_unref (nicesink_pipeline);
 
@@ -447,9 +478,10 @@ nice_gstreamer_test (
   test_state->loop = NULL;
 }
 
-GST_START_TEST (nicesink_ice_udp_test)
+GST_START_TEST (nicesink_non_reliable_ice_udp_test)
 {
   nice_gstreamer_test (
+      FALSE /* reliable */,
       TRUE /* ice_udp */,
       FALSE /* ice_tcp */,
       RTP_PACKETS,
@@ -467,9 +499,10 @@ GST_START_TEST (nicesink_ice_udp_test)
 }
 GST_END_TEST;
 
-GST_START_TEST (nicesink_ice_tcp_test)
+GST_START_TEST (nicesink_non_reliable_ice_tcp_test)
 {
   nice_gstreamer_test (
+      FALSE /* reliable */,
       FALSE /* ice_udp */,
       TRUE /* ice_tcp */,
       RTP_PACKETS,
@@ -484,19 +517,36 @@ GST_START_TEST (nicesink_ice_tcp_test)
 }
 GST_END_TEST;
 
+GST_START_TEST (nicesink_reliable_ice_tcp_test)
+{
+  nice_gstreamer_test (
+      TRUE /* reliable */,
+      FALSE /* ice_udp */,
+      TRUE /* ice_tcp */,
+      RTP_PACKETS,
+      10 /* times_to_send */,
+      /* In reliable mode we expect 100% of sent messages to be received. */
+      100 /* received_packets_percentage_for_pass */);
+}
+GST_END_TEST;
+
 static Suite *
 nice_gstreamer_suite (void)
 {
   Suite *s = suite_create ("nice_gstreamer_test");
   TCase *tc = NULL;
 
-  tc = tcase_create ("nicesink_ice_udp_test");
+  tc = tcase_create ("nicesink_non_reliable_ice_udp_test");
   suite_add_tcase (s, tc);
-  tcase_add_test (tc, nicesink_ice_udp_test);
+  tcase_add_test (tc, nicesink_non_reliable_ice_udp_test);
 
-  tc = tcase_create ("nicesink_ice_tcp_test");
+  tc = tcase_create ("nicesink_non_reliable_ice_tcp_test");
   suite_add_tcase (s, tc);
-  tcase_add_test (tc, nicesink_ice_tcp_test);
+  tcase_add_test (tc, nicesink_non_reliable_ice_tcp_test);
+
+  tc = tcase_create ("nicesink_reliable_ice_tcp_test");
+  suite_add_tcase (s, tc);
+  tcase_add_test (tc, nicesink_reliable_ice_tcp_test);
 
   return s;
 }

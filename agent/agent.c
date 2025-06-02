@@ -5829,7 +5829,7 @@ nice_agent_send_messages_nonblocking_internal (
 
             /* If we sent part of the message already, then send the rest
              * reliably so the message is sent as a whole even if it's split */
-            if (current_offset == 0)
+            if (current_offset == 0 && !agent->reliable)
               n_sent_framed = nice_socket_send_messages (sock, addr,
                   &local_message, 1);
             else
