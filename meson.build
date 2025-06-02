@@ -164,7 +164,6 @@ if warning_level >= 2
     '-Wredundant-decls',
     '-Wno-unused-parameter',
     '-Wno-missing-field-initializers',
-    '-Wdeclaration-after-statement',
     '-Wformat=2',
     '-Wold-style-definition',
     '-Wcast-align',
