@@ -90,6 +90,7 @@ if gst_dep.found() and not static_build
       install: false)
     gst_env = environment()
     gst_env.append('GST_PLUGIN_PATH_1_0', join_paths(meson.current_build_dir(), '..', 'gst'))
+    gst_env.append('CK_DEFAULT_TIMEOUT', '30')
     test('test-gstreamer', exe, env: gst_env)
   endif
 endif
