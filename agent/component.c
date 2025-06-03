@@ -246,6 +246,23 @@ on_candidate_refreshes_pruned (NiceAgent *agent, NiceCandidateImpl *candidate)
 }
 
 void
+nice_component_prune_relay_candidate (NiceAgent *agent,
+    NiceComponent *cmp, NiceCandidateImpl *relay_cand)
+{
+  NiceStream *stream;
+
+  stream = agent_find_stream (agent, cmp->stream_id);
+
+  discovery_prune_socket (agent, relay_cand->sockptr);
+  if (stream) {
+    conn_check_prune_socket (agent, stream, cmp, relay_cand->sockptr);
+  }
+
+  refresh_prune_candidate_async (agent, relay_cand,
+      (NiceTimeoutLockedCallback) on_candidate_refreshes_pruned);
+}
+
+void
 nice_component_clean_turn_servers (NiceAgent *agent, NiceComponent *cmp)
 {
   GSList *i;
@@ -294,14 +311,7 @@ nice_component_clean_turn_servers (NiceAgent *agent, NiceComponent *cmp)
 
   for (i = relay_candidates; i; i = i->next) {
     NiceCandidateImpl * candidate = i->data;
-
-    discovery_prune_socket (agent, candidate->sockptr);
-    if (stream) {
-      conn_check_prune_socket (agent, stream, cmp, candidate->sockptr);
-    }
-
-    refresh_prune_candidate_async (agent, candidate,
-        (NiceTimeoutLockedCallback) on_candidate_refreshes_pruned);
+    nice_component_prune_relay_candidate (agent, cmp, candidate);
   }
 }
 

@@ -3867,6 +3867,8 @@ priv_add_new_turn_refresh (NiceAgent *agent, CandidateDiscovery *cdisco,
     NiceCandidateImpl *relay_cand, guint lifetime)
 {
   CandidateRefresh *cand;
+  NiceStream *stream = NULL;
+  NiceComponent *component = NULL;
 
   if (cdisco->turn->type == NICE_RELAY_TYPE_TURN_TLS &&
       (agent->compatibility == NICE_COMPATIBILITY_OC2007 ||
@@ -3892,8 +3894,12 @@ priv_add_new_turn_refresh (NiceAgent *agent, CandidateDiscovery *cdisco,
     cand->stun_resp_msg.key = NULL;
   }
 
+  /* Although it may seem unintuitive to unconditionally add cand to
+   * refresh_list, all code paths below actually do the right thing no matter if
+   * cand is going to be used or immediately discarded. */
+  agent->refresh_list = g_slist_append (agent->refresh_list, cand);
+
   if (lifetime > 0) {
-    agent->refresh_list = g_slist_append (agent->refresh_list, cand);
     nice_debug ("Agent %p : Adding new refresh candidate %p with timeout %d",
         agent, cand, priv_calc_turn_timeout (lifetime));
     /* step: also start the refresh timer */
@@ -3905,14 +3911,18 @@ priv_add_new_turn_refresh (NiceAgent *agent, CandidateDiscovery *cdisco,
 
     nice_debug ("timer source is : %p", cand->timer_source);
   } else {
-    agent->pruning_refreshes = g_slist_append (agent->pruning_refreshes, cand);
-    nice_debug ("Agent %p : Sending request to remove TURN allocation "
-        "for refresh %p", agent, cand);
-    cand->disposing = TRUE;
-    priv_turn_allocate_refresh_tick_unlocked (agent, cand);
-    if (relay_cand->sockptr)
-      nice_socket_free (relay_cand->sockptr);
-    nice_candidate_free ((NiceCandidate *)relay_cand);
+    stream = agent_find_stream (agent, cdisco->stream_id);
+    if (stream) {
+      component = nice_stream_find_component_by_id (stream, cdisco->component_id);
+      if (component) {
+        /* remove turn allocation */
+        nice_component_prune_relay_candidate (agent, component, relay_cand);
+      }
+    }
+    if (!stream || !component) {
+      refresh_free (agent, cand);
+      nice_candidate_free ((NiceCandidate *)relay_cand);
+    }
   }
 
   return;

@@ -324,6 +324,9 @@ nice_component_emit_io_callback (NiceAgent *agent, NiceComponent *component,
 gboolean
 nice_component_has_io_callback (NiceComponent *component);
 void
+nice_component_prune_relay_candidate (NiceAgent *agent,
+    NiceComponent *cmp, NiceCandidateImpl *relay_cand);
+void
 nice_component_clean_turn_servers (NiceAgent *agent, NiceComponent *component);
 
 
