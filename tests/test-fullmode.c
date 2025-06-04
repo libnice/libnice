@@ -39,6 +39,7 @@
 #endif
 
 #include "agent.h"
+#include "test-common.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -329,21 +330,6 @@ static void set_candidates (NiceAgent *from, guint from_stream,
   g_slist_free (cands);
 }
 
-static void set_credentials (NiceAgent *lagent, guint lstream,
-    NiceAgent *ragent, guint rstream)
-{
-  gchar *ufrag = NULL, *password = NULL;
-
-  nice_agent_get_local_credentials(lagent, lstream, &ufrag, &password);
-  nice_agent_set_remote_credentials (ragent, rstream, ufrag, password);
-  g_free (ufrag);
-  g_free (password);
-  nice_agent_get_local_credentials(ragent, rstream, &ufrag, &password);
-  nice_agent_set_remote_credentials (lagent, lstream, ufrag, password);
-  g_free (ufrag);
-  g_free (password);
-}
-
 static guint16
 get_port (NiceAgent *agent, guint stream_id, guint component_id)
 {
@@ -490,7 +476,7 @@ static int run_full_test (NiceAgent *lagent, NiceAgent *ragent, NiceAddress *bas
     g_assert_true (global_ragent_gathering_done == TRUE);
   }
 
-  set_credentials (lagent, ls_id, ragent, rs_id);
+  test_common_set_credentials (lagent, ls_id, ragent, rs_id);
 
   /* step: pass the remote candidates to agents  */
   set_candidates (ragent, rs_id, lagent, ls_id, NICE_COMPONENT_TYPE_RTP, USE_TURN);
@@ -613,7 +599,7 @@ static int run_full_test_delayed_answer (NiceAgent *lagent, NiceAgent *ragent, N
     g_assert_true (global_ragent_gathering_done == TRUE);
   }
 
-  set_credentials (lagent, ls_id, ragent, rs_id);
+  test_common_set_credentials (lagent, ls_id, ragent, rs_id);
 
   /* step: set remote candidates for agent R (answering party) */
   /* We have to disable TURN for this test because with the delayed answer,
@@ -736,7 +722,7 @@ static int run_full_test_wrong_password (NiceAgent *lagent, NiceAgent *ragent, N
 
   g_debug ("test-fullmode: Got local candidates...");
 
-  set_credentials (lagent, ls_id, ragent, rs_id);
+  test_common_set_credentials (lagent, ls_id, ragent, rs_id);
   nice_agent_set_remote_credentials (ragent, rs_id, "wrong", "password");
   nice_agent_set_remote_credentials (lagent, ls_id, "wrong2", "password2");
 
@@ -823,7 +809,7 @@ static int run_full_test_control_conflict (NiceAgent *lagent, NiceAgent *ragent,
 
   g_debug ("test-fullmode: Got local candidates...");
 
-  set_credentials (lagent, ls_id, ragent, rs_id);
+  test_common_set_credentials (lagent, ls_id, ragent, rs_id);
 
   /* step: pass the remote candidates to agents  */
   set_candidates (ragent, rs_id, lagent, ls_id, NICE_COMPONENT_TYPE_RTP, USE_TURN);

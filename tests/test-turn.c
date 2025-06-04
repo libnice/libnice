@@ -5,6 +5,8 @@
 #include <gio/gio.h>
 #include <agent.h>
 
+#include "test-common.h"
+
 static NiceComponentState global_lagent_state[2] = { NICE_COMPONENT_STATE_LAST, NICE_COMPONENT_STATE_LAST };
 static NiceComponentState global_ragent_state[2] = { NICE_COMPONENT_STATE_LAST, NICE_COMPONENT_STATE_LAST };
 static guint global_components_ready = 0;
@@ -136,21 +138,6 @@ static void set_candidates (NiceAgent *from, guint from_stream,
   g_slist_free (cands);
 }
 
-static void set_credentials (NiceAgent *lagent, guint lstream,
-    NiceAgent *ragent, guint rstream)
-{
-  gchar *ufrag = NULL, *password = NULL;
-
-  nice_agent_get_local_credentials(lagent, lstream, &ufrag, &password);
-  nice_agent_set_remote_credentials (ragent, rstream, ufrag, password);
-  g_free (ufrag);
-  g_free (password);
-  nice_agent_get_local_credentials(ragent, rstream, &ufrag, &password);
-  nice_agent_set_remote_credentials (lagent, lstream, ufrag, password);
-  g_free (ufrag);
-  g_free (password);
-}
-
 static void
 run_test(guint turn_port, gboolean is_ipv6,
     gboolean ice_udp, gboolean ice_tcp, gboolean force_relay,
@@ -242,7 +229,7 @@ run_test(guint turn_port, gboolean is_ipv6,
     g_main_context_iteration (NULL, TRUE);
   g_assert_true (global_ragent_gathering_done == TRUE);
 
-  set_credentials (lagent, ls_id, ragent, rs_id);
+  test_common_set_credentials (lagent, ls_id, ragent, rs_id);
 
   set_candidates (ragent, rs_id, lagent, ls_id, NICE_COMPONENT_TYPE_RTP,
       remove_non_relay, force_relay);

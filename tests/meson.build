@@ -46,6 +46,7 @@ foreach tname : nice_tests
   else
     extra_src = []
   endif
+  extra_src += ['test-common.c']
   exe = executable('nice-@0@'.format(tname),
     '@0@.c'.format(tname), extra_src,
     c_args: '-DG_LOG_DOMAIN="libnice-tests"',
