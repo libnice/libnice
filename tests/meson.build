@@ -82,14 +82,17 @@ if gst_dep.found() and not static_build
       '-UG_DISABLE_ASSERT',
       '-UG_DISABLE_CAST_CHECKS',
     ]
+    gst_env = environment()
+    dl_dep = cc.find_library('dl')
+    instrument_send_lib = shared_library('instrument-send', 'instrument-send.c', dependencies: [dl_dep, gio_deps])
+    gst_env.append('LD_PRELOAD', instrument_send_lib.full_path())
     exe = executable('nice-test-gstreamer',
       'test-gstreamer.c', extra_src,
       c_args: test_defines,
       include_directories: nice_incs,
       dependencies: [nice_deps, gst_check, libm],
-      link_with: libnice,
+      link_with: [libnice, instrument_send_lib],
       install: false)
-    gst_env = environment()
     gst_env.append('GST_PLUGIN_PATH_1_0', join_paths(meson.current_build_dir(), '..', 'gst'))
     gst_env.append('CK_DEFAULT_TIMEOUT', '30')
     test('test-gstreamer', exe, env: gst_env)

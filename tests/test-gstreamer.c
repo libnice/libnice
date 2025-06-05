@@ -36,6 +36,7 @@
 
 #include <gst/check/gstcheck.h>
 #include "agent.h"
+#include "instrument-send.h"
 
 #define RTP_HEADER_SIZE 12
 #define RTP_PAYLOAD_SIZE 1024
@@ -296,6 +297,7 @@ GST_START_TEST (buffer_list_test)
 
   g_main_loop_run (loop);
 
+  nice_test_instrument_send_set_calls_until_next_ewouldblock (0 /* disabled */);
   g_signal_emit_by_name (appsrc, "push-buffer-list", list, &flow_ret);
   gst_buffer_list_unref(list);
   fail_unless_equals_int (flow_ret, GST_FLOW_OK);
