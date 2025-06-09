@@ -38,6 +38,7 @@
 #include "agent.h"
 #include "instrument-send.h"
 
+#define TEST_STATE_KEY "libnice-test-gstreamer-test-state"
 #define RTP_HEADER_SIZE 12
 #define RTP_PAYLOAD_SIZE 1024
 
@@ -76,48 +77,63 @@ static GstStaticPadTemplate sinktemplate = GST_STATIC_PAD_TEMPLATE ("src",
     GST_PAD_ALWAYS,
     GST_STATIC_CAPS_ANY);
 
-GMainLoop *loop;
-static gint ready = 0;
+typedef struct _TestState {
+  GMainLoop *loop;
+  gint ready;
+  guint bytes_received;
+} TestState;
 
-
-static guint bytes_received;
 
 static guint
-get_bytes_received (void)
+get_bytes_received (TestState *test_state)
 {
   guint received = 0;
   g_mutex_lock (&mutex);
-  received = bytes_received;
+  received = test_state->bytes_received;
   g_mutex_unlock (&mutex);
   return received;
+}
+
+/* We always access `test_state->loop` from the main thread to avoid locks. */
+static gboolean
+quit_main_loop_cb (gpointer user_data)
+{
+  TestState *test_state = user_data;
+  if (test_state->loop) {
+    g_main_loop_quit (test_state->loop);
+  }
+  return G_SOURCE_REMOVE;
 }
 
 static void
 check_if_done (gpointer user_data)
 {
+  TestState *test_state = user_data;
+
   g_debug (
       "messages sent = %zu / %zu (%.1f%%), bytes received = %u / %u (%.1f%%)",
       nice_test_instrument_send_get_messages_sent (),
       MIN_MESSAGES_TO_SEND_FOR_PASS,
       (float) nice_test_instrument_send_get_messages_sent () /
           (float) MIN_MESSAGES_TO_SEND_FOR_PASS * 100.0f,
-      get_bytes_received (),
+      get_bytes_received (test_state),
       MIN_BYTES_RECEIVED_FOR_PASS,
-      (float) get_bytes_received () / (float) MIN_BYTES_RECEIVED_FOR_PASS * 100.0f);
+      (float) get_bytes_received (test_state) / (float) MIN_BYTES_RECEIVED_FOR_PASS * 100.0f);
 
   if (nice_test_instrument_send_get_messages_sent () >= MIN_MESSAGES_TO_SEND_FOR_PASS &&
-      get_bytes_received () >= MIN_BYTES_RECEIVED_FOR_PASS) {
-    g_main_loop_quit (loop);
+      get_bytes_received (test_state) >= MIN_BYTES_RECEIVED_FOR_PASS) {
+    g_idle_add (quit_main_loop_cb, test_state);
   }
 }
 
 static gboolean
 count_bytes (GstBuffer ** buffer, guint idx, gpointer data)
 {
+  TestState *test_state = data;
   gsize size = gst_buffer_get_size (*buffer);
 
   g_mutex_lock(&mutex);
-  bytes_received += size;
+  test_state->bytes_received += size;
   g_mutex_unlock (&mutex);
 
   check_if_done (data);
@@ -129,7 +145,9 @@ static GstFlowReturn
 sink_chain_list_function (GstPad * pad, GstObject * parent,
     GstBufferList * list)
 {
-  gst_buffer_list_foreach (list, count_bytes, NULL);
+  TestState *test_state = g_object_get_data (G_OBJECT (pad), TEST_STATE_KEY);
+
+  gst_buffer_list_foreach (list, count_bytes, test_state);
 
   gst_buffer_list_unref (list);
 
@@ -139,7 +157,9 @@ sink_chain_list_function (GstPad * pad, GstObject * parent,
 static GstFlowReturn
 sink_chain_function (GstPad * pad, GstObject * parent, GstBuffer * buffer)
 {
-  count_bytes(&buffer, 0, NULL);
+  TestState *test_state = g_object_get_data (G_OBJECT (pad), TEST_STATE_KEY);
+
+  count_bytes (&buffer, 0, test_state);
 
   gst_buffer_unref (buffer);
 
@@ -258,13 +278,15 @@ static void
 cb_component_state_changed (NiceAgent * agent, guint stream_id,
     guint component_id, guint state, gpointer user_data)
 {
+  TestState *test_state = user_data;
+
   g_debug ("State changed: %p to %s", agent,
       nice_component_state_to_string (state));
 
   if (state == NICE_COMPONENT_STATE_READY) {
-    ready++;
-    if (ready >= 2) {
-      g_main_loop_quit (loop);
+    test_state->ready++;
+    if (test_state->ready >= 2) {
+      g_main_loop_quit (test_state->loop);
     }
   }
 }
@@ -280,8 +302,9 @@ GST_START_TEST (buffer_list_test)
   NiceAgent *sink_agent, *src_agent;
   guint sink_stream, src_stream;
   NiceAddress *addr;
-
-  loop = g_main_loop_new (NULL, TRUE);
+  TestState *test_state;
+  test_state = g_new0 (TestState, 1);
+  test_state->loop = g_main_loop_new (NULL, FALSE);
 
   /* Initialize nice agents */
   addr = nice_address_new ();
@@ -310,9 +333,9 @@ GST_START_TEST (buffer_list_test)
       G_CALLBACK (cb_candidate_gathering_done), sink_agent);
 
   g_signal_connect (G_OBJECT (sink_agent), "component-state-changed",
-      G_CALLBACK (cb_component_state_changed), NULL);
+      G_CALLBACK (cb_component_state_changed), test_state);
   g_signal_connect (G_OBJECT (src_agent), "component-state-changed",
-      G_CALLBACK (cb_component_state_changed), NULL);
+      G_CALLBACK (cb_component_state_changed), test_state);
 
   credentials_negotiation (sink_agent, src_agent, sink_stream, src_stream);
   credentials_negotiation (src_agent, sink_agent, src_stream, src_stream);
@@ -338,6 +361,7 @@ GST_START_TEST (buffer_list_test)
       NICE_COMPONENT_TYPE_RTP, NULL);
 
   sinkpad = gst_check_setup_sink_pad_by_name (nicesrc, &sinktemplate, "src");
+  g_object_set_data (G_OBJECT (sinkpad), TEST_STATE_KEY, test_state);
 
   gst_pad_set_chain_list_function_full (sinkpad, sink_chain_list_function, NULL,
       NULL);
@@ -352,14 +376,14 @@ GST_START_TEST (buffer_list_test)
 
   g_debug ("Waiting for agents to be ready ready");
 
-  g_main_loop_run (loop);
+  g_main_loop_run (test_state->loop);
 
   /* Now that we are ready to send data, set up synthetic EWOULDBLOCK errors to
    * get good code coverage. We inject EWOULDBLOCK every second call. That is
    * quite aggressive, but the components under test should be able to cope with
    * this.
    */
-  nice_test_instrument_send_set_post_increment_callback (check_if_done, NULL);
+  nice_test_instrument_send_set_post_increment_callback (check_if_done, test_state);
   nice_test_instrument_send_set_calls_until_next_ewouldblock (2);
   for (int i = 0; i < TIMES_TO_SEND; i++) {
     g_signal_emit_by_name (appsrc, "push-buffer-list", list, &flow_ret);
@@ -373,13 +397,13 @@ GST_START_TEST (buffer_list_test)
    * libnice callbacks (e.g. for G_IO_OUT) will be handled. Once we are done,
    * check_if_done() will call g_main_loop_quit().
    */
-  g_main_loop_run (loop);
+  g_main_loop_run (test_state->loop);
 
   g_assert_cmpuint (
       nice_test_instrument_send_get_messages_sent (),
       >=,
       MIN_MESSAGES_TO_SEND_FOR_PASS);
-  g_assert_cmpuint (get_bytes_received (), >=, MIN_MESSAGES_TO_SEND_FOR_PASS);
+  g_assert_cmpuint (get_bytes_received (test_state), >=, MIN_MESSAGES_TO_SEND_FOR_PASS);
   g_debug ("We received expected data size");
 
   gst_element_set_state (nicesink_pipeline, GST_STATE_NULL);
@@ -398,7 +422,8 @@ GST_START_TEST (buffer_list_test)
   gst_check_teardown_element (nicesrc);
 
   nice_address_free (addr);
-  g_main_loop_unref (loop);
+  g_main_loop_unref (test_state->loop);
+  test_state->loop = NULL;
 }
 
 GST_END_TEST;
