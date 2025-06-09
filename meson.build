@@ -349,7 +349,7 @@ add_test_setup('valgrind',
 			     '--suppressions='+meson.current_source_dir()+'/tests/libnice.supp',
 			     '--num-callers=10'],
 	       timeout_multiplier: 10,
-	       env: ['CK_FORK=no']
+	       env: ['CK_FORK=no', 'NICE_INSIDE_VALGRIND=1']
 	      )
 
 configure_file(output : 'config.h', configuration : cdata)

@@ -49,29 +49,6 @@
  */
 #define RTP_PACKETS 2000
 
-/* Since we want to inject synthetic EWOULDBLOCK errors, make sure we do many
- * distinct send calls.
- */
-#define TIMES_TO_SEND 100
-
-/* Since we are dealing with UDP, we still need to expect some package loss on
- * the receiver side. Mostly due to the limited default SO_RCVBUF of ~200kB. If
- * you run the tests with temporarily very high /proc/sys/net/core/rmem_default
- * you are likely to see no packet loss at all.
- *
- * Since we really dislike flakiness, we put this very low at 1% to make it
- * likely to work with the default SO_RCVBUF size.
- */
-#define RECEIVED_PACKETS_PERCENTAGE_FOR_PASS 1
-
-#define MIN_MESSAGES_TO_SEND_FOR_PASS ((size_t) RTP_PACKETS * (size_t) TIMES_TO_SEND)
-
-#define MIN_BYTES_RECEIVED_FOR_PASS \
-  ((TIMES_TO_SEND * RTP_PACKETS * (RTP_HEADER_SIZE + RTP_PAYLOAD_SIZE) * \
-    RECEIVED_PACKETS_PERCENTAGE_FOR_PASS) / \
-   100)
-
-
 static GstStaticPadTemplate sinktemplate = GST_STATIC_PAD_TEMPLATE ("src",
     GST_PAD_SINK,
     GST_PAD_ALWAYS,
@@ -80,7 +57,14 @@ static GstStaticPadTemplate sinktemplate = GST_STATIC_PAD_TEMPLATE ("src",
 typedef struct _TestState {
   GMainLoop *loop;
   gint ready;
+  /* instrument-send.c has a global variable for how many messages that has been
+   * sent. Check that number before the test starts so we can know how many
+   * messages have been sent by this test. (`TCase`s do not run in parallel.) */
+  gsize messages_sent_baseline;
+  int times_to_send;
+  gsize min_messages_to_send_for_pass;
   guint bytes_received;
+  guint min_bytes_received_for_pass;
 } TestState;
 
 
@@ -105,6 +89,12 @@ quit_main_loop_cb (gpointer user_data)
   return G_SOURCE_REMOVE;
 }
 
+static gsize
+get_messages_sent (TestState *test_state)
+{
+  return nice_test_instrument_send_get_messages_sent () - test_state->messages_sent_baseline;
+}
+
 static void
 check_if_done (gpointer user_data)
 {
@@ -112,16 +102,17 @@ check_if_done (gpointer user_data)
 
   g_debug (
       "messages sent = %zu / %zu (%.1f%%), bytes received = %u / %u (%.1f%%)",
-      nice_test_instrument_send_get_messages_sent (),
-      MIN_MESSAGES_TO_SEND_FOR_PASS,
-      (float) nice_test_instrument_send_get_messages_sent () /
-          (float) MIN_MESSAGES_TO_SEND_FOR_PASS * 100.0f,
+      get_messages_sent (test_state),
+      test_state->min_messages_to_send_for_pass,
+      (float) get_messages_sent (test_state) / (float) test_state->min_messages_to_send_for_pass *
+          100.0f,
       get_bytes_received (test_state),
-      MIN_BYTES_RECEIVED_FOR_PASS,
-      (float) get_bytes_received (test_state) / (float) MIN_BYTES_RECEIVED_FOR_PASS * 100.0f);
+      test_state->min_bytes_received_for_pass,
+      (float) get_bytes_received (test_state) / (float) test_state->min_bytes_received_for_pass *
+          100.0f);
 
-  if (nice_test_instrument_send_get_messages_sent () >= MIN_MESSAGES_TO_SEND_FOR_PASS &&
-      get_bytes_received (test_state) >= MIN_BYTES_RECEIVED_FOR_PASS) {
+  if (get_messages_sent (test_state) >= test_state->min_messages_to_send_for_pass &&
+      get_bytes_received (test_state) >= test_state->min_bytes_received_for_pass) {
     g_idle_add (quit_main_loop_cb, test_state);
   }
 }
@@ -189,11 +180,11 @@ create_buffer (guint16 seqnum)
 }
 
 static GstBufferList *
-create_buffer_list (void)
+create_buffer_list (guint rtp_packets)
 {
   GstBufferList *list = gst_buffer_list_new ();
 
-  for (guint seqnum = 0; seqnum < RTP_PACKETS; seqnum++) {
+  for (guint seqnum = 0; seqnum < rtp_packets; seqnum++) {
     gst_buffer_list_add (list, create_buffer (seqnum));
   }
 
@@ -291,7 +282,13 @@ cb_component_state_changed (NiceAgent * agent, guint stream_id,
   }
 }
 
-GST_START_TEST (buffer_list_test)
+static void
+nice_gstreamer_test (
+    gboolean ice_udp,
+    gboolean ice_tcp,
+    guint rtp_packets,
+    guint times_to_send,
+    guint received_packets_percentage_for_pass)
 {
   GstElement *nicesink_pipeline, *appsrc;
   GstFlowReturn flow_ret;
@@ -303,8 +300,34 @@ GST_START_TEST (buffer_list_test)
   guint sink_stream, src_stream;
   NiceAddress *addr;
   TestState *test_state;
+
+  if (g_strcmp0 (getenv ("NICE_INSIDE_VALGRIND"), "1") == 0) {
+    /* Avoid timeout under valgrind by reducing the number of packets to send by
+     * 90%. Under valgrind we are primarily interested in memory issues and not
+     * how much data that is sent. Note that we also increase timeout_multiplier
+     * under valgrind, but that is not sufficient for CI which is relatively slow. */
+    rtp_packets = rtp_packets / 10;
+  }
+
   test_state = g_new0 (TestState, 1);
   test_state->loop = g_main_loop_new (NULL, FALSE);
+  test_state->times_to_send = times_to_send;
+  test_state->messages_sent_baseline = nice_test_instrument_send_get_messages_sent ();
+  if (ice_tcp) {
+    /* Since ICE-TCP requires that all packets be framed with RFC4571 our
+     * instrument-send.c LD_PRELOAD message counter can't straightforwardly
+     * count the number of packets, so only use `bytes_received` for real
+     * verification in that case. We should still see at least
+     * `test_state->times_to_send` "messages" though. */
+    test_state->min_messages_to_send_for_pass = test_state->times_to_send;
+  } else {
+    /* We requires all our messages to be sent. We never want to drop a message
+     * before we send it off on the network. */
+    test_state->min_messages_to_send_for_pass = test_state->times_to_send * rtp_packets;
+  }
+  test_state->min_bytes_received_for_pass =
+      ((test_state->times_to_send * rtp_packets * received_packets_percentage_for_pass / 100) *
+       (RTP_HEADER_SIZE + RTP_PAYLOAD_SIZE));
 
   /* Initialize nice agents */
   addr = nice_address_new ();
@@ -313,8 +336,8 @@ GST_START_TEST (buffer_list_test)
   sink_agent = nice_agent_new (NULL, NICE_COMPATIBILITY_RFC5245);
   src_agent = nice_agent_new (NULL, NICE_COMPATIBILITY_RFC5245);
 
-  g_object_set (G_OBJECT (sink_agent), "upnp", FALSE, NULL);
-  g_object_set (G_OBJECT (src_agent), "upnp", FALSE, NULL);
+  g_object_set (G_OBJECT (sink_agent), "upnp", FALSE, "ice-udp", ice_udp, "ice-tcp", ice_tcp, NULL);
+  g_object_set (G_OBJECT (src_agent), "upnp", FALSE, "ice-udp", ice_udp, "ice-tcp", ice_tcp, NULL);
 
   nice_agent_add_local_address (sink_agent, addr);
   nice_agent_add_local_address (src_agent, addr);
@@ -372,7 +395,7 @@ GST_START_TEST (buffer_list_test)
   gst_element_set_state (nicesrc, GST_STATE_PLAYING);
   gst_pad_set_active (sinkpad, TRUE);
 
-  list = create_buffer_list ();
+  list = create_buffer_list (rtp_packets);
 
   g_debug ("Waiting for agents to be ready ready");
 
@@ -385,7 +408,7 @@ GST_START_TEST (buffer_list_test)
    */
   nice_test_instrument_send_set_post_increment_callback (check_if_done, test_state);
   nice_test_instrument_send_set_calls_until_next_ewouldblock (2);
-  for (int i = 0; i < TIMES_TO_SEND; i++) {
+  for (int i = 0; i < test_state->times_to_send; i++) {
     g_signal_emit_by_name (appsrc, "push-buffer-list", list, &flow_ret);
   }
   gst_buffer_list_unref(list);
@@ -399,11 +422,9 @@ GST_START_TEST (buffer_list_test)
    */
   g_main_loop_run (test_state->loop);
 
-  g_assert_cmpuint (
-      nice_test_instrument_send_get_messages_sent (),
-      >=,
-      MIN_MESSAGES_TO_SEND_FOR_PASS);
-  g_assert_cmpuint (get_bytes_received (test_state), >=, MIN_MESSAGES_TO_SEND_FOR_PASS);
+  g_assert_cmpuint (get_messages_sent (test_state), >=, test_state->min_messages_to_send_for_pass);
+  g_assert_cmpuint (get_bytes_received (test_state), >=, test_state->min_bytes_received_for_pass);
+
   g_debug ("We received expected data size");
 
   gst_element_set_state (nicesink_pipeline, GST_STATE_NULL);
@@ -426,19 +447,58 @@ GST_START_TEST (buffer_list_test)
   test_state->loop = NULL;
 }
 
+GST_START_TEST (nicesink_ice_udp_test)
+{
+  nice_gstreamer_test (
+      TRUE /* ice_udp */,
+      FALSE /* ice_tcp */,
+      RTP_PACKETS,
+      /* Since we want to inject synthetic EWOULDBLOCK errors and since UDP is
+       * lossy but fast, make sure we do many distinct send calls. */
+      100 /* times_to_send */,
+      /* Since we are dealing with UDP, we still need to expect some package loss on
+       * the receiver side. Mostly due to the limited default SO_RCVBUF of ~200kB. If
+       * you run the tests with temporarily very high /proc/sys/net/core/rmem_default
+       * you are likely to see no packet loss at all.
+       *
+       * Since we really dislike flakiness, we put this very low at 1% to make it
+       * likely to work with the default SO_RCVBUF size. */
+      1 /* received_packets_percentage_for_pass */);
+}
+GST_END_TEST;
+
+GST_START_TEST (nicesink_ice_tcp_test)
+{
+  nice_gstreamer_test (
+      FALSE /* ice_udp */,
+      TRUE /* ice_tcp */,
+      RTP_PACKETS,
+      /* ice-tcp is much slower than ice-udp so only send 10 times instead of
+       * 100 times like we do for ice-udp. */
+      10 /* times_to_send */,
+      /* Even though we run over TCP, the NiceAgent still runs in non-reliable
+       * mode, which means it can decide to drop packets if the send buffer
+       * queue is not empty. It's still TCP so we expect at least 10% of the
+       * data to reach us. */
+      10 /* received_packets_percentage_for_pass */);
+}
 GST_END_TEST;
 
 static Suite *
-udpsink_suite (void)
+nice_gstreamer_suite (void)
 {
   Suite *s = suite_create ("nice_gstreamer_test");
-  TCase *tc_chain = tcase_create ("nice");
+  TCase *tc = NULL;
 
-  suite_add_tcase (s, tc_chain);
+  tc = tcase_create ("nicesink_ice_udp_test");
+  suite_add_tcase (s, tc);
+  tcase_add_test (tc, nicesink_ice_udp_test);
 
-  tcase_add_test (tc_chain, buffer_list_test);
+  tc = tcase_create ("nicesink_ice_tcp_test");
+  suite_add_tcase (s, tc);
+  tcase_add_test (tc, nicesink_ice_tcp_test);
 
   return s;
 }
 
-GST_CHECK_MAIN (udpsink)
+GST_CHECK_MAIN (nice_gstreamer)
