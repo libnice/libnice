@@ -94,27 +94,32 @@ sink_chain_function (GstPad * pad, GstObject * parent, GstBuffer * buffer)
 /*
  * This function is get from gst-plugins-good tests tests/check/elements/udpsink.c
  */
+static GstBuffer *
+create_buffer (guint16 seqnum)
+{
+  /* Create the RTP header buffer */
+  GstBuffer *rtp_buffer = gst_buffer_new_allocate (NULL, RTP_HEADER_SIZE, NULL);
+  gst_buffer_memset (rtp_buffer, 0, 0, RTP_HEADER_SIZE);
+  guint16 seqnum_n = htons (seqnum); /* Ease debugging of dropped packets with synthetic seqnum. */
+  gst_buffer_fill (rtp_buffer, 2, &seqnum_n, sizeof (seqnum_n));
+  guint8 version = (2 << 6); /* Enables RTP decoding in Wireshark */
+  gst_buffer_fill (rtp_buffer, 0, &version, sizeof (version));
+
+  /* Create the buffer that holds the payload */
+  GstBuffer *data_buffer = gst_buffer_new_allocate (NULL, RTP_PAYLOAD_SIZE, NULL);
+  gst_buffer_memset (data_buffer, 0, 0, RTP_PAYLOAD_SIZE);
+
+  /* Create a new group to hold the rtp header and the payload */
+  return gst_buffer_append (rtp_buffer, data_buffer);
+}
+
 static GstBufferList *
 create_buffer_list (void)
 {
-  GstBufferList *list;
-  GstBuffer *rtp_buffer;
-  GstBuffer *data_buffer;
-  guint i;
+  GstBufferList *list = gst_buffer_list_new ();
 
-  list = gst_buffer_list_new ();
-
-  for (i = 0; i < RTP_PACKETS; i++) {
-    /* Create the RTP header buffer */
-    rtp_buffer = gst_buffer_new_allocate (NULL, RTP_HEADER_SIZE, NULL);
-    gst_buffer_memset (rtp_buffer, 0, 0, RTP_HEADER_SIZE);
-
-    /* Create the buffer that holds the payload */
-    data_buffer = gst_buffer_new_allocate (NULL, RTP_PAYLOAD_SIZE, NULL);
-    gst_buffer_memset (data_buffer, 0, 0, RTP_PAYLOAD_SIZE);
-
-    /* Create a new group to hold the rtp header and the payload */
-    gst_buffer_list_add (list, gst_buffer_append (rtp_buffer, data_buffer));
+  for (guint seqnum = 0; seqnum < RTP_PACKETS; seqnum++) {
+    gst_buffer_list_add (list, create_buffer (seqnum));
   }
 
   /* Calculate the size of the data */
