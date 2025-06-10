@@ -44,4 +44,11 @@ test_common_set_credentials (NiceAgent *lagent, guint lstream, NiceAgent *ragent
 gboolean
 test_common_wait_for_tcp_socket (const gchar *service_name, const gchar *host, guint16 port);
 
+gboolean
+test_common_turnserver_available (void);
+
+void
+test_common_set_candidates (NiceAgent *from, guint from_stream, NiceAgent *to, guint to_stream,
+    guint component, gboolean remove_non_relay, gboolean force_relay);
+
 #endif /* _NICE_TEST_COMMON_H */

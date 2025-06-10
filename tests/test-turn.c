@@ -110,33 +110,6 @@ static void cb_closed (GObject *src, GAsyncResult *res, gpointer data)
   *((gboolean *)data) = TRUE;
 }
 
-static void set_candidates (NiceAgent *from, guint from_stream,
-    NiceAgent *to, guint to_stream, guint component, gboolean remove_non_relay,
-    gboolean force_relay)
-{
-  GSList *cands = NULL, *i;
-
-  cands = nice_agent_get_local_candidates (from, from_stream, component);
-  if (remove_non_relay) {
-  restart:
-    for (i = cands; i; i = i->next) {
-      NiceCandidate *cand = i->data;
-      if (force_relay)
-        g_assert_cmpint (cand->type, ==, NICE_CANDIDATE_TYPE_RELAYED);
-      if (cand->type != NICE_CANDIDATE_TYPE_RELAYED) {
-        cands = g_slist_remove (cands, cand);
-        nice_candidate_free (cand);
-        goto restart;
-      }
-    }
-  }
-  nice_agent_set_remote_candidates (to, to_stream, component, cands);
-
-  for (i = cands; i; i = i->next)
-    nice_candidate_free ((NiceCandidate *) i->data);
-  g_slist_free (cands);
-}
-
 static void
 run_test(guint turn_port, gboolean is_ipv6,
     gboolean ice_udp, gboolean ice_tcp, gboolean force_relay,
@@ -234,9 +207,9 @@ run_test(guint turn_port, gboolean is_ipv6,
 
   test_common_set_credentials (lagent, ls_id, ragent, rs_id);
 
-  set_candidates (ragent, rs_id, lagent, ls_id, NICE_COMPONENT_TYPE_RTP,
+  test_common_set_candidates (ragent, rs_id, lagent, ls_id, NICE_COMPONENT_TYPE_RTP,
       remove_non_relay, force_relay);
-  set_candidates (lagent, ls_id, ragent, rs_id, NICE_COMPONENT_TYPE_RTP,
+  test_common_set_candidates (lagent, ls_id, ragent, rs_id, NICE_COMPONENT_TYPE_RTP,
       remove_non_relay, force_relay);
 
   while (global_lagent_state[0] != NICE_COMPONENT_STATE_READY ||
@@ -337,26 +310,16 @@ main (int argc, char **argv)
   GError *error = NULL;
   gchar portstr[10];
   int ret;
-  gchar *out_str = NULL;
-  gchar *err_str = NULL;
 
   g_test_init (&argc, &argv, NULL);
 
   global_turn_port = g_random_int_range (10000, 60000);
   snprintf(portstr, 9, "%u", global_turn_port);
 
-  if (g_spawn_command_line_sync ("turnserver --help", &out_str, &err_str, NULL,
-          NULL) && err_str) {
-    if (!strstr(err_str, "--user")) {
-      g_print ("coturn not installed, skipping turn test\n");
-      return 0;
-    }
-  } else {
+  if (!test_common_turnserver_available ()) {
     g_print ("coturn not installed, skipping turn test\n");
     return 0;
   }
-  g_free (err_str);
-  g_free (out_str);
 
   const gchar* turn_server_ip = "127.0.0.1";
   sp = g_subprocess_new (G_SUBPROCESS_FLAGS_STDOUT_SILENCE, &error,

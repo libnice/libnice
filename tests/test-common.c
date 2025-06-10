@@ -87,3 +87,52 @@ test_common_wait_for_tcp_socket (const gchar *service_name, const gchar *host, g
 
   return connected;
 }
+
+gboolean
+test_common_turnserver_available (void)
+{
+  gchar *out_str = NULL;
+  gchar *err_str = NULL;
+
+  gboolean available =
+      g_spawn_command_line_sync ("turnserver --help", &out_str, &err_str, NULL, NULL) && err_str &&
+      strstr (err_str, "--user") != NULL;
+
+  g_free (err_str);
+  g_free (out_str);
+
+  return available;
+}
+
+void
+test_common_set_candidates (
+    NiceAgent *from,
+    guint from_stream,
+    NiceAgent *to,
+    guint to_stream,
+    guint component,
+    gboolean remove_non_relay,
+    gboolean force_relay)
+{
+  GSList *cands = NULL, *i;
+
+  cands = nice_agent_get_local_candidates (from, from_stream, component);
+  if (remove_non_relay) {
+  restart:
+    for (i = cands; i; i = i->next) {
+      NiceCandidate *cand = i->data;
+      if (force_relay)
+        g_assert_cmpint (cand->type, ==, NICE_CANDIDATE_TYPE_RELAYED);
+      if (cand->type != NICE_CANDIDATE_TYPE_RELAYED) {
+        cands = g_slist_remove (cands, cand);
+        nice_candidate_free (cand);
+        goto restart;
+      }
+    }
+  }
+  nice_agent_set_remote_candidates (to, to_stream, component, cands);
+
+  for (i = cands; i; i = i->next)
+    nice_candidate_free ((NiceCandidate *) i->data);
+  g_slist_free (cands);
+}
