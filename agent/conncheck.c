@@ -57,6 +57,7 @@
 #include "agent-priv.h"
 #include "conncheck.h"
 #include "discovery.h"
+#include "socket-priv.h"
 #include "stun/stun5389.h"
 #include "stun/usages/ice.h"
 #include "stun/usages/bind.h"
@@ -166,35 +167,6 @@ priv_ice_return_to_string (StunUsageIceReturn ice_return)
   }
 }
 
-static const gchar *
-priv_socket_type_to_string (NiceSocketType type)
-{
-  switch (type) {
-    case NICE_SOCKET_TYPE_UDP_BSD:
-      return "udp";
-    case NICE_SOCKET_TYPE_TCP_BSD:
-      return "tcp";
-    case NICE_SOCKET_TYPE_PSEUDOSSL:
-      return "ssl";
-    case NICE_SOCKET_TYPE_HTTP:
-      return "http";
-    case NICE_SOCKET_TYPE_SOCKS5:
-      return "socks";
-    case NICE_SOCKET_TYPE_UDP_TURN:
-      return "udp-turn";
-    case NICE_SOCKET_TYPE_UDP_TURN_OVER_TCP:
-      return "tcp-turn";
-    case NICE_SOCKET_TYPE_TCP_ACTIVE:
-      return "tcp-act";
-    case NICE_SOCKET_TYPE_TCP_PASSIVE:
-      return "tcp-pass";
-    case NICE_SOCKET_TYPE_TCP_SO:
-      return "tcp-so";
-    default:
-      g_assert_not_reached ();
-  }
-}
-
 /*
  * Dump the component list of incoming checks
  */
@@ -214,7 +186,7 @@ print_component_incoming_checks (NiceAgent *agent, NiceStream *stream,
     nice_debug ("Agent %p : *** sc=%d/%d : icheck %p : "
       "sock %s [%s]:%u > [%s]:%u, use_cand %u",
       agent, stream->id, component->id, icheck,
-      priv_socket_type_to_string (icheck->local_socket->type),
+      nice_socket_type_to_string (icheck->local_socket->type),
       tmpbuf1, nice_address_get_port (&icheck->local_socket->addr),
       tmpbuf2, nice_address_get_port (&icheck->from),
       icheck->use_candidate);
@@ -266,7 +238,7 @@ priv_print_conn_check_lists (NiceAgent *agent, const gchar *where, const gchar *
               pair->foundation,
               nice_candidate_type_to_string (pair->local->type),
               nice_candidate_type_to_string (pair->remote->type),
-              priv_socket_type_to_string (pair->sockptr->type),
+              nice_socket_type_to_string (pair->sockptr->type),
               nice_candidate_transport_to_string (pair->local->transport),
               local_addr, nice_address_get_port (&pair->local->addr),
               nice_candidate_transport_to_string (pair->remote->transport),

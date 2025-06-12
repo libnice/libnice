@@ -1276,8 +1276,8 @@ static gboolean priv_discovery_tick_unlocked (NiceAgent *agent)
       if (nice_debug_is_enabled ()) {
         gchar tmpbuf[INET6_ADDRSTRLEN];
         nice_address_to_string (&cand->server, tmpbuf);
-        nice_debug ("Agent %p : discovery - scheduling cand type %u addr %s.",
-            agent, cand->type, tmpbuf);
+        nice_debug ("Agent %p : discovery - scheduling cand %p type %u addr %s.",
+            agent, cand, cand->type, tmpbuf);
       }
       if (nice_address_is_valid (&cand->server) &&
           (cand->type == NICE_CANDIDATE_TYPE_SERVER_REFLEXIVE ||
@@ -1328,8 +1328,8 @@ static gboolean priv_discovery_tick_unlocked (NiceAgent *agent)
           ++need_pacing;
         } else {
           /* case: error in starting discovery, start the next discovery */
-          nice_debug ("Agent %p : Error starting discovery, skipping the item.",
-              agent);
+          nice_debug ("Agent %p : Error starting discovery, skipping the item %p.",
+              agent, cand);
           cand->done = TRUE;
           cand->stun_message.buffer = NULL;
           cand->stun_message.buffer_len = 0;

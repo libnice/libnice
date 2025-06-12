@@ -60,6 +60,7 @@
 #include "debug.h"
 
 #include "socket.h"
+#include "socket-priv.h"
 #include "stun/usages/turn.h"
 #include "candidate-priv.h"
 #include "component.h"
@@ -2972,8 +2973,8 @@ priv_add_new_candidate_discovery_turn (NiceAgent *agent,
   }
   stun_agent_set_software (&cdisco->stun_agent, agent->software_attribute);
 
-  nice_debug ("Agent %p : Adding new relay-rflx candidate discovery %p",
-      agent, cdisco);
+  nice_debug ("Agent %p : Adding new relay-rflx candidate discovery %p sock=%s",
+      agent, cdisco, cdisco->nicesock ? nice_socket_type_to_string (cdisco->nicesock->type) : "");
   agent->discovery_list = g_slist_append (agent->discovery_list, cdisco);
   ++agent->discovery_unsched_items;
 

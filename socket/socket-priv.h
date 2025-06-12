@@ -113,6 +113,8 @@ gboolean nice_socket_flush_send_queue_to_socket (GSocket *gsock,
  */
 void nice_socket_free_send_queue (GQueue *send_queue);
 
+const gchar *nice_socket_type_to_string (NiceSocketType type);
+
 G_END_DECLS
 
 #endif /* _SOCKET_PRIV_H */
