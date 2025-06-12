@@ -51,3 +51,39 @@ test_common_set_credentials (NiceAgent *lagent, guint lstream, NiceAgent *ragent
   g_free (ufrag);
   g_free (password);
 }
+
+gboolean
+test_common_wait_for_tcp_socket (const gchar *service_name, const gchar *host, guint16 port)
+{
+  GSocketClient *client = g_socket_client_new ();
+  int attempts_left = 50;
+  gboolean connected = FALSE;
+
+  while (!connected && attempts_left > 0) {
+    attempts_left--;
+
+    GError *err = NULL;
+    GSocketConnection *conn = g_socket_client_connect_to_host (client, host, port, NULL, &err);
+    if (conn) {
+      g_debug ("%s ready at %s:%u", service_name, host, port);
+      connected = TRUE;
+      g_object_unref (conn);
+    } else {
+      gulong ms_to_wait = 100;
+      g_usleep (ms_to_wait * 1000);
+      g_debug (
+          "%s at %s:%u not ready yet (%lu ms until next try; %d tries left): %s",
+          service_name,
+          host,
+          port,
+          ms_to_wait,
+          attempts_left,
+          err->message);
+    }
+    g_clear_error (&err);
+  }
+
+  g_object_unref (client);
+
+  return connected;
+}

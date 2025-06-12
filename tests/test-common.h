@@ -41,4 +41,7 @@
 void
 test_common_set_credentials (NiceAgent *lagent, guint lstream, NiceAgent *ragent, guint rstream);
 
+gboolean
+test_common_wait_for_tcp_socket (const gchar *service_name, const gchar *host, guint16 port);
+
 #endif /* _NICE_TEST_COMMON_H */

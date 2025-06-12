@@ -1,4 +1,3 @@
-#include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -359,15 +358,17 @@ main (int argc, char **argv)
   g_free (err_str);
   g_free (out_str);
 
+  const gchar* turn_server_ip = "127.0.0.1";
   sp = g_subprocess_new (G_SUBPROCESS_FLAGS_STDOUT_SILENCE, &error,
       "turnserver",
       "--user", "toto:0xaae440b3348d50265b63703117c7bfd5",
       "--realm", "realm",
       "--listening-port", portstr,
-      "--listening-ip", "127.0.0.1",
+      "--listening-ip", turn_server_ip,
       "--allow-loopback-peers",
       "--no-cli",
       NULL);
+  g_assert (test_common_wait_for_tcp_socket("TURN server", turn_server_ip, global_turn_port));
 
   g_test_add_func ("/nice/turn/udp", udp_no_force_no_remove_udp);
   g_test_add_func ("/nice/turn/udp/remove_non_turn",
