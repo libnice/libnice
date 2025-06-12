@@ -158,6 +158,10 @@ run_test(guint turn_port, gboolean is_ipv6,
     localhost = "127.0.0.1";
 
   /* step: initialize variables modified by the callbacks */
+  global_lagent_state[0] = NICE_COMPONENT_STATE_LAST;
+  global_ragent_state[0] = NICE_COMPONENT_STATE_LAST;
+  global_lagent_state[1] = NICE_COMPONENT_STATE_LAST;
+  global_ragent_state[1] = NICE_COMPONENT_STATE_LAST;
   global_components_ready = 0;
   global_lagent_gathering_done = FALSE;
   global_ragent_gathering_done = FALSE;
