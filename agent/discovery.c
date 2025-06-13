@@ -1276,8 +1276,8 @@ static gboolean priv_discovery_tick_unlocked (NiceAgent *agent)
       if (nice_debug_is_enabled ()) {
         gchar tmpbuf[INET6_ADDRSTRLEN];
         nice_address_to_string (&cand->server, tmpbuf);
-        nice_debug ("Agent %p : discovery - scheduling cand %p type %u addr %s.",
-            agent, cand, cand->type, tmpbuf);
+        nice_debug ("Agent %p : discovery - scheduling cand %p type %s addr %s:%u.",
+            agent, cand, nice_candidate_type_to_string (cand->type), tmpbuf, nice_address_get_port (&cand->server));
       }
       if (nice_address_is_valid (&cand->server) &&
           (cand->type == NICE_CANDIDATE_TYPE_SERVER_REFLEXIVE ||
