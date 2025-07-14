@@ -149,6 +149,9 @@ test_common_set_candidates (
     }
   }
 
+  // Without any remaining candidates all hope is lost so fail early if so.
+  g_assert (g_slist_length (cands) > 0);
+
   g_debug ("Actually set candidates from agent %p to agent %p", from, to);
   g_slist_foreach (cands, print_candidate, NULL);
   nice_agent_set_remote_candidates (to, to_stream, component, cands);
