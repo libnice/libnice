@@ -42,6 +42,9 @@
 #define TEST_STATE_KEY "libnice-test-gstreamer-test-state"
 #define RTP_HEADER_SIZE 12
 #define RTP_PAYLOAD_SIZE 1024
+#define TURN_IP "127.0.0.1"
+#define TURN_USER "toto"
+#define TURN_PASS "password"
 
 /* If GLib is compiled with HAVE_SENDMMSG then the number of messages sent in
  * one sycall will be capped to IOV_MAX which typically is 1024. Trying to
@@ -364,6 +367,13 @@ nice_gstreamer_test (
   nice_agent_attach_recv (src_agent, src_stream, NICE_COMPONENT_TYPE_RTP,
       NULL, recv_cb, NULL);
 
+  if (use_relay) {
+    nice_agent_set_relay_info (sink_agent, sink_stream, NICE_COMPONENT_TYPE_RTP,
+        TURN_IP, turn_server_port, TURN_USER, TURN_PASS, relay_type);
+    nice_agent_set_relay_info (src_agent, src_stream, NICE_COMPONENT_TYPE_RTP,
+        TURN_IP, turn_server_port, TURN_USER, TURN_PASS, relay_type);
+  }
+
   g_signal_connect (G_OBJECT (sink_agent), "candidate-gathering-done",
       G_CALLBACK (cb_candidate_gathering_done), test_state);
   g_signal_connect (G_OBJECT (src_agent), "candidate-gathering-done",
@@ -538,6 +548,30 @@ GST_START_TEST (nicesink_non_reliable_ice_tcp_test)
 }
 GST_END_TEST;
 
+GST_START_TEST (nicesink_non_reliable_turn_udp_over_udp_test)
+{
+  if (!test_common_turnserver_available ()) {
+    g_debug ("skipping nicesink_non_reliable_turn_udp_over_udp_test: no TURN server available");
+    return;
+  }
+
+  TestTurnServer *turn_server = test_common_turn_server_new (TURN_IP, TURN_USER, TURN_PASS);
+
+  nice_gstreamer_test (
+      FALSE /* reliable */,
+      TRUE /* ice_udp */,
+      FALSE /* ice_tcp */,
+      TRUE /* use_relay */,
+      turn_server->port,
+      NICE_RELAY_TYPE_TURN_UDP,
+      RTP_PACKETS,
+      100 /* times_to_send */,
+      1 /* received_packets_percentage_for_pass */);
+
+  test_common_turn_server_destroy (turn_server);
+}
+GST_END_TEST;
+
 GST_START_TEST (nicesink_reliable_ice_tcp_test)
 {
   nice_gstreamer_test (
@@ -567,6 +601,10 @@ nice_gstreamer_suite (void)
   tc = tcase_create ("nicesink_non_reliable_ice_tcp_test");
   suite_add_tcase (s, tc);
   tcase_add_test (tc, nicesink_non_reliable_ice_tcp_test);
+
+  tc = tcase_create ("nicesink_non_reliable_turn_udp_over_udp_test");
+  suite_add_tcase (s, tc);
+  tcase_add_test (tc, nicesink_non_reliable_turn_udp_over_udp_test);
 
   tc = tcase_create ("nicesink_reliable_ice_tcp_test");
   suite_add_tcase (s, tc);
