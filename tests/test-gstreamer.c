@@ -37,6 +37,7 @@
 #include <gst/check/gstcheck.h>
 #include "agent.h"
 #include "instrument-send.h"
+#include "test-common.h"
 
 #define TEST_STATE_KEY "libnice-test-gstreamer-test-state"
 #define RTP_HEADER_SIZE 12
@@ -56,6 +57,11 @@ static GstStaticPadTemplate sinktemplate = GST_STATIC_PAD_TEMPLATE ("src",
 
 typedef struct _TestState {
   GMainLoop *loop;
+  /* How many times candidates have been gathered. We interpret '2' to mean
+   * 'both agents have gathered candidates'. */
+  gint gathering_completed_count;
+  /* How many times we got NICE_COMPONENT_STATE_READY. We interpret '2' to mean
+   * 'both agents are ready to send data'. */
   gint ready;
   /* instrument-send.c has a global variable for how many messages that has been
    * sent. Check that number before the test starts so we can know how many
@@ -208,32 +214,14 @@ recv_cb (NiceAgent * agent,
 }
 
 static void
-print_candidate (gpointer data, gpointer user_data)
+cb_candidate_gathering_done (NiceAgent *agent, guint stream_id, gpointer data)
 {
-  NiceCandidate *cand = data;
-  gchar str_addr[INET6_ADDRSTRLEN];
-
-  nice_address_to_string (&cand->addr, str_addr);
-  g_debug ("Candidate: %s:%d", str_addr, nice_address_get_port (&cand->addr));
-}
-
-static void
-cb_candidate_gathering_done (NiceAgent * agent, guint stream_id, gpointer data)
-{
-  GSList *candidates;
+  TestState *test_state = data;
 
   g_debug ("Candidates gathered on agent %p, stream: %d",
       agent, stream_id);
 
-  candidates = nice_agent_get_local_candidates (agent, stream_id, NICE_COMPONENT_TYPE_RTP);
-
-  nice_agent_set_remote_candidates (NICE_AGENT (data), stream_id, NICE_COMPONENT_TYPE_RTP,
-      candidates);
-
-  g_debug ("Got %d candidates", g_slist_length (candidates));
-  g_slist_foreach (candidates, print_candidate, NULL);
-
-  g_slist_free_full (candidates, (GDestroyNotify) nice_candidate_free);
+  test_state->gathering_completed_count++;
 }
 
 static void
@@ -377,9 +365,9 @@ nice_gstreamer_test (
       NULL, recv_cb, NULL);
 
   g_signal_connect (G_OBJECT (sink_agent), "candidate-gathering-done",
-      G_CALLBACK (cb_candidate_gathering_done), src_agent);
+      G_CALLBACK (cb_candidate_gathering_done), test_state);
   g_signal_connect (G_OBJECT (src_agent), "candidate-gathering-done",
-      G_CALLBACK (cb_candidate_gathering_done), sink_agent);
+      G_CALLBACK (cb_candidate_gathering_done), test_state);
 
   g_signal_connect (G_OBJECT (sink_agent), "component-state-changed",
       G_CALLBACK (cb_component_state_changed), test_state);
@@ -422,6 +410,16 @@ nice_gstreamer_test (
   gst_pad_set_active (sinkpad, TRUE);
 
   list = create_buffer_list (rtp_packets);
+
+  g_debug ("Waiting for agents to gather candidates");
+  while (test_state->gathering_completed_count < 2) {
+    g_main_context_iteration (NULL, TRUE);
+  }
+
+  test_common_set_candidates (sink_agent, sink_stream, src_agent, src_stream,
+      NICE_COMPONENT_TYPE_RTP, use_relay, use_relay);
+  test_common_set_candidates (src_agent, src_stream, sink_agent, sink_stream,
+      NICE_COMPONENT_TYPE_RTP, use_relay, use_relay);
 
   g_debug ("Waiting for agents to be ready ready");
   while (test_state->ready < 2) {
