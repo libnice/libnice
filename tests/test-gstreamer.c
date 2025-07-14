@@ -295,6 +295,9 @@ nice_gstreamer_test (
     gboolean reliable,
     gboolean ice_udp,
     gboolean ice_tcp,
+    gboolean use_relay,
+    guint turn_server_port,
+    NiceRelayType relay_type,
     guint rtp_packets,
     guint times_to_send,
     guint received_packets_percentage_for_pass)
@@ -346,8 +349,18 @@ nice_gstreamer_test (
   sink_agent = nice_agent_new_full (NULL, NICE_COMPATIBILITY_RFC5245, flags);
   src_agent = nice_agent_new_full (NULL, NICE_COMPATIBILITY_RFC5245, flags);
 
-  g_object_set (G_OBJECT (sink_agent), "upnp", FALSE, "ice-udp", ice_udp, "ice-tcp", ice_tcp, NULL);
-  g_object_set (G_OBJECT (src_agent), "upnp", FALSE, "ice-udp", ice_udp, "ice-tcp", ice_tcp, NULL);
+  g_object_set (G_OBJECT (sink_agent),
+      "upnp", FALSE,
+      "ice-udp", ice_udp,
+      "ice-tcp", ice_tcp,
+      "force-relay", use_relay,
+      NULL);
+  g_object_set (G_OBJECT (src_agent),
+      "upnp", FALSE,
+      "ice-udp", ice_udp,
+      "ice-tcp", ice_tcp,
+      "force-relay", use_relay,
+      NULL);
 
   nice_agent_add_local_address (sink_agent, addr);
   nice_agent_add_local_address (src_agent, addr);
@@ -484,6 +497,9 @@ GST_START_TEST (nicesink_non_reliable_ice_udp_test)
       FALSE /* reliable */,
       TRUE /* ice_udp */,
       FALSE /* ice_tcp */,
+      FALSE /* use_relay */,
+      0 /* turn_server_port (unused) */,
+      0 /* relay_type (unused) */,
       RTP_PACKETS,
       /* Since we want to inject synthetic EWOULDBLOCK errors and since UDP is
        * lossy but fast, make sure we do many distinct send calls. */
@@ -505,6 +521,9 @@ GST_START_TEST (nicesink_non_reliable_ice_tcp_test)
       FALSE /* reliable */,
       FALSE /* ice_udp */,
       TRUE /* ice_tcp */,
+      FALSE /* use_relay */,
+      0 /* turn_server_port (unused) */,
+      0 /* relay_type (unused) */,
       RTP_PACKETS,
       /* ice-tcp is much slower than ice-udp so only send 10 times instead of
        * 100 times like we do for ice-udp. */
@@ -523,6 +542,9 @@ GST_START_TEST (nicesink_reliable_ice_tcp_test)
       TRUE /* reliable */,
       FALSE /* ice_udp */,
       TRUE /* ice_tcp */,
+      FALSE /* use_relay */,
+      0 /* turn_server_port (unused) */,
+      0 /* relay_type (unused) */,
       RTP_PACKETS,
       10 /* times_to_send */,
       /* In reliable mode we expect 100% of sent messages to be received. */
