@@ -324,7 +324,7 @@ main (int argc, char **argv)
   const gchar* turn_server_ip = "127.0.0.1";
   sp = g_subprocess_new (G_SUBPROCESS_FLAGS_STDOUT_SILENCE, &error,
       "turnserver",
-      "--user", "toto:0xaae440b3348d50265b63703117c7bfd5",
+      "--user", TURN_USER ":" TURN_PASS,
       "--realm", "realm",
       "--listening-port", portstr,
       "--listening-ip", turn_server_ip,
