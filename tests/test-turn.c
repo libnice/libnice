@@ -1,4 +1,3 @@
-#include <stdio.h>
 #include <string.h>
 
 #include <gio/gio.h>
@@ -306,15 +305,9 @@ udp_force_no_remove_tcp (void)
 int
 main (int argc, char **argv)
 {
-  GSubprocess *sp;
-  GError *error = NULL;
-  gchar portstr[10];
   int ret;
 
   g_test_init (&argc, &argv, NULL);
-
-  global_turn_port = g_random_int_range (10000, 60000);
-  snprintf(portstr, 9, "%u", global_turn_port);
 
   if (!test_common_turnserver_available ()) {
     g_print ("coturn not installed, skipping turn test\n");
@@ -322,16 +315,8 @@ main (int argc, char **argv)
   }
 
   const gchar* turn_server_ip = "127.0.0.1";
-  sp = g_subprocess_new (G_SUBPROCESS_FLAGS_STDOUT_SILENCE, &error,
-      "turnserver",
-      "--user", TURN_USER ":" TURN_PASS,
-      "--realm", "realm",
-      "--listening-port", portstr,
-      "--listening-ip", turn_server_ip,
-      "--allow-loopback-peers",
-      "--no-cli",
-      NULL);
-  g_assert (test_common_wait_for_tcp_socket("TURN server", turn_server_ip, global_turn_port));
+  TestTurnServer *turn_server = test_common_turn_server_new (turn_server_ip, TURN_USER, TURN_PASS);
+  global_turn_port = turn_server->port;
 
   g_test_add_func ("/nice/turn/udp", udp_no_force_no_remove_udp);
   g_test_add_func ("/nice/turn/udp/remove_non_turn",
@@ -346,9 +331,7 @@ main (int argc, char **argv)
 
   ret = g_test_run ();
 
-  g_subprocess_force_exit (sp);
-  g_subprocess_wait (sp, NULL, NULL);
-  g_clear_object (&sp);
+  test_common_turn_server_destroy (turn_server);
 
   return ret;
 }

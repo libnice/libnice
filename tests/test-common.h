@@ -38,6 +38,17 @@
 #include <agent.h>
 #include <glib.h>
 
+typedef struct _TestTurnServer {
+  GSubprocess *sp;
+  guint port;
+} TestTurnServer;
+
+TestTurnServer *
+test_common_turn_server_new (const gchar *server_ip, const gchar *user, const gchar *pass);
+
+void
+test_common_turn_server_destroy (TestTurnServer *turn_server);
+
 void
 test_common_set_credentials (NiceAgent *lagent, guint lstream, NiceAgent *ragent, guint rstream);
 

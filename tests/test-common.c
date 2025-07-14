@@ -37,6 +37,48 @@
 
 #include "test-common.h"
 
+
+TestTurnServer *
+test_common_turn_server_new (const gchar *server_ip, const gchar *user, const gchar *pass)
+{
+  TestTurnServer *turn_server = g_new0 (TestTurnServer, 1);
+  turn_server->port = g_random_int_range (10000, 60000);
+
+  GError *err = NULL;
+  gchar *portstr = g_strdup_printf ("%u", turn_server->port);
+  gchar *user_and_pass = g_strdup_printf ("%s:%s", user, pass);
+  turn_server->sp = g_subprocess_new (G_SUBPROCESS_FLAGS_STDOUT_SILENCE, &err,
+      "turnserver",
+      "--user", user_and_pass,
+      "--realm", "realm",
+      "--listening-port", portstr,
+      "--listening-ip", server_ip,
+      "--allow-loopback-peers",
+      "--no-cli",
+      NULL);
+  g_free (user_and_pass);
+  user_and_pass = NULL;
+  g_free (portstr);
+  portstr = NULL;
+
+  // Note that `test_common_turnserver_available ()` can be used to check if a
+  // test should be skipped if a turnserver is not available.
+  g_assert_no_error (err);
+  g_assert (turn_server->sp);
+  g_assert (test_common_wait_for_tcp_socket ("TURN server", server_ip, turn_server->port));
+
+  return turn_server;
+}
+
+void
+test_common_turn_server_destroy (TestTurnServer *turn_server)
+{
+  g_subprocess_force_exit (turn_server->sp);
+  g_subprocess_wait (turn_server->sp, NULL, NULL);
+  g_clear_object (&turn_server->sp);
+  g_free (turn_server);
+}
+
 void
 test_common_set_credentials (NiceAgent *lagent, guint lstream, NiceAgent *ragent, guint rstream)
 {
