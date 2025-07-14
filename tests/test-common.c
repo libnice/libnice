@@ -104,6 +104,22 @@ test_common_turnserver_available (void)
   return available;
 }
 
+static void
+print_candidate (gpointer data, gpointer user_data)
+{
+  NiceCandidate *cand = data;
+  gchar str_addr[INET6_ADDRSTRLEN];
+
+  nice_address_to_string (&cand->addr, str_addr);
+
+  g_debug (
+      "  type=%s transport=%s %s:%u",
+      nice_candidate_type_to_string (cand->type),
+      nice_candidate_transport_to_string (cand->transport),
+      str_addr,
+      nice_address_get_port (&cand->addr));
+}
+
 void
 test_common_set_candidates (
     NiceAgent *from,
@@ -117,6 +133,8 @@ test_common_set_candidates (
   GSList *cands = NULL, *i;
 
   cands = nice_agent_get_local_candidates (from, from_stream, component);
+  g_debug ("Potential candidates from agent %p", from);
+  g_slist_foreach (cands, print_candidate, NULL);
   if (remove_non_relay) {
   restart:
     for (i = cands; i; i = i->next) {
@@ -130,6 +148,9 @@ test_common_set_candidates (
       }
     }
   }
+
+  g_debug ("Actually set candidates from agent %p to agent %p", from, to);
+  g_slist_foreach (cands, print_candidate, NULL);
   nice_agent_set_remote_candidates (to, to_stream, component, cands);
 
   for (i = cands; i; i = i->next)
