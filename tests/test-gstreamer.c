@@ -319,7 +319,7 @@ nice_gstreamer_test (
   test_state->loop = g_main_loop_new (NULL, FALSE);
   test_state->times_to_send = times_to_send;
   test_state->messages_sent_baseline = nice_test_instrument_send_get_messages_sent ();
-  if (ice_tcp) {
+  if (ice_tcp && !use_relay) { // our tcp-turn implementation always sends one message at a time
     /* Since ICE-TCP requires that all packets be framed with RFC4571 our
      * instrument-send.c LD_PRELOAD message counter can't straightforwardly
      * count the number of packets, so only use `bytes_received` for real
@@ -572,6 +572,30 @@ GST_START_TEST (nicesink_non_reliable_turn_udp_over_udp_test)
 }
 GST_END_TEST;
 
+GST_START_TEST (nicesink_non_reliable_turn_udp_over_tcp_test)
+{
+  if (!test_common_turnserver_available ()) {
+    g_debug ("skipping nicesink_non_reliable_turn_udp_over_tcp_test: no TURN server available");
+    return;
+  }
+
+  TestTurnServer *turn_server = test_common_turn_server_new (TURN_IP, TURN_USER, TURN_PASS);
+
+  nice_gstreamer_test (
+      FALSE /* reliable */,
+      TRUE /* ice_udp needed because tcp-turn copies transport address from UDP */,
+      TRUE /* ice_tcp */,
+      TRUE /* use_relay */,
+      turn_server->port,
+      NICE_RELAY_TYPE_TURN_TCP,
+      RTP_PACKETS,
+      10 /* times_to_send */,
+      10 /* received_packets_percentage_for_pass */);
+
+  test_common_turn_server_destroy (turn_server);
+}
+GST_END_TEST;
+
 GST_START_TEST (nicesink_reliable_ice_tcp_test)
 {
   nice_gstreamer_test (
@@ -605,6 +629,10 @@ nice_gstreamer_suite (void)
   tc = tcase_create ("nicesink_non_reliable_turn_udp_over_udp_test");
   suite_add_tcase (s, tc);
   tcase_add_test (tc, nicesink_non_reliable_turn_udp_over_udp_test);
+
+  tc = tcase_create ("nicesink_non_reliable_turn_udp_over_tcp_test");
+  suite_add_tcase (s, tc);
+  tcase_add_test (tc, nicesink_non_reliable_turn_udp_over_tcp_test);
 
   tc = tcase_create ("nicesink_reliable_ice_tcp_test");
   suite_add_tcase (s, tc);
