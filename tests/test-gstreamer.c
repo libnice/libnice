@@ -417,7 +417,7 @@ nice_gstreamer_test (
    * this.
    */
   nice_test_instrument_send_set_post_increment_callback (check_if_done, test_state);
-  nice_test_instrument_send_set_calls_until_next_ewouldblock (2);
+  nice_test_instrument_send_set_average_ewouldblock_interval (2);
   for (int i = 0; i < test_state->times_to_send; i++) {
     g_signal_emit_by_name (appsrc, "push-buffer-list", list, &flow_ret);
   }

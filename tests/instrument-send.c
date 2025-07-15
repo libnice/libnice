@@ -49,8 +49,7 @@
 static GMutex mutex;
 
 static size_t messages_sent = 0; /* Protected by `mutex` */
-static guint calls_until_next_ewouldblock = 0; /* Protected by `mutex` */
-static guint calls_without_ewouldblock = 0; /* Protected by `mutex` */
+static guint average_ewouldblock_interval = 0; /* Protected by `mutex` */
 static void (*post_increment_callback) (gpointer user_data) = NULL; /* Protected by `mutex` */
 static gpointer *post_increment_user_data; /* Protected by `mutex` */
 
@@ -71,12 +70,25 @@ increment_messages_sent (size_t sent)
   }
 }
 
+/**
+ * nice_test_instrument_send_set_average_ewouldblock_interval:
+ * @param average_interval The average number of calls to `send()` between each
+ * synthetic EWOULDBLOCK.
+ *
+ * Set the average number of calls to `send()` before a synthetic EWOULDBLOCK
+ * error is injected. The value `0` means "never inject EWOULDBLOCK". The term
+ * "average" is used because rand() is used to determine exactly when to inject.
+ * This is to avoid "resonance frequencies" where unnaturally regular
+ * EWOULDBLOCK causes components to never recover.
+ */
 void
-nice_test_instrument_send_set_calls_until_next_ewouldblock (size_t call_count)
+nice_test_instrument_send_set_average_ewouldblock_interval (size_t average_interval)
 {
+  // We want repeatable randomness. Always use the same seed.
+  srand (0);
+
   g_mutex_lock (&mutex);
-  calls_without_ewouldblock = 0;
-  calls_until_next_ewouldblock = call_count;
+  average_ewouldblock_interval = average_interval;
   g_mutex_unlock (&mutex);
 }
 
@@ -87,12 +99,8 @@ should_inject_ewouldblock (void)
 
   g_mutex_lock (&mutex);
   /* The special value `0` means "never". */
-  if (calls_until_next_ewouldblock > 0) {
-    calls_without_ewouldblock++;
-    if (calls_without_ewouldblock >= calls_until_next_ewouldblock) {
-      calls_without_ewouldblock = 0;
-      should_inject = TRUE;
-    }
+  if (average_ewouldblock_interval > 0) {
+    should_inject = rand () % average_ewouldblock_interval == 0;
   }
   g_mutex_unlock (&mutex);
 

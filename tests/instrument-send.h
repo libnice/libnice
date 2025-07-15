@@ -38,7 +38,7 @@
 #include <glib.h>
 
 void
-nice_test_instrument_send_set_calls_until_next_ewouldblock (size_t call_count);
+nice_test_instrument_send_set_average_ewouldblock_interval (size_t average_interval);
 
 void
 nice_test_instrument_send_set_post_increment_callback (
