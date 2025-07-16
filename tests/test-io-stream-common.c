@@ -393,6 +393,10 @@ run_io_stream_test (guint deadlock_timeout, gboolean reliable,
   guint start_count = 6;
   guint stream_id;
 
+  if (g_strcmp0 (getenv ("NICE_INSIDE_VALGRIND"), "1") == 0) {
+    deadlock_timeout *= 10;
+  }
+
   g_mutex_init (&mutex);
   g_cond_init (&cond);
 
