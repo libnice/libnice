@@ -40,7 +40,7 @@ check-allow-collaboration:
   extends:
     - .fdo.ci-fairy
   script:
-   - ci-fairy check-merge-request --require-allow-collaboration
+   - ci-fairy check-merge-request --require-allow-collaboration --junit-xml=results.xml
   interruptible: true
   needs: []
   stage: 'verify'
@@ -49,6 +49,11 @@ check-allow-collaboration:
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
       when: always
+    - when: never
+  artifacts:
+    reports:
+      junit: results.xml
+
 
 build-centos-container:8:
   extends:
