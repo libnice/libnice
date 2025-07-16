@@ -19,10 +19,13 @@ workflow:
 include:
   - project: 'freedesktop/ci-templates'
     file: '/templates/ci-fairy.yml'
+    ref: '48c2c583a865bd59be21e8938df247faf460099c'
   - project: 'freedesktop/ci-templates'
     file: '/templates/centos.yml'
+    ref: '48c2c583a865bd59be21e8938df247faf460099c'
   - project: 'freedesktop/ci-templates'
     file: '/templates/fedora.yml'
+    ref: '48c2c583a865bd59be21e8938df247faf460099c'
 
 .libnice.centos:8:
   variables:
