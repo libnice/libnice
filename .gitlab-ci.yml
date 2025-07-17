@@ -259,10 +259,12 @@ build msvc x86 openssl:
   interruptible: true
   except:
     - schedules
-  script:
+  before_script:
     - ifconfig
+  script:
     - ninja -C build/
     - meson test -C build/ --setup debug
+  after_script:
     - ninja -C build coverage
     - lcov_cobertura build/meson-logs/coverage.info -o build/meson-logs/coverage.xml
   coverage: '/lines......: \d+\.\d+% /'
@@ -295,7 +297,6 @@ test fedora:42:
 test valgrind centos:8:
   extends: test centos:8
   script:
-    - ifconfig
     - meson configure build -Dgtk_doc=disabled
     - ninja -C build/
     - meson test -C build/ --setup valgrind --print-errorlogs
