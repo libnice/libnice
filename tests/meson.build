@@ -74,8 +74,7 @@ endforeach
 # properly the plugins (gstreamer and libnice ones) with gst_init_static_plugins.
 # That's the reason the test is now disabled in static mode.
 if gst_dep.found() and not static_build
-  gst_check = dependency('gstreamer-check-1.0', required: get_option('gstreamer'),
-                         fallback : ['gstreamer', 'gst_check_dep'])
+  gst_check = dependency('gstreamer-check-1.0', required: get_option('gstreamer'))
   if gst_check.found()
     test_defines = [
       '-DG_LOG_DOMAIN="libnice-tests"',
