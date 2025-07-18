@@ -284,9 +284,6 @@ cb_component_state_changed (NiceAgent * agent, guint stream_id,
 
   if (state == NICE_COMPONENT_STATE_READY) {
     test_state->ready++;
-    if (test_state->ready >= 2) {
-      g_main_loop_quit (test_state->loop);
-    }
   }
 }
 
@@ -427,8 +424,9 @@ nice_gstreamer_test (
   list = create_buffer_list (rtp_packets);
 
   g_debug ("Waiting for agents to be ready ready");
-
-  g_main_loop_run (test_state->loop);
+  while (test_state->ready < 2) {
+    g_main_context_iteration (NULL, TRUE);
+  }
 
   /* Now that we are ready to send data, set up synthetic EWOULDBLOCK errors to
    * get good code coverage. We inject EWOULDBLOCK every second call. That is
