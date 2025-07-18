@@ -321,6 +321,12 @@ nice_gstreamer_test (
     rtp_packets = rtp_packets / 10;
   }
 
+  /* With CK_FORK=no the instumentation is global state, so we must reset it to
+   * avoid pollution between tests. It doesn't hurt to always reset it
+   * regardless of CK_FORK, so always reset it. */
+  nice_test_instrument_send_set_post_increment_callback (NULL, NULL);
+  nice_test_instrument_send_set_average_ewouldblock_interval (0);
+
   test_state = g_new0 (TestState, 1);
   test_state->loop = g_main_loop_new (NULL, FALSE);
   test_state->times_to_send = times_to_send;
