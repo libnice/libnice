@@ -301,6 +301,13 @@ test valgrind centos:8:
     - ninja -C build/
     - meson test -C build/ --setup valgrind --print-errorlogs
 
+test valgrind fedora:42:
+  extends: test fedora:42
+  script:
+    - meson configure build -Dgtk_doc=disabled
+    - ninja -C build/
+    - meson test -C build/ --setup valgrind --print-errorlogs
+
 doc-and-install centos:8:
   stage: test
   extends:
