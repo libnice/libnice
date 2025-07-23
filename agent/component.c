@@ -83,7 +83,7 @@ nice_component_schedule_io_callback (NiceComponent *component);
 static void
 nice_component_deschedule_io_callback (NiceComponent *component);
 static void
-nice_component_detach_socket (NiceComponent *component, NiceSocket *nicesock);
+nice_component_detach_socket (NiceComponent *component, NiceSocket *nicesock, gboolean *socket_source_freed);
 static void
 nice_component_clear_selected_pair (NiceComponent *component);
 
@@ -193,7 +193,7 @@ nice_component_remove_socket (NiceAgent *agent, NiceComponent *cmp,
     if (candidate->sockptr != nsocket && stream) {
       discovery_prune_socket (agent, candidate->sockptr);
       conn_check_prune_socket (agent, stream, cmp, candidate->sockptr);
-      nice_component_detach_socket (cmp, candidate->sockptr);
+      nice_component_detach_socket (cmp, candidate->sockptr, NULL);
     }
     if (stream)
       agent_remove_local_candidate (agent, stream, (NiceCandidate *) candidate);
@@ -227,17 +227,27 @@ nice_component_remove_socket (NiceAgent *agent, NiceComponent *cmp,
     i = next;
   }
 
-  nice_component_detach_socket (cmp, nsocket);
+  nice_component_detach_socket (cmp, nsocket, NULL);
 }
 
 static gboolean
 on_candidate_refreshes_pruned (NiceAgent *agent, NiceCandidateImpl *candidate)
 {
   NiceComponent *component;
+  gboolean socket_source_freed = FALSE;
 
   if (agent_find_component (agent, candidate->c.stream_id,
       candidate->c.component_id, NULL, &component)) {
-    nice_component_detach_socket (component, candidate->sockptr);
+    nice_component_detach_socket (component, candidate->sockptr, &socket_source_freed);
+  }
+
+  if (candidate->sockptr && !socket_source_freed) {
+    // We typically get here if a candidate was pruned by
+    // `priv_add_local_candidate_pruned()` which means we never called
+    // `nice_component_attach_socket()`. We must free the socket ourselves since
+    // no `SocketSource` took ownership of it.
+    nice_socket_free (candidate->sockptr);
+    candidate->sockptr = NULL;
   }
 
   nice_candidate_free ((NiceCandidate *) candidate);
@@ -721,7 +731,7 @@ nice_component_reattach_all_sockets (NiceComponent *component)
  * If the @socket doesn’t exist in this @component, do nothing.
  */
 static void
-nice_component_detach_socket (NiceComponent *component, NiceSocket *nicesock)
+nice_component_detach_socket (NiceComponent *component, NiceSocket *nicesock, gboolean *socket_source_freed)
 {
   GList *l;
   GSList *s;
@@ -754,6 +764,9 @@ nice_component_detach_socket (NiceComponent *component, NiceSocket *nicesock)
   component->socket_sources_age++;
 
   socket_source_free (socket_source);
+  if (socket_source_freed) {
+    *socket_source_freed = TRUE;
+  }
 }
 
 /*
