@@ -73,7 +73,7 @@ build-fedora-container:42:
   - .libnice.fedora:42              # our template job above
   stage: containers
   variables:
-    FDO_DISTRIBUTION_PACKAGES: 'git gtk-doc gnutls-devel gupnp-igd-devel gstreamer1-devel gstreamer1-plugins-base gobject-introspection-devel valgrind net-tools graphviz meson ninja-build lcov python3-pip coturn'
+    FDO_DISTRIBUTION_PACKAGES: 'git gtk-doc gnutls-devel gupnp-igd-devel gstreamer1-devel gstreamer1-plugins-base gobject-introspection-devel valgrind net-tools graphviz meson ninja-build lcov python3-pip coturn file'
     FDO_DISTRIBUTION_EXEC: 'tests/docker/fedora42/pip-installs.sh'
 
 .build:
