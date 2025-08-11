@@ -36,7 +36,7 @@ include:
 .libnice.fedora:42:
   variables:
     FDO_DISTRIBUTION_VERSION: '42'
-    FDO_DISTRIBUTION_TAG: '2025-07-18'
+    FDO_DISTRIBUTION_TAG: '2025-08-11'
     FDO_UPSTREAM_REPO: 'libnice/libnice'
 
 check-allow-collaboration:
