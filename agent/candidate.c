@@ -185,13 +185,20 @@ nice_candidate_ip_local_preference (const NiceCandidate *candidate)
 
   ips = nice_interfaces_get_local_ips (TRUE);
 
+  /* Calculate total number of interfaces first */
+  guint total_interfaces = g_list_length (ips);
+  
+  /* Find the position of the candidate IP in the list */
   for (iter = ips; iter; iter = g_list_next (iter)) {
     /* Strip the IPv6 link-local scope string */
     gchar **tokens = g_strsplit (iter->data, "%", 2);
     gboolean match = (g_strcmp0 (ip_string, tokens[0]) == 0);
     g_strfreev (tokens);
-    if (match)
+    if (match) {
+      /* Return inverted preference: later interfaces get lower preference values */
+      preference = total_interfaces - 1 - preference;
       break;
+    }
     ++preference;
   }
 
