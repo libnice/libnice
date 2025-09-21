@@ -781,6 +781,26 @@ HostCandidateResult discovery_add_local_host_candidate (
   if (!agent_find_component (agent, stream_id, component_id, &stream, &component))
     return res;
 
+  /* note: candidate username and password are left NULL as stream
+     level ufrag/password are used */
+  if (transport == NICE_CANDIDATE_TRANSPORT_UDP) {
+    nicesock = nice_udp_bsd_socket_new (agent->main_context, address, &error);
+  } else if (transport == NICE_CANDIDATE_TRANSPORT_TCP_ACTIVE) {
+    nicesock = nice_tcp_active_socket_new (agent->main_context, address);
+  } else if (transport == NICE_CANDIDATE_TRANSPORT_TCP_PASSIVE) {
+    nicesock = nice_tcp_passive_socket_new (agent->main_context, address, &error);
+  } else {
+    /* TODO: Add TCP-SO */
+  }
+  if (!nicesock) {
+    if (error && g_error_matches (error, G_IO_ERROR, G_IO_ERROR_ADDRESS_IN_USE))
+      res = HOST_CANDIDATE_DUPLICATE_PORT;
+    else
+      res = HOST_CANDIDATE_CANT_CREATE_SOCKET;
+    g_clear_error (&error);
+    return res;
+  }
+
   candidate = nice_candidate_new (NICE_CANDIDATE_TYPE_HOST);
   c = (NiceCandidateImpl *) candidate;
   candidate->transport = transport;
@@ -803,26 +823,6 @@ HostCandidateResult discovery_add_local_host_candidate (
 
   priv_generate_candidate_credentials (agent, candidate);
   priv_assign_foundation (agent, candidate);
-
-  /* note: candidate username and password are left NULL as stream
-     level ufrag/password are used */
-  if (transport == NICE_CANDIDATE_TRANSPORT_UDP) {
-    nicesock = nice_udp_bsd_socket_new (agent->main_context, address, &error);
-  } else if (transport == NICE_CANDIDATE_TRANSPORT_TCP_ACTIVE) {
-    nicesock = nice_tcp_active_socket_new (agent->main_context, address);
-  } else if (transport == NICE_CANDIDATE_TRANSPORT_TCP_PASSIVE) {
-    nicesock = nice_tcp_passive_socket_new (agent->main_context, address, &error);
-  } else {
-    /* TODO: Add TCP-SO */
-  }
-  if (!nicesock) {
-    if (error && g_error_matches (error, G_IO_ERROR, G_IO_ERROR_ADDRESS_IN_USE))
-      res = HOST_CANDIDATE_DUPLICATE_PORT;
-    else
-      res = HOST_CANDIDATE_CANT_CREATE_SOCKET;
-    g_clear_error (&error);
-    goto errors;
-  }
 
   c->sockptr = nicesock;
   candidate->addr = nicesock->addr;
