@@ -398,7 +398,7 @@ nice_component_close (NiceAgent *agent, NiceStream *stream, NiceComponent *cmp)
   while ((data = g_queue_pop_head (&cmp->pending_io_messages)) != NULL)
     io_callback_data_free (data);
 
-  nice_component_deschedule_io_callback (cmp);
+  nice_component_set_io_callback (cmp, NULL, NULL, NULL, NULL, 0, NULL);
 
   g_cancellable_cancel (cmp->stop_cancellable);
 
@@ -411,6 +411,8 @@ nice_component_close (NiceAgent *agent, NiceStream *stream, NiceComponent *cmp)
   g_free (cmp->rfc4571_buffer);
   cmp->recv_buffer = NULL;
   cmp->rfc4571_buffer = NULL;
+
+  nice_message_extra_data_copy (&cmp->exdata, NULL);
 }
 
 void
@@ -838,7 +840,7 @@ nice_component_set_io_context (NiceComponent *component, GMainContext *context)
   g_mutex_unlock (&component->io_mutex);
 }
 
-/* (func, user_data) and (recv_messages, n_recv_messages) are mutually
+/* (func, user_data, notify) and (recv_messages, n_recv_messages) are mutually
  * exclusive. At most one of the two must be specified; if both are NULL, the
  * Component will not receive any data (i.e. reception is paused).
  *
@@ -850,7 +852,7 @@ nice_component_set_io_context (NiceComponent *component, GMainContext *context)
  * unset in that time). */
 void
 nice_component_set_io_callback (NiceComponent *component,
-    NiceAgentRecvFunc func, gpointer user_data,
+    NiceAgentRecvFuncEx func, gpointer user_data, GDestroyNotify notify,
     NiceInputMessage *recv_messages, guint n_recv_messages,
     GError **error)
 {
@@ -860,9 +862,14 @@ nice_component_set_io_callback (NiceComponent *component,
 
   g_mutex_lock (&component->io_mutex);
 
+  if (component->io_user_data_notify) {
+    component->io_user_data_notify (component->io_user_data);
+  }
+
   if (func != NULL) {
     component->io_callback = func;
     component->io_user_data = user_data;
+    component->io_user_data_notify = notify;
     component->recv_messages = NULL;
     component->n_recv_messages = 0;
 
@@ -870,6 +877,7 @@ nice_component_set_io_callback (NiceComponent *component,
   } else {
     component->io_callback = NULL;
     component->io_user_data = NULL;
+    component->io_user_data_notify = NULL;
     component->recv_messages = recv_messages;
     component->n_recv_messages = n_recv_messages;
 
@@ -895,13 +903,15 @@ nice_component_has_io_callback (NiceComponent *component)
 }
 
 IOCallbackData *
-io_callback_data_new (const guint8 *buf, gsize buf_len)
+io_callback_data_new (const guint8 *buf, gsize buf_len,
+    NiceMessageExtraData *exdata)
 {
   IOCallbackData *data;
 
   data = g_slice_new0 (IOCallbackData);
   data->buf = g_memdup (buf, buf_len);
   data->buf_len = buf_len;
+  nice_message_extra_data_copy (&data->exdata, exdata);
   data->offset = 0;
 
   return data;
@@ -911,6 +921,7 @@ void
 io_callback_data_free (IOCallbackData *data)
 {
   g_free (data->buf);
+  nice_message_extra_data_copy (&data->exdata, NULL);
   g_slice_free (IOCallbackData, data);
 }
 
@@ -921,7 +932,7 @@ emit_io_callback_cb (gpointer user_data)
 {
   NiceComponent *component = user_data;
   IOCallbackData *data;
-  NiceAgentRecvFunc io_callback;
+  NiceAgentRecvFuncEx io_callback;
   gpointer io_user_data;
   guint stream_id, component_id;
   NiceAgent *agent;
@@ -965,7 +976,7 @@ emit_io_callback_cb (gpointer user_data)
 
     io_callback (agent, stream_id, component_id,
         data->buf_len - data->offset, (gchar *) data->buf + data->offset,
-        io_user_data);
+        &data->exdata, io_user_data);
 
     /* Check for the user destroying things underneath our feet. */
     if (!agent_find_component (agent, stream_id, component_id,
@@ -995,7 +1006,7 @@ nice_component_emit_io_callback (NiceAgent *agent, NiceComponent *component,
     gsize buf_len)
 {
   guint stream_id, component_id;
-  NiceAgentRecvFunc io_callback;
+  NiceAgentRecvFuncEx io_callback;
   gpointer io_user_data;
 
   g_assert (component != NULL);
@@ -1024,8 +1035,8 @@ nice_component_emit_io_callback (NiceAgent *agent, NiceComponent *component,
   if (g_main_context_is_owner (component->ctx)) {
     /* Thread owns the main context, so invoke the callback directly. */
     agent_unlock_and_emit (agent);
-    io_callback (agent, stream_id,
-        component_id, buf_len, (gchar *) component->recv_buffer, io_user_data);
+    io_callback (agent, stream_id, component_id, buf_len,
+        (gchar *) component->recv_buffer, &component->exdata, io_user_data);
     agent_lock (agent);
   } else {
     IOCallbackData *data;
@@ -1034,7 +1045,8 @@ nice_component_emit_io_callback (NiceAgent *agent, NiceComponent *component,
 
     /* Slow path: Current thread doesn’t own the Component’s context at the
      * moment, so schedule the callback in an idle handler. */
-    data = io_callback_data_new (component->recv_buffer, buf_len);
+    data = io_callback_data_new (component->recv_buffer, buf_len,
+        &component->exdata);
     g_queue_push_tail (&component->pending_io_messages,
         data);  /* transfer ownership */
 
@@ -1178,7 +1190,7 @@ nice_component_init (NiceComponent *component)
    * will be updated when nice_agent_attach_recv() or nice_agent_recv_messages()
    * are called. */
   nice_component_set_io_context (component, NULL);
-  nice_component_set_io_callback (component, NULL, NULL, NULL, 0, NULL);
+  nice_component_set_io_callback (component, NULL, NULL, NULL, NULL, 0, NULL);
 
   g_queue_init (&component->queued_tcp_packets);
   g_queue_init (&component->incoming_checks);

@@ -5494,7 +5494,7 @@ nice_agent_recv_messages_blocking_or_nonblocking (NiceAgent *agent,
 
   /* Set the component’s receive buffer. */
   context = nice_component_dup_io_context (component);
-  nice_component_set_io_callback (component, NULL, NULL, messages, n_messages,
+  nice_component_set_io_callback (component, NULL, NULL, NULL, messages, n_messages,
       &child_error);
 
   /* Add the cancellable as a source. */
@@ -5609,7 +5609,7 @@ consumed_rfc4571_chunk:
       nice_input_message_iter_get_n_valid_messages (
           &component->recv_messages_iter);  /* grab before resetting the iter */
 
-  nice_component_set_io_callback (component, NULL, NULL, NULL, 0, NULL);
+  nice_component_set_io_callback (component, NULL, NULL, NULL, NULL, 0, NULL);
 
 recv_error:
   /* Tidy up. Below this point, @component may be %NULL. */
@@ -6580,6 +6580,20 @@ out:
   return G_SOURCE_REMOVE;
 }
 
+typedef struct {
+  NiceAgentRecvFunc func;
+  gpointer data;
+} CompatRecvData;
+
+static void compat_recv_func (
+  NiceAgent *agent, guint stream_id, guint component_id, guint len,
+  gchar *buf, NiceMessageExtraData *exdata, gpointer user_data)
+{
+  CompatRecvData *data = user_data;
+
+  data->func(agent, stream_id, component_id, len, buf, data->data);
+}
+
 NICEAPI_EXPORT gboolean
 nice_agent_attach_recv (
   NiceAgent *agent,
@@ -6588,6 +6602,24 @@ nice_agent_attach_recv (
   GMainContext *ctx,
   NiceAgentRecvFunc func,
   gpointer data)
+{
+  CompatRecvData *compat_data = g_new0 (CompatRecvData, 1);
+  compat_data->func = func;
+  compat_data->data = data;
+
+  return nice_agent_attach_recv_ex (agent, stream_id, component_id, ctx,
+      compat_recv_func, compat_data, g_free);
+}
+
+NICEAPI_EXPORT gboolean
+nice_agent_attach_recv_ex (
+  NiceAgent *agent,
+  guint stream_id,
+  guint component_id,
+  GMainContext *ctx,
+  NiceAgentRecvFuncEx func,
+  gpointer data,
+  GDestroyNotify notify)
 {
   NiceComponent *component = NULL;
   NiceStream *stream = NULL;
@@ -6613,7 +6645,7 @@ nice_agent_attach_recv (
 
   /* Set the component’s I/O context. */
   nice_component_set_io_context (component, ctx);
-  nice_component_set_io_callback (component, func, data, NULL, 0, NULL);
+  nice_component_set_io_callback (component, func, data, notify, NULL, 0, NULL);
   ret = TRUE;
 
   if (func) {
@@ -7861,4 +7893,11 @@ nice_agent_consent_lost (
   agent_unlock_and_emit (agent);
 
   return result;
+}
+
+void
+nice_message_extra_data_copy (NiceMessageExtraData *dest,
+    NiceMessageExtraData *src)
+{
+  g_return_if_fail (dest != NULL);
 }

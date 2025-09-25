@@ -75,6 +75,11 @@ typedef struct {
   gsize offset;
 } NiceInputMessageIter;
 
+struct _NiceMessageExtraData
+{
+  
+};
+
 void
 nice_input_message_iter_reset (NiceInputMessageIter *iter);
 gboolean
@@ -316,6 +321,10 @@ nice_candidate_pair_priority (guint32 o_prio, guint32 a_prio);
 
 void
 nice_candidate_pair_priority_to_string (guint64 prio, gchar *string);
+
+void
+nice_message_extra_data_copy (NiceMessageExtraData *dest,
+    NiceMessageExtraData *src);
 
 /*
  * nice_debug_init:

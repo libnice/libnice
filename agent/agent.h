@@ -223,6 +223,15 @@ typedef struct {
   gint n_buffers;
 } NiceOutputMessage;
 
+/**
+ * NiceMessageExtraData:
+ *
+ * An opaque structure that holds extra information about received data buffers.
+ * To access the extra data, use nice_message_extra_data_get_*() functions.
+ *
+ * Since: 0.1.24
+ */
+typedef struct _NiceMessageExtraData NiceMessageExtraData;
 
 #define NICE_TYPE_AGENT nice_agent_get_type()
 
@@ -450,6 +459,24 @@ typedef void (*NiceAgentRecvFunc) (
   NiceAgent *agent, guint stream_id, guint component_id, guint len,
   gchar *buf, gpointer user_data);
 
+/**
+ * NiceAgentRecvFuncEx:
+ * @agent: The #NiceAgent Object
+ * @stream_id: The id of the stream
+ * @component_id: The id of the component of the stream which received the data
+ * @len: The length of the data
+ * @buf: The buffer containing the data received
+ * @exdata: Extra information about the received data buffer
+ * @user_data: The user data set in nice_agent_attach_recv()
+ *
+ * A variant of #NiceAgentRecvFunc that provides a #NiceMessageExtraData
+ * structure with additional information about the received data buffer.
+ *
+ * Since: 0.1.24
+ */
+typedef void (*NiceAgentRecvFuncEx) (
+  NiceAgent *agent, guint stream_id, guint component_id, guint len,
+  gchar *buf, NiceMessageExtraData *exdata, gpointer user_data);
 
 /**
  * nice_agent_new:
@@ -1000,6 +1027,39 @@ nice_agent_attach_recv (
   GMainContext *ctx,
   NiceAgentRecvFunc func,
   gpointer data);
+
+/**
+ * nice_agent_attach_recv_ex:
+ * @agent: The #NiceAgent Object
+ * @stream_id: The ID of stream
+ * @component_id: The ID of the component
+ * @ctx: The Glib Mainloop Context to use for listening on the component
+ * @func: The callback function to be called when data is received on
+ * the stream's component (will not be called for STUN messages that
+ * should be handled by #NiceAgent itself)
+ * @data: user data associated with the callback
+ * @notify: A function to free @data 
+ *
+ * A version of #nice_agent_attach_recv that takes #NiceAgentRecvFuncEx as the
+ * callback function, which allows retrieving #NiceMessageExtraData structure
+ * containing additional info about the received data buffer.
+ *
+ * @data becomes owned by libnice, which will call @notify to free the data when
+ * they are no longer needed.
+ *
+ * Returns: %TRUE on success, %FALSE if the stream or component IDs are invalid.
+ *
+ * Since: 0.1.24
+ */
+gboolean
+nice_agent_attach_recv_ex (
+  NiceAgent *agent,
+  guint stream_id,
+  guint component_id,
+  GMainContext *ctx,
+  NiceAgentRecvFuncEx func,
+  gpointer data,
+  GDestroyNotify notify);
 
 /**
  * nice_agent_recv:

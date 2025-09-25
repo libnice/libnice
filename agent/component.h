@@ -138,10 +138,12 @@ typedef struct {
   guint8 *buf;  /* owned */
   gsize buf_len;
   gsize offset;
+  NiceMessageExtraData exdata;
 } IOCallbackData;
 
 IOCallbackData *
-io_callback_data_new (const guint8 *buf, gsize buf_len);
+io_callback_data_new (const guint8 *buf, gsize buf_len,
+    NiceMessageExtraData *exdata);
 void
 io_callback_data_free (IOCallbackData *data);
 
@@ -188,8 +190,9 @@ struct _NiceComponent {
                                          holding the agent lock; if the agent
                                          lock is to be taken, it must always be
                                          taken before this one */
-  NiceAgentRecvFunc io_callback;    /* function called on io cb */
+  NiceAgentRecvFuncEx io_callback;  /* function called on io cb */
   gpointer io_user_data;            /* data passed to the io function */
+  GDestroyNotify io_user_data_notify; /* called to free io function data */
   GQueue pending_io_messages;       /* queue of messages which have been
                                          received but not passed to the client
                                          in an I/O callback or recv() call yet.
@@ -241,6 +244,7 @@ struct _NiceComponent {
    */
   guint8 *recv_buffer;
   guint recv_buffer_size;
+  NiceMessageExtraData exdata;
 
   /* ICE-TCP frame state */
   guint8 *rfc4571_buffer;
@@ -318,7 +322,7 @@ void
 nice_component_set_io_context (NiceComponent *component, GMainContext *context);
 void
 nice_component_set_io_callback (NiceComponent *component,
-    NiceAgentRecvFunc func, gpointer user_data,
+    NiceAgentRecvFuncEx func, gpointer user_data, GDestroyNotify notify,
     NiceInputMessage *recv_messages, guint n_recv_messages,
     GError **error);
 void

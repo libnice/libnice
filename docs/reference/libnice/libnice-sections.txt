@@ -8,8 +8,10 @@ NiceProxyType
 NiceNominationMode
 NiceCompatibility
 NiceAgentRecvFunc
+NiceAgentRecvFuncEx
 NiceInputMessage
 NiceOutputMessage
+NiceMessageExtraData
 NICE_AGENT_MAX_REMOTE_CANDIDATES
 nice_agent_new
 nice_agent_new_reliable
@@ -37,6 +39,7 @@ nice_agent_recv_messages
 nice_agent_recv_nonblocking
 nice_agent_recv_messages_nonblocking
 nice_agent_attach_recv
+nice_agent_attach_recv_ex
 nice_agent_set_selected_pair
 nice_agent_set_selected_remote_candidate
 nice_agent_set_stream_tos
