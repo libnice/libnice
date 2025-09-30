@@ -73,7 +73,7 @@ typedef struct {
 
 static gint
 test_socket_recv_messages (NiceSocket *sock, NiceInputMessage *recv_messages,
-    guint n_recv_messages) {
+    guint n_recv_messages, NiceMessageExtraData *exdata) {
   TestSocketPriv *priv = sock->priv;
   guint i;
 
@@ -177,7 +177,7 @@ tcp_turn_fragmentation (void)
   li = test_messages;
   while (li) {
     n_messages = nice_socket_recv_messages (turnsock, recv_messages,
-        N_RECV_MESSAGES);
+        N_RECV_MESSAGES, NULL);
 
     for (i = 0; i != (guint)n_messages; ++i) {
       NiceInputMessage *message = &recv_messages[i];

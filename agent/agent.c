@@ -4646,7 +4646,8 @@ agent_recv_message_unlocked (
   NiceStream *stream,
   NiceComponent *component,
   NiceSocket *nicesock,
-  NiceInputMessage *message)
+  NiceInputMessage *message,
+  NiceMessageExtraData *exdata)
 {
   NiceInputMessage *provided_message = message;
   NiceInputMessage rfc4571_message;
@@ -4715,7 +4716,7 @@ agent_recv_message_unlocked (
         local_bufs[i + 1].buffer = message->buffers[i].buffer;
         local_bufs[i + 1].size = message->buffers[i].size;
       }
-      sockret = nice_socket_recv_messages (nicesock, &local_message, 1);
+      sockret = nice_socket_recv_messages (nicesock, &local_message, 1, NULL);
       if (sockret == 1 && local_message.length >= sizeof (guint16)) {
         message->length = ntohs (rfc4571_frame);
       }
@@ -4802,7 +4803,8 @@ agent_recv_message_unlocked (
             component->rfc4571_buffer_offset = headroom;
             component->rfc4571_frame_offset = 0;
 
-            sockret = nice_socket_recv_messages (nicesock, &local_message, 1);
+            sockret = nice_socket_recv_messages (nicesock, &local_message, 1,
+                NULL);
             if (sockret == 1) {
               component->rfc4571_buffer_offset += local_message.length;
               headroom += local_message.length;
@@ -4840,7 +4842,7 @@ agent_recv_message_unlocked (
       }
     }
   } else {
-    sockret = nice_socket_recv_messages (nicesock, message, 1);
+    sockret = nice_socket_recv_messages (nicesock, message, 1, exdata);
   }
 
   if (sockret == 0) {
@@ -6348,7 +6350,7 @@ component_io_cb (GSocket *gsocket, GIOCondition condition, gpointer user_data)
        * component->recv_messages in pseudo_tcp_socket_readable(). STUN packets
        * will be parsed in-place. */
       retval = agent_recv_message_unlocked (agent, stream, component,
-          socket_source->socket, &local_message);
+          socket_source->socket, &local_message, NULL);
 
       nice_debug_verbose ("%s: %p: received %d valid messages with %" G_GSSIZE_FORMAT
           " bytes", G_STRFUNC, agent, retval, local_message.length);
@@ -6411,7 +6413,7 @@ component_io_cb (GSocket *gsocket, GIOCondition condition, gpointer user_data)
         gsize off;
 
         retval = agent_recv_message_unlocked (agent, stream, component,
-            socket_source->socket, &m);
+            socket_source->socket, &m, NULL);
         if (retval == RECV_WOULD_BLOCK || retval == RECV_ERROR)
           break;
         if (retval == RECV_OOB)
@@ -6480,8 +6482,9 @@ component_io_cb (GSocket *gsocket, GIOCondition condition, gpointer user_data)
       RecvStatus retval;
 
       /* Receive a single message. */
+      nice_message_extra_data_copy (&component->exdata, NULL);
       retval = agent_recv_message_unlocked (agent, stream, component,
-          socket_source->socket, &local_message);
+          socket_source->socket, &local_message, &component->exdata);
 
       if (retval == RECV_WOULD_BLOCK) {
         /* EWOULDBLOCK. */
@@ -6528,7 +6531,7 @@ component_io_cb (GSocket *gsocket, GIOCondition condition, gpointer user_data)
        * STUN packets will be parsed in-place. */
       retval = agent_recv_message_unlocked (agent, stream, component,
           socket_source->socket,
-          &component->recv_messages[component->recv_messages_iter.message]);
+          &component->recv_messages[component->recv_messages_iter.message], NULL);
 
       nice_debug_verbose ("%s: %p: received %d valid messages", G_STRFUNC, agent,
           retval);

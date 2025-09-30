@@ -78,7 +78,8 @@ struct _NiceSocket
   /* Implementations must handle any value of n_recv_messages, including 0. Iff
    * n_recv_messages is 0, recv_messages may be NULL. */
   gint (*recv_messages) (NiceSocket *sock,
-      NiceInputMessage *recv_messages, guint n_recv_messages);
+      NiceInputMessage *recv_messages, guint n_recv_messages,
+      NiceMessageExtraData *exdata);
   /* As above, @n_messages may be zero. Iff so, @messages may be %NULL. */
   gint (*send_messages) (NiceSocket *sock, const NiceAddress *to,
       const NiceOutputMessage *messages, guint n_messages);
@@ -97,7 +98,8 @@ struct _NiceSocket
 G_GNUC_WARN_UNUSED_RESULT
 gint
 nice_socket_recv_messages (NiceSocket *sock,
-    NiceInputMessage *recv_messages, guint n_recv_messages);
+    NiceInputMessage *recv_messages, guint n_recv_messages,
+    NiceMessageExtraData *exdata);
 
 gint
 nice_socket_send_messages (NiceSocket *sock, const NiceAddress *addr,

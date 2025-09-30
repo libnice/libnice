@@ -107,7 +107,8 @@ static const gchar SSL_CLIENT_MSOC_HANDSHAKE[] = {
 
 static void socket_close (NiceSocket *sock);
 static gint socket_recv_messages (NiceSocket *sock,
-    NiceInputMessage *recv_messages, guint n_recv_messages);
+    NiceInputMessage *recv_messages, guint n_recv_messages,
+    NiceMessageExtraData *exdata);
 static gint socket_send_messages (NiceSocket *sock, const NiceAddress *to,
     const NiceOutputMessage *messages, guint n_messages);
 static gint socket_send_messages_reliable (NiceSocket *sock,
@@ -202,7 +203,8 @@ server_handshake_valid(NiceSocket *sock, GInputVector *data, guint length)
 
 static gint
 socket_recv_messages (NiceSocket *sock,
-    NiceInputMessage *recv_messages, guint n_recv_messages)
+    NiceInputMessage *recv_messages, guint n_recv_messages,
+    NiceMessageExtraData *exdata)
 {
   PseudoSSLPriv *priv = sock->priv;
 
@@ -214,7 +216,7 @@ socket_recv_messages (NiceSocket *sock,
       /* Fast path: once we’ve done the handshake, pass straight through to the
        * base socket. */
       return nice_socket_recv_messages (priv->base_socket,
-          recv_messages, n_recv_messages);
+          recv_messages, n_recv_messages, NULL);
     }
   } else {
     guint8 data[MAX(sizeof(SSL_SERVER_GOOGLE_HANDSHAKE),
@@ -231,7 +233,7 @@ socket_recv_messages (NiceSocket *sock,
     }
     if (priv->base_socket) {
       ret = nice_socket_recv_messages (priv->base_socket,
-          &local_recv_message, 1);
+          &local_recv_message, 1, NULL);
     }
 
     if (ret <= 0) {

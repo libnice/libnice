@@ -61,7 +61,8 @@
 
 static void socket_close (NiceSocket *sock);
 static gint socket_recv_messages (NiceSocket *sock,
-    NiceInputMessage *recv_messages, guint n_recv_messages);
+    NiceInputMessage *recv_messages, guint n_recv_messages,
+    NiceMessageExtraData *exdata);
 static gint socket_send_messages (NiceSocket *sock, const NiceAddress *to,
     const NiceOutputMessage *messages, guint n_messages);
 static gint socket_send_messages_reliable (NiceSocket *sock,
@@ -236,10 +237,13 @@ socket_close (NiceSocket *sock)
 
 static gint
 socket_recv_messages (NiceSocket *sock,
-    NiceInputMessage *recv_messages, guint n_recv_messages)
+    NiceInputMessage *recv_messages, guint n_recv_messages,
+    NiceMessageExtraData *exdata)
 {
   guint i;
   gboolean error = FALSE;
+
+  /* TODO exdata */
 
   /* Make sure socket has not been freed: */
   g_assert (sock->priv != NULL);

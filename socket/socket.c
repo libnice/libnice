@@ -64,6 +64,8 @@ struct _NiceSocketQueuedSend {
  * @recv_messages: (array length=n_recv_messages) (out caller-allocates):
  * array of #NiceInputMessages to return received messages in
  * @n_recv_messages: number of elements in the @recv_messages array
+ * @exdata: (array length=n_recv_messages) (out caller-allocates):
+ * array of #NiceMessageExtraData to return extra data for messages
  *
  * Receive up to @n_recv_messages message on the socket, in a non-reliable,
  * non-blocking fashion. The total size of the buffers in each #NiceInputMessage
@@ -100,12 +102,13 @@ struct _NiceSocketQueuedSend {
  */
 gint
 nice_socket_recv_messages (NiceSocket *sock,
-    NiceInputMessage *recv_messages, guint n_recv_messages)
+    NiceInputMessage *recv_messages, guint n_recv_messages,
+    NiceMessageExtraData *exdata)
 {
   g_return_val_if_fail (sock != NULL, -1);
   g_return_val_if_fail (n_recv_messages == 0 || recv_messages != NULL, -1);
 
-  return sock->recv_messages (sock, recv_messages, n_recv_messages);
+  return sock->recv_messages (sock, recv_messages, n_recv_messages, exdata);
 }
 
 /**
@@ -206,7 +209,7 @@ nice_socket_recv (NiceSocket *sock, NiceAddress *from, gsize len,
   NiceInputMessage local_message = { &local_buf, 1, from, 0};
   gint ret;
 
-  ret = sock->recv_messages (sock, &local_message, 1);
+  ret = sock->recv_messages (sock, &local_message, 1, NULL);
   if (ret == 1)
     return local_message.length;
   return ret;

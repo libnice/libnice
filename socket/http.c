@@ -86,7 +86,8 @@ typedef struct {
 
 static void socket_close (NiceSocket *sock);
 static gint socket_recv_messages (NiceSocket *sock,
-    NiceInputMessage *recv_messages, guint n_recv_messages);
+    NiceInputMessage *recv_messages, guint n_recv_messages,
+    NiceMessageExtraData *exdata);
 static gint socket_send_messages (NiceSocket *sock, const NiceAddress *to,
     const NiceOutputMessage *messages, guint n_messages);
 static gint socket_send_messages_reliable (NiceSocket *sock,
@@ -292,7 +293,7 @@ memcpy_ring_buffer_to_input_messages (HttpPriv *priv,
  * to better to use the recv_messages to avoid the memcpy()s. */
 static gint
 socket_recv_messages (NiceSocket *sock,
-    NiceInputMessage *recv_messages, guint n_recv_messages)
+    NiceInputMessage *recv_messages, guint n_recv_messages, NiceMessageExtraData *exdata)
 {
   HttpPriv *priv = sock->priv;
   gint ret = -1;
@@ -306,7 +307,7 @@ socket_recv_messages (NiceSocket *sock,
     /* Fast path: pass through to the base socket once we’re connected. */
     if (priv->base_socket) {
       ret = nice_socket_recv_messages (priv->base_socket,
-          recv_messages, n_recv_messages);
+          recv_messages, n_recv_messages, NULL);
     }
 
     if (ret <= 0)
@@ -360,7 +361,7 @@ socket_recv_messages (NiceSocket *sock,
 
     if (priv->base_socket) {
       ret = nice_socket_recv_messages (priv->base_socket,
-          &local_recv_message, 1);
+          &local_recv_message, 1, NULL);
     }
 
     if (ret <= 0)
