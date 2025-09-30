@@ -12,7 +12,7 @@ libgstnice = library('gstnice',
   gst_nice_sources,
   c_args : gst_nice_args,
   include_directories: nice_incs,
-  dependencies: [libnice_dep, gst_dep],
+  dependencies: [libnice_dep, gst_dep, gst_net_dep],
   install_dir: gst_plugins_install_dir,
   install: true)
 gst_plugins = [

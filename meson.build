@@ -290,6 +290,10 @@ gst_dep = dependency('gstreamer-base-1.0', version: gst_req,
   required: get_option('gstreamer'),
   fallback : ['gstreamer', 'gst_base_dep'])
 
+gst_net_dep = dependency('gstreamer-net-1.0', version: gst_req,
+  required: get_option('gstreamer'),
+  fallback : ['gstreamer', 'gst_net_dep'])
+
 cdata.set('HAVE_GSTREAMER', gst_dep.found(), description: 'Build GStreamer plugin')
 
 # GUPnP IGD

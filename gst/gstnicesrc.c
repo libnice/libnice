@@ -42,6 +42,8 @@
 
 #include "gstnicesrc.h"
 
+#include <gst/net/gstnetcontrolmessagemeta.h>
+
 GST_DEBUG_CATEGORY_STATIC (nicesrc_debug);
 #define GST_CAT_DEFAULT nicesrc_debug
 
@@ -200,6 +202,7 @@ gst_nice_src_read_callback (NiceAgent *agent,
     guint component_id,
     guint len,
     gchar *buf,
+    NiceMessageExtraData *exdata,
     gpointer data)
 {
   GstBaseSrc *basesrc = GST_BASE_SRC (data);
@@ -212,6 +215,14 @@ gst_nice_src_read_callback (NiceAgent *agent,
   buffer = gst_buffer_new_allocate (NULL, len, NULL);
   gst_buffer_fill (buffer, 0, buf, len);
   GST_BUFFER_DTS (buffer) = GST_BUFFER_PTS (buffer) = dts;
+
+  if (exdata) {
+    GSocketControlMessage *msg = nice_message_extra_data_get_tos (exdata);
+    if (msg) {
+      gst_buffer_add_net_control_message_meta (buffer, msg);
+    }
+    g_clear_object (&msg);
+  }
 
   GST_OBJECT_LOCK (nicesrc);
   gst_buffer_list_add (nicesrc->outbufs, buffer);
@@ -433,8 +444,8 @@ gst_nice_src_change_state (GstElement * element, GstStateChange transition)
           }
       break;
     case GST_STATE_CHANGE_PAUSED_TO_READY:
-      nice_agent_attach_recv (src->agent, src->stream_id, src->component_id,
-          src->mainctx, NULL, NULL);
+      nice_agent_attach_recv_ex (src->agent, src->stream_id, src->component_id,
+          src->mainctx, NULL, NULL, NULL);
       GST_OBJECT_LOCK (src);
       gst_clear_buffer_list (&src->outbufs);
       src->outbufs = gst_buffer_list_new ();
@@ -453,8 +464,8 @@ gst_nice_src_change_state (GstElement * element, GstStateChange transition)
 
   switch (transition) {
     case GST_STATE_CHANGE_READY_TO_PAUSED:
-      nice_agent_attach_recv (src->agent, src->stream_id, src->component_id,
-          src->mainctx, gst_nice_src_read_callback, (gpointer) src);
+      nice_agent_attach_recv_ex (src->agent, src->stream_id, src->component_id,
+          src->mainctx, gst_nice_src_read_callback, (gpointer) src, NULL);
       break;
     case GST_STATE_CHANGE_NULL_TO_READY:
     case GST_STATE_CHANGE_PAUSED_TO_PLAYING:
