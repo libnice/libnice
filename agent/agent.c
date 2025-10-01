@@ -131,6 +131,7 @@ enum
   PROP_IDLE_TIMEOUT,
   PROP_CONSENT_FRESHNESS,
   PROP_CLOSE_FORCED,
+  PROP_RECV_TOS,
 };
 
 
@@ -966,6 +967,26 @@ nice_agent_class_init (NiceAgentClass *klass)
         FALSE,
         G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY));
 
+  /**
+   * NiceAgent:recv-tos
+   *
+   * Whether to receive IP_TOS/IPV6_TCLASS ancillary messages and pass them to
+   * recv callback as extra data. Implemented for UDP-BSD sockets.
+   *
+   * If #NiceAgent with enabled ip-tos is used by GstNiceSrc, the element will
+   * attach the received messages to buffers as #GstNetControlMessageMeta.
+   *
+   * Since: 0.1.24
+   */
+  g_object_class_install_property (gobject_class, PROP_RECV_TOS,
+      g_param_spec_boolean (
+        "recv-tos",
+        "Enable reception of IP_TOS and IPV6_TCLASS ancillary messages",
+        "Whether to receive IP_TOS and IPV6_TCLASS ancillary messages "
+        "and pass them to recv callback as extra data.",
+        FALSE,
+        G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY));
+
   /* install signals */
 
   /**
@@ -1400,6 +1421,7 @@ nice_agent_new_full (GMainContext *ctx,
       "support-renomination", (flags & NICE_AGENT_OPTION_SUPPORT_RENOMINATION) ? TRUE : FALSE,
       "consent-freshness", (flags & NICE_AGENT_OPTION_CONSENT_FRESHNESS) ? TRUE : FALSE,
       "close-forced", (flags & NICE_AGENT_OPTION_CLOSE_FORCED) ? TRUE : FALSE,
+      "recv-tos", (flags & NICE_AGENT_OPTION_RECV_TOS) ? TRUE : FALSE,
       NULL);
 
   return agent;
@@ -1553,6 +1575,10 @@ nice_agent_get_property (
 
     case PROP_CLOSE_FORCED:
       g_value_set_boolean (value, agent->close_forced);
+      break;
+
+    case PROP_RECV_TOS:
+      g_value_set_boolean (value, agent->recv_tos);
       break;
 
     default:
@@ -1797,6 +1823,10 @@ nice_agent_set_property (
 
     case PROP_CLOSE_FORCED:
       agent->close_forced = g_value_get_boolean (value);
+      break;
+
+    case PROP_RECV_TOS:
+      agent->recv_tos = g_value_get_boolean (value);
       break;
 
     default:
@@ -2947,7 +2977,8 @@ priv_add_new_candidate_discovery_turn (NiceAgent *agent,
       NiceSocket *new_socket;
       nice_address_set_port (&addr, 0);
 
-      new_socket = nice_udp_bsd_socket_new (agent->main_context, &addr, NULL);
+      new_socket = nice_udp_bsd_socket_new (agent->main_context, &addr,
+          agent->recv_tos, NULL);
       if (new_socket) {
         _priv_set_socket_tos (agent, new_socket, stream->tos);
         nice_component_attach_socket (component, new_socket);
@@ -7898,9 +7929,22 @@ nice_agent_consent_lost (
   return result;
 }
 
+NICEAPI_EXPORT GSocketControlMessage *
+nice_message_extra_data_get_tos (NiceMessageExtraData *exdata)
+{
+  return exdata->tos ? g_object_ref (exdata->tos) : NULL;
+}
+
 void
 nice_message_extra_data_copy (NiceMessageExtraData *dest,
     NiceMessageExtraData *src)
 {
   g_return_if_fail (dest != NULL);
+
+  /* First reset the destination struct */
+  g_clear_object (&dest->tos);
+
+  if (src) {
+    dest->tos = g_object_ref (src->tos);
+  }
 }

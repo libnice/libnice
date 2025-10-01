@@ -782,7 +782,7 @@ HostCandidateResult discovery_add_local_host_candidate (
   /* note: candidate username and password are left NULL as stream
      level ufrag/password are used */
   if (transport == NICE_CANDIDATE_TRANSPORT_UDP) {
-    nicesock = nice_udp_bsd_socket_new (agent->main_context, address, &error);
+    nicesock = nice_udp_bsd_socket_new (agent->main_context, address, agent->recv_tos, &error);
   } else if (transport == NICE_CANDIDATE_TRANSPORT_TCP_ACTIVE) {
     nicesock = nice_tcp_active_socket_new (agent->main_context, address);
   } else if (transport == NICE_CANDIDATE_TRANSPORT_TCP_PASSIVE) {

@@ -423,6 +423,7 @@ typedef enum
  * @NICE_AGENT_OPTION_BYTESTREAM_TCP: Use bytestream mode for reliable TCP connections. (Since: 0.1.20)
  * @NICE_AGENT_OPTION_CLOSE_FORCED: When removing TURN port allocations on TURN server,
  * don't do retransmissions and don't wait for a response. (Since: 0.1.23)
+ * @NICE_AGENT_OPTION_RECV_TOS: Enables receiving IP_TOS/IPV6_TCLASS packet header fields. (Since: 0.1.23)
  *
  * These are options that can be passed to nice_agent_new_full(). They set
  * various properties on the agent. Not including them sets the property to
@@ -440,6 +441,7 @@ typedef enum {
   NICE_AGENT_OPTION_CONSENT_FRESHNESS = 1 << 5,
   NICE_AGENT_OPTION_BYTESTREAM_TCP = 1 << 6,
   NICE_AGENT_OPTION_CLOSE_FORCED = 1 << 7,
+  NICE_AGENT_OPTION_RECV_TOS = 1 << 8,
 } NiceAgentOption;
 
 /**
@@ -1808,6 +1810,24 @@ nice_agent_close_async (NiceAgent *agent, GAsyncReadyCallback callback,
  */
 GPtrArray *
 nice_agent_get_sockets (NiceAgent *agent, guint stream_id, guint component_id);
+
+/**
+ * nice_message_extra_data_get_tos:
+ * @exdata: A #NiceMessageExtraData structure
+ *
+ * Retrieves #GIPTosMessage or #GIPv6TclassMessage object containing traffic
+ * control data from IPv4 or IPv6 header of the buffer associated with @exdata.
+ * For more information about traffic control in IP headers see RFC2474 and
+ * RFC3168.
+ *
+ * Returns: (element-type GSocketControlMessage) (transfer full): The traffic
+ * control data held by @exdata or NULL when such data were not provided for
+ * the associated buffer. Free with g_object_unref() when done.
+ *
+ * Since: 0.1.24
+ */
+GSocketControlMessage *
+nice_message_extra_data_get_tos (NiceMessageExtraData *exdata);
 
 G_END_DECLS
 

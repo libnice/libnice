@@ -62,6 +62,7 @@ nice_agent_get_component_state
 nice_agent_close_async
 nice_agent_consent_lost
 nice_component_state_to_string
+nice_message_extra_data_get_tos
 NICE_CHECK_VERSION
 <SUBSECTION Standard>
 NICE_AGENT

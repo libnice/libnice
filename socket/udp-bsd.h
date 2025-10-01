@@ -44,7 +44,8 @@
 G_BEGIN_DECLS
 
 NiceSocket *
-nice_udp_bsd_socket_new (GMainContext *ctx, NiceAddress *addr, GError **error);
+nice_udp_bsd_socket_new (GMainContext *ctx, NiceAddress *addr, gboolean recv_tos,
+    GError **error);
 
 G_END_DECLS
 

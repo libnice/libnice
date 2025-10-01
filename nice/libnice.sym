@@ -90,6 +90,7 @@ nice_interfaces_get_local_interfaces
 nice_interfaces_get_local_ips
 nice_io_stream_new
 nice_input_stream_new
+nice_message_extra_data_get_tos
 nice_nomination_mode_get_type
 nice_output_stream_new
 nice_proxy_type_get_type

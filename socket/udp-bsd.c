@@ -92,7 +92,8 @@ struct UdpBsdSocketPrivate
 };
 
 NiceSocket *
-nice_udp_bsd_socket_new (GMainContext *ctx, NiceAddress *addr, GError **error)
+nice_udp_bsd_socket_new (GMainContext *ctx, NiceAddress *addr, gboolean recv_tos,
+    GError **error)
 {
   union {
     struct sockaddr_storage storage;
@@ -158,6 +159,35 @@ nice_udp_bsd_socket_new (GMainContext *ctx, NiceAddress *addr, GError **error)
   }
 #endif
 
+  if (recv_tos) {
+    gint level;
+    gint optname = 0;
+    GError *gerr = NULL;
+
+    if (nice_address_ip_version (addr) == 6) {
+      level = IPPROTO_IPV6;
+#ifdef IPV6_RECVTCLASS
+      optname = IPV6_RECVTCLASS;
+
+      /* Make sure NiceIPv6TClassMessage is registered with GType. */
+      G_TYPE_IPV6_TCLASS_MESSAGE;
+#endif
+    } else {
+      level = IPPROTO_IP;
+#ifdef IP_RECVTOS
+      optname = IP_RECVTOS;
+
+      /* Make sure NiceIPTosMessage is registered with GType. */
+      G_TYPE_IP_TOS_MESSAGE;
+#endif
+    }
+
+    if (optname &&
+        !g_socket_set_option (gsock, level, optname, 1, &gerr)) {
+      nice_debug ("Couldn't enable receiving of ToS: %s", gerr->message);
+      g_clear_error (error);
+    }
+  }
 
   /* GSocket: All socket file descriptors are set to be close-on-exec. */
   g_socket_set_blocking (gsock, false);
@@ -243,8 +273,6 @@ socket_recv_messages (NiceSocket *sock,
   guint i;
   gboolean error = FALSE;
 
-  /* TODO exdata */
-
   /* Make sure socket has not been freed: */
   g_assert (sock->priv != NULL);
 
@@ -253,13 +281,22 @@ socket_recv_messages (NiceSocket *sock,
   for (i = 0; i < n_recv_messages; i++) {
     NiceInputMessage *recv_message = &recv_messages[i];
     GSocketAddress *gaddr = NULL;
+    GSocketControlMessage **ctlmsgs = NULL;
+    gint num_ctlmsgs = 0;
     GError *gerr = NULL;
     gssize recvd;
     gint flags = G_SOCKET_MSG_NONE;
+    guint j;
+
+#if !defined(IP_RECVTOS) && !defined(IPV6_RECVTCLASS)
+    exdata = NULL;
+#endif
 
     recvd = g_socket_receive_message (sock->fileno,
         (recv_message->from != NULL) ? &gaddr : NULL,
-        recv_message->buffers, recv_message->n_buffers, NULL, NULL,
+        recv_message->buffers, recv_message->n_buffers,
+        exdata ? &ctlmsgs : NULL,
+        exdata ? &num_ctlmsgs : NULL,
         &flags, NULL, &gerr);
 
     if (recvd < 0) {
@@ -286,6 +323,15 @@ socket_recv_messages (NiceSocket *sock,
 
       g_socket_address_to_native (gaddr, &sa, sizeof (sa), NULL);
       nice_address_set_from_sockaddr (recv_message->from, &sa.addr);
+    }
+
+    for (j = 0; j != num_ctlmsgs; ++j) {
+      GSocketControlMessage *msg = ctlmsgs[j];
+      if (exdata &&
+          (G_IS_IP_TOS_MESSAGE (msg) || G_IS_IPV6_TCLASS_MESSAGE (msg))) {
+        exdata->tos = g_object_ref (msg);
+      }
+      g_object_unref (msg);
     }
 
     if (gaddr != NULL)

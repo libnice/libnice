@@ -77,7 +77,7 @@ typedef struct {
 
 struct _NiceMessageExtraData
 {
-  
+  GSocketControlMessage *tos;
 };
 
 void
@@ -203,6 +203,7 @@ struct _NiceAgent
                                          connchecks */
   gboolean close_forced;              /* property: close-forced */
   GTask* close_task;                  /* task associated with ongoing nice_agent_close_async() */
+  gboolean recv_tos;                  /* property: recv-tos */
   /* XXX: add pointer to internal data struct for ABI-safe extensions */
 };
 
