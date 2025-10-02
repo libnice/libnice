@@ -160,6 +160,7 @@ nice_udp_bsd_socket_new (GMainContext *ctx, NiceAddress *addr, gboolean recv_tos
 #endif
 
   if (recv_tos) {
+#if GLIB_CHECK_VERSION (2, 88, 0)
     gint level;
     gint optname = 0;
     GError *gerr = NULL;
@@ -187,6 +188,9 @@ nice_udp_bsd_socket_new (GMainContext *ctx, NiceAddress *addr, gboolean recv_tos
       nice_debug ("Couldn't enable receiving of ToS: %s", gerr->message);
       g_clear_error (error);
     }
+#else
+    g_assert_not_reached();
+#endif
   }
 
   /* GSocket: All socket file descriptors are set to be close-on-exec. */
@@ -286,9 +290,8 @@ socket_recv_messages (NiceSocket *sock,
     GError *gerr = NULL;
     gssize recvd;
     gint flags = G_SOCKET_MSG_NONE;
-    guint j;
 
-#if !defined(IP_RECVTOS) && !defined(IPV6_RECVTCLASS)
+#if (!defined(IP_RECVTOS) && !defined(IPV6_RECVTCLASS)) || !GLIB_CHECK_VERSION (2, 88, 0)
     exdata = NULL;
 #endif
 
@@ -325,14 +328,20 @@ socket_recv_messages (NiceSocket *sock,
       nice_address_set_from_sockaddr (recv_message->from, &sa.addr);
     }
 
-    for (j = 0; j != num_ctlmsgs; ++j) {
-      GSocketControlMessage *msg = ctlmsgs[j];
-      if (exdata &&
-          (G_IS_IP_TOS_MESSAGE (msg) || G_IS_IPV6_TCLASS_MESSAGE (msg))) {
-        exdata->tos = g_object_ref (msg);
+#if GLIB_CHECK_VERSION (2, 88, 0)
+    {
+      guint j;
+
+      for (j = 0; j != num_ctlmsgs; ++j) {
+        GSocketControlMessage *msg = ctlmsgs[j];
+        if (exdata &&
+            (G_IS_IP_TOS_MESSAGE (msg) || G_IS_IPV6_TCLASS_MESSAGE (msg))) {
+          exdata->tos = g_object_ref (msg);
+        }
+        g_object_unref (msg);
       }
-      g_object_unref (msg);
     }
+#endif
 
     if (gaddr != NULL)
       g_object_unref (gaddr);

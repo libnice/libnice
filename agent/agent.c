@@ -1826,7 +1826,14 @@ nice_agent_set_property (
       break;
 
     case PROP_RECV_TOS:
+#if GLIB_CHECK_VERSION (2, 88, 0)
       agent->recv_tos = g_value_get_boolean (value);
+#else
+      if (g_value_get_boolean (value) == TRUE) {
+        g_critical ("Receiving IP_TOS / IPV6_TCLASS messages requires GLib 2.88");
+      }
+      agent->recv_tos = FALSE;
+#endif
       break;
 
     default:
