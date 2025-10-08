@@ -167,7 +167,6 @@ gst_nice_src_init (GstNiceSrc *src)
 {
   gst_base_src_set_live (GST_BASE_SRC (src), TRUE);
   gst_base_src_set_format (GST_BASE_SRC (src), GST_FORMAT_TIME);
-  gst_base_src_set_do_timestamp (GST_BASE_SRC (src), TRUE);
   src->agent = NULL;
   src->stream_id = 0;
   src->component_id = 0;
@@ -176,6 +175,23 @@ gst_nice_src_init (GstNiceSrc *src)
   src->unlocked = FALSE;
   src->idle_source = NULL;
   src->outbufs = gst_buffer_list_new ();
+}
+
+static GstClockTime
+gst_nice_src_get_timestamp (GstNiceSrc *src)
+{
+  GstClock *clock;
+  GstClockTime ts;
+
+  GST_OBJECT_LOCK (src);
+  if ((clock = GST_ELEMENT_CLOCK (src))) {
+    ts = gst_clock_get_time (clock) - GST_ELEMENT (src)->base_time;
+  } else {
+    ts = GST_CLOCK_TIME_NONE;
+  }
+  GST_OBJECT_UNLOCK (src);
+
+  return ts;
 }
 
 static void
@@ -189,11 +205,14 @@ gst_nice_src_read_callback (NiceAgent *agent,
   GstBaseSrc *basesrc = GST_BASE_SRC (data);
   GstNiceSrc *nicesrc = GST_NICE_SRC (basesrc);
   GstBuffer *buffer = NULL;
+  GstClockTime dts = gst_nice_src_get_timestamp (nicesrc);
 
   GST_LOG_OBJECT (nicesrc, "Got buffer, adding it to buffer list and getting out of the main loop");
 
   buffer = gst_buffer_new_allocate (NULL, len, NULL);
   gst_buffer_fill (buffer, 0, buf, len);
+  GST_BUFFER_DTS (buffer) = GST_BUFFER_PTS (buffer) = dts;
+
   GST_OBJECT_LOCK (nicesrc);
   gst_buffer_list_add (nicesrc->outbufs, buffer);
   g_main_loop_quit (nicesrc->mainloop);
