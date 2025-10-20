@@ -7613,6 +7613,9 @@ nice_agent_parse_remote_candidate_sdp (NiceAgent *agent, guint stream_id,
   else if (g_ascii_strcasecmp (transport, "TCP-PASS") == 0)
     ctransport = NICE_CANDIDATE_TRANSPORT_TCP_PASSIVE;
   else if (g_ascii_strcasecmp (transport, "TCP") == 0) {
+    if (tcptype == NULL)
+      goto done;
+
     if (g_ascii_strcasecmp (tcptype, "so") == 0)
       ctransport = NICE_CANDIDATE_TRANSPORT_TCP_SO;
     else if (g_ascii_strcasecmp (tcptype, "active") == 0)
