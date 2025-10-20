@@ -1,5 +1,4 @@
 stages:
- - verify
  - containers
  - build
  - test
@@ -18,9 +17,6 @@ workflow:
 
 include:
   - project: 'freedesktop/ci-templates'
-    file: '/templates/ci-fairy.yml'
-    ref: '48c2c583a865bd59be21e8938df247faf460099c'
-  - project: 'freedesktop/ci-templates'
     file: '/templates/centos.yml'
     ref: '48c2c583a865bd59be21e8938df247faf460099c'
   - project: 'freedesktop/ci-templates'
@@ -38,25 +34,6 @@ include:
     FDO_DISTRIBUTION_VERSION: '42'
     FDO_DISTRIBUTION_TAG: '2025-08-11'
     FDO_UPSTREAM_REPO: 'libnice/libnice'
-
-check-allow-collaboration:
-  extends:
-    - .fdo.ci-fairy
-  script:
-   - ci-fairy check-merge-request --require-allow-collaboration --junit-xml=results.xml
-  interruptible: true
-  needs: []
-  stage: 'verify'
-  variables:
-    GIT_STRATEGY: 'none'
-  rules:
-    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
-      when: always
-    - when: never
-  artifacts:
-    reports:
-      junit: results.xml
-
 
 build-centos-container:8:
   extends:
