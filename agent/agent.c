@@ -5527,8 +5527,6 @@ nice_agent_recv_messages_blocking_or_nonblocking (NiceAgent *agent,
   if (!received_enough && agent_try_consume_next_rfc4571_chunk (agent,
           component, component->recv_messages, component->n_recv_messages,
           &component->recv_messages_iter)) {
-    n_valid_messages = nice_input_message_iter_get_n_valid_messages (
-        &component->recv_messages_iter);
     goto consumed_rfc4571_chunk;
   }
 
