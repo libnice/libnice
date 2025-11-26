@@ -214,9 +214,16 @@ agent_unlock_and_emit (NiceAgent *agent)
 {
   GQueue queue = G_QUEUE_INIT;
   QueuedSignal *sig;
+  GTask *close_task = NULL;
 
   queue = agent->pending_signals;
   g_queue_init (&agent->pending_signals);
+
+  /* Check if we have a close_task and if we can close */
+  if (agent->close_task && agent->pruning_refreshes == NULL &&
+      agent->stun_resolving_list == NULL &&
+      agent->turn_resolving_count == 0)
+    close_task = g_steal_pointer (&agent->close_task);
 
   agent_unlock (agent);
 
@@ -224,6 +231,11 @@ agent_unlock_and_emit (NiceAgent *agent)
     g_signal_emitv (sig->params, sig->signal_id, 0, NULL);
 
     free_queued_signal (sig);
+  }
+
+  if (close_task) {
+    g_task_return_boolean (close_task, TRUE);
+    g_object_unref (close_task);
   }
 }
 
@@ -2761,8 +2773,6 @@ stun_server_resolved_cb (GObject *src, GAsyncResult *result,
   agent_lock (agent);
   agent->stun_resolving_list = g_slist_remove_all (agent->stun_resolving_list,
       data);
-  agent_maybe_finish_close_task (agent);
-  agent_unlock (agent);
 
   addresses = g_resolver_lookup_by_name_finish (resolver, result, &error);
 
@@ -2775,7 +2785,6 @@ stun_server_resolved_cb (GObject *src, GAsyncResult *result,
     goto done;
   }
 
-  agent_lock (agent);
 
   stream = agent_find_stream (agent, stream_id);
 
@@ -2843,9 +2852,9 @@ stun_server_resolved_cb (GObject *src, GAsyncResult *result,
     discovery_schedule (agent);
   else
     agent_gathering_done (agent);
-  agent_unlock_and_emit (agent);
 
  done:
+  agent_unlock_and_emit (agent);
   g_list_free_full (addresses, g_object_unref);
   g_object_unref (agent);
 }
@@ -3084,8 +3093,7 @@ turn_server_resolved_cb (GObject *src, GAsyncResult *result,
   if (agent != NULL) {
     agent_lock (agent);
     agent->turn_resolving_count--;
-    agent_maybe_finish_close_task (agent);
-    agent_unlock (agent);
+    agent_unlock_and_emit (agent);
   }
 
   g_slice_free (struct TurnResolverData, rd);
@@ -3217,8 +3225,6 @@ resolve_turn_in_context (NiceAgent *agent, gpointer data)
     g_slice_free (struct TurnResolverData, rd);
 
     agent->turn_resolving_count--;
-    /* This is called from a timeout cb with agent lock held */
-    agent_maybe_finish_close_task (agent);
 
     return G_SOURCE_REMOVE;
   }
@@ -7781,28 +7787,6 @@ nice_agent_peer_candidate_gathering_done (NiceAgent *agent, guint stream_id)
   return result;
 }
 
-void
-agent_maybe_finish_close_task (NiceAgent* agent)
-{
-  GTask *task = agent->close_task;
-
-  if (agent->pruning_refreshes != NULL || agent->stun_resolving_list != NULL ||
-      agent->turn_resolving_count != 0 || task == NULL) {
-    return;
-  }
-
-  agent->close_task = NULL;
-
-  /* This must be called with agent lock held */
-
-  agent_unlock (agent);
-
-  g_task_return_boolean (task, TRUE);
-  g_object_unref (task);
-
-  agent_lock (agent);
-}
-
 static void
 nice_agent_remove_streams (NiceAgent *agent)
 {
@@ -7834,8 +7818,6 @@ nice_agent_close_async (NiceAgent *agent, GAsyncReadyCallback callback,
 
   g_cancellable_cancel (agent->stun_resolving_cancellable);
   nice_agent_remove_streams (agent);
-
-  agent_maybe_finish_close_task (agent);
 
   agent_unlock_and_emit (agent);
   g_object_unref (agent);

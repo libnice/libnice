@@ -154,8 +154,6 @@ void refresh_free (NiceAgent *agent, CandidateRefresh *cand)
   agent->refresh_list = g_slist_remove (agent->refresh_list, cand);
   agent->pruning_refreshes = g_slist_remove (agent->pruning_refreshes, cand);
 
-  agent_maybe_finish_close_task (agent);
-
   if (cand->timer_source != NULL) {
     g_source_destroy (cand->timer_source);
     g_clear_pointer (&cand->timer_source, g_source_unref);
