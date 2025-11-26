@@ -61,37 +61,42 @@ read_stream_cb (GObject *pollable_stream, gpointer _user_data)
 {
   TestIOStreamThreadData *data = _user_data;
   ThreadData *user_data = data->user_data;
-  gchar expected_data[MESSAGE_SIZE];
-  GError *error = NULL;
-  guint8 buf[MESSAGE_SIZE];
-  gssize len;
 
-  /* Try to receive some data. */
-  len = g_pollable_input_stream_read_nonblocking (
-      G_POLLABLE_INPUT_STREAM (pollable_stream), buf,
-      sizeof (buf) - user_data->recv_offset, NULL, &error);
+  for (;;) {
+    guint8 expected_data[MESSAGE_SIZE];
+    GError *error = NULL;
+    guint8 buf[MESSAGE_SIZE];
+    gssize len;
 
-  if (len == -1) {
-    g_assert_error (error, G_IO_ERROR, G_IO_ERROR_WOULD_BLOCK);
-    g_error_free (error);
-    return TRUE;
+    /* Try to receive some data. */
+    len = g_pollable_input_stream_read_nonblocking (
+						    G_POLLABLE_INPUT_STREAM (pollable_stream), buf,
+						    sizeof (buf) - user_data->recv_offset, NULL, &error);
+
+    if (len == -1) {
+      g_assert_error (error, G_IO_ERROR, G_IO_ERROR_WOULD_BLOCK);
+      g_error_free (error);
+      return TRUE;
+    }
+
+    if (len == 0)
+      return TRUE;
+
+    memset (expected_data, user_data->recv_count + '1', len);
+    g_assert_cmpmem (buf, len, expected_data, len);
+
+    user_data->recv_offset += len;
+    if (user_data->recv_offset == MESSAGE_SIZE) {
+      user_data->recv_offset = 0;
+      user_data->recv_count++;
+    }
+    g_assert_cmpuint(user_data->recv_offset, <, MESSAGE_SIZE);
+
+    if (user_data->recv_count == 10) {
+      g_main_loop_quit (user_data->read_loop);
+      return FALSE;
+    }
   }
-
-  memset (expected_data, user_data->recv_count + '1', len);
-  g_assert_cmpmem (buf, len, expected_data, len);
-
-  user_data->recv_offset += len;
-  if (user_data->recv_offset == MESSAGE_SIZE) {
-    user_data->recv_offset = 0;
-    user_data->recv_count++;
-  }
-
-  if (user_data->recv_count == 10) {
-    g_main_loop_quit (user_data->read_loop);
-    return FALSE;
-  }
-
-  return TRUE;
 }
 
 static void
