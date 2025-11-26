@@ -127,14 +127,12 @@ read_thread_cb (GInputStream *input_stream, TestIOStreamThreadData *data)
       user_data->other_recv_count, &user_data->send_count, 10);
 }
 
-static void
-write_thread_cb (GOutputStream *output_stream, TestIOStreamThreadData *data)
+static gboolean
+write_now (GOutputStream *output_stream, ThreadData *user_data)
 {
-  ThreadData *user_data = data->user_data;
   guint8 buf[MESSAGE_SIZE];
 
-  for (user_data->send_count = 0;
-       user_data->send_count < 10;
+  for (;user_data->send_count < 10;
        user_data->send_count++) {
     GError *error = NULL;
 
@@ -143,8 +141,52 @@ write_thread_cb (GOutputStream *output_stream, TestIOStreamThreadData *data)
     g_pollable_output_stream_write_nonblocking (
         G_POLLABLE_OUTPUT_STREAM (output_stream), buf, sizeof (buf), NULL,
         &error);
+
+    if (g_error_matches (error, G_IO_ERROR, G_IO_ERROR_WOULD_BLOCK)) {
+      g_clear_error(&error);
+      return FALSE;
+    }
     g_assert_no_error (error);
   }
+
+  return TRUE;
+}
+
+static gboolean
+write_stream_cb (GOutputStream *output_stream, TestIOStreamThreadData *data)
+{
+  ThreadData *user_data = data->user_data;
+
+  return write_now (output_stream, user_data);
+}
+
+static void
+write_thread_cb (GOutputStream *output_stream, TestIOStreamThreadData *data)
+{
+  ThreadData *user_data = data->user_data;
+  GMainContext *main_context;
+  GSource *stream_source;
+
+  if (write_now (output_stream, user_data))
+    return;
+
+  main_context = g_main_context_new();
+  g_main_context_push_thread_default (main_context);
+
+  stream_source =
+      g_pollable_output_stream_create_source (
+          G_POLLABLE_OUTPUT_STREAM (output_stream), NULL);
+
+  g_source_set_callback (stream_source, G_SOURCE_FUNC (write_stream_cb),
+      data, NULL);
+  g_source_attach (stream_source, main_context);
+  g_source_unref (stream_source);
+
+  while (user_data->send_count < 10)
+    g_main_context_iteration (main_context, TRUE);
+
+  g_main_context_pop_thread_default (main_context);
+  g_main_context_unref (main_context);
 }
 
 int main (void)
