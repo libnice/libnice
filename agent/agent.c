@@ -5529,8 +5529,7 @@ nice_agent_recv_messages_blocking_or_nonblocking (NiceAgent *agent,
           &component->recv_messages_iter)) {
     n_valid_messages = nice_input_message_iter_get_n_valid_messages (
         &component->recv_messages_iter);
-    nice_component_set_io_callback (component, NULL, NULL, NULL, 0, NULL);
-    goto done;
+    goto consumed_rfc4571_chunk;
   }
 
   /* For a reliable stream, grab any data from the pseudo-TCP input buffer
@@ -5601,6 +5600,7 @@ nice_agent_recv_messages_blocking_or_nonblocking (NiceAgent *agent,
             &component->recv_messages_iter));
   }
 
+consumed_rfc4571_chunk:
   n_valid_messages =
       nice_input_message_iter_get_n_valid_messages (
           &component->recv_messages_iter);  /* grab before resetting the iter */
