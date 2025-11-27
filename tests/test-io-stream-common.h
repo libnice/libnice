@@ -53,7 +53,7 @@
 
 /* Make the message sufficiently large to not hit Nagle’s algorithm in the
  * pseudo-TCP implementation, and hence run really slowly. */
-#define MESSAGE_SIZE 1284 /* bytes */
+#define MESSAGE_SIZE 1200 /* bytes */
 
 typedef struct _TestIOStreamThreadData TestIOStreamThreadData;
 
