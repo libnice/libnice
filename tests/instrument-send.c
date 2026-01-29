@@ -190,15 +190,25 @@ sendmsg (int sockfd, const struct msghdr *msg, int flags)
   }
 }
 
+#ifndef __FreeBSD__
 int
 sendmmsg (int sockfd, struct mmsghdr *msgvec, unsigned int vlen, int flags)
+#else
+ssize_t
+sendmmsg (int sockfd, struct mmsghdr *msgvec, size_t vlen, int flags)
+#endif
 {
   if (should_inject_ewouldblock ()) {
     errno = EWOULDBLOCK;
     return -1;
   } else {
+#ifndef __FreeBSD__
     int ret = ((int (*) (int sockfd, struct mmsghdr *msgvec, unsigned int vlen, int flags)) (
         dlsym (RTLD_NEXT, "sendmmsg"))) (sockfd, msgvec, vlen, flags);
+#else
+    ssize_t ret = ((int (*) (int sockfd, struct mmsghdr *msgvec, size_t vlen, int flags)) (
+        dlsym (RTLD_NEXT, "sendmmsg"))) (sockfd, msgvec, vlen, flags);
+#endif
     if (ret != -1) {
       increment_messages_sent (ret);
     }
