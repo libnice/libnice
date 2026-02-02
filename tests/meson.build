@@ -44,6 +44,11 @@ if host_machine.system() == 'linux'
   nice_tests += [
     'test-slow-resolving',
   ]
+  if gio_dep.version().version_compare('>= 2.88.0')
+    nice_tests += [
+     'test-exdata',
+    ]
+  endif
 endif
 
 foreach tname : nice_tests
