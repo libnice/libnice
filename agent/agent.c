@@ -3314,7 +3314,7 @@ nice_agent_set_relay_info(NiceAgent *agent,
   }
 
   length = g_list_length (component->turn_servers);
-  if (length == NICE_CANDIDATE_MAX_TURN_SERVERS) {
+  if (length >= NICE_CANDIDATE_MAX_TURN_SERVERS) {
     g_warning ("Agent %p : cannot have more than %d turn servers per component.",
         agent, length);
     ret = FALSE;
