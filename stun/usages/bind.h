@@ -158,6 +158,29 @@ size_t stun_usage_bind_keepalive (StunAgent *agent, StunMessage *msg,
 StunUsageBindReturn stun_usage_bind_run (const struct sockaddr *srv,
     socklen_t srvlen, struct sockaddr_storage *addr, socklen_t *addrlen);
 
+/**
+ * stun_usage_bind_run_compat:
+ * @srv: A pointer to the #sockaddr structure representing the STUN server's
+ * address
+ * @srvlen: The length of @srv
+ * @addr: A pointer to a #sockaddr structure to fill with the mapped address
+ * that the STUN server gives us
+ * @addrlen: The length of @addr
+ * @compat: Desired compatibility mode
+ *
+ * This is a convenience function that will do a synchronous Binding request to
+ * a server and wait for its answer. It will create the socket transports and
+ * use the #StunTimer usage to send the request and handle the response.
+ * Returns: A #StunUsageBindReturn.
+ * Possible return values are #STUN_USAGE_BIND_RETURN_SUCCESS,
+ * #STUN_USAGE_BIND_RETURN_ERROR and #STUN_USAGE_BIND_RETURN_TIMEOUT
+ *
+ * Since: 0.1.24
+ */
+StunUsageBindReturn stun_usage_bind_run_compat (const struct sockaddr *srv,
+    socklen_t srvlen, struct sockaddr_storage *addr, socklen_t *addrlen,
+    StunCompatibility compat);
+
 # ifdef __cplusplus
 }
 # endif

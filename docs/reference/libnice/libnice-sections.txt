@@ -333,6 +333,7 @@ stun_usage_bind_create
 stun_usage_bind_process
 stun_usage_bind_keepalive
 stun_usage_bind_run
+stun_usage_bind_run_compat
 </SECTION>
 
 <SECTION>

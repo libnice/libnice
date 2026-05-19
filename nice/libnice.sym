@@ -164,6 +164,7 @@ stun_usage_bind_create
 stun_usage_bind_keepalive
 stun_usage_bind_process
 stun_usage_bind_run
+stun_usage_bind_run_compat
 stun_usage_ice_conncheck_create
 stun_usage_ice_conncheck_create_reply
 stun_usage_ice_conncheck_priority
