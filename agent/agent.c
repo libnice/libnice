@@ -4503,7 +4503,7 @@ nice_agent_get_local_credentials (
   gchar **ufrag, gchar **pwd)
 {
   NiceStream *stream;
-  gboolean ret = TRUE;
+  gboolean ret = FALSE;
 
   g_return_val_if_fail (NICE_IS_AGENT (agent), FALSE);
   g_return_val_if_fail (stream_id >= 1, FALSE);
