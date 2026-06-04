@@ -414,9 +414,10 @@ nice_candidate_copy (const NiceCandidate *candidate)
   copy = (NiceCandidateImpl *) nice_candidate_new (candidate->type);
   memcpy (copy, candidate, sizeof(NiceCandidateImpl));
 
-  copy->turn = NULL;
   copy->c.username = g_strdup (copy->c.username);
   copy->c.password = g_strdup (copy->c.password);
+  if (copy->turn)
+    copy->turn = turn_server_ref (copy->turn);
   if (copy->stun_server)
     copy->stun_server = nice_address_dup (copy->stun_server);
 
@@ -477,6 +478,7 @@ nice_candidate_relay_address (const NiceCandidate *candidate, NiceAddress *addr)
   g_return_if_fail (candidate != NULL);
   g_return_if_fail (candidate->type == NICE_CANDIDATE_TYPE_RELAYED);
 
+  g_assert (c->turn);
   *addr = c->turn->server;
 }
 
